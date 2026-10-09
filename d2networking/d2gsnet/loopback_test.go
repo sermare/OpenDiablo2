@@ -280,6 +280,11 @@ func TestLoopbackJoinSeeMoveCastChatLeave(t *testing.T) {
 		t.Errorf("unit ids not learned per peer: a=%d/%v b=%d/%v", ua, oka, ub, okb)
 	}
 
+	// the verified 0x5b roster entry told b the same level
+	if p, ok := b.side.Peer(ua); !ok || p.Level != 31 || p.Name != "Ann" {
+		t.Errorf("b's real roster data for a: %+v %v", p, ok)
+	}
+
 	// walk: a -> b sees it
 	a.side.PlayerID = "a"
 	a.send(d2netpacket.CreateMovePlayerPacket("a", 50, 60, 55.5, 61))
