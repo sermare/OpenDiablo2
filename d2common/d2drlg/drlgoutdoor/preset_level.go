@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 )
 
@@ -19,6 +20,16 @@ type PresetLevel struct {
 	// GateSeed is the level seed when the DS1 objects were filtered (the draws
 	// of drlgpop.Filter start from it).
 	GateSeed d2rand.Seed
+
+	lv *Level // the level shell (parameters, tables) the rooms belong to
+}
+
+// BuildTiles builds the tile records of every room of the preset level, in
+// creation order (see Level.BuildTiles). The result is parallel to Rooms.
+func (p *PresetLevel) BuildTiles() ([]*RoomTiles, error) {
+	p.lv.Rooms = p.Rooms
+
+	return p.lv.buildTiles(false)
 }
 
 // Counts of the DS1 object RNG gates (DRLG_FilterPresetObjects, 0x66a230).
@@ -174,6 +185,10 @@ func GeneratePreset(env *Env, p Params, fileOverride int) (res *PresetLevel, err
 	}
 
 	l := &Level{Params: p, env: env}
+	if lr, ok := env.Tables.Level(p.ID); ok {
+		l.LType = lr.LevelType
+	}
+
 	l.Seed = d2rand.New(p.BaseSeed + uint32(p.ID))
 
 	// DRLG_AllocPresetMap: one level-seed step whose value is the file index
@@ -219,9 +234,16 @@ func GeneratePreset(env *Env, p Params, fileOverride int) (res *PresetLevel, err
 
 			FilterPresetObjects(l.Seed, ds)
 		}
+	} else if file >= 0 && file < len(rec.File) && rec.File[file] != "" {
+		// the warp bits of the room flags (presetChunkBits) are needed by the
+		// tile builder even when the objects are not scanned; the pattern is
+		// optional here (UNVERIFIED: the real code may not look at it)
+		if d, e := env.Pattern(NormalizePrestFile(rec.File[file])); e == nil {
+			ds = d
+		}
 	}
 
-	out := &PresetLevel{ID: p.ID, Def: rec.Def, File: file, Rect: rect, Seed: l.Seed, GateSeed: gateSeed}
+	out := &PresetLevel{ID: p.ID, Def: rec.Def, File: file, Rect: rect, Seed: l.Seed, GateSeed: gateSeed, lv: l}
 
 	remY := rect.H
 
@@ -232,6 +254,7 @@ func GeneratePreset(env *Env, p Params, fileOverride int) (res *PresetLevel, err
 			r := l.allocRoom(2)
 			r.X, r.Y, r.W, r.H = cx, cy, min(8, remX), min(8, remY)
 			r.PrestDef, r.File = rec.Def, file
+			r.PrestX, r.PrestY, r.PrestW, r.PrestH = rect.X, rect.Y, rect.W, rect.H // UNVERIFIED: the golden decides
 			r.Flags = flags0
 
 			if ds != nil {
@@ -256,4 +279,22 @@ func GeneratePreset(env *Env, p Params, fileOverride int) (res *PresetLevel, err
 	}
 
 	return out, nil
+}
+
+// ParamsPreset builds the generator inputs of a DrlgType 2 level that is not
+// part of any world layout (Act 1 treasure caves 13..16 and Andariel's
+// Catacombs Level 4, 37): the rectangle is the Levels.txt offset and size, vis
+// and warp come from the level record. Verified equal to the emulated game
+// (testdata/preset_act1.json).
+func ParamsPreset(t d2drlg.Levels, id int, gameSeed uint32, diff d2drlg.Difficulty) (Params, error) {
+	rec, ok := t.Level(id)
+	if !ok {
+		return Params{}, fmt.Errorf("drlgoutdoor: level %d unknown", id)
+	}
+
+	p := Params{ID: id, Vis: rec.Vis, Warp: rec.Warp}
+	p.BaseSeed, _ = d2rand.DrlgBaseSeed(gameSeed)
+	p.Rect = Rect{rec.OffsetX, rec.OffsetY, rec.SizeX[diff], rec.SizeY[diff]}
+
+	return p, nil
 }

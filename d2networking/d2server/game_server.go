@@ -575,7 +575,8 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 
 		playerState.Stats = savePacket.Player.Stats
 		g.socialLevel(client.GetUniqueID(), heroLevel(playerState))
-		playerState.Act = savePacket.Player.Act
+		// the act is the server's (onChangeLevel follows every level change); the client's player entity
+		// never learns it and always says 1, which saved a hero standing in Lut Gholein as an Act 1 hero
 		playerState.Gold = savePacket.Player.Gold // changed by vendor transactions
 
 		if m := savePacket.Player.Merc; m != nil { // hired, revived or levelled in the game

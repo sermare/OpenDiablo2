@@ -132,6 +132,7 @@ Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | **Exact tile placement for Acts 2–5 outdoors** (72 levels, 7,558 rooms equal to the emulator), the **Act 2 start playable** (Lut Gholein → Rocky Waste → Halls of the Dead), level state kept when you leave and return, **caves 13–16 and 37**, **Acts 2–5 quest logic**, **monster AI for every archetype** (17 faithful ports, the rest stand-ins), **real NPC speech and music fixed** (the paths were wrong; test runs were muted so nobody noticed), progress chart over time |
 | 2026-10-09 | **Acts 2, 3, 4 and 5 level generators match the real game (1,626 levels)**, exact tile records for Act 1 outdoors (240 levels), act towns and travel, party/trade/PvP, boss encounters and Baal waves, options menu and hardcore death, the scripted first hour of Act 1, imported-hero UI, `OpenDiablo2.app` packaging merged (full verify: ALL CHECKS PASSED) |
 | 2026-10-09 | Skills for all seven classes, skill hotkeys and the selection screen, Nightmare/Hell difficulty, boss behaviours and forced states, multiplayer and documentation merged; Act 4/5 level generators specified and checked against the real game |
 | 2026-10-09 | **Act 1 outdoors match the real game on 240 levels**; mercenaries, equipment rules, world objects, automap and a 5× faster frame merged |

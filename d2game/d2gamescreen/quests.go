@@ -28,6 +28,10 @@ const (
 var questItemCodes = []string{
 	d2quest.ItemHoradricMalus, d2quest.ItemScrollOfInifuss, d2quest.ItemDecipheredScroll,
 	d2quest.ItemHoradricScroll, d2quest.ItemBookOfSkill,
+	d2quest.ItemHoradricCube, d2quest.ItemStaffOfKingsShaft, d2quest.ItemViperAmulet, d2quest.ItemHoradricStaff,
+	d2quest.ItemLamEsenTome, d2quest.ItemKhalimEye, d2quest.ItemKhalimHeart, d2quest.ItemKhalimBrain,
+	d2quest.ItemKhalimFlail, d2quest.ItemKhalimWill, d2quest.ItemGidbinn, d2quest.ItemJadeFigurine,
+	d2quest.ItemGoldenBird, d2quest.ItemMephistoSoulstone, d2quest.ItemHellforgeHammer, d2quest.ItemMalahScroll,
 }
 
 // questRuntime joins the pure quest system (d2quest) to the running game.
@@ -125,7 +129,7 @@ func (v *Game) quests() *questRuntime {
 	}
 
 	r.g.Start()
-	v.Infof("QUEST system started difficulty=%d class=%d level=%d (Act 1 quests + Radament; other quests untouched)",
+	v.Infof("QUEST system started difficulty=%d class=%d level=%d (Acts 1-5)",
 		diff, r.g.Hero.Class, r.g.Hero.Level)
 	v.Infof("HERO state at start: level=%d exp=%d skillpoints=%d statpoints=%d gold=%d", p.Stats.Level, p.Stats.Experience,
 		p.Stats.SkillPoints, p.Stats.StatsPoints, p.Gold)
@@ -252,7 +256,7 @@ func (v *Game) onMonsterKilled(ev d2monsters.KillEvent) {
 	}
 
 	super := ""
-	if strings.HasPrefix(ev.Label, "The ") || strings.Contains(ev.Label, "Countess") {
+	if strings.HasPrefix(ev.Label, "The ") || strings.Contains(ev.Label, "Countess") || d2quest.IsQuestSuper(ev.Label) {
 		super = ev.Label
 	}
 
@@ -322,8 +326,24 @@ func (v *Game) applyQuestEffects(effects []d2quest.Effect) {
 			v.Infof("QUEST EFFECT unlock act %d", e.Value)
 		case d2quest.EffectBark:
 			v.Infof("QUEST EFFECT bark msg=%d", e.Value)
+		case d2quest.EffectReward:
+			v.applyQuestReward(e)
 		}
 	}
+}
+
+// applyQuestReward does the rewards of the later acts the engine can: stat
+// points are added, the others are logged (no mercenary, socketing or
+// personalisation UI yet).
+func (v *Game) applyQuestReward(e d2quest.Effect) {
+	if e.Code == "stat-points" {
+		v.localPlayer.Stats.StatsPoints += e.Value
+		v.Infof("QUEST EFFECT reward stat-points +%d total=%d", e.Value, v.localPlayer.Stats.StatsPoints)
+
+		return
+	}
+
+	v.Infof("QUEST EFFECT reward %s value=%d (%s) [not simulated]", e.Code, e.Value, e.Note)
 }
 
 // spawnQuestItem drops a quest reward at the hero's feet (the engine's reward

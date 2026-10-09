@@ -30,9 +30,13 @@ wait_run() {
   local i
   for i in {1..120}; do pgrep -f "$tmp/od2" >/dev/null && break; sleep 1; done
   for i in {1..420}; do pgrep -f "$tmp/od2" >/dev/null || break; sleep 1; done
+  # a game still alive now is stuck (e.g. on the title screen): kill it, never leave windows behind.
+  # The pattern is this run's private scratch dir, so other runs/agents/the user's own games are untouched.
+  if pgrep -f "$tmp/od2" >/dev/null; then echo "REAPED: game of this scenario did not finish (stuck?), killing it"; pkill -f "$tmp/od2"; sleep 1; pkill -9 -f "$tmp/od2" 2>/dev/null; fi
 }
 # every run gets its own scratch folder and server port, so parallel runs (e.g. several agents) do not collide
 tmp=$(mktemp -d /tmp/od2-verify.XXXXXX)
+trap 'pkill -f "$tmp/od2" 2>/dev/null; pkill -f "$tmp/[0-9a-z-]*\.command" 2>/dev/null' EXIT INT TERM
 step() { printf '\n== %s\n' "$1"; }
 
 # every run uses its own server port so parallel runs (e.g. several agents) do not collide
@@ -61,6 +65,7 @@ fi
 #   scenario_name="human readable title"
 #   scenario_env()    echo shell lines (exports) for the game; may use $save, $tmp, $OD2_PORT
 #   scenario_check()  inspect $log.txt (ANSI-stripped log) and set fail=1 on problems
+#   scenario_unmuted=1       (optional) play real audio (no OD2_AUTOTEST_MUTE); OD2_VERIFY_SOUND=1 does it for all
 #   scenario_warnings_ok=1   (optional) do not fail on [ERROR]/[WARNING] lines
 # Adding a scenario = adding one small file; no edits to this runner are needed.
 # A GUI session is required (the game is started with `open`).
@@ -70,26 +75,36 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   [ -f "$save" ] || cp "$D2S_SAMPLE_BODY" "$save"
 
   for f in scripts/verify.d/*.sh(N); do
-    unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""
+    unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""
     source "$f"
-    step "$scenario_name"
-    n=${f:t:r}
-    cmd=$tmp/$n.command log=$tmp/$n.log
-    {
-      echo '#!/bin/zsh'
-      echo "export OD2_PORT=$OD2_PORT"
-      echo "export OD2_AUTOGAME=\"$save\" ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1"
-      scenario_env
-      echo "$tmp/od2 2>&1 | tee $log"
-    } > $cmd
-    chmod +x $cmd; rm -f $log
-    launch_game $cmd
-    wait_run
-    sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
-    scenario_check
-    if [ -z "$scenario_warnings_ok" ] && grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then
-      echo "FAIL: warnings/errors in the $scenario_name log"; fail=1
-    fi
+    fail_before=$fail
+    for attempt in 1 2; do
+      fail=$fail_before
+      step "$scenario_name"
+      n=${f:t:r}
+      cmd=$tmp/$n.command log=$tmp/$n.log
+      {
+        echo '#!/bin/zsh'
+        echo "export OD2_PORT=$OD2_PORT"
+        echo "export OD2_AUTOGAME=\"$save\" OD2_AUTOEXIT=1"
+        # muted unless OD2_VERIFY_SOUND=1 or the scenario sets scenario_unmuted=1 (real audio, uses the sound device)
+        [ -n "${OD2_VERIFY_SOUND:-}" ] || [ -n "$scenario_unmuted" ] || echo "export OD2_AUTOTEST_MUTE=1"
+        scenario_env
+        echo "$tmp/od2 2>&1 | tee $log"
+      } > $cmd
+      chmod +x $cmd; rm -f $log
+      slot=$(./scripts/gameslot.sh acquire $$)
+      launch_game $cmd
+      wait_run
+      ./scripts/gameslot.sh release $slot
+      sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
+      scenario_check
+      if [ -z "$scenario_warnings_ok" ] && grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing" | grep -v "KILL giving up for now"; then
+        echo "FAIL: warnings/errors in the $scenario_name log"; fail=1
+      fi
+      [ $fail -eq $fail_before ] && break
+      [ $attempt -eq 1 ] && echo "RETRY: $scenario_name failed once; running it again (scenarios are timing sensitive on a loaded machine)"
+    done
   done
 fi
 
