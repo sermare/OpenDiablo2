@@ -36,3 +36,18 @@ func (g *GameControls) RemoveItemByCode(code string) bool {
 
 	return false
 }
+
+// SetQuestItemUse installs the hook that gives the usable quest items (Book of Skill, Potion of Life, Scroll
+// of Resistance) their effect: it gets the item code and reports whether the item took effect and is consumed.
+func (g *GameControls) SetQuestItemUse(use func(code string) bool) { g.questItemUse = use }
+
+// useQuestItem runs the hook for an inventory item; it reports whether the item was consumed.
+func (g *GameControls) useQuestItem(from *ItemGrid, item InventoryItem) bool {
+	if g.questItemUse == nil || !g.questItemUse(item.GetItemCode()) {
+		return false
+	}
+
+	from.Remove(item)
+
+	return true
+}

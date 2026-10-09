@@ -345,20 +345,71 @@ func (v *Game) applyQuestReward(e d2quest.Effect) {
 
 	if e.Code == "life-boost" {
 		// Potion of Life, paid when the potion is drunk (VERIFIED Game.exe 0x55bfd0: base max-life stat +20,
-		// once per difficulty record). LifeBonus survives RecalcStats; the current life rises with the maximum.
+		// once per difficulty record). The bonus lives in LifeBonus (survives RecalcStats and is part of the
+		// stored .d2s maximum, so a reload derives it again instead of adding it twice).
 		st := v.localPlayer.Stats
-		st.LifeBonus += e.Value
-		st.MaxHealth += e.Value
-		st.Health += e.Value
+		st.AddLifeBonus(e.Value)
 		v.Infof("QUEST EFFECT reward life-boost +%d maxlife=%d", e.Value, st.MaxHealth)
 
 		return
 	}
 
-	// resist-bonus (Scroll of Resistance read): the exe adds a stat list with base stats 39/41/43/45 = +Value,
-	// summed over the three difficulty records and re-applied on join (notes: verify-quest-rewards.md). The hero
-	// has no quest resist slot yet, so it is only logged.
+	if e.Code == "resist-bonus" {
+		// Scroll of Resistance read: the quest bit is already set in the hero's record (the quest game works on
+		// it) and the bonus is derived from the three records (10 per read scroll, VERIFIED 0x587f90, re-applied
+		// by the exe on every join), so a recalculation is all that is needed.
+		if st := v.localPlayer.Stats; st.Recalc != nil {
+			st.Recalc()
+		}
+
+		v.Infof("QUEST EFFECT reward resist-bonus total=%d (fire/lightning/cold/poison)",
+			v.localPlayer.Progress.ResistScrollBonus())
+
+		return
+	}
+
 	v.Infof("QUEST EFFECT reward %s value=%d (%s) [not simulated]", e.Code, e.Value, e.Note)
+}
+
+// questItemEffects is what reading or drinking a quest item does: the quest game checks the reward bit and
+// returns the effects, or none when the item does nothing now (the item then stays in the inventory). The bool
+// says whether the code is one of the three usable quest items.
+func questItemEffects(g *d2quest.Game, code string) ([]d2quest.Effect, bool) {
+	switch strings.TrimSpace(code) {
+	case d2quest.ItemBookOfSkill:
+		return g.ReadBookOfSkill(), true
+	case d2quest.ItemPotionOfLife:
+		return g.DrinkPotionOfLife(), true
+	case d2quest.ItemMalahScroll:
+		return g.ReadScrollOfResistance(), true
+	}
+
+	return nil, false
+}
+
+// useQuestItem is the item-use hook of the inventory: it reports whether the item was a quest item that took
+// effect (and so is consumed). An item whose reward bit is not set stays where it is.
+func (v *Game) useQuestItem(code string) bool {
+	r := v.quests()
+	if r == nil {
+		return false
+	}
+
+	effects, known := questItemEffects(r.g, code)
+	if !known {
+		return false
+	}
+
+	if len(effects) == 0 {
+		v.Infof("QUEST item use code=%s: nothing happens (reward bit not set)", strings.TrimSpace(code))
+
+		return false
+	}
+
+	v.Infof("QUEST item use code=%s", strings.TrimSpace(code))
+	v.applyQuestEffects(effects)
+
+	return true
 }
 
 // spawnQuestItem drops a quest reward at the hero's feet (the engine's reward

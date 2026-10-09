@@ -434,6 +434,7 @@ func (v *Game) bindGameControls() error {
 		v.gameControls.Load()
 		v.gameControls.Automap().SetLevelSource(v.currentLevel, v.levelName)
 		v.gameControls.SetEquipSound(v.playHeroUISound)
+		v.gameControls.SetQuestItemUse(v.useQuestItem)
 
 		if err := v.inputManager.BindHandler(v.gameControls); err != nil {
 			v.Error(bindControlsErrStr + player.ID())

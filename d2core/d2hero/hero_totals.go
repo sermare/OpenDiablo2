@@ -192,6 +192,7 @@ func (f *HeroStateFactory) RecalcStats(state *HeroState) {
 		Classic: !state.Expansion,
 	}
 	items := append(append([]d2statlist.Item{}, f.equippedStatItems(state, hero)...), f.charmStatItems(state)...)
+	items = append(items, resistScrollItem(state.Progress.ResistScrollBonus())...)
 
 	tot := d2statlist.Compute(hero, items, nil)
 	st.Difficulty = int(state.Difficulty)

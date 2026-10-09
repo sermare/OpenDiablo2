@@ -316,6 +316,7 @@ type GameControls struct {
 	ui                     *d2ui.UIManager
 	inventory              *Inventory
 	hud                    *HUD
+	questItemUse           func(code string) bool // Book of Skill, Potion of Life, Scroll of Resistance
 	skilltree              *skillTree
 	heroStatsPanel         *HeroStatsPanel
 	PartyPanel             *PartyPanel
