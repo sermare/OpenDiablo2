@@ -27,6 +27,7 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 
 | Done | Evidence |
 |---|---|
+| **Multiplayer**: two instances join over TCP using the real game's packet framing (Huffman table read from the binary); both build the same level from the host's map seed, see each other, walk, cast and chat | Two-process scenario passes: both saw the other's name and position, walk/cast/chat arrived, clean leave |
 | **The quest system**: the intro quests, all of Act 1 and Radament's Lair — states, NPC speech with the real voice lines, rewards, quest log, saved in the `.d2s` | A scripted Act 1 line passes 70 of 70 checks; Den of Evil with real killed cave monsters; the quest bits appear in the exported `.d2s` |
 | Runs natively on Apple Silicon with the **real 1.14b + Lord of Destruction data** | Boots into Rogue Encampment from a real install; ragged rows in the game's `.txt` tables, optional LoD strings and missing music no longer crash it |
 | Town warnings gone (`Unknown tile ID`, `invalid frame index`) | Combined build runs with **zero** warnings/errors in the log |
@@ -46,7 +47,6 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 |---|---|
 | **Skills for all seven classes**, with auras, summons, traps and status effects | branch `feat/class-skills` |
 | **A scripted playthrough of the first hour of Act 1** that finds and fixes the seams between systems | branch `feat/act1-playthrough` |
-| **Multiplayer**: two game instances, host and join over the real packet format | branch `feat/multiplayer` |
 | **Exact outdoor tile ids** (Blood Moor etc.), proven against the real game | branch `feat/drlg-tiles` |
 | **Skill hotkeys and skill selection screen**; **remaining boss/monster behaviours** | `feat/skillbar`, `feat/monster-ai-3` |
 | **Acts 2 to 5 towns and travelling between acts**; **Nightmare and Hell difficulty** | `feat/act-towns`, `feat/difficulty` |

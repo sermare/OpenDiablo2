@@ -47,7 +47,7 @@
     },
     {
       "label": "Roadmap deliverables",
-      "done": 28,
+      "done": 29,
       "total": 31,
       "note": "saves · gear+stats+equip rules · NPCs+vendors+mercs · RNG · combat · loot · packets · keys · sound · monsters · skills · dungeons+outdoors · stash/belt · lighting · waypoints · objects · automap · Mac app · perf ✓ | quests · classes · outdoor tiles · multiplayer",
       "color": "#ff7a45"

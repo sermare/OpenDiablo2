@@ -52,9 +52,9 @@
 <text x="844" y="524" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ef5da8">100%</text>
 <text x="36" y="545" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">click-walk · greeting · menu · return greeting · vendors · gamble · identify · mercenary hire · quest dialogue ✓ (Act 1)</text>
 <text x="36" y="576" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Roadmap deliverables</text>
-<text x="844" y="576" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">28 / 31</text>
+<text x="844" y="576" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">29 / 31</text>
 <rect x="36" y="588" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="588" width="666.6" height="18" rx="9" fill="url(#g6)" filter="url(#glow)"/>
-<text x="844" y="602" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">90%</text>
+<rect x="36" y="588" width="690.4" height="18" rx="9" fill="url(#g6)" filter="url(#glow)"/>
+<text x="844" y="602" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">94%</text>
 <text x="36" y="623" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">saves · gear+stats+equip rules · NPCs+vendors+mercs · RNG · combat · loot · packets · keys · sound · monsters · skills · dungeons+outdoors · stash/belt · lighting · waypoints · objects · automap · Mac app · perf ✓ | quests · classes · outdoor tiles · multiplayer</text>
 </svg>
