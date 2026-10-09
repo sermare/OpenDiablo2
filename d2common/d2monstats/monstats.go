@@ -42,10 +42,16 @@ type Class struct {
 	ID            string
 	Index         int
 	NoRatio, Boss bool
-	Level         [numDiff]int
-	MinHP, MaxHP  [numDiff]int
-	AC, Exp       [numDiff]int
-	Attacks       [numAttacks][numDiff]AttackStats
+	// PrimeEvil is the primeevil column; see LevelExclusion.
+	PrimeEvil bool
+	// Align is the monstats Align column (+0x4c): 0 enemy, 1 friendly, 2 neutral.
+	// Nonzero skips player-count scaling (0x00571760); 1 skips the classic
+	// adjustment (0x0063ff30). Column identity inferred from the data.
+	Align        int
+	Level        [numDiff]int
+	MinHP, MaxHP [numDiff]int
+	AC, Exp      [numDiff]int
+	Attacks      [numAttacks][numDiff]AttackStats
 }
 
 // Stats is the result of Scale.
@@ -55,6 +61,8 @@ type Stats struct {
 	HPMin, HPMax int
 	AC, TH       int // TH is the A1 attack rating
 	XP           int
+	HP256        int // exe stat 6/7 value, HP<<8
+	Players      int // player count recorded at spawn (exe stat 0x64), min 1
 	Attacks      [numAttacks]AttackStats
 }
 
@@ -111,6 +119,7 @@ func LoadClasses(buf []byte) (map[string]*Class, error) {
 		c := &Class{
 			ID: d.String("Id"), Index: d.Number("hcIdx"),
 			NoRatio: d.Number("noRatio") != 0, Boss: d.Number("boss") != 0,
+			PrimeEvil: d.Number("primeevil") != 0, Align: d.Number("Align"),
 		}
 
 		for di := 0; di < numDiff; di++ {
@@ -158,7 +167,7 @@ const maxHP = 0x7fffff
 // and only when an area is known, non-noRatio non-boss classes take the area
 // MonLvl instead. Normal difficulty always uses the monstats Level.
 func (c *Class) ResolveLevel(diff, areaLevel int) int {
-	if diff <= Normal || c.NoRatio || c.Boss || areaLevel <= 0 {
+	if diff <= Normal || c.NoRatio || c.excluded() || areaLevel <= 0 {
 		return c.Level[diff]
 	}
 
@@ -169,6 +178,12 @@ func (c *Class) ResolveLevel(diff, areaLevel int) int {
 // uniform integer in [0,n); it picks the hit points between the class' min
 // and max. expansion selects the Lord of Destruction monlvl columns.
 func (t MonLvl) Scale(c *Class, diff, areaLevel int, expansion bool, roll func(n int) int) Stats {
+	return t.ScaleOpts(c, diff, areaLevel, expansion, roll, Options{})
+}
+
+// ScaleOpts is Scale plus the player-count bonus and the optional classic-mode
+// adjustment (see Options).
+func (t MonLvl) ScaleOpts(c *Class, diff, areaLevel int, expansion bool, roll func(n int) int, o Options) Stats {
 	diff = clamp(diff, 0, Hell)
 	lvl := c.ResolveLevel(diff, areaLevel)
 	s := Stats{Level: lvl}
@@ -199,12 +214,20 @@ func (t MonLvl) Scale(c *Class, diff, areaLevel int, expansion bool, roll func(n
 		s.HP += roll(s.HPMax - s.HPMin + 1)
 	}
 
+	hpPct, xpPct, players := PlayerBonus(o.Players, c.Align)
+	s.Players = players
+
+	// VERIFIED 0x00571af0: the bonus is added to (min+roll) BEFORE the cap.
+	s.HP += MulDiv(s.HP, hpPct, 100)
 	if s.HP > maxHP {
 		s.HP = maxHP
 	}
 
+	s.HP256 = s.HP << 8
+
 	s.AC = scale(row.AC[e][diff], c.AC[diff])
 	s.XP = scale(row.XP[e][diff], c.Exp[diff])
+	s.XP += MulDiv(s.XP, xpPct, 100)
 
 	for a := Attack(0); a < numAttacks; a++ {
 		in := c.Attacks[a][diff]
@@ -216,6 +239,10 @@ func (t MonLvl) Scale(c *Class, diff, areaLevel int, expansion bool, roll func(n
 	}
 
 	s.TH = s.Attacks[A1].TH
+
+	if o.Classic && diff > Normal && c.Align != 1 {
+		s.applyClassic(c, diff)
+	}
 
 	return s
 }

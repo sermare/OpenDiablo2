@@ -25,7 +25,7 @@ type Derived struct {
 // The maxima are Class.BaseMax (verified on the level 94 save: mana 221 and
 // stamina 525 exact, life 849 plus the 20 life of the Act 3 quest reward =
 // stored 869). Attack rating is (dex-7)*5 + ToHitFactor (+ gear), the notes'
-// GetPlayerAttackRating; defense is dex/4 plus gear, via
+// GetPlayerAttackRating (VERIFIED 0x00622710); defense is dex/4 plus gear, via
 // d2combat.Defense (verified in the binary).
 func Derive(c d2statlist.Class, a Attributes) Derived {
 	life, mana, stam := c.BaseMax(a.Level, a.Vit, a.Ene)

@@ -294,3 +294,33 @@ func TestLevelUpGrantsAccumulateQuarters(t *testing.T) {
 		}
 	}
 }
+
+func TestPointSpendGrants(t *testing.T) {
+	// VERIFIED 0x0056ea50 / 0x0056e970.
+	c := d2statlist.Class{LifePerVit: 8, StaminaPerVit: 4, ManaPerEne: 6}
+	r := Resources{Life: Pool{1000, 2000}, Stamina: Pool{500, 600}, Mana: Pool{50, 100}}
+
+	v := ApplyVitality(c, r, 3)
+	if v.Life != (Pool{1000 + 8*3*64, 2000 + 8*3*64}) || v.Stamina != (Pool{500 + 4*3*64, 600 + 4*3*64}) {
+		t.Errorf("vit +3: %+v", v)
+	}
+
+	e := ApplyEnergy(c, r, 2)
+	if e.Mana != (Pool{50 + 6*2*64, 100 + 6*2*64}) {
+		t.Errorf("ene +2: %+v", e.Mana)
+	}
+
+	// a refund lowers the maximum only and clamps current to it
+	low := Resources{Life: Pool{2000, 2000}}
+	if got := ApplyVitality(c, low, -2).Life; got != (Pool{2000 - 8*2*64, 2000 - 8*2*64}) {
+		t.Errorf("refund: %+v", got)
+	}
+}
+
+func TestAttackRatingFormula(t *testing.T) {
+	// VERIFIED 0x00622710: (dex-7)*5 + stat 0x13 (gear to-hit) + charstats ToHitFactor.
+	c := d2statlist.Class{ToHitFactor: 5}
+	if got := Derive(c, Attributes{Level: 1, Dex: 25, ItemToHit: 10}).AttackRating; got != (25-7)*5+10+5 {
+		t.Errorf("attack rating %d", got)
+	}
+}

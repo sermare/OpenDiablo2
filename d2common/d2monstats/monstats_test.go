@@ -47,7 +47,7 @@ func TestScale(t *testing.T) {
 		Exp: [3]int{11, 12, 13}, Level: [3]int{3, 4, 5}}
 	raw.Attacks[A2] = [3]AttackStats{{9, 1, 2}, {9, 1, 2}, {9, 1, 2}}
 
-	boss := &Class{Boss: true, MinHP: [3]int{100, 100, 100}, MaxHP: [3]int{100, 100, 100}, Level: [3]int{4, 5, 6}}
+	boss := &Class{Boss: true, PrimeEvil: true, MinHP: [3]int{100, 100, 100}, MaxHP: [3]int{100, 100, 100}, Level: [3]int{4, 5, 6}}
 
 	first := func(n int) int { return 0 }
 	last := func(n int) int { return n - 1 }
