@@ -220,7 +220,11 @@ func wallFlags(f uint32, ori int, v uint32, mat uint16) uint32 {
 // orientation 4 right behind it.
 func (t *tileBuilder) wallRec(rt *RoomTiles, g *tileGroup, x, y int, v uint32, tile TileRef, ori int) *TileRecord {
 	rec := newRec(rt, x, y, ori, tile)
-	rec.Flags = wallFlags(0, ori, v, tile.tile().material)
+	if ori == 8 || ori == 9 {
+		t.tileObject(rec, rt.Room, v, ori == 9, x, y)
+	}
+
+	rec.Flags = wallFlags(rec.Flags, ori, v, tile.tile().material)
 	chain(g, rec)
 	rt.Walls = append(rt.Walls, rec)
 
@@ -329,7 +333,7 @@ func (t *tileBuilder) merge(rec *TileRecord, nbr *Room, ori int, v uint32, x, y 
 			return
 		}
 
-		t.touch(rec, rec.Ori, v)
+		t.touch(rec, rec.Ori, v, x, y)
 
 		return
 	case v&0x80 != 0:
@@ -376,29 +380,80 @@ func (t *tileBuilder) merge(rec *TileRecord, nbr *Room, ori int, v uint32, x, y 
 		rec.Ori = nori
 	}
 
-	t.touch(rec, rec.Ori, v)
+	t.touch(rec, rec.Ori, v, x, y)
 }
 
 // touch is the tail of 0x671420 (0x6707d0 on the merged record).
-func (t *tileBuilder) touch(rec *TileRecord, ori int, v uint32) {
-	if (ori == 8 || ori == 9) && t.objectTable() {
-		panic(unported("object spawning on a merged record (0x6706a0)"))
+func (t *tileBuilder) touch(rec *TileRecord, ori int, v uint32, x, y int) {
+	if ori == 8 || ori == 9 {
+		t.tileObject(rec, t.r, v, ori == 9, x, y)
 	}
 
 	rec.Flags = wallFlags(rec.Flags, ori, v, rec.Tile.tile().material)
 }
 
-// objectTable reports whether the 0x6f0580 object table has rows for this
-// level (it has none for Act 1 outdoor levels).
-func (t *tileBuilder) objectTable() bool {
-	id := t.l.Params.ID
+// tileObjRow is a row of the exe's tile object table (0x6f0738, 28 bytes): a
+// wall tile (style, sequence, orientation 9 or not) of a level spawns an object
+// or monster at a subtile offset. Only the rows of the outdoor levels that have
+// an entry in the level range table (0x6f0580), Act 5, are kept; the other
+// rows belong to Act 1/2 mazes. A type 2 row with id 0x5b/0x5c would roll the
+// room seed; none of the kept rows does.
+type tileObjRow struct {
+	style, seq int
+	ori9       bool
+	dx, dy     int
+}
 
-	switch {
-	case id >= 26 && id <= 37, id >= 51 && id <= 72, id == 109, id == 111, id == 112, id == 117:
-		return true
+var tileObjRows = [...]tileObjRow{ // rows 23..33
+	{3, 3, false, -2, 4}, {2, 1, false, 1, 2}, {2, 1, true, 2, 1}, {2, 6, false, 1, 1},
+	{2, 2, false, 0, 1}, {2, 3, true, 1, 0}, {26, 0, false, 0, 1}, {2, 4, true, 0, 0},
+	{2, 4, false, 0, 0}, {29, 0, true, 2, 0}, {29, 0, false, 0, 2},
+}
+
+// tileObjRange maps a level to its row range (inclusive, first row is 23).
+func tileObjRange(id int) (lo, hi int, ok bool) {
+	switch id {
+	case 109:
+		return 23, 24, true
+	case 111, 112, 117:
+		return 24, 33, true
 	}
 
-	return false
+	return 0, 0, false
+}
+
+// tileObject is DRLG_CreateTileObject (0x6706a0) as far as it shows in the
+// tile records: it spawns an object into the room's object list (not modelled)
+// and marks the record with flag 0x20 so that it does not spawn twice.
+func (t *tileBuilder) tileObject(rec *TileRecord, room *Room, v uint32, ori9 bool, x, y int) {
+	if rec != nil && rec.Flags&0x20 != 0 {
+		return
+	}
+
+	lo, hi, ok := tileObjRange(t.l.Params.ID)
+	if !ok {
+		return
+	}
+
+	style, seq := int(v>>20)&0x3f, int(v>>8)&0xff
+
+	for k := lo; k <= hi; k++ {
+		r := tileObjRows[k-23]
+		if r.style != style || r.seq != seq || r.ori9 != ori9 {
+			continue
+		}
+
+		sx, sy := (x-room.X)*5+r.dx, (y-room.Y)*5+r.dy
+		if sx < 0 || sy < 0 || sx >= room.W*5 || sy >= room.H*5 {
+			return
+		}
+
+		if rec != nil {
+			rec.Flags |= 0x20
+		}
+
+		return
+	}
 }
 
 // border is 0x671620: reuse the neighbour's record (0x671420) or make a new
@@ -411,7 +466,7 @@ func (t *tileBuilder) border(ori int, v uint32, x, y int) {
 		return
 	}
 
-	if (ori == 0xb || ori == 0xa) && !inRect(t.r, x, y) {
+	if (ori == 0xb || ori == 0xa) && !inRectEx(t.r, x, y) {
 		return
 	}
 
@@ -451,7 +506,12 @@ func (t *tileBuilder) warpRec(style int, ori int) (d2drlg.WarpRec, bool) {
 	}
 
 	if w.Dir != 'b' && ((ori != 0xb && w.Dir != 'l') || (ori == 0xb && w.Dir != 'r')) {
-		panic(unported("LvlWarp direction variant (0x670e20)"))
+		// 0x670e20 swaps the link's LvlWarp row for the first row with the same
+		// Id whose Direction is 'b' or the wanted side (0x61f4a0). In the
+		// expansion LvlWarp.txt those sibling rows (Ids 71, 73, 74, 81, 82: an
+		// 'l' and an 'r' row) differ only in the Direction column, so the
+		// LitVersion and Tiles read here are the same.
+		w.Dir = 'b'
 	}
 
 	return w, true
@@ -526,10 +586,7 @@ func (t *tileBuilder) cell(ori int, v uint32, x, y int, fill bool) {
 		switch ori {
 		case 8, 9:
 			if id := t.l.Params.ID; id < 0x6f || (id > 0x70 && id != 0x75) {
-				if t.objectTable() {
-					panic(unported("hidden object cell (0x6706a0)"))
-				}
-
+				// object only (no record flag; the room's object list is not modelled)
 				return
 			}
 		case 10, 11:
@@ -560,7 +617,7 @@ func (t *tileBuilder) cell(ori int, v uint32, x, y int, fill bool) {
 
 	if v&2 != 0 {
 		floorRec(t.rt, nil, x, y, v, t.pick(0, v))
-	} else if fill && inRect(t.r, x, y) {
+	} else if fill && inRectEx(t.r, x, y) {
 		d := uint32(0x1e00000)
 		if t.l.Params.ID == 0x4a {
 			d = 0x1e00100
@@ -704,4 +761,10 @@ func (l *Level) buildTiles(plainOnly bool) (res []*RoomTiles, err error) {
 	}
 
 	return res, nil
+}
+
+// inRectEx is DRLG_IsPointInRect (0x66e690): the room rectangle without its
+// right and bottom edge.
+func inRectEx(r *Room, x, y int) bool {
+	return x >= r.X && y >= r.Y && x < r.X+r.W && y < r.Y+r.H
 }

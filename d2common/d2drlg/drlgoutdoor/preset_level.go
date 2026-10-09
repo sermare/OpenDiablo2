@@ -16,6 +16,16 @@ type PresetLevel struct {
 	Rect  Rect
 	Rooms []*Room
 	Seed  *d2rand.Seed // level seed after the rooms
+
+	lv *Level // the level shell (parameters, tables) the rooms belong to
+}
+
+// BuildTiles builds the tile records of every room of the preset level, in
+// creation order (see Level.BuildTiles). The result is parallel to Rooms.
+func (p *PresetLevel) BuildTiles() ([]*RoomTiles, error) {
+	p.lv.Rooms = p.Rooms
+
+	return p.lv.buildTiles(false)
 }
 
 // Counts of the DS1 object RNG gates (DRLG_FilterPresetObjects, 0x66a230).
@@ -171,6 +181,10 @@ func GeneratePreset(env *Env, p Params, fileOverride int) (res *PresetLevel, err
 	}
 
 	l := &Level{Params: p, env: env}
+	if lr, ok := env.Tables.Level(p.ID); ok {
+		l.LType = lr.LevelType
+	}
+
 	l.Seed = d2rand.New(p.BaseSeed + uint32(p.ID))
 
 	// DRLG_AllocPresetMap: one level-seed step whose value is the file index
@@ -214,9 +228,16 @@ func GeneratePreset(env *Env, p Params, fileOverride int) (res *PresetLevel, err
 
 			FilterPresetObjects(l.Seed, ds)
 		}
+	} else if file >= 0 && file < len(rec.File) && rec.File[file] != "" {
+		// the warp bits of the room flags (presetChunkBits) are needed by the
+		// tile builder even when the objects are not scanned; the pattern is
+		// optional here (UNVERIFIED: the real code may not look at it)
+		if d, e := env.Pattern(NormalizePrestFile(rec.File[file])); e == nil {
+			ds = d
+		}
 	}
 
-	out := &PresetLevel{ID: p.ID, Def: rec.Def, File: file, Rect: rect, Seed: l.Seed}
+	out := &PresetLevel{ID: p.ID, Def: rec.Def, File: file, Rect: rect, Seed: l.Seed, lv: l}
 
 	remY := rect.H
 
@@ -227,6 +248,7 @@ func GeneratePreset(env *Env, p Params, fileOverride int) (res *PresetLevel, err
 			r := l.allocRoom(2)
 			r.X, r.Y, r.W, r.H = cx, cy, min(8, remX), min(8, remY)
 			r.PrestDef, r.File = rec.Def, file
+			r.PrestX, r.PrestY, r.PrestW, r.PrestH = rect.X, rect.Y, rect.W, rect.H // UNVERIFIED: the golden decides
 			r.Flags = flags0
 
 			if ds != nil {
