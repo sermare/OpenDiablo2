@@ -2,6 +2,8 @@ package d2mapgen
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
@@ -215,6 +217,16 @@ func (p *popLevel) run() {
 	// every level gets its own density stream (the original has one game seed
 	// that the order of the visited rooms advances)
 	game.Seed = *d2rand.New(p.seed ^ uint32(p.level)*0x9E3779B1)
+	// OD2_POPULATE_DENSITY=<percent> scales every level's density (test knob:
+	// scripted runs with a fresh level 1 hero cannot clear the full population)
+	if pct, err := strconv.Atoi(os.Getenv("OD2_POPULATE_DENSITY")); err == nil && pct >= 0 && pct != 100 {
+		for _, rg := range game.Regions {
+			if rg != nil {
+				rg.Density = rg.Density * pct / 100
+			}
+		}
+	}
+
 	game.RoomCount = func(int) int {
 		n := 0
 

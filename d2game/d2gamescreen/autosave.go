@@ -55,6 +55,29 @@ func (v *Game) advanceAutosave(elapsed float64) {
 }
 
 // commandSetGold implements the "setgold <amount>" console command.
+// commandSetExp raises the hero's experience to at least the given amount (the
+// level-up logic then promotes him). Scenarios use it to send a hero into a
+// level that the original expects a stronger character in (the Den of Evil
+// with its full natural population).
+func (v *Game) commandSetExp(args []string) error {
+	if len(args) != 1 || v.localPlayer == nil || v.localPlayer.Stats == nil {
+		return errors.New("usage: setexp <amount> (in a game)")
+	}
+
+	n, err := strconv.Atoi(args[0])
+	if err != nil || n < 0 {
+		return errors.New("setexp needs a non-negative number")
+	}
+
+	if v.localPlayer.Stats.Experience < n {
+		v.localPlayer.Stats.Experience = n
+	}
+
+	v.Infof("experience set to %d", v.localPlayer.Stats.Experience)
+
+	return nil
+}
+
 func (v *Game) commandSetGold(args []string) error {
 	if len(args) != 1 || v.localPlayer == nil || v.gameControls == nil {
 		return errors.New("usage: setgold <amount> (in a game)")

@@ -227,6 +227,7 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"pvp", "swings at another player (melee, needs hostility)", []string{"name"}, v.commandPvP},
 		{"giveitem", "puts a new item into the inventory", []string{"code"}, v.commandGiveItem},
 		{"killnear", "kills the nearest monster as the hero (party experience tests)", []string{}, v.commandKillNear},
+		{"setexp", "raises the hero's experience to at least <amount>; the level follows (debug)", []string{"amount"}, v.commandSetExp},
 	}
 
 	for _, cmd := range commands {
@@ -257,7 +258,7 @@ func (v *Game) OnUnload() error {
 	}
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
-		"party", "hostile", "roster", "trade", "pvp", "giveitem", "killnear"); err != nil {
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "killnear", "setexp"); err != nil {
 		return err
 	}
 
