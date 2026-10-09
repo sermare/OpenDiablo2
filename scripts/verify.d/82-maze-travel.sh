@@ -2,7 +2,7 @@ scenario_name="maze travel (OD2_REALMAPS=1: waypoint to Jail Level 1, open and c
 scenario_warnings_ok=1   # the maze renderer logs tile messages of its own; only a crash counts here
 scenario_env() {
   echo 'export OD2_REALMAPS=1'
-  echo 'export OD2_AUTOSCRIPT='wait:1;use:Waypoint;waypoint:29;expect:level=29;use:Door;use:Door;wait:6;say:spawnportal 1;use:Portal;expect:level=1;exit''
+  echo "export OD2_AUTOSCRIPT='wait:1;use:Waypoint;waypoint:29;expect:level=29;use:Door;use:Door;wait:6;say:spawnportal 1;use:Portal;expect:level=1;exit'"
 }
 scenario_check() {
   grep -E "AUTOSCRIPT level=|LEVEL CHANGE|OBJECT door|AUTOSCRIPT RESULT" $log.txt | cut -c1-260

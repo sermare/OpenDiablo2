@@ -4,7 +4,7 @@ wb=$tmp/wpwriteback
 scenario_env() {
   cp "$D2S_SAMPLE_BODY" $wpsave; mkdir -p $wb
   echo "export OD2_AUTOGAME=\"$wpsave\" OD2_D2S_WRITEBACK=\"$wb\""
-  echo 'export OD2_AUTOSCRIPT='wait:1;say:setwaypoint 1 0;wait:1;use:Waypoint;expect:log=WAYPOINT activated level=1;wait:1;exit''
+  echo "export OD2_AUTOSCRIPT='wait:1;say:setwaypoint 1 0;wait:1;use:Waypoint;expect:log=WAYPOINT activated level=1;wait:1;exit'"
 }
 scenario_check() {
   grep -E "WAYPOINT (saved|activated)|AUTOSCRIPT RESULT" $log.txt | cut -c1-200
