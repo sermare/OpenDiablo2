@@ -80,6 +80,7 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 	}
 
 	exportWorld(c.Header, state)
+	exportMerc(c, state)
 
 	if !opts.LastPlayed.IsZero() {
 		binary.LittleEndian.PutUint32(c.Header.Raw[lastPlayedOffset:], uint32(opts.LastPlayed.Unix()))
@@ -275,4 +276,21 @@ func checkEquipment(c *d2s.Character, state *HeroState, warn func(string, ...int
 			warn("equipment slot %d: engine has %q but the .d2s has %q, keeping the .d2s item", slot, code, have)
 		}
 	}
+}
+
+// exportMerc writes the mercenary header fields (dead flag, id, name, type,
+// experience). A hero without Merc state keeps whatever the original had. A
+// merc hired over the original one drops the old merc's items (the original
+// game discards them too).
+func exportMerc(c *d2s.Character, state *HeroState) {
+	m := state.Merc
+	if m == nil || !c.Header.IsExpansion() {
+		return
+	}
+
+	if m.Replaced && c.Header.Mercenary.ID != m.ID {
+		c.MercItems = nil
+	}
+
+	c.Header.Mercenary = d2s.Mercenary{Dead: m.Dead, ID: m.ID, NameID: m.NameID, Type: m.Type, Experience: m.Experience}
 }

@@ -61,6 +61,7 @@ func realSave(t *testing.T) ([]byte, *d2s.ItemTables, *HeroState) {
 			MaxStamina: int(a.MaxStamina),
 		},
 		Progress: &HeroProgress{Quests: quests(c.Body), Waypoints: c.Body.Waypoints, NPC: *c.Body.NPCFlags()},
+		Merc:     MercFromHeader(c.Header.Mercenary),
 	}
 
 	if diff, _, ok := c.Header.ActiveDifficulty(); ok {
