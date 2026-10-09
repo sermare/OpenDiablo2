@@ -1,78 +1,183 @@
 package d2drop
 
-const (
-	maxAffixLevel  = 99
-	maxAffixPerSet = 3 // up to 3 prefixes and 3 suffixes on one item
+// Affix tables and the affix pickers of Game.exe 1.14b, checked against the
+// emulated game (testdata/create_b.json, see create_b_test.go). This replaces
+// the unverified affix_legacy.go (still used by diablo2item until it moves to
+// the Creator).
 
-	// rareJewelBase is the constant added to rand(2) for the number of
-	// affixes on a rare jewel. The call is RAND_RollSeedRangeWithBase(2) with
-	// the base in a register the decompiler dropped: UNVERIFIED (3 matches
-	// the known 3-4 magic affixes on a rare jewel).
-	rareJewelBase = 3
-)
-
-// rareAffixCounts is the table at 6e45a8 (VERIFIED by reading the binary),
-// indexed by a generator step & 7: the number of magic affixes of a rare.
-var rareAffixCounts = [8]int{3, 4, 4, 5, 5, 5, 6, 6}
-
-// Affix is a MagicPrefix/MagicSuffix row.
-type Affix struct {
-	ID        string
-	Prefix    bool
+// AffixRow is one row of the game's combined affix table: MagicSuffix rows, then
+// MagicPrefix rows, then AutoMagic rows (the load order of the game). The
+// 1-based position in that table is the affix id stored on items.
+type AffixRow struct {
+	Name      string
 	Version   int
 	Spawnable bool
-	Rare      bool // may appear on rare and crafted items
+	Rare      bool // may appear on rare, crafted and tempered items
 	Level     int
-	MaxLevel  int // 0 = no maximum
+	MaxLevel  int // 0 = none
 	Frequency int
 	Group     int
-	Class     string // class restriction, "" for none
-	IType     []string
+	Class     int      // hero class index the affix is restricted to, -1 for none
+	IType     []string // item type codes (the first 4 characters, as the game stores them)
 	EType     []string
+	// Mod1Sockets is true when the affix's first property is the one that sets
+	// the number of sockets: such affixes never go on items that cannot be
+	// socketed (660b80).
+	Mod1Sockets bool
 }
 
-// AffixItem describes the item an affix is being rolled for.
-type AffixItem struct {
-	ILvl       int
-	QLvl       int
-	MagicLevel int
-	Types      []string // item type and all of its ancestors
-	Class      string   // class the item belongs to, "" for none
-	Quality    Quality
-	Version    int // 100 for Lord of Destruction items
-	Jewel      bool
+// RareName is a row of RarePrefix.txt or RareSuffix.txt.
+type RareName struct {
+	Name    string
+	Version int
+	IType   []string
+	EType   []string
 }
 
-// AffixLevel is the affix level (alvl) of an item (VERIFIED, 5bf1c0): with no
-// magic level it is ilvl - qlvl/2, or 2*ilvl - 99 once ilvl reaches
-// 99 - qlvl/2; with a magic level it is ilvl + magiclvl. Clamped to 1..99.
-func AffixLevel(ilvl, qlvl, magicLevel int) int {
-	var alvl int
+// AffixTables is everything the affix generation reads from the tables.
+type AffixTables struct {
+	// Rows is the combined table: NSuffix suffixes, NPrefix prefixes, then the
+	// automagic rows.
+	Rows            []AffixRow
+	NSuffix         int
+	NPrefix         int
+	RareNames       []RareName // rare suffix names first, then rare prefix names
+	NRareSuffixName int
+
+	// OnApply, if set, is called when the game applies the properties of an
+	// affix (ITEMMODS_ApplyPropertyGroup for an affix row) in the middle of
+	// the generation, because that consumes the item generator in order.
+	OnApply func(st *itemState, id int)
+}
+
+// row returns the affix with the 1-based id, nil if there is none.
+func (t *AffixTables) row(id int) *AffixRow {
+	if id < 1 || id > len(t.Rows) {
+		return nil
+	}
+
+	return &t.Rows[id-1]
+}
+
+// span returns the half open range of row indexes searched by a pick.
+func (t *AffixTables) span(prefix bool, auto int) (lo, hi int) {
+	switch {
+	case auto != 0:
+		return t.NSuffix + t.NPrefix, len(t.Rows)
+	case prefix:
+		return t.NSuffix, t.NSuffix + t.NPrefix
+	default:
+		return 0, t.NSuffix
+	}
+}
+
+func (t *AffixTables) apply(st *itemState, id int) {
+	if t.OnApply != nil && id > 0 {
+		t.OnApply(st, id)
+	}
+}
+
+const (
+	maxAffixCandidates = 0x1ff // size of the candidate list of the pickers
+	maxAffixAlvl       = 99
+	classNone          = 7 // 62c210: the class of an item that has none
+)
+
+// itemClass is ITEM_GetClassRestriction (62c210): the hero class index of the
+// item's type, or 7.
+func (c *Creator) itemClass(st *itemState) int {
+	if ty := c.Items.Type(st.base); ty != nil && ty.Class >= 0 && ty.Class < classNone {
+		return ty.Class
+	}
+
+	return classNone
+}
+
+// maxSockets is 62bd70: the number of sockets the item may have.
+func (c *Creator) maxSockets(st *itemState) int {
+	ty := c.Items.Type(st.base)
+	if ty == nil {
+		return 0
+	}
+
+	var lim int
 
 	switch {
-	case magicLevel != 0:
-		alvl = ilvl + magicLevel
-	case ilvl < maxAffixLevel-qlvl/2:
-		alvl = ilvl - qlvl/2
+	case st.ilvl <= 25:
+		lim = ty.MaxSock1
+	case st.ilvl <= 40:
+		lim = ty.MaxSock25
 	default:
-		alvl = 2*ilvl - maxAffixLevel
+		lim = ty.MaxSock40
 	}
 
-	return minInt(maxInt(alvl, 1), maxAffixLevel)
+	return minInt(st.base.GemSockets, lim)
 }
 
-func minInt(a, b int) int {
-	if a < b {
-		return a
+// classicExcluded: in classic items (version word below 100) stackable and
+// throwable items get no affixes (628bb0 / 62bbd0).
+func (c *Creator) classicExcluded(st *itemState) bool {
+	if st.req.Version >= 100 {
+		return false
 	}
 
-	return b
+	ty := c.Items.Type(st.base)
+
+	return st.base.Stackable || (ty != nil && ty.Throwable)
 }
 
-func anyIn(list, types []string) bool {
-	for _, a := range list {
-		for _, b := range types {
-			if a != "" && a == b {
+// typeLists is the end of 660b80 and 660c60: the item must not be of any
+// etype and must be of one of the itypes; both lists stop at their first
+// empty entry.
+func (c *Creator) typeLists(st *itemState, itype, etype []string) bool {
+	for _, e := range etype {
+		if e == "" {
+			break
+		}
+
+		if c.Items.IsA(st.base, e) {
+			return false
+		}
+	}
+
+	for _, i := range itype {
+		if i == "" {
+			break
+		}
+
+		if c.Items.IsA(st.base, i) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// affixTypeOK is ITEMGEN_AffixFitsItem (660b80).
+func (c *Creator) affixTypeOK(st *itemState, a *AffixRow) bool {
+	if c.classicExcluded(st) {
+		return false
+	}
+
+	// Affixes that add sockets are only for items that can be socketed.
+	if !(st.base.HasInv && c.maxSockets(st) > 0) && a.Mod1Sockets {
+		return false
+	}
+
+	return c.typeLists(st, a.IType, a.EType)
+}
+
+// hasGroup is 5bf160: whether an affix of the group is already on the item.
+// Like the game it stops at the first empty slot of each list.
+func (c *Creator) hasGroup(st *itemState, group int) bool {
+	for _, set := range [2][3]int{st.prefix, st.suffix} {
+		for _, id := range set {
+			r := c.Affixes.row(id)
+			if r == nil {
+				break
+			}
+
+			if r.Group == group {
 				return true
 			}
 		}
@@ -81,188 +186,219 @@ func anyIn(list, types []string) bool {
 	return false
 }
 
-// Eligible reports whether the affix can spawn on the item at all, ignoring
-// the groups already on it.
-func (a *Affix) Eligible(it *AffixItem) bool {
-	alvl := AffixLevel(it.ILvl, it.QLvl, it.MagicLevel)
+// affixLevel is the affix level (alvl) of the LoD picker (5bf1c0): the larger
+// of item level and base level, plus the base's magic level, or lowered by
+// half the base level (doubled above the cap); clamped to 1..99.
+func affixLevel(ilvl, qlvl, magicLevel int) int {
+	v := maxInt(ilvl, qlvl)
 
-	switch {
-	case !a.Spawnable, a.Version > it.Version:
-		return false
-	case alvl < a.Level, a.MaxLevel != 0 && alvl > a.MaxLevel:
-		return false
-	case (it.Quality == QualityRare || it.Quality == QualityCrafted) && !a.Rare:
-		return false
-	case a.Class != "" && a.Class != it.Class:
-		return false
-	case !anyIn(a.IType, it.Types), anyIn(a.EType, it.Types):
-		return false
+	if magicLevel != 0 {
+		v += magicLevel
+	} else if half := qlvl / 2; v < maxAffixAlvl-half {
+		v -= half
+	} else {
+		v = 2*v - maxAffixAlvl
 	}
 
-	return true
+	return minInt(maxInt(v, 1), maxAffixAlvl)
 }
 
-func (a *Affix) weight(it *AffixItem) int {
-	if it.MagicLevel != 0 {
-		return a.Frequency * a.Level
-	}
-
-	return a.Frequency
+// pickReq are the parameters of the game's affix pickers.
+type pickReq struct {
+	spawnCheck bool // honour the spawnable column
+	force      bool // skip the 50% gate
+	apply      bool // apply the affix properties right away
+	prefix     bool
+	autoGroup  int // automagic group, 0 for normal affixes
 }
 
-// PickAffix is ITEMGEN_PickAffixLod. Unless force is set it first passes a 50%
-// gate. Candidates are the eligible affixes whose group is not in
-// usedGroups (VERIFIED: weight = frequency, or frequency*level when the item
-// has a magic level; roll = rand(sum+1) walked by subtraction, so the last
-// candidate effectively gets one extra weight). It returns nil when the gate
-// fails or there is no candidate.
-//
-// The game retries a clashing group up to 251 times instead of filtering the
-// candidates; the distribution is the same but the number of generator steps
-// consumed differs.
-func PickAffix(rng RNG, pool []Affix, it *AffixItem, usedGroups map[int]bool, force bool) *Affix {
-	if !force && !rng.Chance() {
-		return nil
+// pickAffix is ITEMGEN_PickAffixByVersion (5bf590): the Lord of Destruction
+// picker for items whose version word is not 0, the classic one otherwise. It
+// returns the 1-based affix id, 0 if there is none (or the gate failed). The
+// game's forced affix ids (cube recipes) are not supported.
+func (c *Creator) pickAffix(st *itemState, r pickReq) int {
+	if st.req.Version >= 1 {
+		return c.pickAffixLoD(st, r)
 	}
 
-	cands := make([]*Affix, 0, len(pool))
-	sum := 0
+	return c.pickAffixClassic(st, r)
+}
 
-	for i := range pool {
-		a := &pool[i]
-		if !a.Eligible(it) || (a.Group != 0 && usedGroups[a.Group]) {
+// gate takes the generator step every picker begins with and reports whether
+// the picker goes on.
+func (st *itemState) gate(force bool) bool {
+	return st.item.Chance() || force
+}
+
+type affixCand struct {
+	idx int
+	row *AffixRow
+}
+
+// pickAffixLoD is ITEMGEN_PickAffixLod (5bf1c0).
+func (c *Creator) pickAffixLoD(st *itemState, r pickReq) int {
+	t := c.Affixes
+	lo, hi := t.span(r.prefix, r.autoGroup)
+
+	if lo == hi || !st.gate(r.force) {
+		return 0
+	}
+
+	alvl := affixLevel(st.ilvl, st.base.Level, st.base.MagicLevel)
+	mlvl := st.base.MagicLevel != 0
+	class := c.itemClass(st)
+
+	var (
+		cands []affixCand
+		sum   int
+	)
+
+	for i := lo; i < hi; i++ {
+		a := &t.Rows[i]
+
+		switch {
+		case r.spawnCheck && !a.Spawnable:
+			continue
+		case a.Version >= 100 && st.req.Version < 100:
+			continue
+		case a.Level > alvl, a.MaxLevel != 0 && a.MaxLevel < alvl:
+			continue
+		case !a.Rare && (st.quality == QualityRare || st.quality == QualityCrafted || st.quality == 9):
+			continue
+		case !c.affixTypeOK(st, a):
+			continue
+		case r.autoGroup != 0 && r.autoGroup != a.Group:
+			continue
+		case a.Frequency == 0:
+			continue
+		case a.Class >= 0 && class != classNone && a.Class != class:
+			continue
+		case c.hasGroup(st, a.Group):
 			continue
 		}
 
-		cands = append(cands, a)
-		sum += a.weight(it)
+		if len(cands) < maxAffixCandidates {
+			cands = append(cands, affixCand{i, a})
+		}
+
+		if mlvl {
+			sum += a.Frequency * a.Level
+		} else {
+			sum += a.Frequency
+		}
 	}
 
 	if len(cands) == 0 {
-		return nil
+		return 0
 	}
 
-	roll := int(rng.Roll(int32(sum + 1)))
+	// The roll is walked by subtraction until it goes negative, so the last
+	// candidate effectively has one extra weight.
+	roll := int(st.item.Roll(int32(sum + 1)))
+	pick := cands[len(cands)-1]
 
-	for _, a := range cands {
-		w := a.weight(it)
-		if roll < w {
-			return a
+	for _, cd := range cands {
+		w := cd.row.Frequency
+		if mlvl {
+			w *= cd.row.Level
 		}
 
 		roll -= w
+		if roll < 0 {
+			pick = cd
+
+			break
+		}
 	}
 
-	return cands[len(cands)-1]
-}
-
-// MagicAffixes is the result of a magic or rare affix roll.
-type MagicAffixes struct {
-	Prefixes, Suffixes []*Affix
-}
-
-// RollMagicAffixes is ITEMGEN_RollMagicAffixes (quality 4): a prefix behind
-// the 50% gate, then a suffix behind the gate, except that the suffix is
-// forced when no prefix was found, so a magic item always has an affix.
-func RollMagicAffixes(rng RNG, prefixes, suffixes []Affix, it *AffixItem) MagicAffixes {
-	var res MagicAffixes
-
-	used := map[int]bool{}
-
-	pre := PickAffix(rng, prefixes, it, used, false)
-	if pre != nil {
-		res.Prefixes = append(res.Prefixes, pre)
-		used[pre.Group] = true
+	if r.apply {
+		t.apply(st, pick.idx+1)
 	}
 
-	if suf := PickAffix(rng, suffixes, it, used, pre == nil); suf != nil {
-		res.Suffixes = append(res.Suffixes, suf)
-	}
-
-	return res
+	return pick.idx + 1
 }
 
-// RareAffixCount rolls how many magic affixes a rare item gets (VERIFIED
-// table; the jewel base is UNVERIFIED, see rareJewelBase).
-func RareAffixCount(rng RNG, jewel bool) int {
-	if jewel {
-		return rareJewelBase + int(rng.Roll(2))
+// pickAffixClassic is ITEMGEN_PickAffixClassic (5bef10): level ilvl+2, no
+// frequency, no maximum level, no group or class tests, uniform pick.
+func (c *Creator) pickAffixClassic(st *itemState, r pickReq) int {
+	t := c.Affixes
+	lo, hi := t.span(r.prefix, r.autoGroup)
+
+	if lo == hi || !st.gate(r.force) {
+		return 0
 	}
 
-	return rareAffixCounts[rng.Roll(8)] // power of two: a masked step
-}
+	alvl := minInt(maxInt(st.ilvl+2, 1), maxAffixAlvl)
 
-// RollRareAffixes is the affix part of ITEMGEN_RollRareAffixesLod (VERIFIED
-// against the decompilation, 5bf8c0): n successful picks, each on the side
-// chosen by a coin flip unless one side is exhausted (3 picked, or no
-// candidate left); picks are forced (no 50% gate); a failed pick marks the
-// side exhausted and does not count. The two rare names are not rolled here,
-// see PickRareName.
-func RollRareAffixes(rng RNG, prefixes, suffixes []Affix, it *AffixItem) MagicAffixes {
-	var res MagicAffixes
+	var cands []int
 
-	used := map[int]bool{}
-	n := RareAffixCount(rng, it.Jewel)
-	preDone, sufDone := false, false
-
-	for done := 0; done < n; {
-		suffix := false
+	for i := lo; i < hi; i++ {
+		a := &t.Rows[i]
 
 		switch {
-		case preDone && sufDone:
-			return res
-		case preDone:
-			suffix = true
-		case sufDone:
-		default:
-			suffix = rng.Chance()
-		}
-
-		pool, count := prefixes, len(res.Prefixes)
-		if suffix {
-			pool, count = suffixes, len(res.Suffixes)
-		}
-
-		a := PickAffix(rng, pool, it, used, true)
-		if a == nil {
-			if suffix {
-				sufDone = true
-			} else {
-				preDone = true
-			}
-
+		case r.spawnCheck && !a.Spawnable:
+			continue
+		case a.Version >= 100 && st.req.Version < 100:
+			continue
+		case a.Level > alvl:
+			continue
+		case !c.affixTypeOK(st, a):
 			continue
 		}
 
-		used[a.Group] = true
-
-		if suffix {
-			res.Suffixes = append(res.Suffixes, a)
-		} else {
-			res.Prefixes = append(res.Prefixes, a)
+		if len(cands) < maxAffixCandidates {
+			cands = append(cands, i)
 		}
-
-		if count+1 >= maxAffixPerSet {
-			if suffix {
-				sufDone = true
-			} else {
-				preDone = true
-			}
-		}
-
-		done++
 	}
 
-	return res
+	if len(cands) == 0 {
+		return 0
+	}
+
+	idx := cands[st.item.Roll(int32(len(cands)))]
+
+	if r.apply {
+		t.apply(st, idx+1)
+	}
+
+	return idx + 1
 }
 
-// PickRareName picks one of n rare prefix/suffix names uniformly
-// (ITEMGEN_PickRareNameLod). The caller filters the names by item type.
-// It returns -1 if n is zero.
-func PickRareName(rng RNG, n int) int {
-	if n < 1 {
-		return -1
+// nameFits is ITEMGEN_RareNameFits (660c60).
+func (c *Creator) nameFits(st *itemState, n *RareName) bool {
+	switch {
+	case c.classicExcluded(st):
+		return false
+	case n.Version >= 100 && st.req.Version < 100:
+		return false
 	}
 
-	return int(rng.Roll(int32(n)))
+	return c.typeLists(st, n.IType, n.EType)
+}
+
+// pickRareName is ITEMGEN_PickRareName (5bf770 / 5bf650, identical): a uniform
+// pick among the names that fit the item, from the prefix or the suffix
+// names. It returns the 1-based id in the table of names (suffix names come
+// first), 0 if none fits.
+func (c *Creator) pickRareName(st *itemState, prefix bool) int {
+	t := c.Affixes
+	lo, hi := 0, t.NRareSuffixName
+
+	if prefix {
+		lo, hi = t.NRareSuffixName, len(t.RareNames)
+	}
+
+	var cands []int
+
+	for i := lo; i < hi; i++ {
+		if c.nameFits(st, &t.RareNames[i]) && len(cands) < maxAffixCandidates {
+			cands = append(cands, i)
+		}
+	}
+
+	if len(cands) == 0 {
+		return 0
+	}
+
+	return cands[st.item.Roll(int32(len(cands)))] + 1
 }

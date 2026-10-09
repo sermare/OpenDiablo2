@@ -57,7 +57,17 @@ func loadItemTables(t *testing.T) *ItemTables {
 
 	types := readTSV(t, filepath.Join(root, "ItemTypes.txt"))
 
+	skipped := 0 // the "Expansion" separator row is not part of the game's table
+
 	for i, r := range types.rows {
+		if types.s(r, "ItemType") == "Expansion" {
+			skipped++
+
+			continue
+		}
+
+		i -= skipped
+
 		code := types.s(r, "Code")
 		if code == "" && i != 0 {
 			continue
