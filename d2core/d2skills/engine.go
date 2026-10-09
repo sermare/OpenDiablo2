@@ -451,6 +451,7 @@ func (e *Engine) staticField(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Ski
 
 			if !m.Alive() {
 				e.Counters.Kills++
+				e.setOf(m.ID()).Death("monster")
 			}
 		}
 	}
@@ -542,6 +543,7 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 		CannotChill: cannotCold, CannotFreeze: cannotCold,
 	}
 	h.ColdEffect, h.HasColdEffect = coldEffect(m), true
+	h.ChillDiv, h.FreezeDiv = e.coldDivisors(m)
 
 	// a hit ends the states flagged remhit (states.txt)
 	set.Hit(e.frame)
@@ -570,6 +572,29 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 		e.syncMonster(m)
 	}
 }
+
+// coldDivisors are the DifficultyLevels MonsterColdDivisor and
+// MonsterFreezeDivisor (record +0x18 and +0x14, verified) of the monster's
+// difficulty; 0 when the table is not loaded.
+func (e *Engine) coldDivisors(m *d2mapentity.Monster) (chill, freeze int) {
+	if e.asset == nil {
+		return 0, 0
+	}
+
+	return divisorsFor(e.asset.Records.DifficultyLevels, int(m.Vitals.Difficulty))
+}
+
+func divisorsFor(recs d2records.DifficultyLevels, diff int) (chill, freeze int) {
+	if rec := recs[d2enum.DifficultyType(diff)]; rec != nil {
+		return rec.MonsterColdDivisor, rec.MonsterFreezeDivisor
+	}
+
+	return 0, 0
+}
+
+// HeroDied clears the states of a dying hero: the statlists without
+// plrstaydeath end, and so do the DoT streams (verified, 0x57d310).
+func (e *Engine) HeroDied(id string) { e.setOf(id).Death("player") }
 
 // coldEffect is the monstats ColdEffect of a monster for its difficulty
 // (negative = slow percent, 0 = cannot be chilled).
