@@ -72,6 +72,11 @@ type Entry struct {
 	Mods QualityMods
 	// Mul is the gold multiplier of "gld,mul=N" entries (0 if absent).
 	Mul int
+	// Version is the version column of the item or of the unique/set row
+	// the entry names (0 classic, 100 expansion). Entries of version >= 100
+	// have no weight in a classic game. Loaders fill it; treasure class
+	// references are derived (see Dropper).
+	Version int
 }
 
 // TreasureClass is one row of TreasureClassEx.txt.
@@ -123,6 +128,10 @@ type ItemInfo struct {
 	TypeNormal    bool // ItemTypes.Normal: always normal quality
 	TypeMagic     bool // ItemTypes.Magic: always magic quality
 	TypeRare      bool // ItemTypes.Rare: may be rare
+	Version       int  // 0 classic, 100 expansion
+	// Throwable is the Throwable column of the item's primary type. A classic
+	// game never drops such items (see Context.Classic).
+	Throwable bool
 }
 
 // HasType reports whether the item is of the type code (or descends from it).
