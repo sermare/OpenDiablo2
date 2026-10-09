@@ -134,56 +134,50 @@ func (u *UIFrame) Render(target d2interface.Surface) {
 	}
 }
 
+// framePlacement is where one picture of 800borderframe.dc6 is drawn: its left edge and its
+// BOTTOM edge (the original draws a picture at the position of its bottom-left corner).
+type framePlacement struct{ piece, x, bottom int }
+
+// The pictures of the side decoration of the 800x600 mode, as the original game draws them
+// (UI_DrawControlPanelBgLeft 0x494ae0 and UI_DrawControlPanelBgRight 0x494bc0, verified:
+// the left set at x 0, 256, the right set at x 400, 544, 713; the 256 high pictures end at y 253,
+// i.e. start 3 pixels above the screen).
+var (
+	leftFramePlacements = []framePlacement{ //nolint:gochecknoglobals // constant table
+		{leftFrameTopLeft, 0, 253},
+		{leftFrameTopRight, 256, 63},
+		{leftFrameMiddleLeft, 0, 484},
+		{leftFrameBottomLeft, 0, 553},
+		{leftFrameBottomRight, 256, 553},
+	}
+	rightFramePlacements = []framePlacement{ //nolint:gochecknoglobals // constant table
+		{rightFrameTopLeft, 400, 63},
+		{rightFrameTopRight, 544, 253},
+		{rightFrameMiddleRight, 713, 484},
+		{rightFrameBottomRight, 544, 553},
+		{rightFrameBottomLeft, 400, 553},
+	}
+)
+
+// FramePlacements returns the pictures of one side decoration with their position
+// (left edge, bottom edge), for the layout audit.
+func FramePlacements(o frameOrientation) [][3]int {
+	pl := leftFramePlacements
+	if o == FrameRight {
+		pl = rightFramePlacements
+	}
+
+	out := make([][3]int, len(pl))
+	for i, p := range pl {
+		out[i] = [3]int{p.piece, p.x, p.bottom}
+	}
+
+	return out
+}
+
 func (u *UIFrame) renderLeft(target d2interface.Surface) error {
-	// the frame pieces we are interested in.
-	framePieces := []int{
-		leftFrameTopLeft,
-		leftFrameTopRight,
-		leftFrameMiddleLeft,
-		leftFrameBottomLeft,
-		leftFrameBottomRight,
-	}
-
-	// the frame coordinates
-	coord := make(map[int]*struct{ x, y int })
-
-	startX, startY := u.GetPosition()
-	currentX, currentY := startX, startY
-
-	// first determine the coordinates for each frame
-	// the order that we check is important
-	for _, piece := range framePieces {
-		width, height, err := u.frame.GetFrameSize(piece)
-		if err != nil {
-			return err
-		}
-
-		c := &struct{ x, y int }{}
-
-		switch piece {
-		case leftFrameTopLeft:
-			c.x, c.y = currentX, currentY+height
-			currentX, currentY = currentX+width, currentY+height
-		case leftFrameTopRight:
-			c.x, c.y = currentX, startY+height
-			currentX = startX
-		case leftFrameMiddleLeft:
-			c.x, c.y = currentX, currentY+height
-			currentY += height
-		case leftFrameBottomLeft:
-			c.x, c.y = currentX, currentY+height
-			currentX += width
-		case leftFrameBottomRight:
-			c.x, c.y = currentX, currentY+height
-		}
-
-		coord[piece] = c
-	}
-
-	// now render the pieces with the coordinates
-	for idx, c := range coord {
-		err := u.renderFramePiece(target, c.x, c.y, idx)
-		if err != nil {
+	for _, p := range leftFramePlacements {
+		if err := u.renderFramePiece(target, p.x, p.bottom, p.piece); err != nil {
 			return err
 		}
 	}
@@ -192,57 +186,8 @@ func (u *UIFrame) renderLeft(target d2interface.Surface) error {
 }
 
 func (u *UIFrame) renderRight(target d2interface.Surface) error {
-	// the frame pieces we are interested in.
-	framePieces := []int{
-		rightFrameTopLeft,
-		rightFrameTopRight,
-		rightFrameMiddleRight,
-		rightFrameBottomRight,
-		rightFrameBottomLeft,
-	}
-
-	// the frame coordinates
-	coord := make(map[int]*struct{ x, y int })
-
-	startX, startY := u.GetPosition()
-	currentX, currentY := startX, startY
-
-	// first determine the coordinates for each frame
-	// the order that we check is important
-	for _, piece := range framePieces {
-		width, height, err := u.frame.GetFrameSize(piece)
-		if err != nil {
-			return err
-		}
-
-		c := &struct{ x, y int }{}
-
-		switch piece {
-		case rightFrameTopLeft:
-			c.x, c.y = currentX, currentY+height
-			currentX += width
-		case rightFrameTopRight:
-			c.x, c.y = currentX, currentY+height
-			currentX += width
-			currentY += height
-		case rightFrameMiddleRight:
-			c.x, c.y = currentX-width, currentY+height
-			currentY += height
-		case rightFrameBottomRight:
-			c.x, c.y = currentX-width, currentY+height
-			currentX -= width
-		case rightFrameBottomLeft:
-			c.x, c.y = currentX-width, currentY+height
-			currentX += width
-		}
-
-		coord[piece] = c
-	}
-
-	// now render the pieces with the coordinates
-	for idx, c := range coord {
-		err := u.renderFramePiece(target, c.x, c.y, idx)
-		if err != nil {
+	for _, p := range rightFramePlacements {
+		if err := u.renderFramePiece(target, p.x, p.bottom, p.piece); err != nil {
 			return err
 		}
 	}

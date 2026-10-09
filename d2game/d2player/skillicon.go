@@ -14,8 +14,8 @@ const (
 	skillLabelXOffset = 49
 	skillLabelYOffset = -4
 
-	skillIconXOff  = 346
-	skillIconYOff  = 59
+	skillIconXOff  = 346 + panelShiftX
+	skillIconYOff  = 59 + panelShiftY
 	skillIconDistX = 69
 	skillIconDistY = 68
 )

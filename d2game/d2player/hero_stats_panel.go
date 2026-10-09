@@ -23,7 +23,7 @@ const ( // for the dc6 frames
 )
 
 const (
-	statsPanelOffsetX, statsPanelOffsetY = 80, 64
+	statsPanelOffsetX, statsPanelOffsetY = 80, 60 // art top: Mode800.PanelTop()
 )
 
 const (
@@ -45,18 +45,20 @@ const (
 	labelLifeX, labelLifeY       = 280, 322
 	labelManaX, labelManaY       = 280, 360
 
-	labelResFireLine1X, labelResFireLine1Y   = 310, 396
-	labelResFireLine2X, labelResFireLine2Y   = 310, 403
-	labelResColdLine1X, labelResColdLine1Y   = 310, 444
-	labelResColdLine2X, labelResColdLine2Y   = 310, 452
-	labelResLightLine1X, labelResLightLine1Y = 310, 420
-	labelResLightLine2X, labelResLightLine2Y = 310, 428
+	labelResFireLine1X, labelResFireLine1Y = 310, 396
+	labelResFireLine2X, labelResFireLine2Y = 310, 403
+	// the original lists the resistances fire, cold, lightning, poison from top to bottom (string ids 4071 to 4074 at
+	// y 346, 370, 395, 419 of the panel, 0x723a5c; stats 39, 43, 41, 45 at 0x723b70)
+	labelResColdLine1X, labelResColdLine1Y   = 310, 420
+	labelResColdLine2X, labelResColdLine2Y   = 310, 428
+	labelResLightLine1X, labelResLightLine1Y = 310, 444
+	labelResLightLine2X, labelResLightLine2Y = 310, 452
 	labelResPoisLine1X, labelResPoisLine1Y   = 310, 468
 	labelResPoisLine2X, labelResPoisLine2Y   = 310, 476
 )
 
 const (
-	heroStatsCloseButtonX, heroStatsCloseButtonY = 208, 453
+	heroStatsCloseButtonX, heroStatsCloseButtonY = 208, 448 // 32x32 standing at y 480: UI_DrawCharacterStatsPanel 0x4a43f0
 	addStatSocketOffsetX, addStatSocketOffsetY   = -3, 34
 )
 
@@ -105,14 +107,14 @@ type StatsPanelLabels struct {
 // captions, defense right of its caption, attack rating and damage below the
 // strength and dexterity values.
 const (
-	labelDefenseValueX, labelDefenseValueY = 345, 263
+	labelDefenseValueX, labelDefenseValueY = 370, 258 // the box right of the caption: x 273..307 of the panel (0x723b70)
 	labelDamageValueX, labelDamageValueY   = 140, 177
 	labelARValueX, labelARValueY           = 140, 237
 	labelResValueX                         = 375
 )
 
 // resistValueY are the y positions of the fire, cold, lightning and poison values.
-var resistValueY = [4]int{400, 448, 424, 472}
+var resistValueY = [4]int{400, 424, 448, 472}
 
 // NewHeroStatsPanel creates a new hero status panel
 func NewHeroStatsPanel(asset *d2asset.AssetManager,
@@ -201,24 +203,24 @@ func (s *HeroStatsPanel) loadNewStatPoints() {
 		s.Error(err.Error())
 	}
 
-	field.SetPosition(newStatsRemainingPointsFieldX, newStatsRemainingPointsFieldY)
+	field.SetPosition(newStatsRemainingPointsFieldX, newStatsRemainingPointsFieldY+panelShiftY)
 	s.newStatPoints.AddWidget(field)
 
 	label1 := s.uiManager.NewLabel(d2resource.Font6, d2resource.PaletteSky)
-	label1.SetPosition(newStatsRemainingPointsLabelX, newStatsRemainingPointsLabel1Y)
+	label1.SetPosition(newStatsRemainingPointsLabelX, newStatsRemainingPointsLabel1Y+panelShiftY)
 	label1.SetText(s.asset.TranslateString("strchrstat"))
 	label1.Color[0] = d2util.Color(d2gui.ColorRed)
 	s.newStatPoints.AddWidget(label1)
 
 	label2 := s.uiManager.NewLabel(d2resource.Font6, d2resource.PaletteSky)
-	label2.SetPosition(newStatsRemainingPointsLabelX, newStatsRemainingPointsLabel2Y)
+	label2.SetPosition(newStatsRemainingPointsLabelX, newStatsRemainingPointsLabel2Y+panelShiftY)
 	label2.SetText(s.asset.TranslateString("strchrrema"))
 	label2.Color[0] = d2util.Color(d2gui.ColorRed)
 	s.newStatPoints.AddWidget(label2)
 
 	s.remainingPoints = s.uiManager.NewLabel(d2resource.Font16, d2resource.PaletteSky)
 	s.remainingPoints.SetText(strconv.Itoa(s.heroState.StatsPoints))
-	s.remainingPoints.SetPosition(newStatsRemainingPointsValueX, newStatsRemainingPointsValueY)
+	s.remainingPoints.SetPosition(newStatsRemainingPointsValueX, newStatsRemainingPointsValueY+panelShiftY)
 	s.remainingPoints.Alignment = d2ui.HorizontalAlignCenter
 	s.newStatPoints.AddWidget(s.remainingPoints)
 
@@ -253,11 +255,11 @@ func (s *HeroStatsPanel) loadNewStatPoints() {
 			s.Error(err.Error())
 		}
 
-		socket.SetPosition(i.x+addStatSocketOffsetX, i.y+addStatSocketOffsetY)
+		socket.SetPosition(i.x+addStatSocketOffsetX, i.y+addStatSocketOffsetY+panelShiftY)
 		s.newStatPoints.AddWidget(socket)
 
 		button = s.uiManager.NewButton(d2ui.ButtonTypeAddSkill, d2resource.PaletteSky)
-		button.SetPosition(i.x, i.y)
+		button.SetPosition(i.x, i.y+panelShiftY)
 		button.OnActivated(func() {
 			currentValue.cb()
 			s.heroState.StatsPoints--
@@ -523,7 +525,7 @@ func (s *HeroStatsPanel) createTextLabel(element PanelText) *d2ui.Label {
 	}
 
 	label.SetText(element.Text)
-	label.SetPosition(element.X, element.Y)
+	label.SetPosition(element.X, element.Y+panelShiftY)
 	s.panelGroup.AddWidget(label)
 
 	return label
