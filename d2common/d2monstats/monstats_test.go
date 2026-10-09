@@ -26,7 +26,7 @@ func synthLvl() MonLvl {
 
 func TestMulDiv(t *testing.T) {
 	for _, c := range []struct{ a, b, c, want int }{
-		{10, 50, 100, 5}, {3, 50, 100, 2}, {1, 49, 100, 0}, {7, 100, 100, 7}, {0, 5, 100, 0}, {-3, 50, 100, -2},
+		{10, 50, 100, 5}, {3, 50, 100, 1}, {1, 49, 100, 0}, {7, 100, 100, 7}, {0, 5, 100, 0}, {-3, 50, 100, -1},
 	} {
 		if got := MulDiv(c.a, c.b, 100); got != c.want {
 			t.Errorf("MulDiv(%d,%d)=%d want %d", c.a, c.b, got, c.want)
@@ -60,9 +60,23 @@ func TestScale(t *testing.T) {
 		roll      func(int) int
 		check     func(Stats) string
 	}{
-		{"normal area level", ratio, Normal, 5, false, first, func(s Stats) string {
-			if s.Level != 5 || s.HP != 500 || s.HPMax != 1000 {
+		{"nightmare area level (expansion only)", ratio, Nightmare, 5, true, first, func(s Stats) string {
+			if s.Level != 5 || s.HP != 2005 || s.HPMax != 2005 {
 				return "level/hp"
+			}
+
+			return ""
+		}},
+		{"classic ignores area level", ratio, Nightmare, 5, false, first, func(s Stats) string {
+			if s.Level != 2 {
+				return "classic level"
+			}
+
+			return ""
+		}},
+		{"normal ignores area level", ratio, Normal, 5, false, first, func(s Stats) string {
+			if s.Level != 1 || s.HP != 500 {
+				return "normal level"
 			}
 
 			return ""
@@ -81,7 +95,7 @@ func TestScale(t *testing.T) {
 
 			return ""
 		}},
-		{"ac ratio nightmare", ratio, Nightmare, 7, false, first, func(s Stats) string {
+		{"ac ratio nightmare", ratio, Nightmare, 7, true, first, func(s Stats) string {
 			if s.AC != MulDiv(207, 50, 100) {
 				return "ac"
 			}
@@ -89,13 +103,13 @@ func TestScale(t *testing.T) {
 			return ""
 		}},
 		{"expansion columns", ratio, Normal, 5, true, first, func(s Stats) string {
-			if s.HPMax != 1000+5 { // L-HP = 1000 + i*e
+			if s.HPMax != 1000+1 { // L-HP = 1000 + i*e at normal level 1
 				return "expansion hp"
 			}
 
 			return ""
 		}},
-		{"hell damage and TH", ratio, Hell, 2, false, first, func(s Stats) string {
+		{"hell damage and TH", ratio, Hell, 2, true, first, func(s Stats) string {
 			a := s.Attacks[A1]
 			if a.TH != 1204 || a.Min != 32 || a.Max != 64 {
 				return "hell attack"
@@ -110,7 +124,7 @@ func TestScale(t *testing.T) {
 
 			return ""
 		}},
-		{"boss ignores area level", boss, Hell, 9, false, first, func(s Stats) string {
+		{"boss ignores area level", boss, Hell, 9, true, first, func(s Stats) string {
 			if s.Level != 6 {
 				return "boss level"
 			}
@@ -124,14 +138,14 @@ func TestScale(t *testing.T) {
 
 			return ""
 		}},
-		{"level beyond table clamps", ratio, Normal, 500, false, nil, func(s Stats) string {
+		{"level beyond table clamps", ratio, Nightmare, 500, true, nil, func(s Stats) string {
 			if s.Level != 500 || s.HP == 0 {
 				return "clamp"
 			}
 
 			return ""
 		}},
-		{"difficulty clamps", ratio, 7, 1, false, first, func(s Stats) string {
+		{"difficulty clamps", ratio, 7, 1, true, first, func(s Stats) string {
 			if s.Level != 1 {
 				return "diff"
 			}
@@ -190,10 +204,10 @@ func TestRealData(t *testing.T) {
 		lvl  int
 		hp   int
 	}{
-		{Normal, false, 12, 1025}, // 40 * 2562% = 1024.8 (rounding unverified)
-		{Normal, true, 12, 1025},  // L-HP equals HP at normal
-		{Hell, false, 75, 45024},  // 3774 * 1193% = 45023.8
-		{Hell, true, 75, 60032},   // 5032 * 1193% = 60031.76
+		{Normal, false, 12, 1024}, // 40 * 2562% = 1024.8, truncated (VERIFIED 0x0047f2c0)
+		{Normal, true, 12, 1024},  // L-HP equals HP at normal
+		{Hell, false, 75, 45023},  // 3774 * 1193% = 45023.8 truncated
+		{Hell, true, 75, 60031},   // 5032 * 1193% = 60031.76 truncated
 	}
 
 	for _, tc := range tests {
@@ -203,11 +217,31 @@ func TestRealData(t *testing.T) {
 		}
 	}
 
-	// A plain monster takes the area level: fallen1 in a level-30 area.
-	f := cl["fallen1"]
-	s := ml.Scale(f, Normal, 30, false, func(n int) int { return n - 1 })
+	// Radament and Izual are boss=1 with primeevil blank: bit 6 (boss) keeps
+	// them on their monstats Level in Nightmare/Hell (VERIFIED 0x006cf268).
+	for _, tc := range []struct {
+		id   string
+		diff int
+	}{{"radament", Nightmare}, {"radament", Hell}, {"izual", Nightmare}, {"izual", Hell}} {
+		c := cl[tc.id]
+		if c == nil || !c.Boss || c.PrimeEvil {
+			t.Fatalf("%s: want boss without primeevil, got %+v", tc.id, c)
+		}
 
-	if s.Level != 30 || s.HP != MulDiv(ml[30].HP[0][Normal], f.MaxHP[Normal], 100) {
+		if got := ml.Scale(c, tc.diff, 40, true, nil).Level; got != c.Level[tc.diff] {
+			t.Errorf("%s diff %d: level %d, want monstats %d", tc.id, tc.diff, got, c.Level[tc.diff])
+		}
+	}
+
+	if cl["andariel"].Align != 0 || cl["fallen1"].Align != 0 {
+		t.Error("hostile classes must have Align 0")
+	}
+
+	// A plain monster takes the area level in Nightmare/Hell: fallen1 in a level-30 area.
+	f := cl["fallen1"]
+	s := ml.Scale(f, Nightmare, 30, true, func(n int) int { return n - 1 })
+
+	if s.Level != 30 || s.HP != MulDiv(ml[30].HP[1][Nightmare], f.MaxHP[Nightmare], 100) {
 		t.Errorf("fallen1: %+v", s)
 	}
 
@@ -218,5 +252,14 @@ func TestRealData(t *testing.T) {
 				t.Errorf("%s diff %d: %+v", c.ID, d, st)
 			}
 		}
+	}
+}
+
+func TestHPCapAndTruncation(t *testing.T) {
+	ml := synthLvl()
+	big := &Class{MinHP: [3]int{1 << 30, 0, 0}, MaxHP: [3]int{1 << 30, 0, 0}}
+
+	if s := ml.Scale(big, Normal, 0, false, nil); s.HP != maxHP {
+		t.Errorf("hp cap: %d", s.HP)
 	}
 }
