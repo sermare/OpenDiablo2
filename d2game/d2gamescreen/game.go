@@ -98,6 +98,7 @@ func CreateGame(
 	game.Logger.SetLevel(l)
 	game.Logger.SetPrefix(logPrefix)
 	game.initAutoScript()
+	game.hookNetwork()
 	activeGame = game
 
 	game.soundEnv = d2audio.NewSoundEnvironment(game.soundEngine)
@@ -172,6 +173,7 @@ type Game struct {
 	levelStatusAcc       float64
 	questRT              *questRuntime
 	death                deathState
+	social               socialState
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -215,6 +217,14 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"act"}, v.commandTravel},
 		{"players", "logs the players of the game with their positions", []string{}, v.commandPlayers},
 		{"chat", "sends a chat line to all players (_ for a space)", []string{"text"}, v.commandChat},
+		{"party", "party invite|accept|decline|leave|list <name or ->", []string{"op", "name"}, v.commandParty},
+		{"hostile", "declares (1) or withdraws (0) hostility toward a player", []string{"name", "0|1"}, v.commandHostile},
+		{"roster", "logs the roster and the party panel", []string{}, v.commandRoster},
+		{"trade", "trade request|yes|no|add|remove|gold|accept|cancel <name, item code, amount or ->",
+			[]string{"op", "arg"}, v.commandTrade},
+		{"pvp", "swings at another player (melee, needs hostility)", []string{"name"}, v.commandPvP},
+		{"giveitem", "puts a new item into the inventory", []string{"code"}, v.commandGiveItem},
+		{"killnear", "kills the nearest monster as the hero (party experience tests)", []string{}, v.commandKillNear},
 	}
 
 	for _, cmd := range commands {
@@ -244,7 +254,8 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat"); err != nil {
+	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "killnear"); err != nil {
 		return err
 	}
 
@@ -328,6 +339,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceAutoAmbient(elapsed)
 	v.advanceAutoPanel(elapsed)
 	v.advanceAutoEquip(elapsed)
+	v.advanceSocial(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)

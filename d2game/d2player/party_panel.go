@@ -60,6 +60,46 @@ const (
 	indexOffset                                      = 52
 )
 
+// PartyHooks connect the panel to the game's roster (package d2party, kept by
+// the server and mirrored by every client).
+type PartyHooks struct {
+	// Relation is how the local hero sees a player: friend (in its party), enemy
+	// (hostility declared either way) or neutral.
+	Relation func(p *d2mapentity.Player) d2enum.PlayersRelationships
+	// Hostile reports whether the local hero declared hostility to the player.
+	Hostile func(p *d2mapentity.Player) bool
+	// Op is what the row's button does: "invite", "accept" (the player invited
+	// us), "leave" (we are in a party with it) or "" (nothing).
+	Op func(p *d2mapentity.Player) string
+	// OnButton runs when the row's button is pressed (op as above).
+	OnButton func(p *d2mapentity.Player, op string)
+	// OnHostile runs when the hostility switch is pressed.
+	OnHostile func(p *d2mapentity.Player, hostile bool)
+}
+
+// SetHooks connects the panel to the roster.
+func (s *PartyPanel) SetHooks(h PartyHooks) { s.hooks = h }
+
+// RosterRows describes the rows of the panel for logs and tests: name, class,
+// level and party state of every listed player (the panel's own content, not a
+// copy of the roster).
+func (s *PartyPanel) RosterRows() []string {
+	var rows []string
+
+	for _, pi := range s.partyIndexes {
+		if pi.hero == nil {
+			continue
+		}
+
+		state := map[d2enum.PlayersRelationships]string{
+			d2enum.PlayerRelationNeutral: "neutral", d2enum.PlayerRelationFriend: "party",
+			d2enum.PlayerRelationEnemy: "hostile"}[pi.relationships]
+		rows = append(rows, pi.hero.Name()+" "+pi.hero.Class.String()+" L"+strconv.Itoa(pi.hero.Stats.Level)+" "+state)
+	}
+
+	return rows
+}
+
 // NewPartyPanel creates a new party panel
 func NewPartyPanel(asset *d2asset.AssetManager,
 	ui *d2ui.UIManager,
@@ -123,6 +163,7 @@ type PartyPanel struct {
 
 	players map[string]*d2mapentity.Player
 	me      *d2mapentity.Player
+	hooks   PartyHooks
 
 	originX int
 	originY int
@@ -194,6 +235,13 @@ func (s *PartyPanel) newPartyIndex() *partyIndex {
 	result.inviteAcceptButton = s.uiManager.NewButton(d2ui.ButtonTypePartyButton, s.asset.TranslateString("Invite"))
 	result.inviteAcceptButton.SetVisible(false)
 
+	// one button per action (a button's caption is fixed when it is made); the
+	// roster decides which one shows
+	result.acceptButton = s.uiManager.NewButton(d2ui.ButtonTypePartyButton, "Accept")
+	result.acceptButton.SetVisible(false)
+	result.leaveButton = s.uiManager.NewButton(d2ui.ButtonTypePartyButton, "Leave")
+	result.leaveButton.SetVisible(false)
+
 	return result
 }
 
@@ -218,7 +266,11 @@ type partyIndex struct {
 	listeningActiveTooltip       *d2ui.Tooltip
 	listeningInactiveTooltip     *d2ui.Tooltip
 	inviteAcceptButton           *d2ui.Button
+	acceptButton                 *d2ui.Button
+	leaveButton                  *d2ui.Button
 	relationships                d2enum.PlayersRelationships
+	wired                        bool
+	op                           string // what the button offers now: invite, accept, leave or ""
 }
 
 func (pi *partyIndex) setNameTooltipText() {
@@ -294,6 +346,8 @@ func (pi *partyIndex) setPositions(idx int) {
 	pi.listeningInactiveTooltip.SetPosition(listeningSwitcherX+buttonSize, baseListeningSwitcherY+idx*indexOffset-h)
 
 	pi.inviteAcceptButton.SetPosition(inviteAcceptButtonX, baseInviteAcceptButtonY+idx*indexOffset)
+	pi.acceptButton.SetPosition(inviteAcceptButtonX, baseInviteAcceptButtonY+idx*indexOffset)
+	pi.leaveButton.SetPosition(inviteAcceptButtonX, baseInviteAcceptButtonY+idx*indexOffset)
 }
 
 func (pi *partyIndex) CanGoHostile() bool {
@@ -349,6 +403,8 @@ func (s *PartyPanel) Load() {
 		s.indexes[n].AddWidget(i.listeningSwitcher)
 		s.indexes[n].AddWidget(i.level)
 		s.indexes[n].AddWidget(i.inviteAcceptButton)
+		s.indexes[n].AddWidget(i.acceptButton)
+		s.indexes[n].AddWidget(i.leaveButton)
 	}
 
 	// create bar
@@ -444,6 +500,68 @@ func (s *PartyPanel) AddPlayer(player *d2mapentity.Player, relations d2enum.Play
 	s.partyIndexes[idx].setPositions(idx)
 
 	s.partyIndexes[idx].setNameTooltipText()
+	s.wireIndex(s.partyIndexes[idx])
+}
+
+// wireIndex connects the buttons of a row to the roster hooks. Called once per
+// row when a player is added; the callbacks read the row's current hero.
+func (s *PartyPanel) wireIndex(pi *partyIndex) {
+	if pi.wired {
+		return
+	}
+
+	pi.wired = true
+
+	press := func() {
+		if s.hooks.OnButton != nil && pi.hero != nil {
+			s.hooks.OnButton(pi.hero, pi.op)
+		}
+	}
+
+	pi.inviteAcceptButton.OnActivated(press)
+	pi.acceptButton.OnActivated(press)
+	pi.leaveButton.OnActivated(press)
+	pi.relationshipSwitcher.OnActivated(func() { // the active (peaceful) face was pressed: go hostile
+		if s.hooks.OnHostile != nil && pi.hero != nil {
+			s.hooks.OnHostile(pi.hero, true)
+		}
+	})
+	pi.relationshipSwitcher.OnDeactivated(func() {
+		if s.hooks.OnHostile != nil && pi.hero != nil {
+			s.hooks.OnHostile(pi.hero, false)
+		}
+	})
+}
+
+// refreshRows brings every row in line with the roster: level, colour, the
+// hostility switch and the party button.
+func (s *PartyPanel) refreshRows() {
+	for _, pi := range s.partyIndexes {
+		if pi.hero == nil {
+			continue
+		}
+
+		pi.level.SetText(s.asset.TranslateString("Level") + ":" + strconv.Itoa(pi.hero.Stats.Level))
+
+		if s.hooks.Relation != nil {
+			pi.relationships = s.hooks.Relation(pi.hero)
+			pi.setColor(pi.relationships)
+			pi.setNameTooltipText()
+		}
+
+		if s.hooks.Hostile != nil {
+			pi.relationshipSwitcher.SetState(!s.hooks.Hostile(pi.hero))
+		}
+
+		pi.op = ""
+		if s.hooks.Op != nil {
+			pi.op = s.hooks.Op(pi.hero)
+		}
+
+		pi.inviteAcceptButton.SetVisible(pi.op == "invite")
+		pi.acceptButton.SetVisible(pi.op == "accept")
+		pi.leaveButton.SetVisible(pi.op == "leave")
+	}
 }
 
 // DeletePlayer deletes player from PartyIndexes
@@ -546,9 +664,28 @@ func (s *PartyPanel) setBarPosition() {
 
 // UpdatePanel updates panel indexes with players list
 func (s *PartyPanel) UpdatePanel() {
+	for _, pi := range s.partyIndexes { // players that left the game
+		if pi.hero != nil {
+			if _, here := s.players[pi.hero.ID()]; !here {
+				s.DeletePlayer(pi.hero)
+				pi.inviteAcceptButton.SetVisible(false)
+				pi.acceptButton.SetVisible(false)
+				pi.leaveButton.SetVisible(false)
+				pi.name.SetText("")
+				pi.class.SetText("")
+				pi.level.SetText("")
+			}
+		}
+	}
+
 	for _, i := range s.players {
 		if !s.IsInPanel(i) && !s.IsMe(i) {
-			s.AddPlayer(i, d2enum.PlayerRelationNeutral)
+			rel := d2enum.PlayerRelationNeutral
+			if s.hooks.Relation != nil {
+				rel = s.hooks.Relation(i)
+			}
+
+			s.AddPlayer(i, rel)
 
 			// we need to switch all hidden widgets to be visible
 			// s.Open contains appropriate code to do that.
@@ -571,6 +708,7 @@ func (s *PartyPanel) Advance(_ float64) {
 	}
 
 	s.UpdatePanel()
+	s.refreshRows()
 }
 
 // OnMouseMove handles mouse movement events

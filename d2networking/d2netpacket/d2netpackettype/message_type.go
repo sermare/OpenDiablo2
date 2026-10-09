@@ -11,7 +11,7 @@ type NetPacketType uint32
 // (Except NetPacket which declares a NetPacketType to specify the packet body
 // type. See d2netpackettype.NetPacket.)
 //
-// Warning
+// # Warning
 //
 // Do NOT re-arrange the order of these packet values unless you want to
 // break compatibility between clients of slightly different versions.
@@ -34,6 +34,12 @@ const (
 	ChangeLevel                                          // Sent by the client, the hero arrived in another level
 	SetWaypoint                                          // Sent by the client, a waypoint bit was activated or cleared
 	Chat                                                 // Sent by a client, the server relays it to everybody (with the sender's name)
+	PartyCommand                                         // Sent by a client: invite, accept, decline, leave, hostile, peace
+	RosterUpdate                                         // Sent by the server: the roster (players, parties, hostility, invitations)
+	TradeCommand                                         // Sent by a client: request, respond, offer, accept, cancel
+	TradeUpdate                                          // Sent by the server to both traders: the trade window state or its result
+	PvPHit                                               // Sent by a client (the attacker), relayed by the server to the defender
+	PartyXP                                              // Sent by a client (a kill), the server answers every sharing member with its part
 
 	UnknownPacketType = 666
 )
@@ -56,6 +62,12 @@ func (n NetPacketType) String() string {
 		ChangeLevel:                     "ChangeLevel",
 		SetWaypoint:                     "SetWaypoint",
 		Chat:                            "Chat",
+		PartyCommand:                    "PartyCommand",
+		RosterUpdate:                    "RosterUpdate",
+		TradeCommand:                    "TradeCommand",
+		TradeUpdate:                     "TradeUpdate",
+		PvPHit:                          "PvPHit",
+		PartyXP:                         "PartyXP",
 	}
 
 	return strings[n]

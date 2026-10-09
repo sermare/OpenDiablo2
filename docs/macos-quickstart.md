@@ -104,9 +104,10 @@ a semicolon-separated list of steps, run a few seconds after the game starts:
 | `move:<x>,<y>` | Walk to a world position (tile units) through the normal move path. |
 | `move:npc=<name>` | Walk up to an NPC like a click would; its menu opens on arrival. |
 | `cast:<skill>[@x,y]` | Cast a skill by its skills.txt name (target defaults to the hero). |
-| `panel:inventory\|character\|skills\|quest\|close` | Open a panel, or close all. |
+| `panel:inventory\|character\|skills\|quest\|party\|close` | Open a panel (`party`: the roster panel of a network game), or close all. |
 | `say:<command>` | Run an in-game console command. |
 | `expect:log=<substring>` | Fail the run unless the game log already contains it. |
+| `waitlog:<substring>` | Wait (up to 90 s) until the game screen's log contains it, then go on; fails on a timeout. Lets the two processes of a network scenario run in step. |
 | `use:<object name or id>` | Walk to the nearest matching object (objects.txt name or id: `Waypoint`, `Door`, `Portal`, `119`) and operate it. Doors open/close and change collision, the waypoint opens its panel, portals change level. The next step waits until the walk or level change is over. |
 | `waypoint:<level id>` | Choose that level in the open waypoint panel (greyed entries fail the step). Logs `WAYPOINT travel` and `LEVEL CHANGE`. |
 | `travel:<act 1-5>` | Travel to the town of that act as the act's travel NPC/portal would (Warriv, Meshif, the Mephisto portal, Tyrael), with the quest and expansion rules of `d2level/acttravel.go`; a refused trip fails the step. Logs `TRAVEL`, `ACT CHANGE` (LoadAct packet), `ACT arrival`, `TOWN NPC`. |

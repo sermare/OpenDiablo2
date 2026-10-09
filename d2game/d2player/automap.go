@@ -184,7 +184,8 @@ func (a *Automap) logMarkers() {
 		switch v := e.(type) {
 		case *d2mapentity.Player:
 			if v != a.hero {
-				a.Infof("AUTOMAP marker other-player id=%s pos=(%.1f,%.1f)", id, x, y)
+				a.Infof("AUTOMAP marker other-player id=%s name=%q party=%v pos=(%.1f,%.1f)", id, v.Name(),
+					a.gc.isPartyMember(v), x, y)
 			}
 		case *d2mapentity.NPC:
 			a.Infof("AUTOMAP marker npc %q pos=(%.1f,%.1f)", v.Label(), x, y)
