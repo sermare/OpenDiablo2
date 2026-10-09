@@ -118,7 +118,7 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 	e.pipe.Near = e.near
 	e.pipe.After = e.after
 	e.pipe.Walkable = func(x, y int) bool {
-		return monsters.Grid().Flags(x, y)&(d2path.FlagWalk|d2path.FlagWall) == 0
+		return e.monsters.Grid().Flags(x, y)&(d2path.FlagWalk|d2path.FlagWall) == 0
 	}
 	monsters.HeroDefense = e.heroDefense
 
@@ -594,7 +594,69 @@ func divisorsFor(recs d2records.DifficultyLevels, diff int) (chill, freeze int) 
 
 // HeroDied clears the states of a dying hero: the statlists without
 // plrstaydeath end, and so do the DoT streams (verified, 0x57d310).
-func (e *Engine) HeroDied(id string) { e.setOf(id).Death("player") }
+//
+// An aura the hero keeps on stops pulsing when its state went with the
+// states; otherwise the next pulse would give the dead hero the state back
+// (an aura with plrstaydeath keeps running). What the original does with the
+// hero's summons, storms, traps and missiles at his death is UNVERIFIED and
+// left alone.
+func (e *Engine) HeroDied(id string) {
+	e.setOf(id).Death("player")
+
+	if a := e.auras[id]; a != nil && !e.setOf(id).Active(e.frame, a.ef.State) {
+		delete(e.auras, id)
+	}
+}
+
+// AreaChanged tells the engine the hero moved to another area, whose units
+// belong to md (nil in tests). Everything tied to units or missiles of the
+// old area is dropped: missiles in flight, storms, traps and totem pulses,
+// pending timers, summon bookkeeping, monster targets and the states of
+// monsters (their ids may be reused by the new area). The heroes keep their
+// states, auras, mana and cooldowns. Whether summons follow the hero through
+// a portal or stairs is UNVERIFIED (mercenaries do, see Director.SpawnMerc);
+// the new Director starts without them.
+func (e *Engine) AreaChanged(md *d2monsters.Director) {
+	if e.sim != nil {
+		e.sim.Clear()
+	}
+
+	for id, ent := range e.visuals {
+		if ent != nil && e.mapEngine != nil {
+			e.mapEngine.RemoveEntity(ent)
+		}
+
+		delete(e.visuals, id)
+	}
+
+	for ent := range e.fx {
+		if e.mapEngine != nil {
+			e.mapEngine.RemoveEntity(ent)
+		}
+
+		delete(e.fx, ent)
+	}
+
+	e.storms, e.traps, e.watches, e.timers = nil, nil, nil, nil
+	e.pets = map[string][]*d2mapentity.Monster{}
+	e.targets = map[string]*monsterTarget{}
+	e.dots = map[string]dotTotal{}
+
+	for id := range e.sets {
+		if e.heroes[id] == nil {
+			delete(e.sets, id)
+		}
+	}
+
+	if md != nil {
+		e.monsters = md
+		e.pipe.Grid = md.Grid()
+		md.HeroDefense = e.heroDefense
+	}
+}
+
+// Monsters returns the Director the engine is bound to.
+func (e *Engine) Monsters() *d2monsters.Director { return e.monsters }
 
 // coldEffect is the monstats ColdEffect of a monster for its difficulty
 // (negative = slow percent, 0 = cannot be chilled).

@@ -227,6 +227,45 @@ func wallMask(ct int) uint16 {
 	return d2path.FlagWall
 }
 
+// RemoveOwned ends every live missile fired by an owner without events (no
+// hit, no explosion) and returns them. UNVERIFIED whether the original ends
+// the missiles of a dead owner; nothing calls this for hero death.
+func (s *Sim) RemoveOwned(ownerID string) []*Missile {
+	return s.removeIf(func(m *Missile) bool { return m.Owner.ID == ownerID })
+}
+
+// Clear ends every live missile without events and returns them: the area
+// they flew in is gone (missiles are units of one level).
+func (s *Sim) Clear() []*Missile {
+	return s.removeIf(func(*Missile) bool { return true })
+}
+
+func (s *Sim) removeIf(match func(*Missile) bool) []*Missile {
+	var out []*Missile
+
+	filter := func(list []*Missile) []*Missile {
+		live := list[:0]
+
+		for _, m := range list {
+			switch {
+			case m.dead:
+			case match(m):
+				m.dead = true
+				out = append(out, m)
+			default:
+				live = append(live, m)
+			}
+		}
+
+		return live
+	}
+
+	s.missiles = filter(s.missiles)
+	s.pending = filter(s.pending)
+
+	return out
+}
+
 // Step advances every missile by one 25 Hz frame.
 func (s *Sim) Step() {
 	s.stepping = true
