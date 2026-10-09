@@ -155,7 +155,7 @@ func ParseHeader(data []byte) (*Header, error) {
 	}
 
 	if h.Version < MinVersion || h.Version > MaxVersion {
-		return nil, fmt.Errorf("%w: 0x%X", ErrBadVersion, h.Version)
+		return nil, fmt.Errorf("%w: 0x%X (%s)", ErrBadVersion, h.Version, VersionName(h.Version))
 	}
 
 	if h.Class > Assassin {
