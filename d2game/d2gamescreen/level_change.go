@@ -404,6 +404,13 @@ func (v *Game) advanceWarpUse(elapsed float64) {
 		return
 	}
 
+	if r := v.quests(); r != nil {
+		if err := d2level.CheckActThreeWarp(cur, dest, r.g.Rec); err != nil {
+			v.Infof("LEVEL warp refused level %d -> %d: %v", cur, dest, err)
+			return
+		}
+	}
+
 	v.Infof("LEVEL warp tile style=%d at (%d,%d): level %d -> %d", w.Style, w.TileX, w.TileY, cur, dest)
 	v.startLevelChange(dest, d2level.StartDefault, "warp")
 }
