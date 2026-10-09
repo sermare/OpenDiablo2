@@ -37,7 +37,7 @@ func TestSummonerColdPath(t *testing.T) {
 	w := newFake2(8, false)
 	w.frame = 10
 	w.fire, w.cold = 50, 10 // cold resist <= fire: cold spells
-	b := brainAt(p)
+	b := awake(brainAt(p))
 
 	Tick(w, b)
 
@@ -58,7 +58,7 @@ func TestSummonerColdPath(t *testing.T) {
 	w2 := newFake2(30, false)
 	w2.frame = 10
 	w2.fire, w2.cold = 50, 10
-	b2 := brainAt(pf)
+	b2 := awake(brainAt(pf))
 	b2.Profile.AIDist = 55
 	Tick(w2, b2)
 
@@ -82,7 +82,7 @@ func TestSummonerFirePathAndWeaken(t *testing.T) {
 	w := newFake2(8, false)
 	w.frame = 10
 	w.fire, w.cold = 10, 50
-	b := brainAt(p)
+	b := awake(brainAt(p))
 	Tick(w, b)
 
 	if w.last() != "cast3" {
@@ -100,7 +100,7 @@ func TestSummonerFirePathAndWeaken(t *testing.T) {
 	p2 := skills(profile("Summoner", 100, 0, 100, 40, 120, 0, 10, 40))
 	p2.Skills[4] = SkillSlot{Name: "Weaken", Mode: ModeSkill1}
 	w2 := newFake2(8, false)
-	b2 := brainAt(p2)
+	b2 := awake(brainAt(p2))
 	Tick(w2, b2)
 
 	if w2.last() != "cast4" {
@@ -110,7 +110,7 @@ func TestSummonerFirePathAndWeaken(t *testing.T) {
 	// 100% weaken chance goes first
 	p3 := summonerProfile(100, 100, 100, 40, 120, 0, 10, 40)
 	w3 := newFake2(8, false)
-	Tick(w3, brainAt(p3))
+	Tick(w3, awake(brainAt(p3)))
 
 	if w3.last() != "cast4" {
 		t.Fatalf("Weaken first: %v", w3.log)
@@ -120,7 +120,7 @@ func TestSummonerFirePathAndWeaken(t *testing.T) {
 func TestSummonerIdleWanderAndBackoff(t *testing.T) {
 	// aip1 = 0: never acts, only wanders
 	w := newFake2(8, false)
-	b := brainAt(summonerProfile(0, 0, 100, 40, 120, 100, 10, 40))
+	b := awake(brainAt(summonerProfile(0, 0, 100, 40, 120, 100, 10, 40)))
 	w.target.X, w.target.Y = 103, 100
 	w.dist = 3
 	Tick(w, b)

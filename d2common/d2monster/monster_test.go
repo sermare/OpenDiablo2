@@ -582,13 +582,15 @@ func TestWanderDeterministic(t *testing.T) {
 		t.Fatalf("wander not deterministic: %v %v", wa.log, wb.log)
 	}
 
-	// exactly two RNG steps (the bounded roll for non-power-of-two n+1 is one)
+	// exactly four RNG steps (VERIFIED 0x5dcff0): parity, roll(n), two signs
 	sh := d2rand.New(testSeed + 7)
 	sh.Step()
-	sh.Roll(6)
+	sh.Roll(5)
+	sh.Step()
+	sh.Step()
 
 	if *a.Seed != *sh {
-		t.Fatal("wander should consume exactly two steps")
+		t.Fatal("wander should consume exactly four steps")
 	}
 }
 

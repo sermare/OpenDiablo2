@@ -19,11 +19,14 @@ package d2monster
 
 func init() {
 	register("BaalThrone", TargetOnly, thinkBaalThrone)
-	register("BaalTaunt", TargetOnly, thinkBaalTaunt)
-	register("BaalToStairs", TargetNone, thinkBaalToStairs)
-	register("BaalTentacle", TargetOnly, thinkBaalTentacle)
-	register("BaalCrab", TargetOnly, thinkBaalCrab)
-	register("BaalCrabClone", TargetOnly, thinkBaalCrabClone)
+	// Target modes are the exe table rows (VERIFIED, 0x739c08 rows 135-140):
+	// Taunt, ToStairs and Tentacle 1 (no target: idle sleep, think skipped),
+	// Crab and CrabClone 0 (the think scans for itself via 0x5faf40).
+	register("BaalTaunt", TargetStandard, thinkBaalTaunt)
+	register("BaalToStairs", TargetStandard, thinkBaalToStairs)
+	register("BaalTentacle", TargetStandard, thinkBaalTentacle)
+	register("BaalCrab", TargetNone, thinkBaalCrab)
+	register("BaalCrabClone", TargetNone, thinkBaalCrabClone)
 }
 
 // Skill ids the Baal AIs name directly (skills.txt, VERIFIED against the d2exp
@@ -108,6 +111,10 @@ type TargetModer interface {
 type Puller interface {
 	PullTarget(b *Brain, t Target) bool
 }
+
+// OwnerChecker reports that the unit's owner (FUN_00551030) is missing or dead
+// (BaalTentacle dismisses itself then, VERIFIED at 0x5ee93d).
+type OwnerChecker interface{ OwnerGone(b *Brain) bool }
 
 // Cloner spawns a Baal clone (FUN_005fba40): a copy with a third of Baal's
 // life and mana, bound to him as a minion.
@@ -304,23 +311,28 @@ func thinkBaalToStairs(c *Ctx) {
 
 // ---------------------------------------------------------------- BaalTentacle
 
-// thinkBaalTentacle is MONAI_Think_BaalTentacle 0x5ee920 (VERIFIED control
-// flow). aip1 attack%, aip2 stall frames, aip3 lifetime base in seconds. The
-// first think sets the expiry (aip3 + roll) * 25 frames after now (the bound of
-// the roll is UNVERIFIED: 10 is used); past it, or without a living target, the
-// tentacle is dismissed. Otherwise attack mode A2 with aip1%, else stall.
+// thinkBaalTentacle is MONAI_Think_BaalTentacle 0x5ee920 (VERIFIED, re-read
+// against the disassembly). aip1 attack%, aip2 stall frames, aip3 lifetime
+// base in seconds. It is dismissed (FUN_0057ac20(0,1)) when its owner
+// (FUN_00551030, then the dead test FUN_00552230) is gone or dead; the host
+// reports that through OwnerChecker (absent: the owner is assumed alive). The first think sets the expiry to
+// now + (aip3 + roll(aip3)) * 25 frames; past it (frame strictly greater) it is
+// dismissed. Otherwise, with the tick's in-range flag set, it attacks with
+// mode 4 (A1, not A2) when roll(100) < aip1; in every other case it sleeps
+// aip2. The tick target is the tick's own (mode 1 acquisition), so the think
+// never runs without one.
 func thinkBaalTentacle(c *Ctx) {
 	b := c.B
 	now := c.W.Frame()
 
-	if c.Target == nil {
+	if o, ok := c.W.(OwnerChecker); ok && o.OwnerGone(b) {
 		dismiss(c)
 
 		return
 	}
 
 	if b.Scratch[2] == 0 {
-		b.Scratch[2] = now + (b.AIP(3)+b.Roll(10))*25
+		b.Scratch[2] = now + (b.AIP(3)+b.Roll(b.AIP(3)))*25
 	}
 
 	if b.Scratch[2] < now {
@@ -329,8 +341,8 @@ func thinkBaalTentacle(c *Ctx) {
 		return
 	}
 
-	if b.Roll(100) < b.AIP(1) {
-		c.Attack(ModeAttack2, *c.Target)
+	if c.Target != nil && c.InRange && b.Roll(100) < b.AIP(1) {
+		c.Attack(ModeAttack1, *c.Target)
 
 		return
 	}
@@ -620,6 +632,13 @@ func thinkBaalCrabClone(c *Ctx) { baalThink(c, true) }
 
 func baalThink(c *Ctx, clone bool) {
 	b := c.B
+
+	// Table mode 0: the tick hands over no target; the exe scans for one
+	// itself (0x5faf40 with filter 0x5fb1c0, UNVERIFIED), read here as the
+	// attack-target lookup.
+	if c.Target == nil {
+		c.genericTarget()
+	}
 
 	if clone {
 		if b.Leader != nil && !b.Leader.Mode.IsAlive() || c.Target == nil && b.Leader == nil {

@@ -84,13 +84,13 @@ func init() {
 
 		switch kind {
 		case kindMelee:
-			register(name, TargetStandard, thinkGenericMelee)
+			register(name, standInMode(name), thinkGenericMelee)
 		case kindCaster:
-			register(name, TargetStandard, thinkGenericCaster)
+			register(name, standInMode(name), thinkGenericCaster)
 		case kindFlyer:
-			register(name, TargetStandard, thinkGenericFlyer)
+			register(name, standInMode(name), thinkGenericFlyer)
 		case kindTurret:
-			register(name, TargetStandard, thinkGenericTurret)
+			register(name, standInMode(name), thinkGenericTurret)
 		case kindPet:
 			if h, ok := Lookup("Hireable"); ok {
 				register(name, h.TargetMode, h.Think)
@@ -98,17 +98,53 @@ func init() {
 				register(name, TargetNone, thinkInert)
 			}
 		default:
-			register(name, TargetNone, thinkInert)
+			register(name, standInMode(name), thinkInert)
 		}
 	}
 }
 
 func thinkInert(c *Ctx) { c.Sleep(100) }
 
+// genericTarget is the target of a stand-in think function. AIs whose exe
+// target mode is 0 or 2 (BladeCreeper, the sentries, Hydra...) get no target
+// from the tick, so like the exe's own-scan AIs they look one up with
+// MONAI_GetAttackTargetAndDistance; it reports false when there is none.
+func (c *Ctx) genericTarget() (Target, bool) {
+	if c.Target != nil {
+		return *c.Target, true
+	}
+
+	t, d, ok := c.W.AttackTarget(c.B)
+	if !ok {
+		return Target{}, false
+	}
+
+	c.Target, c.Dist, c.InRange = &t, d, c.W.InRange(c.B, t, d)
+
+	return t, true
+}
+
+// standInMode is the target mode a stand-in registers with: the verified
+// exe table entry of its monai name (monster-ai.md), TargetStandard when the
+// name is not in the table.
+func standInMode(name string) int {
+	if m, ok := AITargetMode(name); ok {
+		return m
+	}
+
+	return TargetStandard
+}
+
 // thinkGenericMelee chases and attacks; A2 is used a quarter of the time when
 // the class has a second attack skill slot to name (it is merely tried).
 func thinkGenericMelee(c *Ctx) {
-	b, t := c.B, *c.Target
+	b := c.B
+	t, ok := c.genericTarget()
+	if !ok {
+		c.Sleep(25)
+
+		return
+	}
 
 	if c.InRange {
 		if b.Chance(70) {
@@ -134,7 +170,13 @@ func thinkGenericMelee(c *Ctx) {
 // thinkGenericCaster fires its monstats skills from a distance, backs off when
 // pressed and otherwise closes in.
 func thinkGenericCaster(c *Ctx) {
-	b, t := c.B, *c.Target
+	b := c.B
+	t, ok := c.genericTarget()
+	if !ok {
+		c.Sleep(25)
+
+		return
+	}
 	p := b.Profile
 
 	if c.Dist < 4 && b.Chance(30) && c.WalkAway(t, 8) {
@@ -176,7 +218,13 @@ func thinkGenericCaster(c *Ctx) {
 
 // thinkGenericFlyer rushes the target, strikes, and strafes around it.
 func thinkGenericFlyer(c *Ctx) {
-	b, t := c.B, *c.Target
+	b := c.B
+	t, ok := c.genericTarget()
+	if !ok {
+		c.Sleep(25)
+
+		return
+	}
 
 	b.Airborne = !c.InRange
 
@@ -206,7 +254,13 @@ func thinkGenericFlyer(c *Ctx) {
 // thinkGenericTurret never moves: it fires its first skill (or A1) at a target
 // in range and watches otherwise.
 func thinkGenericTurret(c *Ctx) {
-	b, t := c.B, *c.Target
+	b := c.B
+	t, ok := c.genericTarget()
+	if !ok {
+		c.Sleep(25)
+
+		return
+	}
 
 	if c.Dist <= b.Profile.Aggro() && b.Chance(60) {
 		if b.Profile.Skills[slot1].Used() {
