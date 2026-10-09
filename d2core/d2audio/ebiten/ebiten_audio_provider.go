@@ -70,7 +70,8 @@ func (eap *AudioProvider) PlayBGM(song string) {
 	audioStream, err := eap.asset.LoadFileStream(song)
 
 	if err != nil {
-		panic(err)
+		eap.Warning("skipping missing music: " + err.Error())
+		return
 	}
 
 	if _, err = audioStream.Seek(0, io.SeekStart); err != nil {

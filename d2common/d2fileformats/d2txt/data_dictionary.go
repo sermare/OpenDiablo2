@@ -22,6 +22,8 @@ func LoadDataDictionary(buf []byte) *DataDictionary {
 	cr := csv.NewReader(bytes.NewReader(buf))
 	cr.Comma = '\t'
 	cr.ReuseRecord = true
+	cr.FieldsPerRecord = -1 // real game tables have ragged rows
+	cr.LazyQuotes = true
 
 	fieldNames, err := cr.Read()
 	if err != nil {
@@ -62,7 +64,12 @@ func (d *DataDictionary) Next() bool {
 
 // String gets a string from the given column
 func (d *DataDictionary) String(field string) string {
-	return d.record[d.lookup[field]]
+	i := d.lookup[field]
+	if i >= len(d.record) {
+		return ""
+	}
+
+	return d.record[i]
 }
 
 // Number gets a number for the given column

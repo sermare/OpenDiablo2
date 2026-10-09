@@ -172,6 +172,11 @@ func (a *App) loadStrings() error {
 	for _, tablePath := range tablePaths {
 		_, err := a.asset.LoadStringTable(tablePath)
 		if err != nil {
+			if tablePath == d2resource.ExpansionStringTable {
+				a.Warning("skipping missing expansion strings (no Lord of Destruction files)")
+				continue
+			}
+
 			return err
 		}
 	}
