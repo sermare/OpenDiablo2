@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"image/color"
+	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
@@ -104,6 +105,14 @@ type TradeWindow struct {
 	onChange func()
 	onClose  func()
 	stocks   map[string]*d2vendor.Stock
+
+	// gamble is true while the window shows the vendor's gamble stock.
+	gamble bool
+	// built records when each stock was generated, restocks counts the
+	// regenerations (they change the seed); now is the clock (tests replace it).
+	built    map[string]time.Time
+	restocks map[string]uint32
+	now      func() time.Time
 	logLevel d2util.LogLevel
 
 	*d2util.Logger
@@ -122,6 +131,7 @@ func NewTradeWindow(asset *d2asset.AssetManager, ui *d2ui.UIManager, l d2util.Lo
 	t := &TradeWindow{
 		asset: asset, ui: ui, inv: inv, hero: hero, factory: factory,
 		entries: make(map[InventoryItem]*d2vendor.Item), stocks: make(map[string]*d2vendor.Stock),
+		built: make(map[string]time.Time), restocks: make(map[string]uint32), now: time.Now,
 		onChange: onChange, onClose: onClose, logLevel: l,
 	}
 
@@ -196,22 +206,48 @@ func (t *TradeWindow) Contains(x, y int) bool {
 }
 
 // Open shows the vendor window. The stock is generated the first time a
-// vendor is opened in this game session and kept afterwards (the original
-// regenerates it when its "needs refresh" flag is set, which happens when a
-// new session starts; the trigger is UNVERIFIED beyond that, see
-// inventory-trade.md open question 4). seed seeds that generation.
+// vendor is opened in this game session and regenerated when the window is
+// opened more than four minutes after the stock was built (VERIFIED in the
+// binary: a per frame loop sets the vendor's "needs refresh" flag every
+// 240000 ms and the next open consumes it, see d2vendor.RestockInterval; the
+// original's timer is global per vendor record, this one starts at the
+// generation, an approximation). seed seeds that generation.
 func (t *TradeWindow) Open(v d2vendor.Vendor, seed uint32, quests *d2s.QuestRecord) {
+	t.open(v, seed, quests, false)
+}
+
+func (t *TradeWindow) open(v d2vendor.Vendor, seed uint32, quests *d2s.QuestRecord, gamble bool) {
 	t.vendor = v
+	t.gamble = gamble
 	t.npc = d2vendor.NPCPricing(t.asset.Records, v, quests)
 
-	stock := t.stocks[v.Name]
-	if stock == nil {
+	key := t.stockKey(v)
+
+	stock := t.stocks[key]
+	if stock != nil && t.now().Sub(t.built[key]) >= d2vendor.RestockInterval*time.Millisecond {
+		t.Infof("vendor restock: vendor=%s gamble=%v after %dms", v.Name, gamble, d2vendor.RestockInterval)
+
+		stock = nil
+		t.restocks[key]++
+	}
+
+	seed += t.restocks[key]
+
+	switch {
+	case stock != nil:
+	case gamble:
+		stock = t.generateGamble(v, seed)
+	default:
 		bases := d2vendor.BasesFor(t.asset.Records, v)
 		// Tier -1: the item level cap table is not applied (meaning of its
 		// index is UNVERIFIED).
 		stock = d2vendor.GenerateSeeded(seed, bases, d2vendor.Options{PlayerLevel: t.playerLevel(), Tier: -1})
 		t.realise(stock, seed)
-		t.stocks[v.Name] = stock
+	}
+
+	if t.stocks[key] != stock {
+		t.stocks[key] = stock
+		t.built[key] = t.now()
 	}
 
 	t.stock = stock
@@ -222,7 +258,7 @@ func (t *TradeWindow) Open(v d2vendor.Vendor, seed uint32, quests *d2s.QuestReco
 	t.isOpen = true
 	t.inv.SetPriceHook(t.inventoryPriceLines)
 	t.syncGold()
-	t.Infof("trade window opened: vendor=%s items=%d gold=%d", v.Name, len(stock.Items), t.hero.Gold)
+	t.Infof("trade window opened: vendor=%s gamble=%v items=%d gold=%d", v.Name, gamble, len(stock.Items), t.hero.Gold)
 }
 
 // Close hides the window.
@@ -315,6 +351,10 @@ func (t *TradeWindow) params(mode d2trade.Mode) d2trade.Params {
 
 // BuyPrice is what the player pays for a vendor item.
 func (t *TradeWindow) BuyPrice(item *diablo2item.Item) int {
+	if t.gamble {
+		return t.gamblePrice(item)
+	}
+
 	return d2trade.ItemPrice(item.TradeItem(), t.params(d2trade.ModeBuy))
 }
 
@@ -378,6 +418,11 @@ func (t *TradeWindow) Buy(item *diablo2item.Item) (price int, err error) {
 
 	t.inv.grid.AutoPlace(item, true)
 	t.hero.Gold = gold
+
+	if t.gamble {
+		t.reveal(item)
+	}
+
 	t.syncGold()
 	t.changed()
 	t.Infof("bought %q for %d, gold %d", item.Label(), price, gold)
@@ -396,7 +441,7 @@ func (t *TradeWindow) Sell(item *diablo2item.Item) (price int, err error) {
 
 	t.inv.grid.Remove(item)
 
-	if t.stock.Place(e) {
+	if !t.gamble && t.stock.Place(e) {
 		if err := t.grid.Set(e.X, e.Y, item); err == nil {
 			t.entries[item] = e
 		}

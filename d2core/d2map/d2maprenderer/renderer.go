@@ -64,6 +64,9 @@ type MapRenderer struct {
 	lastFrameTime       float64 // The last time the map was rendered
 	currentFrame        int     // Current render frame (for animations)
 	light               *lighting
+	entBuckets          map[[2]int]*entityBucket // per-frame entity index, see indexEntities
+	entFree             []*entityBucket
+	shadeVals           []color.RGBA // scratch for renderShadedImage
 
 	*d2util.Logger
 }
@@ -183,6 +186,7 @@ func (mr *MapRenderer) Render(target d2interface.Surface) {
 	endX := int(math.Min(float64(mapSize.Width), math.Ceil(etxf)))
 	endY := int(math.Min(float64(mapSize.Height), math.Ceil(etyf)))
 
+	mr.indexEntities()
 	mr.renderPass1(target, startX, startY, endX, endY)
 	mr.renderPass2(target, startX, startY, endX, endY)
 
@@ -298,28 +302,59 @@ func (mr *MapRenderer) renderPass2(target d2interface.Surface, startX, startY, e
 	}
 }
 
-func (mr *MapRenderer) getEntitiesBelowWalls(tileX, tileY int) []d2interface.MapEntity {
-	entities := make([]d2interface.MapEntity, 0)
+// entityBucket holds the entities standing on one tile, split by layer.
+type entityBucket struct {
+	below []d2interface.MapEntity // layer 1: drawn below the walls
+	above []d2interface.MapEntity // every other layer: drawn above the walls
+}
 
-	// need to add render culling
-	// https://github.com/OpenDiablo2/OpenDiablo2/issues/821
+// indexEntities sorts all entities into per-tile buckets once per frame. The passes used to scan
+// every entity for every visible tile (tiles x entities map iterations per frame). The buckets
+// and their slices are reused between frames. Entities are visited in map order, as before, so
+// the order of entities that share a tile and a subtile is as unspecified as it always was.
+func (mr *MapRenderer) indexEntities() {
+	if mr.entBuckets == nil {
+		mr.entBuckets = make(map[[2]int]*entityBucket)
+	}
+
+	for key, b := range mr.entBuckets {
+		b.below, b.above = b.below[:0], b.above[:0]
+
+		mr.entFree = append(mr.entFree, b)
+
+		delete(mr.entBuckets, key)
+	}
+
 	for _, mapEntity := range mr.mapEngine.Entities() {
 		pos := mapEntity.GetPosition()
 		vec := pos.World()
-		entityX, entityY := vec.X(), vec.Y()
+		key := [2]int{int(vec.X()), int(vec.Y())}
 
-		if mapEntity.GetLayer() != 1 {
-			continue
+		b := mr.entBuckets[key]
+		if b == nil {
+			if n := len(mr.entFree); n > 0 {
+				b, mr.entFree = mr.entFree[n-1], mr.entFree[:n-1]
+			} else {
+				b = &entityBucket{}
+			}
+
+			mr.entBuckets[key] = b
 		}
 
-		if (int(entityX) != tileX) || (int(entityY) != tileY) {
-			continue
+		if mapEntity.GetLayer() == 1 {
+			b.below = append(b.below, mapEntity)
+		} else {
+			b.above = append(b.above, mapEntity)
 		}
+	}
+}
 
-		entities = append(entities, mapEntity)
+func (mr *MapRenderer) getEntitiesBelowWalls(tileX, tileY int) []d2interface.MapEntity {
+	if b := mr.entBuckets[[2]int{tileX, tileY}]; b != nil {
+		return b.below
 	}
 
-	return entities
+	return nil
 }
 
 // Upper wall tiles and entities above walls.
@@ -353,27 +388,11 @@ func (mr *MapRenderer) renderPass3(target d2interface.Surface, startX, startY, e
 }
 
 func (mr *MapRenderer) getEntitiesAboveWalls(tileX, tileY int) []d2interface.MapEntity {
-	entities := make([]d2interface.MapEntity, 0)
-
-	// need to add render culling
-	// https://github.com/OpenDiablo2/OpenDiablo2/issues/821
-	for _, mapEntity := range mr.mapEngine.Entities() {
-		pos := mapEntity.GetPosition()
-		vec := pos.World()
-		entityX, entityY := vec.X(), vec.Y()
-
-		if mapEntity.GetLayer() == 1 {
-			continue
-		}
-
-		if (int(entityX) != tileX) || (int(entityY) != tileY) {
-			continue
-		}
-
-		entities = append(entities, mapEntity)
+	if b := mr.entBuckets[[2]int{tileX, tileY}]; b != nil {
+		return b.above
 	}
 
-	return entities
+	return nil
 }
 
 // Roof tiles.
@@ -424,10 +443,7 @@ func (mr *MapRenderer) renderFloor(tile d2ds1.Tile, target d2interface.Surface, 
 	defer target.Pop()
 
 	if mr.light.active() {
-		mr.renderShadedImage(target, img, floorShadeCols, floorShadeRows, 1, func(x, y float64) color.RGBA {
-			u, v := floorSubtile(x, y)
-			return mr.light.tintAt(float64(tileX*subtilesPerTile)+u, float64(tileY*subtilesPerTile)+v)
-		})
+		mr.renderShadedImage(target, img, floorShadeCols, floorShadeRows, 1, shadeFloor, tileX, tileY)
 
 		return
 	}
@@ -460,10 +476,7 @@ func (mr *MapRenderer) renderWall(tile d2ds1.Tile, viewport *Viewport, target d2
 		alpha = mr.light.fadeFor(wallKey{tileX, tileY, idx}, mr.heroBehind(tileX, tileY, sx, sy, img))
 	}
 
-	mr.renderShadedImage(target, img, wallShadeCols, wallShadeRows, alpha, func(x, _ float64) color.RGBA {
-		u, v := wallBaseSubtile(x)
-		return mr.light.tintAt(float64(tileX*subtilesPerTile)+u, float64(tileY*subtilesPerTile)+v)
-	})
+	mr.renderShadedImage(target, img, wallShadeCols, wallShadeRows, alpha, shadeWall, tileX, tileY)
 }
 
 // renderRoof draws a roof tile with the flat frame ambient (roofs sample no

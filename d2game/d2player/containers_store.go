@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2equip"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
@@ -76,7 +77,9 @@ func (g *GameControls) loadContainers() {
 	factory := g.inventory.item
 	g.itemOrigin = make(map[InventoryItem]*d2s.Item)
 
-	if c.BeltCode != "" {
+	g.loadEquipment()
+
+	if c.BeltCode != "" && g.inventory.WornAt(d2equip.LocBelt) == nil {
 		if belt, err := factory.NewItem(c.BeltCode); err == nil {
 			belt.Identify()
 			g.inventory.grid.ChangeEquippedSlot(d2enum.EquippedSlotBelt, belt)
@@ -168,6 +171,13 @@ func (g *GameControls) snapshotContainers() *d2hero.HeroContainers {
 	for cell, it := range g.belt.items {
 		if it != nil {
 			add(it, d2hero.PageBelt, cell, 0)
+		}
+	}
+
+	if g.equipOn() {
+		out.Equipped, out.EquippedSet, out.ActiveArms = g.snapshotEquipped(), true, g.inventory.activeArms
+		if out.Equipped == nil {
+			out.Equipped = []d2hero.StoredItem{}
 		}
 	}
 

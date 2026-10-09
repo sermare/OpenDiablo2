@@ -23,8 +23,8 @@ func (d *Director) handleEvents(u *unit) {
 	for _, ev := range u.m.TakeEvents() {
 		switch ev.Kind {
 		case d2mapentity.MonsterEventHitFrame:
-			if u.ally != nil {
-				d.allyStrike(u, ev.Mode)
+			if u.friendly() { // mercenaries and summoned minions share the dispatch
+				d.friendlyStrike(u, ev.Mode)
 
 				continue
 			}
@@ -85,6 +85,14 @@ func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 		return
 	}
 
+	if u.attackTarget >= mercTargetBase {
+		if tu := d.units[u.attackTarget-mercTargetBase]; tu != nil && tu.merc != nil && tu.m.Alive() {
+			d.strikeMerc(u, tu, atk, mode)
+		}
+
+		return
+	}
+
 	if attackIsRanged(u.m.Stat, mode) {
 		d.fireShot(u, mode, atk)
 
@@ -116,6 +124,14 @@ func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.Mode, atk d2mapentity.MonsterAttack,
 	via string) {
 	defense := d2combat.Defense(0, p.Stats.Dexterity, 0)
+	blockPct, physResist, reduce := 0, 0, 0
+
+	// the hero's real values from her equipment (d2statlist): defense with items,
+	// block chance with her shield, physical resistance and flat reduction
+	if t := p.Stats.Totals; t != nil {
+		defense, blockPct, physResist, reduce = t.Defense, t.BlockPct, t.PhysResist, t.DamageReduction
+	}
+
 	in := d2combat.ToHitInput{
 		AttackRating:  d2combat.MonsterAttackRating(atk.ToHit, 0, 0),
 		Defense:       defense,
@@ -126,7 +142,15 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 	hit, chance, roll := d2combat.RollToHit(u.b.Seed, in)
 	dmg := 0
 
-	note := ""
+	blocked, note := false, ""
+
+	if hit && blockPct > 0 {
+		// shield block comes after the to-hit roll (COMBAT_RollAttackOutcome); the hero
+		// is not moving while she is struck here (the running /3 rule is not applied)
+		if blocked = d2combat.RollShieldBlock(u.b.Seed, blockPct, false); blocked {
+			hit = false
+		}
+	}
 
 	if hit {
 		dmg = atk.Min + int(u.b.Seed.Roll(int32(atk.Max-atk.Min+1)))
@@ -134,6 +158,15 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 			dmg = 1
 		}
 
+		// flat damage reduction first, then the physical resistance percent (cap 50);
+		// the order of the two is UNVERIFIED. A hit never drops below 0 damage.
+		dmg = d2combat.ApplyResist(dmg-reduce, physResist)
+		if dmg < 0 {
+			dmg = 0
+		}
+
+		// skill defenses run after the to-hit and shield block steps and the
+		// armor reductions: Dodge/Avoid/Evade, Energy Shield, Bone Armor, Thorns
 		if d.HeroDefense != nil {
 			dmg, note = d.HeroDefense(p, u.m, via == "", dmg)
 		}
@@ -141,13 +174,17 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 		d.Counters.AttackHits++
 		p.Stats.Health -= dmg
 
+		if d.opt.OnHeroHit != nil {
+			d.opt.OnHeroHit(p)
+		}
+
 		if p.Stats.Health < 0 {
 			p.Stats.Health = 0
 		}
 	}
 
-	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d%s",
-		u.m.Label(), u.b.ID, mode, via, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth, note)
+	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d def=%d blocked=%v%s",
+		u.m.Label(), u.b.ID, mode, via, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth, defense, blocked, note)
 
 	if hit && p.Stats.Health == 0 {
 		d.Counters.HeroDeaths++
@@ -252,6 +289,10 @@ func (d *Director) HeroStrike(p *d2mapentity.Player, m *d2mapentity.Monster) boo
 	st := d.asset.Records.Character.Stats[p.Class]
 	ar := d2combat.PlayerAttackRating(0, p.Stats.Dexterity, st.ToHitFactor)
 
+	if t := p.Stats.Totals; t != nil {
+		ar = t.AttackRating // with the equipment's attack rating, dexterity and AR percent
+	}
+
 	hit, chance, roll := d2combat.RollToHit(d.heroRoller(), d2combat.ToHitInput{
 		AttackRating: ar, Defense: m.Vitals.Defense,
 		AttackerLevel: p.Stats.Level, DefenderLevel: m.Vitals.Level,
@@ -265,10 +306,26 @@ func (d *Director) HeroStrike(p *d2mapentity.Player, m *d2mapentity.Monster) boo
 
 	min, max := d.heroDamage(p)
 	dmg := min + int(d.heroRoller().Roll(int32(max-min+1)))
+	crit := false
+
+	// deadly strike and critical strike both double physical damage (verified)
+	if t := p.Stats.Totals; t != nil {
+		if crit = d2combat.RollStrike(d.heroRoller(), d2combat.StrikeInput{
+			SkipWeapon: true, CriticalChance: t.CriticalStrike, DeadlyChance: t.DeadlyStrike,
+		}); crit {
+			dmg *= 2
+		}
+	}
+
 	d.Counters.HeroHits++
 
-	d.emit("herohit", "HERO swing target=%s hit=true chance=%d roll=%d dmg=%d", m.Label(), chance, roll, dmg)
+	d.emit("herohit", "HERO swing target=%s hit=true chance=%d roll=%d dmg=%d crit=%v ar=%d", m.Label(), chance, roll, dmg,
+		crit, ar)
 	d.damage(u, p, dmg)
+
+	if d.opt.OnHeroStrike != nil {
+		d.opt.OnHeroStrike(p)
+	}
 
 	return true
 }
@@ -285,6 +342,10 @@ func (d *Director) heroRoller() *d2rand.Seed {
 // fallback min>=1, max>=2 in the damage build).
 func (d *Director) heroDamage(p *d2mapentity.Player) (min, max int) {
 	min, max = 1, 2
+
+	if t := p.Stats.Totals; t != nil && t.DamageMax > 0 {
+		return t.DamageMin, t.DamageMax // weapon, enhanced damage, added damage, strength bonus
+	}
 
 	if p.Equipment != nil && p.Equipment.RightHand != nil {
 		if rec := d.asset.Records.Item.Weapons[p.Equipment.RightHand.GetItemCode()]; rec != nil && rec.MaxDamage > 0 {
@@ -337,6 +398,7 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 
 	if u.m.Vitals.HP > 0 {
 		d.emit("hit", "MONSTER hit name=%s id=%d dmg=%d hp=%d/%d", u.m.Label(), u.b.ID, dmg, u.m.Vitals.HP, u.m.Vitals.MaxHP)
+		d.playPlans(u, hitPlans(d.soundRecord(u)))
 
 		// hit recovery: the monster drops what it was doing (a blow that was
 		// winding up is lost), plays GH and thinks again when it ends. Aggro
@@ -364,6 +426,7 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 	u.m.Die()
 	d.fp.Remove(u.b.ID) // a dying monster stops blocking (UNVERIFIED); the corpse flag is set when DT ends
 	d.Counters.Deaths++
+	d.playPlans(u, deathPlans(d.soundRecord(u)))
 	d.leaderDied(u)
 
 	by := "unknown"
@@ -371,7 +434,15 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 
 	if src != nil {
 		by = src.Name()
+		if d.ExpBonusPct != nil { // shrine experience boost (d2object), percent
+			xp += xp * d.ExpBonusPct() / 100
+		}
+
 		src.Stats.Experience += xp
+	}
+
+	if k := d.killer; k != nil {
+		d.creditMerc(k.merc, k, xp)
 	}
 
 	d.emit("death", "MONSTER death name=%s id=%d by=%s xp=%d", u.m.Label(), u.b.ID, by, xp)

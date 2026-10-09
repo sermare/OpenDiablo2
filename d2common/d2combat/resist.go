@@ -140,3 +140,18 @@ func Absorb(damage int, hasAbsorb bool, absorbPct, absorbFlat int) (remaining, h
 
 	return damage, heal
 }
+
+// LoDResistPenalty is the resistance penalty of a difficulty in Lord of
+// Destruction (DifficultyLevels.txt ResistPenalty): 0, -40, -100. The values
+// are the table's documented ones (the notes read them from the table at run
+// time and name -40/-100).
+func LoDResistPenalty(difficulty int) int {
+	switch difficulty {
+	case 1:
+		return -40
+	case 2:
+		return -100
+	}
+
+	return 0
+}

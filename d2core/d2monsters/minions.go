@@ -137,7 +137,7 @@ func (d *Director) Corpses() []*d2mapentity.Monster {
 	var out []*d2mapentity.Monster
 
 	for _, u := range d.units {
-		if u.ally == nil && !u.m.Alive() {
+		if !u.friendly() && !u.m.Alive() {
 			out = append(out, u.m)
 		}
 	}
@@ -351,7 +351,7 @@ func (d *Director) nearestHostile(x, y int) *unit {
 	bd := minionAggro + 1
 
 	for _, h := range d.sortedUnits() {
-		if h.ally != nil || !h.m.Alive() {
+		if h.friendly() || !h.m.Alive() {
 			continue
 		}
 
@@ -410,4 +410,21 @@ func (d *Director) allyStrike(u *unit, _ d2monster.Mode) {
 	if hit {
 		d.damage(t, a.owner, dmg)
 	}
+}
+
+// friendly reports whether a unit fights for a hero: a hired mercenary (kept
+// across games, has an owner and a save) or a summoned minion (owned by a
+// skill, temporary). Both are excluded from Monsters and from the targets of
+// the other friendly units; they keep their own listings (Merc, Minions).
+func (u *unit) friendly() bool { return u.merc != nil || u.ally != nil }
+
+// friendlyStrike resolves the attack of a friendly unit at its hit frame.
+func (d *Director) friendlyStrike(u *unit, mode d2monster.Mode) {
+	if u.merc != nil {
+		d.mercStrike(u, mode)
+
+		return
+	}
+
+	d.allyStrike(u, mode)
 }

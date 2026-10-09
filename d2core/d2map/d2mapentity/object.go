@@ -3,8 +3,10 @@ package d2mapentity
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -25,6 +27,55 @@ type Object struct {
 	name         string
 	opening      bool
 	opened       bool
+
+	// PortalDest is the level a portal object leads to (the original keeps it
+	// in the object data, byte +4) and PortalOwner the player who opened it.
+	PortalDest  int
+	PortalOwner string
+}
+
+// Kind returns the interaction class of the object from its objects.txt row.
+func (ob *Object) Kind() d2level.ObjectKind {
+	r := ob.objectRecord
+
+	return d2level.ClassifyObject(r.IsDoor, r.SubClass, r.OperateFn)
+}
+
+// IsDoor reports whether the object is a door (objects.txt IsDoor, or one of
+// the operate functions of the door classes).
+func (ob *Object) IsDoor() bool { return ob.Kind() == d2level.ObjectDoor }
+
+// Blocking reports whether the object currently blocks walking: a door that
+// is not open. (Other objects keep their behaviour of not blocking; only doors
+// are put into the engine's collision overlay.)
+func (ob *Object) Blocking() bool { return ob.IsDoor() && !ob.opened }
+
+// Footprint returns the sub-tile rectangle the object occupies when it blocks:
+// objects.txt SizeX x SizeY sub-tiles starting at the object's sub-tile. The
+// exact anchor inside the rectangle is UNVERIFIED.
+func (ob *Object) Footprint() (x, y, w, h int) {
+	w, h = ob.objectRecord.SizeX, ob.objectRecord.SizeY
+	if w < 1 {
+		w = 1
+	}
+
+	if h < 1 {
+		h = 1
+	}
+
+	return int(math.Floor(ob.Position.X())), int(math.Floor(ob.Position.Y())), w, h
+}
+
+// Close puts an opened object (a door) back into its neutral mode. It returns
+// false if the object was not open.
+func (ob *Object) Close() (bool, error) {
+	if !ob.opened {
+		return false, nil
+	}
+
+	ob.opened, ob.opening = false, false
+
+	return true, ob.setMode(d2enum.ObjectAnimationModeNeutral, 0, false)
 }
 
 // Record returns the objects.txt row of the object.
@@ -108,7 +159,7 @@ func (ob *Object) Highlight() {
 
 // Selectable returns if the object is selectable or not
 func (ob *Object) Selectable() bool {
-	if ob.opened {
+	if ob.opened && !ob.IsDoor() { // an open door can be closed again
 		return false
 	}
 

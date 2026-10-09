@@ -536,6 +536,17 @@ func (v *CharacterSelect) refreshGameStates() {
 }
 
 func (v *CharacterSelect) onOkButtonClicked() {
+	if v.selectedCharacter < 0 || v.selectedCharacter >= len(v.gameStates) {
+		return
+	}
+
+	// a hardcore character that died cannot be played any more (the original
+	// refuses it at load: d2s status 0x08 with 0x04)
+	if hero := v.gameStates[v.selectedCharacter]; hero.IsDeadHardcore() {
+		v.Warningf("%s is a dead hardcore character and cannot be played", hero.HeroName)
+		return
+	}
+
 	v.navigator.ToCreateGame(v.gameStates[v.selectedCharacter].FilePath, v.connectionType, v.connectionHost)
 }
 

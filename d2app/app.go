@@ -66,6 +66,7 @@ type App struct {
 	capturePath       string
 	captureFrames     []*image.RGBA
 	autoShot          *autoShotState
+	perf              *autoPerf
 	gitBranch         string
 	gitCommit         string
 	language          string
@@ -281,6 +282,12 @@ func (a *App) Run() (err error) {
 		return err
 	}
 
+	if err = a.firstRunSetup(); err != nil {
+		return err
+	}
+	a.perf = newAutoPerf()
+	a.startPprofEnv()
+
 	// start profiler if argument was supplied
 	if len(*a.Options.profiler) > 0 {
 		profiler := enableProfiler(*a.Options.profiler, a)
@@ -325,6 +332,11 @@ func (a *App) Run() (err error) {
 		a.Warning("OD2_AUTOSCRIPT needs OD2_AUTOGAME: the script only runs inside a game")
 	}
 
+	// OD2_AUTONEWCHAR=<class>[,hardcore] creates a new character and logs the result
+	if a.runAutoNewChar() && os.Getenv("OD2_AUTOEXIT") != "" && os.Getenv("OD2_AUTOGAME") == "" {
+		os.Exit(0)
+	}
+
 	if save := os.Getenv("OD2_AUTOGAME"); save != "" {
 		if class := os.Getenv("OD2_AUTOCAST_CLASS"); class != "" {
 			// a fresh hero of that class replaces the save (skill scenarios)
@@ -349,7 +361,9 @@ func (a *App) Run() (err error) {
 		a.ToMainMenu()
 	}
 
-	err = a.renderer.Run(a.update, a.advance, 800, 600, windowTitle)
+	scale := a.windowScale()
+
+	err = a.renderer.Run(a.update, a.advance, 800*scale, 600*scale, windowTitle)
 
 	d2gamescreen.SaveActiveGame() // the window was closed: save the hero
 
@@ -436,6 +450,10 @@ func (a *App) render(target d2interface.Surface) {
 }
 
 func (a *App) advance() error {
+	if t0 := a.perfStamp(); !t0.IsZero() {
+		defer a.perfUpdateDone(t0)
+	}
+
 	current := d2util.Now()
 	elapsedUnscaled := current - a.lastTime
 	elapsed := elapsedUnscaled * a.timeScale
@@ -469,7 +487,13 @@ func (a *App) advance() error {
 }
 
 func (a *App) update(target d2interface.Surface) error {
+	t0 := a.perfStamp()
+
 	a.render(target)
+
+	if !t0.IsZero() {
+		a.perfRenderDone(t0)
+	}
 
 	if target.GetDepth() > 0 {
 		return errors.New("detected surface stack leak")

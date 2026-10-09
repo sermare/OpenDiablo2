@@ -118,7 +118,7 @@ func (a *App) initDataDictionaries() error {
 		d2resource.WeaponClass, d2resource.PlayerType, d2resource.Composite,
 		d2resource.HitClass, d2resource.UniquePrefix, d2resource.UniqueSuffix,
 		d2resource.CubeModifier, d2resource.CubeType, d2resource.HirelingDescription,
-		d2resource.LowQualityItems, d2resource.Belts,
+		d2resource.LowQualityItems, d2resource.Belts, d2resource.Gamble,
 	}
 
 	a.Info("Initializing asset manager")

@@ -50,7 +50,19 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 		Difficulty: d2monster.Normal,
 		Expansion:  true, // the game data is Lord of Destruction (MonLvl*Ex columns)
 		// the scenario spawns monsters next to a hero who may still be in town
-		IgnoreTown: os.Getenv("OD2_AUTOMONSTER") != "",
+		IgnoreTown: os.Getenv("OD2_AUTOMONSTER") != "" || os.Getenv("OD2_AUTOMERC") != "",
+		OnSound:    v.onMonsterSound,
+		// worn items lose durability when the hero is hit or hits (d2equip)
+		OnHeroHit: func(p *d2mapentity.Player) {
+			if v.gameControls != nil && p == v.localPlayer {
+				v.gameControls.OnHeroHit()
+			}
+		},
+		OnHeroStrike: func(p *d2mapentity.Player) {
+			if v.gameControls != nil && p == v.localPlayer {
+				v.gameControls.OnHeroStrike()
+			}
+		},
 	}
 
 	if diff, err := strconv.Atoi(os.Getenv("OD2_AUTOMONSTER_DIFF")); err == nil && diff >= 0 && diff <= 2 {
@@ -58,6 +70,7 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 	}
 
 	v.monsters = d2monsters.NewDirector(v.asset, v.gameClient.MapEngine, v.playerList, v.logLevel, opt)
+	v.monsters.ExpBonusPct = v.experienceBonusPct
 
 	return v.monsters
 }
@@ -80,6 +93,7 @@ func (v *Game) advanceMonsters(elapsed float64) {
 	}
 
 	d.Advance(elapsed)
+	v.advanceMerc(elapsed)
 	v.logLevelStatus(elapsed)
 	v.advanceHeroAttack(elapsed)
 	v.advanceMonsterTest(elapsed)
@@ -126,6 +140,7 @@ func (v *Game) advanceHeroAttack(elapsed float64) {
 		v.localPlayer.SetDirection(v.localPlayer.Position.DirectionTo(m.Position.Vector))
 
 		hero, target := v.localPlayer, m
+		v.playHeroSwing()
 		hero.StartAttack(func() { v.monsters.HeroStrike(hero, target) })
 
 		return
@@ -215,9 +230,9 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 
 	c := v.monsters.Counters
 	v.Infof("AUTOMONSTER summary spawned=%d aggro=%d attacks=%d attack_hits=%d hero_swings=%d hero_hits=%d "+
-		"deaths=%d drops=%d hero_deaths=%d hero_hp=%d/%d", c.Spawned, c.Aggro, c.Attacks, c.AttackHits,
+		"deaths=%d drops=%d hero_deaths=%d hero_hp=%d/%d %s", c.Spawned, c.Aggro, c.Attacks, c.AttackHits,
 		c.HeroSwings, c.HeroHits, c.Deaths, c.Drops, c.HeroDeaths,
-		v.localPlayer.Stats.Health, v.localPlayer.Stats.MaxHealth)
+		v.localPlayer.Stats.Health, v.localPlayer.Stats.MaxHealth, v.soundSummary())
 	v.Infof("AUTOMONSTER world packs=%d shots=%d shot_hits=%d blocked_steps=%d max_stack=%d hit_recoveries=%d",
 		c.Packs, c.Shots, c.ShotHits, c.BlockedSteps, c.MaxStack, c.HitRecoveries)
 
@@ -258,10 +273,21 @@ func (v *Game) spawnMonsterTest(t *monsterTest) {
 
 	// the scenario forms a pack: the first monster leads, the rest follow
 	// its commands (only AIs with group commands, e.g. Fallen, make use of it)
+	// OD2_AUTOMONSTER_FAR=<subtiles> puts every second monster on a far ring, so
+	// the log shows the sounds of near and far fights (volume and pan per
+	// sound, SOUNDAT lines) and the far ones closing in.
+	far, _ := strconv.Atoi(os.Getenv("OD2_AUTOMONSTER_FAR"))
+
 	for i := 0; i < t.count; i++ {
 		angle := 2 * math.Pi * float64(i) / float64(t.count)
-		x := hx + int(math.Round(math.Cos(angle)*monsterTestRing))
-		y := hy + int(math.Round(math.Sin(angle)*monsterTestRing))
+		ring := float64(monsterTestRing)
+
+		if far > 0 && i%2 == 1 {
+			ring = float64(far)
+		}
+
+		x := hx + int(math.Round(math.Cos(angle)*ring))
+		y := hy + int(math.Round(math.Sin(angle)*ring))
 
 		m, err := v.monsters.SpawnNear(stat, x, y, 2)
 		if err != nil {

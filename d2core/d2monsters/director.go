@@ -26,9 +26,11 @@ package d2monsters
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2hireling"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
@@ -70,11 +72,23 @@ type Options struct {
 	// IgnoreTown lets monsters target heroes standing in town (for tests; the
 	// original never aggroes onto players in town).
 	IgnoreTown bool
+	// OnSound, if set, receives the monsters' MonSounds.txt sounds (attack,
+	// weapon, skill, hit, death, taunt, neutral, footstep) with their position.
+	OnSound func(SoundEvent)
+	// OnHeroHit, if set, is called when a monster's attack hit a hero (after the
+	// damage was applied): the hero's armor may lose durability.
+	OnHeroHit func(p *d2mapentity.Player)
+	// OnHeroStrike, if set, is called when a hero's swing hit a monster: the weapon
+	// may lose durability.
+	OnHeroStrike func(p *d2mapentity.Player)
 }
 
 // Counters tally what happened, for autotest summaries.
 type Counters struct {
 	Spawned, Aggro, Attacks, AttackHits, HeroSwings, HeroHits, Deaths, Drops, HeroDeaths int
+
+	// mercenaries
+	MercSpawns, MercAttacks, MercHits, MercSkills, MercDeaths, MercRevives, MercTeleports, MercLevelUps int
 	// Shots is projectiles launched, ShotHits those that reached a hero.
 	Shots, ShotHits int
 	// Packs is natural groups spawned; BlockedSteps counts steps refused
@@ -92,7 +106,10 @@ type unit struct {
 	b  *d2monster.Brain
 	mv *moveIntent
 
+	merc         *mercUnit // non-nil for a hired mercenary
 	hadTarget    bool
+	nextIdle     int // frame of the next idle vocal, 0 = not scheduled
+	nextStep     int // frame of the next footstep, 0 = not walking
 	attackTarget uint32
 	aimX, aimY   int // ground point of the last attack request (Target ID 0)
 	blocked      int // consecutive refused steps
@@ -140,7 +157,15 @@ type Director struct {
 	fpPlayer map[uint32]bool
 	launcher Launcher
 	hero     *d2rand.Seed
+	hire     *d2hireling.Table
+	mercs    map[*d2mapentity.Player]*unit
+	killer   *unit // the merc whose hit is being resolved (kill credit)
+	snd      *rand.Rand
 	packRNG  *d2rand.Seed
+
+	// ExpBonusPct, when set, returns the percent of extra experience per kill
+	// (the experience shrine).
+	ExpBonusPct func() int
 
 	areaLevel int // levels.txt MonLvl of the current area (0 = unknown)
 	// forceLevel, when set, replaces the resolved monster level of a spawn.
@@ -174,7 +199,9 @@ func NewDirector(asset *d2asset.AssetManager, engine *d2mapengine.MapEngine,
 		seenNPC:  map[string]bool{},
 		statByID: map[int]*d2records.MonStatRecord{},
 		targets:  map[uint32]*d2mapentity.Player{},
+		mercs:    map[*d2mapentity.Player]*unit{},
 		grid:     mapGrid{engine},
+		snd:      newSoundRand(opt.Seed),
 		fpPlayer: map[uint32]bool{},
 		packRNG:  d2rand.New(opt.Seed ^ 0x5041434b),
 	}
@@ -203,11 +230,11 @@ func (d *Director) emit(kind, format string, args ...interface{}) {
 }
 
 // Monsters returns the live (not yet removed) hostile monsters, corpses
-// included. Summoned minions are listed by Minions.
+// included; mercenaries and summoned minions are not part of it (see Merc, Minions).
 func (d *Director) Monsters() []*d2mapentity.Monster {
 	out := make([]*d2mapentity.Monster, 0, len(d.units))
 	for _, u := range d.units {
-		if u.ally == nil {
+		if !u.friendly() {
 			out = append(out, u.m)
 		}
 	}
@@ -346,6 +373,11 @@ func (d *Director) step() {
 		d.sync(u)
 		d.footprint(u)
 		d.handleEvents(u)
+		d.ambientSounds(u)
+
+		if u.merc != nil {
+			d.stepMerc(u)
+		}
 
 		if u.ally != nil {
 			d.allyStep(u)
@@ -363,7 +395,7 @@ func (d *Director) step() {
 			if d2monster.Tick(d, u.b) {
 				d.noteAggro(u)
 			}
-		} else if u.m.CorpseAge() > corpseSeconds {
+		} else if u.merc == nil && u.m.CorpseAge() > corpseSeconds { // merc corpses stay for a revive
 			d.engine.RemoveEntity(u.m)
 			d.forget(u)
 		}
@@ -414,6 +446,7 @@ func (d *Director) noteAggro(u *unit) {
 		}
 
 		d.emit("aggro", "MONSTER aggro name=%s id=%d target=%s", u.m.Label(), u.b.ID, name)
+		d.playPlans(u, tauntPlans(d.soundRecord(u)))
 	}
 
 	u.hadTarget = u.b.HasTarget
@@ -513,12 +546,11 @@ func (d *Director) followIntent(u *unit) {
 		return
 	}
 
-	p := d.playerFor(u.mv.target.ID)
-	if p == nil {
+	tx, ty, ok := d.targetPos(u, u.mv.target.ID)
+	if !ok {
 		return
 	}
 
-	tx, ty := playerSubtile(p)
 	sx, sy := u.m.SubtilePos()
 
 	if d2monster.EdgeDistance(sx-tx, sy-ty, u.b.Size) <= u.mv.reach {

@@ -643,6 +643,17 @@ func doLightningStrikeFn(c *cast) {
 
 // doFanFn is SRVDO_008_MultipleShot (Multiple Shot, Teeth, Shock Wave): calc1
 // missiles in a fan around the aim direction (8 degrees apart, U).
+//
+// Read from the binary (0x5d9fe0, read-only spot check): the count is calc1
+// (verified); calc2 goes to the created missile's damage word and calc3 is the
+// number of "real" middle missiles: the (calc1-calc3)/2 flanking ones on each side
+// are created with flag 0x10000 (probably no ammo / no damage-scaling) and only
+// the middle calc3 without it. The destinations are not an angular fan but
+// points spaced along a line through the aim point (the step is the
+// unit->aim vector after two helpers, 0x56b0e0 and 0x56b120, that were not
+// read), so the 8 degree spacing, the missile B pick (bolt when the weapon is
+// not a bow, via 0x623e60) and the equal treatment of all missiles here are
+// approximations.
 func doFanFn(c *cast) {
 	name := c.sk.SrvMissileA
 	if strings.Contains(c.u.RangedWeaponMissile(), "bolt") && c.sk.SrvMissileB != "" {
@@ -902,8 +913,13 @@ func doRabiesFn(c *cast) {
 	}
 }
 
-// doBlessedHammerFn is SRVDO_073_BlessedHammer (U): one hammer missile
-// (the spiral movement of the hammer is a missile do function, not modelled).
+// doBlessedHammerFn is SRVDO_073_BlessedHammer: one hammer missile. Read from
+// the binary (0x5ce5a0): the missile id is the progressive missile of the skill
+// (SKILL_GetProgressiveMissileId), it is created at the cursor target with flag
+// 0x20 and its path is switched to path type 0xe (the spiral), and when
+// FUN_00647550 (a synergy/mastery test) holds, the missile's stats 0x34 and
+// 0x35 are scaled by a percent. The spiral and that scaling are not modelled
+// here: the hammer flies straight.
 func doBlessedHammerFn(c *cast) {
 	if c.castM(c.missileName(), castOpts{}) == nil {
 		c.fail(ReasonMissile)

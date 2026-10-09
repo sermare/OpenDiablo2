@@ -18,6 +18,10 @@ func (g *GameControls) handleContainerClick(mx, my int, ctrl bool) bool {
 		return true
 	}
 
+	if g.EquipClick(mx, my) {
+		return true
+	}
+
 	if g.inventory.HandleClick(mx, my, ctrl) {
 		switch g.inventory.lastClick {
 		case ClickPlace, ClickSwap, ClickAuto:
@@ -53,6 +57,11 @@ func (g *GameControls) handleContainerRightClick(mx, my int) bool {
 
 	if item.GetItemCode() == cubeItemCode {
 		g.OpenCube()
+		return true
+	}
+
+	if it, ok := item.(*diablo2item.Item); ok && from == g.inventory.grid && IsIdentifyScroll(it) {
+		g.Identify.Arm(it)
 		return true
 	}
 

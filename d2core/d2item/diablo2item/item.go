@@ -819,6 +819,13 @@ func (i *Item) Identify() *Item {
 	return i
 }
 
+// Unidentify clears the identified attribute (the gamble stock and the
+// identify autotest use it; the game itself never un-identifies an item).
+func (i *Item) Unidentify() *Item {
+	i.attributes.identitified = false
+	return i
+}
+
 // string table keys
 // nolint:deadcode,unused,varcheck // WIP
 const (

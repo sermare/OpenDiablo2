@@ -134,8 +134,13 @@ func (is InputService) InputChars() []rune {
 }
 
 // IsKeyPressed checks if the provided key is down.
+//
+// ebiten.IsKeyPressed is a round trip to the window thread (about 8us when that thread is busy
+// drawing) and the input manager asks for every key on every frame. inpututil samples the very
+// same ebiten.IsKeyPressed once per tick, just before Update, so a press duration > 0 is the same
+// answer for the whole tick without the round trip.
 func (is InputService) IsKeyPressed(key d2enum.Key) bool {
-	return ebiten.IsKeyPressed(keyToEbiten[key])
+	return inpututil.KeyPressDuration(keyToEbiten[key]) > 0
 }
 
 // IsKeyJustPressed checks if the provided key is just transitioned from up to down.
@@ -149,8 +154,9 @@ func (is InputService) IsKeyJustReleased(key d2enum.Key) bool {
 }
 
 // IsMouseButtonPressed checks if the provided mouse button is down.
+// Like IsKeyPressed it reads the once-per-tick sample of inpututil instead of asking the window thread.
 func (is InputService) IsMouseButtonPressed(button d2enum.MouseButton) bool {
-	return ebiten.IsMouseButtonPressed(mouseButtonToEbiten[button])
+	return inpututil.MouseButtonPressDuration(mouseButtonToEbiten[button]) > 0
 }
 
 // IsMouseButtonJustPressed checks if the provided mouse button is just transitioned from up to down.

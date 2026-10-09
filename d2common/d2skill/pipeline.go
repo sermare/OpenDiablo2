@@ -508,7 +508,10 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 	return m
 }
 
-// doChargedBolt is SRVDO_ChargedBolt (0x5c73a0): calc1 bolts of srvmissilea,
+// doChargedBolt is SRVDO_ChargedBolt (0x5c73a0; spot check against the binary:
+// the count calc1, the creation flags 0x21 and the per-bolt post-create
+// callback 0x5c7340 are confirmed, the missile is the progressive missile of
+// the skill rather than always srvmissilea): calc1 bolts of srvmissilea,
 // each in its own random direction. The game randomises direction and speed
 // in a post-create callback (0x5c7340) that was not read; here every bolt
 // is rotated by a uniform random angle within +-40 degrees (UNVERIFIED).

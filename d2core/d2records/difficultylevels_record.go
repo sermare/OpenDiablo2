@@ -79,11 +79,11 @@ type DifficultyLevelRecord struct {
 
 	// Parameters for gambling. They states the odds to find Rares, Sets, Uniques,
 	// Exceptionals and Elite items when gambling. See Appendix A
-	// GambleRare
-	// GambleSet
-	// GambleUnique
-	// GambleUber
-	// GambleUltra
+	GambleRare   int // GambleRare: window of the 100000 sided quality roll
+	GambleSet    int // GambleSet
+	GambleUnique int // GambleUnique
+	GambleUber   int // GambleUber: per level chance (of 10000) of an exceptional base
+	GambleUltra  int // GambleUltra: same for an elite base
 	// -----------------------------------------------------------------------
 
 }

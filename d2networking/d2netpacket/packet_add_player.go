@@ -26,6 +26,15 @@ type AddPlayerPacket struct {
 	Gold       int
 	// Containers is the hero's saved inventory, belt, cube and stash (nil if none).
 	Containers *d2hero.HeroContainers `json:"containers,omitempty"`
+	// Merc is the hero's mercenary state, if any.
+	Merc *d2hero.MercState `json:"merc,omitempty"`
+	// Death is the hero's death record (nil if it never died); Hardcore marks
+	// a hardcore character.
+	Death    *d2hero.DeathState `json:"death,omitempty"`
+	Hardcore bool               `json:"hardcore,omitempty"`
+	// Progress and Difficulty carry the waypoints (and quests) of the hero.
+	Progress   *d2hero.HeroProgress  `json:"progress,omitempty"`
+	Difficulty d2enum.DifficultyType `json:"difficulty,omitempty"`
 }
 
 // CreateAddPlayerPacket returns a NetPacket which declares an
@@ -38,6 +47,7 @@ func CreateAddPlayerPacket(
 	skills map[int]*d2hero.HeroSkill,
 	equipment d2inventory.CharacterEquipment,
 	leftSkill, rightSkill, gold int,
+	progress *d2hero.HeroProgress, difficulty d2enum.DifficultyType,
 	options ...AddPlayerOption) (NetPacket, error) {
 	addPlayerPacket := AddPlayerPacket{
 		ID:         id,
@@ -51,8 +61,9 @@ func CreateAddPlayerPacket(
 		LeftSkill:  leftSkill,
 		RightSkill: rightSkill,
 		Gold:       gold,
+		Progress:   progress,
+		Difficulty: difficulty,
 	}
-
 	for _, option := range options {
 		option(&addPlayerPacket)
 	}
@@ -84,4 +95,17 @@ type AddPlayerOption func(*AddPlayerPacket)
 // WithContainers sends the hero's saved inventory, belt, cube and stash along.
 func WithContainers(c *d2hero.HeroContainers) AddPlayerOption {
 	return func(p *AddPlayerPacket) { p.Containers = c }
+}
+
+// WithMerc sends the hero's mercenary state along.
+func WithMerc(m *d2hero.MercState) AddPlayerOption {
+	return func(p *AddPlayerPacket) { p.Merc = m }
+}
+
+// WithDeath sends the hero's death record and hardcore flag along.
+func WithDeath(d *d2hero.DeathState, hardcore bool) AddPlayerOption {
+	return func(p *AddPlayerPacket) {
+		p.Death = d
+		p.Hardcore = hardcore
+	}
 }
