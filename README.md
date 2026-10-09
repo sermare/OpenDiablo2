@@ -42,11 +42,10 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 |---|---|
 | **The quest system** for the intro and Act 1 quests: states, speech, rewards, saved in the `.d2s` | branch `feat/quest-system` |
 | **Skills for all seven classes**, with auras, summons, traps and status effects | branch `feat/class-skills` |
-| **Death, respawn and new characters** the real game also accepts (being merged with the latest code) | branch `feat/death-newchar` |
+| **Act 1 outdoors in Go**: Blood Moor, Cold Plains and the other wilderness levels, checked against the real game's code | branch `feat/drlg-outdoor1` |
 | **Mercenaries** and the imported-character UI (being merged with the latest code) | `feat/hirelings`, `feat/imported-hero-ui` |
-| **Automap** with the real cells and reveal-as-you-walk | branch `feat/automap` |
+| **Automap**, **shrines/wells/other objects**, **equip rules and durability** | `feat/automap`, `feat/objects-2`, `feat/equip-rules` |
 | **A performance pass** with frame-time metrics and profiling | branch `feat/perf-pass` |
-| Research: Act 1 outdoor generation (borders, cliffs, rivers) | RE notes: `drlg3` |
 
 ### 🎯 Plan and priorities (set by Claude)
 
@@ -123,6 +122,7 @@ Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | Death/respawn/new characters merged (new Druid byte-identical to the real file); the Act 1 outdoor generation algorithm reverse engineered and a reference port matched the real game on 208 levels |
 | 2026-10-09 | **All maze levels of all five acts proven identical to the real game**; equipment affects the hero (explains 1241/869); positional/ambient audio; a double-clickable Mac app |
 | 2026-10-09 | Level generator proven for **all Act 1-3 maze levels**; waypoints, portals, doors and level changes; Gheed's gamble and Cain's identify; test scenarios now launch games without Terminal windows |
 | 2026-10-09 | **Level generator proven identical to the real game** (2,550 maze records, 50 world layouts); real dungeons render and play; skills, monsters part 2, stash/cube/belt, lighting merged; test runner restructured into one file per scenario |
