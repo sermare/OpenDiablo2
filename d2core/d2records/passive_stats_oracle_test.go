@@ -25,18 +25,30 @@ import (
 // SKILL_ApplyPassiveStatsToStatList applies passivestat1..5 with
 // passivecalc1..5. UNVERIFIED rules are called out in the table comments.
 //
-// Exe addresses to confirm next (1.14b, as numbered in the d2-re-notes):
-//   - 0x5c4d70 SKILL_ApplyPassiveStatsToStatList and its callers: is the
-//     passive flag (rec byte4 bit 0x04) tested, or every row with passivestat?
-//     (Resist Fire max resist, Holy Fire/Shock damage, Fade "fade")
-//   - 0x5c4c60 SKILL_ApplyAuraStatsToStatList: order of aurastat1..6 and
-//     whether stats are added through the ItemStatCost op handler.
-//   - 0x56c740 SKILL_CreateTimedStateStatList: same-group state removal
-//     (States.txt group) and refresh versus replace for the same state.
-//   - 0x006256e0 / 0x00625760 stat getters: how ops 1, 11, 13 (percent of the
-//     op stat) are combined with flat stats (additive percent sum assumed).
-//   - 0x006225a0 GetDefense: stat 171 + stat 16 summed before the multiply
-//     (verified); the state 0x65 / stat 182 terms are not modelled.
+// Exe findings (1.14b, see verify-passive-stats.md in d2-re-notes), all VERIFIED:
+//   - 0x5c4d70 SKILL_ApplyPassiveStatsToStatList does NOT test the passive flag:
+//     it applies passivestat1..5 (rec +0x98, calcs +0xa4) with nonzero calc
+//     values. Its only callers are the buff cast 0x5c7540 (srvdofunc 18: Frozen
+//     Armor, Fade, Burst of Speed...), Blaze 0x5c7d10 and Whirlwind 0x5d7a00, so
+//     Fade's "fade" and Resist Fire's maxfireresist land on the buff's statlist
+//     at cast time. The path that applies true passives (Iron Skin, Natural
+//     Resistance) on load or on a skill-level change is NOT located.
+//   - 0x5c4c60 SKILL_ApplyAuraStatsToStatList: aurastat1..6 (rec +0x54, calcs
+//     +0x68) in column order; each nonzero calc is stored with
+//     STATS_SetBaseStatValue (a repeated stat in the same list is overwritten,
+//     not summed); stat 0x44 also sets 0x45. No ItemStatCost op at that point.
+//   - 0x56c740 SKILL_CreateTimedStateStatList never reads States.txt group. The
+//     group exclusion is FUN_0056a480 (flag 1), called by the buff cast 0x5c7540
+//     before the statlist is built: it ends every state of the same nonzero
+//     group, the state itself included. Hence Frozen/Shiver/Chilling/Bone Armor
+//     (and justhit) replace each other, as do Burst of Speed and Fade.
+//   - 0x006256e0 / 0x00625760 stat getters return the stored aggregate of the
+//     unit's lists; ops 1, 11, 13 are applied when the lists change
+//     (0x626430, MulDiv(total of the op stat, value, 100) added to the derived
+//     stat), not at read time. Percent stats of different sources are summed.
+//   - 0x006225a0 GetDefense: (stat 31 + dex/4) base; percent = stat 171 + stat 16
+//     (+ the Holy Shield calc1 when state 0x65 and a hand item qualify); base +
+//     base*pct/100 (minus for base <= 0); then a stat 182 term on the total.
 
 func ln(a, b, l int) int { return a + (l-1)*b }
 func dm(a, b, l int) int { return (110*l*(b-a))/(100*(l+6)) + a }
@@ -58,8 +70,9 @@ type skillCase struct {
 	// passiveApplied: does Pipeline.PassiveStats return the passivestat
 	// columns? It does only for rows with the passive flag (Iron Skin,
 	// Natural Resistance). Rows such as Resist Fire, Holy Fire, Holy Shock
-	// and Fade carry passivestat columns without the flag; whether the game
-	// applies them regardless of the flag is UNVERIFIED (0x5c4d70 callers).
+	// and Fade carry passivestat columns without the flag; the game applies
+	// them regardless of the flag, but only through the buff cast (0x5c4d70
+	// has no flag test; see the header).
 	passiveApplied bool
 }
 

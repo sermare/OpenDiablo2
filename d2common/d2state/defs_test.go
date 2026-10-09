@@ -116,6 +116,7 @@ func TestRealCurseReplacement(t *testing.T) {
 	for _, c := range cases {
 		s := withDefs(d)
 		s.Apply(0, Instance{Name: c.first, Until: 1000})
+		s.ClearGroup(10, c.second) // the buff cast does this first (0x56a480)
 		s.Apply(10, Instance{Name: c.second, Until: 1000})
 
 		if both := s.Active(11, c.first) && s.Active(11, c.second); both != c.wantBoth {

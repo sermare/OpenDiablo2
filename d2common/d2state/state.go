@@ -207,6 +207,30 @@ func (s *Set) Stat(frame int, stat string) int {
 	return total
 }
 
+// StatMods sums every stat over all active states (what Stat does for one
+// name). Zero totals are left out.
+func (s *Set) StatMods(frame int) map[string]int {
+	out := map[string]int{}
+
+	for _, in := range s.states {
+		if !in.Active(frame) {
+			continue
+		}
+
+		for _, m := range in.Mods {
+			out[m.Stat] += m.Value
+		}
+	}
+
+	for k, v := range out {
+		if v == 0 {
+			delete(out, k)
+		}
+	}
+
+	return out
+}
+
 // AddStream starts a poison or burn stream. Verified (0x578990 poison,
 // 0x578b00 burn): a unit has one statlist per kind (state 2 and state 0x73,
 // both carrying hpregen 0x4a = -perFrame). A new stream replaces the active

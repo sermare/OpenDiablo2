@@ -72,7 +72,7 @@ func TestDefense(t *testing.T) {
 		{100, 20, 0, 105},
 		{100, 20, 50, 157}, // 105 + 52
 		{100, 3, 0, 100},   // dex/4 truncates
-		{-10, 0, 50, -15},
+		{-10, 0, 50, -5}, // verified in 0x6225a0: for base <= 0 the bonus is subtracted
 		{-10, 4, 10, -9}, // -9 + trunc(-0.9) = -9
 		{0, 0, 100, 0},
 	}

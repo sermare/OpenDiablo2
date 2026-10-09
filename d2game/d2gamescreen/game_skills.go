@@ -1,6 +1,7 @@
 package d2gamescreen
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"strconv"
@@ -89,12 +90,30 @@ func (v *Game) skillEngine() *d2skills.Engine {
 		InfiniteAmmo: scenario,
 	})
 
+	if st := v.localPlayer.Stats; st != nil {
+		id, eng := v.localPlayer.ID(), v.skills
+		st.SkillStats = func() map[string]int { return eng.StateStats(id) }
+	}
+
 	return v.skills
 }
 
 func (v *Game) advanceSkills(elapsed float64) {
-	if eng := v.skillEngine(); eng != nil {
-		eng.Advance(elapsed)
+	eng := v.skillEngine()
+	if eng == nil {
+		return
+	}
+
+	eng.Advance(elapsed)
+
+	// the hero's buffs and auras are part of its stats: recompute the totals
+	// when the set of active skill stats changes
+	if st := v.localPlayer.Stats; st != nil && st.Recalc != nil {
+		sig := fmt.Sprint(eng.StateStats(v.localPlayer.ID()))
+		if sig != v.skillStatSig {
+			v.skillStatSig = sig
+			st.Recalc()
+		}
 	}
 }
 

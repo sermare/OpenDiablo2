@@ -173,6 +173,19 @@ func (e *Engine) HasState(unitID, state string) bool {
 	return e.setOf(unitID).Active(e.frame, state)
 }
 
+// StateStats is the sum of the stat mods of the unit's active states, by
+// ItemStatCost name: the aurastat1..6 lists of its buffs and auras (each
+// statlist adds to the unit's stats, verified at 0x5c4c60). Passive skills
+// are not included.
+func (e *Engine) StateStats(unitID string) map[string]int {
+	st := e.sets[unitID]
+	if st == nil {
+		return nil
+	}
+
+	return st.StatMods(e.frame)
+}
+
 // stateDefs converts the states.txt records into the rules the state sets use
 // (cached; nil when the records have no states table).
 func (e *Engine) stateDefs() d2state.Defs {
