@@ -194,6 +194,7 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 
 	if u.m.Vitals.HP > 0 {
 		d.emit("hit", "MONSTER hit name=%s id=%d dmg=%d hp=%d/%d", u.m.Label(), u.b.ID, dmg, u.m.Vitals.HP, u.m.Vitals.MaxHP)
+		d.playPlans(u, hitPlans(d.soundRecord(u)))
 
 		// hit recovery: the monster stops what it was doing, and thinks again
 		// when the animation ends. Aggro is not otherwise changed.
@@ -216,6 +217,7 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 	u.m.Die()
 	d.Counters.Deaths++
+	d.playPlans(u, deathPlans(d.soundRecord(u)))
 
 	by := "unknown"
 	xp := u.m.Vitals.Experience

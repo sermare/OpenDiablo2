@@ -103,6 +103,9 @@ func (m *Monster) GetSize() (width, height int) { return m.composite.GetSize() }
 // MonstatID returns the monstats class id.
 func (m *Monster) MonstatID() int { return m.Stat.ID }
 
+// AnimationFrames is the frame count of the current animation.
+func (m *Monster) AnimationFrames() int { return m.composite.GetFrameCount() }
+
 // SubtilePos is the integer subtile the monster stands on.
 func (m *Monster) SubtilePos() (x, y int) {
 	return int(m.Position.X()), int(m.Position.Y())

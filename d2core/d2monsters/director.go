@@ -17,6 +17,7 @@ package d2monsters
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 
@@ -53,6 +54,9 @@ type Options struct {
 	// IgnoreTown lets monsters target heroes standing in town (for tests; the
 	// original never aggroes onto players in town).
 	IgnoreTown bool
+	// OnSound, if set, receives the monsters' MonSounds.txt sounds (attack,
+	// weapon, skill, hit, death, taunt, neutral, footstep) with their position.
+	OnSound func(SoundEvent)
 }
 
 // Counters tally what happened, for autotest summaries.
@@ -67,6 +71,8 @@ type unit struct {
 	mv *moveIntent
 
 	hadTarget    bool
+	nextIdle     int // frame of the next idle vocal, 0 = not scheduled
+	nextStep     int // frame of the next footstep, 0 = not walking
 	attackTarget uint32
 	removeAt     float64
 }
@@ -101,6 +107,7 @@ type Director struct {
 	targets  map[uint32]*d2mapentity.Player
 	grid     mapGrid
 	hero     *d2rand.Seed
+	snd      *rand.Rand
 
 	// Counters are updated as events happen.
 	Counters Counters
@@ -125,6 +132,7 @@ func NewDirector(asset *d2asset.AssetManager, engine *d2mapengine.MapEngine,
 		statByID: map[int]*d2records.MonStatRecord{},
 		targets:  map[uint32]*d2mapentity.Player{},
 		grid:     mapGrid{engine},
+		snd:      newSoundRand(opt.Seed),
 	}
 
 	d.Logger.SetLevel(l)
@@ -275,6 +283,7 @@ func (d *Director) step() {
 
 		d.sync(u)
 		d.handleEvents(u)
+		d.ambientSounds(u)
 
 		if u.m.Alive() {
 			d.followIntent(u)
@@ -332,6 +341,7 @@ func (d *Director) noteAggro(u *unit) {
 		}
 
 		d.emit("aggro", "MONSTER aggro name=%s id=%d target=%s", u.m.Label(), u.b.ID, name)
+		d.playPlans(u, tauntPlans(d.soundRecord(u)))
 	}
 
 	u.hadTarget = u.b.HasTarget

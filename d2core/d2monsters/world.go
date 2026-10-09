@@ -169,6 +169,7 @@ func (d *Director) Attack(b *d2monster.Brain, mode d2monster.Mode, t d2monster.T
 	}
 
 	u.attackTarget = t.ID
+	d.playPlans(u, attackPlans(d.soundRecord(u), mode, d.snd.Intn))
 
 	if mode != d2monster.ModeAttack1 && mode != d2monster.ModeAttack2 {
 		d.emit("skill", "MONSTER skill name=%s id=%d mode=%s minions=%d", u.m.Label(), b.ID, mode, len(b.Minions))

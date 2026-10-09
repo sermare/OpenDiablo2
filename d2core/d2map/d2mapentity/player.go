@@ -222,6 +222,12 @@ func (p *Player) Name() string {
 	return p.name
 }
 
+// WeaponClass is the COF weapon class code of the hero's current animation
+// set (hth, 1hs, 2ht, bow...).
+func (p *Player) WeaponClass() string {
+	return p.composite.GetWeaponClass()
+}
+
 // IsCasting returns true if
 func (p *Player) IsCasting() bool {
 	return p.isCasting

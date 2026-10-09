@@ -41,6 +41,8 @@ type dayPhaseSource interface {
 type dayClock struct {
 	env *d2daynight.Env
 	acc float64
+	// frozen stops the clock (OD2_AUTOAMBIENT picks the phase itself).
+	frozen bool
 }
 
 func newDayClock() *dayClock {
@@ -49,6 +51,10 @@ func newDayClock() *dayClock {
 
 // Advance converts elapsed seconds into environment ticks.
 func (c *dayClock) Advance(elapsed float64) {
+	if c.frozen {
+		return
+	}
+
 	c.acc += elapsed * d2daynight.TicksPerSecond
 	n := int(c.acc)
 	c.acc -= float64(n)
