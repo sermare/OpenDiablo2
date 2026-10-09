@@ -34,6 +34,9 @@ type MapEngine struct {
 	startSubTileX int                       // Starting X position
 	startSubTileY int                       // Starting Y position
 	dt1Files      []string                  // List of DS1 strings
+	dt1Starts     []int                     // index into dt1TileData of the first tile of each dt1Files entry
+	dt1Rank       []int                     // for every dt1TileData entry: its position among the tiles of its (style, sequence, type)
+	dt1KeyCount   map[[3]int32]int          // tiles seen per (style, sequence, type) while filling dt1Rank
 	objBlock      *ObjectCollision          // run-time collision of doors
 
 	gridPaths     bool        // PathFind uses d2path (see UseCollisionPaths)
@@ -90,6 +93,9 @@ func (m *MapEngine) ResetMap(levelType d2enum.RegionIdType, width, height int) {
 	m.tiles = make([]MapTile, width*height)
 	m.dt1TileData = make([]d2dt1.Tile, 0)
 	m.dt1Files = make([]string, 0)
+	m.dt1Starts = make([]int, 0)
+	m.dt1Rank = nil
+	m.dt1KeyCount = map[[3]int32]int{}
 	m.startOverride = nil
 	m.gridPaths = false
 
@@ -115,7 +121,9 @@ func (m *MapEngine) addDT1(fileName string) {
 		m.Error(err.Error())
 	}
 
+	m.dt1Starts = append(m.dt1Starts, len(m.dt1TileData))
 	m.dt1TileData = append(m.dt1TileData, dt1.Tiles...)
+	m.extendRank()
 	m.dt1Files = append(m.dt1Files, fileName)
 }
 

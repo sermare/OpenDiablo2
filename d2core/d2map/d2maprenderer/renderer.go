@@ -59,10 +59,11 @@ type MapRenderer struct {
 	viewport            *Viewport              // Used for rendering offsets
 	Camera              Camera                 // Used to determine where on the map we are rendering
 	imageCacheRecords   map[uint32]d2interface.Surface
-	mapDebugVisLevel    int     // Map debug visibility index (0=none, 1=tiles, 2=sub-tiles)
-	entityDebugVisLevel int     // Entity Debug visibility index (0=none, 1=vectors)
-	lastFrameTime       float64 // The last time the map was rendered
-	currentFrame        int     // Current render frame (for animations)
+	blankShadows        map[uint32]bool // shadow tiles without graphics (never cached, never drawn)
+	mapDebugVisLevel    int             // Map debug visibility index (0=none, 1=tiles, 2=sub-tiles)
+	entityDebugVisLevel int             // Entity Debug visibility index (0=none, 1=vectors)
+	lastFrameTime       float64         // The last time the map was rendered
+	currentFrame        int             // Current render frame (for animations)
 	light               *lighting
 	entBuckets          map[[2]int]*entityBucket // per-frame entity index, see indexEntities
 	entFree             []*entityBucket
@@ -537,7 +538,28 @@ func (mr *MapRenderer) renderLitEntity(target d2interface.Surface, e d2interface
 func (mr *MapRenderer) renderShadow(tile d2ds1.Tile, target d2interface.Surface) {
 	img := mr.getImageCacheRecord(tile.Style, tile.Sequence, 13, tile.RandomIndex)
 	if img == nil {
+		// shadow tiles without graphics (width or height 0) are never cached;
+		// the exact room tiles of the outdoor generator contain such markers
+		key := uint32(tile.Style)<<16 | uint32(tile.Sequence)<<8 | uint32(tile.RandomIndex)
+
+		if mr.blankShadows == nil {
+			mr.blankShadows = map[uint32]bool{}
+		}
+
+		blank, known := mr.blankShadows[key]
+		if !known {
+			opts := mr.mapEngine.GetTiles(int(tile.Style), int(tile.Sequence), d2enum.TileShadow)
+			blank = opts != nil && int(tile.RandomIndex) < len(opts) &&
+				(opts[tile.RandomIndex].Width == 0 || opts[tile.RandomIndex].Height == 0)
+			mr.blankShadows[key] = blank
+		}
+
+		if blank {
+			return
+		}
+
 		mr.Warningf("Render called on uncached shadow {%v,%v}", tile.Style, tile.Sequence)
+
 		return
 	}
 

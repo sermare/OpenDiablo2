@@ -159,6 +159,7 @@ func (l *Level) placePresetRooms(def, file, tx, ty int, gB uint32) {
 			r := l.allocRoom(2)
 			r.X, r.Y, r.W, r.H = cx, cy, min(8, remX), min(8, remY)
 			r.PrestDef, r.File = def, file
+			r.PrestX, r.PrestY, r.PrestW, r.PrestH = tx, ty, w, h
 			r.Flags = flags
 			r.R50 = uint32(rec.Dt1Mask)
 
@@ -192,6 +193,10 @@ type RoomBuildOptions struct {
 	// which is what the golden assumes (the DT1 library is not emulated).
 	// TODO: implement with the DT1 tile library once available.
 	PickTile func(rs *d2rand.Seed, x, y int, dword uint32)
+
+	// tiles, when set, makes the build create the real tile records (the
+	// random tile markers pick from the room's DT1 library); see BuildTiles.
+	tiles *tileBuilder
 }
 
 type roomBuilder struct {
@@ -216,6 +221,10 @@ func (l *Level) BuildRoomGrids(r *Room, opts *RoomBuildOptions) (grids *RoomGrid
 	b := &roomBuilder{l: l, r: r, g: &RoomGrids{A: NewGrid(r.W+1, r.H+1), B: NewGrid(r.W+1, r.H+1), C: NewGrid(r.W+1, r.H+1)}}
 	if opts != nil {
 		b.opts = *opts
+	}
+
+	if b.opts.tiles != nil {
+		b.opts.tiles.rs = &b.g.Seed
 	}
 
 	return b.build(), nil
@@ -482,7 +491,9 @@ func (b *roomBuilder) stampSub(x, y int, g Group, d *Pattern, val int) {
 			if tv := d.Shadow[sy*d.W+sx]; tv&0x8000000 != 0 {
 				b.g.Tags++
 
-				if b.opts.PickTile != nil {
+				if b.opts.tiles != nil {
+					b.opts.tiles.addRandom(b.r.X+x+gx, b.r.Y+y+gy, tv)
+				} else if b.opts.PickTile != nil {
 					b.opts.PickTile(&b.g.Seed, b.r.X+x+gx, b.r.Y+y+gy, tv)
 				} else {
 					b.g.Seed.Step() // DRLG_PickRandomTile: one room-seed step (model, DT1 library not available)
