@@ -42,11 +42,13 @@ type Class struct {
 	ID            string
 	Index         int
 	NoRatio, Boss bool
-	// PrimeEvil is the primeevil column; see LevelExclusion.
+	// PrimeEvil is the primeevil column (flag bit 7, VERIFIED 0x00652cdb). It
+	// does NOT affect the level rule; that is Boss (bit 6).
 	PrimeEvil bool
 	// Align is the monstats Align column (+0x4c): 0 enemy, 1 friendly, 2 neutral.
 	// Nonzero skips player-count scaling (0x00571760); 1 skips the classic
-	// adjustment (0x0063ff30). Column identity inferred from the data.
+	// adjustment (0x0063ff30). VERIFIED: the monstats loader (0x00652b35) maps
+	// the Align column to byte offset +0x4c.
 	Align        int
 	Level        [numDiff]int
 	MinHP, MaxHP [numDiff]int
@@ -162,12 +164,15 @@ func MulDiv(a, b, c int) int {
 // maxHP is the cap on the pre-shift hit points (0x7fffff, stored <<8).
 const maxHP = 0x7fffff
 
-// ResolveLevel is the monster level rule (VERIFIED at 0x00571af0): the
-// monstats Level of the difficulty is the default; only in Nightmare and Hell,
-// and only when an area is known, non-noRatio non-boss classes take the area
-// MonLvl instead. Normal difficulty always uses the monstats Level.
-func (c *Class) ResolveLevel(diff, areaLevel int) int {
-	if diff <= Normal || c.NoRatio || c.excluded() || areaLevel <= 0 {
+// ResolveLevel is the monster level rule (VERIFIED at 0x00571c4f..0x00571c84):
+// the monstats Level of the difficulty is the default. The area MonLvl
+// (LEVEL_GetMonsterLevel 0x0061dc00) replaces it only when the game is
+// expansion (game+0x70 != 0, which also selects the MonLvl/MonLvlEx column),
+// the difficulty is Nightmare or Hell, the area is known, and the class has
+// neither noRatio (flag bit 2, mask 0x006cf258) nor boss (flag bit 6, mask
+// 0x006cf268). primeevil (bit 7) plays no part.
+func (c *Class) ResolveLevel(diff, areaLevel int, expansion bool) int {
+	if !expansion || diff <= Normal || c.NoRatio || c.Boss || areaLevel <= 0 {
 		return c.Level[diff]
 	}
 
@@ -185,7 +190,7 @@ func (t MonLvl) Scale(c *Class, diff, areaLevel int, expansion bool, roll func(n
 // adjustment (see Options).
 func (t MonLvl) ScaleOpts(c *Class, diff, areaLevel int, expansion bool, roll func(n int) int, o Options) Stats {
 	diff = clamp(diff, 0, Hell)
-	lvl := c.ResolveLevel(diff, areaLevel)
+	lvl := c.ResolveLevel(diff, areaLevel, expansion)
 	s := Stats{Level: lvl}
 	row := t[clamp(lvl, 0, len(t)-1)]
 

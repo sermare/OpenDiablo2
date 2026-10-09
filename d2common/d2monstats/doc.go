@@ -25,15 +25,18 @@
 //	VERIFIED 0x00571760 player-count scaling (see scaling.go): +0,0,50..350%
 //	                   for 1..8 players (HP and XP), Align != 0 classes none.
 //	VERIFIED 0x00571af0 level: the monstats Level of the difficulty is the
-//	                   default. Only Nightmare/Hell with a known area and a
-//	                   class without noRatio and without the excluded flag
-//	                   take the area MonLvl (LEVEL_GetMonsterLevel 0x0061dc00).
-//	                   The excluded flag is bit 6 of the monstats flag dword
-//	                   (mask 0x006cf268); by table order that is primeevil,
-//	                   NOT boss (UNVERIFIED column, see LevelExclusion).
+//	                   default. Only expansion games (game+0x70 != 0, the
+//	                   MonLvl/MonLvlEx selector) in Nightmare/Hell with a known
+//	                   area and a class with neither noRatio (flag bit 2) nor
+//	                   boss (flag bit 6, mask 0x006cf268) take the area MonLvl
+//	                   (LEVEL_GetMonsterLevel 0x0061dc00). Flag bits come from
+//	                   the loader table in MONTBL_LoadMonstatsTable 0x00652b00
+//	                   (see verify-boss-flag.md); primeevil is bit 7, unused here.
 //	VERIFIED 0x0063ff30 classic-mode adjustment (Options.Classic): HP x1/2,
 //	                   AC x10/12, XP x10/17 N / x10/26 H, level = monstats
 //	                   Level + 25*diff; skipped for Align 1 classes.
+//	                   Gate game+0x70 == 0 is VERIFIED to mean "not expansion":
+//	                   the same field picks the MonLvl vs MonLvlEx column.
 //
 // See ~/git/d2-re-notes/verify-monster-hero.md.
 package d2monstats

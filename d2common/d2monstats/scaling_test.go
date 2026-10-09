@@ -70,16 +70,26 @@ func TestClassicAdjustment(t *testing.T) {
 	}
 }
 
-func TestLevelExclusionSwitch(t *testing.T) {
-	c := &Class{Boss: true, Level: [3]int{4, 5, 6}}
-	if c.ResolveLevel(Hell, 9) != 9 {
-		t.Error("boss-only class takes area level under the primeevil rule")
+func TestResolveLevelRule(t *testing.T) {
+	tests := []struct {
+		name string
+		c    Class
+		diff int
+		area int
+		exp  bool
+		want int
+	}{
+		{"plain expansion hell", Class{Level: [3]int{4, 5, 6}}, Hell, 9, true, 9},
+		{"plain classic keeps monstats level", Class{Level: [3]int{4, 5, 6}}, Hell, 9, false, 6},
+		{"normal keeps monstats level", Class{Level: [3]int{4, 5, 6}}, Normal, 9, true, 4},
+		{"boss keeps monstats level (bit 6)", Class{Boss: true, Level: [3]int{4, 5, 6}}, Hell, 9, true, 6},
+		{"noRatio keeps monstats level (bit 2)", Class{NoRatio: true, Level: [3]int{4, 5, 6}}, Nightmare, 9, true, 5},
+		{"primeevil alone is irrelevant (bit 7)", Class{PrimeEvil: true, Level: [3]int{4, 5, 6}}, Hell, 9, true, 9},
+		{"unknown area", Class{Level: [3]int{4, 5, 6}}, Hell, 0, true, 6},
 	}
-
-	LevelExclusionFlag = ExcludeBoss
-	defer func() { LevelExclusionFlag = ExcludePrimeEvil }()
-
-	if c.ResolveLevel(Hell, 9) != 6 {
-		t.Error("boss rule")
+	for _, tc := range tests {
+		if got := tc.c.ResolveLevel(tc.diff, tc.area, tc.exp); got != tc.want {
+			t.Errorf("%s: got %d want %d", tc.name, got, tc.want)
+		}
 	}
 }

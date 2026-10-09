@@ -47,7 +47,7 @@ func TestScale(t *testing.T) {
 		Exp: [3]int{11, 12, 13}, Level: [3]int{3, 4, 5}}
 	raw.Attacks[A2] = [3]AttackStats{{9, 1, 2}, {9, 1, 2}, {9, 1, 2}}
 
-	boss := &Class{Boss: true, PrimeEvil: true, MinHP: [3]int{100, 100, 100}, MaxHP: [3]int{100, 100, 100}, Level: [3]int{4, 5, 6}}
+	boss := &Class{Boss: true, MinHP: [3]int{100, 100, 100}, MaxHP: [3]int{100, 100, 100}, Level: [3]int{4, 5, 6}}
 
 	first := func(n int) int { return 0 }
 	last := func(n int) int { return n - 1 }
@@ -60,9 +60,16 @@ func TestScale(t *testing.T) {
 		roll      func(int) int
 		check     func(Stats) string
 	}{
-		{"nightmare area level", ratio, Nightmare, 5, false, first, func(s Stats) string {
-			if s.Level != 5 || s.HP != 2000 || s.HPMax != 2000 {
+		{"nightmare area level (expansion only)", ratio, Nightmare, 5, true, first, func(s Stats) string {
+			if s.Level != 5 || s.HP != 2005 || s.HPMax != 2005 {
 				return "level/hp"
+			}
+
+			return ""
+		}},
+		{"classic ignores area level", ratio, Nightmare, 5, false, first, func(s Stats) string {
+			if s.Level != 2 {
+				return "classic level"
 			}
 
 			return ""
@@ -88,7 +95,7 @@ func TestScale(t *testing.T) {
 
 			return ""
 		}},
-		{"ac ratio nightmare", ratio, Nightmare, 7, false, first, func(s Stats) string {
+		{"ac ratio nightmare", ratio, Nightmare, 7, true, first, func(s Stats) string {
 			if s.AC != MulDiv(207, 50, 100) {
 				return "ac"
 			}
@@ -102,7 +109,7 @@ func TestScale(t *testing.T) {
 
 			return ""
 		}},
-		{"hell damage and TH", ratio, Hell, 2, false, first, func(s Stats) string {
+		{"hell damage and TH", ratio, Hell, 2, true, first, func(s Stats) string {
 			a := s.Attacks[A1]
 			if a.TH != 1204 || a.Min != 32 || a.Max != 64 {
 				return "hell attack"
@@ -117,7 +124,7 @@ func TestScale(t *testing.T) {
 
 			return ""
 		}},
-		{"boss ignores area level", boss, Hell, 9, false, first, func(s Stats) string {
+		{"boss ignores area level", boss, Hell, 9, true, first, func(s Stats) string {
 			if s.Level != 6 {
 				return "boss level"
 			}
@@ -131,14 +138,14 @@ func TestScale(t *testing.T) {
 
 			return ""
 		}},
-		{"level beyond table clamps", ratio, Nightmare, 500, false, nil, func(s Stats) string {
+		{"level beyond table clamps", ratio, Nightmare, 500, true, nil, func(s Stats) string {
 			if s.Level != 500 || s.HP == 0 {
 				return "clamp"
 			}
 
 			return ""
 		}},
-		{"difficulty clamps", ratio, 7, 1, false, first, func(s Stats) string {
+		{"difficulty clamps", ratio, 7, 1, true, first, func(s Stats) string {
 			if s.Level != 1 {
 				return "diff"
 			}
@@ -210,11 +217,31 @@ func TestRealData(t *testing.T) {
 		}
 	}
 
+	// Radament and Izual are boss=1 with primeevil blank: bit 6 (boss) keeps
+	// them on their monstats Level in Nightmare/Hell (VERIFIED 0x006cf268).
+	for _, tc := range []struct {
+		id   string
+		diff int
+	}{{"radament", Nightmare}, {"radament", Hell}, {"izual", Nightmare}, {"izual", Hell}} {
+		c := cl[tc.id]
+		if c == nil || !c.Boss || c.PrimeEvil {
+			t.Fatalf("%s: want boss without primeevil, got %+v", tc.id, c)
+		}
+
+		if got := ml.Scale(c, tc.diff, 40, true, nil).Level; got != c.Level[tc.diff] {
+			t.Errorf("%s diff %d: level %d, want monstats %d", tc.id, tc.diff, got, c.Level[tc.diff])
+		}
+	}
+
+	if cl["andariel"].Align != 0 || cl["fallen1"].Align != 0 {
+		t.Error("hostile classes must have Align 0")
+	}
+
 	// A plain monster takes the area level in Nightmare/Hell: fallen1 in a level-30 area.
 	f := cl["fallen1"]
-	s := ml.Scale(f, Nightmare, 30, false, func(n int) int { return n - 1 })
+	s := ml.Scale(f, Nightmare, 30, true, func(n int) int { return n - 1 })
 
-	if s.Level != 30 || s.HP != MulDiv(ml[30].HP[0][Nightmare], f.MaxHP[Nightmare], 100) {
+	if s.Level != 30 || s.HP != MulDiv(ml[30].HP[1][Nightmare], f.MaxHP[Nightmare], 100) {
 		t.Errorf("fallen1: %+v", s)
 	}
 

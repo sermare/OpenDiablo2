@@ -49,9 +49,10 @@ type Options struct {
 	// Players is the number of players in the game (0 means 1).
 	Players int
 	// Classic enables the 0x0063ff30 adjustment, which the exe applies when
-	// game+0x70 is zero (no area level source; identity of that field as
-	// "classic game" is inferred, not proven), difficulty > Normal and the
-	// class Align is not 1.
+	// game+0x70 is zero, difficulty > Normal and the class Align is not 1.
+	// VERIFIED: game+0x70 is the expansion flag (it selects MonLvl vs
+	// MonLvlEx in LEVEL_GetMonsterLevel 0x0061dc00), so Classic should equal
+	// !expansion; it stays a separate option for callers that model it.
 	Classic bool
 }
 
@@ -74,28 +75,4 @@ func (s *Stats) applyClassic(c *Class, diff int) {
 	s.AC = MulDiv(s.AC, r.AC[diff][0], r.AC[diff][1])
 	s.XP = MulDiv(s.XP, r.XP[diff][0], r.XP[diff][1])
 	s.Level = c.Level[Normal] + 25*diff
-}
-
-// LevelExclusion selects which class flag keeps a class on its monstats Level
-// in Nightmare/Hell. The exe tests flag bit 6 (mask at 0x006cf268). By the
-// monstats flag table order (noRatio=2 and interact=9 both check out against
-// the code) bit 6 is primeevil; boss would be bit 5. UNVERIFIED which column
-// the bit comes from, so it is switchable.
-type LevelExclusion int
-
-// Exclusion choices.
-const (
-	ExcludePrimeEvil LevelExclusion = iota
-	ExcludeBoss
-)
-
-// LevelExclusionFlag is the active choice.
-var LevelExclusionFlag = ExcludePrimeEvil
-
-func (c *Class) excluded() bool {
-	if LevelExclusionFlag == ExcludeBoss {
-		return c.Boss
-	}
-
-	return c.PrimeEvil
 }
