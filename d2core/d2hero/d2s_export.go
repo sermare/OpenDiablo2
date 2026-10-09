@@ -63,6 +63,12 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 
 	var warnings []string
 
+	// a character that was never saved by the game has only a header: give it
+	// the body sections the game writes on its first save
+	if c.Body == nil && c.Header.IsNewCharacter() && state.Stats != nil {
+		c.Promote()
+	}
+
 	warn := func(format string, args ...interface{}) {
 		msg := fmt.Sprintf(format, args...)
 		warnings = append(warnings, msg)
@@ -80,6 +86,7 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 	}
 
 	exportWorld(c.Header, state)
+	exportDeath(c, state)
 
 	if !opts.LastPlayed.IsZero() {
 		binary.LittleEndian.PutUint32(c.Header.Raw[lastPlayedOffset:], uint32(opts.LastPlayed.Unix()))
@@ -275,4 +282,54 @@ func checkEquipment(c *d2s.Character, state *HeroState, warn func(string, ...int
 			warn("equipment slot %d: engine has %q but the .d2s has %q, keeping the .d2s item", slot, code, have)
 		}
 	}
+}
+
+// corpseHeaderX and corpseHeaderY are where the 12 corpse header bytes keep the
+// corpse position. UNVERIFIED: the writer (0x5674f0) fills the second and
+// third dword from two getters, the loader skips all 12 bytes.
+const (
+	corpseHeaderX = 4
+	corpseHeaderY = 8
+)
+
+// exportDeath writes the died status and the corpse of a hero that died. The
+// equipped items are moved from the item list to the corpse, as the game does
+// (the corpse built by 0x57d6f0 receives the equipped items); inventory and
+// stash stay. A corpse that came with the imported file is left alone.
+func exportDeath(c *d2s.Character, state *HeroState) {
+	d := state.Death
+	if d == nil {
+		return
+	}
+
+	if state.Hardcore {
+		c.Header.Status |= d2s.StatusHardcore
+	}
+
+	if d.Died {
+		c.Header.Status |= d2s.StatusDied
+	} else {
+		c.Header.Status &^= d2s.StatusDied
+	}
+
+	if d.Corpse == nil || c.Body == nil || c.HasCorpse {
+		return
+	}
+
+	kept := c.Items[:0:0]
+
+	for i := range c.Items {
+		if c.Items[i].Location == d2s.LocationEquipped {
+			c.Corpse = append(c.Corpse, c.Items[i])
+			continue
+		}
+
+		kept = append(kept, c.Items[i])
+	}
+
+	c.Items = kept
+	c.HasCorpse = true
+
+	binary.LittleEndian.PutUint32(c.CorpseHeader[corpseHeaderX:], uint32(d.Corpse.X))
+	binary.LittleEndian.PutUint32(c.CorpseHeader[corpseHeaderY:], uint32(d.Corpse.Y))
 }

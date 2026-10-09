@@ -32,6 +32,14 @@ type HeroState struct {
 	// Containers is the inventory, belt, cube and stash content; nil for
 	// heroes that never saved any (older hero files omit it).
 	Containers *HeroContainers `json:"containers,omitempty"`
+	// Expansion, Hardcore and Ladder are the choices made when the character
+	// was created (the .d2s status bits 0x20, 0x04 and 0x40).
+	Expansion bool `json:"expansion,omitempty"`
+	Hardcore  bool `json:"hardcore,omitempty"`
+	Ladder    bool `json:"ladder,omitempty"`
+	// Death is the record of the hero's deaths and corpse; nil if the hero
+	// never died.
+	Death *DeathState `json:"death,omitempty"`
 }
 
 // HeroProgress carries the story progress of a .d2s save: the quest records,

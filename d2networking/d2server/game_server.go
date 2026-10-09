@@ -399,6 +399,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 		playerState.RightSkill,
 		playerState.Gold,
 		d2netpacket.WithContainers(playerState.Containers),
+		d2netpacket.WithDeath(playerState.Death, playerState.Hardcore),
 	)
 	if err != nil {
 		g.Errorf("AddPlayerPacket: %v", err)
@@ -503,6 +504,17 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 			playerState.Difficulty = savePacket.Difficulty
 		}
 		playerState.Containers = savePacket.Player.Containers
+
+		// a hero that died has its equipment on the corpse (or got it back):
+		// the client's equipment is the truth from then on
+		if savePacket.Player.Death != nil {
+			playerState.Death = savePacket.Player.Death
+			playerState.Hardcore = playerState.Hardcore || savePacket.Player.Hardcore
+
+			if savePacket.Player.Equipment != nil {
+				playerState.Equipment = *savePacket.Player.Equipment
+			}
+		}
 
 		err = g.heroStateFactory.Save(playerState)
 		if err != nil {

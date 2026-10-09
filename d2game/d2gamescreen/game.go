@@ -160,6 +160,7 @@ type Game struct {
 	attackRepathAcc      float64
 	autoPanel            autoPanelState
 	levelStatusAcc       float64
+	death                deathState
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -298,6 +299,7 @@ func (v *Game) Advance(elapsed float64) error {
 		v.gameClient.MapEngine.Advance(elapsed)
 		v.advanceMonsters(elapsed)
 		v.advanceSkills(elapsed)
+		v.advanceDeath(elapsed)
 	}
 
 	if v.gameControls != nil {
@@ -388,6 +390,10 @@ func (v *Game) bindGameControls() error {
 
 // OnPlayerMove sends the player move action to the server
 func (v *Game) OnPlayerMove(targetX, targetY float64) {
+	if v.localPlayer.IsDead() {
+		return // the dead do not walk
+	}
+
 	worldPosition := v.localPlayer.Position.World()
 
 	playerID, worldX, worldY := v.gameClient.PlayerID, worldPosition.X(), worldPosition.Y()
@@ -780,6 +786,10 @@ func (v *Game) OnPlayerSave() error {
 
 // OnPlayerCast sends the casting skill action to the server
 func (v *Game) OnPlayerCast(skillID int, targetX, targetY float64) {
+	if v.localPlayer != nil && v.localPlayer.IsDead() {
+		return
+	}
+
 	// skills the skill pipeline implements run locally with real missiles; the
 	// rest keep the old path (a CastSkill packet that plays the client effects)
 	if v.localPlayer != nil && v.castWithPipeline(skillID, targetX, targetY) {

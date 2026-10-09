@@ -26,6 +26,10 @@ type AddPlayerPacket struct {
 	Gold       int
 	// Containers is the hero's saved inventory, belt, cube and stash (nil if none).
 	Containers *d2hero.HeroContainers `json:"containers,omitempty"`
+	// Death is the hero's death record (nil if it never died); Hardcore marks
+	// a hardcore character.
+	Death    *d2hero.DeathState `json:"death,omitempty"`
+	Hardcore bool               `json:"hardcore,omitempty"`
 }
 
 // CreateAddPlayerPacket returns a NetPacket which declares an
@@ -84,4 +88,12 @@ type AddPlayerOption func(*AddPlayerPacket)
 // WithContainers sends the hero's saved inventory, belt, cube and stash along.
 func WithContainers(c *d2hero.HeroContainers) AddPlayerOption {
 	return func(p *AddPlayerPacket) { p.Containers = c }
+}
+
+// WithDeath sends the hero's death record and hardcore flag along.
+func WithDeath(d *d2hero.DeathState, hardcore bool) AddPlayerOption {
+	return func(p *AddPlayerPacket) {
+		p.Death = d
+		p.Hardcore = hardcore
+	}
 }
