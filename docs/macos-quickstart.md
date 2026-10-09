@@ -58,3 +58,15 @@ from a non-GUI shell fails with a Cocoa display error):
 `d2common/d2fileformats/d2s` reads the header, quests, waypoints, NPC flags,
 stats and skills of a Diablo II 1.14b `.d2s`; `HeroStateFactory.ImportD2S`
 turns one into an OpenDiablo2 hero. Items are not imported yet.
+
+## One-command verification
+
+`scripts/verify.sh` builds the engine, runs every unit test, runs the real-save
+oracle tests and starts a real `.d2s` character in the game to check the NPC
+menus, then prints `ALL CHECKS PASSED` or what failed. It needs a GUI session.
+
+```sh
+D2S_SAMPLE_BODY=/path/to/real.d2s D2S_SAMPLE_BODY_JSON=/path/to/expected.json \
+D2_TABLES=/path/to/extracted/tables ./scripts/verify.sh
+```
+
