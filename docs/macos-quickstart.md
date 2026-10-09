@@ -109,6 +109,7 @@ a semicolon-separated list of steps, run a few seconds after the game starts:
 | `say:<command>` | Run an in-game console command. |
 | `expect:log=<substring>` | Fail the run unless the game log already contains it. |
 | `shot:<file>.png` | Save a screenshot of the window now (no spaces in the path). |
+| `pad:<op>` | Virtual gamepad: `connect`, `disconnect`, `press=A` (tap), `hold=A`, `release=A`, `stick=left\|right,x,y`, `state` (logs panels, automap and skills). See `docs/gamepad.md`. |
 | `exit` | Finish; with `OD2_AUTOEXIT=1` the process exits 0 on PASS, 1 on FAIL. |
 
 Opening a panel with `panel:` also logs the values it shows, so an imported hero can be checked without a

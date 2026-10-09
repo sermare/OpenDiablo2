@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2input/d2gamepad"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2autoscript"
 )
 
@@ -220,3 +221,17 @@ func (h autoScriptHost) Hotkey(key, skill string) error {
 }
 
 func (h autoScriptHost) Press(key string) error { return h.v.gameControls.AutoPress(key) }
+
+// Pad implements d2autoscript.PadHost: the step drives the synthetic
+// controller, which the input service merges with the real ones.
+func (h autoScriptHost) Pad(op string) error {
+	h.v.Infof("PAD step %s", op)
+
+	if op == "state" {
+		h.v.Infof("PAD state %s", h.v.gameControls.AutoPadState())
+
+		return nil
+	}
+
+	return d2gamepad.DefaultSynthetic().Do(op)
+}

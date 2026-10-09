@@ -166,3 +166,14 @@ func (g *GameControls) RunOptionsAutoTest() {
 
 	m.close()
 }
+
+// SubtitleLogOn reports whether NPC speech is also written to the log as
+// text (Options -> Accessibility -> Speech subtitle log; OD2_SUBTITLE_LOG=1
+// forces it on for tests).
+func SubtitleLogOn() bool {
+	if os.Getenv("OD2_SUBTITLE_LOG") == "1" {
+		return true
+	}
+
+	return optionsBackend != nil && optionsBackend.Config().SubtitleLog()
+}

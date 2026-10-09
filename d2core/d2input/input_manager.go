@@ -22,12 +22,16 @@ type inputManager struct {
 // NewInputManager returns a new input manager instance
 func NewInputManager() d2interface.InputManager {
 	return &inputManager{
-		inputService: ebiten_input.InputService{},
+		inputService: ebiten_input.NewGamepadService(),
 	}
 }
 
 // Advance advances the inputManager
-func (im *inputManager) Advance(_, _ float64) error {
+func (im *inputManager) Advance(elapsed, _ float64) error {
+	if u, ok := im.inputService.(interface{ Update(float64) }); ok {
+		u.Update(elapsed) // polls the gamepads before any key is asked for
+	}
+
 	im.updateKeyMod()
 	im.updateButtonMod()
 
