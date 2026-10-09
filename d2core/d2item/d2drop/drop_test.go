@@ -156,15 +156,15 @@ func TestQualityTail(t *testing.T) {
 		t.Errorf("want superior, got %d", q)
 	}
 
-	// HiQ passes (>=128), normal roll < 128 -> low.
+	// HiQ passes (>=128), normal roll < 128 -> normal.
 	rng = &scriptRNG{vals: []uint32{big, big, big, big, big, 5}}
-	if q := RollQuality(rng, testRatio, QualityInput{TypeRare: true, ILvl: 10, QLvl: 10}); q != QualityLow {
-		t.Errorf("want low, got %d", q)
+	if q := RollQuality(rng, testRatio, QualityInput{TypeRare: true, ILvl: 10, QLvl: 10}); q != QualityNormal {
+		t.Errorf("want normal, got %d", q)
 	}
 
 	rng = &scriptRNG{vals: []uint32{big, big, big, big, big, big}}
-	if q := RollQuality(rng, testRatio, QualityInput{TypeRare: true, ILvl: 10, QLvl: 10}); q != QualityNormal {
-		t.Errorf("want normal, got %d", q)
+	if q := RollQuality(rng, testRatio, QualityInput{TypeRare: true, ILvl: 10, QLvl: 10}); q != QualityLow {
+		t.Errorf("want low, got %d", q)
 	}
 
 	// MF below -99 skips straight to the tail.
