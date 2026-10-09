@@ -69,17 +69,22 @@ type castTest struct {
 // skillEngine returns the skill engine, creating it once the hero and the
 // monster director exist.
 func (v *Game) skillEngine() *d2skills.Engine {
-	if v.skills != nil {
-		return v.skills
-	}
-
 	if v.localPlayer == nil {
-		return nil
+		return v.skills
 	}
 
 	md := v.monsterDirector()
 	if md == nil {
-		return nil
+		return v.skills
+	}
+
+	if v.skills != nil {
+		// the area changed: the Director was rebuilt, the hero keeps his state
+		if v.skills.Monsters() != md {
+			v.skills.AreaChanged(md)
+		}
+
+		return v.skills
 	}
 
 	scenario := os.Getenv("OD2_AUTOCAST") != ""

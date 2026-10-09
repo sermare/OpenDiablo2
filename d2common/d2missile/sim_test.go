@@ -490,3 +490,33 @@ func TestHomingStationaryAndHitEvery(t *testing.T) {
 		t.Errorf("hits every 5 frames over 20 frames at 50%%: %v", phys)
 	}
 }
+
+func TestRemoveOwnedAndClear(t *testing.T) {
+	w := newWorld()
+	s := NewSim(w, nil)
+
+	for _, id := range []string{"a", "b", "a"} {
+		if _, err := s.Create(CreateParams{Spec: fireBolt(), Level: 1, DestX: 30,
+			Owner: Owner{ID: id, IsPlayer: true}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if got := s.RemoveOwned("a"); len(got) != 2 || !got[0].Dead() {
+		t.Fatalf("removed %d", len(got))
+	}
+
+	if ms := s.Missiles(); len(ms) != 1 || ms[0].Owner.ID != "b" {
+		t.Fatalf("left %v", ms)
+	}
+
+	// no event is emitted and the survivor still flies
+	evs := run(s, w, 5)
+	if len(s.Missiles()) != 1 || kinds(evs)[EventExpire] != 0 {
+		t.Fatalf("survivor %v events %v", s.Missiles(), kinds(evs))
+	}
+
+	if got := s.Clear(); len(got) != 1 || len(s.Missiles()) != 0 {
+		t.Fatalf("clear removed %d, left %d", len(got), len(s.Missiles()))
+	}
+}
