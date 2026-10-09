@@ -92,8 +92,11 @@ func NewQuestLog(asset *d2asset.AssetManager,
 		tabs[i] = questLogTab{}
 	}
 
-	// nolint:gomnd // this is only test, it also should come from save file
-	mpa := 2
+	// every act has its tab (the original's log shows all five acts' tabs)
+	mpa := d2enum.ActsNumber
+	if act < 1 || act > d2enum.ActsNumber {
+		act = 1
+	}
 
 	ql := &QuestLog{
 		asset:         asset,
@@ -276,6 +279,46 @@ func (s *QuestLog) loadTabs() {
 	s.setTab(s.act - 1)
 }
 
+// SelectAct shows the tab of an act (1..5) and its first quest that has been
+// started, with the quest's title and text.
+func (s *QuestLog) SelectAct(act int) {
+	if act < 1 || act > d2enum.ActsNumber {
+		return
+	}
+
+	s.setTab(act - 1)
+
+	for n := range s.quests[act-1].buttons {
+		if s.questStatus[s.cordsToQuestID(act, n)] == d2enum.QuestStatusNotStarted {
+			continue
+		}
+
+		s.quests[act-1].buttons[n].Activate()
+
+		return
+	}
+}
+
+// Summary describes what the log shows, for the autotest logs.
+func (s *QuestLog) Summary() string {
+	var counts [3]int // not started, in progress, completed
+
+	for n := range s.quests[s.selectedTab].icons {
+		switch st := s.questStatus[s.cordsToQuestID(s.selectedTab+1, n)]; {
+		case st == d2enum.QuestStatusNotStarted:
+			counts[0]++
+		case st == d2enum.QuestStatusCompleted || st == d2enum.QuestStatusCompleting:
+			counts[2]++
+		default:
+			counts[1]++
+		}
+	}
+
+	return fmt.Sprintf("act=%d tabs=%d quests=%d notstarted=%d inprogress=%d completed=%d selected=%d title=%q text=%q",
+		s.selectedTab+1, s.maxPlayersAct, len(s.quests[s.selectedTab].icons), counts[0], counts[1], counts[2],
+		s.selectedQuest, s.questName.GetText(), strings.ReplaceAll(s.questDescr.GetText(), "\n", " "))
+}
+
 // loadQuestBoard creates quest fields (socket, button, icon) for specified act
 func (s *QuestLog) loadQuestBoard(act int) (wg *d2ui.WidgetGroup, icons []*d2ui.Sprite, buttons []*d2ui.Button, sockets []*d2ui.Sprite) {
 	wg = s.uiManager.NewWidgetGroup(d2ui.RenderPriorityQuestLog)
@@ -436,7 +479,7 @@ func (s *QuestLog) setQuestLabel() {
 		s.questDescr.SetText(
 			strings.Join(
 				d2util.SplitIntoLinesWithMaxWidth(
-					s.asset.TranslateString("qstsprevious"),
+					strings.TrimSpace(s.asset.TranslateString("qstsprevious")),
 					questDescriptionLenght),
 				"\n"),
 		)
@@ -444,10 +487,10 @@ func (s *QuestLog) setQuestLabel() {
 		s.questDescr.SetText("")
 	default:
 		str := fmt.Sprintf("qstsa%dq%d%d", s.selectedTab+1, s.selectedQuest, status)
-		descr := s.asset.TranslateString(str)
+		descr := strings.TrimSpace(s.asset.TranslateString(str))
 
 		// if description not found
-		if str == descr {
+		if str == descr || descr == "" {
 			s.questDescr.SetText("")
 		} else {
 			s.questDescr.SetText(strings.Join(

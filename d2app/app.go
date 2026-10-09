@@ -171,6 +171,7 @@ func (a *App) loadEngine() error {
 	}
 
 	a.renderer = renderer
+	a.applyColorAdjust()
 
 	if a.errorMessage != nil {
 		return a.renderer.Run(a.updateInitError, updateNOOP, 800, 600, "OpenDiablo2")
@@ -451,6 +452,10 @@ func (a *App) render(target d2interface.Surface) {
 
 	if err := a.guiManager.Render(target); err != nil {
 		return
+	}
+
+	if adj, ok := a.renderer.(colorAdjuster); ok {
+		adj.AdjustColors(target)
 	}
 
 	a.renderDebug(target)

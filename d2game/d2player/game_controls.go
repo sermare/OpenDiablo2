@@ -900,6 +900,12 @@ func (g *GameControls) toggleHelpOverlay() {
 func (g *GameControls) AutoPanel(name string) error {
 	var panel Panel
 
+	questAct := 0
+	if len(name) == len("quest")+1 && strings.HasPrefix(name, "quest") {
+		questAct = int(name[len("quest")] - '0')
+		name = "quest"
+	}
+
 	switch name {
 	case "close":
 		g.clearScreen()
@@ -948,6 +954,10 @@ func (g *GameControls) AutoPanel(name string) error {
 		return fmt.Errorf("panel %q did not open", name)
 	}
 
+	if name == "quest" && questAct > 0 {
+		g.questLog.SelectAct(questAct)
+	}
+
 	if name == "character" {
 		// the values the panel shows, for the autotests (scripts/verify.d/89-hero-stats.sh)
 		g.heroStatsPanel.setDerivedValues()
@@ -968,6 +978,8 @@ func (g *GameControls) logPanel(name string) {
 	case "skills":
 		g.Infof("PANEL skills: %s", g.skilltree.Summary())
 		g.Infof("PANEL skills active: left=%s right=%s", skillLabel(g.hero.LeftSkill), skillLabel(g.hero.RightSkill))
+	case "quest":
+		g.Infof("PANEL quest: %s", g.questLog.Summary())
 	case "inventory":
 		g.Infof("PANEL inventory: gold=%d items=%d worn=[%s] equipment=[%s]", g.inventory.Gold(),
 			len(g.inventory.grid.items), g.inventory.EquippedSummary(), g.equipmentSummary())

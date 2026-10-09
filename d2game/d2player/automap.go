@@ -2,6 +2,8 @@ package d2player
 
 import (
 	"fmt"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2config"
+	"image/color"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2automap"
@@ -68,6 +70,8 @@ type Automap struct {
 	sprites  map[d2automap.Size]*d2ui.Sprite
 	spriteAt map[d2automap.Size]int // act the palette was loaded for
 	label    *d2ui.Label
+	names    map[string]*d2ui.Label // party member name labels
+	shift    d2automap.PanelShift   // the panel shift the map is drawn with (sticks when "center when cleared" is off)
 	offscr   d2interface.Surface
 	offW     int
 	offH     int
@@ -87,6 +91,7 @@ func newAutomap(gc *GameControls, term d2interface.Terminal) *Automap {
 		models:   map[int]*d2automap.Model{},
 		sprites:  map[d2automap.Size]*d2ui.Sprite{},
 		spriteAt: map[d2automap.Size]int{},
+		names:    map[string]*d2ui.Label{},
 		size:     d2automap.SizeFull,
 		Logger:   d2util.NewLogger(),
 	}
@@ -171,6 +176,9 @@ func (a *Automap) logState() {
 	a.Infof("AUTOMAP state on=%v size=%s level=%d cells=%d floor=%d wall=%d object=%d",
 		a.on, sz, a.currentLevel(), m.Count(), m.CountLayer(d2automap.LayerFloor),
 		m.CountLayer(d2automap.LayerWall), m.CountLayer(d2automap.LayerObject))
+
+	o := automapOptions()
+	a.Infof("AUTOMAP options fade=%v center=%v party=%v names=%v", o.Fade, o.Center, o.Party, o.Names)
 }
 
 // logMarkers logs the units that get a marker (verification aid).
@@ -184,8 +192,10 @@ func (a *Automap) logMarkers() {
 		switch v := e.(type) {
 		case *d2mapentity.Player:
 			if v != a.hero {
-				a.Infof("AUTOMAP marker other-player id=%s name=%q party=%v pos=(%.1f,%.1f)", id, v.Name(),
-					a.gc.isPartyMember(v), x, y)
+				party := a.gc.isPartyMember(v)
+				o := automapOptions()
+				a.Infof("AUTOMAP marker other-player id=%s name=%q party=%v pos=(%.1f,%.1f) shown=%v name_drawn=%v", id, v.Name(),
+					party, x, y, !party || o.Party, party && o.Party && o.Names)
 			}
 		case *d2mapentity.NPC:
 			a.Infof("AUTOMAP marker npc %q pos=(%.1f,%.1f)", v.Label(), x, y)
@@ -383,3 +393,34 @@ func (s tileSource) Tiles(tx, ty int) []d2automap.TileRef {
 
 	return refs
 }
+
+// automapOpts are the choices of Options -> Automap Options. UNVERIFIED
+// meanings (the menu strings are verified, what each switch does is read from
+// their names): Fade draws the map half transparent, Center When Cleared
+// moves the map back to the screen centre when the panels close (off: it stays
+// where the last panel put it), Show Party draws the party members' markers
+// and Show Names writes their names above them.
+type automapOpts struct {
+	Fade, Center, Party, Names bool
+}
+
+// automapOptions reads the options (the defaults when no backend is set).
+func automapOptions() automapOpts {
+	yes := func(key string) bool {
+		if optionsBackend != nil {
+			return optionsBackend.Config().OptionIndex(key) == 0 // values are YES, NO
+		}
+
+		def, _ := d2config.OptionDefFor(key)
+
+		return def.Default == 0
+	}
+
+	return automapOpts{
+		Fade: yes(d2config.OptAutomapFade), Center: yes(d2config.OptAutomapCenter),
+		Party: yes(d2config.OptAutomapShowParty), Names: yes(d2config.OptAutomapNames),
+	}
+}
+
+// automapFadeColor multiplies the colour of the map's cells when Fade is on.
+var automapFadeColor = color.NRGBA{R: 255, G: 255, B: 255, A: 150}

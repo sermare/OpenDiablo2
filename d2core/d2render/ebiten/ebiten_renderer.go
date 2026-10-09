@@ -38,6 +38,9 @@ type Renderer struct {
 	renderCallback
 	*d2util.GlyphPrinter
 	lastRenderError error
+
+	gamma, contrast int // video options steps, see adjust.go
+	adjustTmp       *ebiten.Image
 }
 
 // Update calls the game's logical update function (the `Advance` method)
@@ -72,6 +75,8 @@ func (r *Renderer) Layout(_, _ int) (width, height int) {
 func CreateRenderer(cfg *d2config.Configuration) (*Renderer, error) {
 	result := &Renderer{
 		GlyphPrinter: d2util.NewDebugPrinter(),
+		gamma:        adjustNeutral,
+		contrast:     adjustNeutral,
 	}
 
 	if cfg != nil {

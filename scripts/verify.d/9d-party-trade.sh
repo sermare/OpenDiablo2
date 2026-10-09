@@ -130,6 +130,9 @@ scenario_check() {
   { [ -n "$hb" ] && [ -n "$jb" ] && [ $((hb - 1000 + 400)) -eq "$ha" ] && [ $((jb + 1000 - 400)) -eq "$ja" ]; } || { echo "FAIL: trade gold host $hb->$ha joiner $jb->$ja"; fail=1; }
   echo "$hline" | grep -qE 'gave=\[[^]]+\] got=\[[^]]+\]' || { echo "FAIL: host trade line has no items both ways"; fail=1; }
   echo "$jline" | grep -qE 'gave=\[[^]]+\] got=\[[^]]+\]' || { echo "FAIL: joiner trade line has no items both ways"; fail=1; }
+  # the window draws both offers as the two item pages (Trade Page 1/2 of Inventory.txt)
+  grep -qE 'TRADE WINDOW pages yours=\["[^]]+\] theirs=\["[^]]+\]' $log.txt || { echo "FAIL: host trade window shows no items on both pages"; fail=1; }
+  [ -s $tmp/9d-host-trade.png ] || { echo "FAIL: no trade window screenshot"; fail=1; }
   grep -q "TRADE done a=" $log.txt || { echo "FAIL: server did not log the trade"; fail=1; }
   # both heroes are saved (and exported to a .d2s) after the trade
   local done_line n_exp

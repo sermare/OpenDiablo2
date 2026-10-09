@@ -99,7 +99,14 @@ func (a *Automap) Render(target d2interface.Surface) {
 	w, h := target.GetSize()
 	hx, hy := a.hero.GetPositionF()
 	cx, cy := d2automap.WorldCell(hx, hy)
+	opts := automapOptions()
 	shift := a.panelShift()
+
+	if shift == d2automap.PanelNone && !opts.Center {
+		shift = a.shift // "center when cleared" is off: the map stays where the last panel put it
+	}
+
+	a.shift = shift
 	lay := d2automap.ComputeLayout(a.size, w, h, cx, cy, shift, a.miniLeft)
 
 	dest := target
@@ -116,8 +123,17 @@ func (a *Automap) Render(target d2interface.Surface) {
 		dest, ox, oy = a.offscr, lay.Clip.X0, lay.Clip.Y0
 	}
 
+	if opts.Fade {
+		dest.PushColor(automapFadeColor)
+	}
+
 	a.drawCells(dest, sp, lay, ox, oy, w, h)
-	a.drawMarkers(dest, lay, ox, oy, cx, cy)
+
+	if opts.Fade {
+		dest.Pop()
+	}
+
+	a.drawMarkers(dest, lay, ox, oy, cx, cy, opts)
 
 	if a.size == d2automap.SizeMini {
 		target.PushTranslation(ox, oy)
@@ -177,7 +193,7 @@ func (a *Automap) playerColor(p *d2mapentity.Player) color.Color {
 	return automapColorOther
 }
 
-func (a *Automap) drawMarkers(dest d2interface.Surface, lay d2automap.Layout, ox, oy int, hcx, hcy float64) {
+func (a *Automap) drawMarkers(dest d2interface.Surface, lay d2automap.Layout, ox, oy int, hcx, hcy float64, opts automapOpts) {
 	mark := func(tx, ty float64, c color.Color) {
 		cx, cy := d2automap.WorldCell(tx, ty)
 		x, y := lay.HeroScreen(cx, cy)
@@ -206,8 +222,19 @@ func (a *Automap) drawMarkers(dest d2interface.Surface, lay d2automap.Layout, ox
 
 		switch v := e.(type) {
 		case *d2mapentity.Player:
-			if v != a.hero {
-				mark(ex, ey, a.playerColor(v))
+			if v == a.hero {
+				continue
+			}
+
+			party := a.gc.isPartyMember(v)
+			if party && !opts.Party {
+				continue
+			}
+
+			mark(ex, ey, a.playerColor(v))
+
+			if party && opts.Names {
+				a.drawPartyName(dest, lay, ox, oy, ex, ey, v.Name())
 			}
 		case *d2mapentity.NPC:
 			mark(ex, ey, automapColorNPC)
@@ -245,4 +272,30 @@ func (a *Automap) drawText(target d2interface.Surface, w int) {
 	a.label.SetText(name)
 	a.label.SetPosition(w-16, 40)
 	a.label.Render(target)
+}
+
+// drawPartyName writes a party member's name above the marker.
+func (a *Automap) drawPartyName(dest d2interface.Surface, lay d2automap.Layout, ox, oy int, wx, wy float64, name string) {
+	cx, cy := d2automap.WorldCell(wx, wy)
+	x, y := lay.HeroScreen(cx, cy)
+	x, y = x+8, y-8
+
+	if !lay.Clip.Contains(x, y) {
+		return
+	}
+
+	l := a.names[name]
+	if l == nil {
+		if l = a.ui.NewLabel(d2resource.Font16, d2resource.PaletteStatic); l == nil {
+			return
+		}
+
+		l.Alignment = d2ui.HorizontalAlignCenter
+		l.SetText(name)
+		l.Color[0] = automapColorParty
+		a.names[name] = l
+	}
+
+	l.SetPosition(x-ox, y-oy-12)
+	l.Render(dest)
 }
