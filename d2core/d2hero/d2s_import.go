@@ -56,6 +56,8 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 
 	applyD2SAttributes(state, &body.Attributes, f)
 
+	f.importD2SItems(state, data)
+
 	if err := f.applyD2SSkills(state, hero, body.SkillPoints); err != nil {
 		return nil, err
 	}
@@ -119,4 +121,22 @@ func (f *HeroStateFactory) applyD2SSkills(state *HeroState, hero d2enum.Hero, po
 	}
 
 	return nil
+}
+
+// importD2SItems adds the equipped items. Failures only cost the equipment:
+// the character is still imported.
+func (f *HeroStateFactory) importD2SItems(state *HeroState, data []byte) {
+	tables, err := f.loadD2SItemTables()
+	if err != nil {
+		fmt.Printf("d2s: item tables unavailable, skipping equipment: %v\n", err)
+		return
+	}
+
+	character, err := d2s.Parse(data, tables)
+	if err != nil {
+		fmt.Printf("d2s: could not read items of %s, skipping equipment: %v\n", state.HeroName, err)
+		return
+	}
+
+	f.applyD2SEquipment(state, character.Items, tables)
 }

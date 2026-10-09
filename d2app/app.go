@@ -34,6 +34,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2input"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2render/ebiten"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2screen"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2term"
@@ -719,6 +720,48 @@ func (a *App) importD2SSave(path string) (string, error) {
 
 	a.Infof("imported %s (%v level %d, %d skills) -> %s",
 		state.HeroName, state.HeroType, state.Stats.Level, len(state.Skills), state.FilePath)
+	a.Infof("equipment: %s", describeEquipment(&state.Equipment))
 
 	return state.FilePath, nil
+}
+
+// describeEquipment lists the filled slots of a hero, for logs.
+func describeEquipment(e *d2inventory.CharacterEquipment) string {
+	parts := make([]string, 0, 8)
+
+	add := func(slot string, name string, ok bool) {
+		if ok {
+			parts = append(parts, slot+"="+name)
+		}
+	}
+
+	if e.Head != nil {
+		add("head", e.Head.ItemName, true)
+	}
+
+	if e.Torso != nil {
+		add("torso", e.Torso.ItemName, true)
+	}
+
+	if e.Legs != nil {
+		add("legs", e.Legs.ItemName, true)
+	}
+
+	if e.RightArm != nil {
+		add("gloves", e.RightArm.ItemName, true)
+	}
+
+	if e.RightHand != nil {
+		add("rightHand", e.RightHand.ItemName, true)
+	}
+
+	if e.LeftHand != nil {
+		add("leftHand", e.LeftHand.ItemName, true)
+	}
+
+	if e.Shield != nil {
+		add("shield", e.Shield.ItemName, true)
+	}
+
+	return strings.Join(parts, ", ")
 }
