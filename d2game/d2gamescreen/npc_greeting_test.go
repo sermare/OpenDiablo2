@@ -124,15 +124,23 @@ func TestGreetingUsesPhaseSource(t *testing.T) {
 }
 
 func TestDayClockAdvances(t *testing.T) {
+	t.Setenv("OD2_AUTOTIME", "")
+
 	c := newDayClock()
-	if c.Phase() != 1 {
+	if c.Phase() != 2 {
 		t.Fatalf("start phase %d", c.Phase())
 	}
 
-	// 241 ticks at 25/s is about 9.64 s: dawn becomes day.
-	c.Advance(9.7)
+	// phase 3 starts at degree 160: 160*128 ticks at 25/s is 819.2 s.
+	c.Advance(810)
 
 	if c.Phase() != 2 {
-		t.Errorf("phase after 9.7s = %d", c.Phase())
+		t.Errorf("phase after 810s = %d", c.Phase())
+	}
+
+	c.Advance(10)
+
+	if c.Phase() != 3 {
+		t.Errorf("phase after 820s = %d", c.Phase())
 	}
 }
