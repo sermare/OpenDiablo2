@@ -2,8 +2,8 @@
 # Global cap on simultaneously running game windows (all sessions/agents share /tmp/od2-slots).
 #   gameslot.sh acquire   blocks until a slot is free, prints the slot dir; holder = the caller's pid ($PPID)
 #   gameslot.sh release <slot-dir>
-# OD2_MAX_GAMES (default 2) sets the cap. Slots whose owner process is gone are reclaimed.
-root=/tmp/od2-slots; max=${OD2_MAX_GAMES:-2}; mkdir -p $root
+# OD2_MAX_GAMES (default 99 = effectively no cap; cleanup is done by killing stuck games, see reap_games.sh) sets the cap. Slots whose owner process is gone are reclaimed.
+root=/tmp/od2-slots; max=${OD2_MAX_GAMES:-99}; mkdir -p $root
 case "$1" in
 acquire)
   owner=${2:-$PPID}
