@@ -52,6 +52,10 @@ const (
 	below
 	town
 	bloodMoor
+	outerSteppes   // Act 4: Outer Steppes next to the Fortress (world45.go)
+	frigidHighland // Act 5: Frigid Highlands relative to Bloody Foothills
+	arreatPlateau  // Act 5: Arreat Plateau relative to Frigid Highlands
+	frozenTundra   // Act 5: Frozen Tundra at its Levels.txt offset
 )
 
 type entry struct {
@@ -91,6 +95,9 @@ type ctx struct {
 	rect      []Rect
 	dir, firs []int
 	flip, ff  []int
+	// glob is the exe's process-global DAT_009656ac written by the Outer
+	// Steppes placer (od.flags 0x400000 / 0x800000 of level 104), here per world.
+	glob int
 }
 
 func (c *ctx) reset(i int) { c.dir[i], c.firs[i], c.flip[i], c.ff[i] = -1, -1, -1, -1 }
@@ -107,6 +114,10 @@ func (c *ctx) place(i int, lv d2drlg.Levels) bool {
 	var p Rect
 	if e.ref >= 0 {
 		p = c.rect[e.ref]
+	}
+
+	if e.kind >= outerSteppes {
+		return c.place45(i, lv)
 	}
 
 	switch e.kind {

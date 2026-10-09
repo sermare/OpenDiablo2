@@ -97,3 +97,21 @@ func TestParsePatternPadsTreesOverRead(t *testing.T) {
 		t.Fatalf("groups %+v", p.Groups)
 	}
 }
+
+func TestEdgeAdjacent(t *testing.T) {
+	a := Rect{0, 0, 64, 160}
+
+	for _, tt := range []struct {
+		b    Rect
+		want bool
+	}{
+		{Rect{64, 0, 160, 64}, true},    // shares an edge segment
+		{Rect{64, 160, 64, 64}, false},  // corner touch only
+		{Rect{200, 0, 64, 64}, false},   // apart
+		{Rect{-64, 100, 64, 100}, true}, // left neighbour
+	} {
+		if got := edgeAdjacent(a, tt.b); got != tt.want {
+			t.Errorf("edgeAdjacent(%v, %v) = %v, want %v", a, tt.b, got, tt.want)
+		}
+	}
+}
