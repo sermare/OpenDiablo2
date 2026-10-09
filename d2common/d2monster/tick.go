@@ -116,11 +116,14 @@ func acquire(c *Ctx) bool {
 	thr := c.B.Profile.Aggro()
 	if ok && nearest <= thr { // "<=" vs "<" at the threshold is UNVERIFIED
 		c.Target = &t
+		c.B.TargetID, c.B.HasTarget = t.ID, true
 		c.Dist = nearest
 		c.InRange = c.W.InRange(c.B, t, nearest)
 
 		return true
 	}
+
+	c.B.HasTarget = false
 
 	if c.B.Def.TargetMode == TargetOnly {
 		return true

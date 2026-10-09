@@ -50,6 +50,7 @@ from a non-GUI shell fails with a Cocoa display error):
 | `OD2_AUTOGAME=<file>` | Start that character directly. A `.d2s` file is imported first. |
 | `OD2_D2S_DIR=<dir>` | Import real `.d2s` characters from a folder into the character list. |
 | `OD2_AUTOTALK=Warriv,Akara` | After a few seconds, resolve and log each NPC's greeting voice line. |
+| `OD2_AUTOMONSTER=skeleton1,3` | Spawn monsters (id, name or class number, optional count; a pack led by the first) 12 subtiles from the hero, let the hero fight them, log `MONSTER spawn/aggro/attack/hit/death/drop` lines and an `AUTOMONSTER summary`. `OD2_AUTOMONSTER_SECONDS` (default 30), `OD2_AUTOMONSTER_DIFF=0..2`, `OD2_AUTOMONSTER_PASSIVE=1` (hero does not fight back). |
 | `OD2_AUTOTEST_MUTE=1` | Do not play sound during the autotest. |
 | `OD2_AUTOEXIT=1` | Quit when the autotest finishes. |
 

@@ -29,6 +29,7 @@ type Player struct {
 	isRunToggled      bool
 	isRunning         bool
 	isCasting         bool
+	isAttacking       bool // the cast in progress is a melee swing (animation A1)
 	onFinishedCasting func()
 	Act               int
 }
@@ -98,6 +99,7 @@ func (p *Player) Advance(tickTime float64) {
 	if p.IsCasting() {
 		if p.composite.GetPlayedCount() >= 1 {
 			p.isCasting = false
+			p.isAttacking = false
 		}
 
 		// skills are casted after the first half of the casting animation is played
@@ -163,6 +165,10 @@ func (p *Player) Render(target d2interface.Surface) {
 
 // GetAnimationMode returns the current animation mode based on what the player is doing and where they are.
 func (p *Player) GetAnimationMode() d2enum.PlayerAnimationMode {
+	if p.isAttacking && p.isCasting {
+		return d2enum.PlayerAnimationModeAttack1
+	}
+
 	if p.IsRunning() && !p.atTarget() {
 		return d2enum.PlayerAnimationModeRun
 	}
@@ -238,6 +244,13 @@ func (p *Player) StartCasting(animMode d2enum.PlayerAnimationMode, onFinishedCas
 		fmtStr := "failed to set animationMode of player: %s to: %d, err: %v\n"
 		fmt.Printf(fmtStr, p.ID(), animMode, err)
 	}
+}
+
+// StartAttack plays the melee attack animation (A1); onHit runs when it is
+// halfway through, the moment a swing connects.
+func (p *Player) StartAttack(onHit func()) {
+	p.isAttacking = true
+	p.StartCasting(d2enum.PlayerAnimationModeAttack1, onHit)
 }
 
 // Selectable returns true if the player is in town.

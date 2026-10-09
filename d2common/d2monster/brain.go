@@ -48,6 +48,11 @@ type Brain struct {
 	LevelID    int // levels.txt id of the area the monster is in
 	Aggressive bool
 
+	// TargetID/HasTarget record the target of the last acquisition (AiGeneral
+	// +0x08); Tick keeps them current.
+	TargetID  uint32
+	HasTarget bool
+
 	// AiGeneral.
 	Def     *AIDef
 	Scratch [3]int // +0x14, +0x18, +0x1c (zeroed whenever the AI state is set)

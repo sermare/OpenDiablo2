@@ -1,0 +1,464 @@
+// Package d2monsters runs hostile monsters inside the engine: it builds
+// d2monster brains from monstats, feeds them the map and the players through
+// the d2monster.World interface, resolves attacks with d2combat, applies
+// hero damage, and rolls loot with d2drop on death.
+//
+// The AI is the pure d2common/d2monster package; this package is the glue and
+// therefore the place where engine-level simplifications are listed:
+//
+//   - Units do not occupy collision cells (no unit-vs-unit blocking).
+//   - Monster attacks resolve at the animation's halfway frame; ranged attacks
+//     are hitscan within 20 subtiles with a line-of-sight check, no missile
+//     flies (missiles.txt travel is not simulated).
+//   - Hero defense is dexterity/4 only (equipment defense is not read).
+//   - Monster level is the monstats Level column (not the area's MonLvl).
+//   - Monster stats use monlvl.txt L-* columns scaled by the monstats ratios.
+package d2monsters
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
+)
+
+const (
+	logPrefix = "Monsters"
+
+	frameSeconds   = 1.0 / 25.0 // the game runs at 25 Hz
+	maxCatchUp     = 0.25       // seconds of simulation per rendered frame, at most
+	corpseSeconds  = 12.0       // corpses are removed after this long
+	adoptInterval  = 0.5        // seconds between scans for DS1 monster placements
+	replanDistance = 5          // the target moved this far since planning: re-plan (VERIFIED, notes)
+	meleeInRange   = 7          // edge distance at which melee attacks connect (reach, VERIFIED value 7)
+	rangedInRange  = 20         // ranged attack distance (engine choice, UNVERIFIED)
+	heroReach      = 7          // hero melee reach, subtiles (engine choice)
+)
+
+// Options configure a Director.
+type Options struct {
+	// Seed is the game seed per-monster seeds are derived from.
+	Seed uint32
+	// Difficulty selects the monstats columns.
+	Difficulty d2monster.Difficulty
+	// IgnoreTown lets monsters target heroes standing in town (for tests; the
+	// original never aggroes onto players in town).
+	IgnoreTown bool
+}
+
+// Counters tally what happened, for autotest summaries.
+type Counters struct {
+	Spawned, Aggro, Attacks, AttackHits, HeroSwings, HeroHits, Deaths, Drops, HeroDeaths int
+}
+
+// unit is a monster plus its engine-side state.
+type unit struct {
+	m  *d2mapentity.Monster
+	b  *d2monster.Brain
+	mv *moveIntent
+
+	hadTarget    bool
+	attackTarget uint32
+	removeAt     float64
+}
+
+type moveIntent struct {
+	target     *d2monster.Target
+	reach      int
+	run        bool
+	plannedAtX int
+	plannedAtY int
+}
+
+// Director owns every hostile monster of a map.
+type Director struct {
+	*d2util.Logger
+
+	asset   *d2asset.AssetManager
+	engine  *d2mapengine.MapEngine
+	players func() []*d2mapentity.Player
+	opt     Options
+
+	frame    int
+	acc      float64
+	clock    float64
+	adoptAcc float64
+	nextID   uint32
+
+	units    map[uint32]*unit // by brain id
+	byEntity map[string]*unit
+	seenNPC  map[string]bool
+	statByID map[int]*d2records.MonStatRecord
+	targets  map[uint32]*d2mapentity.Player
+	grid     mapGrid
+	hero     *d2rand.Seed
+
+	// Counters are updated as events happen.
+	Counters Counters
+	// OnEvent, if set, receives every log line the director emits as a
+	// structured event (kind is spawn, aggro, attack, hit, death, drop...).
+	OnEvent func(kind, line string)
+}
+
+// NewDirector creates a director for a map engine. players returns the
+// heroes monsters may target.
+func NewDirector(asset *d2asset.AssetManager, engine *d2mapengine.MapEngine,
+	players func() []*d2mapentity.Player, l d2util.LogLevel, opt Options) *Director {
+	d := &Director{
+		Logger:   d2util.NewLogger(),
+		asset:    asset,
+		engine:   engine,
+		players:  players,
+		opt:      opt,
+		units:    map[uint32]*unit{},
+		byEntity: map[string]*unit{},
+		seenNPC:  map[string]bool{},
+		statByID: map[int]*d2records.MonStatRecord{},
+		targets:  map[uint32]*d2mapentity.Player{},
+		grid:     mapGrid{engine},
+	}
+
+	d.Logger.SetLevel(l)
+	d.Logger.SetPrefix(logPrefix)
+
+	for _, st := range asset.Records.Monster.Stats {
+		d.statByID[st.ID] = st
+	}
+
+	return d
+}
+
+// emit logs a line and forwards it to OnEvent.
+func (d *Director) emit(kind, format string, args ...interface{}) {
+	line := fmt.Sprintf(format, args...)
+	d.Info(line)
+
+	if d.OnEvent != nil {
+		d.OnEvent(kind, line)
+	}
+}
+
+// Monsters returns the live (not yet removed) monsters, corpses included.
+func (d *Director) Monsters() []*d2mapentity.Monster {
+	out := make([]*d2mapentity.Monster, 0, len(d.units))
+	for _, u := range d.units {
+		out = append(out, u.m)
+	}
+
+	return out
+}
+
+// FindStat resolves a monstats key ("skeleton1") or hcIdx ("0") or name
+// ("Skeleton", case-insensitive match of the key).
+func (d *Director) FindStat(ref string) *d2records.MonStatRecord {
+	ref = strings.TrimSpace(ref)
+
+	if st := d.asset.Records.Monster.Stats[ref]; st != nil {
+		return st
+	}
+
+	if id, err := strconv.Atoi(ref); err == nil {
+		return d.statByID[id]
+	}
+
+	for key, st := range d.asset.Records.Monster.Stats {
+		if strings.EqualFold(key, ref) {
+			return st
+		}
+	}
+
+	return nil
+}
+
+// Spawn creates a monster of the given monstats record at a subtile position.
+func (d *Director) Spawn(stat *d2records.MonStatRecord, subX, subY int) (*d2mapentity.Monster, error) {
+	prof := profileFromRecord(stat, d.opt.Difficulty)
+	d.nextID++
+
+	b := d2monster.NewBrain(d.nextID, stat.ID, d.opt.Difficulty, prof, d.opt.Seed)
+	b.X, b.Y = subX, subY
+
+	m, err := d.engine.NewMonster(subX, subY, stat, 0, b)
+	if err != nil {
+		return nil, err
+	}
+
+	if m.StatEx.SizeX/2 > 1 {
+		b.Size = m.StatEx.SizeX / 2
+	}
+
+	m.Vitals = d.computeVitals(stat, b)
+	b.Wake = d.frame // think on the next frame
+
+	u := &unit{m: m, b: b}
+	d.units[b.ID] = u
+	d.byEntity[m.ID()] = u
+	d.engine.AddEntity(m)
+
+	d.Counters.Spawned++
+	d.emit("spawn", "MONSTER spawn name=%s id=%s class=%d ai=%s level=%d hp=%d defense=%d pos=(%d,%d)%s",
+		m.Label(), stat.Key, stat.ID, prof.AI, m.Vitals.Level, m.Vitals.HP, m.Vitals.Defense, subX, subY,
+		implementedNote(b))
+
+	return m, nil
+}
+
+func implementedNote(b *d2monster.Brain) string {
+	if b.Def != nil && !b.Def.Implemented {
+		return " (AI not ported: stands still)"
+	}
+
+	return ""
+}
+
+// Group links members to a leader: the leader's Fallen rally and other group
+// commands reach them (MONAI_AddMinionToLeader). Natural pack generation from
+// monstats MinGrp/MaxGrp and minion1/2 is not implemented; callers form groups.
+func (d *Director) Group(leader *d2mapentity.Monster, members ...*d2mapentity.Monster) {
+	for _, m := range members {
+		leader.Brain.AddMinion(m.Brain)
+	}
+}
+
+// SpawnNear places a monster on a free subtile around a position.
+func (d *Director) SpawnNear(stat *d2records.MonStatRecord, subX, subY, ring int) (*d2mapentity.Monster, error) {
+	p, ok := d2path.NearestFree(d.grid, d2path.MaskMonster, d2path.Point{X: subX, Y: subY}, ring+8)
+	if !ok {
+		return nil, fmt.Errorf("no free cell near (%d,%d)", subX, subY)
+	}
+
+	return d.Spawn(stat, p.X, p.Y)
+}
+
+// Advance runs the simulation for elapsed seconds (called once per rendered
+// frame, after MapEngine.Advance).
+func (d *Director) Advance(elapsed float64) {
+	d.clock += elapsed
+
+	d.adoptAcc += elapsed
+	if d.adoptAcc >= adoptInterval {
+		d.adoptAcc = 0
+		d.adoptPlacements()
+	}
+
+	d.acc += elapsed
+	if d.acc > maxCatchUp {
+		d.acc = maxCatchUp
+	}
+
+	for d.acc >= frameSeconds {
+		d.acc -= frameSeconds
+		d.step()
+	}
+}
+
+// step is one 25 Hz game frame.
+func (d *Director) step() {
+	d.frame++
+
+	d.indexPlayers()
+
+	for _, u := range d.sortedUnits() {
+		if !d.engineHas(u) {
+			d.forget(u)
+			continue
+		}
+
+		d.sync(u)
+		d.handleEvents(u)
+
+		if u.m.Alive() {
+			d.followIntent(u)
+
+			if d2monster.Tick(d, u.b) {
+				d.noteAggro(u)
+			}
+		} else if u.m.CorpseAge() > corpseSeconds {
+			d.engine.RemoveEntity(u.m)
+			d.forget(u)
+		}
+	}
+}
+
+func (d *Director) engineHas(u *unit) bool {
+	_, ok := d.engine.Entities()[u.m.ID()]
+
+	return ok
+}
+
+func (d *Director) forget(u *unit) {
+	delete(d.units, u.b.ID)
+	delete(d.byEntity, u.m.ID())
+}
+
+// sortedUnits gives a stable iteration order (determinism of the RNG use).
+func (d *Director) sortedUnits() []*unit {
+	out := make([]*unit, 0, len(d.units))
+	for id := uint32(1); id <= d.nextID; id++ {
+		if u, ok := d.units[id]; ok {
+			out = append(out, u)
+		}
+	}
+
+	return out
+}
+
+// sync copies entity state into the brain.
+func (d *Director) sync(u *unit) {
+	u.b.X, u.b.Y = u.m.SubtilePos()
+	u.b.Mode = u.m.Mode()
+
+	if mx := u.m.Vitals.MaxHP; mx > 0 {
+		u.b.HPPercent = u.m.Vitals.HP * 100 / mx
+	}
+}
+
+func (d *Director) noteAggro(u *unit) {
+	if u.b.HasTarget && !u.hadTarget {
+		d.Counters.Aggro++
+
+		name := "hero"
+		if p := d.targets[u.b.TargetID]; p != nil {
+			name = p.Name()
+		}
+
+		d.emit("aggro", "MONSTER aggro name=%s id=%d target=%s", u.m.Label(), u.b.ID, name)
+	}
+
+	u.hadTarget = u.b.HasTarget
+}
+
+// adoptPlacements converts hostile monster placements that the map stamps
+// created as NPCs (DS1 monster objects) into AI-driven monsters.
+func (d *Director) adoptPlacements() {
+	for id, e := range d.engine.Entities() {
+		npc, ok := e.(*d2mapentity.NPC)
+		if !ok || d.seenNPC[id] {
+			continue
+		}
+
+		d.seenNPC[id] = true
+
+		stat := d.statByID[npc.MonstatID()]
+		if stat == nil || !IsHostile(stat) {
+			continue
+		}
+
+		pos := npc.GetPosition()
+		x, y := int(pos.X()), int(pos.Y())
+
+		d.engine.RemoveEntity(npc)
+
+		if _, err := d.Spawn(stat, x, y); err != nil {
+			d.Infof("could not adopt DS1 monster %s: %v", stat.Key, err)
+			d.engine.AddEntity(npc)
+		} else {
+			d.Infof("adopted DS1 placement %s at (%d,%d)", stat.Key, x, y)
+		}
+	}
+}
+
+// IsHostile says whether a monstats row is an enemy the director should run.
+func IsHostile(st *d2records.MonStatRecord) bool {
+	return st.Enabled && !st.IsNpc && !st.IsInteractable && st.Alignment == 0 &&
+		st.AiKey != "" && !strings.EqualFold(st.AiKey, "Idle") && !strings.EqualFold(st.AiKey, "None")
+}
+
+// moveTo is the shared path request used by the Actor.
+func (d *Director) moveTo(u *unit, dest d2monster.Point, target *d2monster.Target, reach int, run bool) bool {
+	sx, sy := u.m.SubtilePos()
+	from := d2path.Point{X: sx, Y: sy}
+	to := d2path.Point{X: dest.X, Y: dest.Y}
+
+	if target != nil && d2monster.EdgeDistance(sx-target.X, sy-target.Y, u.b.Size) <= reach {
+		return false
+	}
+
+	mask := d2path.MaskMonster
+	if u.m.Stat.CanOpenDoors {
+		mask = d2path.MaskMonsterOpensDoors
+	}
+
+	route, ok := d2path.FindPath(d.grid, mask, from, to)
+	if !ok || len(route.Nodes) == 0 {
+		d.Debugf("no path for %s from %v to %v", u.m.Label(), from, to)
+		return false
+	}
+
+	path := make([]d2vector.Position, len(route.Nodes))
+	for i, n := range route.Nodes {
+		path[i] = d2vector.NewPosition(float64(n.X), float64(n.Y))
+	}
+
+	if !u.m.MoveAlong(path, run) {
+		return false
+	}
+
+	u.mv = &moveIntent{reach: reach, run: run, plannedAtX: dest.X, plannedAtY: dest.Y}
+	if target != nil {
+		t := *target
+		u.mv.target = &t
+	}
+
+	return true
+}
+
+// followIntent stops a chasing monster once it is within reach of its target
+// and re-plans when the target moved.
+func (d *Director) followIntent(u *unit) {
+	if u.mv == nil {
+		return
+	}
+
+	if !u.m.Moving() || (u.m.Mode() != d2monster.ModeWalk && u.m.Mode() != d2monster.ModeRun) {
+		u.mv = nil
+
+		return
+	}
+
+	if u.mv.target == nil {
+		return
+	}
+
+	p := d.playerFor(u.mv.target.ID)
+	if p == nil {
+		return
+	}
+
+	tx, ty := playerSubtile(p)
+	sx, sy := u.m.SubtilePos()
+
+	if d2monster.EdgeDistance(sx-tx, sy-ty, u.b.Size) <= u.mv.reach {
+		u.m.StopMoving()
+		u.mv = nil
+
+		return
+	}
+
+	if abs(tx-u.mv.plannedAtX) >= replanDistance || abs(ty-u.mv.plannedAtY) >= replanDistance {
+		t := *u.mv.target
+		t.X, t.Y = tx, ty
+
+		if !d.moveTo(u, d2monster.Point{X: tx, Y: ty}, &t, u.mv.reach, u.mv.run) {
+			u.m.StopMoving()
+			u.mv = nil
+		}
+	}
+}
+
+func abs(v int) int {
+	if v < 0 {
+		return -v
+	}
+
+	return v
+}

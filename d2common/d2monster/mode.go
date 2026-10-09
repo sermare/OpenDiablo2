@@ -38,3 +38,14 @@ func ParseMode(s string) (Mode, bool) {
 
 // IsAlive is false for the dying and dead modes.
 func (m Mode) IsAlive() bool { return m != ModeDying && m != ModeDead }
+
+// String is the monstats mode token ("A1", "NU"...).
+func (m Mode) String() string {
+	for name, v := range modeNames {
+		if v == m {
+			return name
+		}
+	}
+
+	return "??"
+}

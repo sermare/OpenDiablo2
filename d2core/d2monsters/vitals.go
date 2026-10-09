@@ -1,0 +1,133 @@
+package d2monsters
+
+import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
+)
+
+// profileFromRecord converts a monstats row into the AI profile for a
+// difficulty.
+func profileFromRecord(r *d2records.MonStatRecord, diff d2monster.Difficulty) *d2monster.Profile {
+	pick := func(n, nm, h int) int { return [3]int{n, nm, h}[diff] }
+
+	p := &d2monster.Profile{
+		Class:  r.ID,
+		ID:     r.Key,
+		AI:     r.AiKey,
+		AIDel:  pick(r.AiDelayNormal, r.AiDelayNightmare, r.AiDelayHell),
+		AIDist: pick(r.AiDistanceNormal, r.AiDistanceNightmare, r.AiDistanceHell),
+		Threat: r.ThreatLevel,
+		Walk:   r.SpeedBase,
+		Run:    r.SpeedRun,
+	}
+
+	p.AIP[1] = pick(r.AiParameterNormal1, r.AiParameterNightmare1, r.AiParameterHell1)
+	p.AIP[2] = pick(r.AiParameterNormal2, r.AiParameterNightmare2, r.AiParameterHell2)
+	p.AIP[3] = pick(r.AiParameterNormal3, r.AiParameterNightmare3, r.AiParameterHell3)
+	p.AIP[4] = pick(r.AiParameterNormal4, r.AiParameterNightmare4, r.AiParameterHell4)
+	p.AIP[5] = pick(r.AiParameterNormal5, r.AiParameterNightmare5, r.AiParameterHell5)
+	p.AIP[6] = pick(r.AiParameterNormal6, r.AiParameterNightmare6, r.AiParameterHell6)
+	p.AIP[7] = pick(r.AiParameterNormal7, r.AiParameterNightmare7, r.AiParameterHell7)
+	p.AIP[8] = pick(r.AiParameterNormal8, r.AiParameterNightmare8, r.AiParameterHell8)
+
+	names := [d2monster.NumSkills]string{r.SkillId1, r.SkillId2, r.SkillId3, r.SkillId4,
+		r.SkillId5, r.SkillId6, r.SkillId7, r.SkillId8}
+	modes := [d2monster.NumSkills]string{r.SkillAnimation1, r.SkillAnimation2, r.SkillAnimation3,
+		r.SkillAnimation4, r.SkillAnimation5, r.SkillAnimation6, r.SkillAnimation7, r.SkillAnimation8}
+	levels := [d2monster.NumSkills]int{r.SkillLevel1, r.SkillLevel2, r.SkillLevel3, r.SkillLevel4,
+		r.SkillLevel5, r.SkillLevel6, r.SkillLevel7, r.SkillLevel8}
+
+	for i := range names {
+		p.Skills[i].Name = names[i]
+		p.Skills[i].Level = levels[i]
+		p.Skills[i].Mode, _ = d2monster.ParseMode(modes[i])
+	}
+
+	return p
+}
+
+// computeVitals derives level, hit points, defense, attack ratings, damage
+// and experience. For classes without noRatio the numbers are the monlvl.txt
+// row of the monster level times the monstats ratio columns in percent
+// (VERIFIED, MONTBL_GetLevelScaledStats); noRatio classes use the monstats
+// values as they are. Which monlvl column set the game uses (L-* here) is
+// UNVERIFIED.
+func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain) d2mapentity.MonsterVitals {
+	diff := d.opt.Difficulty
+	pick := func(n, nm, h int) int { return [3]int{n, nm, h}[diff] }
+
+	level := pick(r.LevelNormal, r.LevelNightmare, r.LevelHell)
+	v := d2mapentity.MonsterVitals{Level: level, Difficulty: diff}
+
+	var lv struct{ hp, ac, th, dm, xp int }
+
+	if rec := d.asset.Records.Monster.Levels[level]; rec != nil && !r.IgnoreMonLevelTxt {
+		vals := [3]struct{ hp, ac, th, dm, xp int }{
+			{rec.Ladder.Normal.Hitpoints, rec.Ladder.Normal.DefenseRating, rec.Ladder.Normal.AttackRating,
+				rec.Ladder.Normal.Damage, rec.Ladder.Normal.Experience},
+			{rec.Ladder.Nightmare.Hitpoints, rec.Ladder.Nightmare.DefenseRating, rec.Ladder.Nightmare.AttackRating,
+				rec.Ladder.Nightmare.Damage, rec.Ladder.Nightmare.Experience},
+			{rec.Ladder.Hell.Hitpoints, rec.Ladder.Hell.DefenseRating, rec.Ladder.Hell.AttackRating,
+				rec.Ladder.Hell.Damage, rec.Ladder.Hell.Experience},
+		}
+		lv = vals[diff]
+	} else {
+		lv.hp, lv.ac, lv.th, lv.dm, lv.xp = 100, 100, 100, 100, 100 // raw values: ratio of 100%
+	}
+
+	scale := func(base, ratio int) int { return base * ratio / 100 }
+
+	hpMin := scale(lv.hp, pick(r.MinHPNormal, r.MinHPNightmare, r.MinHPHell))
+	hpMax := scale(lv.hp, pick(r.MaxHPNormal, r.MaxHPNightmare, r.MaxHPHell))
+
+	if hpMax < hpMin {
+		hpMax = hpMin
+	}
+
+	v.MaxHP = hpMin + b.Roll(hpMax-hpMin+1)
+	if v.MaxHP < 1 {
+		v.MaxHP = 1
+	}
+
+	v.HP = v.MaxHP
+	v.Defense = scale(lv.ac, pick(r.ArmorClassNormal, r.ArmorClassNightmare, r.ArmorClassHell))
+	v.Experience = scale(lv.xp, pick(r.ExperienceNormal, r.ExperienceNightmare, r.ExperienceHell))
+	v.TreasureClass = [3]string{r.TreasureClassNormal, r.TreasureClassNightmare, r.TreasureClassHell}[diff]
+
+	v.A1 = MonsterAttackFrom(scale(lv.th, pick(r.AttackRatingA1Normal, r.AttackRatingA1Nightmare, r.AttackRatingA1Hell)),
+		scale(lv.dm, pick(r.DamageMinA1Normal, r.DamageMinA1Nightmare, r.DamageMinA1Hell)),
+		scale(lv.dm, pick(r.DamageMaxA1Normal, r.DamageMaxA1Nightmare, r.DamageMaxA1Hell)))
+	v.A2 = MonsterAttackFrom(scale(lv.th, pick(r.AttackRatingA2Normal, r.AttackRatingA2Nightmare, r.AttackRatingA2Hell)),
+		scale(lv.dm, pick(r.DamageMinA2Normal, r.DamageMinA2Nightmare, r.DamageMinA2Hell)),
+		scale(lv.dm, pick(r.DamageMaxA2Normal, r.DamageMaxA2Nightmare, r.DamageMaxA2Hell)))
+
+	// Casters (Skeleton Mage) have no physical A1 damage: their A1 is the
+	// first elemental damage column, scaled like physical damage. Poison and
+	// cold lengths are not modelled (the hit is instant). UNVERIFIED reading
+	// of El1*.
+	if v.A1.Max == 0 && r.ElementAttackMode1 == "A1" {
+		v.A1 = MonsterAttackFrom(scale(lv.th, 100),
+			scale(lv.dm, pick(r.ElementDamageMin1Normal, r.ElementDamageMin1Nightmare, r.ElementDamageMin1Hell)),
+			scale(lv.dm, pick(r.ElementDamageMax1Normal, r.ElementDamageMax1Nightmare, r.ElementDamageMax1Hell)))
+	}
+
+	if v.A1.ToHit == 0 {
+		v.A1.ToHit = scale(lv.th, 100)
+	}
+
+	if v.A2.ToHit == 0 {
+		v.A2.ToHit = v.A1.ToHit
+	}
+
+	return v
+}
+
+// MonsterAttackFrom builds an attack, keeping Max >= Min.
+func MonsterAttackFrom(toHit, min, max int) d2mapentity.MonsterAttack {
+	if max < min {
+		max = min
+	}
+
+	return d2mapentity.MonsterAttack{ToHit: toHit, Min: min, Max: max}
+}
