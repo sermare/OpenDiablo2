@@ -117,7 +117,15 @@ func TestHarnessCatchesMapIterationOrder(t *testing.T) {
 
 type clockSim struct{ n int64 }
 
-func (c *clockSim) Step(int, []Input) { c.n += time.Now().UnixNano() }
+func (c *clockSim) Step(int, []Input) {
+	// macOS clock resolution is coarse; wait for the clock to advance so two
+	// runs cannot read the same value and agree by luck.
+	start := time.Now().UnixNano()
+	for time.Now().UnixNano() == start {
+	}
+
+	c.n += time.Now().UnixNano()
+}
 func (c *clockSim) Hash(h *Hasher)    { h.U64(uint64(c.n)) }
 
 func TestHarnessCatchesTimeDependence(t *testing.T) {
