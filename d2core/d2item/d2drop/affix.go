@@ -266,3 +266,37 @@ func PickRareName(rng RNG, n int) int {
 
 	return int(rng.Roll(int32(n)))
 }
+
+// PickAutoMagic picks the automagic affix of a base item that has an
+// `Auto prefix` value (ITEMGEN_PickAffixLod via 5bf5f0, "forced id").
+// UNVERIFIED: the notes only say the id is forced; here the base's auto
+// prefix selects the AutoMagic rows with that group, then the usual
+// eligibility and frequency weighting apply, without the 50% gate. Returns
+// nil when autoPrefix is zero or nothing qualifies.
+func PickAutoMagic(rng RNG, pool []Affix, it *AffixItem, autoPrefix int) *Affix {
+	if autoPrefix == 0 {
+		return nil
+	}
+
+	var rows []Affix
+
+	for i := range pool {
+		if pool[i].Group == autoPrefix {
+			rows = append(rows, pool[i])
+		}
+	}
+
+	return PickAffix(rng, rows, it, nil, true)
+}
+
+// AutoMagicQuality reports whether an item of this quality gets its
+// automagic affix: qualities {1,2,3,4,6,8,9} (notes section 1.4); 9 is
+// tempered, which has no constant here.
+func AutoMagicQuality(q Quality) bool {
+	switch q {
+	case QualityLow, QualityNormal, QualitySuperior, QualityMagic, QualityRare, QualityCrafted, 9:
+		return true
+	}
+
+	return false
+}
