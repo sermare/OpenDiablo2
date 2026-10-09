@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
 
@@ -109,8 +109,8 @@ func CreateGame(
 // Game represents the Gameplay screen
 const (
 	npcInteractDistance  = 3.0 // tiles
-	npcBubbleSeconds     = 3.0
-	npcBubbleLift        = 30 // pixels above the NPC's head
+	npcMenuLeaveDistance = 5.0 // tiles; the menu closes when the hero is farther
+	npcBubbleLift        = 30  // pixels above the NPC's head
 	noonHour             = 12
 	autoTestDelaySeconds = 6.0
 	eveningHour          = 18
@@ -132,8 +132,8 @@ type Game struct {
 	guiManager           *d2gui.GuiManager
 	keyMap               *d2player.KeyMap
 	npcTarget            d2interface.MapEntity
-	npcBubble            *d2ui.Label
-	npcBubbleTTL         float64
+	greetingLast         map[string]string
+	greetingRecent       map[string]string
 	autoTestElapsed      float64
 	autoTestDone         bool
 
@@ -229,7 +229,6 @@ func (v *Game) Render(screen d2interface.Surface) {
 
 	screen.Clear(color.Black)
 	v.mapRenderer.Render(screen)
-	v.renderNPCBubble(screen)
 
 	if v.gameControls != nil {
 		if v.gameControls.HelpOverlay != nil && v.gameControls.HelpOverlay.IsOpen() {
@@ -363,138 +362,224 @@ func (v *Game) OnPlayerInteract(entity d2interface.MapEntity) {
 
 	v.Infof("interacting with %q", entity.Label())
 
+	if v.gameControls != nil {
+		v.gameControls.NPCMenu.Close()
+	}
+
 	v.npcTarget = entity
-	v.npcBubbleTTL = 0
 
 	v.OnPlayerMove(targetX, targetY)
 }
 
-// advanceNPCInteraction shows a text bubble over the NPC the player clicked
-// once the player has walked close enough, and hides it after a few seconds.
-func (v *Game) advanceNPCInteraction(elapsed float64) {
-	if v.npcBubbleTTL > 0 {
-		v.npcBubbleTTL -= elapsed
-		if v.npcBubbleTTL <= 0 {
-			v.npcTarget = nil
-		}
+// npcClassID returns the monstats class id (hcIdx) of an NPC entity, or -1.
+func (v *Game) npcClassID(entity d2interface.MapEntity) int {
+	if npc, ok := entity.(interface{ MonstatID() int }); ok {
+		return npc.MonstatID()
+	}
 
+	return -1
+}
+
+// advanceNPCInteraction opens the NPC menu once the player has walked up to
+// the NPC they clicked, keeps it attached to the NPC and closes it again
+// when the player walks away.
+func (v *Game) advanceNPCInteraction(_ float64) {
+	if v.npcTarget == nil || v.localPlayer == nil || v.gameControls == nil {
 		return
 	}
 
-	if v.npcTarget == nil || v.localPlayer == nil {
-		return
-	}
+	menu := v.gameControls.NPCMenu
 
 	px, py := v.localPlayer.GetPositionF()
 	nx, ny := v.npcTarget.GetPositionF()
+	dist := math.Hypot(px-nx, py-ny)
 
-	if math.Hypot(px-nx, py-ny) > npcInteractDistance {
+	if menu.IsOpen() {
+		if dist > npcMenuLeaveDistance {
+			v.Infof("NPC menu closed: walked away from %q", v.npcTarget.Label())
+			menu.Close()
+
+			v.npcTarget = nil
+
+			return
+		}
+
+		v.anchorNPCMenu(menu, v.npcTarget)
+
 		return
 	}
 
-	if v.npcBubble == nil {
-		v.npcBubble = v.uiManager.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
+	if dist > npcInteractDistance {
+		return
 	}
 
-	v.npcBubble.SetText(v.npcTarget.Label())
-	v.npcBubbleTTL = npcBubbleSeconds
-
+	v.openNPCMenu(menu, v.npcTarget)
 	v.playNPCGreeting(v.npcTarget.Label())
 }
 
-// playNPCGreeting plays the NPC's spoken greeting. Greetings are rows of
-// Sounds.txt named <npc>_greeting_*: a time-of-day variant (morning,
-// day, evening) is preferred, then the generic hello rows, then the
-// "inactive" rows. Some NPCs (e.g. Warriv) have no generic hello at all.
+func (v *Game) anchorNPCMenu(menu *d2player.NPCMenu, npc d2interface.MapEntity) {
+	sx, sy := v.mapRenderer.WorldToScreenF(npc.GetPositionF())
+	_, h := npc.GetSize()
+
+	menu.SetAnchor(int(sx), int(sy)-h-npcBubbleLift)
+}
+
+// openNPCMenu shows the Talk/Trade/... menu for an NPC.
+func (v *Game) openNPCMenu(menu *d2player.NPCMenu, npc d2interface.MapEntity) []d2player.NPCMenuRow {
+	classID := v.npcClassID(npc)
+	rows, known := d2player.NPCMenuFor(classID)
+
+	menu.Open(npc.Label(), rows, 0, 0, func(row d2player.NPCMenuRow) {
+		v.onNPCMenuChoice(npc, row)
+	})
+
+	v.anchorNPCMenu(menu, npc)
+
+	labels := make([]string, 0, len(menu.Rows()))
+	for _, r := range menu.Rows() {
+		labels = append(labels, menu.RowLabel(r))
+	}
+
+	v.Infof("NPC menu opened: npc=%q class=%d known=%v rows=%v", npc.Label(), classID, known, labels)
+
+	return menu.Rows()
+}
+
+func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRow) {
+	switch row.Action {
+	case d2player.NPCActionCancel:
+		v.Infof("NPC menu: Cancel")
+		v.npcTarget = nil
+	case d2player.NPCActionTalk:
+		path := v.playNPCGreeting(npc.Label())
+		v.Infof("NPC menu: Talk with %q (voice %q)", npc.Label(), path)
+	default:
+		v.Infof("NPC menu: %s (%s) not implemented yet", row.Action, row.Fallback)
+	}
+}
+
+// playNPCGreeting plays the NPC's spoken greeting, chosen the way the real
+// game's picker does (see pickGreeting in npc_greeting.go).
 func (v *Game) playNPCGreeting(name string) string {
 	name = strings.ToLower(strings.TrimPrefix(name, "Deckard "))
-	base := name + "_greeting_"
 
-	timeOfDay := "time_2" // day
-
-	switch hour := time.Now().Hour(); {
-	case hour < noonHour:
-		timeOfDay = "time_1"
-	case hour >= eveningHour:
-		timeOfDay = "time_3"
+	if v.greetingLast == nil {
+		v.greetingLast = make(map[string]string)
+		v.greetingRecent = make(map[string]string)
 	}
 
-	for _, suffix := range []string{timeOfDay, "1", "2", "inactive_1"} {
-		record, found := v.asset.Records.Sound.Details[base+suffix]
-		if !found {
-			continue
-		}
+	set := loadGreetingSet(v.asset.Records.Sound.Details, name)
 
-		path := "data/local/sfx/" + strings.ReplaceAll(record.FileName, "\\", "/")
-
-		ok, _ := v.asset.FileExists(path)
-		v.Debugf("greeting file %s exists=%v", path, ok)
-
-		if !ok {
-			continue
-		}
-
-		sfx, err := v.audioProvider.LoadSound(path, false, false)
-		if err != nil {
-			v.Warningf("could not load NPC greeting %s: %v", path, err)
-			return ""
-		}
-
-		if os.Getenv("OD2_AUTOTEST_MUTE") == "" {
-			sfx.Play()
-		}
-
-		v.Infof("NPC greeting: %s", path)
-
-		return path
+	// nolint:gosec // not concerned with crypto-strong randomness
+	handle := pickGreeting(set, greetingNormal, phaseFromHour(time.Now().Hour()),
+		v.greetingLast[name], v.greetingRecent, rand.Intn)
+	if handle == "" {
+		return ""
 	}
 
-	return ""
+	v.greetingLast[name] = handle
+	record := v.asset.Records.Sound.Details[handle]
+	path := "data/local/sfx/" + strings.ReplaceAll(record.FileName, "\\", "/")
+
+	ok, _ := v.asset.FileExists(path)
+	v.Debugf("greeting %s file %s exists=%v", handle, path, ok)
+
+	if !ok {
+		return ""
+	}
+
+	sfx, err := v.audioProvider.LoadSound(path, false, false)
+	if err != nil {
+		v.Warningf("could not load NPC greeting %s: %v", path, err)
+		return ""
+	}
+
+	if os.Getenv("OD2_AUTOTEST_MUTE") == "" {
+		sfx.Play()
+	}
+
+	v.Infof("NPC greeting: %s (%s)", handle, path)
+
+	return path
 }
 
-// renderNPCBubble draws the interaction text bubble above the NPC.
-func (v *Game) renderNPCBubble(target d2interface.Surface) {
-	if v.npcBubbleTTL <= 0 || v.npcTarget == nil || v.npcBubble == nil {
-		return
-	}
-
-	sx, sy := v.mapRenderer.WorldToScreenF(v.npcTarget.GetPositionF())
-	_, h := v.npcTarget.GetSize()
-	w, _ := v.npcBubble.GetTextMetrics(v.npcBubble.GetText())
-
-	v.npcBubble.SetPosition(int(sx)-w/2, int(sy)-h-npcBubbleLift)
-	v.npcBubble.Render(target)
-}
-
-// advanceAutoTest checks NPC greetings without any clicking when the
-// OD2_AUTOTALK env var lists NPC names (comma separated). Set
-// OD2_AUTOTEST_MUTE to skip playback and OD2_AUTOEXIT to quit when done.
+// advanceAutoTest checks NPC behaviour without any clicking.
+//   - OD2_AUTOTALK=<names>: logs and plays the greeting chosen for each NPC.
+//   - OD2_AUTOMENU=<names>: opens each NPC's menu and logs its rows;
+//     OD2_AUTOMENU_CHOOSE=<Talk|Trade|...|Cancel> then picks that row, and
+//     OD2_AUTOMENU_HOLD=<seconds> keeps the last menu on screen that long.
+//
+// OD2_AUTOTEST_MUTE skips playback and OD2_AUTOEXIT quits when done.
 func (v *Game) advanceAutoTest(elapsed float64) {
-	names := os.Getenv("OD2_AUTOTALK")
-	if names == "" || v.autoTestDone || v.localPlayer == nil {
+	talk, menus := os.Getenv("OD2_AUTOTALK"), os.Getenv("OD2_AUTOMENU")
+	if (talk == "" && menus == "") || v.localPlayer == nil || v.gameControls == nil {
 		return
 	}
 
 	v.autoTestElapsed += elapsed
+
+	if v.autoTestDone {
+		v.autoTestHold(elapsed)
+		return
+	}
+
 	if v.autoTestElapsed < autoTestDelaySeconds {
 		return
 	}
 
 	v.autoTestDone = true
 
-	present := make(map[string]bool)
+	byLabel := make(map[string]d2interface.MapEntity)
 
 	for _, e := range v.gameClient.MapEngine.Entities() {
 		if label := e.Label(); label != "" {
-			present[label] = true
+			byLabel[label] = e
 		}
 	}
 
-	for _, name := range strings.Split(names, ",") {
-		path := v.playNPCGreeting(name)
-		v.Infof("AUTOTEST greeting npc=%s in_town=%v file=%q", name, present[name], path)
+	if talk != "" {
+		for _, name := range strings.Split(talk, ",") {
+			_, present := byLabel[name]
+			path := v.playNPCGreeting(name)
+			v.Infof("AUTOTEST greeting npc=%s in_town=%v file=%q", name, present, path)
+		}
 	}
 
+	for _, name := range strings.Split(menus, ",") {
+		npc, present := byLabel[name]
+		if name == "" || !present {
+			if name != "" {
+				v.Infof("AUTOTEST menu npc=%s in_town=false", name)
+			}
+
+			continue
+		}
+
+		rows := v.openNPCMenu(v.gameControls.NPCMenu, npc)
+		v.Infof("AUTOTEST menu npc=%s class=%d rows=%d", name, v.npcClassID(npc), len(rows))
+
+		if choose := os.Getenv("OD2_AUTOMENU_CHOOSE"); choose != "" {
+			for i, r := range rows {
+				if strings.EqualFold(r.Action.String(), choose) {
+					v.gameControls.NPCMenu.Choose(i)
+				}
+			}
+		}
+	}
+
+	if os.Getenv("OD2_AUTOMENU_HOLD") == "" {
+		v.autoTestExit()
+	}
+}
+
+func (v *Game) autoTestHold(_ float64) {
+	hold, err := strconv.ParseFloat(os.Getenv("OD2_AUTOMENU_HOLD"), 64)
+	if err == nil && v.autoTestElapsed >= autoTestDelaySeconds+hold {
+		v.autoTestExit()
+	}
+}
+
+func (v *Game) autoTestExit() {
 	if os.Getenv("OD2_AUTOEXIT") != "" {
 		os.Exit(0)
 	}
