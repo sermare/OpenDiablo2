@@ -57,10 +57,6 @@ func (t *tileBuilder) buildPreset() error {
 
 	// Def 1 and 0x6c also run the cell passes over two scratch grids the game
 	// clears and never fills: no records come from them.
-	if rec.Animate != 0 {
-		return unported("animated preset tiles (0x66ff50 / 0x6703e0)")
-	}
-
 	pat, err := l.env.Pattern(NormalizePrestFile(rec.File[r.File]))
 	if err != nil {
 		return err
@@ -140,5 +136,83 @@ func (t *tileBuilder) buildPreset() error {
 
 	pass(nil, shadow, false)
 
+	if rec.Animate != 0 {
+		t.animate(walls, ww, t.rt.Walls, false)
+		t.animate(floors, ww, t.rt.Floors, false)
+		t.animate([][]uint32{shadow}, ww, t.rt.Shadows, true)
+	}
+
 	return nil
+}
+
+// animate is 0x6703e0 / 0x670120 for one record list of an Animate preset.
+// In DT1 an animated tile (material bit 0x100) is a set of frame tiles under
+// one (orientation, style, sequence) key whose Rarity column is the frame
+// number. The record found by the pick becomes frame 0 and one more record at
+// the same cell is made for every other frame (flag 8, not chained into a
+// border group). The cell value is read back from the layer grid that the
+// record's layer bits (flags 14-16) name (the shadow list has one grid).
+// Nothing is rolled. The loop covers the records that existed when it started.
+// The counting pass 0x66ff50 only sizes buffers and sets room flag 0x8000000;
+// it is not needed here.
+func (t *tileBuilder) animate(grids [][]uint32, ww int, list []*TileRecord, shadow bool) {
+	n := len(list)
+
+	for i := 0; i < n; i++ {
+		rec := list[i]
+		if rec.Tile.DT == nil || rec.Tile.tile().material&0x100 == 0 {
+			continue
+		}
+
+		layer := 0
+		if !shadow {
+			layer = int((rec.Flags>>14)&7) - 1
+		}
+
+		if layer < 0 || layer >= len(grids) {
+			panic(unported("animated record of an unknown layer"))
+		}
+
+		var v uint32
+		if g := grids[layer]; rec.Y*ww+rec.X < len(g) {
+			v = g[rec.Y*ww+rec.X]
+		}
+
+		var style, seq int32
+		if v != 0 {
+			style, seq = int32(v>>20)&0x3f, int32(v>>8)&0xff
+		}
+
+		refs := t.rt.Lib.query(int32(rec.Ori), style, seq, 40)
+		frame := func(k int) TileRef {
+			for _, r := range refs {
+				if r.Rarity() == k {
+					return r
+				}
+			}
+
+			panic(GameError{0xb6}) // fatal in the original too
+		}
+
+		rec.Tile = frame(0)
+		wx, wy := t.r.X+rec.X, t.r.Y+rec.Y
+
+		for k := 1; k < len(refs); k++ {
+			tile := frame(k)
+
+			var nr *TileRecord
+
+			switch rec.Ori {
+			case 0:
+				nr = floorRec(t.rt, nil, wx, wy, v, tile)
+			case 0xd:
+				shadowRec(t.rt, nil, wx, wy, v, tile)
+				nr = t.rt.Shadows[len(t.rt.Shadows)-1]
+			default:
+				nr = t.wallRec(t.rt, nil, wx, wy, v, tile, rec.Ori)
+			}
+
+			nr.Flags |= 8
+		}
+	}
 }

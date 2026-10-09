@@ -19,8 +19,8 @@
 // player streams them in; BuildTiles fixes the order (plain rooms in creation
 // order, then presets in creation order) and the golden uses the same one.
 //
-// Only levels 2-7, 0x11 and 0x27 of Act 1 are covered by the golden; other
-// level types (Acts 2-5) are not implemented. Tile code paths no golden room
+// Only levels 2-7, 0x11 and 0x27 of Act 1 are covered by the Act 1 golden;
+// Acts 2-5 are covered further down. Tile code paths no golden room
 // reaches are not ported and make BuildTiles return an error (see tiles.go).
 //
 // What is NOT covered: the tile-record creation per cell (0x680720 and
@@ -49,5 +49,5 @@
 // act2.go, act3.go, world23.go and town.go; their golden is
 // testdata/outdoor_act2.json and outdoor_act3.json. Unverified: the DT1 tile
 // pick (as above), preset-room flags, and DS1 object gates for Act 3 files that
-// the sampled games never drew (rooms23.go). Acts 4 and 5 are not implemented.
+// the sampled games never drew (rooms23.go). Acts 4 and 5 are covered above.
 package drlgoutdoor

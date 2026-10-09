@@ -2,12 +2,13 @@
 package ebiten
 
 import (
+	"fmt"
 	"io"
-	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio/d2soundpath"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/wav"
@@ -133,30 +134,21 @@ func (eap *AudioProvider) createSoundEffect(sfx string, context *audio.Context,
 	loop bool) (*SoundEffect, error) {
 	result := &SoundEffect{}
 
-	soundFile := "data/global/sfx/"
-
-	// full archive paths (e.g. NPC speech under data/local/sfx) are used as-is
-	if strings.HasPrefix(strings.TrimPrefix(sfx, "/"), "data/") {
-		soundFile = ""
+	name := sfx
+	if entry, exists := eap.asset.Records.Sound.Details[sfx]; exists {
+		name = entry.FileName
 	}
 
-	if _, exists := eap.asset.Records.Sound.Details[sfx]; exists {
-		soundEntry := eap.asset.Records.Sound.Details[sfx]
-		soundFile += soundEntry.FileName
-	} else {
-		soundFile += sfx
-	}
-
-	if fileExists, _ := eap.asset.FileExists(soundFile); !fileExists {
-		soundFile = "data/global/music/" + sfx
+	// Sounds.txt names are relative to the sfx, speech or music archive folder, with backslashes
+	soundFile, found := d2soundpath.Resolve(name, func(p string) bool {
+		ok, _ := eap.asset.FileExists(p)
+		return ok
+	})
+	if !found {
+		return nil, fmt.Errorf("sound %q not found in the sfx, speech or music folders", name)
 	}
 
 	audioData, err := eap.asset.LoadFileStream(soundFile)
-
-	if err != nil {
-		audioData, err = eap.asset.LoadFileStream("data/global/music/" + sfx)
-	}
-
 	if err != nil {
 		return nil, err
 	}

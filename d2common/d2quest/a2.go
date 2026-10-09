@@ -121,6 +121,7 @@ func newRadament() *Quest {
 
 			d.rewarded = true
 
+			g.chainFrom(q)
 			g.emit(Effect{Kind: EffectLogUpdate, Quest: q.ID, Value: 13})
 		}
 	}
