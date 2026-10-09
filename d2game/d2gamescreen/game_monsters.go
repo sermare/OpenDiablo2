@@ -47,6 +47,7 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 	opt := d2monsters.Options{
 		Seed:       uint32(v.gameClient.MapEngine.Seed()),
 		Difficulty: d2monster.Normal,
+		Expansion:  true, // the game data is Lord of Destruction (MonLvl*Ex columns)
 		// the scenario spawns monsters next to a hero who may still be in town
 		IgnoreTown: os.Getenv("OD2_AUTOMONSTER") != "",
 	}
