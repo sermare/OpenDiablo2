@@ -80,8 +80,10 @@ type Skill struct {
 	PassiveState string
 	// PassiveIType is passiveitype: the weapon type a mastery's stats are keyed to.
 	PassiveIType string
-	PassiveStat  [6]string
-	PassiveCalc  [6]*d2calc.Program
+	// IType1 is itypea1, the weapon type the skill needs (the throw family test of 0x646a90).
+	IType1      string
+	PassiveStat [6]string
+	PassiveCalc [6]*d2calc.Program
 
 	PetMax   *d2calc.Program
 	Skpoints *d2calc.Program

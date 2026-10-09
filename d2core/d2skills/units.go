@@ -154,7 +154,7 @@ func (h *heroUnit) WeaponDamage() (min, max int) {
 // right hand weapon: the largest mastery value of the hero's true passives
 // whose weapon type the equipped weapon is of (itemtypes equiv chain). 0
 // without a weapon or masteries.
-func (h *heroUnit) Mastery(k d2skill.MasteryKind) int {
+func (h *heroUnit) Mastery(k d2skill.MasteryKind, sk *d2skill.Skill) int {
 	if h.p.Equipment == nil || h.p.Equipment.RightHand == nil {
 		return 0
 	}
@@ -164,7 +164,12 @@ func (h *heroUnit) Mastery(k d2skill.MasteryKind) int {
 		return 0
 	}
 
-	return h.e.MasteryFor(h.p.ID(), k, wt)
+	thrown := false
+	if rec := h.e.asset.Records.Item.Weapons[h.p.Equipment.RightHand.GetItemCode()]; rec != nil && rec.Throwable {
+		thrown = d2skill.SkillThrows(sk, func(have, want string) bool { return d2skill.TypeIs(h.e.equivOf, have, want) })
+	}
+
+	return h.e.MasteryFor(h.p.ID(), k, wt, thrown)
 }
 
 // weaponType is the itemtypes code of a weapon base item ("" if unknown).
@@ -180,22 +185,23 @@ func (e *Engine) weaponType(code string) string {
 	return ""
 }
 
+// equivOf returns the two parents of an item type code.
+func (e *Engine) equivOf(c string) (string, string) {
+	if e.asset != nil {
+		if r := e.asset.Records.Item.Types[c]; r != nil {
+			return r.Equiv1, r.Equiv2
+		}
+	}
+
+	return "", ""
+}
+
 // MasteryFor is the mastery value of kind k for a hero wielding a weapon of
 // item type wt (a code such as "swor"; ancestors via ItemTypes Equiv1/2).
-func (e *Engine) MasteryFor(unitID string, k d2skill.MasteryKind, wt string) int {
+func (e *Engine) MasteryFor(unitID string, k d2skill.MasteryKind, wt string, thrown bool) int {
 	h := e.heroes[unitID]
 	if h == nil || h.inPassive {
 		return 0
-	}
-
-	equiv := func(c string) (string, string) {
-		if e.asset != nil {
-			if r := e.asset.Records.Item.Types[c]; r != nil {
-				return r.Equiv1, r.Equiv2
-			}
-		}
-
-		return "", ""
 	}
 
 	var mods []d2skill.TruePassiveMod
@@ -208,7 +214,7 @@ func (e *Engine) MasteryFor(unitID string, k d2skill.MasteryKind, wt string) int
 	}
 	h.inPassive = false
 
-	return d2skill.MasteryValue(mods, k, func(t string) bool { return d2skill.TypeIs(equiv, wt, t) })
+	return d2skill.MasteryValue(mods, k, thrown, func(t string) bool { return d2skill.TypeIs(e.equivOf, wt, t) })
 }
 
 // RangedWeaponMissile is not derived from the weapon type yet (UNVERIFIED /
