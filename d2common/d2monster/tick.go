@@ -23,6 +23,10 @@ const waitNoTargetFrames = 20
 // wake-up shout (VERIFIED immediate 0xfa in 0x5aed10).
 const summonerClass = 250
 
+// wakeUpDist is the tick distance below which the wake-up fires (VERIFIED
+// immediate 0x14 at 0x5aed63).
+const wakeUpDist = 20
+
 // wakeUpFrames is the sleep after the wake-up shout (VERIFIED, push 0x14).
 const wakeUpFrames = 20
 
@@ -106,9 +110,8 @@ func Tick(w World, b *Brain) bool {
 	}
 
 	// 3. MONAI_PostTargetChecks 0x5aefc0 (VERIFIED order: wake-up 0x5aed10,
-	// wounded MonTeleport 0x5aedc0, threat re-targeting). Only the wake-up is
-	// ported; the other two are not (see the notes, verify-monster-ai.md).
-	if postTargetWake(c) {
+	// wounded MonTeleport 0x5aedc0, level-threat re-target; postcheck.go).
+	if postTargetChecks(c) {
 		return false
 	}
 
@@ -153,15 +156,25 @@ func acquire(c *Ctx) bool {
 	c.B.HasTarget = false
 
 	switch mode {
-	case TargetOnly, TargetFindThenThink:
-		if mode == TargetFindThenThink {
+	case TargetOnly:
+		return true
+	case TargetFindThenThink:
+		if !idleWander(c, false) {
 			c.Sleep(waitNoTargetFrames)
 		}
 
 		return true
 	case TargetFindOrWait:
-		c.Sleep(waitNoTargetFrames)
+		if !idleWander(c, false) {
+			c.Sleep(waitNoTargetFrames)
+		}
 
+		return false
+	}
+
+	// Mode 1: the aggressive unit (or one standing on a flagged tile) that can
+	// walk shuffles instead of sleeping (VERIFIED 0x5dd6b0).
+	if idleWander(c, true) {
 		return false
 	}
 
@@ -170,10 +183,6 @@ func acquire(c *Ctx) bool {
 	// than 24, else 10. Which distance is used when no player is within the
 	// aggro radius is the nearest one regardless of radius (VERIFIED: the min
 	// distance 0x5dc560 reports is updated before its radius filter).
-	// The exe also wanders (Wander(5)) here when the unit is aggressive and its
-	// class has monstats flag bit 2 of the byte at +0xf0 (0x467af0, name
-	// unknown) - not ported. (flag meaning
-	// unknown).
 	switch {
 	case !ok || nearest > 34:
 		c.Sleep(25)
@@ -189,13 +198,14 @@ func acquire(c *Ctx) bool {
 // postTargetWake is MONAI_PostTargetChecks' first stage 0x5aed10 (VERIFIED):
 // for a Summoner (class 250), or a unit the host marks "unaware" (the exe
 // tests a game flag, FUN_0059dd60 with 8, whose meaning is UNVERIFIED), the
-// first time a player is the target while the AiGeneral counter (+0x14) is
-// below 20 and the one-shot flag 0x10 is clear: shout, set the flag, sleep 20
-// frames and end the tick. (The older note read "dist < 20"; the exe compares
-// the counter, not the distance.)
+// first time a player is the target within tick distance < 20 (VERIFIED in
+// the 0x5aed10 disassembly: it reads +0x14 of the tick params, which 0x5aefc0
+// also uses as the distance; an earlier pass wrongly called it a counter) and
+// the one-shot flag 0x10 is clear: shout, set the flag, sleep 20 frames and
+// end the tick.
 func postTargetWake(c *Ctx) bool {
 	b := c.B
-	if c.Target == nil || !c.Target.IsPlayer || b.WakeShouted || b.Scratch[0] >= 20 {
+	if c.Target == nil || !c.Target.IsPlayer || b.WakeShouted || c.Dist >= wakeUpDist {
 		return false
 	}
 

@@ -148,8 +148,7 @@ func TestVerifyCircleDirection(t *testing.T) {
 }
 
 // TestVerifySummonerWake pins 0x5aed10: the first player sighting shouts once,
-// sleeps 20 frames and ends the tick; the +0x14 counter (not the distance)
-// gates it; other classes never wake.
+// sleeps 20 frames and ends the tick; the tick distance < 20 gates it; other classes never wake.
 func TestVerifySummonerWake(t *testing.T) {
 	w := newFake2(8, false)
 	b := brainAt(summonerProfile(100, 0, 100, 40, 120, 0, 10, 40))
@@ -165,13 +164,19 @@ func TestVerifySummonerWake(t *testing.T) {
 		t.Fatal("wake-up must be one-shot")
 	}
 
-	b2 := brainAt(summonerProfile(100, 0, 100, 40, 120, 0, 10, 40))
-	b2.Scratch[0] = 20
-	w2 := newFake2(8, false)
-	Tick(w2, b2)
+	// 0x5aed63 compares the tick distance (params +0x14), unsigned, with 0x14.
+	for _, c := range []struct {
+		dist  int
+		shout int
+	}{{19, 1}, {20, 0}} {
+		b2 := brainAt(summonerProfile(100, 0, 100, 40, 120, 0, 10, 40))
+		b2.Profile.AIDist = 50
+		w2 := newFake2(c.dist, false)
+		Tick(w2, b2)
 
-	if w2.shouts != 0 {
-		t.Fatal("counter >= 20 must skip the wake-up")
+		if w2.shouts != c.shout {
+			t.Fatalf("dist %d: shouts %d want %d", c.dist, w2.shouts, c.shout)
+		}
 	}
 
 	w3 := newFake(8, false)
