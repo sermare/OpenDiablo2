@@ -27,6 +27,10 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 
 | Done | Evidence |
 |---|---|
+| **Skills for all seven classes** (~130 skills): the status-effect engine (poison, burn, chill, stun, fear, curses), auras, summons (skeletons, golems, wolves, ravens), traps, Paladin/Druid/Assassin/Barbarian/Amazon/Necromancer/Sorceress castings | Scenario casts 30 skills across the 7 classes; several formulas spot-checked in the binary, others marked unverified |
+| **Skill hotkeys and the skill selection screen**: 16 hotkey slots, the popup laid out like the real game, spending points with prerequisites, all saved in the `.d2s` | Scenario selects, assigns F-keys, spends points and checks the exported header; screenshots read |
+| **Remaining boss and monster behaviours**: Summoner, Duriel, Mephisto, Diablo, Izual, Vulture, Baal minions and the forced states (fear, confuse, attract, charm) | Real Summoner skill slots confirmed in the binary; monsters fight monsters when charmed or confused |
+| **Nightmare and Hell**: a difficulty screen (only unlocked difficulties), the real scaling tables (a Nightmare Fallen: level 36, defence 369, damage 13-27, 1,669 xp), per-difficulty quests and waypoints | Checked against the real tables; saved in the `.d2s` active-difficulty byte |
 | **Multiplayer**: two instances join over TCP using the real game's packet framing (Huffman table read from the binary); both build the same level from the host's map seed, see each other, walk, cast and chat | Two-process scenario passes: both saw the other's name and position, walk/cast/chat arrived, clean leave |
 | **The quest system**: the intro quests, all of Act 1 and Radament's Lair — states, NPC speech with the real voice lines, rewards, quest log, saved in the `.d2s` | A scripted Act 1 line passes 70 of 70 checks; Den of Evil with real killed cave monsters; the quest bits appear in the exported `.d2s` |
 | Runs natively on Apple Silicon with the **real 1.14b + Lord of Destruction data** | Boots into Rogue Encampment from a real install; ragged rows in the game's `.txt` tables, optional LoD strings and missing music no longer crash it |
@@ -39,18 +43,17 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | **Import a real character into the engine — with her gear** | A level-94 Sorceress from a real `.d2s` loads, starts in town and wears her real Spired Helm, Archon Plate, Battle Boots, Light Gauntlets, Flail, Short Staff and Monarch |
 | **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; checked instruction-by-instruction against the real code: no differences |
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~2,420 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
+| Reverse-engineering map of the game | ~2,500 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
 ### 🔧 In progress right now (agents run in waves; the machine is the limit)
 
 | Work item | Where |
 |---|---|
-| **Skills for all seven classes**, with auras, summons, traps and status effects | branch `feat/class-skills` |
-| **A scripted playthrough of the first hour of Act 1** that finds and fixes the seams between systems | branch `feat/act1-playthrough` |
-| **Exact outdoor tile ids** (Blood Moor etc.), proven against the real game | branch `feat/drlg-tiles` |
-| **Skill hotkeys and skill selection screen**; **remaining boss/monster behaviours** | `feat/skillbar`, `feat/monster-ai-3` |
-| **Acts 2 to 5 towns and travelling between acts**; **Nightmare and Hell difficulty** | `feat/act-towns`, `feat/difficulty` |
-| Research: Act 2 desert, Act 3 jungle, Act 4 and 5 outdoors (generators) | RE notes: `drlg-act23-outdoor`, `drlg-act45-outdoor` |
+| **Acts 2 to 5 towns and travel between acts** (merging with the latest code) | branch `feat/act-towns` |
+| **A scripted first hour of Act 1**, finding and fixing the seams between systems | branch `feat/act1-playthrough` |
+| **Exact outdoor tile ids**, proven against the real game | branch `feat/drlg-tiles` |
+| **Act 4 and 5 generators in Go** (spec verified against the real game) | next |
+| Research: Act 2 desert and Act 3 jungle generators | RE notes: `drlg-act23-outdoor` |
 | Imported-character UI, last merge pending | `feat/imported-hero-ui` |
 
 ### 🎯 Plan and priorities (set by Claude)
@@ -128,6 +131,7 @@ Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | Skills for all seven classes, skill hotkeys and the selection screen, Nightmare/Hell difficulty, boss behaviours and forced states, multiplayer and documentation merged; Act 4/5 level generators specified and checked against the real game |
 | 2026-10-09 | **Act 1 outdoors match the real game on 240 levels**; mercenaries, equipment rules, world objects, automap and a 5× faster frame merged |
 | 2026-10-09 | Death/respawn/new characters merged (new Druid byte-identical to the real file); the Act 1 outdoor generation algorithm reverse engineered and a reference port matched the real game on 208 levels |
 | 2026-10-09 | **All maze levels of all five acts proven identical to the real game**; equipment affects the hero (explains 1241/869); positional/ambient audio; a double-clickable Mac app |
