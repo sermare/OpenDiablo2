@@ -89,8 +89,10 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
         echo "$tmp/od2 2>&1 | tee $log"
       } > $cmd
       chmod +x $cmd; rm -f $log
+      slot=$(./scripts/gameslot.sh acquire $$)
       launch_game $cmd
       wait_run
+      ./scripts/gameslot.sh release $slot
       sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
       scenario_check
       if [ -z "$scenario_warnings_ok" ] && grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing" | grep -v "KILL giving up for now"; then
