@@ -170,6 +170,8 @@ type Director struct {
 	snd      *rand.Rand
 	packRNG  *d2rand.Seed
 
+	boss BossHooks // the boss AIs' encounter hooks (bosshooks.go)
+
 	// ExpBonusPct, when set, returns the percent of extra experience per kill
 	// (the experience shrine).
 	ExpBonusPct func() int
