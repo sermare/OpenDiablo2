@@ -37,6 +37,10 @@ func (g *GameControls) handleContainerClick(mx, my int, ctrl bool) bool {
 // handleContainerRightClick opens the Horadric Cube from a right click on it
 // and drinks a potion that is right-clicked in the inventory.
 func (g *GameControls) handleContainerRightClick(mx, my int) bool {
+	if g.tradeRightClick(mx, my) {
+		return true
+	}
+
 	var item InventoryItem
 
 	var from *ItemGrid

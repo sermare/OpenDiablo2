@@ -16,6 +16,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2party"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
@@ -69,6 +70,15 @@ type GameClient struct {
 	infoDiffic d2enum.DifficultyType
 	ownCasts   int32 // casts already played locally whose echo from the server is to be skipped
 
+	// Roster is this client's copy of the server's roster (players, parties,
+	// hostility, invitations); the hooks are set by the game screen and run on
+	// the game loop (Drain).
+	Roster    *d2party.Roster
+	OnTrade   func(d2netpacket.TradeUpdatePacket)
+	OnPvPHit  func(d2netpacket.PvPHitPacket)
+	OnPartyXP func(d2netpacket.PartyXPPacket)
+	OnRoster  func(notice string)
+
 	*d2util.Logger
 }
 
@@ -81,6 +91,7 @@ func Create(connectionType d2clientconnectiontype.ClientConnectionType,
 		asset:          asset,
 		MapEngine:      d2mapengine.CreateMapEngine(l, asset),
 		Players:        make(map[string]*d2mapentity.Player),
+		Roster:         d2party.New(),
 		connectionType: connectionType,
 		scriptEngine:   scriptEngine,
 	}
@@ -306,6 +317,14 @@ func (g *GameClient) handlePacket(packet d2netpacket.NetPacket) error {
 		if err := g.handleChatPacket(packet); err != nil {
 			return err
 		}
+	case d2netpackettype.RosterUpdate:
+		return g.handleRosterPacket(packet)
+	case d2netpackettype.TradeUpdate:
+		return g.handleTradePacket(packet)
+	case d2netpackettype.PvPHit:
+		return g.handlePvPPacket(packet)
+	case d2netpackettype.PartyXP:
+		return g.handlePartyXPPacket(packet)
 	case d2netpackettype.ServerClosed:
 		// https://github.com/OpenDiablo2/OpenDiablo2/issues/802
 		g.Infof("Server has been closed")

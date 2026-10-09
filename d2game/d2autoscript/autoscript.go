@@ -37,6 +37,10 @@ const (
 	KindHotkey Kind = "hotkey"
 	// KindPress presses a skill hotkey: press:F1.
 	KindPress Kind = "press"
+	// KindWaitLog waits (up to WaitLogTimeout game seconds) until the game log
+	// contains the text, then goes on; a timeout fails the step. It lets two
+	// processes of a network game run a scenario in step: waitlog:<substring>.
+	KindWaitLog Kind = "waitlog"
 	// KindWaypoint travels to a waypoint level through the open waypoint panel.
 	KindWaypoint Kind = "waypoint"
 )
@@ -59,7 +63,7 @@ type Step struct {
 }
 
 // Panels accepted by the panel step.
-var Panels = []string{"inventory", "character", "skills", "quest", "close"}
+var Panels = []string{"inventory", "character", "skills", "quest", "party", "close"}
 
 // SkillOps are accepted by the skill step.
 var SkillOps = []string{"left", "right", "popup", "hover", "click", "use", "spend", "nospend"}
@@ -91,6 +95,9 @@ type SkillHost interface {
 	// Press presses the hotkey ("F1").
 	Press(key string) error
 }
+
+// WaitLogTimeout is the longest a waitlog step waits (game seconds).
+const WaitLogTimeout = 90.0
 
 // BusyTimeout is the longest the runner waits for a busy host (game seconds).
 const BusyTimeout = 30.0
@@ -243,6 +250,10 @@ func parseStep(raw string) (Step, error) {
 		}
 
 		s.Arg = strings.TrimPrefix(arg, "log=")
+	case KindWaitLog:
+		if arg == "" {
+			return s, errors.New("waitlog needs a substring")
+		}
 	case KindExit:
 	default:
 		return s, fmt.Errorf("unknown step %q", name)
@@ -287,6 +298,7 @@ type Runner struct {
 	// levelWait is how long the current expect:level step has been waiting.
 	levelWait float64
 	busyWait  float64
+	logWait   float64
 	failed    bool
 	done      bool
 }
@@ -333,6 +345,11 @@ func (r *Runner) Advance(elapsed float64) {
 
 	if s.Kind == KindExpect && s.HasLevel && r.levelWait < ExpectLevelTimeout && !r.levelIs(s.Level) {
 		r.levelWait += elapsed // a level change is still running
+		return
+	}
+
+	if s.Kind == KindWaitLog && r.logWait < WaitLogTimeout && !r.host.LogContains(s.Arg) {
+		r.logWait += elapsed
 		return
 	}
 
@@ -397,6 +414,15 @@ func (r *Runner) run(s Step) error {
 		}
 
 		return lh.Waypoint(s.Level)
+	case KindWaitLog:
+		waited := r.logWait
+		r.logWait = 0
+
+		if !r.host.LogContains(s.Arg) {
+			return fmt.Errorf("log did not contain %q within %.0fs", s.Arg, waited)
+		}
+
+		return nil
 	case KindExpect:
 		if s.HasLevel {
 			return r.expectLevel(s.Level)
