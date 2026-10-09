@@ -42,6 +42,7 @@ type Set struct {
 	states  map[string]*Instance
 	streams []Stream
 	frac    map[string]int // 8.8 remainder per stream kind
+	defs    Defs           // states.txt rows; nil = no exclusion or death rules
 }
 
 // New creates an empty set.
@@ -49,20 +50,85 @@ func New() *Set {
 	return &Set{states: map[string]*Instance{}, frac: map[string]int{}}
 }
 
-// Apply puts a state on the unit. A state with the same name is replaced (the
-// game frees the old statlist when the skill or level differs and refreshes
-// it otherwise). The previous instance is returned (nil if none was active).
+// SetDefs gives the set the states.txt rows that drive group / curse
+// exclusion, removal on hit and death, and colour. Without them the set only
+// replaces a state of the same name.
+func (s *Set) SetDefs(d Defs) { s.defs = d }
+
+// Apply puts a state on the unit and returns the active instance it
+// replaced (nil if none). It is ApplyTimed without the accepted flag.
 func (s *Set) Apply(frame int, in Instance) *Instance {
-	prev := s.states[in.Name]
-	if !prev.Active(frame) {
-		prev = nil
+	_, prev := s.ApplyTimed(frame, in)
+
+	return prev
+}
+
+// ApplyTimed follows SKILL_CreateTimedStateStatList (0x56c740, verified):
+//
+//   - the unit's existing statlist is found by state id, except for curses
+//     (states.txt curse = 1) where any active curse is found, whatever its
+//     name: a unit carries one curse at a time;
+//   - a state with the same name from the same skill (SkillID != 0 on both)
+//     and the same level only has its end refreshed (to now + length, even
+//     when that is sooner; a length of 0 changes nothing) and is not rebuilt;
+//   - the same skill at a lower level than the active one is rejected;
+//   - anything else (higher level, other skill, other curse) removes the old
+//     statlist and creates the new one.
+//
+// Without a SkillID (stun, chill, auras, tests) a state of the same name is
+// simply replaced. With defs, active states of the same nonzero group also
+// end (U: the exe does not use the group column in 0x56c740; it reads it in
+// the monster AI check 0x5ea850 "has another state of this group"; the armor
+// exclusivity this models is unconfirmed), and shrine states are not
+// curses (U). The returned prev is the replaced or refreshed instance.
+func (s *Set) ApplyTimed(frame int, in Instance) (applied bool, prev *Instance) {
+	var old string
+
+	if d, ok := s.defs[in.Name]; ok && d.Curse && !isShrine(in.Name) {
+		for n, x := range s.states {
+			if dx, ok := s.defs[n]; ok && dx.Curse && !isShrine(n) && x.Active(frame) {
+				old = n
+			}
+		}
+	}
+
+	if old == "" {
+		old = in.Name
+	}
+
+	if ex := s.states[old]; ex.Active(frame) {
+		prev = ex
+
+		if old == in.Name && in.SkillID != 0 && ex.SkillID == in.SkillID {
+			if in.Level == ex.Level {
+				if in.Until != 0 {
+					ex.Until = in.Until
+				}
+
+				return true, prev
+			}
+
+			if in.Level < ex.Level {
+				return false, prev
+			}
+		}
+
+		delete(s.states, old)
+	}
+
+	if s.defs != nil {
+		for n := range s.states {
+			if s.defs.exclusive(in.Name, n) {
+				delete(s.states, n)
+			}
+		}
 	}
 
 	cp := in
 	cp.Mods = append([]StatMod(nil), in.Mods...)
 	s.states[in.Name] = &cp
 
-	return prev
+	return true, prev
 }
 
 // Get returns the active instance of a state or nil.
@@ -114,14 +180,33 @@ func (s *Set) Stat(frame int, stat string) int {
 	return total
 }
 
-// AddStream starts a poison or burn stream. Streams are independent and add
-// up (U: whether the game stacks or replaces them).
+// AddStream starts a poison or burn stream. Verified (0x578990 poison,
+// 0x578b00 burn): a unit has one statlist per kind (state 2 and state 0x73,
+// both carrying hpregen 0x4a = -perFrame). A new stream replaces the active
+// one (new strength and new end) only when its per-frame damage is at least
+// the active one's; a weaker one is ignored entirely. Poison and burn are
+// independent and add up. A value or length of 0 does nothing.
 func (s *Set) AddStream(frame int, kind string, perFrame, frames int, source string, skillID int) {
 	if perFrame <= 0 || frames <= 0 {
 		return
 	}
 
-	s.streams = append(s.streams, Stream{Kind: kind, PerFrame: perFrame, Until: frame + frames, Source: source, SkillID: skillID})
+	st := Stream{Kind: kind, PerFrame: perFrame, Until: frame + frames, Source: source, SkillID: skillID}
+
+	for i := range s.streams {
+		cur := &s.streams[i]
+		if cur.Kind != kind || cur.Until <= frame {
+			continue
+		}
+
+		if perFrame >= cur.PerFrame {
+			*cur = st
+		}
+
+		return
+	}
+
+	s.streams = append(s.streams, st)
 }
 
 // Streams returns the active streams.
@@ -243,6 +328,89 @@ func (s *Set) Drain(frame int, stat string, amount int) int {
 	}
 
 	return taken
+}
+
+// Hit ends the states flagged remhit (cloak_of_shadows) and returns their
+// names; call it when the unit takes a hit. Needs defs.
+func (s *Set) Hit(frame int) []string {
+	var out []string
+
+	for n, in := range s.states {
+		if d, ok := s.defs[n]; ok && d.RemHit && in.Active(frame) {
+			out = append(out, n)
+		}
+	}
+
+	sort.Strings(out)
+
+	for _, n := range out {
+		delete(s.states, n)
+	}
+
+	return out
+}
+
+// Death clears what a dying unit of a kind ("player", "monster", "boss")
+// loses: every state without the matching *staydeath flag, and all DoT
+// streams. Verified (STATS_RemoveNonPersistentStatesOnDeath, flags test
+// 0x63b5b0): the statlists use plrstaydeath for players and monstaydeath for
+// every monster, bosses included; bossstaydeath only picks which state bits
+// (visuals) survive, see Defs.BitStays. Without defs everything is cleared
+// (same as Reset).
+func (s *Set) Death(kind string) {
+	for n := range s.states {
+		if !s.defs.stays(n, kind) {
+			delete(s.states, n)
+		}
+	}
+
+	s.streams = nil
+	s.frac = map[string]int{}
+}
+
+// Shatters reports whether the unit would shatter if it died now (an active
+// state with the shatter flag: freeze).
+func (s *Set) Shatters(frame int) bool {
+	for n, in := range s.states {
+		if d, ok := s.defs[n]; ok && d.Shatter && in.Active(frame) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ColorShift returns the PL2 hue variation the unit is drawn with: among the
+// active states with colorpri > 0 and id > 0, the highest colorpri, ties to
+// the lowest id (verified, client FUN_004d65a0). The "blue" column plays no
+// part. ok is false when no state colours the unit.
+func (s *Set) ColorShift(frame int) (shift int, ok bool) {
+	var best Def
+
+	for n, in := range s.states {
+		d, has := s.defs[n]
+		if !has || d.ColorPri <= 0 || d.ID <= 0 || !in.Active(frame) {
+			continue
+		}
+
+		if !ok || d.ColorPri > best.ColorPri || (d.ColorPri == best.ColorPri && d.ID < best.ID) {
+			best, ok = d, true
+		}
+	}
+
+	return best.ColorShift, ok
+}
+
+// ColorShiftLocal is ColorShift for the local player: a shift of 104 (the
+// poison green) is not applied to the player's own sprite when the video
+// mode is 3D or higher (verified, FUN_004d65a0: shift 0 is stored instead).
+func (s *Set) ColorShiftLocal(frame int, mode3D bool) (shift int, ok bool) {
+	shift, ok = s.ColorShift(frame)
+	if ok && shift == 104 && mode3D {
+		return 0, ok
+	}
+
+	return shift, ok
 }
 
 // Reset clears everything (death, new game).
