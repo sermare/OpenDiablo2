@@ -1,7 +1,3 @@
-// Package d2autoscript implements the OD2_AUTOSCRIPT scenario runner: a small,
-// display-free state machine that drives the hero through a list of steps
-// (walk, cast, open panels, console commands, log expectations) so a change can
-// be tested without a mouse. The game supplies a Host that performs the actions.
 package d2autoscript
 
 import (

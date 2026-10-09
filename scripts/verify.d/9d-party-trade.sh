@@ -46,7 +46,7 @@ scenario_env() {
   local jn=$mp_second_name hn=$mp_host_name jsave=$tmp/9d-join.d2s jcmd=$tmp/9d-join.command
   _d2s_rename $save $jsave $jn
 
-  local common="export OD2_PORT=$OD2_PORT OD2_PROTO=d2gs OD2_AUTOPARTY=1 OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
+  local common="export OD2_PORT=$OD2_PORT OD2_PROTO=d2gs OD2_AUTOPARTY=1 ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
 
   local hscript="wait:2;waitlog:SOCIAL roster n=2;say:roster"
   hscript+=";say:party invite $jn;waitlog:$jn joined the party"

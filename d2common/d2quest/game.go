@@ -1,34 +1,3 @@
-// Package d2quest implements the quest system of the original game as a pure,
-// engine independent state machine: a list of quest nodes, a set of events
-// the engine feeds in (area entered, monster killed, item picked up, NPC
-// talked to, message heard...), the 16 flag bits of the d2s quest record
-// they drive, and the effects (skill point, mercenary, imbue, items...) the
-// engine has to apply.
-//
-// The model follows the 1.14b binary notes (d2-re-notes/quests.md and
-// quests-2.md) and the clean-room D2MOO sources the notes compare against.
-// Differences to the real game, all deliberate:
-//
-//   - one player per game: the party loops (members in the same room, party
-//     members elsewhere in the act) collapse to "the hero"; the per-player
-//     GUID lists of the original become booleans on the quest;
-//   - object, missile and portal effects are reported as Effects instead of
-//     being simulated;
-//   - quests that are not implemented (Act 2 after Radament and Acts 3-5) have
-//     no node; their record slots are left untouched.
-//
-// Evidence: the state machines of Act 1 and Radament's Lair follow the clean-room
-// D2MOO quest sources, which the notes checked against the 1.14b binary for the
-// speech tables (all tables, byte for byte) and for the A1Q1/A1Q2/A2Q1 message
-// handlers. UNVERIFIED against the binary: the other quests' handlers, the 1.14b
-// only deltas (the Akara respec bits are from the binary notes, the Uber quests
-// are not modelled), the ids of the attach-sound effects, the topic captions of
-// the Talk submenu, the heard-list handling of the client, the barking distance,
-// and the Charsi message 150 mode (the binary dump says topic, D2MOO says spoken;
-// the binary table is used).
-//
-// Bit meanings are in d2s.QuestBit*; see the constants below for the names
-// the quest code uses.
 package d2quest
 
 import (
@@ -125,6 +94,13 @@ const (
 	EffectSpawn
 	// EffectUnlockAct: a new act can be travelled to (Value = act number 1..5).
 	EffectUnlockAct
+	// EffectReward: a quest reward the engine may not have a mechanism for yet.
+	// Code names it: "stat-points" (Value points), "life-boost" (Value life),
+	// "socket-quest" (Larzuk), "hire-ironwolves" (Asheara's Iron Wolf mercenaries),
+	// "hire-barbarians" (Qual-Kehk), "resist-bonus" (Malah's scroll, Value
+	// percent), "personalize" (Anya), "unlock-difficulty" (Baal dead),
+	// "game-complete". The engine applies the ones it supports and logs the rest.
+	EffectReward
 )
 
 // Effect is a request to the engine.
@@ -245,13 +221,12 @@ func New(rec *d2s.QuestRecord, npc *d2s.NPCBlock, difficulty int) *Game {
 		newA1Prologue, newDenOfEvil, newBurialGrounds, newToolsOfTheTrade, newSearchForCain,
 		newForgottenTower, newSistersToTheSlaughter, newA2Prologue, newRadament, newNavi,
 		newA1Intro,
+		newHoradricStaff, newTaintedSun, newArcaneSanctuary, newSummoner, newSevenTombs,
+		newA3Prologue, newLamEsen, newKhalim, newBlade, newGoldenBird, newBlackenedTemple, newGuardian,
+		newA4Prologue, newFallenAngel, newTerrorsEnd, newHellforge, newMalachai,
+		newSiege, newRescue, newPrison, newBetrayal, newRite, newEve,
 	} {
 		q := init()
-		g.Quests = append(g.Quests, q)
-		g.byID[q.ID] = q
-	}
-
-	for _, q := range newBossQuests() {
 		g.Quests = append(g.Quests, q)
 		g.byID[q.ID] = q
 	}
@@ -298,6 +273,13 @@ func (g *Game) Start() {
 	for _, id := range []int{QuestDenOfEvil, QuestRadament} {
 		if q := g.byID[id]; q != nil && q.seq != nil {
 			q.seq(g, q)
+		}
+	}
+
+	// the quests after a completed one of Acts 2-5 are available
+	for _, q := range g.Quests {
+		if g.get(q, FlagRewardGranted) && len(chainAfter[q.ID]) > 0 {
+			g.chainFrom(q)
 		}
 	}
 }

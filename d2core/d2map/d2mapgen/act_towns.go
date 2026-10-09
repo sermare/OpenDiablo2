@@ -8,7 +8,16 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
 )
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+
+	return b
+}
 
 // The towns of Acts 2-5 are single preset DS1 files (Levels.txt DrlgType 2).
 // LvlPrest Def of each (verified in the extracted tables, LevelId column):
@@ -93,7 +102,7 @@ func (actTownProvider) Load(g *MapGenerator, levelID int, req LoadRequest) error
 // and DT1 library), the NPCs come from the DS1's monster objects (names via
 // monpreset and monstats, done by the stamp), and the hero starts on the DS1's
 // start marker.
-func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, _ d2drlg.Difficulty) error {
+func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, diff d2drlg.Difficulty) error {
 	def, ok := actTownPrest[levelID]
 	if !ok {
 		return fmt.Errorf("level %d is not a town of act 2-5", levelID)
@@ -128,6 +137,19 @@ func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, _ d2drlg.Diffic
 
 	base, _ := d2rand.DrlgBaseSeed(seed)
 	idx := townFileIndex(len(files), base, levelID)
+
+	// OD2_REALMAPS=1: Lut Gholein is the preset the Act 2 world layout chose
+	// (LutW when Rocky Waste lies to its west, LutN when it lies to its north)
+	// inside its level rectangle, so the walk out of the gate reaches the border
+	// of Rocky Waste
+	var rects map[int]d2level.Rect
+
+	if RealMapsEnabled() && levelID == d2level.LutGholein {
+		if w, err := drlgoutdoor.PlaceAct2World(tb, seed, diff); err == nil && w.TownFile >= 1 && w.TownFile <= len(files) {
+			idx = w.TownFile - 1
+			rects = act23Rects(tb, levelID, seed, diff)
+		}
+	}
 	path := drlgoutdoor.NormalizePrestFile(files[idx])
 	region := d2enum.RegionIdType(rec.LevelType)
 
@@ -141,10 +163,21 @@ func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, _ d2drlg.Diffic
 	}
 
 	size := stamp.Size()
-	g.engine.ResetMap(region, size.Width, size.Height)
+	w, h := size.Width, size.Height
+
+	if r, ok := rects[levelID]; ok {
+		w, h = maxInt(w, r.W), maxInt(h, r.H)
+	}
+
+	g.engine.ResetMap(region, w, h)
 	g.engine.AddDS1(path) // ResetMap dropped the DT1 list
 	g.engine.PlaceStamp(stamp, 0, 0)
 	g.engine.BlockEmptyTiles()
+
+	if r, ok := rects[levelID]; ok {
+		g.engine.UseCollisionPaths(true)
+		g.engine.SetWorld(d2mapengine.World{Level: levelID, OriginX: r.X, OriginY: r.Y, Rects: rects})
+	}
 
 	var cands []startCand
 

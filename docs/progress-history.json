@@ -1,0 +1,235 @@
+{
+"points": [
+{
+"t": "2026-10-09T02:19:30-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 7.78,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 16.25,
+"Real .d2s save sections verified": 90.0,
+"NPC interaction features": 42.86,
+"Roadmap deliverables": 33.33
+}
+},
+{
+"t": "2026-10-09T02:22:30-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 8.79,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 21.66,
+"Real .d2s save sections verified": 90.0,
+"NPC interaction features": 42.86,
+"Roadmap deliverables": 41.67
+}
+},
+{
+"t": "2026-10-09T02:25:46-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 8.79,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 27.08,
+"Real .d2s save sections verified": 90.0,
+"NPC interaction features": 42.86,
+"Roadmap deliverables": 41.67
+}
+},
+{
+"t": "2026-10-09T02:28:48-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 11.63,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 34.3,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 42.86,
+"Roadmap deliverables": 53.85
+}
+},
+{
+"t": "2026-10-09T02:43:47-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 14.06,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 45.13,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 57.14,
+"Roadmap deliverables": 76.92
+}
+},
+{
+"t": "2026-10-09T03:08:25-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 17.85,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 57.76,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 71.43,
+"Roadmap deliverables": 80.0
+}
+},
+{
+"t": "2026-10-09T03:10:43-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 17.85,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 57.76,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 71.43,
+"Roadmap deliverables": 86.67
+}
+},
+{
+"t": "2026-10-09T03:15:18-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 19.94,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 63.18,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 71.43,
+"Roadmap deliverables": 86.67
+}
+},
+{
+"t": "2026-10-09T03:30:09-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 21.32,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 68.59,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 71.43,
+"Roadmap deliverables": 86.67
+}
+},
+{
+"t": "2026-10-09T03:49:31-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 21.32,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 75.81,
+"Level generator proven equal to the real game": 98.11,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 85.71,
+"Roadmap deliverables": 77.27
+}
+},
+{
+"t": "2026-10-09T04:17:15-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 22.16,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 75.81,
+"Level generator proven equal to the real game": 96.02,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 87.5,
+"Roadmap deliverables": 79.17
+}
+},
+{
+"t": "2026-10-09T04:31:27-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 22.17,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 75.81,
+"Level generator proven equal to the real game": 97.32,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 87.5,
+"Roadmap deliverables": 84.62
+}
+},
+{
+"t": "2026-10-09T04:36:55-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 22.17,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 75.81,
+"Level generator proven equal to the real game": 97.32,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 87.5,
+"Roadmap deliverables": 88.46
+}
+},
+{
+"t": "2026-10-09T05:13:26-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 22.17,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 75.81,
+"Level generator proven equal to the real game": 98.96,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 87.5,
+"Roadmap deliverables": 87.1
+}
+},
+{
+"t": "2026-10-09T05:29:58-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 22.17,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 75.81,
+"Level generator proven equal to the real game": 98.96,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 100.0,
+"Roadmap deliverables": 90.32
+}
+},
+{
+"t": "2026-10-09T05:40:38-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 22.17,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 75.81,
+"Level generator proven equal to the real game": 98.96,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 100.0,
+"Roadmap deliverables": 93.55
+}
+},
+{
+"t": "2026-10-09T06:04:10-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 22.91,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 68.59,
+"Level generator proven equal to the real game": 99.16,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 100.0,
+"Roadmap deliverables": 89.47
+}
+},
+{
+"t": "2026-10-09T07:53:58-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 22.91,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 68.59,
+"Level generator proven equal to the real game": 99.32,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 100.0,
+"Roadmap deliverables": 86.36
+}
+},
+{
+"t": "2026-10-09T08:41:54-07:00",
+"v": {
+"Game.exe functions named in Ghidra": 39.61,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 68.59,
+"Level generator proven equal to the real game": 99.32,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 100.0,
+"Roadmap deliverables": 86.36
+}
+},
+{
+"t": "2026-10-09T15:43:43+00:00",
+"v": {
+"Game.exe functions named in Ghidra": 39.61,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 68.59,
+"Level generator proven equal to the real game": 99.32,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 100.0,
+"Roadmap deliverables": 86.36
+}
+}
+]
+}

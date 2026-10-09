@@ -148,7 +148,10 @@ func runScenario(t *testing.T, spec string, level int) *fakeHost {
 }
 
 func TestAutoQuestScenarios(t *testing.T) {
-	for _, spec := range []string{"den", "burial", "tools", "cain", "tower", "andariel", "radament", "act1", "1", "Den of Evil"} {
+	for _, spec := range []string{"den", "burial", "tools", "cain", "tower", "andariel", "radament", "act1", "1", "Den of Evil",
+		"staff", "sun", "arcane", "summoner", "tombs", "lamesen", "khalim", "blade", "bird", "temple", "guardian",
+		"fallen", "terror", "hellforge", "siege", "rescue", "prison", "betrayal", "rite", "eve",
+		"act2", "act3", "act4", "act5", "acts2-5"} {
 		spec := spec
 
 		t.Run(spec, func(t *testing.T) {
