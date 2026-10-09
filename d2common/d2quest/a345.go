@@ -324,7 +324,7 @@ func newGuardian() *Quest {
 		trigs: []trig{
 			{ev: EvAreaChanged, level: LevelDurance1, max: 3, to: 3},
 			{ev: EvAreaChanged, level: LevelDurance3, max: 3, to: 4},
-			{ev: EvMonsterKilled, monster: NPCMephisto, names: []string{"mephisto"}, min: -1, goal: true},
+			{ev: EvMonsterKilled, monster: NPCMephisto, names: []string{"mephisto"}, min: -1, goal: true, exe: &exeKill{bits: []int{exeBitMephisto}, dropCode: ItemMephistoSoulstone}},
 		},
 	})
 }
@@ -356,7 +356,7 @@ func newTerrorsEnd() *Quest {
 		steps: []step{{from: 1, npc: NPCTyrael2, msg: 681, to: 2}},
 		trigs: []trig{
 			{ev: EvAreaChanged, level: LevelChaosSanctum, max: 3, to: 3},
-			{ev: EvMonsterKilled, monster: NPCDiablo, names: []string{"diablo"}, min: -1, goal: true},
+			{ev: EvMonsterKilled, monster: NPCDiablo, names: []string{"diablo"}, min: -1, goal: true, exe: &exeKill{classicBits: []int{6, 7}}},
 		},
 	})
 }
@@ -519,7 +519,7 @@ func newEve() *Quest {
 		trigs: []trig{
 			{ev: EvAreaChanged, level: LevelWorldstone1, max: 1, to: 2},
 			{ev: EvAreaChanged, level: LevelThrone, max: 2, to: 2},
-			{ev: EvMonsterKilled, monster: NPCBaalCrab, names: []string{"baal"}, min: -1, goal: true},
+			{ev: EvMonsterKilled, monster: NPCBaalCrab, names: []string{"baal"}, min: -1, goal: true, exe: &exeKill{level: LevelWorldstoneChamber}},
 		},
 		claimFx: fxs(reward("unlock-difficulty", 0, "Baal is dead: the next difficulty opens"),
 			reward("game-complete", 0, "end of the game")),
