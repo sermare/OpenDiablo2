@@ -10,6 +10,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 )
 
 // lastPlayedOffset is where a .d2s header keeps the time it was last saved
@@ -171,6 +172,17 @@ func exportAttributes(c *d2s.Character, state *HeroState, warn func(string, ...i
 	}
 
 	set(d2s.StatGold, a.Gold, gold, false)
+
+	if state.StashGold != nil {
+		stash := *state.StashGold
+		if stash > d2inventory.StashGoldLimit {
+			warn("stash gold %d exceeds the stash cap, clamped to %d", stash, d2inventory.StashGoldLimit)
+
+			stash = d2inventory.StashGoldLimit
+		}
+
+		set(d2s.StatStashedGold, a.StashedGold, stash, false)
+	}
 
 	if s.Level > 0 && s.Level < 256 {
 		c.Header.Level = uint8(s.Level)
