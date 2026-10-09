@@ -89,11 +89,11 @@ func (e *Env) Field(code string) int {
 	case "toht":
 		return s.ToHitBonus(e, lvl)
 	case "mana":
-		return s.ManaCost(lvl) >> 8
+		return int(s.calcMana(lvl, false)) >> 8
 	case "mps":
-		return (s.ManaCost(lvl) * 25 / 2) >> 8 // U: units of mana per second at 25 fps
+		return int(s.calcMana(lvl, true)) >> 8 // U: units of mana per second at 25 fps
 	case "usmc":
-		return s.ManaCost(lvl)
+		return int(s.calcMana(lvl, false))
 	case "ulvl":
 		return e.Unit.Level()
 	case "blvl":
@@ -171,6 +171,24 @@ func (e *Env) Rand(a, b int) int {
 // ManaCost is the skill's mana cost in 8.8 at a level (d2combat.ManaCost).
 func (s *Skill) ManaCost(level int) int {
 	return d2combat.ManaCost(int16(s.Mana), int16(s.LvlMana), int16(s.MinMana), int16(s.ManaShift), level)
+}
+
+// calcMana is the mana arithmetic of the skillcalc fields mana, mps and usmc
+// (SKILL_GetCalcFieldValue, 0x6477d0, verified): 0 below level 1, otherwise
+// (lvlmana*(lvl-1)+mana), times 25/2 first for mps, shifted left by manashift.
+// Unlike SKILL_PayManaCost it applies neither minmana nor the free-skill
+// shortcut, and a negative result stays negative. 32 bit as in the game.
+func (s *Skill) calcMana(level int, perSecond bool) int32 {
+	if level < 1 {
+		return 0
+	}
+
+	v := int32(s.LvlMana)*int32(level-1) + int32(s.Mana)
+	if perSecond {
+		v = v * 25 / 2
+	}
+
+	return v << (uint(s.ManaShift) & 0x1f)
 }
 
 // ToHitBonus is SKILL_GetToHitBonus (0x645da0): ToHitCalc if set, else
