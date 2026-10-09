@@ -181,6 +181,7 @@ type Level struct {
 	ctr  map[int]*counter
 	town Rect
 	err  error
+	sub  *subCallbacks // custom LvlSub cell rules (Act 5 barricades)
 }
 
 // Level accessors for callers.

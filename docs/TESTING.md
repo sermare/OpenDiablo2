@@ -92,6 +92,7 @@ the random-number draw order is right, since any extra or missing draw changes t
 | `maze_act1.json`, `maze_act23.json`, `maze_act45.json` | Maze levels: rooms (or a count plus a hash of the sorted room keys in the compact files), Def and file index, final level seed | `drlgmaze` `TestOracleMaze` (hard assertions) |
 | `acts.json` | Act-level extra draws (Act 2 tomb choice, Act 3 flip) | `d2drlg` `acts_oracle_test.go` |
 | `outdoor_act1.json` | Act 1 outdoor levels: stage numbers, room list, sha256 digests of the large grids; the first seeds are kept in full | `drlgoutdoor` `oracle_test.go` |
+| `outdoor_act45.json` | Acts 4/5 outdoor and preset levels: 12 seeds x 3 difficulties x 16 levels, numbers and digests (rect, vis, od.flags, neighbours, grids, room list, final seed) | `drlgoutdoor` `TestOracleAct45` |
 | `gen_outdoor_compact.py` | The only generator script that lives in the repo: shrinks the big emulator golden to the committed compact file | n/a |
 
 The tests need `D2_TABLES` (and `D2_DS1_ROOT` for the outdoor one) because the Go port needs the same input tables

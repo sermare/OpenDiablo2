@@ -44,6 +44,10 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 		return g.GenerateRealOutdoor(levelID, seed, diff)
 	}
 
+	if isPresetLevel(levelID) {
+		return g.GenerateRealPreset(levelID, seed, diff)
+	}
+
 	tb, err := LoadDRLGTables(g.asset)
 	if err != nil {
 		return err

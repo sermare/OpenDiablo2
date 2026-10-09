@@ -164,6 +164,10 @@ func (l *Level) placePresetRooms(def, file, tx, ty int, gB uint32) {
 
 			if ds1 != nil {
 				r.Flags |= presetChunkBits(ds1, (cx-tx)/8, (cy-ty)/8)
+
+				if waypointChunk(ds1, (cx-tx)/8, (cy-ty)/8) {
+					r.Flags |= 0x30000 // a waypoint object in this chunk
+				}
 			}
 
 			l.Rooms = append(l.Rooms, r)

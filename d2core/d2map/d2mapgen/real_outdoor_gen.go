@@ -13,9 +13,67 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapstamp"
 )
 
-// isOutdoorLevel reports the Act 1 wilderness levels the drlgoutdoor port
-// covers: Blood Moor .. Tamoe Highland, Burial Grounds and Moo Moo Farm.
-func isOutdoorLevel(id int) bool { return (id >= 2 && id <= 7) || id == 0x11 || id == 0x27 }
+// isOutdoorLevel reports the outdoor levels the drlgoutdoor port covers: the
+// Act 1 wilderness (Blood Moor .. Tamoe Highland, Burial Grounds, Moo Moo
+// Farm), Act 4 (Outer Steppes, Plains of Despair, City of the Damned, Chaos
+// Sanctuary) and Act 5 (Bloody Foothills, Frigid Highlands, Arreat Plateau,
+// Frozen Tundra). Level 134 (Forgotten Sands) needs the Act 2 desert generator,
+// which is not ported.
+func isOutdoorLevel(id int) bool {
+	switch {
+	case id >= 2 && id <= 7, id == 0x11, id == 0x27:
+		return true
+	case id >= 104 && id <= 106, id == 108, id >= 110 && id <= 112, id == 117:
+		return true
+	}
+
+	return false
+}
+
+// isPresetLevel reports the Act 4/5 DrlgType 2 levels drlgoutdoor.GeneratePreset
+// covers: Pandemonium Fortress, Harrogath, Arreat Summit, Nihlathak's Temple,
+// Halls of Vaught, Throne of Destruction, Worldstone Chamber, Pandemonium Finale.
+func isPresetLevel(id int) bool {
+	switch id {
+	case 103, 109, 120, 121, 124, 131, 132, 136:
+		return true
+	}
+
+	return false
+}
+
+// levelParams runs the world placement of the level's act and derives the
+// generator inputs (rectangle, od.flags, vis/warp, neighbour list).
+func levelParams(tb *d2drlg.Tables, levelID int, seed uint32, diff d2drlg.Difficulty) (drlgoutdoor.Params, error) {
+	rec, _ := tb.Level(levelID)
+
+	switch rec.Act {
+	case 3, 4:
+		var (
+			lay *drlgworld.Layout
+			err error
+		)
+
+		if rec.Act == 3 {
+			lay, err = drlgworld.GenerateAct4(tb, seed, diff)
+		} else {
+			lay, err = drlgworld.GenerateAct5(tb, seed, diff)
+		}
+
+		if err != nil {
+			return drlgoutdoor.Params{}, err
+		}
+
+		return drlgoutdoor.ParamsFromLayout45(tb, lay, rec.Act, levelID, seed, diff)
+	}
+
+	lay, err := drlgworld.Generate(tb, seed, diff)
+	if err != nil {
+		return drlgoutdoor.Params{}, err
+	}
+
+	return drlgoutdoor.ParamsFromLayout(tb, lay, levelID, seed)
+}
 
 // outdoorProvider builds Act 1 wilderness levels with the DRLG port. Like the
 // maze provider it is only active with OD2_REALMAPS=1.
@@ -27,6 +85,18 @@ func (outdoorProvider) CanLoad(levelID int) bool { return RealMapsEnabled() && i
 
 func (outdoorProvider) Load(g *MapGenerator, levelID int, req LoadRequest) error {
 	return g.GenerateRealOutdoor(levelID, req.Seed, req.Difficulty)
+}
+
+// presetProvider builds the Act 4/5 DrlgType 2 levels. Only active with
+// OD2_REALMAPS=1.
+type presetProvider struct{}
+
+func (presetProvider) Name() string { return "drlg-preset" }
+
+func (presetProvider) CanLoad(levelID int) bool { return RealMapsEnabled() && isPresetLevel(levelID) }
+
+func (presetProvider) Load(g *MapGenerator, levelID int, req LoadRequest) error {
+	return g.GenerateRealPreset(levelID, req.Seed, req.Difficulty)
 }
 
 // GenerateRealOutdoor replaces the map with the DRLG outdoor level for the
@@ -48,12 +118,7 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 		return err
 	}
 
-	lay, err := drlgworld.Generate(tb, seed, diff)
-	if err != nil {
-		return err
-	}
-
-	p, err := drlgoutdoor.ParamsFromLayout(tb, lay, levelID, seed)
+	p, err := levelParams(tb, levelID, seed, diff)
 	if err != nil {
 		return err
 	}
@@ -156,6 +221,71 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 
 	g.Infof("real outdoor: DS1 monsters: %d direct, %d place_* markers resolved, %d super uniques, %d groups, %d skipped",
 		mon.direct, mon.place, mon.super, mon.groups, mon.skipped)
+
+	return nil
+}
+
+// GenerateRealPreset replaces the map with an Act 4/5 DrlgType 2 level: the
+// room list and file index come from drlgoutdoor.GeneratePreset (proven equal
+// to the real game's), the level's DS1 is stamped over the whole rectangle.
+func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.Difficulty) error {
+	tb, err := LoadDRLGTables(g.asset)
+	if err != nil {
+		return err
+	}
+
+	p, err := levelParams(tb, levelID, seed, diff)
+	if err != nil {
+		return err
+	}
+
+	env := drlgoutdoor.NewEnv(tb, func(file string) ([]byte, error) {
+		return g.asset.LoadFile("/data/global/tiles/" + file)
+	})
+
+	pl, err := drlgoutdoor.GeneratePreset(env, p, -1)
+	if err != nil {
+		return err
+	}
+
+	rec, _ := tb.Level(levelID)
+	pr, _ := tb.PrestByDef(pl.Def)
+	region := d2enum.RegionIdType(rec.LevelType)
+
+	if g.asset.Records.Level.Types[region] == nil {
+		return fmt.Errorf("level %d: no LvlTypes row %d", levelID, rec.LevelType)
+	}
+
+	if pl.File >= len(pr.File) || pr.File[pl.File] == "" {
+		return fmt.Errorf("level %d: Def %d has no file %d", levelID, pl.Def, pl.File)
+	}
+
+	g.engine.ResetMap(region, pl.Rect.W, pl.Rect.H)
+
+	path := drlgoutdoor.NormalizePrestFile(pr.File[pl.File])
+	g.engine.AddDS1(path)
+
+	stamp := g.engine.LoadStampPath(region, pl.Def, path)
+	if stamp == nil {
+		return fmt.Errorf("level %d: cannot load %s", levelID, path)
+	}
+
+	g.engine.PlaceStampClipped(stamp, 0, 0, pl.Rect.W, pl.Rect.H)
+
+	var mon monsterStats
+
+	levelSeed := d2rand.LevelSeed(p.BaseSeed, uint32(levelID))
+	g.placeMonsters(stamp, levelID, diff, 0, 0, pl.Rect.W, pl.Rect.H, d2rand.New(levelSeed.Lo+uint32(pl.Def)), &mon)
+
+	g.engine.BlockEmptyTiles()
+	g.engine.UseCollisionPaths(true)
+
+	sx, sy, how := g.outdoorEntry(&drlgoutdoor.Level{}, pl.Rect)
+	g.engine.SetStartPosition(sx, sy)
+
+	g.Infof("real preset: level %d seed %#x: Def %d file %d (%s), %d rooms, map %dx%d tiles",
+		levelID, seed, pl.Def, pl.File, path, len(pl.Rooms), pl.Rect.W, pl.Rect.H)
+	g.Infof("real preset: hero entry at tile (%.1f,%.1f) %s", sx, sy, how)
 
 	return nil
 }

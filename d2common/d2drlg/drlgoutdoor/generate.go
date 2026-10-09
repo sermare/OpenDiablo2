@@ -31,8 +31,10 @@ func Generate(env *Env, p Params) (lv *Level, err error) {
 		return nil, fmt.Errorf("drlgoutdoor: level %d unknown", p.ID)
 	}
 
-	if rec.LevelType != 2 {
-		return nil, errors.New("drlgoutdoor: only LevelType 2 (Act 1 wilderness) is ported")
+	switch rec.LevelType {
+	case 2, 0x1b, 0x1c, 0x1e, 0x1f: // Act 1 wilderness; Act 4 mesa/chaos; Act 5 siege/snow
+	default:
+		return nil, errors.New("drlgoutdoor: LevelType not ported (Act 2 and 3 outdoors are not)")
 	}
 
 	l := &Level{Params: p, LType: rec.LevelType, env: env, ctr: map[int]*counter{}, town: p.Town}
@@ -46,8 +48,15 @@ func Generate(env *Env, p Params) (lv *Level, err error) {
 		l.PolygonAtAct = append(l.PolygonAtAct, Vertex{X: v.X, Y: v.Y, B: v.B, F: v.F})
 	}
 
-	if err := l.generateAct1(); err != nil {
-		return nil, err
+	switch {
+	case rec.LevelType == 2:
+		if err := l.generateAct1(); err != nil {
+			return nil, err
+		}
+	case rec.LevelType == 0x1b || rec.LevelType == 0x1c:
+		l.generateAct4()
+	default:
+		l.generateAct5()
 	}
 
 	l.trace("end")

@@ -161,5 +161,5 @@ func (g *MapGenerator) installDefaultProviders() {
 
 	// Act 1 wilderness levels (proven equal to the real game down to the room
 	// grids, see drlgoutdoor); the tile records are approximated
-	g.providers = append([]LevelProvider{outdoorProvider{}}, g.providers...)
+	g.providers = append([]LevelProvider{outdoorProvider{}, presetProvider{}}, g.providers...)
 }
