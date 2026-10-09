@@ -40,9 +40,9 @@
     },
     {
       "label": "Roadmap deliverables",
-      "done": 12,
+      "done": 13,
       "total": 15,
-      "note": "saves r/w · gear · NPC · greetings · RNG · combat · loot · trade+vendors · packets · keys · sound · ground items ✓ | monsters+AI · real maps · missiles",
+      "note": "saves r/w · gear · NPC · greetings · RNG · combat · loot · trade · packets · keys · sound · items · monsters+AI ✓ | real maps · missiles",
       "color": "#ff7a45"
     }
   ]

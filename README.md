@@ -39,7 +39,7 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 
 | Work item | Where |
 |---|---|
-| **Monsters with the real AI** (own RNG, aggro, melee/ranged/pack archetypes), pathfinding, combat, death and loot | branch `feat/monsters` |
+| Monsters part 2: natural packs, unit-vs-unit collision, ranged projectiles, the other archetypes | next wave |
 | Save the engine's character back to a real `.d2s` + autosave | spawning now |
 | Hirelings (Kashya's mercenary) and stash/cube/belt panels | spawning now |
 | Renderer research: palette shifts, draw modes, lighting | spawning now |
@@ -89,6 +89,7 @@ server session core · D2Common data tables · key bindings from `default.key` �
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | **Monsters** with the original AI, pathfinding, combat, death and loot run in the engine; test runs no longer collide on the server port |
 | 2026-10-09 | Vendors, ground items and chests, the sound engine, CI + scripted autotests and the Go level generator merged; skills part 2 researched (365 skill functions named, the calc language decoded) |
 | 2026-10-09 | Loot, trade, quests, packets, key bindings and day/night merged; monster AI think functions named (~90 created); maze level generation and the Act 1 world layout reverse engineered |
 | 2026-10-09 | `.d2s` **writer**: a real save round-trips byte-for-byte; combat formulas implemented and verified against 12 binary functions |
