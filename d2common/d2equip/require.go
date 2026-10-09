@@ -60,6 +60,22 @@ func RequiredStat(base, percent int, ethereal bool) int {
 	return need
 }
 
+// RequiredLevel is the level an item needs: the highest of the base item's
+// levelreq and the levelreq of each affix / unique / set row on it. The
+// "highest of" shape is community knowledge; the game's code path
+// (INV_CheckItemRequirements 0x62ebf0 calling FUN_0062b720) is UNVERIFIED, the
+// engine does not feed affix levels into Item.ReqLevel yet (EquipItemOf uses
+// the base only).
+func RequiredLevel(base int, affixes ...int) int {
+	for _, a := range affixes {
+		if a > base {
+			base = a
+		}
+	}
+
+	return base
+}
+
 // Check evaluates the requirements of an item for a hero. A requirement of a
 // stat only counts when the hero's stat is at least 1 (the game fails the
 // check for stat < 1). types may be nil: then the class check is skipped.
