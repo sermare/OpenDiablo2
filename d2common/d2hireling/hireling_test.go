@@ -17,9 +17,11 @@ func loadReal(t *testing.T) *Table {
 		t.Skip("D2_TABLES not set")
 	}
 
-	f, err := os.Open(filepath.Join(dir, "hireling", "hireling.txt"))
+	// the 1.14b patch_d2.mpq hireling.txt (extracted with mpqcli): the table the
+	// game uses, with a Version column (0 classic, 100 expansion)
+	f, err := os.Open(filepath.Join(dir, "hireling", "hireling_patch_d2.txt"))
 	if err != nil {
-		t.Skip("no hireling.txt:", err)
+		t.Skip("no hireling_patch_d2.txt:", err)
 	}
 	defer f.Close()
 
@@ -28,7 +30,11 @@ func loadReal(t *testing.T) *Table {
 		t.Fatal(err)
 	}
 
-	return tab
+	if len(tab.Rows) != 120 {
+		t.Fatalf("rows = %d, want 120 (60 classic + 60 expansion)", len(tab.Rows))
+	}
+
+	return tab.ForVersion(ExpansionVersion)
 }
 
 func TestRealStatsHandComputed(t *testing.T) {
@@ -43,19 +49,19 @@ func TestRealStatsHandComputed(t *testing.T) {
 		id, level int
 		want      Stats
 	}{
-		// rogue fire, row 25, d=5: HP 221+8*5, Str 63+10*5/8, Dex 89+16*5/8, Def 147+6*5,
-		// dmg 7+4*5/8=9 / 9+2=11, resist 44+7*5/4=52, exp 31*30^2*100
-		{"rogue30", 0, 30, Stats{Level: 30, MaxHP: 261, Str: 69, Dex: 99, Defense: 177, AR: 0,
-			DmgMin: 9, DmgMax: 11, Resist: 52, Experience: 2790000, NextXP: 32 * 31 * 31 * 100}},
+		// rogue fire, row 36, d=14: HP 342+18*14, Str 77+10*14/8, Dex 111+16*14/8, Def 279+15*14,
+		// AR 406+24*14, dmg 9+4*14/8 / 11+7, resist 66+7*14/4, exp 51*50^2*100
+		{"rogue50", 0, 50, Stats{Level: 50, MaxHP: 594, Str: 94, Dex: 139, Defense: 489, AR: 742,
+			DmgMin: 16, DmgMax: 18, Resist: 90, Experience: 12750000, NextXP: 52 * 51 * 51 * 100}},
 		// the base row itself
-		{"rogue49", 0, 49, Stats{Level: 49, MaxHP: 413, Str: 93, Dex: 137, Defense: 291, AR: 0,
-			DmgMin: 19, DmgMax: 21, Resist: 86, Experience: 50 * 49 * 49 * 100, NextXP: 51 * 50 * 50 * 100}},
-		// desert off-nightmare, row 55, d=25
-		{"desert80", 11, 80, Stats{Level: 80, MaxHP: 792, Str: 177, Dex: 142, Defense: 642, AR: 590,
-			DmgMin: 59, DmgMax: 66, Resist: 126, Experience: 81 * 80 * 80 * 115, NextXP: 82 * 81 * 81 * 115}},
-		// Iron Wolf fire, row 15, d=5
-		{"wolf20", 15, 20, Stats{Level: 20, MaxHP: 190, Str: 55, Dex: 45, Defense: 100, AR: 0,
-			DmgMin: 3, DmgMax: 9, Resist: 33, Experience: 21 * 400 * 110, NextXP: 22 * 441 * 110}},
+		{"rogue36", 0, 36, Stats{Level: 36, MaxHP: 342, Str: 77, Dex: 111, Defense: 279, AR: 406,
+			DmgMin: 9, DmgMax: 11, Resist: 66, Experience: 37 * 36 * 36 * 100, NextXP: 38 * 37 * 37 * 100}},
+		// desert off-nightmare (type 11, nokkasorc's merc), row 75, d=19
+		{"desert94", 11, 94, Stats{Level: 94, MaxHP: 2127, Str: 202, Dex: 163, Defense: 1517, AR: 1837,
+			DmgMin: 65, DmgMax: 72, Resist: 158, Experience: 100730400, NextXP: 96 * 95 * 95 * 120}},
+		// Iron Wolf fire, row 15, d=25
+		{"wolf40", 15, 40, Stats{Level: 40, MaxHP: 385, Str: 80, Dex: 65, Defense: 205, AR: 315,
+			DmgMin: 13, DmgMax: 19, Resist: 68, Experience: 41 * 1600 * 110, NextXP: 42 * 41 * 41 * 110}},
 	}
 
 	for _, tc := range tests {
@@ -69,11 +75,19 @@ func TestRealStatsHandComputed(t *testing.T) {
 func TestRealNokkaMercLevel(t *testing.T) {
 	tab := loadReal(t)
 
-	// nokkasorc: desert Off-Nightmare (type 11), exp 100730580. By the
-	// documented formula this is level 95 (threshold(96)=102.8M); the brief
-	// said 96, which the formula does not give (U: boundary off-by-one).
-	if got := tab.LevelFromExp(11, 100730580); got != 95 {
+	// nokkasorc: desert Off-Nightmare (type 11), exp 100730580 = threshold(94)
+	// + 180, so level 94 (the hero is level 94 too; the brief's "96" is not
+	// what the formula gives).
+	if got := tab.LevelFromExp(11, 100730580); got != 94 {
 		t.Errorf("level = %d", got)
+	}
+
+	if got := tab.LevelFromExp(11, 100730399); got != 93 {
+		t.Errorf("level just below the threshold = %d", got)
+	}
+
+	if got := tab.StartExp(11, 94); got != 100730400 {
+		t.Errorf("StartExp = %d", got)
 	}
 }
 

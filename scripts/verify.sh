@@ -9,7 +9,7 @@ cd "${0:A:h}/.."
 
 fail=0
 # every run gets its own scratch folder and server port, so parallel runs (e.g. several agents) do not collide
-tmp=$(mktemp -d /tmp/od2-verify.XXXXXX)
+tmp=$(mktemp -d "${OD2_VERIFY_TMP:-/tmp}/od2-verify.XXXXXX")
 step() { printf '\n== %s\n' "$1"; }
 
 # every run uses its own server port so parallel runs (e.g. several agents) do not collide
@@ -45,7 +45,8 @@ export OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1
 $tmp/od2 2>&1 | tee $log
 EOT
   chmod +x $cmd; rm -f $log
-  open $cmd   # a GUI session is required; running the binary from a plain shell fails
+  open $cmd
+  for i in {1..40}; do [ -f $log ] && break; sleep 1; done   # Terminal may need a while to start the script
   for i in {1..90}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
   sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
   grep -E "imported|equipment:|NPC menu opened" $log.txt | cut -c1-200
@@ -72,6 +73,7 @@ $tmp/od2 2>&1 | tee $log
 EOT
   chmod +x $cmd; rm -f $log
   open $cmd
+  for i in {1..40}; do [ -f $log ] && break; sleep 1; done   # Terminal may need a while to start the script
   for i in {1..90}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
   sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
   grep -E "AUTOSCRIPT" $log.txt | cut -c1-200
@@ -93,6 +95,7 @@ $tmp/od2 2>&1 | tee $log
 EOT
   chmod +x $cmd; rm -f $log
   open $cmd
+  for i in {1..40}; do [ -f $log ] && break; sleep 1; done   # Terminal may need a while to start the script
   for i in {1..90}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
   sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
   grep -E "D2S EXPORT|AUTOSCRIPT RESULT" $log.txt | cut -c1-300
@@ -100,6 +103,30 @@ EOT
   grep -q "D2S EXPORT reparse: .*gold=31337 .*checksum=ok" $log.txt || { echo "FAIL: exported .d2s does not show the new gold"; fail=1; }
   ls $wb/*.d2s >/dev/null 2>&1 || { echo "FAIL: no exported .d2s in $wb"; fail=1; }
   if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in autosave log"; fail=1; fi
+fi
+
+if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
+  step "mercenary (OD2_AUTOMERC: merc spawns, fights, dies, is revived, follows; header survives the export)"
+  save=$tmp/merc.d2s; cp "$D2S_SAMPLE_BODY" $save
+  wb=$tmp/writeback-merc; mkdir -p $wb
+  cmd=$tmp/merc.command log=$tmp/merc.log
+  cat > $cmd <<EOT
+#!/bin/zsh
+export OD2_PORT=$OD2_PORT
+export OD2_AUTOGAME="$save" OD2_D2S_WRITEBACK="$wb"
+export OD2_AUTOMERC=skeleton1,4 OD2_AUTOMERC_KILL=1 OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1
+$tmp/od2 2>&1 | tee $log
+EOT
+  chmod +x $cmd; rm -f $log
+  open $cmd
+  for i in {1..40}; do [ -f $log ] && break; sleep 1; done   # Terminal may need a while to start the script
+  for i in {1..120}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
+  sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
+  grep -E "AUTOMERC summary|MERC (spawn|hire|death|revive)|D2S EXPORT reparse" $log.txt | cut -c1-300
+  for pat in "MERC spawn " "MERC attack .*hit=true" "MERC death " "MERC revive " "AUTOMERC follow dist=" "AUTOMERC summary" "D2S EXPORT reparse: .*merc=type"; do
+    grep -qE "$pat" $log.txt || { echo "FAIL: no '$pat' in the merc log"; fail=1; }
+  done
+  if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in merc log"; fail=1; fi
 fi
 
 echo

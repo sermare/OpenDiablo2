@@ -116,3 +116,15 @@ func maxInt(a, b int) int {
 
 	return b
 }
+
+// StartExp is the experience a freshly hired merc of this Id and level has:
+// the threshold of its level with the ExpPerLvl of the row valid there, so
+// that LevelFromExp gives the level back.
+func (t *Table) StartExp(id, level int) uint32 {
+	r := t.Find(id, level)
+	if r == nil {
+		return 0
+	}
+
+	return uint32(ExpThreshold(level, r.ExpPerLvl))
+}

@@ -223,6 +223,7 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 	newPlayer := g.MapEngine.NewPlayer(player.ID, player.Name, player.X, player.Y, 0,
 		player.HeroType, player.Stats, player.Skills, &player.Equipment, player.LeftSkill, player.RightSkill, player.Gold)
 
+	newPlayer.Merc = player.Merc
 	g.Players[newPlayer.ID()] = newPlayer
 	g.MapEngine.AddEntity(newPlayer)
 

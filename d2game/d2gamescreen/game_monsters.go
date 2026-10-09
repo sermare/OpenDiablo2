@@ -46,7 +46,7 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 		Seed:       uint32(v.gameClient.MapEngine.Seed()),
 		Difficulty: d2monster.Normal,
 		// the scenario spawns monsters next to a hero who may still be in town
-		IgnoreTown: os.Getenv("OD2_AUTOMONSTER") != "",
+		IgnoreTown: os.Getenv("OD2_AUTOMONSTER") != "" || os.Getenv("OD2_AUTOMERC") != "",
 	}
 
 	if diff, err := strconv.Atoi(os.Getenv("OD2_AUTOMONSTER_DIFF")); err == nil && diff >= 0 && diff <= 2 {
@@ -76,6 +76,7 @@ func (v *Game) advanceMonsters(elapsed float64) {
 	}
 
 	d.Advance(elapsed)
+	v.advanceMerc(elapsed)
 	v.advanceHeroAttack(elapsed)
 	v.advanceMonsterTest(elapsed)
 }

@@ -398,6 +398,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 		playerState.LeftSkill,
 		playerState.RightSkill,
 		playerState.Gold,
+		playerState.Merc,
 	)
 	if err != nil {
 		g.Errorf("AddPlayerPacket: %v", err)
@@ -428,6 +429,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 			conPlayerState.LeftSkill,
 			conPlayerState.RightSkill,
 			conPlayerState.Gold,
+			conPlayerState.Merc,
 		)
 
 		if err != nil {
@@ -497,6 +499,11 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		playerState.Stats = savePacket.Player.Stats
 		playerState.Act = savePacket.Player.Act
 		playerState.Gold = savePacket.Player.Gold // changed by vendor transactions
+
+		if m := savePacket.Player.Merc; m != nil { // hired, revived or levelled in the game
+			playerState.Merc = m
+		}
+
 		// the client always sends Normal; do not demote an imported Nightmare/Hell hero
 		if savePacket.Difficulty != d2enum.DifficultyNormal {
 			playerState.Difficulty = savePacket.Difficulty

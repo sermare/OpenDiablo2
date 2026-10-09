@@ -143,6 +143,10 @@ func (d *Director) spawnMercAt(owner *d2mapentity.Player, stat *d2records.MonSta
 	b.Wake = d.frame
 	m.SetSelectable(false)
 
+	if key := d.MercName(rec, save); d.asset.TranslateString(key) != "" && d.asset.TranslateString(key) != key {
+		m.SetLabel(d.asset.TranslateString(key))
+	}
+
 	mu := &mercUnit{
 		owner: owner, rec: rec, save: save, level: level, stats: st,
 		ranged: rec.Class == 271 || rec.Class == 359, buffs: map[string]int{},
@@ -609,4 +613,59 @@ func maxInt(a, b int) int {
 	}
 
 	return b
+}
+
+// Difficulty is the difficulty the director runs at.
+func (d *Director) Difficulty() d2monster.Difficulty { return d.opt.Difficulty }
+
+// MercPosition is the merc's subtile position (0,0 without a merc).
+func (d *Director) MercPosition(owner *d2mapentity.Player) (x, y int) {
+	if u := d.mercs[owner]; u != nil {
+		return u.m.SubtilePos()
+	}
+
+	return 0, 0
+}
+
+// KillMerc kills the owner's merc at once (scenario and tests).
+func (d *Director) KillMerc(owner *d2mapentity.Player, by string) {
+	if u := d.mercs[owner]; u != nil {
+		d.damageMerc(u, u.m.Vitals.HP, by)
+	}
+}
+
+// FarPoint finds a point about dist subtiles from the owner that a path leads
+// to, trying eight directions (scenario helper). The result is in tiles, as
+// the game's move command takes.
+func (d *Director) FarPoint(owner *d2mapentity.Player, dist int) (x, y float64, ok bool) {
+	ox, oy := playerSubtile(owner)
+	dirs := [][2]int{{1, 0}, {0, 1}, {-1, 0}, {0, -1}, {1, 1}, {-1, 1}, {-1, -1}, {1, -1}}
+
+	for _, dd := range dirs {
+		goal := d2path.Point{X: ox + dd[0]*dist, Y: oy + dd[1]*dist}
+
+		p, found := d2path.NearestFree(d.grid, d2path.MaskMonster, goal, 3)
+		if !found {
+			continue
+		}
+
+		route, okp := d2path.FindPath(d.grid, d2path.MaskMonster, d2path.Point{X: ox, Y: oy}, p)
+		if okp && len(route.Nodes) > 0 {
+			return float64(p.X) / subtilesPerTile, float64(p.Y) / subtilesPerTile, true
+		}
+	}
+
+	return 0, 0, false
+}
+
+// GrantMercExp adds experience to the owner's merc without the owner-level
+// limit (scenario helper).
+func (d *Director) GrantMercExp(owner *d2mapentity.Player, exp uint32) {
+	u := d.mercs[owner]
+	if u == nil {
+		return
+	}
+
+	u.merc.save.Experience += exp
+	d.emit("merc", "MERC exp granted name=%s id=%08x exp=%d", u.m.Label(), u.merc.save.ID, u.merc.save.Experience)
 }

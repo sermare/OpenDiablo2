@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+// Row versions.
+const (
+	ClassicVersion   = 0
+	ExpansionVersion = 100
+)
+
 // NumSkills is the number of Skill slots per record.
 const NumSkills = 6
 
@@ -28,6 +34,10 @@ func (s SkillSlot) Used() bool { return s.Name != "" }
 // Record is one row of hireling.txt.
 type Record struct {
 	Hireling, SubType string
+	// Version is 0 for classic rows and 100 for expansion rows (patch_d2's
+	// hireling.txt has both; the d2exp one has no Version column and all its
+	// rows count as 100). Lookups use expansion ? 100 : 0 (V).
+	Version           int
 	ID, Class, Act    int
 	Difficulty        int // 1 normal, 2 nightmare, 3 hell
 	Level             int
@@ -94,7 +104,7 @@ func Parse(r io.Reader) (*Table, error) {
 		num := func(n string) int { v, _ := strconv.Atoi(str(n)); return v }
 
 		rec := &Record{
-			Hireling: str("Hireling"), SubType: str("SubType"), ID: num("Id"), Class: num("Class"),
+			Hireling: str("Hireling"), SubType: str("SubType"), Version: ExpansionVersion, ID: num("Id"), Class: num("Class"),
 			Act: num("Act"), Difficulty: num("Difficulty"), Level: num("Level"), Seller: num("Seller"),
 			NameFirst: str("NameFirst"), NameLast: str("NameLast"), Gold: num("Gold"), ExpPerLvl: num("Exp/Lvl"),
 			HP: num("HP"), HPPerLvl: num("HP/Lvl"), Defense: num("Defense"), DefLvl: num("Def/Lvl"),
@@ -103,6 +113,10 @@ func Parse(r io.Reader) (*Table, error) {
 			DmgMin: num("Dmg-Min"), DmgMax: num("Dmg-Max"), DmgLvl: num("Dmg/Lvl"),
 			Resist: num("Resist"), ResistLvl: num("Resist/Lvl"),
 			HireDesc: str("HireDesc"), DefaultChance: num("DefaultChance"),
+		}
+
+		if _, ok := cols["Version"]; ok {
+			rec.Version = num("Version")
 		}
 
 		for i := 0; i < NumSkills; i++ {
@@ -117,6 +131,19 @@ func Parse(r io.Reader) (*Table, error) {
 	}
 
 	return t, sc.Err()
+}
+
+// ForVersion returns the table restricted to the rows of one version.
+func (t *Table) ForVersion(version int) *Table {
+	out := &Table{}
+
+	for _, r := range t.Rows {
+		if r.Version == version {
+			out.Rows = append(out.Rows, r)
+		}
+	}
+
+	return out
 }
 
 // Find is HIRE_FindRecordByIdAndLevel (V): the row of that Id with the

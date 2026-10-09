@@ -151,6 +151,7 @@ type Game struct {
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	monsterTest          *monsterTest
+	merc                 mercGame
 	attackTarget         *d2mapentity.Monster
 	attackRepathAcc      float64
 
@@ -511,6 +512,8 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 		v.Infof("NPC menu: Talk with %q (voice %q)", npc.Label(), path)
 	case d2player.NPCActionTrade, d2player.NPCActionTradeRepair:
 		v.openTrade(npc, uint32(time.Now().UnixNano()))
+	case d2player.NPCActionHire:
+		v.openHire(npc)
 	default:
 		v.Infof("NPC menu: %s (%s) not implemented yet", row.Action, row.Fallback)
 	}

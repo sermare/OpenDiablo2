@@ -318,3 +318,6 @@ func (m *Monster) TeleportTo(x, y int) {
 // SetSelectable chooses whether the mouse can pick the monster (mercenaries
 // are not attackable by their owner).
 func (m *Monster) SetSelectable(v bool) { m.selectable = v }
+
+// SetLabel overrides the display name (mercenaries show their own name).
+func (m *Monster) SetLabel(name string) { m.name = name }

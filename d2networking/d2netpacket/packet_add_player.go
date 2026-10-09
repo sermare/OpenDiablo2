@@ -24,6 +24,8 @@ type AddPlayerPacket struct {
 	LeftSkill  int                            `json:"leftSkill"`
 	RightSkill int                            `json:"rightSkill"`
 	Gold       int
+	// Merc is the hero's mercenary state, if any.
+	Merc *d2hero.MercState `json:"merc,omitempty"`
 }
 
 // CreateAddPlayerPacket returns a NetPacket which declares an
@@ -35,7 +37,7 @@ func CreateAddPlayerPacket(
 	stats *d2hero.HeroStatsState,
 	skills map[int]*d2hero.HeroSkill,
 	equipment d2inventory.CharacterEquipment,
-	leftSkill, rightSkill, gold int) (NetPacket, error) {
+	leftSkill, rightSkill, gold int, merc ...*d2hero.MercState) (NetPacket, error) {
 	addPlayerPacket := AddPlayerPacket{
 		ID:         id,
 		Name:       name,
@@ -48,6 +50,9 @@ func CreateAddPlayerPacket(
 		LeftSkill:  leftSkill,
 		RightSkill: rightSkill,
 		Gold:       gold,
+	}
+	if len(merc) > 0 {
+		addPlayerPacket.Merc = merc[0]
 	}
 
 	b, err := json.Marshal(addPlayerPacket)
