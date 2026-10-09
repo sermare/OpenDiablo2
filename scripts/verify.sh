@@ -8,12 +8,21 @@ set -u
 cd "${0:A:h}/.."
 
 fail=0
+
+# open returns before the game starts (slowly, on a busy machine): wait until the
+# game process appears, then until it exits
+wait_run() {
+  local i
+  for i in {1..120}; do pgrep -f "$tmp/od2" >/dev/null && break; sleep 1; done
+  for i in {1..240}; do pgrep -f "$tmp/od2" >/dev/null || break; sleep 1; done
+}
 # every run gets its own scratch folder and server port, so parallel runs (e.g. several agents) do not collide
 tmp=$(mktemp -d /tmp/od2-verify.XXXXXX)
 step() { printf '\n== %s\n' "$1"; }
 
 # every run uses its own server port so parallel runs (e.g. several agents) do not collide
 export OD2_PORT=$(( 20000 + RANDOM % 20000 ))
+while lsof -nP -iTCP:$OD2_PORT -sTCP:LISTEN >/dev/null 2>&1; do export OD2_PORT=$(( 20000 + RANDOM % 20000 )); done
 
 step "build"
 go build -o $tmp/od2 . 2>&1 | grep -v "ld: warning" ; [ ${pipestatus[1]} -eq 0 ] || { echo "BUILD FAILED"; exit 1; }
@@ -46,7 +55,7 @@ $tmp/od2 2>&1 | tee $log
 EOT
   chmod +x $cmd; rm -f $log
   open $cmd   # a GUI session is required; running the binary from a plain shell fails
-  for i in {1..90}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
+  wait_run
   sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
   grep -E "imported|equipment:|NPC menu opened" $log.txt | cut -c1-200
   grep -E "AUTOTRADE (buy|sell|repair)" $log.txt | cut -c1-200
@@ -72,7 +81,7 @@ $tmp/od2 2>&1 | tee $log
 EOT
   chmod +x $cmd; rm -f $log
   open $cmd
-  for i in {1..90}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
+  wait_run
   sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
   grep -E "AUTOSCRIPT" $log.txt | cut -c1-200
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: scripted scenario did not pass"; fail=1; }
@@ -93,7 +102,7 @@ $tmp/od2 2>&1 | tee $log
 EOT
   chmod +x $cmd; rm -f $log
   open $cmd
-  for i in {1..90}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
+  wait_run
   sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
   grep -E "D2S EXPORT|AUTOSCRIPT RESULT" $log.txt | cut -c1-300
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: autosave script did not pass"; fail=1; }
@@ -115,7 +124,7 @@ $tmp/od2 2>&1 | tee $log
 EOT
   chmod +x $cmd; rm -f $log
   open $cmd
-  for i in {1..90}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
+  wait_run
   sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
   grep -E "MONSTER pack|AUTOMONSTER (summary|world)" $log.txt | cut -c1-200
   grep -q "MONSTER pack leader=" $log.txt || { echo "FAIL: no pack spawned"; fail=1; }
@@ -136,7 +145,7 @@ $tmp/od2 2>&1 | tee $log
 EOT
   chmod +x $cmd; rm -f $log
   open $cmd
-  for i in {1..90}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
+  wait_run
   sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
   grep -E "AUTOPANEL (stash object|panel=[a-z]+ size|spec round)|containers loaded" $log.txt | cut -c1-200
   grep -qE "AUTOPANEL stash object opened the stash" $log.txt || { echo "FAIL: the stash object did not open the stash"; fail=1; }
