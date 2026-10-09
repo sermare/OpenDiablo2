@@ -28,6 +28,9 @@ import (
 //
 // The run resets the quest slots it exercises in the hero's record first (and
 // marks the predecessors of the quest as done), so it can start from any save.
+// actLastQuestSlot is the last record slot of Act 5 (slots 8..40 belong to Acts 2-5).
+const actLastQuestSlot = 40
+
 const (
 	autoQuestDelay       = 3.0   // seconds after the hero exists
 	autoQuestStepGap     = 0.05  // seconds between steps
@@ -159,10 +162,15 @@ func (a *autoQuest) resetRecord(p *d2hero.HeroProgress, diff int) {
 		p.NPC.SetReturnBit(diff, bit, false)
 	}
 
-	// the Acts 2-5 stages reset their own slots and need their predecessors done
+	// the Acts 2-5 stages start from a clean Acts 2-5 record (a real save has
+	// most of these quests done); the first stage needs its predecessors done
 	for _, st := range a.stages {
-		for _, slot := range actStageSlots[st][0] {
-			rec.SetSlot(slot, 0)
+		if _, ok := actStageSlots[st]; ok {
+			for slot := d2s.QuestSlotAct1Finished + 1; slot <= actLastQuestSlot; slot++ {
+				rec.SetSlot(slot, 0)
+			}
+
+			break
 		}
 	}
 
