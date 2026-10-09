@@ -97,7 +97,7 @@ func CreateGame(
 	game.Logger.SetPrefix(logPrefix)
 	game.initAutoScript()
 	game.hookNetwork()
-	activeGame = game
+	setActiveGame(game)
 
 	game.soundEnv = d2audio.NewSoundEnvironment(game.soundEngine)
 
@@ -264,9 +264,7 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if activeGame == v {
-		activeGame = nil
-	}
+	clearActiveGame(v)
 
 	if err := v.gameClient.Close(); err != nil {
 		return err
