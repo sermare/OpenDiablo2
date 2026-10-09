@@ -49,6 +49,34 @@ func TestFindBeltSlot(t *testing.T) {
 	}
 }
 
+// TestBeltBoxesAndSearchVerified pins Belts.txt (7 rows: belt, sash, default,
+// girdle, light belt, heavy belt, uber belt) and the 0x63d700 behaviour.
+func TestBeltBoxesAndSearchVerified(t *testing.T) {
+	want := map[int]int{0: 12, 1: 8, 2: 4, 3: 16, 4: 8, 5: 12, 6: 16, 9: 4, -1: 4}
+	for typ, n := range want {
+		if got := BeltBoxes(typ); got != n {
+			t.Errorf("BeltBoxes(%d)=%d want %d", typ, got, n)
+		}
+	}
+
+	// a full matching column continues with the next matching column
+	var k BeltKinds
+	k[0], k[4] = "hpot", "hpot"
+	k[1], k[5] = "hpot", ""
+
+	if c, ok := FindBeltSlotOpt(&k, 8, "hpot", false); !ok || c != 5 {
+		t.Errorf("second matching column: got (%d,%v)", c, ok)
+	}
+
+	// no match and no beltable flag: no slot even though the front row has room
+	var e BeltKinds
+	e[0] = "hpot"
+
+	if _, ok := FindBeltSlotOpt(&e, 16, "mpot", false); ok {
+		t.Error("without the fallback flag a new kind finds no slot")
+	}
+}
+
 func TestFrontOfColumnAndCompact(t *testing.T) {
 	var k BeltKinds
 	k[1], k[5], k[13] = "hpot", "hpot", "hpot" // column 1, rows 0, 1, 3

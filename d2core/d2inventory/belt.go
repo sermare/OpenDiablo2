@@ -35,13 +35,44 @@ func BeltRows(boxes int) int {
 // BeltCell returns the row and column of a cell.
 func BeltCell(cell int) (row, col int) { return cell / BeltColumns, cell % BeltColumns }
 
-// FindBeltSlot picks the cell a potion of the given kind goes to
-// (INV_FindBeltSlotForItem, 0x63d700): a column that already starts with the
-// same kind takes it in its first free cell further up; otherwise the first
-// empty cell of the front row. The order of the columns (left to right) and
-// the fall-through when a matching column is full are UNVERIFIED. ok is false
-// when no cell is free within boxes.
+// BeltBoxesByType is the numboxes column of Belts.txt, indexed by the belt
+// type (the armor.txt "belt" column, read from the base record by
+// ITEM_GetBeltType 0x6220b0; VERIFIED). The loader (0x662810) requires 7 rows
+// per screen mode, in this order: belt, sash, default, girdle, light belt,
+// heavy belt, uber belt. Armor.txt gives Sash 1, Girdle 3, Light Belt 4, Heavy
+// Belt 5 and the exceptional/elite belts 6; the plain Belt row has 0.
+var BeltBoxesByType = [7]int{12, 8, 4, 16, 8, 12, 16}
+
+// BeltDefaultType is the Belts.txt row used when no belt is equipped
+// ("default", 4 boxes; 0x63d700, VERIFIED).
+const BeltDefaultType = 2
+
+// BeltBoxes returns the usable cells for a belt type (BeltDefaultType without
+// a belt); unknown types fall back to the default row.
+func BeltBoxes(beltType int) int {
+	if beltType < 0 || beltType >= len(BeltBoxesByType) {
+		return BeltBoxesByType[BeltDefaultType]
+	}
+
+	return BeltBoxesByType[beltType]
+}
+
+// FindBeltSlot is FindBeltSlotOpt with the beltable fallback enabled.
 func FindBeltSlot(kinds *BeltKinds, boxes int, kind string) (cell int, ok bool) {
+	return FindBeltSlotOpt(kinds, boxes, kind, true)
+}
+
+// FindBeltSlotOpt picks the cell a potion of the given kind goes to
+// (INV_FindBeltSlotForItem, 0x63d700, VERIFIED). Columns are scanned left to
+// right (0..3). A column whose front cell (row 0) holds a compatible item
+// (0x628c00: same base item, or both in the same item-type group) and is inside
+// numboxes takes the first free cell going down the column in steps of 4 below
+// numboxes; when that column is full the scan continues with the next column.
+// If no column took it, and the item's base record has the beltable flag
+// (+0x131; fallback), the first empty cell among the first four is used. The
+// original leaves the output untouched (no slot) otherwise. Only items 1x1
+// and of beltable type are accepted by the original; the caller checks that.
+func FindBeltSlotOpt(kinds *BeltKinds, boxes int, kind string, beltableFallback bool) (cell int, ok bool) {
 	rows := BeltRows(boxes)
 
 	for col := 0; col < BeltColumns; col++ {
@@ -56,8 +87,12 @@ func FindBeltSlot(kinds *BeltKinds, boxes int, kind string) (cell int, ok bool) 
 		}
 	}
 
+	if !beltableFallback {
+		return 0, false
+	}
+
 	for col := 0; col < BeltColumns; col++ {
-		if col < boxes && kinds[col] == "" {
+		if kinds[col] == "" {
 			return col, true
 		}
 	}
