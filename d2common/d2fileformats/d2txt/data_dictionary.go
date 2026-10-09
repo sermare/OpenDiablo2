@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"io"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -15,6 +16,58 @@ type DataDictionary struct {
 	r      *csv.Reader
 	record []string
 	Err    error
+
+	// OnMissing, when set, is called once per distinct header name that was
+	// asked for but is not in the file. Lookups of such names still read
+	// column 0 (legacy behaviour), so this is how callers find typos and
+	// wrong-case names. With OD2_TXT_WARN=1 in the environment and no
+	// OnMissing set, the name is logged once instead.
+	OnMissing func(field string)
+	missing   map[string]bool
+}
+
+// Has reports whether the file has a column with exactly this header name.
+func (d *DataDictionary) Has(field string) bool {
+	_, ok := d.lookup[field]
+
+	return ok
+}
+
+// Missing returns the header names that were looked up but do not exist, in
+// no particular order.
+func (d *DataDictionary) Missing() []string {
+	out := make([]string, 0, len(d.missing))
+	for k := range d.missing {
+		out = append(out, k)
+	}
+
+	return out
+}
+
+// col returns the column index for a header name. A missing name yields 0,
+// as before, but is reported once.
+func (d *DataDictionary) col(field string) int {
+	i, ok := d.lookup[field]
+	if ok {
+		return i
+	}
+
+	if !d.missing[field] {
+		if d.missing == nil {
+			d.missing = map[string]bool{}
+		}
+
+		d.missing[field] = true
+
+		switch {
+		case d.OnMissing != nil:
+			d.OnMissing(field)
+		case os.Getenv("OD2_TXT_WARN") == "1":
+			log.Printf("d2txt: header %q not found, reading column 0", field)
+		}
+	}
+
+	return 0
 }
 
 // LoadDataDictionary loads the contents of a spreadsheet style txt file
@@ -64,7 +117,7 @@ func (d *DataDictionary) Next() bool {
 
 // String gets a string from the given column
 func (d *DataDictionary) String(field string) string {
-	i := d.lookup[field]
+	i := d.col(field)
 	if i >= len(d.record) {
 		return ""
 	}
