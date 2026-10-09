@@ -30,20 +30,24 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | **Real NPC menu** (Talk / Trade / Repair / Gamble / Cancel) built from **the game's own menu table** | Log shows e.g. Akara `[talk trade cancel]`, Charsi `[talk trade/repair cancel]`, Gheed `[talk trade Gamble cancel]`; not yet checked visually |
 | Greeting logic ported from the real picker (inactive group, time-of-day lines, no repeats) | Unit tests; Warriv (no plain hello row) now speaks |
 | **Whole `.d2s` character save**: header, quests, waypoints, stats, skills, **items**, corpse, mercenary | Checksum, all 16 attributes, 30 skills and **60/60 items** match a reference parser on a real level-94 save; header/body also on a second real save |
-| **Import a real character into the engine** | A level-94 Sorceress from a real `.d2s` loads and starts in town |
+| **Import a real character into the engine — with her gear** | A level-94 Sorceress from a real `.d2s` loads, starts in town and wears her real Spired Helm, Archon Plate, Battle Boots, Light Gauntlets, Flail, Short Staff and Monarch |
+| **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; emulator check in progress |
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~850 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
+| Reverse-engineering map of the game | ~960 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
-### 🔧 In progress right now (parallel agents)
+### 🔧 In progress right now (9 parallel agents)
 
 | Work item | Where |
 |---|---|
-| Level generation from a seed (DRLG) | RE notes: `drlg` |
+| Combat formulas as tested Go code (to-hit, defence, block, crits, mana cost) | branch `feat/combat-formulas` |
+| Check the random number generator against the real binary | RE notes: `rng-verify` |
+| Level generation, part 2: maze rooms and outdoor generators (to reproduce real maps) | RE notes: `drlg2` |
+| Missiles, collision and pathfinding | RE notes: `missiles-pathing` |
+| Server session core: game seed, act changes, loading a save on the server side | RE notes: `session-core` |
 | Item generation and affixes | RE notes: `itemgen` |
 | Monster AI and NPC server logic | RE notes: `monster-ai` |
 | Quests (all acts) | RE notes: `quests` |
 | Inventory, stash and trade (price formulas) | RE notes: `inventory-trade` |
-| Import **equipment** from `.d2s` into heroes; port the verified combat formulas | next code task |
 
 ### 🎯 Plan and priorities (set by Claude)
 
@@ -89,6 +93,8 @@ server session core · D2Common data tables · key bindings from `default.key` �
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | Equipment imported from a real `.d2s`; Diablo II's random number generator and seed hierarchy implemented (`d2rand`) |
+| 2026-10-09 | Level generation (DRLG) core reverse engineered: seed hierarchy, dispatch, preset/maze/outdoor structure |
 | 2026-10-09 | Skills and combat formulas reverse engineered and verified (mana cost, to-hit, defence, block, critical strike, RNG) |
 | 2026-10-09 | Real NPC menu opens from the game's menu table; greeting picker ported |
 | 2026-10-09 | `Parse` reads a whole save (corpse, mercenary, golem) |
