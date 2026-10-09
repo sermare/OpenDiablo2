@@ -80,7 +80,7 @@ func loadItemTables(t *testing.T) *ItemTables {
 			MaxSock1: types.n(r, "MaxSock1"), MaxSock25: types.n(r, "MaxSock25"), MaxSock40: types.n(r, "MaxSock40"),
 			TreasureClass: types.n(r, "TreasureClass") == 1, Rarity: types.n(r, "Rarity"),
 			Class: -1, VarInvGfx: types.n(r, "VarInvGfx"), Throwable: types.n(r, "Throwable") == 1,
-			Quiver: types.n(r, "Quiver") == 1, AutoStack: types.n(r, "AutoStack") == 1,
+			Quiver: types.s(r, "Quiver") != "", AutoStack: types.n(r, "AutoStack") == 1,
 			StaffMods: types.s(r, "StaffMods"), CostFormula: types.n(r, "CostFormula"),
 		}
 

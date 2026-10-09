@@ -101,6 +101,9 @@ type itemState struct {
 	quality Quality
 	flags   uint32
 	ilvl    int
+	// itemWord is the item's own seed word (pItemData+0x10) that sockets
+	// use for their count; the quality fallbacks reset it.
+	itemWord uint32
 
 	prefix, suffix [3]int
 	auto           int
