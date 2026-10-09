@@ -293,24 +293,19 @@ func TestBossOracleSlotUse(t *testing.T) {
 
 // Target modes of the Baal AIs. The exe values (verify-monster-ai.md,
 // VERIFIED at the AI table 0x739c08) are BaalThrone 2, BaalCrab 0, BaalTaunt
-// 1, BaalToStairs 1, BaalTentacle 1, BaalCrabClone 0. This tree still has
-// the earlier modelling; feat/verify-monster-ai corrects it, and this test
-// then needs the exe column. It pins what the code does today.
+// 1, BaalToStairs 1, BaalTentacle 1, BaalCrabClone 0. feat/verify-monster-ai
+// corrected the earlier modelling, so the code now matches the exe column.
 func TestBaalTargetModesDivergence(t *testing.T) {
 	exe := map[string]int{"BaalThrone": 2, "BaalCrab": 0, "BaalTaunt": 1, "BaalToStairs": 1, "BaalTentacle": 1, "BaalCrabClone": 0}
-	now := map[string]int{
-		"BaalThrone": TargetOnly, "BaalCrab": TargetOnly, "BaalTaunt": TargetOnly, "BaalToStairs": TargetNone,
-		"BaalTentacle": TargetOnly, "BaalCrabClone": TargetOnly,
-	}
 
-	for name, want := range now {
+	for name, want := range exe {
 		d, ok := Lookup(name)
 		if !ok {
 			t.Fatalf("%s missing", name)
 		}
 
 		if d.TargetMode != want {
-			t.Errorf("%s: mode %d, expected today's %d (exe %d)", name, d.TargetMode, want, exe[name])
+			t.Errorf("%s: mode %d, exe %d", name, d.TargetMode, want)
 		}
 	}
 }
