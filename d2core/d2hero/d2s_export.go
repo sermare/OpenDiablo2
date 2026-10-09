@@ -136,10 +136,11 @@ func exportAttributes(c *d2s.Character, state *HeroState, warn func(string, ...i
 
 	// compared in whole points; the stored values carry the fraction
 	set(d2s.StatCurrentHP, a.CurrentHP, s.Health, true)
-	set(d2s.StatMaxHP, a.MaxHP, s.MaxHealth, true)
+	// a .d2s stores the maxima WITHOUT item bonuses (the engine's Max* are totals)
+	set(d2s.StatMaxHP, a.MaxHP, storedMax(s.BaseMaxHealth, s.MaxHealth), true)
 	set(d2s.StatCurrentMana, a.CurrentMana, s.Mana, true)
-	set(d2s.StatMaxMana, a.MaxMana, s.MaxMana, true)
-	set(d2s.StatMaxStamina, a.MaxStamina, s.MaxStamina, true)
+	set(d2s.StatMaxMana, a.MaxMana, storedMax(s.BaseMaxMana, s.MaxMana), true)
+	set(d2s.StatMaxStamina, a.MaxStamina, storedMax(s.BaseMaxStamina, s.MaxStamina), true)
 	// current stamina is not kept by the engine (it resets on entering the world)
 
 	gold := state.Gold

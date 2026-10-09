@@ -17,6 +17,11 @@ func (a *App) initTerminalCommands() {
 	}{
 		{"dumpheap", "dumps the heap to pprof/heap.pprof", nil, a.dumpHeap},
 		{"fullscreen", "toggles fullscreen", nil, a.toggleFullScreen},
+		{"musicvolume", "sets and saves the music volume (0 to 1)", []string{"volume"},
+			func(args []string) error { return a.setVolume(args, true) }},
+		{"soundvolume", "sets and saves the sound effects volume (0 to 1)", []string{"volume"},
+			func(args []string) error { return a.setVolume(args, false) }},
+		{"windowscale", "saves the start window size multiplier (1 to 4)", []string{"scale"}, a.setWindowScale},
 		{"capframe", "captures a still frame", []string{"filename"}, a.setupCaptureFrame},
 		{"capgifstart", "captures an animation (start)", []string{"filename"}, a.startAnimationCapture},
 		{"capgifstop", "captures an animation (stop)", nil, a.stopAnimationCapture},
@@ -73,7 +78,9 @@ func (a *App) evalJS(args []string) error {
 func (a *App) toggleFullScreen([]string) error {
 	fullscreen := !a.renderer.IsFullScreen()
 	a.renderer.SetFullScreen(fullscreen)
-	a.terminal.Infof("fullscreen is now: %v", fullscreen)
+	a.config.FullScreen = fullscreen
+	a.saveConfig()
+	a.terminal.Infof("fullscreen is now: %v (saved)", fullscreen)
 
 	return nil
 }

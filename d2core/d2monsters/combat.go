@@ -124,6 +124,14 @@ func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.Mode, atk d2mapentity.MonsterAttack,
 	via string) {
 	defense := d2combat.Defense(0, p.Stats.Dexterity, 0)
+	blockPct, physResist, reduce := 0, 0, 0
+
+	// the hero's real values from her equipment (d2statlist): defense with items,
+	// block chance with her shield, physical resistance and flat reduction
+	if t := p.Stats.Totals; t != nil {
+		defense, blockPct, physResist, reduce = t.Defense, t.BlockPct, t.PhysResist, t.DamageReduction
+	}
+
 	in := d2combat.ToHitInput{
 		AttackRating:  d2combat.MonsterAttackRating(atk.ToHit, 0, 0),
 		Defense:       defense,
@@ -134,10 +142,27 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 	hit, chance, roll := d2combat.RollToHit(u.b.Seed, in)
 	dmg := 0
 
+	blocked := false
+
+	if hit && blockPct > 0 {
+		// shield block comes after the to-hit roll (COMBAT_RollAttackOutcome); the hero
+		// is not moving while she is struck here (the running /3 rule is not applied)
+		if blocked = d2combat.RollShieldBlock(u.b.Seed, blockPct, false); blocked {
+			hit = false
+		}
+	}
+
 	if hit {
 		dmg = atk.Min + int(u.b.Seed.Roll(int32(atk.Max-atk.Min+1)))
 		if dmg < 1 {
 			dmg = 1
+		}
+
+		// flat damage reduction first, then the physical resistance percent (cap 50);
+		// the order of the two is UNVERIFIED. A hit never drops below 0 damage.
+		dmg = d2combat.ApplyResist(dmg-reduce, physResist)
+		if dmg < 0 {
+			dmg = 0
 		}
 
 		d.Counters.AttackHits++
@@ -148,8 +173,8 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 		}
 	}
 
-	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d",
-		u.m.Label(), u.b.ID, mode, via, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth)
+	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d def=%d blocked=%v",
+		u.m.Label(), u.b.ID, mode, via, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth, defense, blocked)
 
 	if hit && p.Stats.Health == 0 {
 		d.Counters.HeroDeaths++
@@ -254,6 +279,10 @@ func (d *Director) HeroStrike(p *d2mapentity.Player, m *d2mapentity.Monster) boo
 	st := d.asset.Records.Character.Stats[p.Class]
 	ar := d2combat.PlayerAttackRating(0, p.Stats.Dexterity, st.ToHitFactor)
 
+	if t := p.Stats.Totals; t != nil {
+		ar = t.AttackRating // with the equipment's attack rating, dexterity and AR percent
+	}
+
 	hit, chance, roll := d2combat.RollToHit(d.heroRoller(), d2combat.ToHitInput{
 		AttackRating: ar, Defense: m.Vitals.Defense,
 		AttackerLevel: p.Stats.Level, DefenderLevel: m.Vitals.Level,
@@ -267,9 +296,21 @@ func (d *Director) HeroStrike(p *d2mapentity.Player, m *d2mapentity.Monster) boo
 
 	min, max := d.heroDamage(p)
 	dmg := min + int(d.heroRoller().Roll(int32(max-min+1)))
+	crit := false
+
+	// deadly strike and critical strike both double physical damage (verified)
+	if t := p.Stats.Totals; t != nil {
+		if crit = d2combat.RollStrike(d.heroRoller(), d2combat.StrikeInput{
+			SkipWeapon: true, CriticalChance: t.CriticalStrike, DeadlyChance: t.DeadlyStrike,
+		}); crit {
+			dmg *= 2
+		}
+	}
+
 	d.Counters.HeroHits++
 
-	d.emit("herohit", "HERO swing target=%s hit=true chance=%d roll=%d dmg=%d", m.Label(), chance, roll, dmg)
+	d.emit("herohit", "HERO swing target=%s hit=true chance=%d roll=%d dmg=%d crit=%v ar=%d", m.Label(), chance, roll, dmg,
+		crit, ar)
 	d.damage(u, p, dmg)
 
 	return true
@@ -287,6 +328,10 @@ func (d *Director) heroRoller() *d2rand.Seed {
 // fallback min>=1, max>=2 in the damage build).
 func (d *Director) heroDamage(p *d2mapentity.Player) (min, max int) {
 	min, max = 1, 2
+
+	if t := p.Stats.Totals; t != nil && t.DamageMax > 0 {
+		return t.DamageMin, t.DamageMax // weapon, enhanced damage, added damage, strength bonus
+	}
 
 	if p.Equipment != nil && p.Equipment.RightHand != nil {
 		if rec := d.asset.Records.Item.Weapons[p.Equipment.RightHand.GetItemCode()]; rec != nil && rec.MaxDamage > 0 {

@@ -139,6 +139,43 @@ func TestExportD2SItemsMovesItems(t *testing.T) {
 	}
 }
 
+func TestExportD2SItemsCarriesIdentified(t *testing.T) {
+	orig := d2s.Item{Code: "cm1 ", Location: d2s.LocationStored, Page: 1, Quality: 4}
+	s, _ := StoredFromD2S(&orig, allKnown)
+
+	if s.Identified {
+		t.Fatal("test item should start unidentified")
+	}
+
+	out, _ := ExportD2SItems(&HeroContainers{Items: []StoredItem{s}})
+	if out[0].Identified {
+		t.Error("an unidentified item was exported as identified")
+	}
+
+	// identified in the game (the container snapshot sets the flag)
+	s.Identified = true
+
+	out, _ = ExportD2SItems(&HeroContainers{Items: []StoredItem{s}})
+	if !out[0].Identified {
+		t.Error("the identified flag was lost")
+	}
+
+	if orig.Identified {
+		t.Error("export changed the original item")
+	}
+
+	// the flag survives the JSON hero file
+	b, err := json.Marshal(&HeroContainers{Items: []StoredItem{s}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var back HeroContainers
+	if err := json.Unmarshal(b, &back); err != nil || !back.Items[0].Identified {
+		t.Errorf("json round trip: %v %+v", err, back)
+	}
+}
+
 // realSample loads the sample save and tables named by D2_TABLES and D2S_SAMPLE_BODY.
 func realSample(t *testing.T) ([]byte, *d2s.ItemTables) {
 	t.Helper()

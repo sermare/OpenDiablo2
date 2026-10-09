@@ -71,6 +71,9 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 		return nil, err
 	}
 
+	f.RecalcStats(state)
+	fmt.Printf("stats: %s %s\n", state.HeroName, StatsSummary(state.Stats))
+
 	return state, nil
 }
 
