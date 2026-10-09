@@ -1,0 +1,37 @@
+name: Package macOS app
+
+# Builds OpenDiablo2.app (arm64) and keeps the zip as a workflow artifact only.
+# Nothing is published as a release. The app contains no Diablo II files: on
+# first run the player points it at their own installation.
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/mac-packaging]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: OpenDiablo2.app (arm64)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: true
+      - name: Build, sign (ad hoc) and zip
+        run: ZIP=1 scripts/make-app.sh
+      - name: Check the bundle
+        run: |
+          lipo -archs dist/OpenDiablo2.app/Contents/MacOS/OpenDiablo2 | grep -qx arm64
+          codesign --verify --deep --strict dist/OpenDiablo2.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenDiablo2-macos-arm64
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
