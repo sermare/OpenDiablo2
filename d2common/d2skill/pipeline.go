@@ -605,6 +605,26 @@ func (p *Pipeline) doMelee(u Unit, sk *Skill, lvl int, tgt Target, env *Env, res
 	mr.Total = dmg.SumTotal(true)
 }
 
+// Implemented reports whether the pipeline can run a skill: passives are not
+// cast; skills with a do function need it to be one of the ported ones, skills
+// without one need a generic srvmissile.
+func Implemented(sk *Skill) bool {
+	if sk == nil || sk.Passive {
+		return false
+	}
+
+	switch sk.SrvDoFunc {
+	case 0:
+		return sk.SrvMissile != ""
+	case doAttack, doMelee, doThrow, doLHThrow, doInner, doJab, doCharged, doFrozenAr, doStatic:
+		return true
+	case doNova:
+		return sk.SrvMissileA != "" || sk.SrvMissile != ""
+	}
+
+	return false
+}
+
 // String describes a result for logs.
 func (r *MeleeResult) String() string {
 	return fmt.Sprintf("hit=%v chance=%d roll=%d total=%.2f", r.Hit, r.Chance, r.Roll, float64(r.Total)/256)

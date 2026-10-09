@@ -25,6 +25,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2maprenderer"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2screen"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2skills"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2vendor"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client"
@@ -149,6 +150,8 @@ type Game struct {
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	monsterTest          *monsterTest
+	skills               *d2skills.Engine
+	castTestState        *castTest
 	attackTarget         *d2mapentity.Monster
 	attackRepathAcc      float64
 
@@ -273,6 +276,7 @@ func (v *Game) Advance(elapsed float64) error {
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
 		v.advanceMonsters(elapsed)
+		v.advanceSkills(elapsed)
 	}
 
 	if v.gameControls != nil {
@@ -750,6 +754,12 @@ func (v *Game) OnPlayerSave() error {
 
 // OnPlayerCast sends the casting skill action to the server
 func (v *Game) OnPlayerCast(skillID int, targetX, targetY float64) {
+	// skills the skill pipeline implements run locally with real missiles; the
+	// rest keep the old path (a CastSkill packet that plays the client effects)
+	if v.localPlayer != nil && v.castWithPipeline(skillID, targetX, targetY) {
+		return
+	}
+
 	cp, err := d2netpacket.CreateCastPacket(v.gameClient.PlayerID, skillID, targetX, targetY)
 	if err != nil {
 		v.Errorf("CastPacket: %v", err)
