@@ -41,6 +41,12 @@ type Profile struct {
 	// AIP holds aip1..aip8 at indices 1..8 (index 0 unused).
 	AIP    [9]int
 	Skills [NumSkills]SkillSlot
+	// Melee is monstats flag bit 1 (isMelee, class flag test 0x452b20 bit 1).
+	// UNVERIFIED mapping of the bit's name; the bit index is VERIFIED.
+	Melee bool
+	// NoWalk is true when the class lacks the WL mode (monstats2 mode byte
+	// +0xf0 bit 2, test 0x467af0). The zero value (can walk) is the usual case.
+	NoWalk bool
 	Walk   int // Velocity
 	Run    int // Run velocity
 	// Level and combat numbers are read by the engine, not by the AI.

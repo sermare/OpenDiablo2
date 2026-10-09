@@ -73,6 +73,17 @@ type Options struct {
 	// OnHeroStrike, if set, is called when a hero's swing hit a monster: the weapon
 	// may lose durability.
 	OnHeroStrike func(p *d2mapentity.Player)
+	// CanTeleport, if set, says which monster classes carry AiGeneral flag
+	// 0x20 (the wounded MonTeleport). No class is known to set it: nil = off.
+	CanTeleport func(class int) bool
+	// LevelThreat, if set, returns the levels.txt byte +0x2f of a level (the
+	// level-threat re-target; column UNVERIFIED). nil = 0 = off.
+	LevelThreat func(levelID int) int
+	// IsTownLevel, if set, keeps teleports out of town levels.
+	IsTownLevel func(levelID int) bool
+	// OnOverlay, if set, receives the SandRaider overlay request (brain id,
+	// overlay id).
+	OnOverlay func(brainID uint32, overlay int)
 }
 
 // Counters tally what happened, for autotest summaries.
@@ -149,21 +160,22 @@ type Director struct {
 	adoptAcc float64
 	nextID   uint32
 
-	units    map[uint32]*unit // by brain id
-	byEntity map[string]*unit
-	seenNPC  map[string]bool
-	statByID map[int]*d2records.MonStatRecord
-	targets  map[uint32]*d2mapentity.Player
-	grid     mapGrid // static map flags (line of sight)
-	fp       *footprints
-	fpPlayer map[uint32]bool
-	launcher Launcher
-	hero     *d2rand.Seed
-	hire     *d2hireling.Table
-	mercs    map[*d2mapentity.Player]*unit
-	killer   *unit // the merc whose hit is being resolved (kill credit)
-	snd      *rand.Rand
-	packRNG  *d2rand.Seed
+	units     map[uint32]*unit // by brain id
+	byEntity  map[string]*unit
+	seenNPC   map[string]bool
+	statByID  map[int]*d2records.MonStatRecord
+	targets   map[uint32]*d2mapentity.Player
+	grid      mapGrid // static map flags (line of sight)
+	fp        *footprints
+	fpPlayer  map[uint32]bool
+	launcher  Launcher
+	hero      *d2rand.Seed
+	hire      *d2hireling.Table
+	mercs     map[*d2mapentity.Player]*unit
+	killer    *unit // the merc whose hit is being resolved (kill credit)
+	snd       *rand.Rand
+	packRNG   *d2rand.Seed
+	regionRNG *d2rand.Seed // region seed of the teleport destination search
 
 	boss BossHooks // the boss AIs' encounter hooks (bosshooks.go)
 
@@ -212,21 +224,22 @@ type KillEvent struct {
 func NewDirector(asset *d2asset.AssetManager, engine *d2mapengine.MapEngine,
 	players func() []*d2mapentity.Player, l d2util.LogLevel, opt Options) *Director {
 	d := &Director{
-		Logger:   d2util.NewLogger(),
-		asset:    asset,
-		engine:   engine,
-		players:  players,
-		opt:      opt,
-		units:    map[uint32]*unit{},
-		byEntity: map[string]*unit{},
-		seenNPC:  map[string]bool{},
-		statByID: map[int]*d2records.MonStatRecord{},
-		targets:  map[uint32]*d2mapentity.Player{},
-		mercs:    map[*d2mapentity.Player]*unit{},
-		grid:     mapGrid{engine},
-		snd:      newSoundRand(opt.Seed),
-		fpPlayer: map[uint32]bool{},
-		packRNG:  d2rand.New(opt.Seed ^ 0x5041434b),
+		Logger:    d2util.NewLogger(),
+		asset:     asset,
+		engine:    engine,
+		players:   players,
+		opt:       opt,
+		units:     map[uint32]*unit{},
+		byEntity:  map[string]*unit{},
+		seenNPC:   map[string]bool{},
+		statByID:  map[int]*d2records.MonStatRecord{},
+		targets:   map[uint32]*d2mapentity.Player{},
+		mercs:     map[*d2mapentity.Player]*unit{},
+		grid:      mapGrid{engine},
+		snd:       newSoundRand(opt.Seed),
+		fpPlayer:  map[uint32]bool{},
+		packRNG:   d2rand.New(opt.Seed ^ 0x5041434b),
+		regionRNG: d2rand.New(opt.Seed ^ 0x52474e53),
 	}
 
 	d.fp = newFootprints(d.grid)
@@ -298,6 +311,7 @@ func (d *Director) spawn(stat *d2records.MonStatRecord, subX, subY int, ally *al
 
 	b := d2monster.NewBrain(d.nextID, stat.ID, d.opt.Difficulty, prof, d.opt.Seed)
 	b.X, b.Y = subX, subY
+	b.CanTeleport = d.opt.CanTeleport != nil && d.opt.CanTeleport(stat.ID)
 
 	m, err := d.engine.NewMonster(subX, subY, stat, 0, b)
 	if err != nil {
