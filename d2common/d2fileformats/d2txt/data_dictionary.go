@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // DataDictionary represents a data file (Excel)
@@ -24,6 +25,7 @@ type DataDictionary struct {
 	// OnMissing set, the name is logged once instead.
 	OnMissing func(field string)
 	missing   map[string]bool
+	missingMu sync.Mutex // guards missing: lookups of absent names write it lazily
 }
 
 // Has reports whether the file has a column with exactly this header name.
@@ -36,6 +38,9 @@ func (d *DataDictionary) Has(field string) bool {
 // Missing returns the header names that were looked up but do not exist, in
 // no particular order.
 func (d *DataDictionary) Missing() []string {
+	d.missingMu.Lock()
+	defer d.missingMu.Unlock()
+
 	out := make([]string, 0, len(d.missing))
 	for k := range d.missing {
 		out = append(out, k)
@@ -52,13 +57,20 @@ func (d *DataDictionary) col(field string) int {
 		return i
 	}
 
-	if !d.missing[field] {
+	d.missingMu.Lock()
+	first := !d.missing[field]
+
+	if first {
 		if d.missing == nil {
 			d.missing = map[string]bool{}
 		}
 
 		d.missing[field] = true
+	}
 
+	d.missingMu.Unlock()
+
+	if first { // reported outside the lock so the callback may call Missing()
 		switch {
 		case d.OnMissing != nil:
 			d.OnMissing(field)
