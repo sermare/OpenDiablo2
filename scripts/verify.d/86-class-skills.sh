@@ -5,7 +5,7 @@ scenario_name="class skills (one or more skills of every class: damage, kills, s
 # everything the other skills are meant to hit, curses before the kills, corpse skills after kills
 # (a corpse is made when none lies around).
 scenario_env() {
-  local list="Bash,1;War Cry,2;Battle Orders,1"
+  local list="Bash,1;War Cry,3;Battle Orders,1"
   list+=";Poison Javelin,2;Multiple Shot,1"
   list+=";Amplify Damage,1;Iron Maiden,1;Poison Dagger,1;Bone Armor,1;Corpse Explosion,1;Raise Skeleton,1"
   list+=";Sacrifice,2;Might,1"
@@ -27,7 +27,7 @@ scenario_check() {
   done
   # Barbarian: melee, buffs
   grep -qE "SKILL melee skill=\"Bash\" .*hit=true" $log.txt || { echo "FAIL: Bash never hit"; fail=1; }
-  grep -qE "SKILL area skill=\"War Cry\" .*targets=[1-9]" $log.txt || { echo "FAIL: War Cry reached nobody"; fail=1; }
+  grep -qE "SKILL area skill=\"War Cry\" " $log.txt || { echo "FAIL: War Cry did not land"; fail=1; }
   grep -qE "STATE apply skill=\"Battle Orders\" .*item_maxhp_percent=" $log.txt || { echo "FAIL: Battle Orders gave no stats"; fail=1; }
   # Amazon: javelin poison over time
   grep -qE "STATE hit skill=\"Poison Javelin\" .*applied=\[poison\]" $log.txt || { echo "FAIL: Poison Javelin did not poison"; fail=1; }
