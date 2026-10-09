@@ -2,7 +2,6 @@ package d2drop
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 )
@@ -118,8 +117,8 @@ func ParseEntry(s string, prob int) Entry {
 // N = 3, 6, ... 96 a class "<code><N>" with one pick, level N-3, and one
 // entry per spawnable, non-quest item of that type whose level is in the
 // range (N-3, N] (VERIFIED; OpenDiablo2 used [N, N+3)). The entry
-// probability is the item's rarity column, at least 1 (UNVERIFIED which
-// column the game reads).
+// probability is the Rarity column of the item's ItemTypes row (VERIFIED
+// against the emulated game), at least 1; it is not the item's own rarity.
 func BuildTypeTreasureClasses(items []*ItemInfo, typeCodes []string) []*TreasureClass {
 	var out []*TreasureClass
 
@@ -136,8 +135,14 @@ func BuildTypeTreasureClasses(items []*ItemInfo, typeCodes []string) []*Treasure
 					continue
 				}
 
+				// Missile potions are left out of every class but their own
+				// (VERIFIED, 655ae0), although "tpot" descends from "weap".
+				if code != "tpot" && it.HasType("tpot") {
+					continue
+				}
+
 				if it.Level > n-dynamicTCStep && it.Level <= n {
-					tc.Entries = append(tc.Entries, Entry{Code: it.Code, Prob: maxInt(1, it.Rarity)})
+					tc.Entries = append(tc.Entries, Entry{Code: it.Code, Prob: maxInt(1, it.TypeRarity)})
 				}
 			}
 
@@ -181,6 +186,9 @@ type Context struct {
 	ForcedQuality Quality
 	// MaxDrops caps the number of items (default DefaultMaxDrops).
 	MaxDrops int
+	// NoNoDrop disables the NoDrop column (the roller's "guaranteed" flag:
+	// every pick yields an entry). VERIFIED against the real roller.
+	NoNoDrop bool
 }
 
 // Dropper rolls treasure classes.
@@ -238,13 +246,41 @@ func EffectiveNoDrop(noDrop, total, players int) int {
 	}
 
 	f := float64(noDrop) / float64(noDrop+total)
-	fn := math.Pow(f, float64(players))
+	fn := f
 
-	if fn >= 1 {
+	for i := 1; i < players; i++ {
+		fn *= f // the game multiplies one factor at a time
+	}
+
+	if 1-fn == 0 {
 		return 0
 	}
 
 	return int(float64(total) * fn / (1 - fn))
+}
+
+// NoDropPlayers is the player count n the roller scales NoDrop with
+// (VERIFIED, 5585d0): a party of p (capped at 8) counts fully and the other
+// players of the game count half, n = p + (total-p)/2. A party of one counts
+// as one whatever the game size. For a dropping monster n is capped by the
+// monster's "players" stat (stat 100), at least 1.
+func NoDropPlayers(party, total, monsterPlayers int, monster bool) int {
+	n := party
+	if n <= 1 {
+		n = 1
+	} else {
+		if n > 8 {
+			n = 8
+		}
+
+		n += (total - n) / 2
+	}
+
+	if monster {
+		n = minInt(n, maxInt(monsterPlayers, 1))
+	}
+
+	return n
 }
 
 // Roll resolves the treasure class tcName into drops
@@ -304,6 +340,10 @@ func (d *Dropper) Roll(ctx *Context, tcName string) ([]Drop, error) {
 			}
 		}
 
+		// The entry's own modifiers are merged into the frame, so they also
+		// apply to the later picks of the same class (VERIFIED).
+		f.mods = f.mods.Max(e.Mods)
+
 		drop, err := d.makeDrop(ctx, e, f.mods, ilvl)
 		if err != nil {
 			return out, err
@@ -330,6 +370,11 @@ func (d *Dropper) pick(ctx *Context, f *frame) int {
 
 	total := tc.TotalProb()
 	noDrop := EffectiveNoDrop(tc.NoDrop, total, ctx.Players)
+
+	if ctx.NoNoDrop {
+		noDrop = 0
+	}
+
 	space := total + noDrop
 
 	if space < 1 {
@@ -354,9 +399,12 @@ func (d *Dropper) pick(ctx *Context, f *frame) int {
 	return -1
 }
 
-func (d *Dropper) makeDrop(ctx *Context, e Entry, frameMods QualityMods, ilvl int) (Drop, error) {
-	mods := frameMods.Max(e.Mods)
+func (d *Dropper) makeDrop(ctx *Context, e Entry, mods QualityMods, ilvl int) (Drop, error) {
 	drop := Drop{Code: e.Code, ILvl: ilvl, Mul: e.Mul, Mods: mods, Quality: QualityNormal}
+
+	if e.Kind != EntryAuto && e.Base != "" {
+		drop.Code = e.Base
+	}
 
 	switch {
 	case e.Kind == EntryUnique:
@@ -374,8 +422,13 @@ func (d *Dropper) makeDrop(ctx *Context, e Entry, frameMods QualityMods, ilvl in
 		drop.Quality = q
 	}
 
-	if mods.E > 0 || mods.G > 0 {
+	// Each flag is rolled only when its modifier is set (VERIFIED: rand &
+	// 0x3ff compared with the 16-bit modifier).
+	if mods.E > 0 {
 		drop.EFlag = int(ctx.RNG.Roll(1024)) < mods.E
+	}
+
+	if mods.G > 0 {
 		drop.GFlag = int(ctx.RNG.Roll(1024)) < mods.G
 	}
 
