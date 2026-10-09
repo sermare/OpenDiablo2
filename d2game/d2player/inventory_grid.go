@@ -194,9 +194,10 @@ func (g *ItemGrid) canFit(x, y int, item InventoryItem) bool {
 		slotX, slotY := compItem.InventoryGridSlot()
 		compWidth, compHeight := compItem.InventoryGridSize()
 
-		if x+insertWidth >= slotX &&
+		// rectangles overlap only when they share area; touching edges are fine
+		if x+insertWidth > slotX &&
 			x < slotX+compWidth &&
-			y+insertHeight >= slotY &&
+			y+insertHeight > slotY &&
 			y < slotY+compHeight {
 			return false
 		}
