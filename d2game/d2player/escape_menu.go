@@ -496,11 +496,17 @@ func (m *EscapeMenu) setLayout(id layoutID) {
 		m.leftPent.SetVisible(false)
 		m.rightPent.SetVisible(false)
 
+		left, right := m.leftPent, m.rightPent
+
 		go func() {
 			time.Sleep(singleFrame)
-			m.onHoverElement(m.layouts[id].currentEl)
-			m.leftPent.SetVisible(true)
-			m.rightPent.SetVisible(true)
+
+			if m.currentLayout == id { // else another page was shown meanwhile
+				m.onHoverElement(m.layouts[id].currentEl)
+			}
+
+			left.SetVisible(true)
+			right.SetVisible(true)
 		}()
 	} else {
 		m.onHoverElement(m.layouts[id].currentEl)
