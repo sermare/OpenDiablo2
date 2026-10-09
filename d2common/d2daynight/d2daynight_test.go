@@ -2,12 +2,6 @@ package d2daynight
 
 import "testing"
 
-// dayTicks: each of the 5 changes 1->2->3->4->5->0 costs 241 steps (the tick
-// snaps back by one) and 0->1 costs 1 step (next start is 0, so any tick
-// exceeds it): 1206 steps, so the 1440 tick wrap never fires. This is how the
-// decompiled FUN_0061bc10 reads; the quirk is probably unintended in the game.
-const dayTicks = 5*241 + 1
-
 func TestClassify(t *testing.T) {
 	want := map[int]TimeOfDay{0: Evening, 1: Morning, 2: Day, 3: Day, 4: Evening, 5: Evening}
 	for phase, w := range want {
@@ -18,48 +12,47 @@ func TestClassify(t *testing.T) {
 }
 
 func TestAdvancePhases(t *testing.T) {
+	const tpd = TicksPerDegreeReal
+
 	tests := []struct {
-		ticks     int
+		name      string
+		ticks     int // from the start of phase 0 (degree 320)
 		wantPhase int
-		wantTick  int
 	}{
-		{0, 1, 0},
-		{240, 1, 240},
-		{241, 2, 240},
-		{482, 3, 480},
-		{723, 4, 720},
-		{964, 5, 960},
-		{1205, 0, 1200},
-		{1206, 1, 0},
+		{"start", 0, 0},
+		{"before dawn", 19*tpd - 1, 0},
+		{"dawn", 20 * tpd, 1},
+		{"day", 40 * tpd, 2},
+		{"midday", 140 * tpd, 2},
+		{"phase3", 200 * tpd, 3},
+		{"dusk", 220 * tpd, 4},
+		{"night", 240 * tpd, 5},
+		{"back to phase 0", 360 * tpd, 0},
 	}
 
 	for _, tc := range tests {
 		e := NewCycling()
 		e.Advance(tc.ticks)
 
-		if e.Phase() != tc.wantPhase || e.Tick() != tc.wantTick {
-			t.Errorf("after %d ticks: phase %d tick %d, want %d/%d", tc.ticks, e.Phase(), e.Tick(), tc.wantPhase, tc.wantTick)
+		if e.Phase() != tc.wantPhase {
+			t.Errorf("%s: after %d ticks phase %d, want %d (tick %d)", tc.name, tc.ticks, e.Phase(), tc.wantPhase, e.Tick())
 		}
 	}
 }
 
 func TestFullDayWraps(t *testing.T) {
 	e := NewCycling()
-	e.Advance(dayTicks * 3)
-
-	if e.Phase() != PhaseDawn || e.Tick() != 0 {
-		t.Errorf("after 3 days: phase %d tick %d", e.Phase(), e.Tick())
-	}
-
+	start := e.Tick()
 	seen := map[int]bool{}
 
-	for i := 0; i < dayTicks; i++ {
-		e.Advance(1)
+	day := TicksPerDegreeReal * DegreesPerDay
+	for i := 0; i < day; i += 64 {
+		e.Advance(64)
 		seen[e.Phase()] = true
 	}
 
-	if len(seen) != PhaseCount {
-		t.Errorf("phases seen in a day: %v", seen)
+	if e.Tick() != start || len(seen) != PhaseCount {
+		t.Errorf("tick %d want %d; phases seen %v", e.Tick(), start, seen)
 	}
 }
 
@@ -85,7 +78,7 @@ func TestSetPhaseAndTick(t *testing.T) {
 		wantTick    int
 	}{
 		{3, 500, true, 500}, {6, 0, false, 500}, {-1, 0, false, 500},
-		{2, -1, false, 500}, {4, 99999, true, 0},
+		{2, -1, false, 500}, {4, 99999999, true, 0},
 	} {
 		if ok := e.SetPhaseAndTick(tc.phase, tc.tick); ok != tc.ok || (ok && e.Tick() != tc.wantTick) {
 			t.Errorf("Set(%d,%d)=%v tick %d", tc.phase, tc.tick, ok, e.Tick())
@@ -93,19 +86,49 @@ func TestSetPhaseAndTick(t *testing.T) {
 	}
 }
 
-func TestAmbient(t *testing.T) {
-	// Fixed table, phase 2 is white and phase 3's colour is also white.
-	if got := NewFixed(PhaseDay).Ambient(); got != (RGB{255, 255, 255}) {
-		t.Errorf("fixed day ambient = %v", got)
+func TestAmbientColours(t *testing.T) {
+	for phase, want := range map[int]RGB{
+		PhaseNight0: {0x7d, 0x90, 0xf3}, PhaseDawn: {0xd0, 0xb8, 0x83}, PhaseDay: {255, 255, 255},
+		PhaseDusk: {255, 255, 255}, PhaseNight4: {0xc2, 0x98, 0xc1}, PhaseNight5: {0x7d, 0x90, 0xf3},
+	} {
+		if got := NewFixed(phase).Ambient(); got != want {
+			t.Errorf("fixed phase %d ambient = %v want %v", phase, got, want)
+		}
+
+		e := NewCycling()
+		e.SetPhase(phase)
+
+		if got := e.Ambient(); got != want {
+			t.Errorf("cycling phase %d start ambient = %v want %v", phase, got, want)
+		}
 	}
 
-	// Phase 4 (c2 98 c1) at tick 0 of its span in the fixed table equals its base.
-	if got := NewFixed(PhaseNight4).Ambient(); got != (RGB{0xc2, 0x98, 0xc1}) {
-		t.Errorf("fixed phase4 ambient = %v", got)
+	// halfway from dawn orange (340) to day white (360 == 0)
+	e := NewCycling()
+	e.SetPhase(PhaseDawn)
+	e.Advance(10 * TicksPerDegreeReal)
+
+	if got := e.Ambient(); got.R <= 0xd0 || got.B <= 0x83 {
+		t.Errorf("dawn midpoint ambient = %v", got)
+	}
+}
+
+func TestIntensity(t *testing.T) {
+	at := func(deg int) int {
+		e := NewCycling()
+		e.SetPhaseAndTick(PhaseDay, deg*TicksPerDegreeReal)
+
+		return e.Intensity()
 	}
 
-	// Cycling table colours are verified bytes: dawn is (0,30,244).
-	if got := NewCycling().Ambient(); got != (RGB{0, 0x1e, 0xf4}) {
-		t.Errorf("cycling dawn ambient = %v", got)
+	// first half: 128+128*cos; second half: 128+64*cos
+	for deg, want := range map[int]int{0: 255, 90: 128, 180: 64, 270: 128, 200: 68, 340: 188} {
+		if got := at(deg); got != want {
+			t.Errorf("deg %d intensity %d want %d", deg, got, want)
+		}
+	}
+
+	if NewSpecial().Intensity() != 32 {
+		t.Error("special intensity must be 32")
 	}
 }
