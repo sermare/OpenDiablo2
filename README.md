@@ -34,7 +34,7 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | **Import a real character into the engine — with her gear** | A level-94 Sorceress from a real `.d2s` loads, starts in town and wears her real Spired Helm, Archon Plate, Battle Boots, Light Gauntlets, Flail, Short Staff and Monarch |
 | **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; checked instruction-by-instruction against the real code: no differences |
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~2,325 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
+| Reverse-engineering map of the game | ~2,420 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
 ### 🔧 In progress right now (agents run in waves of 5 every 15 minutes)
 
@@ -42,11 +42,11 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 |---|---|
 | **The quest system** for the intro and Act 1 quests: states, speech, rewards, saved in the `.d2s` | branch `feat/quest-system` |
 | **Skills for all seven classes**, with auras, summons, traps and status effects | branch `feat/class-skills` |
-| **Gamble (Gheed) and Identify (Deckard Cain)** | branch `feat/gamble-identify` |
 | **Death, respawn and creating new characters** that the real game also accepts | branch `feat/death-newchar` |
-| **Level generator proof extended** to the barracks and the Act 2 and Act 3 mazes | branch `feat/drlg-act23` |
-| **Mercenaries** and **stairs / doors / waypoints / portals** | `feat/hirelings`, `feat/transitions-objects` |
-| Imported-character UI and positional/ambient audio (reconciling with the latest code) | `feat/imported-hero-ui`, `feat/ambient-audio` |
+| **Equipment really affects the hero**: item stat aggregation, defence/attack rating/resists on the character panel | branch `feat/hero-stats` |
+| **A double-clickable `OpenDiablo2.app`** with a first-run folder picker and automatic import of real saves | branch `feat/macos-app` |
+| **A performance pass** with frame-time metrics and profiling | branch `feat/perf-pass` |
+| **Mercenaries** (being merged with the latest monster code), imported-character UI, positional audio | `feat/hirelings`, `feat/imported-hero-ui`, `feat/ambient-audio` |
 | Research: Act 1 outdoor generation part 3 (borders, cliffs, rivers) | RE notes: `drlg3` |
 
 ### 🎯 Plan and priorities (set by Claude)
@@ -93,6 +93,7 @@ server session core · D2Common data tables · key bindings from `default.key` �
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | Level generator proven for **all Act 1-3 maze levels**; waypoints, portals, doors and level changes; Gheed's gamble and Cain's identify; test scenarios now launch games without Terminal windows |
 | 2026-10-09 | **Level generator proven identical to the real game** (2,550 maze records, 50 world layouts); real dungeons render and play; skills, monsters part 2, stash/cube/belt, lighting merged; test runner restructured into one file per scenario |
 | 2026-10-09 | Engine saves characters back to real `.d2s`; hireling and renderer reverse engineering done (real lighting model, hire cost and stat formulas) |
 | 2026-10-09 | **Monsters** with the original AI, pathfinding, combat, death and loot run in the engine; test runs no longer collide on the server port |
