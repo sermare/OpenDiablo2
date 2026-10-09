@@ -9,22 +9,39 @@
 // Verified facts are marked VERIFIED, hypotheses UNVERIFIED in the comments.
 package d2vendor
 
-// Audit status (oracle_test.go pins the VERIFIED rules on real tables via
-// D2_TABLES) and exe addresses still to confirm in Game.exe 1.14b:
+// Audit status. Everything below was checked in Game.exe 1.14b (see
+// d2-re-notes/verify-vendor.md; verify_test.go and oracle_test.go pin it, the
+// real-table tests need D2_TABLES).
 //
-//   - 0x5746a0 item level cap table (12/20/28/36/45) indexed by the vendor
-//     record byte +0x22: what the index counts is unknown, so no cap is
-//     applied (Tier -1); a cap changes late-game vendor item levels.
-//   - 0x574780 whether the Min/MagicMin columns are read (only Max is);
-//     whether the count is random(Max+1) or between Min and Max.
-//   - 0x574cf0 hp4/hp5/mp4/mp5 "sold on non-normal difficulty" rule: potion
-//     tiers by difficulty are NOT modelled (hp5/mp5 are sold by nobody here).
-//   - 0x534c20 / 0x576970 restock trigger: the 240000 ms flag is documented
-//     in gamble.go, but session-core.md lists 0x534c20 as called from the
-//     town transition handler (0x534d40); confirm whether entering town also
-//     restocks. RNG source of a stock (npc unit seed? player record?) is
-//     unknown; StockSeed is a deterministic stand-in.
-//   - 0x629e40 "may be magic" test, and the quest group columns of npc.txt
-//     (which of questbuymult / questsellmult hits the player-pays side).
+// VERIFIED:
+//   - 0x5746a0 item level cap (12/20/28/36/45): indexed by the 0-based act of
+//     the vendor's town (ActIndex), applied as min(level+5, cap) on Normal
+//     difficulty only.
+//   - 0x574780 reads Min and Max (regular count Min+random(Max+1-Min)) and
+//     MagicMin and MagicMax (MagicMin+random(MagicMax+extra-MagicMin), extra 1
+//     below ilvl 25 else 2..3). ReqLevel <= ilvl and the item version gate
+//     wrap both passes; the magic pass also needs the may-be-magic bit and
+//     MagicLvl <= ilvl.
+//   - 0x574cf0 VendorSells: hp4/hp5/mp4/mp5 count as sold on non-normal
+//     difficulty; the potions arrive through the difficulty upgrade of
+//     0x574110 (NightmareUpgrade / HellUpgrade, player level >= 26).
+//   - 0x534c20 restocks flag a vendor when the hero LEAVES town and the last
+//     stock is more than 240000 ms old; consumed at the next window open.
+//   - RNG: the game's single shared generator (0x534510 returns game+0x1d24+8),
+//     not a per-NPC seed. The quality, count and upgrade rolls all use it.
+//   - 0x629e40 is bit 0 of the load-time flag word at base record +0xdc.
+//   - npc.txt quest columns: the player pays with "questsellmult", the vendor
+//     pays with "questbuymult"; a group needs a non-zero questflag.
+//   - Cain (0x576290): 100 gold per unidentified item, free with quest flag 4.
+//
+// UNVERIFIED:
+//   - which item types set bit 0 of +0xdc (the adapter's rule is consistent
+//     with every vendor magic column on the real tables);
+//   - whether PermStoreItem rows are really absent from the Min/Max pass, and
+//     the original table order (the adapter sorts by code, permanents first);
+//   - the meaning of game field +0x70 (gate of the hell elite upgrade,
+//     Options.EliteUpgrade) and the difficulty source in the trade window;
+//   - StockSeed is a stand-in: the original consumes the shared game stream, so
+//     a stock depends on everything rolled before it.
 //   - Gamble: DifficultyLevels Gamble* values come from difficultylevels.bin
 //     (the .txt has no such columns), see ShippedGambleParams.

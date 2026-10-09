@@ -224,7 +224,7 @@ func (t *TradeWindow) open(v d2vendor.Vendor, seed uint32, quests *d2s.QuestReco
 	key := t.stockKey(v)
 
 	stock := t.stocks[key]
-	if stock != nil && t.now().Sub(t.built[key]) >= d2vendor.RestockInterval*time.Millisecond {
+	if stock != nil && d2vendor.RestockDue(t.now().Sub(t.built[key]).Milliseconds()) {
 		t.Infof("vendor restock: vendor=%s gamble=%v after %dms", v.Name, gamble, d2vendor.RestockInterval)
 
 		stock = nil
@@ -239,9 +239,11 @@ func (t *TradeWindow) open(v d2vendor.Vendor, seed uint32, quests *d2s.QuestReco
 		stock = t.generateGamble(v, seed)
 	default:
 		bases := d2vendor.BasesFor(t.asset.Records, v)
-		// Tier -1: the item level cap table is not applied (meaning of its
-		// index is UNVERIFIED).
-		stock = d2vendor.GenerateSeeded(seed, bases, d2vendor.Options{PlayerLevel: t.playerLevel(), Tier: -1})
+		// Tier is the vendor's act (VERIFIED item level cap index, normal
+		// difficulty only; Options ignores it when Difficulty != 0).
+		stock = d2vendor.GenerateSeeded(seed, bases, d2vendor.Options{
+			PlayerLevel: t.playerLevel(), Tier: d2vendor.ActIndex(v), Difficulty: t.difficulty, Resolve: d2vendor.Resolver(t.asset.Records),
+		})
 		t.realise(stock, seed)
 	}
 
@@ -295,7 +297,7 @@ func (t *TradeWindow) realise(stock *d2vendor.Stock, seed uint32) {
 	entries := append([]*d2vendor.Item{}, stock.Items...)
 
 	for idx, e := range entries {
-		item, err := t.factory.ItemFromCode(e.Code, e.Quality, e.ILvl, seed+uint32(idx)+1)
+		item, err := t.factory.ItemFromCodeForVendor(e.Code, e.Quality, e.ILvl, seed+uint32(idx)+1, t.difficulty)
 		if err != nil {
 			t.Errorf("vendor item %q: %v", e.Code, err)
 			stock.Remove(e)

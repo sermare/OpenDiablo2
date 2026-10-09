@@ -1,6 +1,7 @@
 package diablo2item
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
@@ -208,5 +209,101 @@ func TestSpecKeepsExtras(t *testing.T) {
 
 	if !seenS || !seenE {
 		t.Errorf("not exercised: sockets %v ethereal %v", seenS, seenE)
+	}
+}
+
+func TestEtherealBonusTable(t *testing.T) {
+	for _, tc := range []struct{ in, want int }{{0, 0}, {1, 1}, {2, 3}, {5, 7}, {11, 16}, {30, 45}, {101, 151}} {
+		if got := etherealBoost(tc.in); got != tc.want {
+			t.Errorf("etherealBoost(%d) = %d, want %d", tc.in, got, tc.want)
+		}
+	}
+
+	a := &itemAttributes{
+		damageOneHand: minMaxEnhanceable{min: 3, max: 7}, damageTwoHand: minMaxEnhanceable{min: 5, max: 11},
+		damageMissile: minMaxEnhanceable{min: 1, max: 2}, defense: 31,
+	}
+	a.applyEtherialBonus()
+
+	if a.damageOneHand.min != 4 || a.damageOneHand.max != 10 || a.damageTwoHand.min != 7 ||
+		a.damageTwoHand.max != 16 || a.damageMissile.min != 1 || a.damageMissile.max != 3 || a.defense != 46 {
+		t.Errorf("bonus wrong: %+v", a)
+	}
+}
+
+// Ethereal items rolled by the generator get the bonus.
+func TestEtherialDefenseFromRoll(t *testing.T) {
+	f, tab := extrasFactory()
+	f.asset.Records.Item.All["cap"].MinAC, f.asset.Records.Item.All["cap"].MaxAC = 10, 20
+
+	seen := false
+
+	for s := int64(1); s <= 600; s++ {
+		it := newExtrasItem(s, d2drop.QualityNormal)
+		it.factory = f
+		it.rand = rand.New(rand.NewSource(s))
+		it.updateItemAttributes()
+		it.attributes.durable, it.attributes.currentDurability = true, 12
+
+		base := it.attributes.defense
+		f.rollExtras(tab, it, 0)
+
+		if it.IsEthereal() {
+			seen = true
+
+			if it.attributes.defense != base*3/2 {
+				t.Fatalf("defense %d, base %d", it.attributes.defense, base)
+			}
+		} else if it.attributes.defense != base {
+			t.Fatalf("non-ethereal defense changed")
+		}
+	}
+
+	if !seen {
+		t.Error("no ethereal item rolled")
+	}
+}
+
+// Shop stock: never ethereal, can be socketed, and apart from the socket
+// count identical to the plain ItemFromCode item for the same seed.
+func TestVendorItemsSocketsNoEthereal(t *testing.T) {
+	f, _ := extrasFactory()
+	socketed := 0
+
+	for seed := uint32(1); seed <= 500; seed++ {
+		plain, err := f.ItemFromCode("cap", d2drop.QualityNormal, 30, seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		shop, err := f.ItemFromCodeForVendor("cap", d2drop.QualityNormal, 30, seed, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if shop.IsEthereal() {
+			t.Fatalf("seed %d: vendor item ethereal", seed)
+		}
+
+		pa, sa := *plain.attributes, *shop.attributes
+		pa.numSockets, sa.numSockets = 0, 0
+
+		if plain.Seed != shop.Seed || plain.itemLevel != shop.itemLevel || plain.quality != shop.quality ||
+			plain.CommonCode != shop.CommonCode || pa.defense != sa.defense || pa.ethereal != sa.ethereal ||
+			pa.currentDurability != sa.currentDurability || pa.durability != sa.durability {
+			t.Fatalf("seed %d: item differs beyond sockets", seed)
+		}
+
+		if shop.NumSockets() > 2 {
+			t.Fatalf("seed %d: %d sockets", seed, shop.NumSockets())
+		}
+
+		if shop.NumSockets() > 0 {
+			socketed++
+		}
+	}
+
+	if socketed < 100 || socketed > 230 {
+		t.Errorf("%d of 500 vendor caps socketed, want about 33%%", socketed)
 	}
 }

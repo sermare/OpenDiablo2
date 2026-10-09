@@ -145,10 +145,29 @@ func BasesFor(rec *d2records.RecordManager, v Vendor) []Base {
 			CanBeMagic: tr != nil && !tr.Normal && gear,
 			Ammo:       tr != nil && tr.Quiver != "",
 			MaxStack:   icr.MaxStack,
+
+			Version: icr.Version, Uber: icr.UberCode, Ultra: icr.UltraCode,
+			NightmareUpgrade: icr.NightmareUpgrade, HellUpgrade: icr.HellUpgrade,
 		})
 	}
 
 	return bases
+}
+
+// Resolver returns the Options.Resolve function for a record set: the size
+// and upgrade codes of any base item, without vendor columns.
+func Resolver(rec *d2records.RecordManager) func(code string) (Base, bool) {
+	return func(code string) (Base, bool) {
+		icr := rec.Item.All[code]
+		if icr == nil {
+			return Base{}, false
+		}
+
+		return Base{
+			Code: code, ReqLevel: icr.RequiredLevel, W: icr.InventoryWidth, H: icr.InventoryHeight,
+			MaxStack: icr.MaxStack, Version: icr.Version,
+		}, true
+	}
 }
 
 const fixedPoint = 1024.0
@@ -174,8 +193,11 @@ func NPCPricing(rec *d2records.RecordManager, v Vendor, quests *d2s.QuestRecord)
 
 	// Quest group overrides, keyed by quest slot. The record loader keeps
 	// "questbuymult" as Buy and "questsellmult" as Sell; by the same swap as
-	// above the player-pays side uses "questsellmult" (UNVERIFIED for the
-	// quest columns: the notes only state it for the main columns).
+	// above the player-pays side uses "questsellmult" (VERIFIED in
+	// TRADE_CalcItemPrice 0x62f100 / TRADE_LoadNpcTable 0x658220: the buy
+	// price is multiplied by the dword at row+0x1c.. which the loader fills
+	// from "questsellmult A..C", the sell price by +0x28.. = "questbuymult").
+	// A group is active only for a non-zero quest flag.
 	flags := make([]int, 0, len(row.QuestMultipliers))
 	for f := range row.QuestMultipliers {
 		flags = append(flags, f)
@@ -183,7 +205,13 @@ func NPCPricing(rec *d2records.RecordManager, v Vendor, quests *d2s.QuestRecord)
 
 	sort.Ints(flags)
 
-	for i, f := range flags {
+	i := 0
+
+	for _, f := range flags {
+		if f == 0 {
+			continue // VERIFIED: a zero questflag disables the group
+		}
+
 		if i >= len(n.Quest) {
 			break
 		}
@@ -195,6 +223,7 @@ func NPCPricing(rec *d2records.RecordManager, v Vendor, quests *d2s.QuestRecord)
 			Sell:   int(m.Buy*fixedPoint + 0.5),
 			Repair: int(m.Repair*fixedPoint + 0.5),
 		}
+		i++
 	}
 
 	return n

@@ -34,9 +34,14 @@ const (
 	GambleItems = 14
 
 	// RestockInterval is the vendor restock period in milliseconds
-	// (VERIFIED: the per-frame vendor loop FUN_00534c20 sets the "needs
-	// refresh" flag when GetTickCount is more than 240000 ms past the last
-	// refresh; the flag is consumed the next time the window is opened).
+	// (VERIFIED, Game.exe 0x534c20): FUN_00534c20 is not a per-frame loop; it
+	// runs from SERVER_HandleTownTransition (0x534d40) when a player leaves a
+	// town and, for each vendor record of that act, sets the "needs refresh"
+	// flag (+0x27) when GetTickCount is more than 240000 ms past the vendor's
+	// last stock (the tick stamped by 0x574780 at record +0x28). The flag is
+	// consumed the next time a normal (non-gamble) trade window opens
+	// (TRADE_OpenVendorSession 0x577240). Nothing restocks while the player
+	// stays in town; see RestockDue.
 	RestockInterval = 240000
 
 	gambleMinILvl   = 5
@@ -196,3 +201,9 @@ func GenerateGamble(rng d2drop.RNG, pool []GambleBase, ring, amulet GambleBase, 
 
 	return out
 }
+
+// RestockDue reports whether a vendor whose stock was built elapsedMs ago is
+// flagged for a restock by the town-leaving check (VERIFIED: strictly more
+// than RestockInterval). A caller models the original by calling it when the
+// hero leaves town and remembering the flag until the vendor is next opened.
+func RestockDue(elapsedMs int64) bool { return elapsedMs > RestockInterval }
