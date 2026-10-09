@@ -5,7 +5,9 @@
 //
 // Verified against the real level 94 Sorceress save (see the tests, which
 // need D2_TABLES and D2S_SAVE_JSON). Anything not verified is marked
-// "unverified" in its comment.
+// "unverified" in its comment. Level lookup, experience cap and level-up grants
+// are VERIFIED against the exe (0x00610b10, 0x0057c510, 0x0056e770), see
+// ~/git/d2-re-notes/verify-monster-hero.md.
 package d2herostats
 
 import (
@@ -97,7 +99,8 @@ func ParseExperience(data []byte) (map[string]*ExpTable, error) {
 }
 
 // LevelFor returns the level of a character with the given experience,
-// at most MaxLevel (and at least 1).
+// at most MaxLevel (and at least 1). VERIFIED (0x00610b10): the exe counts
+// consecutive rows whose threshold is <= experience, bounded by MaxLevel.
 func (t *ExpTable) LevelFor(exp int64) int {
 	lvl := 1
 
@@ -108,8 +111,9 @@ func (t *ExpTable) LevelFor(exp int64) int {
 	return lvl
 }
 
-// NextLevelExp is the experience needed for the next level, or the cap
-// (Threshold[MaxLevel]) at the maximum level.
+// NextLevelExp is the experience needed for the next level (stat 0x1e, row
+// "level" of the file, VERIFIED 0x0056e770), or the file's last row at the
+// maximum level.
 func (t *ExpTable) NextLevelExp(level int) int64 {
 	if level < 1 {
 		level = 1
@@ -130,7 +134,12 @@ type Progress struct {
 	SkillPoints int
 }
 
-// AddExperience adds gained experience, clamped to the table cap, and applies
+// ExpCap is the highest experience a character can hold: the exe clamps to
+// the threshold of row MaxLevel-1 (VERIFIED 0x0057c510), i.e. the experience
+// that first reaches the maximum level, not the file's last row.
+func (t *ExpTable) ExpCap() int64 { return t.Threshold[t.MaxLevel-1] }
+
+// AddExperience adds gained experience, clamped to ExpCap, and applies
 // every level-up it causes (one skill and five stat points each). It returns
 // the number of levels gained. Negative gains (death penalty) never lower the
 // level here: the game keeps the level and only moves experience, which this
@@ -142,8 +151,8 @@ func (t *ExpTable) AddExperience(p *Progress, gain int64) (levelsGained int) {
 
 	p.Experience += gain
 
-	if p.Experience > t.Threshold[t.MaxLevel] {
-		p.Experience = t.Threshold[t.MaxLevel]
+	if p.Experience > t.ExpCap() {
+		p.Experience = t.ExpCap()
 	}
 
 	if gain < 0 {

@@ -26,7 +26,7 @@ func synthLvl() MonLvl {
 
 func TestMulDiv(t *testing.T) {
 	for _, c := range []struct{ a, b, c, want int }{
-		{10, 50, 100, 5}, {3, 50, 100, 2}, {1, 49, 100, 0}, {7, 100, 100, 7}, {0, 5, 100, 0}, {-3, 50, 100, -2},
+		{10, 50, 100, 5}, {3, 50, 100, 1}, {1, 49, 100, 0}, {7, 100, 100, 7}, {0, 5, 100, 0}, {-3, 50, 100, -1},
 	} {
 		if got := MulDiv(c.a, c.b, 100); got != c.want {
 			t.Errorf("MulDiv(%d,%d)=%d want %d", c.a, c.b, got, c.want)
@@ -60,9 +60,16 @@ func TestScale(t *testing.T) {
 		roll      func(int) int
 		check     func(Stats) string
 	}{
-		{"normal area level", ratio, Normal, 5, false, first, func(s Stats) string {
-			if s.Level != 5 || s.HP != 500 || s.HPMax != 1000 {
+		{"nightmare area level", ratio, Nightmare, 5, false, first, func(s Stats) string {
+			if s.Level != 5 || s.HP != 2000 || s.HPMax != 2000 {
 				return "level/hp"
+			}
+
+			return ""
+		}},
+		{"normal ignores area level", ratio, Normal, 5, false, first, func(s Stats) string {
+			if s.Level != 1 || s.HP != 500 {
+				return "normal level"
 			}
 
 			return ""
@@ -89,7 +96,7 @@ func TestScale(t *testing.T) {
 			return ""
 		}},
 		{"expansion columns", ratio, Normal, 5, true, first, func(s Stats) string {
-			if s.HPMax != 1000+5 { // L-HP = 1000 + i*e
+			if s.HPMax != 1000+1 { // L-HP = 1000 + i*e at normal level 1
 				return "expansion hp"
 			}
 
@@ -124,7 +131,7 @@ func TestScale(t *testing.T) {
 
 			return ""
 		}},
-		{"level beyond table clamps", ratio, Normal, 500, false, nil, func(s Stats) string {
+		{"level beyond table clamps", ratio, Nightmare, 500, false, nil, func(s Stats) string {
 			if s.Level != 500 || s.HP == 0 {
 				return "clamp"
 			}
@@ -190,10 +197,10 @@ func TestRealData(t *testing.T) {
 		lvl  int
 		hp   int
 	}{
-		{Normal, false, 12, 1025}, // 40 * 2562% = 1024.8 (rounding unverified)
-		{Normal, true, 12, 1025},  // L-HP equals HP at normal
-		{Hell, false, 75, 45024},  // 3774 * 1193% = 45023.8
-		{Hell, true, 75, 60032},   // 5032 * 1193% = 60031.76
+		{Normal, false, 12, 1024}, // 40 * 2562% = 1024.8, truncated (VERIFIED 0x0047f2c0)
+		{Normal, true, 12, 1024},  // L-HP equals HP at normal
+		{Hell, false, 75, 45023},  // 3774 * 1193% = 45023.8 truncated
+		{Hell, true, 75, 60031},   // 5032 * 1193% = 60031.76 truncated
 	}
 
 	for _, tc := range tests {
@@ -203,11 +210,11 @@ func TestRealData(t *testing.T) {
 		}
 	}
 
-	// A plain monster takes the area level: fallen1 in a level-30 area.
+	// A plain monster takes the area level in Nightmare/Hell: fallen1 in a level-30 area.
 	f := cl["fallen1"]
-	s := ml.Scale(f, Normal, 30, false, func(n int) int { return n - 1 })
+	s := ml.Scale(f, Nightmare, 30, false, func(n int) int { return n - 1 })
 
-	if s.Level != 30 || s.HP != MulDiv(ml[30].HP[0][Normal], f.MaxHP[Normal], 100) {
+	if s.Level != 30 || s.HP != MulDiv(ml[30].HP[0][Nightmare], f.MaxHP[Nightmare], 100) {
 		t.Errorf("fallen1: %+v", s)
 	}
 
@@ -218,5 +225,14 @@ func TestRealData(t *testing.T) {
 				t.Errorf("%s diff %d: %+v", c.ID, d, st)
 			}
 		}
+	}
+}
+
+func TestHPCapAndTruncation(t *testing.T) {
+	ml := synthLvl()
+	big := &Class{MinHP: [3]int{1 << 30, 0, 0}, MaxHP: [3]int{1 << 30, 0, 0}}
+
+	if s := ml.Scale(big, Normal, 0, false, nil); s.HP != maxHP {
+		t.Errorf("hp cap: %d", s.HP)
 	}
 }

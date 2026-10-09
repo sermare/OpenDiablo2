@@ -68,7 +68,7 @@ func TestExperienceLevelUp(t *testing.T) {
 		t.Errorf("after +1600: n=%d %+v", n, p)
 	}
 
-	if n := tab.AddExperience(p, 1_000_000); n != 1 || p.Level != 4 || p.Experience != 7000 {
+	if n := tab.AddExperience(p, 1_000_000); n != 1 || p.Level != 4 || p.Experience != 3750 {
 		t.Errorf("cap: n=%d %+v", n, p)
 	}
 
@@ -273,5 +273,24 @@ func TestRealLevel94Sorceress(t *testing.T) {
 
 	if d.Defense != a.Dexterity/4 {
 		t.Errorf("defense %d", d.Defense)
+	}
+}
+
+func TestLevelUpGrantsAccumulateQuarters(t *testing.T) {
+	// VERIFIED 0x0056e770: each level adds charstats quarter points to the
+	// 1/256 fixed-point maxima; the shown value is the truncated total, so
+	// per-level rounding never drifts from the closed form.
+	c := d2statlist.Class{InitVit: 10, HpAdd: 30, LifePerLevel: 5, InitEne: 10, ManaPerLevel: 6, InitStamina: 80, StaminaPerLevel: 4}
+	q := 0
+
+	for lvl := 1; lvl <= 40; lvl++ {
+		if lvl > 1 {
+			q += c.LifePerLevel
+		}
+
+		life, _, _ := c.BaseMax(lvl, c.InitVit, c.InitEne)
+		if want := c.HpAdd + c.InitVit + q/4; life != want {
+			t.Fatalf("level %d life %d want %d", lvl, life, want)
+		}
 	}
 }

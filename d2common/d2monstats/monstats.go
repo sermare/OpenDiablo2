@@ -143,21 +143,22 @@ func LoadClasses(buf []byte) (map[string]*Class, error) {
 	return out, nil
 }
 
-// MulDiv is the Win32 rounding multiply-divide used by the exe.
+// MulDiv is the exe's multiply-divide (0x0047f2c0), VERIFIED to TRUNCATE
+// toward zero (IMUL then IDIV, no half-way bias) for the value ranges monster
+// scaling uses; it is not the Win32 rounding MulDiv.
 func MulDiv(a, b, c int) int {
-	n := a * b
-	if n >= 0 {
-		return (n + c/2) / c
-	}
-
-	return (n - c/2) / c
+	return a * b / c
 }
 
-// ResolveLevel is the monster level rule: noRatio and boss classes use the
-// monstats Level of the difficulty, others the area MonLvl (falling back to
-// the monstats level when the area has none).
+// maxHP is the cap on the pre-shift hit points (0x7fffff, stored <<8).
+const maxHP = 0x7fffff
+
+// ResolveLevel is the monster level rule (VERIFIED at 0x00571af0): the
+// monstats Level of the difficulty is the default; only in Nightmare and Hell,
+// and only when an area is known, non-noRatio non-boss classes take the area
+// MonLvl instead. Normal difficulty always uses the monstats Level.
 func (c *Class) ResolveLevel(diff, areaLevel int) int {
-	if c.NoRatio || c.Boss || areaLevel <= 0 {
+	if diff <= Normal || c.NoRatio || c.Boss || areaLevel <= 0 {
 		return c.Level[diff]
 	}
 
@@ -196,6 +197,10 @@ func (t MonLvl) Scale(c *Class, diff, areaLevel int, expansion bool, roll func(n
 
 	if s.HPMax > s.HPMin && roll != nil {
 		s.HP += roll(s.HPMax - s.HPMin + 1)
+	}
+
+	if s.HP > maxHP {
+		s.HP = maxHP
 	}
 
 	s.AC = scale(row.AC[e][diff], c.AC[diff])
