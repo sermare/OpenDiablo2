@@ -33,21 +33,15 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | **Import a real character into the engine — with her gear** | A level-94 Sorceress from a real `.d2s` loads, starts in town and wears her real Spired Helm, Archon Plate, Battle Boots, Light Gauntlets, Flail, Short Staff and Monarch |
 | **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; checked instruction-by-instruction against the real code: no differences |
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~1,270 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
+| Reverse-engineering map of the game | ~1,530 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
 ### 🔧 In progress right now (agents run in waves of 5 every 15 minutes)
 
 | Work item | Where |
 |---|---|
-| Real loot: drops, quality rolls, affixes ported to Go | branch `feat/itemgen-real` |
-| Real packet layer (framing, size tables, typed packets) | branch `feat/packet-layer` |
-| Quest state, waypoints, NPC flags from saves + the "welcome back" greeting | branch `feat/quest-state` |
-| Trade price formulas + inventory grid fixes and auto-placement | branch `feat/trade-inventory` |
-| Key bindings from `default.key` + day/night phase for greetings | branch `feat/keys-daynight` |
-| Monster AI: name and document the think functions | RE notes: `monster-ai-2` |
-| Level generation part 2: maze rooms, outdoor generators | RE notes: `drlg2` |
-| Missiles, collision and pathfinding | RE notes: `missiles-pathing` |
-| Server session core: the game seed, act changes, loading saves | RE notes: `session-core` |
+| **Monsters with the real AI** (own RNG, aggro, melee/ranged/pack archetypes), pathfinding, combat, death and loot | branch `feat/monsters` |
+| **Real level generator in Go**: maze levels, the Act 1 world layout and town variant from the seed | branch `feat/drlg-go` |
+| Next wave: sound engine, CI, trade windows, loot in chests, skills research part 2 | spawning every 15 minutes |
 
 ### 🎯 Plan and priorities (set by Claude)
 
@@ -93,6 +87,7 @@ server session core · D2Common data tables · key bindings from `default.key` �
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | Loot, trade, quests, packets, key bindings and day/night merged; monster AI think functions named (~90 created); maze level generation and the Act 1 world layout reverse engineered |
 | 2026-10-09 | `.d2s` **writer**: a real save round-trips byte-for-byte; combat formulas implemented and verified against 12 binary functions |
 | 2026-10-09 | Quests (state layout, framework, Den of Evil) and inventory/trade (price formulas, packets) reverse engineered |
 | 2026-10-09 | Item generation reverse engineered: treasure classes, quality rolls with magic find, affixes, property stats (12 gaps vs OpenDiablo2 listed) |

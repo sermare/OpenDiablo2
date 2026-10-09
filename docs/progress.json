@@ -5,7 +5,7 @@
   "bars": [
     {
       "label": "Game.exe functions named in Ghidra",
-      "done": 1268,
+      "done": 1534,
       "total": 10907,
       "note": "reverse engineering of the original 1.14b binary",
       "color": "#7c5cff"
@@ -19,9 +19,9 @@
     },
     {
       "label": "Source files studied in depth",
-      "done": 95,
+      "done": 125,
       "total": 277,
-      "note": "NPC menu, units, saves, packets, rendering, sound, combat, level gen, items, monster AI, quests, trade",
+      "note": "NPC menu, units, saves, packets, rendering, sound, combat, level gen, items, monster AI, quests, trade, session",
       "color": "#2f9bff"
     },
     {
@@ -33,16 +33,16 @@
     },
     {
       "label": "NPC interaction features",
-      "done": 3,
+      "done": 4,
       "total": 7,
-      "note": "click-walk ✓  voice greeting ✓  menu ✓   |   trade · gamble · quest dialogue · hire ✗",
+      "note": "click-walk ✓  voice greeting ✓  menu ✓  return greeting (mode wired) ✓   |   trade UI · quest dialogue · hire ✗",
       "color": "#ef5da8"
     },
     {
       "label": "Roadmap deliverables",
-      "done": 7,
+      "done": 10,
       "total": 13,
-      "note": "d2s read+write ✓ · hero+gear import ✓ · NPC menu ✓ · greetings ✓ · RNG ✓ · combat ✓  |  trade · missiles · real maps · loot · monster AI · protocol",
+      "note": "d2s read+write ✓ · hero+gear ✓ · NPC menu ✓ · greetings ✓ · RNG ✓ · combat ✓ · loot ✓ · trade ✓ · packets ✓ · key binds ✓  |  missiles · real maps · monsters+AI",
       "color": "#ff7a45"
     }
   ]
