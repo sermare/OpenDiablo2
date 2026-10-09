@@ -80,7 +80,7 @@ func (m *MissileRecord) PipelineSpec() *d2missile.Spec {
 		NextDelay: m.Collision.TimerFrames, Size: m.Size,
 		SubLoop: m.Animation.HasSubLoop, SubStart: m.Animation.SubStartingFrame, SubStop: m.Animation.SubEndingFrame,
 		ExplosionMissile: m.ExplosionMissile, SubMissile: m.SubMissile, HitSubMissile: m.HitSubMissile,
-		SkillName: m.SkillName, HitClass: m.HitClass, ResultFlags: m.ResultFlags, HitFlags: m.HitFlags,
+		SkillName: m.SkillName, HitClass: m.HitClass, SrcDam: m.SourceDamage, ResultFlags: m.ResultFlags, HitFlags: m.HitFlags,
 		SrvCalc1: m.ServerMovementCalc.Program, DmgCalc1: m.ServerDamageCalc.Program,
 	}
 

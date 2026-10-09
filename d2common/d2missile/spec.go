@@ -44,8 +44,12 @@ type Spec struct {
 	SHitPar            [3]int // sHitPar1..3
 	DParam             [2]int // dParam1..2
 	HitClass           int
-	ResultFlags        int
-	HitFlags           int
+	// SrcDam is the missiles.txt SrcDamage column (byte +0x12d of the record):
+	// -1 (0xff) turns the skill's SrcDam off for this missile, which also
+	// turns off its critical strike roll (0x64cbde, verified).
+	SrcDam      int
+	ResultFlags int
+	HitFlags    int
 }
 
 // Table resolves missiles by id or name.

@@ -18,4 +18,4 @@ Addresses and observations only (read-only Ghidra, disassembly decoded by hand).
 - to-hit mastery now goes into AttackRatingPct (percent), was a flat AR add.
 - damage mastery stays in the additive percent (verified) and is now also added to missile descriptors (castMissile and cast.desc) when SrcDam > 0.
 - mastery lookup picks the throw family only for a throwable weapon + throwing skill (SkillThrows), else the melee family only (was: both).
-- Not wired: missile crit (flag 0x2 consumer not traced) and the missile roll order.
+- Missile crit: now wired and verified, see missile-crit.md (rolled once at descriptor build, consumer 0x64be80 -> stat 0x8d -> 0x5a674a).
