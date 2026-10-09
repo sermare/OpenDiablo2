@@ -126,5 +126,18 @@ func (t *Templates) ByClass(class int) (*Template, bool) {
 	return tp, ok
 }
 
+// AvgLife is the mean of the minimum and maximum life of a monster at a
+// difficulty (the pair the skill tooltip's kind-13 line averages, 0x4e8ed0).
+func (t *Templates) AvgLife(id string, diff Difficulty) (int, bool) {
+	tp, ok := t.ByID(id)
+	if !ok || diff < 0 || int(diff) >= len(tp.Diff) {
+		return 0, false
+	}
+
+	b := tp.Diff[diff]
+
+	return (b.MinHP + b.MaxHP) / 2, true
+}
+
 // Len is the number of rows.
 func (t *Templates) Len() int { return len(t.byID) }
