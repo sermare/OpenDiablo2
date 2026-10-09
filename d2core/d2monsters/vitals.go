@@ -19,6 +19,7 @@ func profileFromRecord(r *d2records.MonStatRecord, diff d2monster.Difficulty) *d
 		AIDel:  pick(r.AiDelayNormal, r.AiDelayNightmare, r.AiDelayHell),
 		AIDist: pick(r.AiDistanceNormal, r.AiDistanceNightmare, r.AiDistanceHell),
 		Threat: r.ThreatLevel,
+		Melee:  r.IsMelee,
 		Walk:   r.SpeedBase,
 		Run:    r.SpeedRun,
 	}
