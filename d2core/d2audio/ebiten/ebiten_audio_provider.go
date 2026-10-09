@@ -3,6 +3,7 @@ package ebiten
 
 import (
 	"io"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
@@ -110,7 +111,10 @@ func (eap *AudioProvider) LoadSound(sfx string, loop, bgm bool) (d2interface.Sou
 		volume = eap.bgmVolume
 	}
 
-	result := eap.createSoundEffect(sfx, eap.audioContext, loop)
+	result, err := eap.createSoundEffect(sfx, eap.audioContext, loop)
+	if err != nil {
+		return nil, err
+	}
 
 	result.volumeScale = volume
 	result.SetVolume(volume)
@@ -126,10 +130,15 @@ func (eap *AudioProvider) SetVolumes(bgmVolume, sfxVolume float64) {
 
 // createSoundEffect creates a new instance of ebiten's sound effect implementation.
 func (eap *AudioProvider) createSoundEffect(sfx string, context *audio.Context,
-	loop bool) *SoundEffect {
+	loop bool) (*SoundEffect, error) {
 	result := &SoundEffect{}
 
 	soundFile := "data/global/sfx/"
+
+	// full archive paths (e.g. NPC speech under data/local/sfx) are used as-is
+	if strings.HasPrefix(strings.TrimPrefix(sfx, "/"), "data/") {
+		soundFile = ""
+	}
 
 	if _, exists := eap.asset.Records.Sound.Details[sfx]; exists {
 		soundEntry := eap.asset.Records.Sound.Details[sfx]
@@ -149,7 +158,7 @@ func (eap *AudioProvider) createSoundEffect(sfx string, context *audio.Context,
 	}
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	d, err := wav.Decode(context, audioData)
@@ -179,5 +188,5 @@ func (eap *AudioProvider) createSoundEffect(sfx string, context *audio.Context,
 
 	result.player = player
 
-	return result
+	return result, nil
 }

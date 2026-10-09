@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
@@ -108,6 +109,7 @@ const (
 	npcInteractDistance = 3.0 // tiles
 	npcBubbleSeconds    = 3.0
 	npcBubbleLift       = 30 // pixels above the NPC's head
+	npcVoicePrefixLen   = 3
 )
 
 type Game struct {
@@ -387,9 +389,45 @@ func (v *Game) advanceNPCInteraction(elapsed float64) {
 		v.npcBubble = v.uiManager.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
 	}
 
-	// no dialogue system yet: just acknowledge the NPC
-	v.npcBubble.SetText(v.npcTarget.Label() + ": Greetings, stranger.")
+	v.npcBubble.SetText(v.npcTarget.Label())
 	v.npcBubbleTTL = npcBubbleSeconds
+
+	v.playNPCGreeting(v.npcTarget.Label())
+}
+
+// playNPCGreeting plays the NPC's spoken greeting from the speech archive.
+// Voice files are named data/local/sfx/<Act>/<Name>/<Abc>_hello.wav (or
+// _greetings.wav); Cain's prefix is his full first name.
+func (v *Game) playNPCGreeting(name string) {
+	name = strings.TrimPrefix(name, "Deckard ")
+	if len(name) < npcVoicePrefixLen {
+		return
+	}
+
+	prefix := name[:npcVoicePrefixLen]
+	if name == "Cain" {
+		prefix = name
+	}
+
+	for _, act := range []string{"Act1", "Act2", "Act3", "Act4", "Act5", "Common"} {
+		for _, line := range []string{"hello", "greetings"} {
+			path := fmt.Sprintf("data/local/sfx/%s/%s/%s_%s.wav", act, name, prefix, line)
+
+			if ok, _ := v.asset.FileExists(path); !ok {
+				continue
+			}
+
+			sfx, err := v.audioProvider.LoadSound(path, false, false)
+			if err != nil {
+				v.Warningf("could not load NPC greeting %s: %v", path, err)
+				return
+			}
+
+			sfx.Play()
+
+			return
+		}
+	}
 }
 
 // renderNPCBubble draws the interaction text bubble above the NPC.
