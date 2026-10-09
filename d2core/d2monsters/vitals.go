@@ -59,7 +59,7 @@ func profileFromRecord(r *d2records.MonStatRecord, diff d2monster.Difficulty) *d
 // monstats Level of the difficulty, except in an expansion game (Options.
 // Expansion) in Nightmare/Hell for classes with neither noRatio nor boss, which
 // take the levels.txt MonLvl of the area set with SetAreaLevel. Hit points and
-// experience get the player-count bonus (Options.Players, 0 means 1; classes
+// experience get the player-count bonus (Director.PlayerCount: the live count or Options.Players, raised to the OD2_PLAYERS override; classes
 // with Align != 0 are exempt) and the hit points are capped at 0x7fffff
 // (VERIFIED 0x00571af0 / 0x00571760).
 func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain) d2mapentity.MonsterVitals {
@@ -91,7 +91,7 @@ func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain)
 		hpMax = hpMin
 	}
 
-	hpPct, xpPct, _ := d2monstats.PlayerBonus(d.opt.Players, int(r.Alignment))
+	hpPct, xpPct, _ := d2monstats.PlayerBonus(d.PlayerCount(), int(r.Alignment))
 
 	v.MaxHP = hpMin + b.Roll(hpMax-hpMin+1)
 	v.MaxHP += d2monstats.MulDiv(v.MaxHP, hpPct, 100) // the bonus comes before the cap

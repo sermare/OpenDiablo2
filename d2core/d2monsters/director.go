@@ -10,6 +10,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2hireling"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monstats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
@@ -52,6 +53,14 @@ type Options struct {
 	// Players is the number of players in the game for the monster hit point
 	// and experience bonus (0 means 1: no bonus).
 	Players int
+	// PlayersFunc, if set, reports the live number of connected heroes and
+	// replaces Players. It is read at each spawn, so a change of the count
+	// affects only monsters spawned afterwards (the exe records the count in
+	// the monster at creation, stat 0x64); monsters already alive keep theirs.
+	PlayersFunc func() int
+	// ForcedPlayers is the optional "players X" override (0..8): the exe takes
+	// the larger of the real count and the forced value (EffectivePlayers).
+	ForcedPlayers int
 	// IgnoreTown lets monsters target heroes standing in town (for tests; the
 	// original never aggroes onto players in town).
 	IgnoreTown bool
@@ -632,4 +641,34 @@ func abs(v int) int {
 	}
 
 	return v
+}
+
+// PlayerCount is the player count used for the HP / XP bonus of a monster
+// spawned now: the larger of the live (or static) count and ForcedPlayers,
+// at least 1.
+func (d *Director) PlayerCount() int {
+	n := d.opt.Players
+	if d.opt.PlayersFunc != nil {
+		n = d.opt.PlayersFunc()
+	}
+
+	if n < 1 {
+		n = 1
+	}
+
+	return d2monstats.EffectivePlayers(n, d.opt.ForcedPlayers, 1)
+}
+
+// ForcedPlayersFromEnv parses the OD2_PLAYERS override (0..8; 0 or invalid: none).
+func ForcedPlayersFromEnv(v string) int {
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || n < 0 {
+		return 0
+	}
+
+	if n > 8 {
+		n = 8
+	}
+
+	return n
 }
