@@ -471,3 +471,20 @@ func (g *GameControls) tradeRightClick(mx, my int) bool {
 
 	return true
 }
+
+// DropInventoryItem removes the first inventory item with the given base code
+// (the player dropping it; the scripted export scenario makes room this way)
+// and saves the hero. It returns the item's name.
+func (g *GameControls) DropInventoryItem(code string) (string, error) {
+	for _, it := range g.inventory.grid.items {
+		if it.GetItemCode() == code {
+			name := oneLine(itemName(it))
+			g.inventory.grid.Remove(it)
+			g.saveHero()
+
+			return name, nil
+		}
+	}
+
+	return "", fmt.Errorf("no %s in the inventory", code)
+}

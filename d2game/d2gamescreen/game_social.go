@@ -539,3 +539,19 @@ func (v *Game) commandAutoBuy(args []string) error {
 
 	return fmt.Errorf("no %s here", args[0])
 }
+
+// commandDropInv is "dropinv <code>": the hero drops the first inventory item with that base code.
+func (v *Game) commandDropInv(args []string) error {
+	if len(args) != 1 || v.gameControls == nil {
+		return errors.New("usage: dropinv <code> (in a game)")
+	}
+
+	name, err := v.gameControls.DropInventoryItem(args[0])
+	if err != nil {
+		return err
+	}
+
+	v.Infof("DROPINV code=%s name=%q", args[0], name)
+
+	return nil
+}
