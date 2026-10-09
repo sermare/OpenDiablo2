@@ -24,7 +24,7 @@ var d2sClassToHero = map[d2s.Class]d2enum.Hero{
 
 // ImportD2S converts the contents of a Diablo II .d2s save into a hero state.
 // Name, class, level, experience, attributes, health/mana, gold and the
-// spent skill points are imported; items and quests are not yet.
+// spent skill points, items, quests, waypoints and NPC flags are imported.
 func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	header, err := d2s.ParseHeader(data)
 	if err != nil {
@@ -55,6 +55,7 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	}
 
 	applyD2SAttributes(state, &body.Attributes, f)
+	state.Progress = &HeroProgress{Quests: quests(body), Waypoints: body.Waypoints, NPC: *body.NPCFlags()}
 
 	f.importD2SItems(state, data)
 
@@ -63,6 +64,15 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	}
 
 	return state, nil
+}
+
+func quests(body *d2s.Body) [3]d2s.QuestRecord {
+	var out [3]d2s.QuestRecord
+	for i := range out {
+		out[i] = *body.QuestRecord(i)
+	}
+
+	return out
 }
 
 func applyD2SAttributes(state *HeroState, a *d2s.Attributes, f *HeroStateFactory) {

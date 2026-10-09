@@ -166,3 +166,61 @@ func pickGreeting(set greetingSet, mode greetingMode, phase int, lastPlayed stri
 
 	return result
 }
+
+// returnGreetings models the real client's per-NPC "re-meet" flag. In
+// Game.exe UI_StartNpcInteraction (0x4b2f50) looks the clicked NPC's class id
+// up in a table with a 0x16 byte stride at 0x725968; if the byte at +0x12 is 1
+// it clears it and calls SOUND_PickNpcGreeting with mode 2, i.e. the
+// GREETING_RETURN line (verified in the decompiler).
+//
+// What sets the flag (verified): packet 0x91 (26 bytes, handler 0x459cc0 ->
+// 0x4afd20) carries up to 12 u16 NPC class ids; each one sets +0x12 on its
+// table entry (ids >= the monstats row count are ignored). FUN_004afb00 clears
+// all flags when a game is (re)entered.
+//
+// Unverified: how the server builds that id list. It is very likely derived
+// from the "return" bitfields of the save's 0x7701 NPC block (d2s.NPCBlock),
+// but the bit -> NPC class mapping is not known, so callers have to supply it
+// (see returnGreetingsFromBits). The second flag (+0x15, "greeting allowed",
+// set by FUN_004b0630) is not modelled.
+type returnGreetings map[string]bool
+
+// Arm marks NPCs (lower-case names like "akara") for a RETURN greeting.
+func (r returnGreetings) Arm(names ...string) {
+	for _, n := range names {
+		r[n] = true
+	}
+}
+
+// Reset clears every flag, as the client does when entering a game.
+func (r returnGreetings) Reset() {
+	for k := range r {
+		delete(r, k)
+	}
+}
+
+// Take returns the greeting mode for an NPC and clears its flag (the real
+// code clears it on use, so only the first meeting after arming is RETURN).
+func (r returnGreetings) Take(name string) greetingMode {
+	if r[name] {
+		delete(r, name)
+		return greetingReturn
+	}
+
+	return greetingNormal
+}
+
+// returnGreetingsFromBits arms the NPCs whose return bit is set. names maps a
+// bit index of the 64 bit return field to an NPC name; that mapping is
+// unverified and must come from the caller.
+func returnGreetingsFromBits(bits uint64, names map[int]string) returnGreetings {
+	r := returnGreetings{}
+
+	for bit, name := range names {
+		if bit >= 0 && bit < 64 && bits>>uint(bit)&1 != 0 {
+			r[name] = true
+		}
+	}
+
+	return r
+}
