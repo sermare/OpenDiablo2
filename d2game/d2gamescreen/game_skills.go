@@ -41,7 +41,13 @@ type castItem struct {
 	doneFor float64
 	// counters at the start, to print the skill's own totals
 	c0 d2skills.Counters
+	// refusedSeen is the engine's refused count already accounted for; retries
+	// is how many refused casts were given back to be made again.
+	refusedSeen, retries int
 }
+
+// castItemMaxRetries bounds how often a refused cast is repeated.
+const castItemMaxRetries = 5
 
 // castTest is the state of the OD2_AUTOCAST scenario.
 type castTest struct {
@@ -148,6 +154,7 @@ func (v *Game) parseCastTest(eng *d2skills.Engine) *castTest {
 func (v *Game) startCastItem(eng *d2skills.Engine, t *castTest, it *castItem) {
 	it.started = true
 	it.c0 = eng.Counters
+	it.refusedSeen = eng.Counters.Refused
 
 	p := v.localPlayer
 	if s := p.Skills[it.id]; s == nil || s.SkillPoints < 1 {
@@ -196,6 +203,23 @@ func (v *Game) autoCast(elapsed float64) {
 
 	if t.finished {
 		return
+	}
+
+	// a cast the engine refused (the target died in the cast animation, say) does not
+	// count: it is made again, a few times at most
+	if t.idx < len(t.items) {
+		if it := t.items[t.idx]; it.started && eng.Counters.Refused > it.refusedSeen {
+			if d := eng.Counters.Refused - it.refusedSeen; it.retries < castItemMaxRetries && it.casts > 0 {
+				if it.casts -= d; it.casts < 0 {
+					it.casts = 0
+				}
+				it.retries++
+				it.doneFor = 0
+				v.Infof("AUTOCAST skill=%q cast refused, trying again (%d)", it.skill, it.retries)
+			}
+
+			it.refusedSeen = eng.Counters.Refused
+		}
 	}
 
 	// a skill is done castTestItemSettle seconds after its last cast, so what
