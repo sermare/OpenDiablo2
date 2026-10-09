@@ -3,122 +3,72 @@ package d2audio
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
-
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio/d2sfx"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 )
 
-type envState int
-
 const (
 	logPrefix = "Sound Engine"
 )
 
-const (
-	envAttack  = 0
-	envSustain = 1
-	envRelease = 2
-	envStopped = 3
-)
-
-const volMax float64 = 255
-const originalFPS float64 = 25
-
-// A Sound that can be started and stopped
+// Sound is a handle on one sound started through the SoundEngine.
 type Sound struct {
-	effect  d2interface.SoundEffect
-	entry   *d2records.SoundDetailRecord
-	volume  float64
-	vTarget float64
-	vRate   float64
-	state   envState
-	// panning float64 // lets forget about this for now
-
-	*d2util.Logger
+	bank   *d2sfx.Bank
+	inst   *d2sfx.Instance
+	handle string
 }
 
-func (s *Sound) update(elapsed float64) {
-	// attack
-	if s.state == envAttack {
-		s.volume += s.vRate * elapsed
-		if s.volume > s.vTarget {
-			s.volume = s.vTarget
-			s.state = envSustain
-		}
-
-		s.effect.SetVolume(s.volume)
-	}
-
-	// release
-	if s.state == envRelease {
-		s.volume -= s.vRate * elapsed
-		if s.volume < 0 {
-			s.effect.Stop()
-			s.volume = 0
-			s.state = envStopped
-		}
-
-		s.effect.SetVolume(s.volume)
-	}
-}
-
-// SetPan sets the stereo pan, range -1 to 1
+// SetPan sets the stereo pan, range -1 to 1 (ignored for positional sounds,
+// whose pan follows the emitter).
 func (s *Sound) SetPan(pan float64) {
-	s.effect.SetPan(pan)
+	s.bank.SetPan(s.inst, pan)
 }
 
-// Play the sound
-func (s *Sound) Play() {
-	s.Info("starting sound " + s.entry.Handle)
-	s.effect.Play()
+// Play is kept for API compatibility; the engine starts sounds itself.
+func (s *Sound) Play() {}
 
-	if s.entry.FadeIn != 0 {
-		s.effect.SetVolume(0)
-		s.volume = 0
-		s.state = envAttack
-		s.vTarget = float64(s.entry.Volume) / volMax
-		s.vRate = s.vTarget / (float64(s.entry.FadeIn) / originalFPS)
-	} else {
-		s.volume = float64(s.entry.Volume) / volMax
-		s.effect.SetVolume(s.volume)
-		s.state = envSustain
-	}
-}
-
-// Stop the sound, only required for looping sounds
+// Stop the sound, only required for looping sounds. Honors the Fade Out column.
 func (s *Sound) Stop() {
-	if s.entry.FadeOut != 0 {
-		s.state = envRelease
-		s.vTarget = 0
-		s.vRate = s.volume / (float64(s.entry.FadeOut) / originalFPS)
-	} else {
-		s.state = envStopped
-		s.volume = 0
-		s.effect.SetVolume(s.volume)
-		s.effect.Stop()
-	}
+	s.bank.Stop(s.inst)
 }
 
-// String returns the sound filename
+// Report returns the engine's latest decision about this sound.
+func (s *Sound) Report() d2sfx.Report {
+	return s.inst.Report()
+}
+
+// String returns the sound handle
 func (s *Sound) String() string {
-	return s.entry.Handle
+	return s.handle
 }
 
-// SoundEngine provides functions for playing sounds
+// SoundEngine provides functions for playing sounds. Voice limiting, priority,
+// Group Size variants, Defer/Stop Inst, fades and distance falloff follow the
+// original game's rules, implemented in package d2sfx.
 type SoundEngine struct {
 	asset    *d2asset.AssetManager
 	provider d2interface.AudioProvider
-	timer    float64
-	accTime  float64
+	bank     *d2sfx.Bank
+	ticks    float64
+	mute     bool
 	sounds   map[*Sound]struct{}
 
 	*d2util.Logger
 }
+
+// clock converts engine time to game ticks (25/s).
+type engineClock struct{ e *SoundEngine }
+
+func (c engineClock) Now() int64 { return int64(c.e.ticks) }
 
 // NewSoundEngine creates a new sound engine
 func NewSoundEngine(provider d2interface.AudioProvider,
@@ -127,7 +77,7 @@ func NewSoundEngine(provider d2interface.AudioProvider,
 		asset:    asset,
 		provider: provider,
 		sounds:   map[*Sound]struct{}{},
-		timer:    1,
+		mute:     os.Getenv("OD2_AUTOTEST_MUTE") != "",
 	}
 
 	r.Logger = d2util.NewLogger()
@@ -157,28 +107,83 @@ func NewSoundEngine(provider d2interface.AudioProvider,
 	return &r
 }
 
-// Advance updates sound engine state, triggering events and envelopes
+// rowsFromRecords converts Sounds.txt records into d2sfx rows.
+func rowsFromRecords(details d2records.SoundDetails) []d2sfx.Row {
+	rows := make([]d2sfx.Row, 0, len(details))
+
+	for _, e := range details {
+		rows = append(rows, d2sfx.Row{
+			Handle: e.Handle, Index: e.Index, FileName: e.FileName, Volume: e.Volume,
+			GroupSize: e.GroupSize, Loop: e.Loop, FadeIn: e.FadeIn, FadeOut: e.FadeOut,
+			DeferInst: e.DeferInst, StopInst: e.StopInst, Duration: e.Duration,
+			Compound: e.Compound, Falloff: e.Falloff, Priority: e.Priority,
+			AsyncOnly: e.AsyncOnly, Stream: e.Stream, Stereo: e.Stereo, Tracking: e.Tracking,
+			Solo: e.Solo, MusicVol: e.MusicVol,
+		})
+	}
+
+	sort.Slice(rows, func(i, j int) bool { return rows[i].Index < rows[j].Index })
+
+	return rows
+}
+
+// Bank returns the voice bank, building it from Sounds.txt on first use.
+func (s *SoundEngine) Bank() *d2sfx.Bank {
+	if s.bank != nil {
+		return s.bank
+	}
+
+	table := d2sfx.NewTable(rowsFromRecords(s.asset.Records.Sound.Details))
+	// nolint:gosec // client-only, no need for a secure generator
+	s.bank = d2sfx.NewBank(table, d2sfx.DefaultVoices, s.loadPlayer, engineClock{s}, rand.Intn)
+
+	return s.bank
+}
+
+func (s *SoundEngine) loadPlayer(row *d2sfx.Row) (d2sfx.Player, error) {
+	if s.mute {
+		return &mutePlayer{e: s, loop: row.Loop}, nil
+	}
+
+	return s.provider.LoadSound(row.FileName, row.Loop, row.MusicVol)
+}
+
+// mutePlayer stands in for audio under OD2_AUTOTEST_MUTE: it occupies a voice
+// like a real player (one-shots end after one second) but makes no sound.
+type mutePlayer struct {
+	e       *SoundEngine
+	loop    bool
+	started float64
+	on      bool
+}
+
+func (m *mutePlayer) Play()             { m.on, m.started = true, m.e.ticks }
+func (m *mutePlayer) Stop()             { m.on = false }
+func (m *mutePlayer) SetPan(float64)    {}
+func (m *mutePlayer) SetVolume(float64) {}
+func (m *mutePlayer) IsPlaying() bool {
+	return m.on && (m.loop || m.e.ticks-m.started < d2sfx.TicksPerSecond)
+}
+
+// SetListener tells the engine where the hero is, for positional sounds.
+func (s *SoundEngine) SetListener(x, y float64) {
+	s.Bank().SetListener(x, y)
+}
+
+// Advance updates sound engine state, triggering envelopes and cleanup
 func (s *SoundEngine) Advance(elapsed float64) {
-	s.timer -= elapsed
-	s.accTime += elapsed
+	s.ticks += elapsed * d2sfx.TicksPerSecond
 
-	if s.timer < 0 {
-		for sound := range s.sounds {
-			sound.update(s.accTime)
+	if s.bank == nil {
+		return
+	}
 
-			// Clean up finished non-looping effects
-			if !sound.effect.IsPlaying() {
-				delete(s.sounds, sound)
-			}
+	s.bank.Advance()
 
-			// Clean up stopped looping effects
-			if sound.state == envStopped {
-				delete(s.sounds, sound)
-			}
+	for sound := range s.sounds {
+		if !sound.inst.Alive() {
+			delete(s.sounds, sound)
 		}
-
-		s.timer = 0.2
-		s.accTime = 0
 	}
 }
 
@@ -189,51 +194,93 @@ func (s *SoundEngine) UnbindTerminalCommands(term d2interface.Terminal) error {
 
 // Reset stop all sounds and reset state
 func (s *SoundEngine) Reset() {
+	if s.bank != nil {
+		s.bank.StopAll()
+	}
+
 	for snd := range s.sounds {
-		snd.effect.Stop()
 		delete(s.sounds, snd)
 	}
 }
 
-// PlaySoundID plays a sound by sounds.txt index, returning the sound here is kinda ugly
-// now we could have a situation where someone holds onto the sound after the sound engine is done with it
-// someone needs to be in charge of deciding when to stopping looping sounds though...
+// PlaySoundID plays a sound by Sounds.txt index (the row ordinal). It returns
+// nil when the engine decided not to play it (index 0, priority 0, no voice...).
 func (s *SoundEngine) PlaySoundID(id int) *Sound {
-	if id == 0 {
+	return s.play(d2sfx.Request{Index: id})
+}
+
+// PlaySoundAt plays a positional sound; x and y are in the same units as
+// SetListener. emitter is an opaque id used by Defer/Stop Inst (0 = none).
+func (s *SoundEngine) PlaySoundAt(id int, x, y float64, emitter int) *Sound {
+	return s.play(d2sfx.Request{Index: id, HasPos: true, X: x, Y: y, Emitter: emitter})
+}
+
+func (s *SoundEngine) play(req d2sfx.Request) *Sound {
+	if req.Index == 0 {
 		return nil
 	}
 
-	entry := s.asset.Records.SelectSoundByIndex(id)
+	inst := s.Bank().Play(req)
+	r := inst.Report()
+	s.Debugf("sound %s", r)
 
-	if entry.GroupSize > 0 {
-		// nolint:gosec // this is client-only, no big deal if rand index isn't securely generated
-		indexOffset := rand.Intn(entry.GroupSize)
-		entry = s.asset.Records.SelectSoundByIndex(entry.Index + indexOffset)
-	}
-
-	effect, err := s.provider.LoadSound(entry.FileName, entry.Loop, entry.MusicVol)
-	if err != nil {
-		s.Error(err.Error())
+	switch r.Decision {
+	case d2sfx.DecisionPlayed, d2sfx.DecisionStolen, d2sfx.DecisionQueued, d2sfx.DecisionMerged:
+	default:
 		return nil
 	}
 
-	snd := Sound{
-		entry:  entry,
-		effect: effect,
-		Logger: s.Logger,
-	}
+	snd := &Sound{bank: s.bank, inst: inst, handle: r.Handle}
+	s.sounds[snd] = struct{}{}
 
-	s.sounds[&snd] = struct{}{}
-
-	snd.Play()
-
-	return &snd
+	return snd
 }
 
 // PlaySoundHandle plays a sound by sounds.txt handle
 func (s *SoundEngine) PlaySoundHandle(handle string) *Sound {
-	sound := s.asset.Records.Sound.Details[handle].Index
-	return s.PlaySoundID(sound)
+	e, ok := s.asset.Records.Sound.Details[handle]
+	if !ok {
+		s.Warningf("unknown sound %q", handle)
+		return nil
+	}
+
+	return s.PlaySoundID(e.Index)
+}
+
+// AutoSound resolves each comma-separated sound (a handle or a numeric index),
+// plays it through the voice bank and logs the row, file, priority and the
+// engine's decision. With OD2_AUTOTEST_MUTE set nothing is audible, so this
+// verifies the rules without listening. Used by OD2_AUTOSOUND.
+func (s *SoundEngine) AutoSound(spec string) {
+	for _, name := range strings.Split(spec, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+
+		id, err := strconv.Atoi(name)
+		if err != nil {
+			e, ok := s.asset.Records.Sound.Details[name]
+			if !ok {
+				s.Infof("AUTOSOUND sound=%s found=false", name)
+				continue
+			}
+
+			id = e.Index
+		}
+
+		inst := s.Bank().Play(d2sfx.Request{Index: id})
+		r := inst.Report()
+		row := s.Bank().Table().Get(id)
+		group := 0
+
+		if row != nil {
+			group = row.GroupSize
+		}
+
+		s.Infof("AUTOSOUND sound=%s index=%d group=%d picked=%d handle=%s file=%q priority=%d decision=%s voice=%d victim=%q voices_in_use=%d",
+			name, id, group, r.Picked, r.Handle, r.File, r.Priority, r.Decision, r.Voice, r.Victim, s.Bank().ActiveVoices())
+	}
 }
 
 func (s *SoundEngine) commandPlaySoundID(args []string) error {

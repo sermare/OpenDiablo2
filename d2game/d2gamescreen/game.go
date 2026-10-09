@@ -139,6 +139,8 @@ type Game struct {
 	autoTestElapsed      float64
 	autoTestDone         bool
 	autoScript           *autoScriptState
+	autoSoundElapsed     float64
+	autoSoundDone        bool
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -250,6 +252,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.soundEngine.Advance(elapsed)
 	v.advanceDayClock(elapsed)
 	v.advanceNPCInteraction(elapsed)
+	v.advanceAutoSound(elapsed)
 	v.advanceAutoTest(elapsed)
 	v.advanceAutoScript(elapsed)
 
@@ -526,6 +529,29 @@ func (v *Game) playNPCGreeting(name string) string {
 	v.Infof("NPC greeting: %s (%s)", handle, path)
 
 	return path
+}
+
+// advanceAutoSound plays the sounds named in OD2_AUTOSOUND=<handle|index>[,..]
+// through the sound engine's voice bank and logs the resolved row, file,
+// priority and decision (AUTOSOUND lines). OD2_AUTOTEST_MUTE keeps it silent;
+// with OD2_AUTOEXIT it quits afterwards unless another autotest is running.
+func (v *Game) advanceAutoSound(elapsed float64) {
+	spec := os.Getenv("OD2_AUTOSOUND")
+	if spec == "" || v.autoSoundDone {
+		return
+	}
+
+	v.autoSoundElapsed += elapsed
+	if v.autoSoundElapsed < autoTestDelaySeconds {
+		return
+	}
+
+	v.autoSoundDone = true
+	v.soundEngine.AutoSound(spec)
+
+	if os.Getenv("OD2_AUTOTALK") == "" && os.Getenv("OD2_AUTOMENU") == "" {
+		v.autoTestExit()
+	}
 }
 
 // advanceAutoTest checks NPC behaviour without any clicking.
