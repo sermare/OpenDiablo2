@@ -22,7 +22,7 @@ func PvPDamage(raw int) int {
 
 // PvPReceive is what a defending hero loses from a scaled hit: the flat damage
 // reduction first, then the physical resistance percent (the order of the two
-// is UNVERIFIED, the same as for monster hits). It never heals.
+// is VERIFIED at 0x579c90: flat reduction first, then the percent; the 17 percent scale runs before both). It never heals.
 func PvPReceive(scaled, physResist, reduce int) int {
 	d := ApplyResist(scaled-reduce, physResist)
 	if d < 0 {

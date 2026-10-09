@@ -13,7 +13,6 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2state"
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
@@ -457,16 +456,15 @@ func (e *Engine) resist(m *d2mapentity.Monster, kind string) int {
 }
 
 // pierceOf is the attacker's pierce percent against a damage kind: the
-// passive mastery pierce stats 333..336 plus the item pierce stats 305..308.
-// That both families add up is UNVERIFIED (the notes decode only 333..336 in
-// the descriptor table of 0x579b10; confirm where 305..308 are consumed).
+// passive pierce stats 333..336. VERIFIED (0x579b10 descriptor table at
+// 0x72ff38): each damage type names exactly one pierce stat, 333 fire, 334
+// lightning, 335 cold, 336 poison, and the function reads nothing else. The
+// item stats 305..308 are NOT added (they are never consulted there), so they
+// have no effect on resists here.
 func pierceOf(src *d2mapentity.Player, kind string) (pierce int, has bool) {
-	ids := map[string][2]int{
-		"fire": {d2statlist.StatPierceFire, 333}, "ltng": {d2statlist.StatPierceLight, 334},
-		"cold": {d2statlist.StatPierceCold, 335}, "pois": {d2statlist.StatPiercePoison, 336},
-	}
+	ids := map[string]int{"fire": 333, "ltng": 334, "cold": 335, "pois": 336}
 
-	pair, ok := ids[kind]
+	id, ok := ids[kind]
 	if !ok {
 		return 0, false // physical and magic have no pierce stat
 	}
@@ -477,7 +475,7 @@ func pierceOf(src *d2mapentity.Player, kind string) (pierce int, has bool) {
 
 	l := src.Stats.Totals.Stats
 
-	return int(l.Get(pair[0]) + l.Get(pair[1])), true
+	return int(l.Get(id)), true
 }
 
 // resistFrom is resist with the attacker's pierce (src may be nil).
@@ -516,9 +514,11 @@ func (e *Engine) resistFrom(m *d2mapentity.Monster, src *d2mapentity.Player, kin
 
 	pierce, hasPierce := pierceOf(src, kind)
 
-	// monsters are not capped: a monstats resist of 100 is an immunity
+	// VERIFIED (0x579b10 ctx[5]): a non-mercenary monster defender sets the one
+	// ignore flag: no cap (a monstats resist of 100 is an immunity), no
+	// difficulty penalty, and pierce cannot lower a resist of 100 or more.
 	return d2combat.EffectiveResist(d2combat.ResistInput{
-		Resist: res, IsPhysical: phys, NoDifficultyPenalty: true, NoCap: true, Pierce: pierce, HasPierce: hasPierce,
+		Resist: res, IsPhysical: phys, NoDifficultyPenalty: true, Ignore: true, Pierce: pierce, HasPierce: hasPierce,
 	})
 }
 
