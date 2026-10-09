@@ -270,11 +270,12 @@ func (s *SkillPanel) hover(c *popupCell) {
 // tooltipText is the name, the short description and the level of a skill,
 // and the key it is on.
 func (s *SkillPanel) tooltipText(sk *d2hero.HeroSkill) string {
-	return skillTooltip(s.asset, sk, s.hero.SkillBar, s.keyName)
+	return skillTooltip(s.asset, sk, d2hero.EffectiveSkillLevel(s.hero.Stats, s.hero.Class, sk), s.hero.SkillBar, s.keyName)
 }
 
 // skillTooltip builds the tooltip of a skill icon (popup and skill tree).
-func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, bar *d2hero.SkillBar, keyName func(int) string) string {
+// level is the effective level (points plus item bonuses, d2hero.EffectiveSkillLevel).
+func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, level int, bar *d2hero.SkillBar, keyName func(int) string) string {
 	name := asset.TranslateString(sk.NameKey)
 	if name == "" || name == sk.NameKey {
 		name = sk.Skill
@@ -292,11 +293,11 @@ func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, bar *d2hero
 		levelLabel = "Current Skill Level: "
 	}
 
-	lines = append(lines, fmt.Sprintf("%s%d", levelLabel, sk.SkillPoints))
+	lines = append(lines, fmt.Sprintf("%s%d", levelLabel, level))
 
 	// the mana cost at the current level (level 1 for a skill with no points yet)
 	if label := asset.TranslateString(sk.ManaKey); sk.ManaKey != "" && label != sk.ManaKey {
-		lvl := sk.SkillPoints
+		lvl := level
 		if lvl < 1 {
 			lvl = 1
 		}
