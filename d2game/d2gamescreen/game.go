@@ -139,6 +139,8 @@ type Game struct {
 	tradeActive          bool // a vendor window opened from the NPC menu is open
 	greetingLast         map[string]string
 	dayClock             *dayClock
+	autoShotElapsed      float64
+	autoShotDone         bool
 	greetingRecent       map[string]string
 	returnGreet          returnGreetings
 	autosaveElapsed      float64
@@ -263,6 +265,8 @@ func (v *Game) Render(screen d2interface.Surface) {
 			return
 		}
 	}
+
+	v.autoShot(screen)
 }
 
 // Advance runs the update logic on the Gameplay screen
@@ -270,6 +274,12 @@ func (v *Game) Render(screen d2interface.Surface) {
 func (v *Game) Advance(elapsed float64) error {
 	v.soundEngine.Advance(elapsed)
 	v.advanceDayClock(elapsed)
+	v.advanceLighting()
+
+	if v.localPlayer != nil {
+		v.autoShotElapsed += elapsed
+	}
+
 	v.advanceNPCInteraction(elapsed)
 	v.advanceAutoSound(elapsed)
 	v.advanceAutoTest(elapsed)

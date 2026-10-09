@@ -16,6 +16,7 @@ import (
 
 // static check that we implement our interface
 var _ d2interface.Surface = &ebitenSurface{}
+var _ d2interface.ShadedSurface = &ebitenSurface{}
 
 const (
 	maxAlpha       = 0xff
@@ -207,11 +208,18 @@ func (s *ebitenSurface) handleStateEffect(opts *ebiten.DrawImageOptions) {
 		opts.ColorM.Translate(0, 0, 0, -transparency75)
 	case d2enum.DrawEffectModulate:
 		opts.CompositeMode = ebiten.CompositeModeLighter
-	// https://github.com/OpenDiablo2/OpenDiablo2/issues/822
+	// Burn is the multiplicative PL2 table E (dst*src): ebiten's multiply keeps the
+	// destination where the source is transparent.
 	case d2enum.DrawEffectBurn:
+		opts.CompositeMode = ebiten.CompositeModeMultiply
 	case d2enum.DrawEffectNormal:
+		opts.CompositeMode = ebiten.CompositeModeSourceOver
+	// Mod2XTrans uses PL2 table G whose semantics are unresolved in the notes
+	// (closest known: per-channel max); drawn as normal until verified.
 	case d2enum.DrawEffectMod2XTrans:
+	// Mod2X is the hover highlight: the palette brightened to 170%.
 	case d2enum.DrawEffectMod2X:
+		opts.ColorM.Scale(d2enum.Mod2XBrightness, d2enum.Mod2XBrightness, d2enum.Mod2XBrightness, 1)
 	case d2enum.DrawEffectNone:
 		opts.CompositeMode = ebiten.CompositeModeSourceOver
 	}
@@ -341,4 +349,48 @@ func (s *ebitenSurface) colorToColorM(clr color.Color) ebiten.ColorM {
 	s.colorMCache[key] = e
 
 	return e.colorMatrix
+}
+
+// RenderShaded draws sfc split into cols x rows quads with a colour per vertex
+// (d2interface.ShadedSurface). The surface state (translation, scale, colour,
+// effect) applies as for Render.
+func (s *ebitenSurface) RenderShaded(sfc d2interface.Surface, cols, rows int, shade func(x, y float64) color.RGBA) {
+	src := sfc.(*ebitenSurface).image
+	w, h := src.Size()
+
+	opts := s.createDrawImageOptions()
+	s.handleStateEffect(opts)
+
+	vertices := make([]ebiten.Vertex, 0, (cols+1)*(rows+1))
+
+	for j := 0; j <= rows; j++ {
+		sy := float64(j*h) / float64(rows)
+
+		for i := 0; i <= cols; i++ {
+			sx := float64(i*w) / float64(cols)
+			dx, dy := opts.GeoM.Apply(sx, sy)
+			c := shade(sx, sy)
+
+			vertices = append(vertices, ebiten.Vertex{
+				DstX: float32(dx), DstY: float32(dy), SrcX: float32(sx), SrcY: float32(sy),
+				ColorR: float32(c.R) / maxAlpha, ColorG: float32(c.G) / maxAlpha,
+				ColorB: float32(c.B) / maxAlpha, ColorA: float32(c.A) / maxAlpha,
+			})
+		}
+	}
+
+	indices := make([]uint16, 0, cols*rows*6)
+	stride := cols + 1
+
+	for j := 0; j < rows; j++ {
+		for i := 0; i < cols; i++ {
+			a := uint16(j*stride + i)
+			b, c, d := a+1, a+uint16(stride), a+uint16(stride)+1
+			indices = append(indices, a, b, c, b, d, c)
+		}
+	}
+
+	s.image.DrawTriangles(vertices, indices, src, &ebiten.DrawTrianglesOptions{
+		ColorM: opts.ColorM, CompositeMode: opts.CompositeMode, Filter: opts.Filter,
+	})
 }
