@@ -164,6 +164,7 @@ type Game struct {
 	ambientTest          *ambientTest
 	regionEnvs           map[int]int
 	autoPanel            autoPanelState
+	autoEquip            autoEquipState
 	levelStatusAcc       float64
 	death                deathState
 
@@ -307,6 +308,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceSound(elapsed)
 	v.advanceAutoAmbient(elapsed)
 	v.advanceAutoPanel(elapsed)
+	v.advanceAutoEquip(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
@@ -392,6 +394,7 @@ func (v *Game) bindGameControls() error {
 		}
 
 		v.gameControls.Load()
+		v.gameControls.SetEquipSound(v.playHeroUISound)
 
 		if err := v.inputManager.BindHandler(v.gameControls); err != nil {
 			v.Error(bindControlsErrStr + player.ID())

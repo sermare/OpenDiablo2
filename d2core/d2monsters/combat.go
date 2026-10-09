@@ -154,6 +154,10 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 		d.Counters.AttackHits++
 		p.Stats.Health -= dmg
 
+		if d.opt.OnHeroHit != nil {
+			d.opt.OnHeroHit(p)
+		}
+
 		if p.Stats.Health < 0 {
 			p.Stats.Health = 0
 		}
@@ -298,6 +302,10 @@ func (d *Director) HeroStrike(p *d2mapentity.Player, m *d2mapentity.Monster) boo
 	d.emit("herohit", "HERO swing target=%s hit=true chance=%d roll=%d dmg=%d crit=%v ar=%d", m.Label(), chance, roll, dmg,
 		crit, ar)
 	d.damage(u, p, dmg)
+
+	if d.opt.OnHeroStrike != nil {
+		d.opt.OnHeroStrike(p)
+	}
 
 	return true
 }

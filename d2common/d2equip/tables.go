@@ -160,11 +160,13 @@ type Base struct {
 // Bases maps item codes to Base rows.
 type Bases map[string]Base
 
-// ParseBases reads armor.txt and weapons.txt (either may be nil).
-func ParseBases(armor, weapons []byte) (Bases, error) {
+// ParseBases reads armor.txt and weapons.txt (either may be nil) and any further
+// tables of non-weapon items with the same code/type columns (misc.txt: rings,
+// amulets, charms, quivers).
+func ParseBases(armor, weapons []byte, others ...[]byte) (Bases, error) {
 	out := Bases{}
 
-	for i, data := range [][]byte{armor, weapons} {
+	for i, data := range append([][]byte{armor, weapons}, others...) {
 		if len(data) == 0 {
 			continue
 		}

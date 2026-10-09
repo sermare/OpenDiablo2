@@ -59,6 +59,7 @@ const (
 	ReasonDualWield    Reason = "this class cannot wield a weapon in the off hand"
 	ReasonNoAmmoWeapon Reason = "ammunition needs a weapon that shoots it"
 	ReasonBroken       Reason = "item is broken"
+	ReasonNoRoom       Reason = "no room in the inventory for the item that has to make way"
 )
 
 // Decision is the verdict on placing an item in a body location.

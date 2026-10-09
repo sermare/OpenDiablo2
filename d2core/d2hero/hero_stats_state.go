@@ -54,6 +54,10 @@ type HeroStatsState struct {
 	// Recalc recomputes Totals and the maxima after strength/dexterity/
 	// vitality/energy or equipment changed. Set by the hero state factory.
 	Recalc func() `json:"-"`
+
+	// Difficulty is the difficulty the last RecalcStats used (resistance penalty), so a
+	// client holding a copy of the stats can recompute the totals with the worn items.
+	Difficulty int `json:"difficulty,omitempty"`
 }
 
 // CreateHeroStatsState generates a running state from a hero stats.
