@@ -277,7 +277,7 @@ func (mr *MapRenderer) renderPass2(target d2interface.Surface, startX, startY, e
 			tile := mr.mapEngine.TileAt(tileX, tileY)
 			for _, shadow := range tile.Components.Shadows {
 				if !shadow.Hidden() && shadow.Prop1 != 0 {
-					mr.renderShadow(shadow, target)
+					mr.renderShadow(shadow, target, tileX, tileY)
 				}
 			}
 
@@ -535,7 +535,11 @@ func (mr *MapRenderer) renderLitEntity(target d2interface.Surface, e d2interface
 	target.Pop()
 }
 
-func (mr *MapRenderer) renderShadow(tile d2ds1.Tile, target d2interface.Surface) {
+// shadowAlpha is the opacity of DT1 shadow tiles (the original uses a PL2 blend table; 160/255 is
+// the approximation chosen in renderer.md section c, item 4).
+const shadowAlpha = 160.0 / 255.0
+
+func (mr *MapRenderer) renderShadow(tile d2ds1.Tile, target d2interface.Surface, tileX, tileY int) {
 	img := mr.getImageCacheRecord(tile.Style, tile.Sequence, 13, tile.RandomIndex)
 	if img == nil {
 		// shadow tiles without graphics (width or height 0) are never cached;
@@ -567,6 +571,13 @@ func (mr *MapRenderer) renderShadow(tile d2ds1.Tile, target d2interface.Surface)
 
 	target.PushTranslation(mr.viewport.GetTranslationScreen())
 	defer target.Pop()
+
+	if mr.light.active() {
+		// lit like the floor underneath
+		mr.renderShadedImage(target, img, floorShadeCols, floorShadeRows, shadowAlpha, shadeFloor, tileX, tileY)
+
+		return
+	}
 
 	target.PushColor(color.RGBA{R: 255, G: 255, B: 255, A: 160}) //nolint:gomnd // Not a magic number...
 	defer target.Pop()

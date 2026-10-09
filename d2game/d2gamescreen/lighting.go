@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2daynight"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2lightmap"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2maprenderer"
 )
@@ -111,27 +112,29 @@ func clampByte(v int) uint8 {
 	return uint8(v)
 }
 
-// advanceLighting feeds the map renderer the hero position and base light.
+// advanceLighting feeds the map renderer the hero position and base light of the hero's LEVEL.
+// Bug fixed here: the level used to be looked up with tile.RegionType, which is the level TYPE
+// (Levels.txt LevelType); e.g. the Act 2 desert (type 16) read the row of level 16 (Pit Level 2,
+// intensity 0 + white RGB), so the whole Act 2 outdoors rendered pitch dark.
 func (v *Game) advanceLighting() {
 	if !v.mapRenderer.LightingEnabled() || v.localPlayer == nil {
 		return
 	}
 
 	pos := v.localPlayer.Position.World()
-	tilePos := v.localPlayer.Position.Tile()
+	id := v.currentLevel()
 
 	var cell d2lightmap.Cell
 
-	if tile := v.gameClient.MapEngine.TileAt(int(tilePos.X()), int(tilePos.Y())); tile != nil {
-		id := int(tile.RegionType)
-
-		if lv, ok := v.asset.Records.Level.Details[id]; ok {
-			cell = baseLight(lv.LightIntensity, lv.Red, lv.Green, lv.Blue, lv.Act, id, v.currentDayClock())
-		} else {
-			cell = baseLight(0, 0, 0, 0, 0, id, v.currentDayClock())
-		}
+	if lv, ok := v.asset.Records.Level.Details[id]; ok {
+		cell = baseLight(lv.LightIntensity, lv.Red, lv.Green, lv.Blue, lv.Act, id, v.currentDayClock())
 	} else {
-		cell = baseLight(0, 0, 0, 0, 0, 0, v.currentDayClock())
+		cell = baseLight(0, 0, 0, 0, d2level.ActOfLevel(id)-1, id, v.currentDayClock())
+	}
+
+	if id != v.lightLogLevel {
+		v.lightLogLevel = id
+		v.Infof("LIGHT level=%d base intensity=%d rgb=%d,%d,%d", id, cell.Intensity, cell.R, cell.G, cell.B)
 	}
 
 	v.mapRenderer.SetLightInput(d2maprenderer.LightInput{HeroX: pos.X(), HeroY: pos.Y(), Base: cell})
