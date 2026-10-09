@@ -1,3 +1,4 @@
+scenario_realtime=1
 scenario_name="ambient environment (Blood Moor day then night: music, ambience, events)"
 scenario_env() { echo 'export OD2_AUTOAMBIENT="Blood Moor" OD2_AUTOAMBIENT_SECONDS=8 OD2_AUTOAMBIENT_SPEED=10'; }
 scenario_check() {

@@ -1,3 +1,4 @@
+scenario_realtime=1
 scenario_name="real audio (unmuted Act 1 quest run: NPC speech, quest messages, music and sfx all load and play)"
 scenario_unmuted=1
 scenario_env() {
