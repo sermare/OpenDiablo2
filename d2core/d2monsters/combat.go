@@ -23,6 +23,12 @@ func (d *Director) handleEvents(u *unit) {
 	for _, ev := range u.m.TakeEvents() {
 		switch ev.Kind {
 		case d2mapentity.MonsterEventHitFrame:
+			if u.ally != nil {
+				d.allyStrike(u, ev.Mode)
+
+				continue
+			}
+
 			d.monsterStrike(u, ev.Mode)
 		case d2mapentity.MonsterEventModeDone:
 			u.mv = nil
@@ -120,10 +126,16 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 	hit, chance, roll := d2combat.RollToHit(u.b.Seed, in)
 	dmg := 0
 
+	note := ""
+
 	if hit {
 		dmg = atk.Min + int(u.b.Seed.Roll(int32(atk.Max-atk.Min+1)))
 		if dmg < 1 {
 			dmg = 1
+		}
+
+		if d.HeroDefense != nil {
+			dmg, note = d.HeroDefense(p, u.m, via == "", dmg)
 		}
 
 		d.Counters.AttackHits++
@@ -134,8 +146,8 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 		}
 	}
 
-	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d",
-		u.m.Label(), u.b.ID, mode, via, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth)
+	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d%s",
+		u.m.Label(), u.b.ID, mode, via, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth, note)
 
 	if hit && p.Stats.Health == 0 {
 		d.Counters.HeroDeaths++
@@ -296,6 +308,24 @@ func (d *Director) Damage(m *d2mapentity.Monster, dmg int, src *d2mapentity.Play
 	if u := d.byEntity[m.ID()]; u != nil {
 		d.damage(u, src, dmg)
 	}
+}
+
+// DamageOverTime applies poison or burn damage: like Damage but the monster is
+// not interrupted (hit recovery) by the tick.
+func (d *Director) DamageOverTime(m *d2mapentity.Monster, dmg int, src *d2mapentity.Player) {
+	u := d.byEntity[m.ID()]
+	if u == nil || !m.Alive() || dmg <= 0 {
+		return
+	}
+
+	if u.m.Vitals.HP-dmg > 0 {
+		u.m.Vitals.HP -= dmg
+
+		return
+	}
+
+	u.m.Vitals.HP = 0
+	d.kill(u, src)
 }
 
 func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {

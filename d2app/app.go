@@ -326,8 +326,16 @@ func (a *App) Run() (err error) {
 	}
 
 	if save := os.Getenv("OD2_AUTOGAME"); save != "" {
-		// a real Diablo II .d2s is imported first, then started like any save
-		if strings.EqualFold(filepath.Ext(save), ".d2s") {
+		if class := os.Getenv("OD2_AUTOCAST_CLASS"); class != "" {
+			// a fresh hero of that class replaces the save (skill scenarios)
+			fresh, err := a.freshHeroSave(class)
+			if err != nil {
+				a.Errorf("OD2_AUTOCAST_CLASS: %v", err)
+			} else {
+				save = fresh
+			}
+		} else if strings.EqualFold(filepath.Ext(save), ".d2s") {
+			// a real Diablo II .d2s is imported first, then started like any save
 			imported, err := a.importD2SSave(save)
 			if err != nil {
 				a.Errorf("could not import %s: %v", save, err)

@@ -63,6 +63,10 @@ func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain)
 	pick := func(n, nm, h int) int { return [3]int{n, nm, h}[diff] }
 
 	level := d2monster.ResolveLevel(d.classInfo(r), pick(r.LevelNormal, r.LevelNightmare, r.LevelHell), d.areaLevel)
+	if d.forceLevel > 0 { // summoned minions take their owner's level
+		level = d.forceLevel
+	}
+
 	v := d2mapentity.MonsterVitals{Level: level, Difficulty: diff}
 
 	var lv lvlNums

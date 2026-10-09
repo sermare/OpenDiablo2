@@ -72,6 +72,7 @@ type Monster struct {
 	deadTime   float64
 	walkSpeed  float64
 	runSpeed   float64
+	slowPct    int // movement speed change in percent (negative slows), skills states
 	selectable bool
 
 	// Blocker, if set, is asked before the monster enters a new subtile; true
@@ -192,6 +193,8 @@ func (m *Monster) MoveAlong(path []d2vector.Position, run bool) bool {
 		mode, speed = d2monster.ModeRun, m.runSpeed
 	}
 
+	speed = m.slowed(speed)
+
 	if !m.SetMode(mode) {
 		return false
 	}
@@ -200,6 +203,32 @@ func (m *Monster) MoveAlong(path []d2vector.Position, run bool) bool {
 	m.SetPath(path, nil)
 
 	return true
+}
+
+func (m *Monster) slowed(speed float64) float64 {
+	if m.slowPct == 0 {
+		return speed
+	}
+
+	f := float64(100+m.slowPct) / 100
+	if f < 0.05 {
+		f = 0.05
+	}
+
+	return speed * f
+}
+
+// SetSlow changes the movement speed by pct percent (negative slows; 0
+// restores it), also while the monster is walking.
+func (m *Monster) SetSlow(pct int) {
+	m.slowPct = pct
+
+	switch m.mode {
+	case d2monster.ModeWalk:
+		m.SetSpeed(m.slowed(m.walkSpeed))
+	case d2monster.ModeRun:
+		m.SetSpeed(m.slowed(m.runSpeed))
+	}
 }
 
 // StopMoving stops walking and returns to neutral.

@@ -21,6 +21,7 @@ const (
 	ReasonTarget   = "no_target" // melee skill without a target unit
 	ReasonMissile  = "missile"   // missile creation failed
 	ReasonNoWeapon = "no_throwable"
+	ReasonNoCorpse = "no_corpse" // corpse skill without a corpse at the aim point
 )
 
 // srvst/srvdo function ids used by the implemented skills (skills.txt columns).
@@ -28,6 +29,7 @@ const (
 	stAttack   = 1
 	stKick     = 2
 	stRanged   = 4 // SRVST_RangedAmmoCheck
+	stStrafe   = 8 // SRVST_008_Strafe (ammo check as well)
 	stJab      = 5
 	stBash     = 32 // Bash, Stun, Concentrate...
 	stThrow    = 65
@@ -55,6 +57,15 @@ type Target struct {
 	Unit d2missile.Target
 	// UX, UY are its subtile position.
 	UX, UY int
+	// Corpse is set when a corpse lies near the aim point (corpse skills:
+	// Raise Skeleton, Corpse Explosion, Revive...). CX, CY is its subtile,
+	// CorpseID an engine handle, CorpseHP its maximum life and CorpseKey its
+	// monstats key.
+	Corpse    bool
+	CX, CY    int
+	CorpseID  string
+	CorpseHP  int
+	CorpseKey string
 }
 
 // Options tune the pipeline.
@@ -79,6 +90,22 @@ type Pipeline struct {
 	// ApplyState is called when a missile of a skill applies a state to an
 	// enemy (Howl's fear). frames is the duration.
 	ApplyState func(owner Unit, t d2missile.Target, state string, frames int)
+
+	// Near lists the living enemies within a Chebyshev radius of a subtile
+	// (area melee, chain lightning, Strafe). Optional: without it those
+	// skills only affect the aimed target.
+	Near func(x, y, radius int) []Foe
+	// Walkable reports whether a subtile can be stood on (Teleport, Leap).
+	// Optional: without it every cell is walkable.
+	Walkable func(x, y int) bool
+	// After runs fn after that many frames (staggered bursts such as Inferno).
+	After func(frames int, fn func())
+}
+
+// Foe is an enemy unit near a point.
+type Foe struct {
+	Target d2missile.Target
+	X, Y   int
 }
 
 func (p *Pipeline) env(sk *Skill, lvl int, u Unit) *Env {
@@ -114,7 +141,7 @@ func (p *Pipeline) needsAmmo(u Unit, sk *Skill) bool {
 	switch {
 	case sk.NoAmmo:
 		return false
-	case sk.SrvStFunc == stRanged, sk.SrvStFunc == stThrow:
+	case sk.SrvStFunc == stRanged, sk.SrvStFunc == stStrafe, sk.SrvStFunc == stThrow:
 		return true
 	case sk.SrvStFunc == stAttack:
 		return u.RangedWeaponMissile() != ""
@@ -151,6 +178,10 @@ func (p *Pipeline) Start(u Unit, skillID int, tgt Target) StartResult {
 	cost := sk.ManaCost(lvl)
 	if u.IsPlayer() && cost > u.Mana() {
 		return StartResult{Reason: ReasonMana, Level: lvl}
+	}
+
+	if sk.TargetCorpse && !tgt.Corpse {
+		return StartResult{Reason: ReasonNoCorpse, Level: lvl}
 	}
 
 	if sk.LineOfSight != 0 && p.Grid != nil {
@@ -204,6 +235,80 @@ type Effect struct {
 	ELen                     int
 	// Chill is Frozen Armor's calc1: the frames a melee attacker is chilled.
 	Chill int
+
+	// ---- class skills (see class.go) ----
+
+	// Origin of an area effect: "self" (the caster) or "aim" (the aim point).
+	Origin string
+	X, Y   int // aim point or destination, subtile
+	// TargetState / TargetStats are the state and stats an area effect or aura
+	// puts on enemies (curses, Holy Freeze, Conviction...).
+	TargetState string
+	TargetStats []StatMod
+	// Stack > 0 makes the state a counter that grows by one per cast up to
+	// Stack (assassin charges, Frenzy, Maul).
+	Stack int
+	// Desc is the damage an area_hit / strikes / storm effect deals to every
+	// enemy it reaches; SkillName names the skill in logs.
+	Desc      *d2missile.DamageDesc
+	SkillName string
+	// Delay is the frames before the effect lands.
+	Delay int
+	// Strikes lists the points of "strikes" (Blizzard, Firestorm...).
+	Strikes []Strike
+	// Interval, Mode and Missile configure storms, auras and trails: Interval
+	// is frames between pulses; Mode "nearest" (one enemy in range), "scatter"
+	// (random point) or "aura" (every enemy in range).
+	Interval int
+	Mode     string
+	Missile  string
+	// Summon describes a summon / trap / wall.
+	Summon *SummonOrder
+	// Corpse used by corpse skills (Corpse Explosion consumes it).
+	CorpseID string
+	CorpseHP int
+	// SelfDamagePct: percent of own maximum life the caster loses (Sacrifice).
+	SelfDamagePct int
+	// Heal is a one-off life gain in whole points.
+	Heal int
+	// Level and SkillID of the casting skill.
+	Level, SkillID int
+	// Dist is the maximum distance of a move, subtiles.
+	Dist int
+}
+
+// Strike is one delayed hit of a "strikes" effect.
+type Strike struct {
+	Delay  int
+	X, Y   int
+	Radius int
+}
+
+// SummonOrder tells the engine what to create.
+type SummonOrder struct {
+	// Key is the monstats key; PetType the group that PetMax limits.
+	Key, PetType, Mode string
+	// Count to create now and Max alive of that PetType.
+	Count, Max int
+	// Kind: "minion" (follows and fights), "trap" (stationary, fires),
+	// "totem" (stationary aura), "wall" (stationary blocker).
+	Kind string
+	// Frames the summon lasts (0 = until it dies).
+	Frames int
+	// TrapSkill is the monster skill a trap or totem uses (sumskill1).
+	TrapSkill string
+	// Stats from the skill's aurastat columns (damagepercent, tohit, armorclass).
+	Stats []StatMod
+	// HP is an extra life bonus (percent for golems/walls, flat for walls).
+	HPPct, HPFlat int
+	// X, Y where to place it (aim point, corpse...).
+	X, Y int
+	// Corpse to consume (id), "" if none.
+	CorpseID string
+	// UseCorpseType summons the corpse's own monster type (Revive).
+	UseCorpseType bool
+	// Damage descriptor for traps (the trap skill's own damage).
+	Desc *d2missile.DamageDesc
 }
 
 // MeleeResult is a resolved melee strike.
@@ -225,7 +330,10 @@ type DoResult struct {
 	Cooldown int // frames of delay applied
 	Missiles []*d2missile.Missile
 	Melee    *MeleeResult
-	Effects  []Effect
+	// Melees is every strike of a multi-hit or area melee skill (Melee is the
+	// first).
+	Melees  []*MeleeResult
+	Effects []Effect
 }
 
 // Do is SKILL_ServerRunSkillFunc: it runs at the animation's action frame.
@@ -285,52 +393,10 @@ func (p *Pipeline) Do(u Unit, skillID int, tgt Target) DoResult {
 	return res
 }
 
-// runDo dispatches the srvdofunc.
+// runDo dispatches the srvdofunc through the table in class.go.
 func (p *Pipeline) runDo(u Unit, sk *Skill, lvl int, tgt Target, env *Env, res *DoResult) {
-	switch sk.SrvDoFunc {
-	case doAttack:
-		if mname := u.RangedWeaponMissile(); mname != "" {
-			if m := p.castMissile(u, sk, lvl, env, mname, tgt, castOpts{}); m != nil {
-				res.Missiles = append(res.Missiles, m)
-			} else {
-				*res = DoResult{Reason: ReasonMissile, Level: lvl}
-			}
-
-			return
-		}
-
-		p.doMelee(u, sk, lvl, tgt, env, res)
-	case doMelee, doJab:
-		p.doMelee(u, sk, lvl, tgt, env, res)
-	case doThrow, doLHThrow:
-		name := u.ThrownMissile()
-		if name == "" {
-			*res = DoResult{Reason: ReasonNoWeapon, Level: lvl}
-			return
-		}
-
-		if m := p.castMissile(u, sk, lvl, env, name, tgt, castOpts{}); m != nil {
-			res.Missiles = append(res.Missiles, m)
-		} else {
-			*res = DoResult{Reason: ReasonMissile, Level: lvl}
-		}
-	case doCharged:
-		p.doChargedBolt(u, sk, lvl, tgt, env, res)
-	case doNova:
-		p.doNovaRing(u, sk, lvl, tgt, env, res)
-	case doFrozenAr:
-		p.doState(sk, env, res, "self_state")
-		res.Effects[len(res.Effects)-1].Chill = env.eval(sk.Calc[1])
-	case doInner:
-		p.doState(sk, env, res, "area_state")
-		e := &res.Effects[len(res.Effects)-1]
-		e.State, e.Radius, e.Filter = sk.AuraTargetState, env.eval(sk.AuraRangeCalc), sk.AuraFilter
-	case doStatic:
-		res.Effects = append(res.Effects, Effect{
-			Kind: "area_damage", Radius: env.eval(sk.AuraRangeCalc), Filter: sk.AuraFilter,
-			Pct: env.eval(sk.Calc[1]), MinDamage: env.eval(sk.Calc[2]), FloorPct: p.Opt.StaticFieldMinPct,
-			EType: sk.EType, ELen: sk.ElemLen(env, lvl),
-		})
+	if fn := doTable[sk.SrvDoFunc]; fn != nil {
+		fn(&cast{p: p, u: u, sk: sk, lvl: lvl, tgt: tgt, env: env, res: res})
 	}
 }
 
@@ -379,6 +445,12 @@ type castOpts struct {
 	startY   float64
 	hasStart bool
 	onHit    func(m *d2missile.Missile, t d2missile.Target)
+
+	stationary bool
+	hitEvery   int
+	scalePct   int
+	home       d2missile.Target
+	rangeLife  int
 }
 
 func (p *Pipeline) owner(u Unit) d2missile.Owner {
@@ -409,6 +481,7 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 	}
 
 	desc := sk.Descriptor(env, lvl, wmin, wmax, u.Stat(masteryStat[sk.EType]))
+	desc.DamagePct = int32(u.Stat("damagepercent"))
 
 	x, y := u.Pos()
 	sx, sy := float64(x)+0.5, float64(y)+0.5
@@ -426,6 +499,7 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		Spec: ms, Owner: p.owner(u), SkillID: sk.ID, Level: lvl, Damage: desc,
 		X: sx, Y: sy, DestX: dx, DestY: dy, Angle: o.angle, Velocity: o.velocity, ClampToDest: o.clamp || sk.Lob,
 		Pierce: u.Stat("pierce_idx"), OnHit: o.onHit,
+		Stationary: o.stationary, HitEvery: o.hitEvery, ScalePct: o.scalePct, Home: o.home, Range: o.rangeLife,
 	})
 	if err != nil {
 		return nil
@@ -506,126 +580,32 @@ func d2calcLN(a, b, lvl int) int {
 	return a + (lvl-1)*b
 }
 
-// doMelee resolves a melee strike against the target unit: SRVDO_Attack's
-// melee branch, SRVST_Bash, SRVDO_Jab and SRVST_Kick.
-//
-// Verified shape (skills-2.md 4.1, 4.2, 4.10, 4.14): to-hit roll with the
-// skill's to-hit bonus as a percent (Kick auto-hits, result 9); damage percent
-// from calc1 for Bash/Stun/Jab; weapon damage scaled by SrcDam/128; Bash adds
-// calc2*256 afterwards; elemental part from EType (Stun: stun length).
-// Unverified: Kick damage ((str+dex-20)/4 is behind the Kick flag in 0x648f90
-// but not reached from SRVST_Kick), and that the to-hit bonus is a percent.
-func (p *Pipeline) doMelee(u Unit, sk *Skill, lvl int, tgt Target, env *Env, res *DoResult) {
-	if tgt.Unit == nil || !tgt.Unit.Alive() {
-		*res = DoResult{Reason: ReasonTarget, Level: lvl}
-		return
-	}
-
-	t := tgt.Unit
-	mr := &MeleeResult{Target: t}
-	res.Melee = mr
-
-	if sk.Kick {
-		mr.Hit, mr.Chance = true, 100
-	} else {
-		pct := 0
-		if sk.SrvStFunc == stBash || sk.SrvDoFunc == doJab {
-			pct = sk.ToHitBonus(env, lvl)
-		}
-
-		mr.Hit, mr.Chance, mr.Roll = d2combat.RollToHit(u.Roller(), d2combat.ToHitInput{
-			AttackRating: u.AttackRating(), Defense: t.Defense(false),
-			AttackerLevel: u.Level(), DefenderLevel: t.Level(), AttackRatingPct: pct,
-		})
-	}
-
-	if !mr.Hit {
-		return
-	}
-
-	dmg := d2combat.Damage{Result: d2combat.ResultHit, HitClass: int32(sk.HitClass)}
-
-	switch {
-	case sk.Kick:
-		k := u.Stat("strength") + u.Stat("dexterity") - 20
-		if k < 1 {
-			k = 1
-		}
-
-		dmg.Physical = int32(k/4) << 8
-	default:
-		wmin, wmax := u.WeaponDamage()
-		lo := int32(wmin) << 8
-		hi := int32(wmax) << 8
-
-		if lo < 1<<8 {
-			lo = 1 << 8
-		}
-
-		if hi < lo+1<<8 {
-			hi = lo + 1<<8
-		}
-
-		ph := lo + int32(u.Roller().Roll(hi-lo))
-
-		if sk.SrvStFunc == stBash || sk.SrvDoFunc == doJab {
-			ph += int32(mulDiv(int(ph), env.eval(sk.Calc[1]), 100))
-		}
-
-		if sk.SrvStFunc == stBash || sk.SrvDoFunc == doJab || sk.SrvDoFunc == doAttack {
-			ph = d2combat.ScaleBySrcDam(ph, uint8(sk.SrcDam))
-		}
-
-		if ph < 0 {
-			ph = 0
-		}
-
-		dmg.Physical = ph
-	}
-
-	// elemental / stun part of the skill
-	if sk.EType != "" {
-		d := sk.Descriptor(env, lvl, 0, 0, 0)
-		el := d.Roll(u.Roller())
-		dmg.Fire, dmg.Lightning, dmg.Magic, dmg.Cold, dmg.ColdLen = el.Fire, el.Lightning, el.Magic, el.Cold, el.ColdLen
-		dmg.Poison, dmg.PoisonLen, dmg.StunLen, dmg.FreezeLen = el.Poison, el.PoisonLen, el.StunLen, el.FreezeLen
-	}
-
-	if !sk.Kick {
-		dmg.ApplyStrike(u.Roller(), d2combat.StrikeInput{
-			CriticalChance: u.Stat("passive_critical_strike"), DeadlyChance: u.Stat("item_deadlystrike"),
-		})
-	}
-
-	if sk.SrvStFunc == stBash {
-		dmg.Physical += int32(env.eval(sk.Calc[2])) << 8
-	}
-
-	mr.Damage = dmg
-	mr.Total = dmg.SumTotal(true)
-}
-
-// Implemented reports whether the pipeline can run a skill: passives are not
-// cast; skills with a do function need it to be one of the ported ones, skills
-// without one need a generic srvmissile.
-func Implemented(sk *Skill) bool {
-	if sk == nil || sk.Passive {
-		return false
-	}
-
-	switch sk.SrvDoFunc {
-	case 0:
-		return sk.SrvMissile != ""
-	case doAttack, doMelee, doThrow, doLHThrow, doInner, doJab, doCharged, doFrozenAr, doStatic:
-		return true
-	case doNova:
-		return sk.SrvMissileA != "" || sk.SrvMissile != ""
-	}
-
-	return false
-}
-
 // String describes a result for logs.
 func (r *MeleeResult) String() string {
 	return fmt.Sprintf("hit=%v chance=%d roll=%d total=%.2f", r.Hit, r.Chance, r.Roll, float64(r.Total)/256)
+}
+
+// AuraRange evaluates a skill's aurarangecalc for a caster (radius of the
+// splash of area missiles such as Glacial Spike).
+func (p *Pipeline) AuraRange(u Unit, skillID int) int {
+	sk := p.Skills.ByID(skillID)
+	if sk == nil {
+		return 0
+	}
+
+	return p.env(sk, u.SkillLevel(skillID), u).eval(sk.AuraRangeCalc)
+}
+
+// CastTrap fires a missile of a trap (a sentry) from its own position with
+// the damage of the skill that created it, at the level the caster has in it.
+func (p *Pipeline) CastTrap(u Unit, skillID int, missile string, fromX, fromY int, tgt Target) *d2missile.Missile {
+	sk := p.Skills.ByID(skillID)
+	if sk == nil {
+		return nil
+	}
+
+	lvl := u.SkillLevel(skillID)
+
+	return p.castMissile(u, sk, lvl, p.env(sk, lvl, u), missile, tgt,
+		castOpts{hasStart: true, startX: float64(fromX) + 0.5, startY: float64(fromY) + 0.5})
 }

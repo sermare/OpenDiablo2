@@ -169,6 +169,11 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 			t.duration = secs
 		}
 
+		// a skill scenario ends with its cast list, the seconds are a safety net
+		if os.Getenv("OD2_AUTOCAST") != "" && t.duration < castTestMaxSeconds {
+			t.duration = castTestMaxSeconds
+		}
+
 		v.monsterTest = t
 	}
 
@@ -199,11 +204,12 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 		}
 	}
 
-	if alive == 0 && v.monsters.Counters.Spawned > 0 {
+	// a skill scenario respawns its monsters and ends with its cast list
+	if alive == 0 && v.monsters.Counters.Spawned > 0 && os.Getenv("OD2_AUTOCAST") == "" {
 		t.allDead += elapsed
 	}
 
-	if t.elapsed < monsterTestDelay+t.duration && t.allDead < monsterTestSettle {
+	if t.elapsed < monsterTestDelay+t.duration && t.allDead < monsterTestSettle && !v.castTestDone() {
 		return
 	}
 

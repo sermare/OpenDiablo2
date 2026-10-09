@@ -101,7 +101,8 @@ func (p *Player) Advance(tickTime float64) {
 	}
 
 	if p.IsCasting() {
-		if p.composite.GetPlayedCount() >= 1 {
+		played := p.composite.GetPlayedCount() >= 1
+		if played {
 			p.isCasting = false
 			p.isAttacking = false
 		}
@@ -110,7 +111,9 @@ func (p *Player) Advance(tickTime float64) {
 		percentDone := float64(p.composite.GetCurrentFrame()) / float64(p.composite.GetFrameCount())
 		isHalfDoneCasting := percentDone >= half
 
-		if isHalfDoneCasting && p.onFinishedCasting != nil {
+		// a long tick can play the whole animation at once (the frame counter
+		// has wrapped): the cast must still happen
+		if (isHalfDoneCasting || played) && p.onFinishedCasting != nil {
 			p.onFinishedCasting()
 			p.onFinishedCasting = nil
 		}
