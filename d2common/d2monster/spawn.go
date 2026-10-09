@@ -78,6 +78,37 @@ type Pack struct {
 	Members []Member
 	// SuperUnique is the superuniques key when the leader is one.
 	SuperUnique string
+	// Kind is the natural pack kind (champion / unique); PackNormal for
+	// ordinary groups and super uniques (which use SuperUnique).
+	Kind PackKind
+}
+
+// PackKind says which type flags a natural pack's members get.
+type PackKind int
+
+// Pack kinds.
+const (
+	PackNormal   PackKind = iota
+	PackChampion          // every member is a champion
+	PackUnique            // the leader is a unique (rare), the others its minions
+)
+
+// PlanChampion plans a champion pack. The members and the RNG draws are
+// exactly those of PlanGroup; only Kind differs.
+func PlanChampion(r *d2rand.Seed, info ClassInfo) Pack {
+	p := PlanGroup(r, info)
+	p.Kind = PackChampion
+
+	return p
+}
+
+// PlanUnique plans a unique (rare) pack: same members and RNG draws as
+// PlanGroup, the leader being the unique.
+func PlanUnique(r *d2rand.Seed, info ClassInfo) Pack {
+	p := PlanGroup(r, info)
+	p.Kind = PackUnique
+
+	return p
 }
 
 // roll draws in [0,n) (n<=0 gives 0 without consuming the RNG, like

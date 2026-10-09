@@ -97,6 +97,13 @@ func (m *Monster) ID() string { return m.uuid }
 const (
 	MonTypeSuperUnique uint16 = 0x2
 	MonTypeUnique      uint16 = 0x8
+	// MonTypeChampion (0x4) and MonTypeMinion (0x10): the masks are VERIFIED
+	// as the 0xAC spawn packet writer (SCMD_SendOpAC 0x53c110) tests, in
+	// order, masks 4, 8, 2, 0x10, 0x40 and writes a boss number when 2 is set.
+	// The names follow the usual protocol order (champion, unique, super
+	// unique, minion, ghostly) and are UNVERIFIED.
+	MonTypeChampion uint16 = 0x4
+	MonTypeMinion   uint16 = 0x10
 )
 
 // Label is the monster's display name.
