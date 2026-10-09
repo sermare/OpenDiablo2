@@ -206,6 +206,7 @@ func NewGameControls(
 		escapeMenu:     escapeMenu,
 		inputListener:  inputListener,
 		mapRenderer:    mapRenderer,
+		mapEngine:      mapEngine,
 		inventory:      inventory,
 		skilltree:      skilltree,
 		heroStatsPanel: heroStatsPanel,
@@ -258,6 +259,7 @@ func NewGameControls(
 
 	hud := NewHUD(asset, ui, hero, miniPanel, actionableRegions, mapEngine, l, gc, mapRenderer)
 	gc.hud = hud
+	gc.automap = newAutomap(gc, term)
 
 	hoverLabel := hud.nameLabel
 	hoverLabel.SetBackgroundColor(d2util.Color(blackAlpha50percent))
@@ -320,6 +322,8 @@ type GameControls struct {
 	lastRightBtnActionTime float64
 	FreeCam                bool
 	isSinglePlayer         bool
+	mapEngine              *d2mapengine.MapEngine
+	automap                *Automap // see automap.go
 
 	*d2util.Logger
 }
@@ -433,6 +437,8 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 		g.toggleHelpOverlay()
 	case d2enum.ToggleBelts:
 		g.belt.Toggle()
+	case d2enum.ToggleAutomap:
+		g.automap.Toggle()
 	case d2enum.UseBeltSlot1, d2enum.UseBeltSlot2, d2enum.UseBeltSlot3, d2enum.UseBeltSlot4:
 		g.UseBeltColumn(int(gameEvent - d2enum.UseBeltSlot1))
 	default:
@@ -952,6 +958,7 @@ func (g *GameControls) Advance(elapsed float64) error {
 	g.hud.Advance(elapsed)
 	g.inventory.Advance(elapsed)
 	g.advancePotions(elapsed)
+	g.automap.Advance(elapsed)
 	g.questLog.Advance(elapsed)
 
 	if g.PartyPanel != nil {
@@ -1041,6 +1048,8 @@ func (g *GameControls) isInActiveMenusRect(px, py int) bool {
 
 // Render draws the GameControls onto the target
 func (g *GameControls) Render(target d2interface.Surface) error {
+	g.automap.Render(target) // before the interface, as in the original
+
 	if err := g.hud.Render(target); err != nil {
 		return err
 	}
