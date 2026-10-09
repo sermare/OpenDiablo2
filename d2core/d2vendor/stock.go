@@ -265,6 +265,30 @@ func Generate(rng d2drop.RNG, bases []Base, opt Options) *Stock {
 	return s
 }
 
+// StockSeed derives the generator seed of one vendor's stock from the game's
+// vendor seed, so that every vendor of a game has its own stream (previously
+// the same seed served all of them) and a restock with the same restock count
+// reproduces. restock is the number of restocks so far (0 for the first
+// stock), gamble selects the gamble stock of the same vendor. The original
+// seeds from the NPC unit / player record; how exactly is UNVERIFIED (see the
+// open addresses in the package notes), this is a deterministic stand-in.
+func StockSeed(gameSeed uint32, classID int, restock uint32, gamble bool) uint32 {
+	const (
+		classMix  = 0x9E3779B1
+		gambleMix = 0x5BD1E995
+	)
+
+	s := gameSeed ^ uint32(classID)*classMix
+	if gamble {
+		s ^= gambleMix
+	}
+
+	g := d2rand.New(s)
+	g.Step()
+
+	return g.Step() + restock
+}
+
 // GenerateSeeded is Generate with a fresh generator.
 func GenerateSeeded(seed uint32, bases []Base, opt Options) *Stock {
 	return Generate(d2rand.New(seed), bases, opt)

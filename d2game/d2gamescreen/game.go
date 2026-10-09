@@ -128,8 +128,9 @@ type Game struct {
 	uiManager            *d2ui.UIManager
 	gameControls         *d2player.GameControls
 	localPlayer          *d2mapentity.Player
-	lastZoneLevel        int // Levels.txt id last announced; 0 = none yet
-	lightLogLevel        int // level whose base light was last logged
+	lastZoneLevel        int    // Levels.txt id last announced; 0 = none yet
+	vendorSeed           uint32 // per game session base of every vendor stock seed (set on first use)
+	lightLogLevel        int    // level whose base light was last logged
 	travel               travelState
 	ticksSinceLevelCheck float64
 	escapeMenu           *d2player.EscapeMenu
@@ -502,6 +503,17 @@ func (v *Game) OnPlayerInteract(entity d2interface.MapEntity) {
 }
 
 // npcClassID returns the monstats class id (hcIdx) of an NPC entity, or -1.
+// stockSeed is the seed of a vendor's stock in this game session: fixed per
+// session (so the stock of a vendor does not depend on when the window is
+// opened) and different for every vendor and for gamble versus normal stock.
+func (v *Game) stockSeed(npc d2interface.MapEntity, gamble bool) uint32 {
+	if v.vendorSeed == 0 {
+		v.vendorSeed = uint32(time.Now().UnixNano()) | 1
+	}
+
+	return d2vendor.StockSeed(v.vendorSeed, v.npcClassID(npc), 0, gamble)
+}
+
 func (v *Game) npcClassID(entity d2interface.MapEntity) int {
 	if npc, ok := entity.(interface{ MonstatID() int }); ok {
 		return npc.MonstatID()
@@ -631,11 +643,11 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 		v.questTopic(npc, row.StringID)
 		v.endConversationUnlessMenuOpen()
 	case d2player.NPCActionTrade, d2player.NPCActionTradeRepair:
-		v.openTrade(npc, uint32(time.Now().UnixNano()))
+		v.openTrade(npc, v.stockSeed(npc, false))
 	case d2player.NPCActionHire:
 		v.openHire(npc)
 	case d2player.NPCActionGamble:
-		v.openGamble(npc, uint32(time.Now().UnixNano()))
+		v.openGamble(npc, v.stockSeed(npc, true))
 	case d2player.NPCActionIdentify:
 		v.openIdentify(npc)
 	case d2player.NPCActionTravelWest, d2player.NPCActionSailWest, d2player.NPCActionTravelEast, d2player.NPCActionSailEast:
