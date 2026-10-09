@@ -335,6 +335,15 @@ func (v *Game) OnPlayerMove(targetX, targetY float64) {
 	}
 }
 
+// OnPlayerInteract walks the player up to the given entity (e.g. an NPC)
+func (v *Game) OnPlayerInteract(entity d2interface.MapEntity) {
+	targetX, targetY := entity.GetPositionF()
+
+	v.Infof("interacting with %q", entity.Label())
+
+	v.OnPlayerMove(targetX, targetY)
+}
+
 // OnPlayerSave instructs the server to save our player data
 func (v *Game) OnPlayerSave() error {
 	playerState := v.gameClient.Players[v.gameClient.PlayerID]

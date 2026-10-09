@@ -450,6 +450,10 @@ func (g *GameControls) OnMouseButtonRepeat(event d2interface.MouseEvent) bool {
 	shouldDoLeft := lastLeft >= mouseBtnActionsThreshold
 	shouldDoRight := lastRight >= mouseBtnActionsThreshold
 
+	if isLeft && g.hoveredNPC() != nil && event.KeyMod() != d2enum.KeyModShift {
+		return true
+	}
+
 	if isLeft && shouldDoLeft && inRect && !g.hero.IsCasting() {
 		g.lastLeftBtnActionTime = now
 
@@ -518,6 +522,19 @@ func (g *GameControls) OnMouseButtonUp(event d2interface.MouseEvent) bool {
 	return false
 }
 
+// hoveredNPC returns the named NPC under the cursor, if any.
+func (g *GameControls) hoveredNPC() d2interface.MapEntity {
+	if g.hud == nil || g.hud.hoveredEntity == nil {
+		return nil
+	}
+
+	if _, ok := g.hud.hoveredEntity.(*d2mapentity.NPC); !ok {
+		return nil
+	}
+
+	return g.hud.hoveredEntity
+}
+
 // OnMouseButtonDown handles mouse button presses
 func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	mx, my := event.X(), event.Y()
@@ -544,6 +561,11 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 
 	if event.Button() == d2enum.MouseButtonLeft && !g.isInActiveMenusRect(mx, my) && !g.hero.IsCasting() {
 		g.lastLeftBtnActionTime = d2util.Now()
+
+		if npc := g.hoveredNPC(); npc != nil && event.KeyMod() != d2enum.KeyModShift {
+			g.inputListener.OnPlayerInteract(npc)
+			return true
+		}
 
 		if event.KeyMod() == d2enum.KeyModShift {
 			g.inputListener.OnPlayerCast(g.hero.LeftSkill.ID, px, py)

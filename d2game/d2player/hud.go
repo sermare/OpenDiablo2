@@ -101,6 +101,7 @@ type HUD struct {
 	runWalkTooltip     *d2ui.Tooltip
 	experienceTooltip  *d2ui.Tooltip
 	nameLabel          *d2ui.Label
+	hoveredEntity      d2interface.MapEntity
 	healthGlobe        *globeWidget
 	manaGlobe          *globeWidget
 	widgetStamina      *d2ui.CustomWidget
@@ -585,6 +586,8 @@ func (h *HUD) setExperienceTooltipText() {
 func (h *HUD) renderForSelectableEntitiesHovered(target d2interface.Surface) {
 	mx, my := h.lastMouseX, h.lastMouseY
 
+	h.hoveredEntity = nil
+
 	for entityIdx := range h.mapEngine.Entities() {
 		entity := (h.mapEngine.Entities())[entityIdx]
 		if !entity.Selectable() {
@@ -614,6 +617,8 @@ func (h *HUD) renderForSelectableEntitiesHovered(target d2interface.Surface) {
 
 			h.nameLabel.Render(target)
 			entity.Highlight()
+
+			h.hoveredEntity = entity
 
 			break
 		}
