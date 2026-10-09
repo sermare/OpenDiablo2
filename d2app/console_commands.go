@@ -129,6 +129,7 @@ func (a *App) setTimeScale(args []string) error {
 }
 
 func (a *App) quitGame([]string) error {
+	d2gamescreen.SaveActiveGame()
 	os.Exit(0)
 	return nil
 }

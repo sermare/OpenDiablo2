@@ -97,6 +97,7 @@ func CreateGame(
 	game.Logger.SetLevel(l)
 	game.Logger.SetPrefix(logPrefix)
 	game.initAutoScript()
+	activeGame = game
 
 	game.soundEnv = d2audio.NewSoundEnvironment(game.soundEngine)
 
@@ -140,6 +141,7 @@ type Game struct {
 	dayClock             *dayClock
 	greetingRecent       map[string]string
 	returnGreet          returnGreetings
+	autosaveElapsed      float64
 	autoTestElapsed      float64
 	autoTestDone         bool
 	autoScript           *autoScriptState
@@ -176,6 +178,7 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"spawnitemat", "spawns an item at the x,y coordinates",
 			[]string{"x", "y", "code1", "code2", "code3", "code4", "code5"}, v.commandSpawnItemAt},
 		{"spawnmon", "spawn monster at the local player position", []string{"name"}, v.commandSpawnMon},
+		{"setgold", "sets the hero's gold (saved to the .d2s on the next save)", []string{"amount"}, v.commandSetGold},
 		{"spawnchest", "spawns chests/barrels (objects.txt ids, default 7 1 5) next to the hero",
 			[]string{"id1", "id2", "id3"}, v.commandSpawnChest},
 	}
@@ -207,12 +210,16 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest"); err != nil {
+	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold"); err != nil {
 		return err
 	}
 
 	if err := v.OnPlayerSave(); err != nil {
 		return err
+	}
+
+	if activeGame == v {
+		activeGame = nil
 	}
 
 	if err := v.gameClient.Close(); err != nil {
@@ -267,6 +274,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceAutoSound(elapsed)
 	v.advanceAutoTest(elapsed)
 	v.advanceAutoScript(elapsed)
+	v.advanceAutosave(elapsed)
 	v.advanceGroundInteraction(elapsed)
 	v.advanceAutoGround(elapsed)
 
@@ -726,6 +734,7 @@ func (v *Game) autoTestHold(_ float64) {
 
 func (v *Game) autoTestExit() {
 	if os.Getenv("OD2_AUTOEXIT") != "" {
+		v.saveBeforeExit()
 		os.Exit(0)
 	}
 }
