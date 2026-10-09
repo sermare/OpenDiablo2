@@ -14,16 +14,19 @@ import (
 // Player is the player character entity.
 type Player struct {
 	mapEntity
-	name              string
-	animationMode     string
-	composite         *d2asset.Composite
-	Equipment         *d2inventory.CharacterEquipment
-	Stats             *d2hero.HeroStatsState
-	Skills            map[int]*d2hero.HeroSkill
-	LeftSkill         *d2hero.HeroSkill
-	RightSkill        *d2hero.HeroSkill
-	Class             d2enum.Hero
-	Gold              int
+	name          string
+	animationMode string
+	composite     *d2asset.Composite
+	Equipment     *d2inventory.CharacterEquipment
+	Stats         *d2hero.HeroStatsState
+	Skills        map[int]*d2hero.HeroSkill
+	LeftSkill     *d2hero.HeroSkill
+	RightSkill    *d2hero.HeroSkill
+	Class         d2enum.Hero
+	Gold          int
+	// Merc is the hero's mercenary state (hired, revived, levelled); the
+	// game screen keeps it current and the server copies it on a save.
+	Merc              *d2hero.MercState `json:"merc,omitempty"`
 	lastPathSize      int
 	isInTown          bool
 	isRunToggled      bool
@@ -32,6 +35,14 @@ type Player struct {
 	isAttacking       bool // the cast in progress is a melee swing (animation A1)
 	onFinishedCasting func()
 	Act               int
+
+	// Death is the hero's death record (deaths, died flag, pending corpse). It
+	// travels in the save packet; nil for a hero that never died.
+	Death *d2hero.DeathState `json:"death,omitempty"`
+	// Hardcore marks a hardcore character (death is final).
+	Hardcore bool `json:"hardcore,omitempty"`
+	// deathPhase: 0 alive, 1 playing the death animation (DT), 2 lying dead (DD)
+	deathPhase int
 
 	// Containers is the hero's inventory, belt, cube and stash content as last
 	// saved; the game controls refresh it before every save (nil: none saved yet).
@@ -128,6 +139,11 @@ func (p *Player) Advance(tickTime float64) {
 		fmt.Printf("failed to advance composite animation of player: %s, err: %v\n", p.ID(), err)
 	}
 
+	if p.deathPhase == deathPhaseDying && p.composite.GetPlayedCount() >= 1 {
+		p.deathPhase = deathPhaseDead
+		p.setDeathMode(d2enum.PlayerAnimationModeDead)
+	}
+
 	if p.lastPathSize != len(p.path) {
 		p.lastPathSize = len(p.path)
 	}
@@ -177,6 +193,13 @@ func (p *Player) Render(target d2interface.Surface) {
 
 // GetAnimationMode returns the current animation mode based on what the player is doing and where they are.
 func (p *Player) GetAnimationMode() d2enum.PlayerAnimationMode {
+	switch p.deathPhase {
+	case deathPhaseDying:
+		return d2enum.PlayerAnimationModeDeath
+	case deathPhaseDead:
+		return d2enum.PlayerAnimationModeDead
+	}
+
 	if p.isAttacking && p.isCasting {
 		return d2enum.PlayerAnimationModeAttack1
 	}
@@ -234,6 +257,12 @@ func (p *Player) Name() string {
 	return p.name
 }
 
+// WeaponClass is the COF weapon class code of the hero's current animation
+// set (hth, 1hs, 2ht, bow...).
+func (p *Player) WeaponClass() string {
+	return p.composite.GetWeaponClass()
+}
+
 // IsCasting returns true if
 func (p *Player) IsCasting() bool {
 	return p.isCasting
@@ -244,6 +273,10 @@ func (p *Player) IsCasting() bool {
 // This handles all types of skills - melee, ranged, kick, summon, etc.
 // NB: onFinishedCasting is called when the casting animation is >50% complete
 func (p *Player) StartCasting(animMode d2enum.PlayerAnimationMode, onFinishedCasting func()) {
+	if p.deathPhase != deathPhaseAlive {
+		return
+	}
+
 	// passive skills, auras, etc.
 	if animMode == d2enum.PlayerAnimationModeNone {
 		return
@@ -289,4 +322,101 @@ func (p *Player) GetSize() (width, height int) {
 	height = (height * 2) - (height / 2)
 
 	return width, height
+}
+
+const (
+	deathPhaseAlive = iota
+	deathPhaseDying
+	deathPhaseDead
+)
+
+// Die starts the death animation (player mode DT, then DD): the hero stops
+// moving and casting and stays where it fell.
+func (p *Player) Die() {
+	if p.deathPhase != deathPhaseAlive {
+		return
+	}
+
+	p.deathPhase = deathPhaseDying
+	p.isCasting, p.isAttacking, p.onFinishedCasting = false, false, nil
+	p.StopMoving()
+	p.setDeathMode(d2enum.PlayerAnimationModeDeath)
+}
+
+// setDeathMode switches to a non-looping death mode. A class without that
+// animation keeps its last frame.
+func (p *Player) setDeathMode(mode d2enum.PlayerAnimationMode) {
+	if err := p.SetAnimationMode(mode); err != nil {
+		fmt.Printf("player %s: no %s animation: %v\n", p.name, mode, err)
+		return
+	}
+
+	p.composite.SetPlayLoop(false)
+}
+
+// IsDying is true while the death animation plays.
+func (p *Player) IsDying() bool { return p.deathPhase == deathPhaseDying }
+
+// IsDead is true once the hero has died (animation playing or finished).
+func (p *Player) IsDead() bool { return p.deathPhase != deathPhaseAlive }
+
+// DeathAnimationDone is true when the hero lies dead (DD).
+func (p *Player) DeathAnimationDone() bool { return p.deathPhase == deathPhaseDead }
+
+// Revive stands the hero up again.
+func (p *Player) Revive() {
+	p.deathPhase = deathPhaseAlive
+
+	if err := p.SetAnimationMode(p.GetAnimationMode()); err != nil {
+		fmt.Printf("player %s: revive: %v\n", p.name, err)
+	}
+
+	p.composite.SetPlayLoop(true)
+}
+
+// SetPositionSubtile moves the hero (a respawn) to a subtile and clears its path.
+func (p *Player) SetPositionSubtile(x, y int) {
+	p.StopMoving()
+	p.Position.Set(float64(x), float64(y))
+	p.Target.Set(float64(x), float64(y))
+}
+
+// equipmentLayers maps equipment to the composite's layer names.
+func equipmentLayers(equipment *d2inventory.CharacterEquipment) *[d2enum.CompositeTypeMax]string {
+	return &[d2enum.CompositeTypeMax]string{
+		d2enum.CompositeTypeHead:      equipment.Head.GetArmorClass(),
+		d2enum.CompositeTypeTorso:     equipment.Torso.GetArmorClass(),
+		d2enum.CompositeTypeLegs:      equipment.Legs.GetArmorClass(),
+		d2enum.CompositeTypeRightArm:  equipment.RightArm.GetArmorClass(),
+		d2enum.CompositeTypeLeftArm:   equipment.LeftArm.GetArmorClass(),
+		d2enum.CompositeTypeRightHand: equipment.RightHand.GetItemCode(),
+		d2enum.CompositeTypeLeftHand:  equipment.LeftHand.GetItemCode(),
+		d2enum.CompositeTypeShield:    equipment.Shield.GetItemCode(),
+	}
+}
+
+// ApplyEquipment redraws the hero after its Equipment changed (a death takes
+// the equipment, recovering the corpse gives it back).
+func (p *Player) ApplyEquipment() {
+	if p.Equipment == nil {
+		return
+	}
+
+	if err := p.composite.SetMode(p.GetAnimationMode(), p.Equipment.RightHand.GetWeaponClass()); err != nil {
+		fmt.Printf("player %s: weapon class change: %v\n", p.name, err)
+	}
+
+	if err := p.composite.Equip(equipmentLayers(p.Equipment)); err != nil {
+		fmt.Printf("player %s: equip: %v\n", p.name, err)
+	}
+
+	p.composite.SetDirection(p.composite.GetDirection())
+}
+
+// LieDead puts the hero straight into the dead pose (a corpse that was there
+// before the game started).
+func (p *Player) LieDead() {
+	p.deathPhase = deathPhaseDead
+	p.StopMoving()
+	p.setDeathMode(d2enum.PlayerAnimationModeDead)
 }

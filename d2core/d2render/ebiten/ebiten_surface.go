@@ -17,6 +17,7 @@ import (
 // static check that we implement our interface
 var _ d2interface.Surface = &ebitenSurface{}
 var _ d2interface.ShadedSurface = &ebitenSurface{}
+var _ d2interface.ShadedGridSurface = &ebitenSurface{}
 
 const (
 	maxAlpha       = 0xff
@@ -355,28 +356,36 @@ func (s *ebitenSurface) colorToColorM(clr color.Color) ebiten.ColorM {
 // (d2interface.ShadedSurface). The surface state (translation, scale, colour,
 // effect) applies as for Render.
 func (s *ebitenSurface) RenderShaded(sfc d2interface.Surface, cols, rows int, shade func(x, y float64) color.RGBA) {
-	src := sfc.(*ebitenSurface).image
-	w, h := src.Size()
-
-	opts := s.createDrawImageOptions()
-	s.handleStateEffect(opts)
-
-	vertices := make([]ebiten.Vertex, 0, (cols+1)*(rows+1))
+	w, h := sfc.(*ebitenSurface).image.Size()
+	vals := make([]color.RGBA, 0, (cols+1)*(rows+1))
 
 	for j := 0; j <= rows; j++ {
-		sy := float64(j*h) / float64(rows)
-
 		for i := 0; i <= cols; i++ {
-			sx := float64(i*w) / float64(cols)
-			dx, dy := opts.GeoM.Apply(sx, sy)
-			c := shade(sx, sy)
-
-			vertices = append(vertices, ebiten.Vertex{
-				DstX: float32(dx), DstY: float32(dy), SrcX: float32(sx), SrcY: float32(sy),
-				ColorR: float32(c.R) / maxAlpha, ColorG: float32(c.G) / maxAlpha,
-				ColorB: float32(c.B) / maxAlpha, ColorA: float32(c.A) / maxAlpha,
-			})
+			vals = append(vals, shade(float64(i*w)/float64(cols), float64(j*h)/float64(rows)))
 		}
+	}
+
+	s.RenderShadedGrid(sfc, cols, rows, vals)
+}
+
+// shadedScratch is reused by every RenderShadedGrid call (rendering is single threaded; ebiten copies
+// the vertices and indices it is given).
+//
+//nolint:gochecknoglobals // scratch buffers
+var shadedScratch struct {
+	vertices []ebiten.Vertex
+	indices  map[[2]int][]uint16
+}
+
+// shadedIndices returns the triangle indices of a cols x rows grid (shared, read only).
+func shadedIndices(cols, rows int) []uint16 {
+	key := [2]int{cols, rows}
+	if idx, ok := shadedScratch.indices[key]; ok {
+		return idx
+	}
+
+	if shadedScratch.indices == nil {
+		shadedScratch.indices = make(map[[2]int][]uint16)
 	}
 
 	indices := make([]uint16, 0, cols*rows*6)
@@ -390,7 +399,41 @@ func (s *ebitenSurface) RenderShaded(sfc d2interface.Surface, cols, rows int, sh
 		}
 	}
 
-	s.image.DrawTriangles(vertices, indices, src, &ebiten.DrawTrianglesOptions{
+	shadedScratch.indices[key] = indices
+
+	return indices
+}
+
+// RenderShadedGrid is RenderShaded with the vertex colours already computed, row by row
+// (d2interface.ShadedGridSurface).
+func (s *ebitenSurface) RenderShadedGrid(sfc d2interface.Surface, cols, rows int, vals []color.RGBA) {
+	src := sfc.(*ebitenSurface).image
+	w, h := src.Size()
+
+	opts := s.createDrawImageOptions()
+	s.handleStateEffect(opts)
+
+	vertices := shadedScratch.vertices[:0]
+
+	for j := 0; j <= rows; j++ {
+		sy := float64(j*h) / float64(rows)
+
+		for i := 0; i <= cols; i++ {
+			sx := float64(i*w) / float64(cols)
+			dx, dy := opts.GeoM.Apply(sx, sy)
+			c := vals[j*(cols+1)+i]
+
+			vertices = append(vertices, ebiten.Vertex{
+				DstX: float32(dx), DstY: float32(dy), SrcX: float32(sx), SrcY: float32(sy),
+				ColorR: float32(c.R) / maxAlpha, ColorG: float32(c.G) / maxAlpha,
+				ColorB: float32(c.B) / maxAlpha, ColorA: float32(c.A) / maxAlpha,
+			})
+		}
+	}
+
+	shadedScratch.vertices = vertices
+
+	s.image.DrawTriangles(vertices, shadedIndices(cols, rows), src, &ebiten.DrawTrianglesOptions{
 		ColorM: opts.ColorM, CompositeMode: opts.CompositeMode, Filter: opts.Filter,
 	})
 }

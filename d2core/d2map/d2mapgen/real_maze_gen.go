@@ -40,6 +40,10 @@ var entryRoom = regexp.MustCompile(`(?i)(pre|prev|up|ent|exit)\d*\.ds1$`)
 // the comments below), so a map may differ from the real game's for the
 // same seed.
 func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Difficulty) error {
+	if isOutdoorLevel(levelID) {
+		return g.GenerateRealOutdoor(levelID, seed, diff)
+	}
+
 	tb, err := LoadDRLGTables(g.asset)
 	if err != nil {
 		return err

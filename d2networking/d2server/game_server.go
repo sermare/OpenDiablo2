@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -13,6 +14,8 @@ import (
 	"github.com/robertkrimen/otto"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
@@ -398,8 +401,11 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 		playerState.LeftSkill,
 		playerState.RightSkill,
 		playerState.Gold,
+		playerState.Progress,
+		playerState.Difficulty,
 		d2netpacket.WithContainers(playerState.Containers),
-		d2netpacket.WithProgress(playerState.Progress, int(playerState.Difficulty)),
+		d2netpacket.WithMerc(playerState.Merc),
+		d2netpacket.WithDeath(playerState.Death, playerState.Hardcore),
 	)
 	if err != nil {
 		g.Errorf("AddPlayerPacket: %v", err)
@@ -430,6 +436,9 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 			conPlayerState.LeftSkill,
 			conPlayerState.RightSkill,
 			conPlayerState.Gold,
+			conPlayerState.Progress,
+			conPlayerState.Difficulty,
+			d2netpacket.WithMerc(conPlayerState.Merc),
 		)
 
 		if err != nil {
@@ -499,15 +508,38 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		playerState.Stats = savePacket.Player.Stats
 		playerState.Act = savePacket.Player.Act
 		playerState.Gold = savePacket.Player.Gold // changed by vendor transactions
+
+		if m := savePacket.Player.Merc; m != nil { // hired, revived or levelled in the game
+			playerState.Merc = m
+		}
+
 		// the client always sends Normal; do not demote an imported Nightmare/Hell hero
 		if savePacket.Difficulty != d2enum.DifficultyNormal {
 			playerState.Difficulty = savePacket.Difficulty
 		}
 		playerState.Containers = savePacket.Player.Containers
 
-		if savePacket.Player.Progress != nil {
-			playerState.Progress = savePacket.Player.Progress // the quest system's changes
+		// the quest system's changes (the server owns the waypoints)
+		if qp := savePacket.Player.Progress; qp != nil {
+			sp := playerState.EnsureProgress()
+			sp.Quests, sp.NPC = qp.Quests, qp.NPC
 		}
+
+		// a hero that died has its equipment on the corpse (or got it back):
+		// the client's equipment is the truth from then on
+		if savePacket.Player.Death != nil {
+			playerState.Death = savePacket.Player.Death
+			playerState.Hardcore = playerState.Hardcore || savePacket.Player.Hardcore
+			playerState.EquipmentChanged()
+
+			if savePacket.Player.Equipment != nil {
+				playerState.Equipment = *savePacket.Player.Equipment
+			}
+		}
+
+		// the client's copy of the stats carries no item list: recompute the totals
+		// (charms moved in the inventory change them) before the hero is written
+		g.heroStateFactory.RecalcStats(playerState)
 
 		err = g.heroStateFactory.Save(playerState)
 		if err != nil {
@@ -515,6 +547,10 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		}
 
 		g.saveD2S(playerState)
+	case d2netpackettype.ChangeLevel:
+		return g.onChangeLevel(client, packet)
+	case d2netpackettype.SetWaypoint:
+		return g.onSetWaypoint(client, packet)
 	case d2netpackettype.PlayerConnectionRequest:
 		break // prevent log message. these are handled by handleConnection
 	case d2netpackettype.PlayerDisconnectionNotification:
@@ -548,4 +584,55 @@ func (g *GameServer) saveD2S(state *d2hero.HeroState) {
 
 	g.Infof("D2S EXPORT path=%s", res.Path)
 	g.Infof("D2S EXPORT reparse: %s", res.Summary)
+}
+
+// onChangeLevel records where the hero is after a level change.
+func (g *GameServer) onChangeLevel(client ClientConnection, packet d2netpacket.NetPacket) error {
+	p, err := d2netpacket.UnmarshalChangeLevel(packet.PacketData)
+	if err != nil {
+		return err
+	}
+
+	state := g.connections[client.GetUniqueID()].GetPlayerState()
+	state.X, state.Y = p.X, p.Y
+
+	g.Infof("LEVEL player=%s level=%d act=%d pos=(%.1f,%.1f)", state.HeroName, p.Level,
+		d2level.ActOfLevel(p.Level), p.X, p.Y)
+
+	return nil
+}
+
+// onSetWaypoint activates (or clears) a waypoint bit of the hero's current
+// difficulty and saves the hero, including the .d2s of an imported hero.
+func (g *GameServer) onSetWaypoint(client ClientConnection, packet d2netpacket.NetPacket) error {
+	p, err := d2netpacket.UnmarshalSetWaypoint(packet.PacketData)
+	if err != nil {
+		return err
+	}
+
+	bit, ok := d2level.WaypointBit(p.Level)
+	if !ok {
+		return fmt.Errorf("level %d has no waypoint", p.Level)
+	}
+
+	state := g.connections[client.GetUniqueID()].GetPlayerState()
+	progress := state.EnsureProgress()
+	diff := int(state.Difficulty)
+
+	if p.Active {
+		d2level.ActivateWaypoint(&progress.Waypoints, d2level.Difficulty(diff), p.Level)
+	} else {
+		progress.Waypoints.Set(diff, d2s.Waypoint(bit), false)
+	}
+
+	g.Infof("WAYPOINT saved player=%s level=%d bit=%d active=%v difficulty=%d mask=%#x",
+		state.HeroName, p.Level, bit, p.Active, diff, progress.Waypoints[diff])
+
+	if err := g.heroStateFactory.Save(state); err != nil {
+		g.Errorf("GameServer: error saving player: %s", err)
+	}
+
+	g.saveD2S(state)
+
+	return nil
 }

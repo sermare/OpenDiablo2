@@ -45,7 +45,14 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	}
 
 	state.MapSeed = header.MapSeed
+	state.Expansion, state.Hardcore, state.Ladder = header.IsExpansion(), header.IsHardcore(), header.IsLadder()
+
+	if header.IsDead() {
+		state.Death = &DeathState{Died: true}
+	}
+
 	state.D2SBase = append([]byte(nil), data...)
+	state.Merc = MercFromHeader(header.Mercenary)
 
 	if diff, _, ok := header.ActiveDifficulty(); ok {
 		state.Difficulty = d2enum.DifficultyType(diff)
@@ -69,6 +76,9 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	if err := f.applyD2SSkills(state, hero, body.SkillPoints); err != nil {
 		return nil, err
 	}
+
+	f.RecalcStats(state)
+	fmt.Printf("stats: %s %s\n", state.HeroName, StatsSummary(state.Stats))
 
 	return state, nil
 }
@@ -157,6 +167,10 @@ func (f *HeroStateFactory) importD2SItems(state *HeroState, data []byte) {
 
 	f.applyD2SEquipment(state, character.Items, tables)
 	f.applyD2SContainers(state, character.Items)
+
+	if state.Containers != nil {
+		importEquipped(state.Containers, data, character.Items, func(code string) bool { return f.asset.Records.Item.All[code] != nil })
+	}
 }
 
 // applyD2SContainers puts the inventory (page 1), cube (4), stash (5) and belt

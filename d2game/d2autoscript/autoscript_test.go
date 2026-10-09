@@ -76,6 +76,12 @@ func TestParseCastTarget(t *testing.T) {
 func run(t *testing.T, spec string, h *fakeHost, ticks int) *Runner {
 	t.Helper()
 
+	return runHost(t, spec, h, ticks)
+}
+
+func runHost(t *testing.T, spec string, h Host, ticks int) *Runner {
+	t.Helper()
+
 	steps, err := Parse(spec)
 	if err != nil {
 		t.Fatal(err)
@@ -154,5 +160,124 @@ func TestRunnerEndsWithoutExitStep(t *testing.T) {
 
 	if !r.Done() || r.Failed() || len(h.exit) != 1 {
 		t.Errorf("done=%v failed=%v exit=%v", r.Done(), r.Failed(), h.exit)
+	}
+}
+
+type fakeLevelHost struct {
+	fakeHost
+	level    int
+	changeAt int // Level call count at which the level becomes 35
+	ticks    int
+	busyFor  int // Busy answers true this many times
+}
+
+func (h *fakeLevelHost) Busy() bool {
+	if h.busyFor > 0 {
+		h.busyFor--
+		return true
+	}
+
+	return false
+}
+func (h *fakeLevelHost) Use(t string) error   { return h.rec("use " + t) }
+func (h *fakeLevelHost) Waypoint(l int) error { return h.rec(fmt.Sprintf("waypoint %d", l)) }
+func (h *fakeLevelHost) Level() (int, float64, float64) {
+	h.ticks++
+	if h.changeAt > 0 && h.ticks >= h.changeAt {
+		return 35, 12.5, 7
+	}
+
+	return h.level, 12.5, 7
+}
+
+func TestParseLevelSteps(t *testing.T) {
+	for _, spec := range []string{"use:Waypoint", "use:119", "waypoint:35", "expect:level=35"} {
+		if _, err := Parse(spec); err != nil {
+			t.Errorf("Parse(%q): %v", spec, err)
+		}
+	}
+
+	for _, spec := range []string{"use:", "waypoint:", "waypoint:x", "waypoint:0", "expect:level=", "expect:level=x", "expect:level=0"} {
+		if _, err := Parse(spec); err == nil {
+			t.Errorf("Parse(%q) should fail", spec)
+		}
+	}
+
+	s, _ := Parse("waypoint:35;expect:level=3")
+	if s[0].Level != 35 || !s[1].HasLevel || s[1].Level != 3 {
+		t.Errorf("steps %+v", s)
+	}
+}
+
+func TestRunnerLevelSteps(t *testing.T) {
+	h := &fakeLevelHost{level: 1}
+	r := runHost(t, "use:Waypoint;waypoint:1;expect:level=1;exit", h, 10)
+
+	if !r.Done() || r.Failed() {
+		t.Fatalf("done=%v failed=%v log=%v", r.Done(), r.Failed(), h.log)
+	}
+
+	if strings.Join(h.calls, "|") != "use Waypoint|waypoint 1" {
+		t.Errorf("calls %v", h.calls)
+	}
+
+	found := false
+
+	for _, l := range h.log {
+		found = found || l == "AUTOSCRIPT level=1 hero=(12.5,7.0) want=1"
+	}
+
+	if !found {
+		t.Errorf("expect:level did not log the level and position: %v", h.log)
+	}
+}
+
+func TestExpectLevelWaitsForChange(t *testing.T) {
+	// the level becomes 35 only after a few polls: the step must wait, not fail
+	h := &fakeLevelHost{level: 1, changeAt: 6}
+	r := runHost(t, "expect:level=35;exit", h, 20)
+
+	if !r.Done() || r.Failed() {
+		t.Fatalf("done=%v failed=%v log=%v", r.Done(), r.Failed(), h.log)
+	}
+
+	// and it fails once the timeout passes
+	h = &fakeLevelHost{level: 1}
+	r = runHost(t, "expect:level=35;exit", h, 40)
+
+	if !r.Done() || !r.Failed() {
+		t.Fatalf("a level that never arrives must fail: done=%v failed=%v", r.Done(), r.Failed())
+	}
+}
+
+func TestLevelStepsNeedLevelHost(t *testing.T) {
+	h := &fakeHost{}
+	r := run(t, "use:x;exit", h, 5)
+
+	if !r.Failed() {
+		t.Error("use on a plain host must fail")
+	}
+}
+
+func TestRunnerHoldsWhileBusy(t *testing.T) {
+	h := &fakeLevelHost{level: 1}
+	steps, _ := Parse("use:Waypoint;waypoint:3")
+	r := NewRunner(steps, h)
+
+	r.Advance(0.5) // use runs
+	h.busyFor = 3
+
+	for i := 0; i < 3; i++ {
+		r.Advance(0.5)
+
+		if len(h.calls) != 1 {
+			t.Fatalf("step ran while the host was busy: %v", h.calls)
+		}
+	}
+
+	r.Advance(0.5)
+
+	if strings.Join(h.calls, "|") != "use Waypoint|waypoint 3" {
+		t.Errorf("calls %v", h.calls)
 	}
 }

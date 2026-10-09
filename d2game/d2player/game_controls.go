@@ -2,6 +2,7 @@ package d2player
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2vendor"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2equip"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
@@ -206,6 +208,7 @@ func NewGameControls(
 		escapeMenu:     escapeMenu,
 		inputListener:  inputListener,
 		mapRenderer:    mapRenderer,
+		mapEngine:      mapEngine,
 		inventory:      inventory,
 		skilltree:      skilltree,
 		heroStatsPanel: heroStatsPanel,
@@ -213,6 +216,7 @@ func NewGameControls(
 		HelpOverlay:    helpOverlay,
 		NPCMenu:        NewNPCMenu(asset, ui),
 		Speech:         NewSpeechBubble(ui),
+		Waypoints:      NewWaypointPanel(asset, ui),
 		keyMap:         keyMap,
 		bottomMenuRect: &d2geom.Rectangle{
 			Left:   menuBottomRectX,
@@ -244,8 +248,10 @@ func NewGameControls(
 	}
 
 	gc.Trade = trade
+	gc.Identify = NewIdentifyWindow(asset, ui, l, inventory, hero, gc.saveHero, gc.onCloseTrade)
 
 	inventory.savedItems = hero.Containers != nil
+	inventory.itemHook = gc.itemTooltipLines
 	gc.stash = NewContainerPanel(asset, ui, l, inventory, stashKind, gc.saveHero)
 	gc.cube = NewContainerPanel(asset, ui, l, inventory, cubeKind, gc.saveHero)
 	gc.belt = NewBeltPanel(asset, ui, l, inventory, gc.beltBoxes, gc.saveHero)
@@ -257,6 +263,7 @@ func NewGameControls(
 
 	hud := NewHUD(asset, ui, hero, miniPanel, actionableRegions, mapEngine, l, gc, mapRenderer)
 	gc.hud = hud
+	gc.automap = newAutomap(gc, term)
 
 	hoverLabel := hud.nameLabel
 	hoverLabel.SetBackgroundColor(d2util.Color(blackAlpha50percent))
@@ -301,11 +308,18 @@ type GameControls struct {
 	questLog               *QuestLog
 	HelpOverlay            *HelpOverlay
 	NPCMenu                *NPCMenu
+	Waypoints              *WaypointPanel
 	Trade                  *TradeWindow
+	Identify               *IdentifyWindow
 	stash                  *ContainerPanel
 	cube                   *ContainerPanel
 	belt                   *BeltPanel
 	itemOrigin             map[InventoryItem]*d2s.Item
+	equipSound             func(handle string)
+	equipTouched           bool
+	equipNoSave            bool // the equip autotest saves once at the end
+	equipRand              *rand.Rand
+	equipStatus            map[d2equip.Loc]d2hero.EquipStatus
 	regen                  d2inventory.Regen
 	regenHP, regenMana     float64 // fractions of points not yet applied
 	bottomMenuRect         *d2geom.Rectangle
@@ -317,6 +331,8 @@ type GameControls struct {
 	lastRightBtnActionTime float64
 	FreeCam                bool
 	isSinglePlayer         bool
+	mapEngine              *d2mapengine.MapEngine
+	automap                *Automap // see automap.go
 
 	// Speech shows the subtitle of NPC speech and short notices (quest log updated).
 	Speech *SpeechBubble
@@ -382,8 +398,18 @@ func (g *GameControls) OnKeyRepeat(event d2interface.KeyEvent) bool {
 
 // OnKeyDown handles key presses
 func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
+	if event.Key() == d2enum.KeyEscape && g.Waypoints.IsOpen() {
+		g.Waypoints.Close()
+		return true
+	}
+
 	if event.Key() == d2enum.KeyEscape && g.NPCMenu.IsOpen() {
 		g.NPCMenu.Choose(len(g.NPCMenu.Rows()) - 1)
+		return true
+	}
+
+	if event.Key() == d2enum.KeyEscape && g.Identify.IsOpen() {
+		g.Identify.Close()
 		return true
 	}
 
@@ -421,8 +447,12 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 		g.hud.onToggleRunButton(true)
 	case d2enum.ToggleHelpScreen:
 		g.toggleHelpOverlay()
+	case d2enum.SwapWeapons:
+		g.SwapWeapons()
 	case d2enum.ToggleBelts:
 		g.belt.Toggle()
+	case d2enum.ToggleAutomap:
+		g.automap.Toggle()
 	case d2enum.UseBeltSlot1, d2enum.UseBeltSlot2, d2enum.UseBeltSlot3, d2enum.UseBeltSlot4:
 		g.UseBeltColumn(int(gameEvent - d2enum.UseBeltSlot1))
 	default:
@@ -560,7 +590,9 @@ func (g *GameControls) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 	}
 
 	g.NPCMenu.OnMouseMove(event)
+	g.Waypoints.OnMouseMove(event)
 	g.Trade.OnMouseMove(event)
+	g.Identify.OnMouseMove(event)
 	g.stash.OnMouseMove(mx, my)
 	g.cube.OnMouseMove(mx, my)
 	g.belt.OnMouseMove(mx, my)
@@ -637,7 +669,15 @@ func (g *GameControls) InventoryItemCount() int { return len(g.inventory.grid.it
 func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	mx, my := event.X(), event.Y()
 
+	if g.Waypoints.OnMouseButtonDown(event) {
+		return true
+	}
+
 	if g.NPCMenu.OnMouseButtonDown(event) {
+		return true
+	}
+
+	if g.Identify.OnMouseButtonDown(event) {
 		return true
 	}
 
@@ -867,6 +907,12 @@ func (g *GameControls) AutoPanel(name string) error {
 		return fmt.Errorf("panel %q did not open", name)
 	}
 
+	if name == "character" {
+		// the values the panel shows, for the autotests (scripts/verify.d/89-hero-stats.sh)
+		g.heroStatsPanel.setDerivedValues()
+		g.Infof("PANEL character: %s", d2hero.StatsSummary(g.hero.Stats))
+	}
+
 	return nil
 }
 
@@ -932,6 +978,7 @@ func (g *GameControls) Advance(elapsed float64) error {
 	g.hud.Advance(elapsed)
 	g.inventory.Advance(elapsed)
 	g.advancePotions(elapsed)
+	g.automap.Advance(elapsed)
 	g.questLog.Advance(elapsed)
 	g.Speech.Advance(elapsed)
 
@@ -976,7 +1023,7 @@ func (g *GameControls) isLeftPanelOpen() bool {
 		partyPanel = false
 	}
 
-	return g.heroStatsPanel.IsOpen() || partyPanel || g.questLog.IsOpen() || g.inventory.moveGoldPanel.IsOpen() || g.Trade.IsOpen() ||
+	return g.heroStatsPanel.IsOpen() || partyPanel || g.questLog.IsOpen() || g.inventory.moveGoldPanel.IsOpen() || g.Trade.IsOpen() || g.Identify.IsOpen() ||
 		g.stash.IsOpen() || g.cube.IsOpen()
 }
 
@@ -1022,6 +1069,8 @@ func (g *GameControls) isInActiveMenusRect(px, py int) bool {
 
 // Render draws the GameControls onto the target
 func (g *GameControls) Render(target d2interface.Surface) error {
+	g.automap.Render(target) // before the interface, as in the original
+
 	if err := g.hud.Render(target); err != nil {
 		return err
 	}
@@ -1031,11 +1080,13 @@ func (g *GameControls) Render(target d2interface.Surface) error {
 	}
 
 	g.Trade.Render(target)
+	g.Identify.Render(target)
 	g.stash.Render(target)
 	g.cube.Render(target)
 	g.belt.Render(target)
 	g.NPCMenu.Render(target)
 	g.Speech.Render(target)
+	g.Waypoints.Render(target)
 
 	if err := g.escapeMenu.Render(target); err != nil {
 		return err
@@ -1349,6 +1400,31 @@ func (g *GameControls) OpenTrade(v d2vendor.Vendor, seed uint32) {
 	g.clearScreen()
 	g.inventory.Open()
 	g.Trade.Open(v, seed, nil) // quest overrides: the quest record is not available here (UNVERIFIED path)
+	g.updateLayout()
+}
+
+// OpenGamble opens the gamble window of a vendor and the inventory beside it.
+func (g *GameControls) OpenGamble(v d2vendor.Vendor, seed uint32) error {
+	g.NPCMenu.Close()
+	g.clearScreen()
+	g.inventory.Open()
+
+	if err := g.Trade.OpenGamble(v, seed, nil); err != nil {
+		g.updateLayout()
+		return err
+	}
+
+	g.updateLayout()
+
+	return nil
+}
+
+// OpenIdentify opens Cain's identify window and the inventory beside it.
+func (g *GameControls) OpenIdentify() {
+	g.NPCMenu.Close()
+	g.clearScreen()
+	g.inventory.Open()
+	g.Identify.Open(nil) // quest bit (4,0)/(4,1) not reachable here: the fee is always charged (UNVERIFIED path)
 	g.updateLayout()
 }
 

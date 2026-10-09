@@ -17,12 +17,17 @@ const (
 	// NPCActionTopic is a quest topic of the Talk submenu (a mode 2 message);
 	// the message id is in NPCMenuRow.StringID and the text in Fallback.
 	NPCActionTopic
+	// NPCActionHireOffer and NPCActionReviveMerc are rows of the hire list
+	// (not of the class table): one per offered mercenary, and the revive row.
+	NPCActionHireOffer
+	NPCActionReviveMerc
 )
 
 // String names the action for logs.
 func (a NPCMenuAction) String() string {
 	names := [...]string{
-		"Talk", "Trade", "TradeRepair", "Gamble", "Hire", "Identify", "TravelWest", "SailWest", "Cancel", "Topic",
+		"Talk", "Trade", "TradeRepair", "Gamble", "Hire", "Identify", "TravelWest", "SailWest", "Cancel",
+		"Topic", "HireOffer", "ReviveMerc",
 	}
 
 	if int(a) < 0 || int(a) >= len(names) {
@@ -84,7 +89,6 @@ var npcMenuTable = map[int][]NPCMenuRow{
 	146: {rowTalk}, // Cain1
 	200: {rowTalk}, // Geglash
 	201: {rowTalk}, // Jerhyn
-	150: {rowTalk}, // Kashya
 	155: {rowTalk}, // Warriv1
 	210: {rowTalk}, // Meshif1
 	251: {rowTalk}, // Tyrael1
@@ -117,6 +121,7 @@ var npcMenuTable = map[int][]NPCMenuRow{
 	512: {rowTalk, rowTrade, rowGamble}, // Drehya/Anya
 
 	// Hire
+	150: {rowTalk, rowHire},           // Kashya (the notes list Talk only; the hire row is needed for the Act 1 rogues)
 	198: {rowTalk, rowHire},           // Greiz
 	252: {rowTalk, rowHire, rowTrade}, // Asheara
 

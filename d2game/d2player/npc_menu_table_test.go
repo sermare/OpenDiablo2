@@ -15,7 +15,7 @@ func TestNPCMenuFor(t *testing.T) {
 		{405, []NPCMenuAction{NPCActionTrade, NPCActionGamble}},                // Jamella
 		{244, []NPCMenuAction{NPCActionTalk, NPCActionIdentify}},               // Cain
 		{175, []NPCMenuAction{NPCActionTalk, NPCActionTravelWest}},             // Warriv2
-		{150, []NPCMenuAction{NPCActionTalk}},                                  // Kashya
+		{150, []NPCMenuAction{NPCActionTalk, NPCActionHire}},                   // Kashya
 	}
 
 	for _, c := range cases {

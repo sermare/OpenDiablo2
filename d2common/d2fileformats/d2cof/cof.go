@@ -148,7 +148,7 @@ func (c *COF) loadCOFLayers(streamReader *d2datautils.StreamReader) error {
 		layer.Transparent = b[layerTransparent] > 0
 		layer.DrawEffect = d2enum.DrawEffect(b[layerDrawEffect])
 
-		layer.WeaponClass = d2enum.WeaponClassFromString(strings.TrimSpace(strings.ReplaceAll(
+		layer.WeaponClass = weaponClass(strings.TrimSpace(strings.ReplaceAll(
 			string(b[layerWeaponClass:]), badCharacter, "")))
 
 		c.CofLayers[i] = layer
@@ -241,4 +241,18 @@ func (c *COF) Marshal() []byte {
 	}
 
 	return sw.GetBytes()
+}
+
+// weaponClass converts a COF weapon class code. Some monster COFs (found in
+// the Act 1 maze levels) carry a code that is not a weapon class; the
+// generated converter panics on those, which crashed level loading, so an
+// unknown code is read as "none".
+func weaponClass(code string) (wc d2enum.WeaponClass) {
+	defer func() {
+		if recover() != nil {
+			wc = 0
+		}
+	}()
+
+	return d2enum.WeaponClassFromString(code)
 }

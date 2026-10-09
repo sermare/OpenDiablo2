@@ -43,22 +43,22 @@ type Decision int
 
 // Decisions.
 const (
-	DecisionQueued       Decision = iota // waiting (delay, or no voice yet for a loop)
-	DecisionPlayed                       // got a voice and started
-	DecisionStolen                       // started by taking a lower-priority voice
-	DecisionMerged                       // folded into a recent same-group request (Compound)
-	DecisionNoRow                        // index 0 / out of range
-	DecisionZeroPriority                 // Priority 0 never plays
-	DecisionInaudible                    // beyond the Falloff radius
-	DecisionSameTick                     // same sound started within a tick at >= priority
-	DecisionDeferred                     // Defer Inst: an instance of the group is already playing
-	DecisionNoVoice                      // every voice holds an equal or higher priority sound
-	DecisionLoadFailed                   // Loader error
-	DecisionFinished                     // ran to completion / Duration elapsed
-	DecisionStopped                      // stopped by the caller, stolen from, or replaced (Stop Inst)
+	DecisionQueued     Decision = iota // waiting (delay, or no voice yet for a loop)
+	DecisionPlayed                     // got a voice and started
+	DecisionStolen                     // started by taking a lower-priority voice
+	DecisionMerged                     // folded into a recent same-group request (Compound)
+	DecisionNoRow                      // index 0 / out of range
+	DecisionNoFile                     // the row has no sound file (row byte +0x3c == 0 in FUN_004b6350)
+	DecisionInaudible                  // beyond the Falloff radius
+	DecisionSameTick                   // same sound started within a tick at >= priority
+	DecisionDeferred                   // Defer Inst: an instance of the group is already playing
+	DecisionNoVoice                    // every voice holds an equal or higher priority sound
+	DecisionLoadFailed                 // Loader error
+	DecisionFinished                   // ran to completion / Duration elapsed
+	DecisionStopped                    // stopped by the caller, stolen from, or replaced (Stop Inst)
 )
 
-var decisionNames = [...]string{"queued", "played", "stolen", "merged", "no-row", "zero-priority",
+var decisionNames = [...]string{"queued", "played", "stolen", "merged", "no-row", "no-file",
 	"inaudible", "same-tick", "deferred", "no-voice", "load-failed", "finished", "stopped"}
 
 func (d Decision) String() string {
@@ -88,6 +88,7 @@ type Request struct {
 	Hero         bool    // emitter is the local hero: priority += 0x50
 	FixedVariant bool    // do not pick a Group Size variant (verified flag bit 0)
 	NoFade       bool    // skip Fade In (verified flag bit 1)
+	Volume       int     // 0 = the Sounds.txt Volume column; else 1..255 overrides it (MonSounds.txt Wea1Vol)
 }
 
 // Report describes a decision, for logs and tests.
@@ -262,8 +263,12 @@ func (b *Bank) Play(req Request) *Instance {
 
 	inst.report.Handle, inst.report.File = row.Handle, row.FileName
 
-	if row.Priority == 0 { // verified: priority byte 0 returns before queuing
-		return b.reject(inst, DecisionZeroPriority)
+	// FUN_004b6350 returns when the row byte at +0x3c is 0. That byte is NOT the
+	// Priority column (+0x4e, copied to the instance afterwards): footstep rows
+	// have Priority 0 and still play, as the lowest priority. +0x3c sits before
+	// Group Size and is most likely a "has a file" flag (UNVERIFIED which).
+	if row.FileName == "" {
+		return b.reject(inst, DecisionNoFile)
 	}
 
 	// Compound (shape verified, FUN_004b60a0): reuse a live instance of the same group
@@ -707,7 +712,12 @@ func (b *Bank) Mix(q *Instance) (vol, pan float64) {
 		master = b.musicVol
 	}
 
-	vol = float64(q.vol) / 255 * float64(row.Volume) / 255 * master
+	rowVol := row.Volume
+	if q.req.Volume > 0 {
+		rowVol = q.req.Volume
+	}
+
+	vol = float64(q.vol) / 255 * float64(rowVol) / 255 * master
 
 	if !row.Solo {
 		vol *= float64(b.duck) / duckMax

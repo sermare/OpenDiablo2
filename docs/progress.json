@@ -5,7 +5,7 @@
   "bars": [
     {
       "label": "Game.exe functions named in Ghidra",
-      "done": 2325,
+      "done": 2418,
       "total": 10907,
       "note": "reverse engineering of the original 1.14b binary",
       "color": "#7c5cff"
@@ -26,9 +26,9 @@
     },
     {
       "label": "Level generator proven equal to the real game",
-      "done": 2600,
-      "total": 2650,
-      "note": "world layout 50 seeds + 17 Act 1 maze levels x 50 seeds x 3 difficulties = 2,550 records identical; Act 1 outdoors not yet",
+      "done": 5682,
+      "total": 5742,
+      "note": "all 55 maze levels + 240 Act 1 outdoor levels (30 seeds x 8) match the real game + 50 world layouts; tile-exact outdoors and Acts 2-5 outdoors not yet",
       "color": "#22c1c3"
     },
     {
@@ -40,16 +40,16 @@
     },
     {
       "label": "NPC interaction features",
-      "done": 6,
-      "total": 7,
-      "note": "click-walk · greeting · menu · return greeting · vendor trade · quest speech lookup ✓ | gamble, hire UI ✗",
+      "done": 7,
+      "total": 8,
+      "note": "click-walk · greeting · menu · return greeting · vendors · gamble · identify · mercenary hire ✓ | quest dialogue ✗",
       "color": "#ef5da8"
     },
     {
       "label": "Roadmap deliverables",
-      "done": 17,
-      "total": 22,
-      "note": "saves r/w+back · gear · NPC · RNG · combat · loot · trade · packets · keys · sound · items · monsters+packs · skills · real dungeons · stash/belt · lighting ✓ | outdoors · mercs · quests · missiles net · render port",
+      "done": 27,
+      "total": 31,
+      "note": "saves · gear+stats+equip rules · NPCs+vendors+mercs · RNG · combat · loot · packets · keys · sound · monsters · skills · dungeons+outdoors · stash/belt · lighting · waypoints · objects · automap · Mac app · perf ✓ | quests · classes · outdoor tiles · multiplayer",
       "color": "#ff7a45"
     }
   ]

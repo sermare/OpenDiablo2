@@ -1,17 +1,17 @@
-// Package drlgmaze ports the Act 1 maze level generator (Levels.txt DrlgType 1:
-// Den of Evil/caves, crypts, jail, catacombs) from drlg2.md part A.
+// Package drlgmaze ports the maze level generator (Levels.txt DrlgType 1):
+// Act 1 caves, crypts, jail, catacombs and barracks, Act 2 sewers, harem,
+// palace cellar, tombs, lairs and the Arcane Sanctuary, Act 3 spider caves,
+// dungeons, sewers and Durance of Hate (levels 84-101), from drlg2.md part A
+// and the drlg-act23 notes. Act 4 and Act 5 maze types (maze_act45.go) are covered too.
 //
-// Provenance of each step is noted in comments: "verified" means the notes
-// traced it in the real binary, "unverified" means it is inferred or was not
-// read. Act 1 barracks (level 28, its joint with level 27, A.10) and the
-// Act 2+ maze types are not implemented and return ErrUnsupported.
+// Provenance of each step is noted in comments. Everything here is compared
+// against the emulated real game in oracle_test.go.
 //
-// The level-seed draw order is reproduced exactly as documented: room
-// allocation steps, FillMazeRooms rolls, finisher counter, theme pass (31
-// steps) and the commit pass (file rolls and per-chunk room allocations).
-// What is NOT reproduced: the DS1 object RNG gates (A.9) fire at DS1 load
-// time on the level seed; they are exposed through Params.GateSteps (nil =
-// zero extra steps) because the generator has no DS1 access.
+// The level-seed draw order is reproduced exactly: room allocation steps,
+// FillMazeRooms rolls, finisher counters, theme pass (31 steps) and the commit
+// pass (file rolls, per-chunk room allocations and the DS1 object RNG gates of
+// the few preset files that have any, see gates.go; Params.GateSteps overrides
+// the built-in table).
 package drlgmaze
 
 import (
@@ -43,11 +43,44 @@ const (
 	typeBarracks  = 7
 	typeJail      = 8
 	typeCatacombs = 10
+	typeSewer2    = 13 // Act 2 sewers
+	typeHarem     = 14
+	typeBasement  = 15
+	typeTomb      = 17
+	typeLair      = 18
+	typeArcane    = 19
+	typeMephisto  = 22
+	typeSpider    = 23
+	typeDungeon   = 24
+	typeSewer3    = 25
 )
+
+// Act 4/5 level types are in maze_act45.go.
 
 // Def bases of the 16 door-mask variants per level type (verified for cave
 // and crypt against LvlPrest; the others by the same pattern).
-var typeBase = map[int]int{typeCave: 0x34, typeCrypt: 0x6c, typeBarracks: 0xa7, typeJail: 0xcd, typeCatacombs: 0x101}
+var typeBase = map[int]int{typeCave: 0x34, typeCrypt: 0x6c, typeBarracks: 0xa7, typeJail: 0xcd, typeCatacombs: 0x101,
+	typeSewer2: 0x12d, typeTomb: 0x19d, typeLair: 0x1e1, typeArcane: 0x1fd, typeMephisto: 0x2f1, typeDungeon: 0x298, typeSewer3: 0x2c0,
+	typeLava: 0x344, typeIce: 0x3ea, typeBaal: 0x422}
+
+// fileBase lists the level types whose Defs in (base, base+16) get the
+// round-robin file choice (ChoosePresetFile 0x676640, verified from the
+// jump table: arcane, harem, basement and spider are not in it).
+var fileBase = map[int]int{typeCave: 0x34, typeCrypt: 0x6c, typeBarracks: 0xa7, typeJail: 0xcd, typeCatacombs: 0x101,
+	typeSewer2: 0x12d, typeTomb: 0x19d, typeLair: 0x1e1, typeMephisto: 0x2f1, typeDungeon: 0x298, typeSewer3: 0x2c0,
+	typeLava: 0x344, typeIce: 0x3ea, typeBaal: 0x422, typeHell: 0x41c}
+
+// themeBase lists the types ApplyMazeThemeRooms upgrades (0x676360).
+var themeBase = map[int]int{typeCave: 0x34, typeCrypt: 0x6c, typeBarracks: 0xa7, typeJail: 0xcd, typeCatacombs: 0x101,
+	typeSewer2: 0x12d, typeTomb: 0x19d, typeMephisto: 0x2f1, typeDungeon: 0x298, typeSewer3: 0x2c0}
+
+// Door-mask lookup tables for the types that do not use base+mask
+// (0x6f0d08 stride 12; zero = leave the Def alone). Indexed by mask.
+var (
+	haremDef    = [16]int{5: 356, 6: 355, 9: 357, 10: 354}
+	basementDef = [16]int{5: 360, 6: 359, 9: 361, 10: 358}
+	spiderDef   = [16]int{5: 659, 6: 660, 9: 661, 10: 662}
+)
 
 // Tables is what the generator needs from the data tables.
 type Tables interface {
@@ -69,6 +102,18 @@ type Params struct {
 	// RNG gates consume when the given preset file is loaded (unverified
 	// effect, see package doc).
 	GateSteps func(file string) int
+	// L27 is the Act 1 level 27 (Courtyard) rect and exit side (0 west,
+	// 1 north, 2 east in the game's data+4), needed only for the barracks
+	// (level 28), which is placed relative to it.
+	L27 Level27
+	// L108 is the rect of level 108 (Chaos Sanctuary) that River of Flame
+	// (level 107) is placed against.
+	L108 Level27
+}
+
+// Level27 is what the barracks joint needs from level 27.
+type Level27 struct {
+	X, Y, W, H, Side int
 }
 
 // Room is a committed maze room (one LvlPrest preset).
@@ -101,6 +146,9 @@ type Result struct {
 	Notes []string
 	// Seed is the level seed after generation (used to compare against the oracle).
 	Seed d2rand.Seed
+	// RectX..RectH is the final level rect when the generator recomputes it
+	// (barracks only, from the room bounding box).
+	RectX, RectY, RectW, RectH int
 }
 
 type link struct {
@@ -124,6 +172,7 @@ type level struct {
 	id    int
 	tbl   Tables
 	ctrs  []*defCounter
+	p     Params
 }
 
 type defCounter struct{ def, n, ctr int }
@@ -174,6 +223,14 @@ func (l *level) tryPlace(cur *room, dir int, n *room) bool {
 		n.x, n.y = cur.x+cur.w, cur.y
 	case South:
 		n.x, n.y = cur.x, cur.y+cur.h
+	case 4:
+		n.x, n.y = cur.x-cur.w, cur.y-cur.h
+	case 5:
+		n.x, n.y = cur.x+cur.w, cur.y-cur.h
+	case 6:
+		n.x, n.y = cur.x+cur.w, cur.y+cur.h
+	case 7:
+		n.x, n.y = cur.x-cur.w, cur.y+cur.h
 	}
 
 	for _, nb := range cur.nb {
@@ -229,18 +286,55 @@ func adjacencyDir(a, b *room) int {
 // selectDef re-picks a room's Def from its door mask (verified for the Act 1
 // types) and clears the lock bit (flag=1).
 func (l *level) selectDef(r *room) {
-	base, ok := typeBase[l.typ]
-	if !ok {
-		return
-	}
-
 	mask := 0
 	for _, n := range r.nb {
-		mask |= dirMask[n.dir]
+		mask |= maskOf(n.dir)
 	}
 
-	r.def = base + mask
-	r.file = -1
+	def, file := 0, -1
+
+	switch l.typ {
+	case typeTemple:
+		def = templeDef[mask]
+	case typeHell:
+		def = hellDef[mask]
+	case typeHarem:
+		def = haremDef[mask]
+	case typeBasement: // 0x673710 case 7
+		def = basementDef[mask]
+
+		if l.id == 0x34 && def == 0x169 {
+			file = 2
+		}
+
+		if l.id == 0x36 && (def == 0x169 || def == 0x167) {
+			file = 3
+		}
+	case typeSpider:
+		def = spiderDef[mask]
+
+		if l.id == 0x54 && def == 0x296 {
+			def = 0x298
+		}
+
+		if l.id == 0x55 && def == 0x295 {
+			def = 0x297
+		}
+	default:
+		base, ok := typeBase[l.typ]
+		if !ok {
+			return
+		}
+
+		def = base + mask
+	}
+
+	if def == 0 {
+		return // table miss: the real code leaves the room untouched
+	}
+
+	r.def = def
+	r.file = file
 	r.locked = false
 }
 
@@ -326,6 +420,23 @@ func (l *level) target(diff d2drlg.Difficulty, p Params) int {
 
 // fillRooms grows the level until the LvlMaze room count (FillMazeRooms,
 // verified).
+func (l *level) buildAct1(target int, res *Result) error {
+	switch l.typ {
+	case typeJail:
+		l.buildRing(2)
+	case typeCatacombs:
+		l.catacombsStart(l.id == 0x22)
+	}
+
+	if err := l.fillRooms(target); err != nil {
+		return err
+	}
+
+	l.finish(&res.Notes)
+
+	return nil
+}
+
 func (l *level) fillRooms(target int) error {
 	for guard := 0; len(l.rooms) < target; guard++ {
 		if guard > 1000000 {
@@ -404,8 +515,10 @@ func (l *level) addLocked(dir, def int) bool {
 }
 
 // stamp converts a dead-end room into a special Def, or adds one (verified).
-func (l *level) stamp(t [4]stamp, ctr *int) bool {
-	e := t[*ctr]
+func (l *level) stamp(t [4]stamp, ctr *int) bool { return l.stampOne(t[*ctr], ctr) }
+
+// stampOne is StampMazeSpecialRoom (0x675270) for one table entry.
+func (l *level) stampOne(e stamp, ctr *int) bool {
 	done := false
 
 	for _, r := range l.rooms {
@@ -518,7 +631,7 @@ func (l *level) catacombsStart(plus bool) {
 // themeRooms upgrades some rooms to theme Defs (ApplyMazeThemeRooms, verified;
 // 1 + 30 level-seed steps).
 func (l *level) themeRooms() {
-	base, ok := typeBase[l.typ]
+	base, ok := themeBase[l.typ]
 	if !ok || l.id == 8 {
 		return
 	}
@@ -566,7 +679,7 @@ func (l *level) chooseFile(r *room, rolled int, files int) int {
 		return r.file
 	}
 
-	base, ok := typeBase[l.typ]
+	base, ok := fileBase[l.typ]
 	if !ok || r.def <= base || r.def >= base+16 || files <= 0 {
 		return rolled
 	}
@@ -625,12 +738,14 @@ func Generate(t Tables, p Params) (*Result, error) {
 	}
 
 	switch rec.LevelType {
-	case typeCave, typeCrypt, typeJail, typeCatacombs:
+	case typeCave, typeCrypt, typeJail, typeCatacombs, typeBarracks, typeSewer2, typeHarem, typeBasement,
+		typeTomb, typeLair, typeArcane, typeMephisto, typeSpider, typeDungeon, typeSewer3,
+		typeLava, typeTemple, typeIce, typeBaal, typeHell:
 	default:
 		return nil, fmt.Errorf("%w: level %d LevelType %d", ErrUnsupported, p.LevelID, rec.LevelType)
 	}
 
-	l := &level{rec: mz, typ: rec.LevelType, id: p.LevelID, tbl: t}
+	l := &level{rec: mz, typ: rec.LevelType, id: p.LevelID, tbl: t, p: p}
 	l.seed = *d2rand.LevelSeed(p.BaseSeed, uint32(p.LevelID))
 
 	lw, lh := rec.SizeX[p.Difficulty], rec.SizeY[p.Difficulty]
@@ -649,26 +764,32 @@ func Generate(t Tables, p Params) (*Result, error) {
 	target := l.target(p.Difficulty, p)
 
 	switch l.typ {
-	case typeCave, typeCrypt:
-		if err := l.fillRooms(target); err != nil {
+	case typeCave, typeCrypt, typeJail, typeCatacombs:
+		if err := l.buildAct1(target, res); err != nil {
 			return nil, err
 		}
-	case typeJail:
-		l.buildRing(2)
 
-		if err := l.fillRooms(target); err != nil {
+		l.normalize(ox, oy) // NormalizeMazeRooms (verified as a bbox translate)
+	case typeLava, typeTemple, typeIce, typeBaal, typeHell:
+		done, err := l.buildAct45(target, res)
+		if err != nil {
 			return nil, err
 		}
-	case typeCatacombs:
-		l.catacombsStart(p.LevelID == 0x22)
 
-		if err := l.fillRooms(target); err != nil {
+		if !done {
+			l.normalize(ox, oy)
+		}
+	default:
+		done, err := l.buildAct23(target, res)
+		if err != nil {
 			return nil, err
+		}
+
+		if !done {
+			l.normalize(ox, oy)
 		}
 	}
 
-	l.finish(&res.Notes)
-	l.normalize(ox, oy) // NormalizeMazeRooms (verified as a bbox translate)
 	l.themeRooms()
 	l.commit(p, res)
 	res.Seed = l.seed
@@ -692,6 +813,10 @@ func (l *level) commit(p Params, res *Result) {
 		}
 
 		file := l.chooseFile(r, rolled, pr.Files)
+		if file < 0 && hasDef {
+			file = 0 // Files==0 rows: the preset map keeps file index 0 (verified on the arcane rooms)
+		}
+
 		out := Room{X: r.x, Y: r.y, W: r.w, H: r.h, Def: r.def, File: file, Locked: r.locked}
 
 		if file >= 0 && file < len(pr.File) {
@@ -699,13 +824,20 @@ func (l *level) commit(p Params, res *Result) {
 		}
 
 		for _, n := range r.nb {
-			out.Doors |= dirMask[n.dir]
+			out.Doors |= maskOf(n.dir)
 			out.Links = append(out.Links, idx[n.r])
 		}
 
-		if p.GateSteps != nil && out.FileName != "" {
-			for k := p.GateSteps(out.FileName); k > 0; k-- {
-				l.seed.Step()
+		// DS1 object RNG gates run once per preset room, not per 8x8 chunk
+		// (verified by the emulator: constant steps per file; only a few
+		// warp-room files have any).
+		gate := 0
+
+		if out.FileName != "" {
+			if p.GateSteps != nil {
+				gate = p.GateSteps(out.FileName)
+			} else {
+				gate = defaultGateSteps(out.FileName)
 			}
 		}
 
@@ -715,14 +847,19 @@ func (l *level) commit(p Params, res *Result) {
 		// (rows outer, columns inner); one level-seed step each (verified).
 		if r.w <= 12 && r.h <= 12 {
 			l.seed.Step()
+			l.gate(gate)
 			res.Chunks = append(res.Chunks, Chunk{i, r.x, r.y, r.w, r.h})
 
 			continue
 		}
 
+		gate1 := gate
+
 		for y := 0; y < r.h; y += 8 {
 			for x := 0; x < r.w; x += 8 {
 				l.seed.Step()
+				l.gate(gate1)
+				gate1 = 0
 				res.Chunks = append(res.Chunks, Chunk{i, r.x + x, r.y + y, imin(8, r.w-x), imin(8, r.h-y)})
 			}
 		}
@@ -737,9 +874,14 @@ func (l *level) commit(p Params, res *Result) {
 	}
 
 	res.Notes = append(res.Notes,
-		"unverified: DS1 object RNG gates (A.9) not applied unless Params.GateSteps is set",
 		"unverified: chunk size for rooms that are not multiples of 8",
 		"unverified: level origin for levels with Depend/negative Offset")
+}
+
+func (l *level) gate(n int) {
+	for ; n > 0; n-- {
+		l.seed.Step()
+	}
 }
 
 func imin(a, b int) int {

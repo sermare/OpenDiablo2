@@ -28,6 +28,11 @@ func difficultyLevelsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			LifeStealDivisor:       d.Number("LifeStealDivisor"),
 			ManaStealDivisor:       d.Number("ManaStealDivisor"),
 			StaticFieldMin:         d.Number("StaticFieldMin"),
+			GambleRare:             d.Number("GambleRare"),
+			GambleSet:              d.Number("GambleSet"),
+			GambleUnique:           d.Number("GambleUnique"),
+			GambleUber:             d.Number("GambleUber"),
+			GambleUltra:            d.Number("GambleUltra"),
 		}
 		switch record.Name {
 		case "Normal":
