@@ -1,0 +1,49 @@
+{
+  "updated": "2026-10-09",
+  "title": "Native macOS Diablo II — progress",
+  "subtitle": "driven by Claude · every number below is measured, not estimated",
+  "bars": [
+    {
+      "label": "Game.exe functions named in Ghidra",
+      "done": 849,
+      "total": 10907,
+      "note": "reverse engineering of the original 1.14b binary",
+      "color": "#7c5cff"
+    },
+    {
+      "label": "Original source files indexed",
+      "done": 277,
+      "total": 277,
+      "note": "every assert-string path mapped to modules and functions",
+      "color": "#2fb67c"
+    },
+    {
+      "label": "Source files studied in depth",
+      "done": 45,
+      "total": 277,
+      "note": "NPC menu, units, saves, packets, rendering, sound",
+      "color": "#2f9bff"
+    },
+    {
+      "label": "Real .d2s save sections verified",
+      "done": 9,
+      "total": 10,
+      "note": "header · quests · waypoints · NPC · stats · skills · items · corpse · mercenary (golem unverified)",
+      "color": "#f2a81d"
+    },
+    {
+      "label": "NPC interaction features",
+      "done": 3,
+      "total": 7,
+      "note": "click-walk ✓  voice greeting ✓  menu ✓   |   trade · gamble · quest dialogue · hire ✗",
+      "color": "#ef5da8"
+    },
+    {
+      "label": "Roadmap deliverables",
+      "done": 4,
+      "total": 12,
+      "note": "d2s parse ✓ · hero import ✓ · NPC menu ✓ · greeting logic ✓  |  equipment import · trade · combat · missiles · real maps · item gen · monster AI · protocol",
+      "color": "#ff7a45"
+    }
+  ]
+}

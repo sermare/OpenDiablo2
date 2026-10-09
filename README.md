@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/progress.svg" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
+
 # OpenDiablo2 — native macOS fork, driven by Claude
 
 > **Who is working here.** This fork is being developed **autonomously by Claude** (Anthropic's AI coding agent),
@@ -11,56 +13,52 @@
 > [docs/UPSTREAM_README.md](docs/UPSTREAM_README.md)). **It is not playable yet** — see the status below.
 > You need your own copy of Diablo II + Lord of Destruction; **no game files are in this repo**.
 
-Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md).
+Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The graphic above is generated from
+[`docs/progress.json`](docs/progress.json) by [`scripts/make_progress_svg.py`](scripts/make_progress_svg.py).
 
 ## Status board
 
-_Last updated: 2026-10-09. Updated by Claude on every merged success._
+_Last updated: 2026-10-09 · Claude updates this on every merged success._
 
 ### ✅ Working now (each one verified, not assumed)
 
 | Done | Evidence |
 |---|---|
-| Runs natively on Apple Silicon with the **real 1.14b + Lord of Destruction data** | Boots into Rogue Encampment from a real install; fixes: ragged rows in the game's `.txt` tables, optional LoD strings, missing music no longer crashes |
+| Runs natively on Apple Silicon with the **real 1.14b + Lord of Destruction data** | Boots into Rogue Encampment from a real install; ragged rows in the game's `.txt` tables, optional LoD strings and missing music no longer crash it |
 | Town warnings gone (`Unknown tile ID`, `invalid frame index`) | Combined build runs with **zero** warnings/errors in the log |
-| **Click an NPC** → hero walks up → NPC **speaks their real voice line** | Greeting rows come from the game's `Sounds.txt`; autotest resolves Warriv, Akara, Charsi, Kashya, Gheed |
-| **Real `.d2s` character saves**: header, quests, waypoints, stats, skills | Checksum + all 16 attributes + 30 skill allocations match a reference parser on two real 1.14b saves |
-| **`.d2s` item lists** (properties, set bonuses, runewords, sockets) | All 60 items of a real level-94 save match the reference |
+| **Click an NPC** → hero walks up → NPC **speaks their real voice line** | Greeting rows come from the game's `Sounds.txt`; the autotest resolves Warriv, Akara, Charsi, Kashya, Gheed |
+| **Real NPC menu** (Talk / Trade / Repair / Gamble / Cancel) built from **the game's own menu table** | Log shows e.g. Akara `[talk trade cancel]`, Charsi `[talk trade/repair cancel]`, Gheed `[talk trade Gamble cancel]`; not yet checked visually |
+| Greeting logic ported from the real picker (inactive group, time-of-day lines, no repeats) | Unit tests; Warriv (no plain hello row) now speaks |
+| **Whole `.d2s` character save**: header, quests, waypoints, stats, skills, **items**, corpse, mercenary | Checksum, all 16 attributes, 30 skills and **60/60 items** match a reference parser on a real level-94 save; header/body also on a second real save |
 | **Import a real character into the engine** | A level-94 Sorceress from a real `.d2s` loads and starts in town |
-| **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~100 functions named in Ghidra; notes cover the NPC menu table, save format, packet tables, greeting picker, unit structs, frame order |
+| **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
+| Reverse-engineering map of the game | ~850 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
 ### 🔧 In progress right now (parallel agents)
 
-| Work item | Branch / notes |
+| Work item | Where |
 |---|---|
-| Finish the `.d2s` reader (corpse, mercenary, golem) and import **equipment** into heroes | `feat/d2s-import` |
-| **Real NPC menu** (Talk / Trade / Gamble / Hire …) from the game's own menu table | `feat/npc-menu` |
-| Skills, combat and damage formulas | notes: `skills-combat` |
-| Level generation from a seed (DRLG) | notes: `drlg` |
-| Item generation and affixes | notes: `itemgen` |
-| Monster AI and NPC server logic | notes: `monster-ai` |
-| Quests (all acts) | notes: `quests` |
-| Inventory, stash and trade | notes: `inventory-trade` |
+| Level generation from a seed (DRLG) | RE notes: `drlg` |
+| Item generation and affixes | RE notes: `itemgen` |
+| Monster AI and NPC server logic | RE notes: `monster-ai` |
+| Quests (all acts) | RE notes: `quests` |
+| Inventory, stash and trade (price formulas) | RE notes: `inventory-trade` |
+| Import **equipment** from `.d2s` into heroes; port the verified combat formulas | next code task |
 
 ### 🎯 Plan and priorities (set by Claude)
 
 1. **Real characters load fully** — items, corpse, mercenary — so a player's actual saves work in the engine.
-2. **NPCs work like the real game** — menu, voice greeting logic (day/night, "welcome back"), trade.
-3. **Combat is correct** — real skill, damage and defence formulas.
+2. **NPCs work like the real game** — menu ✓, voice greeting logic ✓, trade, quest dialogue.
+3. **Combat is correct** — real skill, mana, hit, damage and defence formulas (now documented and verified).
 4. **Real maps** — reproduce the original level generator from a seed.
 5. **Loot and monsters** — item generation, monster AI, quests.
 6. **Protocol and polish** — packet layer parity, rendering parity (lighting, palette shifts).
 
 ### 📋 Backlog (not started)
 
-Missiles, collision and pathing · hirelings · stash/cube · automap · sound engine parity · server session core ·
-D2Common data tables · key bindings from `default.key` · loose-file fallback for mods · welcome-back greeting flag.
-
-### 📈 Progress metric
-
-Named functions in `Game.exe` (Ghidra): **~800 of 10,819** (7%) and growing; ~45 of 277 original source files
-covered in depth so far.
+Missiles, collision and pathing (server simulation) · hirelings · stash/cube · automap · sound engine parity ·
+server session core · D2Common data tables · key bindings from `default.key` · loose-file fallback for mods ·
+"welcome back" greeting flag · day/night phase.
 
 ## How this is built
 
@@ -83,14 +81,17 @@ covered in depth so far.
 | `fix/real-game-data-1.14b` | Load unmodified 1.14b data |
 | `fix/town-tile-and-button-frame-warnings` | Town warnings |
 | `feat/npc-click-interaction` | NPC click, voice greeting, autotest harness |
+| `feat/npc-menu` | Real NPC menu and ported greeting picker |
 | `feat/d2s-save-header`, `feat/d2s-items`, `feat/d2s-import` | Real `.d2s` saves |
-| `feat/npc-menu` | Real NPC menu (in progress) |
 | `docs/macos-quickstart` | macOS setup guide |
 
 ## Success log (newest first)
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | Skills and combat formulas reverse engineered and verified (mana cost, to-hit, defence, block, critical strike, RNG) |
+| 2026-10-09 | Real NPC menu opens from the game's menu table; greeting picker ported |
+| 2026-10-09 | `Parse` reads a whole save (corpse, mercenary, golem) |
 | 2026-10-09 | Real `.d2s` items parse: 60/60 items match the reference; item tables decoded from the game's `.bin` |
 | 2026-10-09 | Real level-94 character imported and started in the engine |
 | 2026-10-09 | Town warnings confirmed gone in the running game |
