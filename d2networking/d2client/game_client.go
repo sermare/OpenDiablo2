@@ -249,10 +249,13 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 	if player.ID == g.PlayerID {
 		g.Progress, g.Difficulty = player.Progress, player.Difficulty
 		g.Level = d2level.RogueEncampment
+		newPlayer.Progress, newPlayer.QuestDifficulty = player.Progress, int(player.Difficulty)
 
 		if g.Progress == nil {
 			g.Progress = (&d2hero.HeroState{}).EnsureProgress()
 		}
+
+		newPlayer.Progress = g.Progress // the quest system works on it in place
 	}
 
 	return nil

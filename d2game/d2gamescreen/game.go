@@ -169,6 +169,7 @@ type Game struct {
 	autoPanel            autoPanelState
 	autoEquip            autoEquipState
 	levelStatusAcc       float64
+	questRT              *questRuntime
 	death                deathState
 
 	renderer      d2interface.Renderer
@@ -304,6 +305,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceAutoSound(elapsed)
 	v.advanceAutoTest(elapsed)
 	v.advanceAutoScript(elapsed)
+	v.advanceQuests(elapsed)
 	v.advanceAutosave(elapsed)
 	v.advanceGroundInteraction(elapsed)
 	v.advanceObjects(elapsed)
@@ -511,6 +513,7 @@ func (v *Game) advanceNPCInteraction(_ float64) {
 		if dist > npcMenuLeaveDistance {
 			v.Infof("NPC menu closed: walked away from %q", v.npcTarget.Label())
 			menu.Close()
+			v.questClose(v.npcTarget)
 
 			v.npcTarget = nil
 
@@ -562,10 +565,21 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 	switch row.Action {
 	case d2player.NPCActionCancel:
 		v.Infof("NPC menu: Cancel")
+		v.questClose(npc)
+
 		v.npcTarget = nil
 	case d2player.NPCActionTalk:
+		if v.questTalk(npc) {
+			v.gameControls.NPCMenu.Close()
+			v.Infof("NPC menu: Talk with %q (quest speech)", npc.Label())
+
+			return
+		}
+
 		path := v.playNPCGreeting(npc.Label())
 		v.Infof("NPC menu: Talk with %q (voice %q)", npc.Label(), path)
+	case d2player.NPCActionTopic:
+		v.questTopic(npc, row.StringID)
 	case d2player.NPCActionTrade, d2player.NPCActionTradeRepair:
 		v.openTrade(npc, uint32(time.Now().UnixNano()))
 	case d2player.NPCActionHire:
@@ -654,6 +668,8 @@ func (v *Game) playNPCGreeting(name string) string {
 	if v.returnGreet == nil {
 		v.returnGreet = returnGreetings{}
 	}
+
+	v.armReturnGreeting(name)
 
 	set := loadGreetingSet(v.asset.Records.Sound.Details, name)
 

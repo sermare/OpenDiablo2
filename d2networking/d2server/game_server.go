@@ -519,6 +519,12 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		}
 		playerState.Containers = savePacket.Player.Containers
 
+		// the quest system's changes (the server owns the waypoints)
+		if qp := savePacket.Player.Progress; qp != nil {
+			sp := playerState.EnsureProgress()
+			sp.Quests, sp.NPC = qp.Quests, qp.NPC
+		}
+
 		// a hero that died has its equipment on the corpse (or got it back):
 		// the client's equipment is the truth from then on
 		if savePacket.Player.Death != nil {

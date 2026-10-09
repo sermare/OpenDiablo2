@@ -215,6 +215,7 @@ func NewGameControls(
 		questLog:       questLog,
 		HelpOverlay:    helpOverlay,
 		NPCMenu:        NewNPCMenu(asset, ui),
+		Speech:         NewSpeechBubble(ui),
 		Waypoints:      NewWaypointPanel(asset, ui),
 		keyMap:         keyMap,
 		bottomMenuRect: &d2geom.Rectangle{
@@ -332,6 +333,9 @@ type GameControls struct {
 	isSinglePlayer         bool
 	mapEngine              *d2mapengine.MapEngine
 	automap                *Automap // see automap.go
+
+	// Speech shows the subtitle of NPC speech and short notices (quest log updated).
+	Speech *SpeechBubble
 
 	*d2util.Logger
 }
@@ -976,6 +980,7 @@ func (g *GameControls) Advance(elapsed float64) error {
 	g.advancePotions(elapsed)
 	g.automap.Advance(elapsed)
 	g.questLog.Advance(elapsed)
+	g.Speech.Advance(elapsed)
 
 	if g.PartyPanel != nil {
 		g.PartyPanel.Advance(elapsed)
@@ -1080,6 +1085,7 @@ func (g *GameControls) Render(target d2interface.Surface) error {
 	g.cube.Render(target)
 	g.belt.Render(target)
 	g.NPCMenu.Render(target)
+	g.Speech.Render(target)
 	g.Waypoints.Render(target)
 
 	if err := g.escapeMenu.Render(target); err != nil {
@@ -1096,6 +1102,10 @@ func (g *GameControls) renderPanels(target d2interface.Surface) error {
 
 	return nil
 }
+
+// QuestLog returns the quest log panel, so the quest system can feed it the
+// real quest states.
+func (g *GameControls) QuestLog() *QuestLog { return g.questLog }
 
 // SetZoneChangeText sets the zoneChangeText
 func (g *GameControls) SetZoneChangeText(text string) {
