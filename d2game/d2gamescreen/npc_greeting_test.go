@@ -61,3 +61,36 @@ func TestPickGreetingAvoidsRepeat(t *testing.T) {
 		last = got
 	}
 }
+
+type fakePhase int
+
+func (f fakePhase) Phase() int { return int(f) }
+
+func TestGreetingUsesPhaseSource(t *testing.T) {
+	set := loadGreetingSet(akaraSounds(), "akara")
+	zero := func(int) int { return 0 }
+
+	for phase, want := range map[int]string{
+		0: "akara_greeting_time_3", 1: "akara_greeting_time_1", 2: "akara_greeting_time_2",
+		3: "akara_greeting_time_2", 4: "akara_greeting_time_3", 5: "akara_greeting_time_3",
+	} {
+		var src dayPhaseSource = fakePhase(phase)
+		if got := pickGreeting(set, greetingNormal, src.Phase(), "", map[string]string{}, zero); got != want {
+			t.Errorf("phase %d: %s want %s", phase, got, want)
+		}
+	}
+}
+
+func TestDayClockAdvances(t *testing.T) {
+	c := newDayClock()
+	if c.Phase() != 1 {
+		t.Fatalf("start phase %d", c.Phase())
+	}
+
+	// 241 ticks at 25/s is about 9.64 s: dawn becomes day.
+	c.Advance(9.7)
+
+	if c.Phase() != 2 {
+		t.Errorf("phase after 9.7s = %d", c.Phase())
+	}
+}
