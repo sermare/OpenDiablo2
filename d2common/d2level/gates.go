@@ -7,12 +7,18 @@ import "github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 // table here against Levels.txt.
 //
 // The QuestFlag / QuestFlagEx columns of Levels.txt name a quest RECORD SLOT
-// (the same slot numbers as d2s.QuestSlot): the level only loads once that slot
-// shows the quest done. The values match the slots of quests.md: 11 = The
-// Tainted Sun, 13 = The Summoner, 21 = The Blackened Temple, 26 = Terror's End
-// (classic Cow Level), 39 = Rite of Passage, 40 = Eve of Destruction (expansion
-// Cow Level). That reading is an inference from the numbers (it fits all of
-// them) and UNVERIFIED in the binary.
+// (the same slot numbers as d2s.QuestSlot): the values match the slots of
+// quests.md: 11 = The Tainted Sun, 13 = The Summoner, 21 = The Blackened
+// Temple, 26 = Terror's End (classic Cow Level), 39 = Rite of Passage, 40 = Eve
+// of Destruction (expansion Cow Level).
+//
+// VERIFIED in Game.exe: the Levels.txt loader (DATATBL_LoadLevelsTable_Layout
+// 0x61dd60) reads QuestFlag and QuestFlagEx as the first two words of the
+// record, and the portal-use handler SERVER_UsePortalObject (0x582700) feeds
+// them (QuestFlagEx when the game is an expansion game) to QUESTREC_GetFlag
+// (0x65e820) with bit 0, the "done" bit: a town portal object (class 59) whose
+// level has a QuestFlag > 0 is refused until that slot is done. The column is
+// NOT consulted by the warp-tile handler (see the gates below).
 
 // levelQuestFlag is {QuestFlag, QuestFlagEx} of the levels that have one
 // (Levels.txt, patch_d2).
@@ -40,20 +46,33 @@ func LevelQuestFlag(level int, expansion bool) int {
 
 // portalLinks are the links no Levels.txt Vis slot carries: the level is
 // entered through a portal object or a script. From is the level that holds the
-// portal. All are Source notes.
+// portal. The portal factory is QUEST_Func_56ae80 (0x56ae80): it is called with
+// (room, x, y, destination level, ..., object class, permanent flag).
 //
-//   - 1 -> 39: the Cow Level portal is opened in the Rogue Encampment (play rule).
-//   - 4 -> 38: the Cairn Stones portal in Stony Field leads to Tristram.
-//   - 54 -> 74: Palace Cellar 3 holds the portal to the Arcane Sanctuary (the
-//     quest record asks for level 74; where the portal stands is a play rule).
-//   - 74 -> 46: the Summoner's death opens the portal to the Canyon of the
-//     Magi; Levels.txt gives the Canyon QuestFlag 13 (The Summoner), and no
-//     warp leads there.
-//   - 66..72 -> 73: the Horadric orifice of the true tomb opens the way to
-//     Duriel's Lair. Which of the seven is the true tomb depends on the seed
-//     (tombA of the act), so every tomb is listed.
-//   - 109 -> 121: Anya's red portal to Nihlathak's Temple (play rule; the
-//     Betrayal of Harrogath quest names level 0x79 = 121, quests.md).
+//   - 1 -> 39: the Cow Level portal. VERIFIED that the factory lets a portal to
+//     level 39 be made in town (a whitelist of destinations 39 and 133..136, and
+//     only for object class 60, the permanent portal); the call site that makes
+//     it was not located (no literal 0x27 among the 11 callers), so the quest
+//     rules (Terror's End or Eve of Destruction done, Wirt's Leg) are play rules.
+//   - 4 -> 38: VERIFIED. The Cairn Stones solved: the Search for Cain code
+//     (call at 0x590b92) makes a permanent portal (class 60) to level 0x26 =
+//     Tristram beside the Cairn Stone in Stony Field.
+//   - 54 -> 74: UNVERIFIED. No portal factory call names level 74. D2MOO calls
+//     the Palace Cellar 3 to Arcane Sanctuary link an object (class 298), not a
+//     portal; where the object stands is a play rule.
+//   - 74 -> 46: VERIFIED. The Arcane Sanctuary quest code on the journal message
+//     (call at 0x598d56) makes a permanent portal to level 0x2e = Canyon of the
+//     Magi beside the player (who is in the sanctuary).
+//   - 66..72 -> 73: UNVERIFIED. D2MOO opens a "portal to Duriel's lair" object
+//     (class 100) at the staff orifice; no factory call names level 73. Which of
+//     the seven is the true tomb depends on the seed (tombA of the act), so every
+//     tomb is listed.
+//   - 109 -> 121: VERIFIED. Anya's red portal: two quest call sites (0x588ea9,
+//     0x589b7d) make a permanent portal (class 60) to level 0x79 = Nihlathak's
+//     Temple in Harrogath.
+//   - 109 -> 133..136: the Pandemonium portals (not in this table): the factory
+//     whitelist lets class 60 portals to 133..136 be made in Harrogath, the
+//     creating code (key/Hell rules) was not located.
 //
 //nolint:gochecknoglobals // static data
 var portalLinks = []struct{ From, To int }{
@@ -80,21 +99,30 @@ type Gate struct {
 //nolint:gochecknoglobals // static data
 var extraGates = []Gate{
 	{From: LevelTravincal, To: LevelDurance1, Act: 3, Quest: 2,
-		Why: "the stairs stay sealed until Khalim's Will smashes the Compelling Orb (CheckActThreeWarp)"},
-	{From: 66, To: 73, Act: 2, Quest: 2, Why: "Horadric Staff in the orifice (play rule)"},
-	{From: 67, To: 73, Act: 2, Quest: 2, Why: "Horadric Staff in the orifice (play rule)"},
-	{From: 68, To: 73, Act: 2, Quest: 2, Why: "Horadric Staff in the orifice (play rule)"},
-	{From: 69, To: 73, Act: 2, Quest: 2, Why: "Horadric Staff in the orifice (play rule)"},
-	{From: 70, To: 73, Act: 2, Quest: 2, Why: "Horadric Staff in the orifice (play rule)"},
-	{From: 71, To: 73, Act: 2, Quest: 2, Why: "Horadric Staff in the orifice (play rule)"},
-	{From: 72, To: 73, Act: 2, Quest: 2, Why: "Horadric Staff in the orifice (play rule)"},
-	{From: 4, To: 38, Act: 1, Quest: 4, Why: "the Cairn Stones open once the Search for Cain is under way (play rule)"},
-	{From: 109, To: 121, Act: 5, Quest: 4, Why: "Anya opens the portal for Betrayal of Harrogath (play rule; Prison of Ice comes first)"},
+		Verified: true,
+		Why:      "VERIFIED: SERVER_EnterWarpTile 0x553140 refuses a warp into level 100 (0x5b9b60) while the Blackened Temple node (quest id 19, slot 21) has its private byte +0xc clear; the byte is set when the Orb is smashed and restored on join from the Khalim's Will slot (18) bit 0. Coming from level 101 is always allowed (CheckActThreeWarp)"},
+	{From: 66, To: 73, Act: 2, Quest: 6, Verified: true, Why: "warp into Duriel's lair refused while the Seven Tombs node (id 13, slot 14) is active and its private byte +0xb is clear (0x59b700); that the Horadric Staff in the orifice sets the byte was not traced"},
+	{From: 67, To: 73, Act: 2, Quest: 6, Verified: true, Why: "warp into Duriel's lair refused while the Seven Tombs node (id 13, slot 14) is active and its private byte +0xb is clear (0x59b700); that the Horadric Staff in the orifice sets the byte was not traced"},
+	{From: 68, To: 73, Act: 2, Quest: 6, Verified: true, Why: "warp into Duriel's lair refused while the Seven Tombs node (id 13, slot 14) is active and its private byte +0xb is clear (0x59b700); that the Horadric Staff in the orifice sets the byte was not traced"},
+	{From: 69, To: 73, Act: 2, Quest: 6, Verified: true, Why: "warp into Duriel's lair refused while the Seven Tombs node (id 13, slot 14) is active and its private byte +0xb is clear (0x59b700); that the Horadric Staff in the orifice sets the byte was not traced"},
+	{From: 70, To: 73, Act: 2, Quest: 6, Verified: true, Why: "warp into Duriel's lair refused while the Seven Tombs node (id 13, slot 14) is active and its private byte +0xb is clear (0x59b700); that the Horadric Staff in the orifice sets the byte was not traced"},
+	{From: 71, To: 73, Act: 2, Quest: 6, Verified: true, Why: "warp into Duriel's lair refused while the Seven Tombs node (id 13, slot 14) is active and its private byte +0xb is clear (0x59b700); that the Horadric Staff in the orifice sets the byte was not traced"},
+	{From: 72, To: 73, Act: 2, Quest: 6, Verified: true, Why: "warp into Duriel's lair refused while the Seven Tombs node (id 13, slot 14) is active and its private byte +0xb is clear (0x59b700); that the Horadric Staff in the orifice sets the byte was not traced"},
+	{From: 4, To: 38, Act: 1, Quest: 4, Verified: true, Why: "the Search for Cain code makes the portal when the stones are solved (0x590b92)"},
+	{From: 109, To: 121, Act: 5, Quest: 4, Verified: true, Why: "Betrayal of Harrogath code makes Anya's portal (0x588ea9, 0x589b7d)"},
+	{From: 120, To: 118, Act: 5, Quest: 5, Verified: true, Why: "warp from Arreat Summit refused until the Rite of Passage node (id 35) private byte +0 is set (0x58ae70)"},
+	{From: 120, To: 128, Act: 5, Quest: 5, Verified: true, Why: "same Rite of Passage check as 120 -> 118 (0x58ae70)"},
+	{From: 131, To: 132, Act: 5, Quest: 6, Verified: true, Why: "warp into the Worldstone Chamber refused unless the Eve of Destruction node (id 36) private byte +0x86 is 1 (0x58c3f0)"},
 	// Level features that are gated inside a level rather than on a link: To is the
 	// level, From 0, Why starts with the feature.
 	{To: 107, Act: 4, Quest: 3, Verified: true,
 		Why: "Hellforge object (objects 376 operates quest id 24, quests.md)"},
-	{To: 108, Act: 4, Quest: 2, Why: "Chaos Sanctuary seals: Terror's End names levels 0x67 and 0x6c = 108 (quests.md); that the seals themselves use this quest's record is UNVERIFIED"},
+	// River of Flame -> Chaos Sanctuary needs no quest: level 108 is in neither
+	// the warp-tile gate list (0x543a70) nor Levels.txt QuestFlag (VERIFIED). The
+	// seals only call up Diablo (D2MOO, UNVERIFIED in the exe); Terror's End just
+	// watches levels 0x67 and 0x6c = 108 (0x5b2ad0). This entry is a feature
+	// marker, not an entry gate.
+	{To: 108, Act: 4, Quest: 2, Why: "Chaos Sanctuary seals: feature marker only, not an entry gate; Terror's End watches level 0x6c (0x5b2ad0)"},
 }
 
 // slotQuest finds the (act, quest) of a record slot.
@@ -167,9 +195,16 @@ func GatesOf(from, to int) []Gate {
 }
 
 // TownPortalDestination is where a town portal cast in a level leads: the town
-// of that level's act (0 for ids outside the game). The original opens the
-// portal to the act's start level; this is the play rule, UNVERIFIED in the
-// binary.
+// of that level's act (0 for ids outside the game). VERIFIED: the cast routine
+// (0x5bbe10) asks DRLG_GetActStartLevel (0x61a8b0, table 0x6e92c8 = 1, 40, 75,
+// 103, 109) for the act of the room's level.
 func TownPortalDestination(level int) int {
 	return ActStartLevel(ActOfLevel(level))
+}
+
+// TownPortalCastable reports whether the town portal scroll/tome works in the
+// level. VERIFIED (0x5bbe10): not in a town room and not in level 136
+// (Pandemonium Finale, 0x88).
+func TownPortalCastable(level int) bool {
+	return level >= 1 && level <= 136 && !IsTown(level) && level != 136
 }
