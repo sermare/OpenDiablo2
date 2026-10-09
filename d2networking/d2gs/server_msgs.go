@@ -41,6 +41,9 @@ const (
 	loadActSize           = 12
 	playerLeaveSize       = 5
 	tunnelPayloadMax      = 0x1fd
+	// maxTunnelMessage bounds the reassembly buffer so a peer that never sends the
+	// "last" flag cannot grow memory without limit (our own limit, not the exe's).
+	maxTunnelMessage = 32 << 20
 )
 
 func putName(dst []byte, name string) {
@@ -330,7 +333,9 @@ func ParseClientChat(b []byte) (string, error) {
 	}
 
 	n := strlen(b, 3)
-	if n < 0 {
+	// handler 0x5484a0 (verified): text shorter than 0x100 and the packet must be
+	// longer than strlen+4, i.e. the NUL-terminated recipient field must exist.
+	if n < 0 || n > maxChatText || len(b) <= n+4 {
 		return "", ErrBadLength
 	}
 
@@ -427,6 +432,12 @@ func (a *TunnelAssembler) Add(pkt []byte) (typ byte, data []byte, done bool, err
 		a.buf = nil
 
 		return 0, nil, false, fmt.Errorf("%w: tunnel chunk type %d inside message %d", ErrBadLength, pkt[3], a.typ)
+	}
+
+	if len(a.buf)+len(pkt)-5 > maxTunnelMessage {
+		a.buf = nil
+
+		return 0, nil, false, fmt.Errorf("%w: tunnel message exceeds %d bytes", ErrTooLarge, maxTunnelMessage)
 	}
 
 	a.buf = append(a.buf, pkt[5:]...)

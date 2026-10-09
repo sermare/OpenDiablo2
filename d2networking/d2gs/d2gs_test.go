@@ -49,7 +49,8 @@ func TestExpectedSizeClient(t *testing.T) {
 	}{
 		{0x00, 0, SizeInvalid},
 		{0x01, 5, SizeFixed}, // (G) walk: 0x5475b0 rejects len != 5
-		{0x02, 0, SizeUnknown},
+		{0x02, 9, SizeFixed}, // (G) 0x547740 rejects len != 9
+		{0x0b, 0, SizeUnknown},
 		{0x3c, 9, SizeFixed}, // (G) 0x549ca0 rejects len != 9
 		{0x13, 9, SizeFixed}, // (G) handler 0x548990 rejects len != 9
 		{0x16, 13, SizeFixed},
@@ -254,7 +255,7 @@ func TestDecoderErrors(t *testing.T) {
 		{"s2c invalid id", ServerToClient, []byte{0x17, 0, 0}, ErrInvalidID},
 		{"s2c id too high", ServerToClient, []byte{0xb5}, ErrInvalidID},
 		{"s2c bad variable", ServerToClient, []byte{0x3e, 1}, ErrBadLength},
-		{"c2s unknown size", ClientToServer, []byte{0x02, 0, 0, 0, 0}, ErrUnknownSize},
+		{"c2s unknown size", ClientToServer, []byte{0x0b, 0, 0, 0, 0}, ErrUnknownSize},
 		{"c2s control id", ClientToServer, []byte{0x67}, ErrInvalidID},
 		{"c2s zero id", ClientToServer, []byte{0x00}, ErrInvalidID},
 	}
@@ -345,6 +346,13 @@ func TestClientMessagesRoundTrip(t *testing.T) {
 		&CastOnLocation{Right: false, X: 7, Y: 8},
 		&CastOnLocation{Right: true, X: 9, Y: 10},
 		&SelectSkill{Skill: 36, Right: true, ItemID: 0xffffffff},
+		&UnitOrder{ID: 0x02, UnitType: 1, UnitID: 9}, &UnitOrder{ID: 0x0d, UnitType: 1, UnitID: 9},
+		&UnitOrder{ID: 0x04}, &UnitOrder{ID: 0x06}, &UnitOrder{ID: 0x07}, &UnitOrder{ID: 0x09},
+		&UnitOrder{ID: 0x0a}, &UnitOrder{ID: 0x0e}, &UnitOrder{ID: 0x10}, &UnitOrder{ID: 0x11},
+		&LocationOrder{ID: 0x08, X: 1, Y: 2}, &LocationOrder{ID: 0x0f, X: 3, Y: 4},
+		&ToggleState12{}, &AllocateStat{Stat: 2, Extra: 4}, &AddSkillPoint{Skill: 36},
+		&SetHotkey{Slot: 3, Skill: 0x24, Right: true, ItemID: 0xffffffff}, &NpcTrade{1, 2, 3},
+		&PartyRequest{Action: 5, PlayerID: 77}, &PartyRelation{Action: 4, Flag: 1, PlayerID: 78},
 	}
 	seen := map[byte]bool{}
 	for _, m := range msgs {
@@ -406,7 +414,7 @@ func TestClientDecodeTruncation(t *testing.T) {
 			t.Errorf("id %#x oversize: expected error", id)
 		}
 	}
-	if _, err := DecodeClient([]byte{0x02, 0, 0, 0, 0}); !errors.Is(err, ErrUnknownSize) {
+	if _, err := DecodeClient([]byte{0x0b, 0, 0, 0, 0}); !errors.Is(err, ErrUnknownSize) {
 		t.Errorf("untyped id: %v", err)
 	}
 }

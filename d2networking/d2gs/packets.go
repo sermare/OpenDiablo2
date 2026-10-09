@@ -458,6 +458,24 @@ func DecodeClient(b []byte) (Message, error) {
 		m = &HireMercenary{}
 	case C2SGambleItem:
 		m = &GambleItem{}
+	case 0x02, 0x04, 0x06, 0x07, 0x09, 0x0a, 0x0d, 0x0e, 0x10, 0x11:
+		m = &UnitOrder{ID: b[0]}
+	case 0x08, 0x0f:
+		m = &LocationOrder{ID: b[0]}
+	case C2SToggleState12:
+		m = &ToggleState12{}
+	case C2SAllocateStat:
+		m = &AllocateStat{}
+	case C2SAddSkillPoint:
+		m = &AddSkillPoint{}
+	case C2SNpcTrade:
+		m = &NpcTrade{}
+	case C2SSetHotkey:
+		m = &SetHotkey{}
+	case C2SPartyRelation:
+		m = &PartyRelation{}
+	case C2SPartyRequest:
+		m = &PartyRequest{}
 	default:
 		return nil, fmt.Errorf("%w: no typed decoder for client id %#x", ErrUnknownSize, b[0])
 	}
