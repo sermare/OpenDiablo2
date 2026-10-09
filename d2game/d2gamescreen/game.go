@@ -152,6 +152,8 @@ type Game struct {
 	autoSoundElapsed     float64
 	autoSoundDone        bool
 	ground               groundState
+	objects              objectState
+	autoObject           autoObject
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	monsterTest          *monsterTest
@@ -301,6 +303,8 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceAutoScript(elapsed)
 	v.advanceAutosave(elapsed)
 	v.advanceGroundInteraction(elapsed)
+	v.advanceObjects(elapsed)
+	v.advanceAutoObject(elapsed)
 	v.advanceLevels(elapsed)
 	v.advanceAutoGround(elapsed)
 	v.advanceSound(elapsed)
