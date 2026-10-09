@@ -117,3 +117,9 @@ func RollToHit(r Roller, in ToHitInput) (hit bool, chance, roll int) {
 
 	return hit, chance, roll
 }
+
+// DefenseWithFinalPct is the same as DefenseOverride (kept for the skill
+// oracle audit tests): finalPct is unit stat 0xb6.
+func DefenseWithFinalPct(armorClass, dex, bonusPct, finalPct int) int {
+	return DefenseOverride(armorClass, dex, bonusPct, finalPct)
+}

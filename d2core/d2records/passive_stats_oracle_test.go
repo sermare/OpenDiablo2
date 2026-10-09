@@ -51,7 +51,17 @@ import (
 //     base*pct/100 (minus for base <= 0); then a stat 182 term on the total.
 
 func ln(a, b, l int) int { return a + (l-1)*b }
-func dm(a, b, l int) int { return (110*l*(b-a))/(100*(l+6)) + a }
+// dm is the exe's diminishing-returns routine 0x646ed0 (emulator-verified by
+// the skill calc golden): the integer division 110*l/(l+6) comes FIRST, then
+// a + t*(b-a)/100, capped at b. The older txt formula differs by 1 at times.
+func dm(a, b, l int) int {
+	r := (110*l/(l+6))*(b-a)/100 + a
+	if r > b {
+		r = b
+	}
+
+	return r
+}
 
 type statExp struct {
 	stat string
