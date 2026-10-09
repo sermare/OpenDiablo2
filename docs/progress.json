@@ -7,7 +7,7 @@
       "label": "Game.exe functions named in Ghidra",
       "done": 11235,
       "total": 11257,
-      "note": "original 1.14b binary; 11,147 named by meaning, 88 still auto-labelled; the last 22 are the anti-cheat module, skipped on purpose",
+      "note": "original 1.14b binary; 11,235 named by meaning, 0 auto-labelled; the last 22 are the anti-cheat module, skipped on purpose",
       "color": "#7c5cff"
     },
     {
