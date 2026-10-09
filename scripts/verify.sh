@@ -1,8 +1,4 @@
 #!/bin/zsh
-# Sound: scenarios are muted (OD2_AUTOTEST_MUTE) unless OD2_VERIFY_SOUND=1.
-OD2_VERIFY_MUTE_ENV="OD2_AUTOTEST_MUTE=1"
-[ -n "$OD2_VERIFY_SOUND" ] && OD2_VERIFY_MUTE_ENV=""
-export OD2_VERIFY_MUTE_ENV
 # One-command verification for the macOS fork. Needs a Diablo II 1.14b + LoD
 # install (see docs/macos-quickstart.md). Environment variables (all optional):
 #   D2_TABLES        folder with extracted game tables (itemstatcost.bin, armor.txt, ...)
@@ -61,6 +57,7 @@ fi
 #   scenario_name="human readable title"
 #   scenario_env()    echo shell lines (exports) for the game; may use $save, $tmp, $OD2_PORT
 #   scenario_check()  inspect $log.txt (ANSI-stripped log) and set fail=1 on problems
+#   scenario_unmuted=1       (optional) play real audio (no OD2_AUTOTEST_MUTE); OD2_VERIFY_SOUND=1 does it for all
 #   scenario_warnings_ok=1   (optional) do not fail on [ERROR]/[WARNING] lines
 # Adding a scenario = adding one small file; no edits to this runner are needed.
 # A GUI session is required (the game is started with `open`).
@@ -70,7 +67,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   [ -f "$save" ] || cp "$D2S_SAMPLE_BODY" "$save"
 
   for f in scripts/verify.d/*.sh(N); do
-    unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""
+    unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""
     source "$f"
     step "$scenario_name"
     n=${f:t:r}
@@ -78,7 +75,9 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
     {
       echo '#!/bin/zsh'
       echo "export OD2_PORT=$OD2_PORT"
-      echo "export OD2_AUTOGAME=\"$save\" ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1"
+      echo "export OD2_AUTOGAME=\"$save\" OD2_AUTOEXIT=1"
+      # muted unless OD2_VERIFY_SOUND=1 or the scenario sets scenario_unmuted=1 (real audio, uses the sound device)
+      [ -n "${OD2_VERIFY_SOUND:-}" ] || [ -n "$scenario_unmuted" ] || echo "export OD2_AUTOTEST_MUTE=1"
       scenario_env
       echo "$tmp/od2 2>&1 | tee $log"
     } > $cmd

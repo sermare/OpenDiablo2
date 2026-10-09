@@ -53,14 +53,10 @@ func CreateStream(mpq *MPQ, block *Block, fileName string) (*Stream, error) {
 }
 
 func (v *Stream) loadBlockOffsets() error {
-	if _, err := v.MPQ.file.Seek(int64(v.Block.FilePosition), io.SeekStart); err != nil {
-		return err
-	}
-
 	blockPositionCount := ((v.Block.UncompressedFileSize + v.Size - 1) / v.Size) + 1
 	v.Positions = make([]uint32, blockPositionCount)
 
-	if err := binary.Read(v.MPQ.file, binary.LittleEndian, &v.Positions); err != nil {
+	if err := binary.Read(io.NewSectionReader(v.MPQ.file, int64(v.Block.FilePosition), 1<<32), binary.LittleEndian, &v.Positions); err != nil {
 		return err
 	}
 
@@ -155,13 +151,10 @@ func (v *Stream) bufferData() (err error) {
 }
 
 func (v *Stream) loadSingleUnit() (err error) {
-	if _, err = v.MPQ.file.Seek(int64(v.MPQ.header.HeaderSize), io.SeekStart); err != nil {
-		return err
-	}
-
 	fileData := make([]byte, v.Size)
 
-	if _, err = v.MPQ.file.Read(fileData); err != nil {
+	// ReadAt, not Seek+Read: streams of one archive are read from several goroutines (sound loading)
+	if _, err = v.MPQ.file.ReadAt(fileData, int64(v.MPQ.header.HeaderSize)); err != nil {
 		return err
 	}
 
@@ -192,11 +185,7 @@ func (v *Stream) loadBlock(blockIndex, expectedLength uint32) ([]byte, error) {
 	offset += v.Block.FilePosition
 	data := make([]byte, toRead)
 
-	if _, err := v.MPQ.file.Seek(int64(offset), io.SeekStart); err != nil {
-		return []byte{}, err
-	}
-
-	if _, err := v.MPQ.file.Read(data); err != nil {
+	if _, err := v.MPQ.file.ReadAt(data, int64(offset)); err != nil {
 		return []byte{}, err
 	}
 
