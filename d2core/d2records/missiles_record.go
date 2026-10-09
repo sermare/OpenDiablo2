@@ -1,6 +1,9 @@
 package d2records
 
-import "github.com/OpenDiablo2/OpenDiablo2/d2common/d2calculation"
+import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calc"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calculation"
+)
 
 // Missiles stores all of the MissileRecords
 type Missiles map[int]*MissileRecord
@@ -15,9 +18,12 @@ type MissileCalcParam struct {
 
 // MissileCalc is a calculation for a missile
 type MissileCalc struct {
-	Calc   d2calculation.CalcString
-	Desc   string
-	Params []MissileCalcParam
+	Calc d2calculation.CalcString // the column name (SrvCalc1, ...)
+	// Program is the compiled calc cell of that column (misscalc dialect);
+	// evaluate it with a d2calc.Env.
+	Program *d2calc.Program
+	Desc    string
+	Params  []MissileCalcParam
 }
 
 // MissileLight has the parameters for missile lighting

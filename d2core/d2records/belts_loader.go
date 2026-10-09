@@ -7,9 +7,11 @@ import (
 // nolint:funlen // cant reduce
 func beltsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 	records := make(Belts)
+	rows := 0
 
 	for d.Next() {
 		record := &BeltRecord{
+			Index:     rows,
 			Name:      d.String("name"),
 			NumBoxes:  d.Number("numboxes"),
 			BoxWidth:  d.Number("boxwidth"),
@@ -95,7 +97,20 @@ func beltsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			Box16Top:    d.Number("box16top"),
 			Box16Bottom: d.Number("box16bottom"),
 		}
-		records[record.Name] = record
+		// the "Expansion" marker row has no boxes and is not a belt
+		if record.NumBoxes == 0 {
+			continue
+		}
+
+		rows++
+
+		// the last row of the 800x600 set is also called "uber belt"
+		key := record.Name
+		if _, dup := records[key]; dup {
+			key += "2"
+		}
+
+		records[key] = record
 	}
 
 	if d.Err != nil {

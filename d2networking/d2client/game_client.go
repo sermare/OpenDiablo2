@@ -189,7 +189,15 @@ func (g *GameClient) handleGenerateMapPacket(packet d2netpacket.NetPacket) error
 		return err
 	}
 
-	if mapData.RegionType == d2enum.RegionAct1Town {
+	if lvl := d2mapgen.RealLevel(); lvl != 0 {
+		// OD2_REALMAPS=1: the client builds the same DRLG level as the local
+		// server (the level is not yet sent in the packet, so a remote client
+		// would need the same environment)
+		if err := g.mapGen.GenerateRealMaze(lvl, d2mapgen.HeroMapSeed, 0); err != nil {
+			g.Errorf("real maps: %v; falling back to the Act 1 overworld", err)
+			g.mapGen.GenerateAct1Overworld()
+		}
+	} else if mapData.RegionType == d2enum.RegionAct1Town {
 		g.mapGen.GenerateAct1Overworld()
 	}
 
@@ -222,6 +230,8 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 
 	newPlayer := g.MapEngine.NewPlayer(player.ID, player.Name, player.X, player.Y, 0,
 		player.HeroType, player.Stats, player.Skills, &player.Equipment, player.LeftSkill, player.RightSkill, player.Gold)
+
+	newPlayer.Containers = player.Containers
 
 	g.Players[newPlayer.ID()] = newPlayer
 	g.MapEngine.AddEntity(newPlayer)

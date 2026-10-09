@@ -6,10 +6,19 @@
 // The AI is the pure d2common/d2monster package; this package is the glue and
 // therefore the place where engine-level simplifications are listed:
 //
-//   - Units do not occupy collision cells (no unit-vs-unit blocking).
-//   - Monster attacks resolve at the animation's halfway frame; ranged attacks
-//     are hitscan within 20 subtiles with a line-of-sight check, no missile
-//     flies (missiles.txt travel is not simulated).
+//   - Units occupy one collision cell each (monster flag 0x100, player 0x80,
+//     corpse 0x8000) and block each other through d2path.MaskUnits. Which mask
+//     the original uses for unit blocking is not recorded (UNVERIFIED).
+//   - Monster attacks resolve at the animation's halfway frame. Melee connects
+//     within the reach of the mode (7 subtiles); ranged attacks (a missile
+//     column for the mode) launch a Shot through the Launcher hook: the
+//     built-in launcher flies a straight bolt that is stopped by walls and by
+//     the first hero cell it enters. missiles.txt behaviour beyond velocity is
+//     not simulated; feat/skill-pipeline can replace the launcher.
+//   - Not ported (notes: not read / unverified): forced AI states (flee, fear,
+//     confuse, charm: the state table at 0x73a548), the Summoner, Vulture and
+//     the other bosses, monster-vs-monster targeting, aidel throttling after
+//     hit recovery, champion/unique modifiers (monumod).
 //   - Hero defense is dexterity/4 only (equipment defense is not read).
 //   - Monster level is the monstats Level column (not the area's MonLvl).
 //   - Monster stats use monlvl.txt L-* columns scaled by the monstats ratios.
@@ -37,7 +46,8 @@ const (
 
 	frameSeconds   = 1.0 / 25.0 // the game runs at 25 Hz
 	maxCatchUp     = 0.25       // seconds of simulation per rendered frame, at most
-	corpseSeconds  = 12.0       // corpses are removed after this long
+	corpseSeconds  = 12.0       // corpses are removed after this long (engine choice, UNVERIFIED: the original's timing is not in the notes)
+	blockedRetry   = 8          // refused steps in a row before a blocked monster re-thinks
 	adoptInterval  = 0.5        // seconds between scans for DS1 monster placements
 	replanDistance = 5          // the target moved this far since planning: re-plan (VERIFIED, notes)
 	meleeInRange   = 7          // edge distance at which melee attacks connect (reach, VERIFIED value 7)
@@ -51,6 +61,13 @@ type Options struct {
 	Seed uint32
 	// Difficulty selects the monstats columns.
 	Difficulty d2monster.Difficulty
+	// Classic selects the plain monlvl.txt columns (HP, AC...) instead of the
+	// LoD columns (L-HP...) that the expansion uses (UNVERIFIED which the
+	// original takes; the L- columns are the default).
+	Classic bool
+	// Expansion selects the MonLvl*Ex columns of levels.txt for the area
+	// monster level.
+	Expansion bool
 	// IgnoreTown lets monsters target heroes standing in town (for tests; the
 	// original never aggroes onto players in town).
 	IgnoreTown bool
@@ -62,6 +79,13 @@ type Options struct {
 // Counters tally what happened, for autotest summaries.
 type Counters struct {
 	Spawned, Aggro, Attacks, AttackHits, HeroSwings, HeroHits, Deaths, Drops, HeroDeaths int
+	// Shots is projectiles launched, ShotHits those that reached a hero.
+	Shots, ShotHits int
+	// Packs is natural groups spawned; BlockedSteps counts steps refused
+	// because another unit stood in the way; HitRecoveries counts monsters
+	// interrupted by damage; MaxStack is the most live monsters ever seen in
+	// one subtile (1 when nobody stacks).
+	Packs, BlockedSteps, HitRecoveries, MaxStack int
 }
 
 // unit is a monster plus its engine-side state.
@@ -74,6 +98,8 @@ type unit struct {
 	nextIdle     int // frame of the next idle vocal, 0 = not scheduled
 	nextStep     int // frame of the next footstep, 0 = not walking
 	attackTarget uint32
+	aimX, aimY   int // ground point of the last attack request (Target ID 0)
+	blocked      int // consecutive refused steps
 	removeAt     float64
 }
 
@@ -105,9 +131,15 @@ type Director struct {
 	seenNPC  map[string]bool
 	statByID map[int]*d2records.MonStatRecord
 	targets  map[uint32]*d2mapentity.Player
-	grid     mapGrid
+	grid     mapGrid // static map flags (line of sight)
+	fp       *footprints
+	fpPlayer map[uint32]bool
+	launcher Launcher
 	hero     *d2rand.Seed
 	snd      *rand.Rand
+	packRNG  *d2rand.Seed
+
+	areaLevel int // levels.txt MonLvl of the current area (0 = unknown)
 
 	// Counters are updated as events happen.
 	Counters Counters
@@ -133,7 +165,12 @@ func NewDirector(asset *d2asset.AssetManager, engine *d2mapengine.MapEngine,
 		targets:  map[uint32]*d2mapentity.Player{},
 		grid:     mapGrid{engine},
 		snd:      newSoundRand(opt.Seed),
+		fpPlayer: map[uint32]bool{},
+		packRNG:  d2rand.New(opt.Seed ^ 0x5041434b),
 	}
+
+	d.fp = newFootprints(d.grid)
+	d.launcher = newBoltLauncher(d.grid)
 
 	d.Logger.SetLevel(l)
 	d.Logger.SetPrefix(logPrefix)
@@ -207,6 +244,9 @@ func (d *Director) Spawn(stat *d2records.MonStatRecord, subX, subY int) (*d2mape
 	m.Vitals = d.computeVitals(stat, b)
 	b.Wake = d.frame // think on the next frame
 
+	m.Blocker = func(x, y int) bool { return d.fp.BlockedFor(b.ID, x, y) }
+	d.fp.Move(b.ID, subX, subY, d2path.FlagMonster)
+
 	u := &unit{m: m, b: b}
 	d.units[b.ID] = u
 	d.byEntity[m.ID()] = u
@@ -274,6 +314,7 @@ func (d *Director) step() {
 	d.frame++
 
 	d.indexPlayers()
+	d.launcher.Step()
 
 	for _, u := range d.sortedUnits() {
 		if !d.engineHas(u) {
@@ -282,6 +323,7 @@ func (d *Director) step() {
 		}
 
 		d.sync(u)
+		d.footprint(u)
 		d.handleEvents(u)
 		d.ambientSounds(u)
 
@@ -305,6 +347,7 @@ func (d *Director) engineHas(u *unit) bool {
 }
 
 func (d *Director) forget(u *unit) {
+	d.fp.Remove(u.b.ID)
 	delete(d.units, u.b.ID)
 	delete(d.byEntity, u.m.ID())
 }
@@ -398,7 +441,9 @@ func (d *Director) moveTo(u *unit, dest d2monster.Point, target *d2monster.Targe
 		mask = d2path.MaskMonsterOpensDoors
 	}
 
-	route, ok := d2path.FindPath(d.grid, mask, from, to)
+	// units block (UNVERIFIED mask), except the mover's own cell and the cell
+	// it walks to (the target stands there)
+	route, ok := d2path.FindPath(d.fp.ignoring(from, to), mask|d2path.MaskUnits, from, to)
 	if !ok || len(route.Nodes) == 0 {
 		d.Debugf("no path for %s from %v to %v", u.m.Label(), from, to)
 		return false

@@ -2,6 +2,7 @@ package d2gamescreen
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2daynight"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
@@ -39,14 +40,19 @@ type dayPhaseSource interface {
 
 // dayClock drives a d2daynight environment from frame time.
 type dayClock struct {
-	env *d2daynight.Env
-	acc float64
-	// frozen stops the clock (OD2_AUTOAMBIENT picks the phase itself).
-	frozen bool
+	env    *d2daynight.Env
+	acc    float64
+	frozen bool // OD2_AUTOTIME holds the clock at a forced phase
 }
 
+// newDayClock starts a new game's clock at the beginning of the day (phase 2);
+// OD2_AUTOTIME=<phase>[@degree] forces and freezes another time of day.
 func newDayClock() *dayClock {
-	return &dayClock{env: d2daynight.NewCycling()}
+	c := &dayClock{env: d2daynight.NewCycling()}
+	c.env.SetPhase(d2daynight.PhaseDay)
+	c.applyAutoTime(os.Getenv("OD2_AUTOTIME"))
+
+	return c
 }
 
 // Advance converts elapsed seconds into environment ticks.

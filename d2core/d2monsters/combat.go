@@ -8,6 +8,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
@@ -17,6 +18,8 @@ var colorToken = regexp.MustCompile(`\[[a-z]+\]`)
 // handleEvents consumes the animation events a monster produced since the
 // last frame.
 func (d *Director) handleEvents(u *unit) {
+	blocked := false
+
 	for _, ev := range u.m.TakeEvents() {
 		switch ev.Kind {
 		case d2mapentity.MonsterEventHitFrame:
@@ -27,8 +30,30 @@ func (d *Director) handleEvents(u *unit) {
 			if u.m.Alive() && u.m.Mode() == d2monster.ModeNeutral {
 				u.b.WakeNow(d.frame)
 			}
+		case d2mapentity.MonsterEventBlocked:
+			blocked = true
+			d.Counters.BlockedSteps++
 		case d2mapentity.MonsterEventDied:
+			// the corpse keeps its cell: flag 0x8000 (VERIFIED value), which is
+			// in no block mask, so it does not block movement
+			x, y := u.m.SubtilePos()
+			d.fp.Move(u.b.ID, x, y, d2path.FlagCorpse)
 		}
+	}
+
+	if !blocked {
+		u.blocked = 0
+
+		return
+	}
+
+	// A refused step: another unit stands in the way. After a few refusals the
+	// monster stops and thinks again, which picks a new path or action.
+	if u.blocked++; u.blocked >= blockedRetry {
+		u.blocked = 0
+		u.m.StopMoving()
+		u.mv = nil
+		u.b.WakeNow(d.frame)
 	}
 }
 
@@ -46,12 +71,17 @@ func attackFor(v *d2mapentity.MonsterVitals, mode d2monster.Mode) (d2mapentity.M
 }
 
 // monsterStrike resolves a monster attack when its animation reaches the hit
-// frame: to-hit with d2combat.RollToHit using the monster's own seed (the
-// attacker's, as in the binary), then a damage roll between the scaled min
-// and max.
+// frame. Melee attacks hit the target if it is within the reach of the mode;
+// attacks with a missile launch a Shot that has to find the hero on its way.
 func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 	atk, ok := attackFor(&u.m.Vitals, mode)
 	if !ok {
+		return
+	}
+
+	if attackIsRanged(u.m.Stat, mode) {
+		d.fireShot(u, mode, atk)
+
 		return
 	}
 
@@ -64,20 +94,21 @@ func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 	sx, sy := u.m.SubtilePos()
 	dist := d2monster.EdgeDistance(sx-px, sy-py, u.b.Size)
 
-	reach := meleeInRange
-	if u.m.Stat.IsRanged {
-		reach = rangedInRange
-	}
-
 	d.Counters.Attacks++
 
-	if dist > reach+heroReach/2 {
+	if dist > attackReach(false)+heroReach/2 {
 		d.emit("attack", "MONSTER attack name=%s id=%d mode=%s hit=false reason=target_moved_away dist=%d",
 			u.m.Label(), u.b.ID, mode, dist)
 
 		return
 	}
 
+	d.resolveAttack(u, p, mode, atk, "")
+}
+
+// resolveAttack rolls to-hit and damage of an attack that reached a hero.
+func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.Mode, atk d2mapentity.MonsterAttack,
+	via string) {
 	defense := d2combat.Defense(0, p.Stats.Dexterity, 0)
 	in := d2combat.ToHitInput{
 		AttackRating:  d2combat.MonsterAttackRating(atk.ToHit, 0, 0),
@@ -103,13 +134,95 @@ func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 		}
 	}
 
-	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d",
-		u.m.Label(), u.b.ID, mode, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth)
+	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d",
+		u.m.Label(), u.b.ID, mode, via, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth)
 
 	if hit && p.Stats.Health == 0 {
 		d.Counters.HeroDeaths++
 		d.emit("herodeath", "HERO died name=%s killer=%s", p.Name(), u.m.Label())
 	}
+}
+
+// SetLauncher replaces the projectile engine (nil restores the built-in
+// straight bolt). The hook is the integration point for a missile package.
+func (d *Director) SetLauncher(l Launcher) {
+	if l == nil {
+		l = newBoltLauncher(d.grid)
+	}
+
+	d.launcher = l
+}
+
+// shotCollideRadius is how far (Chebyshev, subtiles) from a hero's cell a
+// shot still hits it (engine choice).
+const shotCollideRadius = 1
+
+// fireShot launches a projectile for a ranged attack. A target id of a hero
+// aims at where the hero stands now; id 0 aims at the ground point of the
+// request (Blood Raven fires at random spots near the hero).
+func (d *Director) fireShot(u *unit, mode d2monster.Mode, atk d2mapentity.MonsterAttack) {
+	sx, sy := u.m.SubtilePos()
+	ax, ay := u.aimX, u.aimY
+
+	if p := d.playerFor(u.attackTarget); p != nil && d.targetable(p) {
+		ax, ay = playerSubtile(p)
+	}
+
+	var struck *d2mapentity.Player
+
+	shot := Shot{
+		Owner: u.b.ID, Mode: mode.String(), From: d2path.Point{X: sx, Y: sy}, To: d2path.Point{X: ax, Y: ay},
+		Missile: missileFor(u.m.Stat, mode), Velocity: d.missileVelocity(missileFor(u.m.Stat, mode)),
+		Collide: func(x, y int) bool {
+			for _, p := range d.targets {
+				px, py := playerSubtile(p)
+				if d.targetable(p) && abs(px-x) <= shotCollideRadius && abs(py-y) <= shotCollideRadius {
+					struck = p
+
+					return true
+				}
+			}
+
+			return false
+		},
+		Impact: func(x, y int, hit bool) {
+			if !hit || struck == nil {
+				d.emit("shot", "MONSTER shot name=%s id=%d mode=%s result=miss at=(%d,%d)", u.m.Label(), u.b.ID, mode, x, y)
+
+				return
+			}
+
+			d.Counters.ShotHits++
+			d.Counters.Attacks++
+			d.resolveAttack(u, struck, mode, atk, " shot")
+		},
+	}
+
+	if d.launcher.Launch(shot) {
+		d.Counters.Shots++
+		d.emit("shot", "MONSTER shot name=%s id=%d mode=%s missile=%q from=(%d,%d) to=(%d,%d)",
+			u.m.Label(), u.b.ID, mode, shot.Missile, sx, sy, ax, ay)
+
+		return
+	}
+
+	// a shot at point blank (same subtile) cannot fly: it lands at once
+	if p := d.playerFor(u.attackTarget); p != nil && d.targetable(p) {
+		d.Counters.Attacks++
+		d.resolveAttack(u, p, mode, atk, " shot")
+	}
+}
+
+// missileVelocity is the flight speed in subtiles per frame: the missiles.txt
+// Vel divided by 16 (VERIFIED conversion), or the default.
+func (d *Director) missileVelocity(name string) float64 {
+	if name != "" {
+		if rec := d.asset.Records.GetMissileByName(name); rec != nil && rec.Velocity > 0 {
+			return float64(rec.Velocity) / 16
+		}
+	}
+
+	return DefaultShotVelocity
 }
 
 // HeroStrike resolves a hero melee swing against a monster at the swing's hit
@@ -196,10 +309,14 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 		d.emit("hit", "MONSTER hit name=%s id=%d dmg=%d hp=%d/%d", u.m.Label(), u.b.ID, dmg, u.m.Vitals.HP, u.m.Vitals.MaxHP)
 		d.playPlans(u, hitPlans(d.soundRecord(u)))
 
-		// hit recovery: the monster stops what it was doing, and thinks again
-		// when the animation ends. Aggro is not otherwise changed.
+		// hit recovery: the monster drops what it was doing (a blow that was
+		// winding up is lost), plays GH and thinks again when it ends. Aggro
+		// is not otherwise changed. Whether every hit interrupts, and how long
+		// the recovery lasts (monstats2 / aidel), is UNVERIFIED: every hit does.
 		u.m.StopMoving()
+		u.m.DropHitEvents()
 		u.mv = nil
+		d.Counters.HitRecoveries++
 
 		if u.m.SetMode(d2monster.ModeGetHit) {
 			u.b.Wake = 1 << 30
@@ -216,8 +333,10 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 
 func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 	u.m.Die()
+	d.fp.Remove(u.b.ID) // a dying monster stops blocking (UNVERIFIED); the corpse flag is set when DT ends
 	d.Counters.Deaths++
 	d.playPlans(u, deathPlans(d.soundRecord(u)))
+	d.leaderDied(u)
 
 	by := "unknown"
 	xp := u.m.Vitals.Experience

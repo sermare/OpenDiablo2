@@ -25,6 +25,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2maprenderer"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2screen"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2skills"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2vendor"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client"
@@ -139,6 +140,8 @@ type Game struct {
 	tradeActive          bool // a vendor window opened from the NPC menu is open
 	greetingLast         map[string]string
 	dayClock             *dayClock
+	autoShotElapsed      float64
+	autoShotDone         bool
 	greetingRecent       map[string]string
 	returnGreet          returnGreetings
 	autosaveElapsed      float64
@@ -151,12 +154,16 @@ type Game struct {
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	monsterTest          *monsterTest
+	skills               *d2skills.Engine
+	castTestState        *castTest
 	attackTarget         *d2mapentity.Monster
 	attackRepathAcc      float64
 	soundTraceSet        bool
 	heroStepAcc          float64
 	ambientTest          *ambientTest
 	regionEnvs           map[int]int
+	autoPanel            autoPanelState
+	levelStatusAcc       float64
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -267,6 +274,8 @@ func (v *Game) Render(screen d2interface.Surface) {
 			return
 		}
 	}
+
+	v.autoShot(screen)
 }
 
 // Advance runs the update logic on the Gameplay screen
@@ -274,6 +283,12 @@ func (v *Game) Render(screen d2interface.Surface) {
 func (v *Game) Advance(elapsed float64) error {
 	v.soundEngine.Advance(elapsed)
 	v.advanceDayClock(elapsed)
+	v.advanceLighting()
+
+	if v.localPlayer != nil {
+		v.autoShotElapsed += elapsed
+	}
+
 	v.advanceNPCInteraction(elapsed)
 	v.advanceAutoSound(elapsed)
 	v.advanceAutoTest(elapsed)
@@ -283,10 +298,12 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceAutoGround(elapsed)
 	v.advanceSound(elapsed)
 	v.advanceAutoAmbient(elapsed)
+	v.advanceAutoPanel(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
 		v.advanceMonsters(elapsed)
+		v.advanceSkills(elapsed)
 	}
 
 	if v.gameControls != nil {
@@ -751,6 +768,10 @@ func (v *Game) autoTestExit() {
 func (v *Game) OnPlayerSave() error {
 	playerState := v.gameClient.Players[v.gameClient.PlayerID]
 
+	if v.gameControls != nil {
+		v.gameControls.SyncContainers()
+	}
+
 	sp, err := d2netpacket.CreateSavePlayerPacket(playerState, d2enum.DifficultyNormal)
 	if err != nil {
 		return fmt.Errorf("SavePlayerPacket: %v", err)
@@ -767,6 +788,12 @@ func (v *Game) OnPlayerSave() error {
 
 // OnPlayerCast sends the casting skill action to the server
 func (v *Game) OnPlayerCast(skillID int, targetX, targetY float64) {
+	// skills the skill pipeline implements run locally with real missiles; the
+	// rest keep the old path (a CastSkill packet that plays the client effects)
+	if v.localPlayer != nil && v.castWithPipeline(skillID, targetX, targetY) {
+		return
+	}
+
 	cp, err := d2netpacket.CreateCastPacket(v.gameClient.PlayerID, skillID, targetX, targetY)
 	if err != nil {
 		v.Errorf("CastPacket: %v", err)

@@ -46,7 +46,9 @@ func (mr *MapRenderer) generateTileCache() {
 		}
 
 		for i := range tile.Components.Walls {
-			if !tile.Components.Walls[i].Hidden() && tile.Components.Walls[i].Prop1 != 0 {
+			// special tiles (warps, entry markers) have no graphic and are never drawn
+			if !tile.Components.Walls[i].Hidden() && tile.Components.Walls[i].Prop1 != 0 &&
+				!tile.Components.Walls[i].Type.Special() {
 				mr.generateWallCache(&tile.Components.Walls[i])
 			}
 		}
@@ -203,7 +205,9 @@ func (mr *MapRenderer) generateWallCache(tile *d2ds1.Tile) {
 	}
 
 	if realHeight == 0 {
-		mr.Error("Invalid 0 height for wall tile")
+		// graphic-less collision placeholders exist in the DT1 files (e.g. barracks pillars 9/25 and 9/26,
+		// type 12): they only carry sub-tile flags, so there is nothing to draw
+		mr.Debugf("wall tile [%d %d %d] has no graphic", tile.Style, tile.Sequence, tile.Type)
 		return
 	}
 
