@@ -51,3 +51,18 @@ func (p *HeroProgress) QuestRecord(difficulty int) *d2s.QuestRecord {
 
 	return &p.Quests[difficulty]
 }
+
+// EnsureProgress returns the hero's progress, creating it for heroes that have
+// none (new characters): like a fresh character of the original, the
+// Rogue Encampment waypoint (bit 0) starts activated in every difficulty.
+func (s *HeroState) EnsureProgress() *HeroProgress {
+	if s.Progress == nil {
+		s.Progress = &HeroProgress{}
+
+		for d := 0; d < len(s.Progress.Waypoints); d++ {
+			s.Progress.Waypoints.Set(d, d2s.WPRogueEncampment, true)
+		}
+	}
+
+	return s.Progress
+}

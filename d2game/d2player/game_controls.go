@@ -212,6 +212,7 @@ func NewGameControls(
 		questLog:       questLog,
 		HelpOverlay:    helpOverlay,
 		NPCMenu:        NewNPCMenu(asset, ui),
+		Waypoints:      NewWaypointPanel(asset, ui),
 		keyMap:         keyMap,
 		bottomMenuRect: &d2geom.Rectangle{
 			Left:   menuBottomRectX,
@@ -300,6 +301,7 @@ type GameControls struct {
 	questLog               *QuestLog
 	HelpOverlay            *HelpOverlay
 	NPCMenu                *NPCMenu
+	Waypoints              *WaypointPanel
 	Trade                  *TradeWindow
 	stash                  *ContainerPanel
 	cube                   *ContainerPanel
@@ -378,6 +380,11 @@ func (g *GameControls) OnKeyRepeat(event d2interface.KeyEvent) bool {
 
 // OnKeyDown handles key presses
 func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
+	if event.Key() == d2enum.KeyEscape && g.Waypoints.IsOpen() {
+		g.Waypoints.Close()
+		return true
+	}
+
 	if event.Key() == d2enum.KeyEscape && g.NPCMenu.IsOpen() {
 		g.NPCMenu.Choose(len(g.NPCMenu.Rows()) - 1)
 		return true
@@ -556,6 +563,7 @@ func (g *GameControls) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 	}
 
 	g.NPCMenu.OnMouseMove(event)
+	g.Waypoints.OnMouseMove(event)
 	g.Trade.OnMouseMove(event)
 	g.stash.OnMouseMove(mx, my)
 	g.cube.OnMouseMove(mx, my)
@@ -632,6 +640,10 @@ func (g *GameControls) InventoryItemCount() int { return len(g.inventory.grid.it
 // OnMouseButtonDown handles mouse button presses
 func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	mx, my := event.X(), event.Y()
+
+	if g.Waypoints.OnMouseButtonDown(event) {
+		return true
+	}
 
 	if g.NPCMenu.OnMouseButtonDown(event) {
 		return true
@@ -1030,6 +1042,7 @@ func (g *GameControls) Render(target d2interface.Surface) error {
 	g.cube.Render(target)
 	g.belt.Render(target)
 	g.NPCMenu.Render(target)
+	g.Waypoints.Render(target)
 
 	if err := g.escapeMenu.Render(target); err != nil {
 		return err

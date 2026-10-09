@@ -148,6 +148,7 @@ type Game struct {
 	autoTestElapsed      float64
 	autoTestDone         bool
 	autoScript           *autoScriptState
+	levels               levelState
 	autoSoundElapsed     float64
 	autoSoundDone        bool
 	ground               groundState
@@ -188,6 +189,10 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"setgold", "sets the hero's gold (saved to the .d2s on the next save)", []string{"amount"}, v.commandSetGold},
 		{"spawnchest", "spawns chests/barrels (objects.txt ids, default 7 1 5) next to the hero",
 			[]string{"id1", "id2", "id3"}, v.commandSpawnChest},
+		{"spawnportal", "spawns a town portal object to the given level next to the hero",
+			[]string{"level"}, v.commandSpawnPortal},
+		{"setwaypoint", "activates (1) or clears (0) the waypoint of a level for the hero",
+			[]string{"level", "0|1"}, v.commandSetWaypoint},
 	}
 
 	for _, cmd := range commands {
@@ -217,7 +222,7 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold"); err != nil {
+	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint"); err != nil {
 		return err
 	}
 
@@ -271,6 +276,7 @@ func (v *Game) Render(screen d2interface.Surface) {
 		}
 	}
 
+	v.renderFade(screen)
 	v.autoShot(screen)
 }
 
@@ -291,6 +297,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceAutoScript(elapsed)
 	v.advanceAutosave(elapsed)
 	v.advanceGroundInteraction(elapsed)
+	v.advanceLevels(elapsed)
 	v.advanceAutoGround(elapsed)
 	v.advanceAutoPanel(elapsed)
 
@@ -386,8 +393,16 @@ func (v *Game) bindGameControls() error {
 	return nil
 }
 
-// OnPlayerMove sends the player move action to the server
+// OnPlayerMove is a move order (a click or a script step). It cancels a walk
+// to an object and targets a warp tile if the order lands on one.
 func (v *Game) OnPlayerMove(targetX, targetY float64) {
+	v.levels.use = nil
+	v.targetWarpAt(targetX, targetY)
+	v.movePlayerTo(targetX, targetY)
+}
+
+// movePlayerTo sends the player move action to the server
+func (v *Game) movePlayerTo(targetX, targetY float64) {
 	worldPosition := v.localPlayer.Position.World()
 
 	playerID, worldX, worldY := v.gameClient.PlayerID, worldPosition.X(), worldPosition.Y()

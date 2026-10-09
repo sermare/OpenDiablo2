@@ -13,6 +13,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
@@ -46,6 +47,12 @@ type GameClient struct {
 	Players          map[string]*d2mapentity.Player // IDs of the other players
 	Seed             int64                          // Map seed
 	RegenMap         bool                           // Regenerate tile cache on render (map has changed)
+
+	// Progress holds the waypoints and quests of the local hero, Difficulty the
+	// difficulty they apply to, and Level the level the hero is in.
+	Progress   *d2hero.HeroProgress
+	Difficulty d2enum.DifficultyType
+	Level      int
 
 	*d2util.Logger
 }
@@ -235,6 +242,15 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 
 	g.Players[newPlayer.ID()] = newPlayer
 	g.MapEngine.AddEntity(newPlayer)
+
+	if player.ID == g.PlayerID {
+		g.Progress, g.Difficulty = player.Progress, player.Difficulty
+		g.Level = d2level.RogueEncampment
+
+		if g.Progress == nil {
+			g.Progress = (&d2hero.HeroState{}).EnsureProgress()
+		}
+	}
 
 	return nil
 }

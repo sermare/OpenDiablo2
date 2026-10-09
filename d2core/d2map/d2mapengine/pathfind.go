@@ -68,8 +68,29 @@ func (m *MapEngine) PathFind(start, dest d2vector.Position) []d2vector.Position 
 	}
 
 	points := make([]d2vector.Position, 0)
-	_, point := m.checkLos(start, dest)
-	points = append(points, point)
+	clear, point := m.checkLos(start, dest)
+
+	if clear {
+		return append(points, point)
+	}
+
+	// the straight line is blocked: plan around the obstacle
+	from := pt{int(math.Floor(start.X())), int(math.Floor(start.Y()))}
+	to := pt{int(math.Floor(dest.X())), int(math.Floor(dest.Y()))}
+
+	route, reached := findPath(m.WalkBlocked, from, to)
+	if len(route) == 0 {
+		return append(points, point) // nothing better: walk up to the obstacle
+	}
+
+	for i, p := range route {
+		if reached && i == len(route)-1 {
+			points = append(points, dest) // the exact point that was clicked
+			break
+		}
+
+		points = append(points, d2vector.NewPosition(float64(p.x)+0.5, float64(p.y)+0.5))
+	}
 
 	return points
 }
@@ -98,7 +119,7 @@ func (m *MapEngine) checkLos(start, end d2vector.Position) (bool, d2vector.Posit
 		x += xstep
 		y += ystep
 
-		if m.SubTileAt(int(math.Floor(x)), int(math.Floor(y))).BlockWalk {
+		if m.WalkBlocked(int(math.Floor(x)), int(math.Floor(y))) {
 			return false, d2vector.NewPosition(x-xstep, y-ystep)
 		}
 	}
