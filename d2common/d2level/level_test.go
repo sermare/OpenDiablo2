@@ -469,6 +469,11 @@ func TestTileDestinationCaveEntrances(t *testing.T) {
 		{"catacombs level 1 next stairs go down", 34, 1, 35, true},
 		{"Burial Grounds crypt keeps its LvlWarp id", 17, 6, 18, true},
 		{"Burial Grounds mausoleum", 17, 7, 19, true},
+		{"treasure cave 2 exit tile (style 1) goes back up", 13, 1, 9, true},
+		{"pit level 2 exit tile", 16, 1, 12, true},
+		{"catacombs level 4 exit tile", 37, 0, 36, true},
+		{"catacombs level 3 next stairs lead to level 4", 36, 1, 37, true},
+		{"treasure cave 2 has no other exit", 13, 4, 0, false},
 		{"a cottage tile leads nowhere", 2, 8, 0, false},
 		{"unknown style", 2, 99, 0, false},
 	}

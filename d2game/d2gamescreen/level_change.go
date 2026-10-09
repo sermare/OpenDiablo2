@@ -244,6 +244,8 @@ func (v *Game) performLevelChange(t *levelTransition) {
 		prefer = nextToWarpBackTo(from, t.target) // the stairs or cave entrance you came through
 	}
 
+	v.saveLevel(from)
+
 	arrival, err := v.gameClient.ChangeLevelAct(t.target, prefer, t.actFinished)
 	if err != nil {
 		v.Errorf("LEVEL change to %d failed: %v; going back to level %d", t.target, err, from)
@@ -253,6 +255,7 @@ func (v *Game) performLevelChange(t *levelTransition) {
 		}
 
 		v.resetLevelState()
+		v.restoreLevel(from)
 
 		return
 	}
@@ -306,6 +309,7 @@ func (v *Game) afterLevelBuilt(from, to int, via string) {
 	v.scanWarps()
 	v.questArea(to) // the quest system follows the hero between areas
 	v.restoreCorpse()
+	v.restoreLevel(to)
 
 	v.Infof("LEVEL built: level %d (%s) via=%s from=%d", to, v.levelName(to), via, from)
 }

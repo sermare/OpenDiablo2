@@ -35,6 +35,21 @@ objects to those interfaces. This is why `go test` can check most rules without 
 Dependencies point downwards. `d2common` is imported by everything and imports nothing above itself, with one upstream
 exception (`d2interface/navigate.go` imports the tiny `d2clientconnectiontype` package from `d2networking`).
 
+### 1.1 Who calls whom (summary)
+
+| Caller | Calls (main edges) |
+|---|---|
+| `main` | `d2app` (and `d2setup` through it) |
+| `d2app.App` | `d2asset`, `d2config`, `d2input`, `d2audio`, `d2screen`, `d2gui`, `d2term`, `d2gamescreen`, `d2hero` (import/export), `d2mapgen` (seed) |
+| `d2gamescreen.Game` | `d2client` (all server traffic), `d2mapengine` + `d2maprenderer`, `d2monsters`, `d2skills`, `d2player` (UI), `d2autoscript`, `d2quest`, `d2boss`, `d2level`, `d2audio` |
+| `d2player` panels | `d2inventory`, `d2item`, `d2vendor`, `d2trade`, `d2equip`, `d2statlist`, `d2party`, `d2ui` widgets |
+| `d2server.GameServer` | `d2netpacket`, `d2hero` (saves), `d2level`, `d2party`, `d2playertrade`, `d2gsnet` (option), connections |
+| `d2monsters` | `d2monster`, `d2combat`, `d2path`, `d2drop`, `d2ground`, `d2difficulty`, `d2sfx` |
+| `d2skills` | `d2skill`, `d2missile`, `d2state`, `d2calc`, `d2combat`, `d2path` |
+| `d2mapgen` | `d2drlg/*`, `d2level`, `d2mapstamp`, `d2mapengine`, `d2asset`, `d2rand` |
+| `d2hero` | `d2s`, `d2statlist`, `d2equip`, `d2inventory`, `d2difficulty` |
+| pure packages | other pure packages and `d2rand`; never the engine |
+
 ## 2. Package catalogue
 
 "Status" uses the vocabulary of [REVERSE_ENGINEERING.md](REVERSE_ENGINEERING.md):
@@ -82,10 +97,19 @@ Package comments in the code are the detailed source of truth for each `VERIFIED
 | `d2automap` | Automap table (`automap.bin`), tile-to-cell lookup, isometric projection, reveal model. | `UI\automap.cpp` | binary-read, mostly `VERIFIED` |
 | `d2daynight` | Global day/night clock: phase 0..5, ticks per degree, ambient intensity and colour table. | `Env.cpp` | binary-read; the colour blend and phase advance are `UNVERIFIED` |
 
-Related but outside `d2common`: `d2networking/d2gs` implements the real game's packet framing (id and size tables,
-encoder/decoder, typed messages). **It is currently self-contained: nothing in the engine imports it yet.** The engine's
-own client/server talk goes through `d2networking/d2netpacket`, which encodes packets as JSON. Multiplayer parity with
-the real wire format is in progress on a feature branch.
+More pure packages that were added after the first catalogue (all in `d2common`, all display-free):
+
+| Package | Purpose and key types | Status |
+|---|---|---|
+| `d2state` | Timed states, auras and damage over time that skills put on units: a `Set` per unit of `Instance`s and poison/burn streams, plus query methods (slow, can act, resists, damage percent). Frames are 25 Hz. | binary-read; poison total matches the tooltip arithmetic (`TestPoisonTotalMatchesTooltip`); stacking and slow percents `UNVERIFIED` |
+| `d2difficulty` | Normal / Nightmare / Hell: `DifficultyLevels.txt` rows, monster stat scaling from `monlvl.txt`, resist and experience penalties, drop and unlock rules. | scaling formula and table rows read from the real tables and binary; the header progression byte is `UNVERIFIED` |
+| `d2boss` | `Manager`: trigger logic of the Duriel, Mephisto, Diablo and Baal encounters. Takes facts in, returns `Action`s. | ids and the Baal wave cycle binary-read; delays, positions and portal objects `UNVERIFIED` |
+| `d2party` | `Roster`: players, parties, invitations, hostility, experience split; the server owns one and broadcasts `Snapshot`s. | party list and same-level sharing binary-read; invitation flow `UNVERIFIED` |
+
+`d2networking/d2gs` implements the real game's packet framing as a pure library (id and size tables, encoder/decoder,
+Huffman coder, blob framing, `Tunnel`). **It is wired in as an option**: `d2networking/d2gsnet` translates the engine's
+`d2netpacket` packets to and from d2gs packets, and `d2server` (`gs_connection.go`) and `d2remoteclient` use it when
+`OD2_PROTO=d2gs` is set on both sides. The JSON encoding of `d2netpacket` stays the default. See section 3.7.
 
 ### 2.3 `d2core`: the engine
 
@@ -103,6 +127,7 @@ the real wire format is in progress on a feature branch.
 | `d2skills` | Engine glue for the skill pipeline: hero as a `d2skill.Unit`, monsters as missile targets, map flags as collision grid, drawing entities that follow missiles. `Engine.Cast`, `Engine.Advance`. | simplifications listed in the package comment (local only, no mana regeneration, no stun/freeze simulation) |
 | `d2map/d2mapengine`, `d2mapentity`, `d2mapstamp`, `d2maprenderer`, `d2lightmap` | Map engine and entities (player, monster, NPC, object, item, missile), preset stamps from DS1, isometric renderer, the real 48x48 sub-tile light map. | engine/upstream, light map binary-read |
 | `d2map/d2mapgen` | `MapGenerator` with a list of `LevelProvider`s. Town provider (Rogue Encampment) is always installed. With `OD2_REALMAPS=1` the maze provider (levels 2..37 that generate) and the outdoor provider (2-7, 17, 39) are added; they run `drlgmaze` / `drlgoutdoor` from the hero's map seed (`HeroMapSeed`), stamp DS1 rooms, place DS1 monsters and choose an arrival point. | glue; correctness of the layout comes from the DRLG packages |
+| `d2playertrade` | Player-to-player trade: the `Session` both players negotiate (request, offers, accept, cancel) and `Commit`, which moves items and gold between two heroes' containers atomically. Owned by the server. | modelled on visible behaviour (`PlrTrade.cpp` not analysed): `UNVERIFIED` |
 | `d2audio`, `d2audio/d2sfx`, `d2audio/ebiten` | Sound engine and the pure voice-allocation model (`d2sfx.Bank`); positional sound; ambient and music. | `d2sfx` binary-read |
 
 ### 2.4 `d2game`, `d2networking`, `d2app`
@@ -241,6 +266,110 @@ flowchart TD
   with the hero's name).
 * Item bits are never fabricated: a character with no items in its file gets none written.
 
+### 3.6 From MPQ to screen
+
+How a byte in an archive becomes a pixel, for one tile of a level:
+
+```mermaid
+flowchart TD
+    A["MPQ archives and loose files<br/>(d2data, d2exp, patch_d2 ...)"] --> B["d2loader.Loader<br/>Sources (d2mpq / filesystem), cache, language"]
+    B --> C["d2asset.AssetManager<br/>LoadFile, LoadDS1, LoadDT1, LoadDCC, LoadDC6, LoadPalette, LoadRecords"]
+    C --> D["d2fileformats parsers<br/>d2ds1, d2dt1, d2dcc, d2dc6, d2cof, d2pl2, d2txt, d2tbl"]
+    C --> R["d2records.RecordManager<br/>typed rows of every .txt table"]
+    R --> G["d2mapgen.MapGenerator<br/>LevelProvider per level kind"]
+    D --> G
+    G --> S["d2mapstamp.Stamp (preset DS1 rooms)<br/>or generated rooms and tile records"]
+    S --> E["d2mapengine.MapEngine<br/>tile grid, entities, collision, world rectangles"]
+    E --> M["d2maprenderer.MapRenderer<br/>passes: floor, walls below entities, entities, walls above, lights"]
+    M --> U["d2render/ebiten Surface -> window"]
+```
+
+* `d2loader` opens the archives in priority order (`patch_d2` over `d2exp` over `d2data`) and caches decoded files.
+* `d2asset.AssetManager` is the single door the engine uses to ask for files; it also builds the `RecordManager`
+  (typed rows of `Levels.txt`, `monstats.txt`, `skills.txt`, ... about 170 tables) at start-up.
+* `d2mapgen` picks a `LevelProvider` for a level id (section 3.8). The town provider stamps preset DS1 files; the real
+  generators produce a room list and tile records and then use the same tile and stamp machinery.
+* `Game.Advance` (in `d2gamescreen`) steps the map engine, monsters, skills and UI each frame; `Game.Render` draws the map
+  renderer first, then the UI on top.
+* The renderer is the upstream isometric renderer with a 48x48 light map (`d2lightmap`) and the day/night tint (`d2daynight`)
+  added; its output is not compared with the original's pixels.
+
+### 3.7 The networking layers
+
+Three layers, each swappable:
+
+1. **Packet model** (`d2netpacket`): engine-level packets (`AddPlayer`, `MovePlayer`, `CastSkill`, `ChangeLevel`,
+   `SetWaypoint`, `Chat`, party and trade packets in `packet_social.go`, ...). They are plain structs with a JSON body and a
+   `NetPacketType`.
+2. **Transport / connection** (`d2server.ClientConnection`, `d2client.ServerConnection`): a local client talks to the
+   `GameServer` in-process (`d2localclient`); a remote client uses TCP (`d2remoteclient`, `d2tcpclientconnection`). A UDP
+   connection type exists from upstream but nothing imports it. `GameServer` runs for every game, local or hosted
+   (`OD2_HOST=1`, `OD2_JOIN=host:port`, `OD2_BIND`, `OD2_PORT`).
+3. **Encoding**: JSON by default. With `OD2_PROTO=d2gs`, `d2gsnet.ServerSide.Encode` / `ClientSide.Encode` turn engine
+   packets into real game packets (join 0x68, walk and run, skill select and cast, chat, leave, unit movement, ...) using
+   `d2gs`, and everything with no real counterpart (the hero's state, saves, waypoints, party and trade) rides inside a
+   tunnel in the variable-length meta packets. The receiving side skips packets it does not understand by their size.
+   On the wire the packets are Huffman compressed and length prefixed (`d2gs.EncodeBlob`).
+
+```mermaid
+flowchart LR
+    G["Game (d2gamescreen)"] --> C["GameClient<br/>(d2client)"]
+    C -->|local| L["d2localclient"]
+    C -->|TCP| RC["d2remoteclient"]
+    L --> S["d2server.GameServer<br/>rules: levels, quests, trade, party"]
+    RC -->|"JSON or d2gsnet+d2gs"| T["TCP"]
+    T --> S
+    S --> CC["ClientConnection per player<br/>(local, TCP JSON, gsClientConnection)"]
+```
+
+What is verified: the size tables and the framing of `d2gs` (read from the binary and pinned by tests), the layouts of walk,
+run and skill packets. What is not: the join layout, the client to server blob framing, and every tunnelled message.
+The server and the engine's game rules are shared by the single-player and multiplayer paths, so a rule is tested once.
+
+### 3.8 The level generator (DRLG) pipeline
+
+```mermaid
+flowchart TD
+    A["game seed (HeroMapSeed from the .d2s) + difficulty + level id"] --> B["d2rand.LevelSeed<br/>seed hierarchy"]
+    B --> T["d2drlg.Tables<br/>Levels, LvlMaze, LvlPrest (lvlprest.bin), LvlTypes, LvlSub"]
+    T --> W["drlgworld.Generate / GenerateAct4 / GenerateAct5<br/>where the levels of an act sit relative to each other"]
+    W --> K{"Levels.txt DrlgType"}
+    K -->|"1 maze"| MZ["drlgmaze.Generate<br/>rooms, themes, preset file picks"]
+    K -->|"2 preset"| PR["drlgoutdoor.GeneratePreset"]
+    K -->|"3 outdoor"| OD["drlgoutdoor.Generate<br/>polygon, exits, cliffs, LvlSub matchers, roads, features, rooms"]
+    MZ --> P["d2mapgen providers<br/>mazeProvider, outdoorProvider, presetProvider"]
+    PR --> P
+    OD --> BT["Level.BuildTiles<br/>per-room tile records (DT1 file + tile index)"]
+    BT --> P
+    P --> E["d2mapengine.MapEngine (stamps of preset DS1 rooms + generated tiles + entities)"]
+```
+
+* `d2drlg` is only interfaces and tables; the generators are `drlgworld`, `drlgmaze`, `drlgoutdoor`. They take tables and a
+  seed and return numbers (rectangles, room lists, grids, tile records). They draw random numbers in exactly the order of
+  the original; a missing or extra draw changes the final level seed, which is what the oracle goldens check
+  (TESTING.md section 3).
+* `d2mapgen` (`provider.go`) holds the `LevelProvider` list: `actTownProvider` and `townProvider` always, and with
+  `OD2_REALMAPS=1` also `mazeProvider`, `outdoorProvider` and `presetProvider`. Providers registered later are asked first.
+  `real_maze_gen.go`, `real_outdoor_gen.go` and `real_town_gen.go` convert generator output into engine tiles and entities
+  (DS1 objects and monsters are stamped from the preset files).
+* `d2level.PlanTransition` decides which act has to be (re)built when a hero changes level; the same seed makes a level
+  identical on every visit.
+* Not ported: level 134 (Forgotten Sands, the Act 2 desert generator branch). The DT1 library is not emulated by the
+  oracle, so the random tile pick is a documented model.
+
+### 3.9 The monster / skill / combat loop in one picture
+
+Sections 3.3 and 3.4 give each half. Together, one 25 Hz frame in `Game.Advance` is:
+
+1. `gameClient.Drain` applies packets from the server; `MapEngine.Advance` moves entities.
+2. `advanceMonsters`: the `Director` ticks every monster's `d2monster.Brain` (think function, one requested action) and
+   executes actions through the `World` / `Actor` interfaces, using `d2path` for movement and `d2combat` for hits.
+3. `advanceSkills`: the skill `Engine` advances `d2missile.Sim`, expires `d2state` instances, and applies hits through the
+   same `hurt` path monsters use (resists, `d2combat` damage, life, death, loot via `d2drop` / `d2ground`, experience,
+   quest and boss events).
+4. Hero life, mana, level-ups, death (`advanceDeath`) and autosave follow. Everything random draws from seeds derived from the
+   game seed, so a run with the same inputs repeats.
+
 ## 4. Where to look when changing something
 
 | Change | Start in | Also touch / check |
@@ -255,7 +384,8 @@ flowchart TD
 
 ## 5. Known structural debts
 
-* `d2networking/d2gs` is not wired into the client/server; the live packets are JSON.
+* `d2networking/d2gs` / `d2gsnet` carry only a subset natively; the hero state and social features ride in a tunnel,
+  and JSON remains the default encoding.
 * Several `d2game` files carry both gameplay glue and `OD2_AUTO*` scenario code; the scenarios are intentionally
   kept next to the code they exercise.
 * `go vet ./...` over the whole tree reports older findings (CI vets only the pure packages), and only the packages
