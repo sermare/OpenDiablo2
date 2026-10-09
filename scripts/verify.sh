@@ -81,6 +81,9 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
     for attempt in 1 2; do
       fail=$fail_before
       step "$scenario_name"
+      # every scenario starts from a pristine copy of the sample save: earlier scenarios (act changes, level-ups,
+      # exports) must not leak into later ones, and a retry must not see the failed attempt's save
+      [ -z "${OD2_VERIFY_SAVE:-}" ] && cp "$D2S_SAMPLE_BODY" "$save"
       n=${f:t:r}
       cmd=$tmp/$n.command log=$tmp/$n.log
       {
