@@ -3,9 +3,11 @@ package drlgmaze
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
@@ -28,6 +30,34 @@ type oracleMaze struct {
 	SeedLo uint32       `json:"seedLo"`
 	SeedHi uint32       `json:"seedHi"`
 	Rooms  []oracleRoom `json:"rooms"`
+
+	TombA int `json:"tombA"`
+	TombB int `json:"tombB"`
+	X27   int `json:"x27"`
+	Y27   int `json:"y27"`
+	W27   int `json:"w27"`
+	H27   int `json:"h27"`
+	Side  int `json:"side27"`
+	LvX   int `json:"lvx"`
+	LvY   int `json:"lvy"`
+	LvW   int `json:"lvw"`
+	LvH   int `json:"lvh"`
+
+	// Compact goldens carry the chunk count and an FNV-1a 64 hash of the
+	// sorted room keys instead of the room list.
+	N int    `json:"n"`
+	H uint64 `json:"h"`
+}
+
+// roomHash is the hash stored in compact goldens: FNV-1a 64 over the sorted
+// room keys joined by ';'.
+func roomHash(keys []string) uint64 {
+	sort.Strings(keys)
+
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(strings.Join(keys, ";")))
+
+	return h.Sum64()
 }
 
 func key(r oracleRoom) string {
@@ -41,10 +71,19 @@ func key(r oracleRoom) string {
 func TestOracleMaze(t *testing.T) {
 	tb := realTables(t)
 
-	gp := os.Getenv("ORACLE_MAZE")
-	if gp == "" {
-		gp = filepath.Join("..", "testdata", "maze_act1.json")
+	if gp := os.Getenv("ORACLE_MAZE"); gp != "" {
+		runOracleMaze(t, tb, gp)
+
+		return
 	}
+
+	for _, f := range []string{"maze_act1.json", "maze_act23.json"} {
+		t.Run(f, func(t *testing.T) { runOracleMaze(t, tb, filepath.Join("..", "testdata", f)) })
+	}
+}
+
+func runOracleMaze(t *testing.T, tb *d2drlg.Tables, gp string) {
+	t.Helper()
 
 	b, err := os.ReadFile(gp)
 	if err != nil {
@@ -62,7 +101,8 @@ func TestOracleMaze(t *testing.T) {
 
 	for _, g := range gold {
 		base, _ := d2rand.DrlgBaseSeed(g.Seed)
-		res, err := Generate(tb, Params{LevelID: g.Level, Difficulty: d2drlg.Difficulty(g.Diff), BaseSeed: base})
+		res, err := Generate(tb, Params{LevelID: g.Level, Difficulty: d2drlg.Difficulty(g.Diff), BaseSeed: base,
+			TombA: g.TombA, TombB: g.TombB, L27: Level27{g.X27, g.Y27, g.W27, g.H27, g.Side}})
 		st := stats[g.Level]
 		if st == nil {
 			st = &stat{}
@@ -79,8 +119,35 @@ func TestOracleMaze(t *testing.T) {
 			st.seedOK++
 		}
 
-		if len(res.Chunks) == len(g.Rooms) {
+		wantN := len(g.Rooms)
+		if g.H != 0 {
+			wantN = g.N
+		}
+
+		if len(res.Chunks) == wantN {
 			st.countOK++
+		}
+
+		if g.Level == 28 && g.LvW > 0 && (res.RectX != g.LvX || res.RectY != g.LvY || res.RectW != g.LvW || res.RectH != g.LvH) {
+			t.Errorf("barracks seed %#x diff %d: rect %d,%d %dx%d want %d,%d %dx%d", g.Seed, g.Diff,
+				res.RectX, res.RectY, res.RectW, res.RectH, g.LvX, g.LvY, g.LvW, g.LvH)
+		}
+
+		if g.H != 0 {
+			var keys []string
+			for _, c := range res.Chunks {
+				rm := res.Rooms[c.Room]
+				keys = append(keys, key(oracleRoom{c.X, c.Y, c.W, c.H, rm.Def, rm.File}))
+			}
+
+			if roomHash(keys) == g.H {
+				st.setOK++
+				st.rectOK++
+			} else if len(firstBad) < 6 {
+				firstBad = append(firstBad, fmt.Sprintf("seed %#x diff %d level %d: room hash differs", g.Seed, g.Diff, g.Level))
+			}
+
+			continue
 		}
 
 		want := map[string]int{}
