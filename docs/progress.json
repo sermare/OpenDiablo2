@@ -1,7 +1,7 @@
 {
-  "updated": "2026-10-09",
+  "updated": "2026-10-10",
   "title": "Native macOS Diablo II — progress",
-  "subtitle": "driven by Claude · every number below is measured, not estimated",
+  "subtitle": "driven by Claude · counts come from code, tests and Ghidra; estimates are marked with ~ · dashed = on branches, not yet verified",
   "bars": [
     {
       "label": "Game.exe functions named in Ghidra",
@@ -46,11 +46,68 @@
       "color": "#ef5da8"
     },
     {
-      "label": "Roadmap deliverables",
-      "done": 38,
-      "total": 44,
-      "note": "… + act towns · Acts 2-5 maps in Go · exact Act 1 tiles · party/trade/PvP · bosses · options/hardcore · Act 1 playthrough · app packaging ✓ | Acts 2-5 quests merge · exact tiles Acts 2-5 · item export to .d2s · Act 2 playthrough · level persistence · AI archetypes",
+      "label": "Acts playable end to end (scripted play)",
+      "done": 4,
+      "total": 5,
+      "pending": 1,
+      "note": "Acts 1, 2, 4 and the start of 5 pass a scripted walk; the Act 3 playthrough is on a branch",
       "color": "#ff7a45"
+    },
+    {
+      "label": "Levels walked by a verify scenario",
+      "done": 38,
+      "total": 136,
+      "pending": 14,
+      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); dashed = Act 3 playthrough branch",
+      "color": "#ff9f43"
+    },
+    {
+      "label": "Main quests with logic implemented",
+      "done": 27,
+      "total": 27,
+      "pending": 0,
+      "note": "all 27 main quests: states, triggers, rewards (Act 1, Radament and nine more driven in scenarios)",
+      "color": "#e86fa6"
+    },
+    {
+      "label": "Player skills with engine behaviour",
+      "done": 130,
+      "total": 210,
+      "pending": 0,
+      "note": "~130 of 7 classes x 30 skills; formulas audited against Game.exe (calc language, defense, to-hit, resist)",
+      "color": "#5fd0a5"
+    },
+    {
+      "label": "Monster AI archetypes implemented",
+      "done": 145,
+      "total": 148,
+      "pending": 0,
+      "note": "monai.txt entries with a Go think function (about 60 are stand-ins)",
+      "color": "#4aa8ff"
+    },
+    {
+      "label": "Monster AI archetypes ported faithfully",
+      "done": 85,
+      "total": 148,
+      "pending": 0,
+      "note": "~85: implemented minus about 60 stand-ins (estimate)",
+      "color": "#6c8cff"
+    },
+    {
+      "label": "In-game UI panels matching the original layout",
+      "done": 0,
+      "total": 14,
+      "pending": 5,
+      "note": "14 panels; a layout audit covering 5 is on a branch, never run in a game",
+      "color": "#c58bff"
+    },
+    {
+      "label": "Item generation gaps closed vs the exe",
+      "done": 11,
+      "total": 12,
+      "pending": 0,
+      "note": "11 of the 12 gaps closed and checked against the emulator (stat-list aggregation remains); not wired into every drop path yet",
+      "color": "#f2c94c"
     }
   ]
 }
