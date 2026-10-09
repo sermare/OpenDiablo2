@@ -81,6 +81,10 @@ func (it *Item) ownProps() []Prop {
 	return out
 }
 
+// AllProps returns the item's own properties (base, runeword and socketed
+// jewel properties), without set tiers.
+func (it *Item) AllProps() []Prop { return it.ownProps() }
+
 // sumID sums a stat over props.
 func sumID(props []Prop, id int) int64 {
 	var s int64

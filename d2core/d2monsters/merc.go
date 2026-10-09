@@ -215,6 +215,39 @@ func (d *Director) Merc(owner *d2mapentity.Player) (MercInfo, bool) {
 	}, true
 }
 
+// SetMercGear applies the effect of the merc's equipment (d2hireling.ApplyGear on the
+// current level's table stats) to the owner's merc: defense, life, attack rating and
+// damage. Calling it with the stats of no items restores the table values, so a merc
+// without gear behaves exactly as before. Life is kept in proportion. Nothing calls it
+// yet: the d2s 'jf' items are not converted to stat-list items (UNVERIFIED plumbing).
+func (d *Director) SetMercGear(owner *d2mapentity.Player, g d2hireling.Gear) bool {
+	u := d.mercs[owner]
+	if u == nil {
+		return false
+	}
+
+	mu := u.merc
+	frac := float64(1)
+
+	if u.m.Vitals.MaxHP > 0 {
+		frac = float64(u.m.Vitals.HP) / float64(u.m.Vitals.MaxHP)
+	}
+
+	// a level-up recomputes mu.stats from the table, so the caller must call this
+	// again after MERC levelup (the gear is not remembered here)
+	mu.stats.Str, mu.stats.Dex, mu.stats.MaxHP, mu.stats.Defense, mu.stats.AR = g.Str, g.Dex, g.MaxHP, g.Defense, g.AR
+	mu.stats.DmgMin, mu.stats.DmgMax = g.DmgMin, g.DmgMax
+
+	u.m.Vitals.MaxHP, u.m.Vitals.Defense = g.MaxHP, g.Defense
+	u.m.Vitals.A1 = MonsterAttackFrom(g.AR, g.DmgMin, g.DmgMax)
+
+	if u.m.Alive() {
+		u.m.Vitals.HP = int(frac * float64(g.MaxHP))
+	}
+
+	return true
+}
+
 func (mu *mercUnit) currentSave(u *unit) MercSave {
 	s := mu.save
 	s.Dead = !u.m.Alive()
