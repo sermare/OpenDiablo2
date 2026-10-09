@@ -71,11 +71,12 @@ type Env struct {
 
 	mu    sync.Mutex
 	cache map[string]*Pattern
+	dt1   map[string]*DT1
 }
 
 // NewEnv builds an Env.
 func NewEnv(t d2drlg.Source, load DS1Loader) *Env {
-	return &Env{Tables: t, DS1: load, cache: map[string]*Pattern{}}
+	return &Env{Tables: t, DS1: load, cache: map[string]*Pattern{}, dt1: map[string]*DT1{}}
 }
 
 // Pattern loads and caches a DS1 pattern file.
@@ -151,6 +152,9 @@ type Room struct {
 	Mask       uint32
 	PrestDef   int
 	File       int
+	// PrestX, PrestY, PrestW and PrestH are the rectangle of the preset map the
+	// room is a chunk of (the DS1 origin and size).
+	PrestX, PrestY, PrestW, PrestH int
 }
 
 type counter struct{ n, ctr int }
