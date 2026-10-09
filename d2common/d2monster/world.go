@@ -1,6 +1,7 @@
 package d2monster
 
-// Target is a snapshot of a unit the AI can target.
+// Target is a snapshot of a unit the AI can target. ID 0 denotes a ground
+// point (used when a boss fires "at a random spot near the player").
 type Target struct {
 	ID       uint32
 	X, Y     int // subtiles
@@ -58,4 +59,11 @@ type World interface {
 // "shout" a Fallen makes when it starts to flee (UNVERIFIED meaning).
 type Shouter interface {
 	Shout(b *Brain)
+}
+
+// AllyFinder is an optional extension of a Senses implementation: the nearest
+// other living monster of the same class (FUN_005dbe00 mode 1; the exact
+// filter is UNVERIFIED), used by PantherJavelin to regroup.
+type AllyFinder interface {
+	NearestAlly(b *Brain) (t Target, dist int, ok bool)
 }

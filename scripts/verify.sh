@@ -102,5 +102,26 @@ EOT
   if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in autosave log"; fail=1; fi
 fi
 
+if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
+  step "monster pack (natural group spawns, nobody stacks, hero fights it)"
+  save="${OD2_VERIFY_SAVE:-$tmp/save.d2s}"
+  cmd=$tmp/pack.command log=$tmp/pack.log
+  cat > $cmd <<EOT
+#!/bin/zsh
+export OD2_PORT=$OD2_PORT
+export OD2_AUTOGAME="$save" OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1
+export OD2_AUTOMONSTER="fallen1,pack" OD2_AUTOMONSTER_SECONDS=15
+$tmp/od2 2>&1 | tee $log
+EOT
+  chmod +x $cmd; rm -f $log
+  open $cmd
+  for i in {1..90}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
+  sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
+  grep -E "MONSTER pack|AUTOMONSTER (summary|world)" $log.txt | cut -c1-200
+  grep -q "MONSTER pack leader=" $log.txt || { echo "FAIL: no pack spawned"; fail=1; }
+  grep -q "AUTOMONSTER world .*max_stack=1 " $log.txt || { echo "FAIL: monsters stacked or no world summary"; fail=1; }
+  if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in pack log"; fail=1; fi
+fi
+
 echo
 [ $fail -eq 0 ] && echo "ALL CHECKS PASSED" || { echo "SOME CHECKS FAILED"; exit 1; }

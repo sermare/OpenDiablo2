@@ -62,6 +62,44 @@ func (d *Director) indexPlayers() {
 	for i, p := range list {
 		d.targets[uint32(i+1)] = p
 	}
+
+	d.playerFootprints()
+}
+
+// playerFootprints keeps the heroes' footprint (flag 0x80) current.
+func (d *Director) playerFootprints() {
+	seen := map[uint32]bool{}
+
+	for id, p := range d.targets {
+		key := playerKeyBase + id
+		seen[key] = true
+
+		x, y := playerSubtile(p)
+		d.fp.Move(key, x, y, d2path.FlagPlayer)
+	}
+
+	for key := range d.fpPlayer {
+		if !seen[key] {
+			d.fp.Remove(key)
+		}
+	}
+
+	d.fpPlayer = seen
+}
+
+// footprint refreshes a monster's footprint: a living monster occupies its
+// subtile (0x100); stacking is measured for the autotest summary.
+func (d *Director) footprint(u *unit) {
+	if !u.m.Alive() {
+		return
+	}
+
+	x, y := u.m.SubtilePos()
+	d.fp.Move(u.b.ID, x, y, d2path.FlagMonster)
+
+	if n := len(d.fp.cells[d2path.Point{X: x, Y: y}]); n > d.Counters.MaxStack {
+		d.Counters.MaxStack = n
+	}
 }
 
 func (d *Director) playerFor(id uint32) *d2mapentity.Player { return d.targets[id] }
@@ -114,12 +152,14 @@ func (d *Director) AttackTarget(b *d2monster.Brain) (d2monster.Target, int, bool
 	return t, dist, ok && dist <= b.Profile.Aggro()
 }
 
-// InRange implements d2monster.Senses. Melee monsters connect within the
-// melee reach (7); ranged monsters within 20 with a clear line of sight.
+// InRange implements d2monster.Senses. The flag is judged for the monster's
+// default attack (A1): melee attacks connect within the melee reach (7),
+// attacks with a missile within the ranged distance and a clear line of
+// sight. Other modes are checked again when they strike (see monsterStrike).
 func (d *Director) InRange(b *d2monster.Brain, t d2monster.Target, dist int) bool {
 	u := d.unitOf(b)
 
-	if u == nil || !u.m.Stat.IsRanged {
+	if u == nil || !attackIsRanged(u.m.Stat, d2monster.ModeAttack1) {
 		return dist <= meleeInRange
 	}
 
@@ -169,6 +209,7 @@ func (d *Director) Attack(b *d2monster.Brain, mode d2monster.Mode, t d2monster.T
 	}
 
 	u.attackTarget = t.ID
+	u.aimX, u.aimY = t.X, t.Y
 
 	if mode != d2monster.ModeAttack1 && mode != d2monster.ModeAttack2 {
 		d.emit("skill", "MONSTER skill name=%s id=%d mode=%s minions=%d", u.m.Label(), b.ID, mode, len(b.Minions))
