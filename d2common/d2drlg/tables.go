@@ -28,6 +28,10 @@ type LevelRec struct {
 	DrlgType         int // 1 maze, 2 preset, 3 outdoor
 	LevelType        int // LvlTypes id
 	Vis              [8]int
+	Warp             [8]int
+	// SubType, SubTheme, SubWaypoint and SubShrine are the LvlSub groups used
+	// for the sub-themes and the waypoint/shrine patterns of outdoor rooms.
+	SubType, SubTheme, SubWaypoint, SubShrine int
 }
 
 // MazeRec is a LvlMaze.txt row.
@@ -48,6 +52,8 @@ type PrestRec struct {
 	Files        int
 	File         [6]string
 	Dt1Mask      int
+	// Populate and Outdoors are the LvlPrest columns of the same name.
+	Populate, Outdoors int
 }
 
 // LvlTypeRec is a LvlTypes.txt row.
@@ -215,7 +221,7 @@ func ParseLvlPrestBin(data []byte) ([]PrestRec, error) {
 	for i := range out {
 		r := data[4+i*binRecordSize : 4+(i+1)*binRecordSize]
 		u := func(off int) int { return int(int32(binary.LittleEndian.Uint32(r[off:]))) }
-		p := PrestRec{Def: u(0), LevelID: u(4), SizeX: u(40), SizeY: u(44), Files: u(binFilesOff), Dt1Mask: u(binDt1Off)}
+		p := PrestRec{Def: u(0), LevelID: u(4), SizeX: u(40), SizeY: u(44), Files: u(binFilesOff), Dt1Mask: u(binDt1Off), Populate: u(8), Outdoors: u(0x10)}
 
 		for k := 0; k < 6; k++ {
 			s := r[binFile1Off+k*binFileLen : binFile1Off+(k+1)*binFileLen]
@@ -248,7 +254,8 @@ func parsePrestTxt(data []byte) ([]PrestRec, error) {
 		}
 
 		p := PrestRec{Name: t.str(r, "Name"), Def: t.num(r, "Def"), LevelID: t.num(r, "LevelId"),
-			SizeX: t.num(r, "SizeX"), SizeY: t.num(r, "SizeY"), Files: t.num(r, "Files"), Dt1Mask: t.num(r, "Dt1Mask")}
+			SizeX: t.num(r, "SizeX"), SizeY: t.num(r, "SizeY"), Files: t.num(r, "Files"), Dt1Mask: t.num(r, "Dt1Mask"),
+			Populate: t.num(r, "Populate"), Outdoors: t.num(r, "Outdoors")}
 
 		for k := 0; k < 6; k++ {
 			if f := t.str(r, "File"+strconv.Itoa(k+1)); f != "0" {
@@ -288,7 +295,11 @@ func Load(raw Raw) (*Tables, error) {
 
 			for i := range l.Vis {
 				l.Vis[i] = lt.num(r, "Vis"+strconv.Itoa(i))
+				l.Warp[i] = lt.num(r, "Warp"+strconv.Itoa(i))
 			}
+
+			l.SubType, l.SubTheme = lt.num(r, "SubType"), lt.num(r, "SubTheme")
+			l.SubWaypoint, l.SubShrine = lt.num(r, "SubWaypoint"), lt.num(r, "SubShrine")
 
 			t.levels[l.ID] = l
 		}
@@ -368,6 +379,10 @@ func Load(raw Raw) (*Tables, error) {
 		}
 
 		for _, r := range st.rows {
+			if !st.has(r, "Type") { // "Expansion" separator row
+				continue
+			}
+
 			s := SubRec{Name: st.str(r, "Name"), Type: st.num(r, "Type"), File: st.str(r, "File"),
 				CheckAll: st.num(r, "CheckAll"), BordType: st.num(r, "BordType"), GridSize: st.num(r, "GridSize"), Dt1Mask: st.num(r, "Dt1Mask")}
 
