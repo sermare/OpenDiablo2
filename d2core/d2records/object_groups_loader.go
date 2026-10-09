@@ -32,6 +32,8 @@ func objectGroupsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 		return d.Err
 	}
 
+	r.Object.Groups = records
+
 	r.Debugf("Loaded %d ObjectGroup records", len(records))
 
 	return nil

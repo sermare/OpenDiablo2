@@ -158,6 +158,7 @@ type RecordManager struct {
 		Details ObjectDetails
 		Lookup  IndexedObjects
 		Modes   ObjectModes
+		Groups  ObjectGroups
 		Shrines
 		Types ObjectTypes
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2ground"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2objspawn"
 )
 
 // World objects beyond doors, waypoints and portals: shrines, wells, weapon
@@ -33,6 +34,17 @@ type objectState struct {
 	instances map[string]*objInstance
 	shrines   []d2object.Shrine
 	lootSeq   uint32
+	spawn     *d2objspawn.Tables // adapter view of objects.txt/objgroup.txt, built on first use
+}
+
+// spawnTables returns the d2object tables built from the loaded records.
+func (v *Game) spawnTables() *d2objspawn.Tables {
+	if v.objects.spawn == nil {
+		t := d2objspawn.FromRecords(v.asset.Records.Object.Details, v.asset.Records.Object.Groups)
+		v.objects.spawn = &t
+	}
+
+	return v.objects.spawn
 }
 
 // instance returns the state of an object, creating it.
