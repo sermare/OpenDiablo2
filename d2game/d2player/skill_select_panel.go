@@ -287,27 +287,31 @@ func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, bar *d2hero
 		lines = append(lines, short)
 	}
 
-	// "Current Skill Level: " is StrSkill2 of the string tables (the original's wording)
-	levelLabel := asset.TranslateString("StrSkill2")
-	if levelLabel == "" || levelLabel == "StrSkill2" {
-		levelLabel = "Current Skill Level: "
-	}
-
-	lines = append(lines, fmt.Sprintf("%s%d", levelLabel, sk.SkillPoints))
-
-	// the mana cost at the current level (level 1 for a skill with no points yet)
-	if label := asset.TranslateString(sk.ManaKey); sk.ManaKey != "" && label != sk.ManaKey {
-		lvl := sk.SkillPoints
-		if lvl < 1 {
-			lvl = 1
+	if sk.SkillRecord != nil && sk.SkillDescriptionRecord != nil && asset.Records != nil {
+		// VERIFIED order (0x4ec180): dsc2 block, "Current Skill Level: n" with
+		// its lines (the mana line is a descline row of kind 1), "Next Level",
+		// synergies. The label is only shown for a learned skill.
+		lines = append(lines, skillDescLines(asset, sk, skills, heroLevel)...)
+	} else {
+		// no skilldesc row: the level label and the mana cost only
+		levelLabel := asset.TranslateString(keyCurrentLevel)
+		if levelLabel == "" || levelLabel == keyCurrentLevel {
+			levelLabel = "Current Skill Level: "
 		}
 
-		if line, ok := d2skilldesc.ManaCost(label, sk.SkillRecord.PipelineSkill().ManaCost(lvl)); ok {
-			lines = append(lines, line)
+		lines = append(lines, fmt.Sprintf("%s%d", levelLabel, sk.SkillPoints))
+
+		if label := asset.TranslateString(sk.ManaKey); sk.ManaKey != "" && label != sk.ManaKey && sk.SkillRecord != nil {
+			lvl := sk.SkillPoints
+			if lvl < 1 {
+				lvl = 1
+			}
+
+			if line, ok := d2skilldesc.ManaCost(label, sk.SkillRecord.PipelineSkill().ManaCost(lvl)); ok {
+				lines = append(lines, line)
+			}
 		}
 	}
-
-	lines = append(lines, skillDescLines(asset, sk, skills, heroLevel)...)
 
 	if bar != nil && keyName != nil {
 		if slot := bar.HotkeyOf(sk.ID); slot >= 0 {
