@@ -21,7 +21,11 @@ type HeroState struct {
 	LeftSkill  int                            `json:"leftSkill"`
 	RightSkill int                            `json:"rightSkill"`
 	Gold       int                            `json:"Gold"`
-	Difficulty d2enum.DifficultyType          `json:"difficulty"`
+	// SkillBar holds the 16 skill hotkeys and the swap-set skills (with the
+	// active left/right skill, which LeftSkill and RightSkill mirror); nil for
+	// heroes that never had any (older hero files omit it).
+	SkillBar   *SkillBar             `json:"skillBar,omitempty"`
+	Difficulty d2enum.DifficultyType `json:"difficulty"`
 	// MapSeed is the level generator seed of an imported .d2s (header 0xAB).
 	MapSeed uint32 `json:"mapSeed,omitempty"`
 	// D2SBase is the .d2s the hero was imported from. ExportD2S starts from it

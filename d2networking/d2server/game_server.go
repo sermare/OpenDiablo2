@@ -405,6 +405,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 		playerState.Difficulty,
 		d2netpacket.WithContainers(playerState.Containers),
 		d2netpacket.WithMerc(playerState.Merc),
+		d2netpacket.WithSkillBar(playerState.SkillBar),
 		d2netpacket.WithDeath(playerState.Death, playerState.Hardcore),
 	)
 	if err != nil {
@@ -439,6 +440,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 			conPlayerState.Progress,
 			conPlayerState.Difficulty,
 			d2netpacket.WithMerc(conPlayerState.Merc),
+			d2netpacket.WithSkillBar(conPlayerState.SkillBar),
 		)
 
 		if err != nil {
@@ -505,6 +507,17 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		playerState := g.connections[client.GetUniqueID()].GetPlayerState()
 		playerState.LeftSkill = savePacket.Player.LeftSkill.Shallow.SkillID
 		playerState.RightSkill = savePacket.Player.RightSkill.Shallow.SkillID
+
+		// skill points spent in the game, the hotkeys and the swap-set skills
+		if savePacket.Player.Skills != nil {
+			playerState.Skills = savePacket.Player.Skills
+		}
+
+		if bar := savePacket.Player.SkillBar; bar != nil {
+			bar.Left.Skill, bar.Right.Skill = playerState.LeftSkill, playerState.RightSkill
+			playerState.SkillBar = bar
+		}
+
 		playerState.Stats = savePacket.Player.Stats
 		playerState.Act = savePacket.Player.Act
 		playerState.Gold = savePacket.Player.Gold // changed by vendor transactions

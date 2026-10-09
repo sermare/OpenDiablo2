@@ -22,8 +22,12 @@ type Player struct {
 	Skills        map[int]*d2hero.HeroSkill
 	LeftSkill     *d2hero.HeroSkill
 	RightSkill    *d2hero.HeroSkill
-	Class         d2enum.Hero
-	Gold          int
+	// SkillBar holds the skill hotkeys and the weapon-swap skills; the active
+	// left/right skills live in LeftSkill/RightSkill and are copied into the
+	// bar by SyncSkillBar before a save.
+	SkillBar *d2hero.SkillBar `json:"skillBar,omitempty"`
+	Class    d2enum.Hero
+	Gold     int
 	// Merc is the hero's mercenary state (hired, revived, levelled); the
 	// game screen keeps it current and the server copies it on a save.
 	Merc              *d2hero.MercState `json:"merc,omitempty"`
@@ -411,4 +415,22 @@ func (p *Player) LieDead() {
 	p.deathPhase = deathPhaseDead
 	p.StopMoving()
 	p.setDeathMode(d2enum.PlayerAnimationModeDead)
+}
+
+// SyncSkillBar makes the skill bar agree with the active left and right skill
+// (it creates the bar for a hero that has none) and returns it.
+func (p *Player) SyncSkillBar() *d2hero.SkillBar {
+	if p.SkillBar == nil {
+		p.SkillBar = d2hero.NewSkillBar()
+	}
+
+	if p.LeftSkill != nil {
+		p.SkillBar.Left.Skill = p.LeftSkill.ID
+	}
+
+	if p.RightSkill != nil {
+		p.SkillBar.Right.Skill = p.RightSkill.ID
+	}
+
+	return p.SkillBar
 }
