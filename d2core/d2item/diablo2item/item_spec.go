@@ -121,6 +121,10 @@ func (f *ItemFactory) ItemFromSpec(s Spec) (*Item, error) {
 
 	item.attributes.ethereal = s.Ethereal
 
+	if s.Ethereal {
+		item.attributes.applyEtherialBonus() // the bonus is not stored: re-apply on the fresh base values
+	}
+
 	if s.Sockets > 0 {
 		item.attributes.numSockets = s.Sockets
 	}
