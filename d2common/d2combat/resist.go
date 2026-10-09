@@ -46,6 +46,11 @@ type ResistInput struct {
 	// Ignore is the context flag that disables pierce on immunities, the
 	// difficulty penalty and the cap altogether (ctx[5]).
 	Ignore bool
+	// PhysicalNullified: VERIFIED at 0x579bf4. For the physical type, a
+	// positive result is forced to 0 when the ATTACKER has state 0x2f and the
+	// DEFENDER is undead (helper 0x63f9e0). It applies even when Ignore is set.
+	// Set it only for the physical descriptor.
+	PhysicalNullified bool
 	// NoCap leaves the cap off: monsters keep their monstats value, so a
 	// ResFi of 100 is an immunity and a boss can exceed 100. The player cap
 	// (75 + max stat, at most 95) is the only cap in the notes; that it is
@@ -53,11 +58,6 @@ type ResistInput struct {
 	// skipped for monster defenders) but follows from monster immunities
 	// existing at all.
 	NoCap bool
-	// PhysicalNullified: VERIFIED at 0x579bf4. For the physical type, a
-	// positive result is forced to 0 when the ATTACKER has state 0x2f and the
-	// DEFENDER is undead (helper 0x63f9e0). It applies even when Ignore is set.
-	// Set it only for the physical descriptor.
-	PhysicalNullified bool
 }
 
 // EffectiveResist returns the resist percent actually applied. Verified:

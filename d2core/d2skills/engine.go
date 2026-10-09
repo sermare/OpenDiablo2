@@ -122,6 +122,7 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 		return monsters.Grid().Flags(x, y)&(d2path.FlagWalk|d2path.FlagWall) == 0
 	}
 	monsters.HeroDefense = e.heroDefense
+	monsters.HeroAvoid = e.heroAvoid
 
 	return e
 }
@@ -408,6 +409,7 @@ func (e *Engine) meleeResult(p *d2mapentity.Player, sk *d2skill.Skill, r *d2skil
 	if mt != nil {
 		e.Counters.Hits++
 		e.hurt(mt.m, p, &r.Damage, sk.Name)
+		e.itemEvents(mt.m, p, true) // crushing blow, open wounds: after the base damage
 	}
 }
 
@@ -440,7 +442,7 @@ func (e *Engine) staticField(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Ski
 		}
 
 		res := e.resistFrom(m, p, "ltng")
-		dmg = d2combat.ApplyResist(dmg, res)
+		dmg, _ = d2combat.ReduceComponent(dmg, 0, res, false, false, 0, 0)
 		n++
 
 		e.emit("damage", "SKILL static_field target=%s pct=%d floor=%d%% resist=%d dmg=%d hp=%d/%d", m.Label(), ef.Pct,
@@ -542,6 +544,8 @@ func (e *Engine) resistFrom(m *d2mapentity.Monster, src *d2mapentity.Player, kin
 	// monsters are not capped: a monstats resist of 100 is an immunity
 	return d2combat.EffectiveResist(d2combat.ResistInput{
 		Resist: res, IsPhysical: phys, NoDifficultyPenalty: true, NoCap: true, Pierce: pierce, HasPierce: hasPierce,
+		// VERIFIED 0x579bf4: attacker state 0x2f vs an undead defender voids positive physical resist
+		PhysicalNullified: phys && e.physNullified(m, src),
 	})
 }
 
@@ -557,11 +561,19 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 
 	for _, p := range parts {
 		if p.v > 0 {
-			total += d2combat.ApplyResist(int(p.v), e.resistFrom(m, src, p.kind))
+			// per type: flat reduction, percent resist, absorb (0x579c90). Monsters
+			// have no stat 34/35 or absorb stats; components are not floored, the
+			// Total is (applied below).
+			out, _ := d2combat.ReduceComponent(int(p.v), 0, e.resistFrom(m, src, p.kind), false, false, 0, 0)
+			total += out
 		}
 	}
 
-	whole := (total + 128) >> 8
+	whole := 0
+	if d2combat.ApplicableTotal(int32(total)) {
+		whole = (total + 128) >> 8
+	}
+
 	if total > 0 && whole < 1 {
 		whole = 1
 	}
@@ -770,6 +782,11 @@ func (e *Engine) onSim(ev d2missile.Event) {
 
 		if mt != nil && ev.Damage.SumTotal(true) > 0 {
 			e.hurt(mt.m, e.owner(m), &ev.Damage, e.skillName(m.SkillID))
+
+			// event 6 (missile): only hits with physical damage dispatch the item events here (UNVERIFIED rule)
+			if ev.Damage.Physical > 0 {
+				e.itemEvents(mt.m, e.owner(m), false)
+			}
 		}
 
 		if mt != nil {
