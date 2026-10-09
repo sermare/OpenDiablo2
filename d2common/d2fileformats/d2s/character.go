@@ -30,10 +30,15 @@ type Character struct {
 	// Corpse holds the items on the character's corpse, if it has one.
 	Corpse    []Item
 	HasCorpse bool
+	// CorpseHeader is the 12 unexplained bytes before a corpse's item list.
+	CorpseHeader [corpseHeaderLen]byte
 	// MercItems are the mercenary's equipped items (expansion saves).
 	MercItems []Item
 	// Golem is the item an iron golem was made from, for Necromancers.
 	Golem *Item
+	// Trailing is any data after the last section the parser understands,
+	// kept so that Write reproduces the file.
+	Trailing []byte
 }
 
 // Parse decodes a complete .d2s file. tables is required for any character
@@ -74,6 +79,7 @@ func Parse(data []byte, tables *ItemTables) (*Character, error) {
 	}
 
 	if !header.IsExpansion() {
+		c.keepTrailing(data, pos)
 		return c, nil
 	}
 
@@ -82,10 +88,12 @@ func Parse(data []byte, tables *ItemTables) (*Character, error) {
 	}
 
 	if header.Class == Necromancer {
-		if err = c.readGolem(data, pos, tables); err != nil {
+		if pos, err = c.readGolem(data, pos, tables); err != nil {
 			return nil, fmt.Errorf("golem: %w", err)
 		}
 	}
+
+	c.keepTrailing(data, pos)
 
 	return c, nil
 }
@@ -122,6 +130,8 @@ func (c *Character) readCorpse(data []byte, pos int, tables *ItemTables) (int, e
 		return pos, ErrTruncated
 	}
 
+	copy(c.CorpseHeader[:], data[pos:pos+corpseHeaderLen])
+
 	var err error
 
 	c.Corpse, pos, err = readItemSection(data, pos+corpseHeaderLen, tables)
@@ -147,21 +157,27 @@ func (c *Character) readMercenary(data []byte, pos int, tables *ItemTables) (int
 	return pos, err
 }
 
-func (c *Character) readGolem(data []byte, pos int, tables *ItemTables) error {
+func (c *Character) keepTrailing(data []byte, pos int) {
+	if pos < len(data) {
+		c.Trailing = append([]byte(nil), data[pos:]...)
+	}
+}
+
+func (c *Character) readGolem(data []byte, pos int, tables *ItemTables) (int, error) {
 	if pos+3 > len(data) || !bytes.Equal(data[pos:pos+2], golemTag) {
-		return fmt.Errorf("%w: golem tag at 0x%X", ErrBadSection, pos)
+		return pos, fmt.Errorf("%w: golem tag at 0x%X", ErrBadSection, pos)
 	}
 
 	if data[pos+2] == 0 {
-		return nil
+		return pos + 3, nil
 	}
 
-	item, _, err := parseItem(data[pos+3:], tables)
+	item, n, err := parseItem(data[pos+3:], tables)
 	if err != nil {
-		return err
+		return pos, err
 	}
 
 	c.Golem = &item
 
-	return nil
+	return pos + 3 + n, nil
 }

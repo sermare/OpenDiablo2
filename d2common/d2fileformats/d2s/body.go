@@ -128,6 +128,10 @@ type Body struct {
 	Attributes Attributes
 	// SkillPoints is the points spent in each of the class' 30 skills.
 	SkillPoints [numSkills]byte
+	// QuestsRaw and WaypointsRaw are the sections as read; Write starts from
+	// them so the bytes the structured fields do not cover are preserved.
+	QuestsRaw    [questsSize]byte
+	WaypointsRaw [waypointsSize]byte
 	// ItemsOffset is where the first item section ('JM') starts.
 	ItemsOffset int
 }
@@ -191,6 +195,7 @@ func (b *Body) readQuests(data []byte, pos *int) error {
 		copy(b.Quests[d][:], section[start:start+questsPerDiff])
 	}
 
+	copy(b.QuestsRaw[:], section)
 	*pos += questsSize
 
 	return nil
@@ -218,6 +223,7 @@ func (b *Body) readWaypoints(data []byte, pos *int) error {
 		b.Waypoints[d] = mask
 	}
 
+	copy(b.WaypointsRaw[:], section)
 	*pos += waypointsSize
 
 	return nil
