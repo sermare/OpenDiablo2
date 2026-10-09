@@ -239,7 +239,8 @@ func (d *Director) fireShot(u *unit, mode d2monster.Mode, atk d2mapentity.Monste
 		Owner: u.b.ID, Mode: mode.String(), From: d2path.Point{X: sx, Y: sy}, To: d2path.Point{X: ax, Y: ay},
 		Missile: missileFor(u.m.Stat, mode), Velocity: d.missileVelocity(missileFor(u.m.Stat, mode)),
 		Collide: func(x, y int) bool {
-			for _, p := range d.targets {
+			for _, tid := range d.targetIDs() {
+				p := d.targets[tid]
 				px, py := playerSubtile(p)
 				if d.targetable(p) && abs(px-x) <= shotCollideRadius && abs(py-y) <= shotCollideRadius {
 					struck = p
