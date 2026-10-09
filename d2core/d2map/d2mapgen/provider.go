@@ -105,6 +105,10 @@ func (townProvider) Load(g *MapGenerator, _ int, _ LoadRequest) error {
 	return nil
 }
 
+// maxMazeLevel is the last level id the maze provider tries: Act 1 (caves, crypts, jail, catacombs)
+// and Act 2 (sewers, palace, tombs, lair, arcane sanctuary; the exe's DRLG_ port: drlgmaze/maze_act23.go).
+const maxMazeLevel = 72
+
 // mazeProvider builds Act 1 maze levels (caves, crypts, jail, catacombs) with
 // the DRLG port. It is only active with OD2_REALMAPS=1.
 type mazeProvider struct {
@@ -115,7 +119,7 @@ type mazeProvider struct {
 func (mazeProvider) Name() string { return "drlg-maze" }
 
 func (p *mazeProvider) CanLoad(levelID int) bool {
-	if !RealMapsEnabled() || levelID < 2 || levelID > 37 {
+	if !RealMapsEnabled() || levelID < 2 || levelID > maxMazeLevel {
 		return false
 	}
 
@@ -132,7 +136,7 @@ func (p *mazeProvider) probe(tb *d2drlg.Tables) {
 
 	base, _ := d2rand.DrlgBaseSeed(0)
 
-	for id := 2; id <= 37; id++ {
+	for id := 2; id <= maxMazeLevel; id++ {
 		_, err := drlgmaze.Generate(tb, drlgmaze.Params{LevelID: id, BaseSeed: base})
 		p.ok[id] = err == nil
 	}

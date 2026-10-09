@@ -4,20 +4,40 @@ package d2quest
 // quests.md section 2). The record slot of a quest is given separately
 // because it differs from the id for the intro quests and the later acts.
 const (
-	QuestA1Prologue = 0 // Warriv's welcome, slot 0
-	QuestDenOfEvil  = 1 // slot 1
-	QuestBurial     = 2 // Sisters' Burial Grounds, slot 2
-	QuestTools      = 3 // Tools of the Trade, slot 3
-	QuestCain       = 4 // The Search for Cain, slot 4
-	QuestTower      = 5 // The Forgotten Tower, slot 5
-	QuestAndariel   = 6 // Sisters to the Slaughter, slot 6
-	QuestA2Prologue = 7 // Jerhyn's welcome, slot 8
-	QuestRadament   = 8 // Radament's Lair, slot 9
-	QuestNavi       = 25
-	QuestA1Intro    = 37 // the four intro quests are ids 37..40, slot 41 (outside the record)
-	QuestA2Intro    = 38
-	QuestA3Intro    = 39
-	QuestA5Intro    = 40
+	QuestA1Prologue      = 0  // Warriv's welcome, slot 0
+	QuestDenOfEvil       = 1  // slot 1
+	QuestBurial          = 2  // Sisters' Burial Grounds, slot 2
+	QuestTools           = 3  // Tools of the Trade, slot 3
+	QuestCain            = 4  // The Search for Cain, slot 4
+	QuestTower           = 5  // The Forgotten Tower, slot 5
+	QuestAndariel        = 6  // Sisters to the Slaughter, slot 6
+	QuestA2Prologue      = 7  // Jerhyn's welcome, slot 8
+	QuestRadament        = 8  // Radament's Lair, slot 9
+	QuestHoradricStaff   = 9  // slot 10
+	QuestTaintedSun      = 10 // slot 11
+	QuestArcane          = 11 // slot 12
+	QuestSummoner        = 12 // slot 13
+	QuestA3Prologue      = 14 // Hratli's welcome, slot 16
+	QuestLamEsen         = 15 // slot 17
+	QuestKhalim          = 16 // slot 18
+	QuestBlade           = 17 // slot 19
+	QuestGoldenBird      = 18 // slot 20
+	QuestBlackenedTemple = 19 // slot 21
+	QuestA4Prologue      = 21 // Tyrael's welcome, slot 24
+	QuestFallenAngel     = 22 // slot 25
+	QuestHellforge       = 24 // slot 27
+	QuestNavi            = 25
+	QuestMalachai        = 29 // Malachai's stone gossip, slot 33
+	QuestSiege           = 31 // slot 35
+	QuestRescue          = 32 // slot 36
+	QuestPrison          = 33 // slot 37
+	QuestBetrayal        = 34 // slot 38
+	QuestRite            = 35 // slot 39
+	QuestEve             = 36 // slot 40
+	QuestA1Intro         = 37 // the four intro quests are ids 37..40, slot 41 (outside the record)
+	QuestA2Intro         = 38
+	QuestA3Intro         = 39
+	QuestA5Intro         = 40
 )
 
 // Monster class ids (monstats.txt rows), verified against the class
@@ -65,6 +85,26 @@ const (
 	NPCQualKehk   = 515
 	NPCCain6      = 520
 	NPCTyrael3    = 521
+	// Classes of the monsters quests kill or talk to (monstats.txt rows of
+	// the 1.14b classic+expansion table; the expansion divider row is not
+	// counted, which matches the NPC ids above). Only the ones below were
+	// cross-checked against the binary notes (Baal is NPCBaalCrab in boss.go; the row
+	// named "Baal Throne" of monstats.txt).
+	NPCSummoner       = 250
+	NPCIzualGhost     = 406
+	NPCCouncilA       = 345
+	NPCCouncilB       = 346
+	NPCCouncilC       = 347
+	NPCPrisonDoor     = 434
+	NPCNihlathakBoss  = 526
+	NPCAnyaFrozen     = 527 // "Drehya outside town", the frozen Anya (UNVERIFIED)
+	NPCAncientStatue1 = 537
+	NPCAncientStatue2 = 538
+	NPCAncientStatue3 = 539
+	NPCAncient1       = 540
+	NPCAncient2       = 541
+	NPCAncient3       = 542
+	NPCGuard2         = 331 // ACT2GUARD2 of the speech table (which guard class it is is unverified)
 )
 
 // Level ids (levels.txt).
@@ -80,6 +120,38 @@ const (
 	LevelMooMooFarm      = 39
 	LevelLutGholein      = 40
 	LevelSewers3         = 49
+	LevelHarem1          = 50
+	LevelCanyon          = 46
+	LevelLostCity        = 44
+	LevelValleySnakes    = 45
+	LevelArcane          = 74
+	LevelTalRashaFirst   = 66
+	LevelTalRashaLast    = 72
+	LevelDurielLair      = 73
+	LevelKurastDocktown  = 75
+	LevelLowerKurast     = 79
+	LevelFlayerDungeon1  = 88
+	LevelFlayerDungeon2  = 89
+	LevelFlayerDungeon3  = 91
+	LevelSewers2Kurast   = 93
+	LevelRuinedTemple    = 94
+	LevelSpiderCavern    = 85
+	LevelTravincal       = 83
+	LevelDurance1        = 100
+	LevelDurance3        = 102
+	LevelPandemonium     = 103
+	LevelPlainsDespair   = 105
+	LevelRiverOfFlame    = 107
+	LevelChaosSanctum    = 108
+	LevelHarrogath       = 109
+	LevelBloodyFoothills = 110
+	LevelFrigidHighlands = 111
+	LevelArreatPlateau   = 112
+	LevelFrozenRiver     = 114 // levels.txt calls it "Cellar of Pity" (internal name mixup)
+	LevelArreatSummit    = 120
+	LevelNihlathakTemple = 121
+	LevelWorldstone1     = 128
+	LevelThrone          = 131
 )
 
 // Player classes in the .d2s numbering.
@@ -103,6 +175,20 @@ const (
 	ItemReward            = "rin"
 	ItemHoradricCube      = "box"
 	ItemStaffOfKingsShaft = "msf"
+	ItemViperAmulet       = "vip"
+	ItemHoradricStaff     = "hst"
+	ItemLamEsenTome       = "bbb"
+	ItemKhalimEye         = "qey"
+	ItemKhalimHeart       = "qhr"
+	ItemKhalimBrain       = "qbr"
+	ItemKhalimFlail       = "qf1"
+	ItemKhalimWill        = "qf2"
+	ItemGidbinn           = "g33"
+	ItemJadeFigurine      = "j34"
+	ItemGoldenBird        = "g34"
+	ItemMephistoSoulstone = "mss"
+	ItemHellforgeHammer   = "hfh"
+	ItemMalahScroll       = "tr2"
 )
 
 // Difficulty indexes of the record.

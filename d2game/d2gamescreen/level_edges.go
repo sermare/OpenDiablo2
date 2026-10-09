@@ -127,6 +127,8 @@ type exitWalk struct {
 	lastX      float64
 	lastY      float64
 	warp       *d2mapengine.WarpTile
+	best       float64 // smallest distance to the candidate so far (0: not measured yet)
+	bestCand   int
 }
 
 // exitCandidates lists local positions from which the hero leaves towards
@@ -236,6 +238,14 @@ func (v *Game) stepExitWalk(e *exitWalk) {
 	v.movePlayerTo(c[0], c[1])
 }
 
+// progress restarts the give-up clock when the hero got closer (walkProgressStep) to the candidate
+// he walks to, or when the candidate changed.
+func (e *exitWalk) progress(dist float64) {
+	if e.best == 0 || e.bestCand != e.next || dist < e.best-walkProgressStep {
+		e.best, e.bestCand, e.elapsed = dist, e.next, 0
+	}
+}
+
 // threatRadius is the distance (tiles) at which a hostile monster makes the
 // walking hero turn round and fight, like a player who is attacked on the way.
 const threatRadius = 5.0
@@ -301,16 +311,21 @@ func (v *Game) advanceExitWalk(elapsed float64) {
 		return
 	}
 
+	// the time-out is the time without getting closer to the exit: a far border at the other end
+	// of a 80x80 level (Dry Hills back to Rocky Waste) takes longer than exitTimeout to reach
+	hx, hy := v.heroTilePos()
+	c := e.candidates[e.next%len(e.candidates)]
+
+	e.progress(math.Hypot(c[0]-hx, c[1]-hy))
+
 	e.elapsed += elapsed
 	if e.elapsed > exitTimeout {
-		hx, hy := v.heroTilePos()
 		v.Warningf("EXIT gave up walking towards level %d: hero at (%.1f,%.1f) after %.0f s", e.level, hx, hy, e.elapsed)
 		v.levels.exitWalk = nil
 
 		return
 	}
 
-	hx, hy := v.heroTilePos()
 	if math.Hypot(hx-e.lastX, hy-e.lastY) > 0.05 {
 		e.lastX, e.lastY, e.standStill = hx, hy, 0
 		return
