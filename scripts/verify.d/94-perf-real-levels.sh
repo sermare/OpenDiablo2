@@ -1,3 +1,4 @@
+scenario_realtime=1
 scenario_name="performance on real generated levels (OD2_REALMAPS: start-up and level-build budget, 120 monsters under full-screen lighting; generous limits so a loaded machine does not flake)"
 # Frigid Highlands (Act 5 outdoor with exact tiles) is the slowest level to build. The marks come from d2util.PerfMark /
 # PerfTime ("PERF mark <name> t_ms=<ms since process start>", "PERF span generate level=N ms=<ms>"). The limits are ten to

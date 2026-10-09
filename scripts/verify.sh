@@ -93,6 +93,7 @@ fi
 #   scenario_name="human readable title"
 #   scenario_env()    echo shell lines (exports) for the game; may use $save, $tmp, $OD2_PORT
 #   scenario_check()  inspect $log.txt (ANSI-stripped log) and set fail=1 on problems
+#   scenario_realtime=1      (optional) keep the game clock at real time (default: OD2_AUTOSPEED=4 for every scenario)
 #   scenario_unmuted=1       (optional) play real audio (no OD2_AUTOTEST_MUTE); OD2_VERIFY_SOUND=1 does it for all
 #   scenario_warnings_ok=1   (optional) do not fail on [ERROR]/[WARNING] lines
 # Adding a scenario = adding one small file; no edits to this runner are needed.
@@ -103,7 +104,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   [ -f "$save" ] || cp "$D2S_SAMPLE_BODY" "$save"
 
   for f in scripts/verify.d/*.sh(N); do
-    unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""
+    unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""; scenario_realtime=""
     source "$f"
     # OD2_VERIFY_ONLY=<glob> (e.g. "83-*") runs only the scenarios whose file name matches
     [ -n "${OD2_VERIFY_ONLY:-}" ] && [[ ${f:t} != ${~OD2_VERIFY_ONLY} ]] && continue
@@ -121,6 +122,8 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
         echo "export OD2_AUTOGAME=\"$save\" OD2_AUTOEXIT=1"
         # muted unless OD2_VERIFY_SOUND=1 or the scenario sets scenario_unmuted=1 (real audio, uses the sound device)
         [ -n "${OD2_VERIFY_SOUND:-}" ] || [ -n "$scenario_unmuted" ] || echo "export OD2_AUTOTEST_MUTE=1"
+        # game clock x4 (OD2_AUTOSPEED) unless the scenario needs real time (perf, multiplayer); OD2_VERIFY_SPEED=1 turns it off
+        [ -n "$scenario_realtime" ] || [ "${OD2_VERIFY_SPEED:-4}" = 1 ] || echo "export OD2_AUTOSPEED=${OD2_VERIFY_SPEED:-4}"
         scenario_env
         echo "$tmp/od2 2>&1 | tee $log"
       } > $cmd
