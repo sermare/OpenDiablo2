@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 )
 
@@ -251,4 +252,22 @@ func GeneratePreset(env *Env, p Params, fileOverride int) (res *PresetLevel, err
 	}
 
 	return out, nil
+}
+
+// ParamsPreset builds the generator inputs of a DrlgType 2 level that is not
+// part of any world layout (Act 1 treasure caves 13..16 and Andariel's
+// Catacombs Level 4, 37): the rectangle is the Levels.txt offset and size, vis
+// and warp come from the level record. Verified equal to the emulated game
+// (testdata/preset_act1.json).
+func ParamsPreset(t d2drlg.Levels, id int, gameSeed uint32, diff d2drlg.Difficulty) (Params, error) {
+	rec, ok := t.Level(id)
+	if !ok {
+		return Params{}, fmt.Errorf("drlgoutdoor: level %d unknown", id)
+	}
+
+	p := Params{ID: id, Vis: rec.Vis, Warp: rec.Warp}
+	p.BaseSeed, _ = d2rand.DrlgBaseSeed(gameSeed)
+	p.Rect = Rect{rec.OffsetX, rec.OffsetY, rec.SizeX[diff], rec.SizeY[diff]}
+
+	return p, nil
 }

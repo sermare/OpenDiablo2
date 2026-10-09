@@ -310,6 +310,14 @@ func TileDestination(level, style int) (int, bool) {
 		return 0, false
 	}
 
+	if style == presetExitStyle[level] && hasPresetExit(level) {
+		for _, l := range allLinks {
+			if l.From == level && l.Kind == KindTile && l.Warp >= 0 {
+				return l.To, true
+			}
+		}
+	}
+
 	var ups, downs []int
 
 	for _, l := range allLinks {
@@ -337,6 +345,15 @@ func TileDestination(level, style int) (int, bool) {
 
 	return 0, false
 }
+
+// presetExitStyle is the style of the only exit tile of the small DrlgType 2
+// dungeon levels (Cave Level 2 and the other treasure caves 13..16, observed in
+// their DS1 files, and Catacombs Level 4, 37): the tile sits in the slot of
+// the Vis column that links back (Vis1 = the level above for 13..16, Vis0 for
+// 37). OBSERVED style of the warp tile in the stamped map; unverified in the exe.
+var presetExitStyle = map[int]int{13: 1, 14: 1, 15: 1, 16: 1, 37: 0}
+
+func hasPresetExit(level int) bool { _, ok := presetExitStyle[level]; return ok }
 
 // downStyleBase is the tile style of the first "down" exit of a dungeon level.
 const downStyleBase = 4
