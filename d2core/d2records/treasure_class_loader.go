@@ -40,9 +40,11 @@ func treasureClassExLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 
 func treasureClassCommonLoader(d *d2txt.DataDictionary) (TreasureClass, error) {
 	records := make(TreasureClass)
+	index := 0
 
 	for d.Next() {
 		record := &TreasureClassRecord{
+			Index:      index,
 			Name:       d.String("Treasure Class"),
 			Group:      d.Number("group"),
 			Level:      d.Number("level"),
@@ -81,6 +83,7 @@ func treasureClassCommonLoader(d *d2txt.DataDictionary) (TreasureClass, error) {
 			}
 		}
 
+		index++
 		records[record.Name] = record
 	}
 

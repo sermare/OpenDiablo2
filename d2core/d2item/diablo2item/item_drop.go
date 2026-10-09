@@ -149,24 +149,19 @@ func (t *dropTables) loadTreasure() {
 		src = t.rec.Item.Treasure.Normal
 	}
 
-	// The records are a map, so the file order is lost. Level groups only
-	// need their members in level order, so sort by (group, level, name).
+	// The records are a map; the loader keeps the file position in Index,
+	// and the game walks level groups in file order.
 	recs := make([]*d2records.TreasureClassRecord, 0, len(src))
 	for _, r := range src {
 		recs = append(recs, r)
 	}
 
 	sort.Slice(recs, func(i, j int) bool {
-		a, b := recs[i], recs[j]
-
-		switch {
-		case a.Group != b.Group:
-			return a.Group < b.Group
-		case a.Level != b.Level:
-			return a.Level < b.Level
-		default:
-			return a.Name < b.Name
+		if recs[i].Index != recs[j].Index {
+			return recs[i].Index < recs[j].Index
 		}
+
+		return recs[i].Name < recs[j].Name
 	})
 
 	for _, r := range recs {

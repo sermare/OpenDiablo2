@@ -5,8 +5,12 @@ type TreasureClass map[string]*TreasureClassRecord
 
 // TreasureClassRecord represents a rule for item drops in diablo 2
 type TreasureClassRecord struct {
-	Name       string
-	Group      int
+	Name string
+	// Index is the position of the row in the file. The game keeps classes
+	// in file order and level groups (Group/Level) are walked in that order,
+	// which the TreasureClass map alone cannot tell.
+	Index      int
+	Group     int
 	Level      int
 	NumPicks   int
 	FreqUnique int
