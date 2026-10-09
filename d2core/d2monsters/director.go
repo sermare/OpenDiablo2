@@ -49,6 +49,9 @@ type Options struct {
 	// Expansion selects the MonLvl*Ex columns of levels.txt for the area
 	// monster level.
 	Expansion bool
+	// Players is the number of players in the game for the monster hit point
+	// and experience bonus (0 means 1: no bonus).
+	Players int
 	// IgnoreTown lets monsters target heroes standing in town (for tests; the
 	// original never aggroes onto players in town).
 	IgnoreTown bool

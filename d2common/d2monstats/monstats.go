@@ -164,6 +164,12 @@ func MulDiv(a, b, c int) int {
 // maxHP is the cap on the pre-shift hit points (0x7fffff, stored <<8).
 const maxHP = 0x7fffff
 
+// MaxHP exports the cap for callers that scale hit points themselves.
+const MaxHP = maxHP
+
+// MulDiv100 is MulDiv(a, pct, 100): a monlvl value times a monstats percent.
+func MulDiv100(a, pct int) int { return MulDiv(a, pct, 100) }
+
 // ResolveLevel is the monster level rule (VERIFIED at 0x00571c4f..0x00571c84):
 // the monstats Level of the difficulty is the default. The area MonLvl
 // (LEVEL_GetMonsterLevel 0x0061dc00) replaces it only when the game is

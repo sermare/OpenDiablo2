@@ -177,17 +177,26 @@ func TestGroupsForRoomAndAverage(t *testing.T) {
 }
 
 func TestResolveLevel(t *testing.T) {
+	stat := [3]int{5, 35, 65}
+
 	for _, c := range []struct {
-		info          ClassInfo
-		stat, area, w int
+		name string
+		info ClassInfo
+		diff Difficulty
+		area int
+		exp  bool
+		want int
 	}{
-		{ClassInfo{}, 5, 30, 30},
-		{ClassInfo{NoRatio: true}, 5, 30, 5},
-		{ClassInfo{Boss: true}, 5, 30, 5},
-		{ClassInfo{}, 5, 0, 5},
+		{"hell expansion area", ClassInfo{}, Hell, 80, true, 80},
+		{"nightmare expansion area", ClassInfo{}, Nightmare, 40, true, 40},
+		{"normal keeps stat level", ClassInfo{}, Normal, 30, true, 5},
+		{"classic keeps stat level", ClassInfo{}, Hell, 80, false, 65},
+		{"noRatio", ClassInfo{NoRatio: true}, Hell, 80, true, 65},
+		{"boss", ClassInfo{Boss: true}, Nightmare, 40, true, 35},
+		{"unknown area", ClassInfo{}, Hell, 0, true, 65},
 	} {
-		if got := ResolveLevel(c.info, c.stat, c.area); got != c.w {
-			t.Errorf("%+v: %d want %d", c.info, got, c.w)
+		if got := ResolveLevel(c.info, c.diff, stat, c.area, c.exp); got != c.want {
+			t.Errorf("%s: %d want %d", c.name, got, c.want)
 		}
 	}
 }
