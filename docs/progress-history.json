@@ -698,6 +698,18 @@
 "NPC interaction features": 100.0,
 "Roadmap deliverables": 86.36
 }
+},
+{
+"t": "2026-10-09T22:37:20+00:00",
+"v": {
+"Game.exe functions named in Ghidra": 69.18,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 68.59,
+"Level generator proven equal to the real game": 99.32,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 100.0,
+"Roadmap deliverables": 86.36
+}
 }
 ]
 }
