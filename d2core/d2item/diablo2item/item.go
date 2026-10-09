@@ -11,6 +11,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2stats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
 )
@@ -63,6 +64,7 @@ type Item struct {
 	rand      *rand.Rand // non-global rand instance for re-generating the item
 
 	slotType d2enum.EquippedSlot
+	quality  d2drop.Quality // set by ItemFromCode
 
 	TypeCode    string
 	CommonCode  string
@@ -504,6 +506,7 @@ func (i *Item) updateItemAttributes() {
 			max: r.Durability,
 		},
 
+		currentDurability: r.Durability,
 		baseItemLevel:     r.Level,
 		requiredLevel:     r.RequiredLevel,
 		requiredStrength:  r.RequiredStrength,

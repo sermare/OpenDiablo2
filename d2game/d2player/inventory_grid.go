@@ -10,6 +10,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
@@ -46,8 +47,8 @@ func NewItemGrid(asset *d2asset.AssetManager,
 	itemGrid := &ItemGrid{
 		asset:          asset,
 		uiManager:      ui,
-		width:          grid.Box.Width,
-		height:         grid.Box.Height,
+		width:          gridCells(grid.Columns, grid.Box.Width, grid.CellWidth),
+		height:         gridCells(grid.Rows, grid.Box.Height, grid.CellHeight),
 		originX:        grid.Box.Left,
 		originY:        grid.Box.Top + (grid.Rows * cellPadding),
 		slotSize:       grid.CellWidth,
@@ -60,6 +61,22 @@ func NewItemGrid(asset *d2asset.AssetManager,
 	itemGrid.Logger.SetPrefix(logPrefix)
 
 	return itemGrid
+}
+
+// gridCells returns the number of cells of an axis. The cell count used to be
+// taken from the pixel size of the grid box, which made the grid hundreds of
+// cells wide; the cell count column is used now, with the pixel size divided
+// by the cell size as the fallback.
+func gridCells(cells, pixels, cellSize int) int {
+	if cells > 0 {
+		return cells
+	}
+
+	if cellSize > 0 {
+		return pixels / cellSize
+	}
+
+	return 0
 }
 
 // ItemGrid is a reusable grid for use with player and merchant inventory.
@@ -142,6 +159,11 @@ func (g *ItemGrid) loadItem(item InventoryItem) {
 		var itemSprite *d2ui.Sprite
 
 		imgPath := fmt.Sprintf(fmtFlippyFile, item.GetItemCode())
+
+		// items whose invfile is not "inv"+code (potions, scrolls, tomes, ...)
+		if f, ok := item.(interface{ InventoryFileName() string }); ok && f.InventoryFileName() != "" {
+			imgPath = fmt.Sprintf(fmtFlippyFile, f.InventoryFileName()[len("inv"):])
+		}
 
 		itemSprite, err := g.uiManager.NewSprite(imgPath, d2resource.PaletteSky)
 		if err != nil {
@@ -281,4 +303,85 @@ func (g *ItemGrid) renderEquippedItems(target d2interface.Surface) {
 
 		g.renderItem(eq.item, target, x, y)
 	}
+}
+
+// newPlainItemGrid creates a grid without equipment slots (vendor storage).
+func newPlainItemGrid(asset *d2asset.AssetManager, ui *d2ui.UIManager, l d2util.LogLevel,
+	cols, rows, left, top, cell int) *ItemGrid {
+	g := &ItemGrid{
+		asset:          asset,
+		uiManager:      ui,
+		width:          cols,
+		height:         rows,
+		originX:        left,
+		originY:        top + rows*cellPadding,
+		slotSize:       cell,
+		sprites:        make(map[string]*d2ui.Sprite),
+		equipmentSlots: map[d2enum.EquippedSlot]EquipmentSlot{},
+	}
+
+	g.Logger = d2util.NewLogger()
+	g.Logger.SetLevel(l)
+	g.Logger.SetPrefix(logPrefix)
+
+	return g
+}
+
+// Items returns the items on the grid (not a copy).
+func (g *ItemGrid) Items() []InventoryItem {
+	return g.items
+}
+
+// Bounds returns the screen rectangle of the grid's cells.
+func (g *ItemGrid) Bounds() (left, top, right, bottom int) {
+	return g.originX, g.originY, g.originX + g.width*g.slotSize, g.originY + g.height*g.slotSize
+}
+
+// ItemAtScreen returns the item under a screen position, or nil.
+func (g *ItemGrid) ItemAtScreen(mx, my int) InventoryItem {
+	left, top, right, bottom := g.Bounds()
+	if mx < left || my < top || mx >= right || my >= bottom {
+		return nil
+	}
+
+	x, y := g.ScreenToSlot(mx, my)
+
+	return g.GetSlot(x, y)
+}
+
+// occupancy builds the occupancy map of the grid's items.
+func (g *ItemGrid) occupancy() *d2inventory.OccupancyGrid {
+	og := d2inventory.NewOccupancyGrid(g.width, g.height)
+
+	for _, it := range g.items {
+		x, y := it.InventoryGridSlot()
+		w, h := it.InventoryGridSize()
+		og.Fill(x, y, w, h, true)
+	}
+
+	return og
+}
+
+// CanAutoPlace reports whether the item fits anywhere (game search order,
+// d2inventory.OccupancyGrid.FindFreeSlot).
+func (g *ItemGrid) CanAutoPlace(item InventoryItem, playerOwner bool) bool {
+	w, h := item.InventoryGridSize()
+	_, _, ok := g.occupancy().FindFreeSlot(w, h, playerOwner)
+
+	return ok
+}
+
+// AutoPlace puts the item where the original game's search for a free slot
+// would (scored for the player, first fit for a vendor); false if full.
+func (g *ItemGrid) AutoPlace(item InventoryItem, playerOwner bool) bool {
+	w, h := item.InventoryGridSize()
+
+	x, y, ok := g.occupancy().FindFreeSlot(w, h, playerOwner)
+	if !ok {
+		return false
+	}
+
+	g.set(x, y, item)
+
+	return true
 }

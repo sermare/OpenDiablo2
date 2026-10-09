@@ -6,4 +6,5 @@ type inputCallbackListener interface {
 	OnPlayerMove(x, y float64)
 	OnPlayerCast(skillID int, x, y float64)
 	OnPlayerInteract(entity d2interface.MapEntity)
+	OnPlayerSave() error
 }

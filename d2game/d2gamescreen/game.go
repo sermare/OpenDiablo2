@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
@@ -23,6 +24,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2maprenderer"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2screen"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2vendor"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket"
@@ -131,6 +133,7 @@ type Game struct {
 	guiManager           *d2gui.GuiManager
 	keyMap               *d2player.KeyMap
 	npcTarget            d2interface.MapEntity
+	tradeActive          bool // a vendor window opened from the NPC menu is open
 	greetingLast         map[string]string
 	dayClock             *dayClock
 	greetingRecent       map[string]string
@@ -396,6 +399,21 @@ func (v *Game) advanceNPCInteraction(_ float64) {
 	nx, ny := v.npcTarget.GetPositionF()
 	dist := math.Hypot(px-nx, py-ny)
 
+	if v.tradeActive {
+		// the trade window replaces the menu; it closes when the hero walks
+		// away (not in the autotest, where the hero stays where it is)
+		switch {
+		case !v.gameControls.Trade.IsOpen():
+			v.tradeActive = false
+			v.npcTarget = nil
+		case dist > npcMenuLeaveDistance && os.Getenv("OD2_AUTOTRADE") == "":
+			v.Infof("trade window closed: walked away from %q", v.npcTarget.Label())
+			v.gameControls.Trade.Close()
+		}
+
+		return
+	}
+
 	if menu.IsOpen() {
 		if dist > npcMenuLeaveDistance {
 			v.Infof("NPC menu closed: walked away from %q", v.npcTarget.Label())
@@ -455,9 +473,29 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 	case d2player.NPCActionTalk:
 		path := v.playNPCGreeting(npc.Label())
 		v.Infof("NPC menu: Talk with %q (voice %q)", npc.Label(), path)
+	case d2player.NPCActionTrade, d2player.NPCActionTradeRepair:
+		v.openTrade(npc, uint32(time.Now().UnixNano()))
 	default:
 		v.Infof("NPC menu: %s (%s) not implemented yet", row.Action, row.Fallback)
 	}
+}
+
+// openTrade opens the vendor window for an Act 1 vendor. Other NPCs have a
+// Trade row but no stock model yet.
+func (v *Game) openTrade(npc d2interface.MapEntity, seed uint32) bool {
+	vendor, ok := d2vendor.ByClassID(v.npcClassID(npc))
+	if !ok {
+		v.Infof("NPC menu: Trade with %q not implemented yet (no vendor model for class %d)",
+			npc.Label(), v.npcClassID(npc))
+
+		return false
+	}
+
+	v.gameControls.OpenTrade(vendor, seed)
+
+	v.npcTarget, v.tradeActive = npc, true
+
+	return true
 }
 
 func (v *Game) currentDayPhase() dayPhaseSource {
@@ -533,8 +571,8 @@ func (v *Game) playNPCGreeting(name string) string {
 //
 // OD2_AUTOTEST_MUTE skips playback and OD2_AUTOEXIT quits when done.
 func (v *Game) advanceAutoTest(elapsed float64) {
-	talk, menus := os.Getenv("OD2_AUTOTALK"), os.Getenv("OD2_AUTOMENU")
-	if (talk == "" && menus == "") || v.localPlayer == nil || v.gameControls == nil {
+	talk, menus, trades := os.Getenv("OD2_AUTOTALK"), os.Getenv("OD2_AUTOMENU"), os.Getenv("OD2_AUTOTRADE")
+	if (talk == "" && menus == "" && trades == "") || v.localPlayer == nil || v.gameControls == nil {
 		return
 	}
 
@@ -589,8 +627,42 @@ func (v *Game) advanceAutoTest(elapsed float64) {
 		}
 	}
 
+	v.autoTestTrade(trades, byLabel)
+
 	if os.Getenv("OD2_AUTOMENU_HOLD") == "" {
 		v.autoTestExit()
+	}
+}
+
+// autoTestTrade runs OD2_AUTOTRADE=<names>: for each vendor it opens the trade
+// window, logs the stock with computed buy prices and runs one scripted buy
+// and sell (and a repair for Charsi). OD2_AUTOTRADE_SEED fixes the stock.
+func (v *Game) autoTestTrade(names string, byLabel map[string]d2interface.MapEntity) {
+	if names == "" {
+		return
+	}
+
+	seed := uint32(1)
+	if n, err := strconv.ParseUint(os.Getenv("OD2_AUTOTRADE_SEED"), 10, 32); err == nil {
+		seed = uint32(n)
+	}
+
+	if n, err := strconv.Atoi(os.Getenv("OD2_AUTOTRADE_LEVEL")); err == nil {
+		v.gameControls.Trade.LevelOverride = n
+	}
+
+	for _, name := range strings.Split(names, ",") {
+		npc, present := byLabel[name]
+		if !present {
+			v.Infof("AUTOTRADE npc=%s in_town=false", name)
+			continue
+		}
+
+		if !v.openTrade(npc, seed) {
+			continue
+		}
+
+		v.gameControls.Trade.RunAutoTest() // stays open for OD2_AUTOMENU_HOLD
 	}
 }
 

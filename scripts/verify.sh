@@ -30,6 +30,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   cat > $cmd <<EOT
 #!/bin/zsh
 export OD2_AUTOGAME="$save" OD2_AUTOMENU="Akara,Charsi,Gheed,Warriv,Kashya" OD2_AUTOMENU_CHOOSE=Talk
+export OD2_AUTOTRADE="Akara,Charsi" OD2_AUTOTRADE_SEED=1 OD2_AUTOTRADE_LEVEL=8
 export OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1
 /tmp/od2-verify 2>&1 | tee $log
 EOT
@@ -38,7 +39,13 @@ EOT
   for i in {1..90}; do sleep 1; pgrep -f /tmp/od2-verify >/dev/null || break; done
   sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
   grep -E "imported|equipment:|NPC menu opened" $log.txt | cut -c1-200
+  grep -E "AUTOTRADE (buy|sell|repair)" $log.txt | cut -c1-200
   grep -qE "NPC menu opened: npc=\"Akara\"" $log.txt || { echo "FAIL: no Akara menu"; fail=1; }
+  for v in Akara Charsi; do
+    grep -qE "AUTOTRADE buy vendor=$v .*err=<nil>" $log.txt || { echo "FAIL: no scripted buy at $v"; fail=1; }
+    grep -qE "AUTOTRADE sell vendor=$v .*err=<nil>" $log.txt || { echo "FAIL: no scripted sell at $v"; fail=1; }
+  done
+  grep -qE "AUTOTRADE repair vendor=Charsi .*err=<nil>" $log.txt || { echo "FAIL: no Charsi repair"; fail=1; }
   if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in log"; fail=1; fi
 fi
 

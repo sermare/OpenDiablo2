@@ -8,6 +8,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2geom"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2vendor"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
@@ -234,6 +235,13 @@ func NewGameControls(
 		isSinglePlayer:         isSinglePlayer,
 	}
 
+	trade, err := NewTradeWindow(asset, ui, l, inventory, hero, gc.saveHero, gc.onCloseTrade)
+	if err != nil {
+		return nil, err
+	}
+
+	gc.Trade = trade
+
 	if !isSinglePlayer {
 		PartyPanel := NewPartyPanel(asset, ui, hero.Name(), l, hero, hero.Stats, players)
 		gc.PartyPanel = PartyPanel
@@ -285,6 +293,7 @@ type GameControls struct {
 	questLog               *QuestLog
 	HelpOverlay            *HelpOverlay
 	NPCMenu                *NPCMenu
+	Trade                  *TradeWindow
 	bottomMenuRect         *d2geom.Rectangle
 	leftMenuRect           *d2geom.Rectangle
 	rightMenuRect          *d2geom.Rectangle
@@ -358,6 +367,11 @@ func (g *GameControls) OnKeyRepeat(event d2interface.KeyEvent) bool {
 func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 	if event.Key() == d2enum.KeyEscape && g.NPCMenu.IsOpen() {
 		g.NPCMenu.Choose(len(g.NPCMenu.Rows()) - 1)
+		return true
+	}
+
+	if event.Key() == d2enum.KeyEscape && g.Trade.IsOpen() {
+		g.Trade.Close()
 		return true
 	}
 
@@ -516,6 +530,7 @@ func (g *GameControls) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 	}
 
 	g.NPCMenu.OnMouseMove(event)
+	g.Trade.OnMouseMove(event)
 	g.hud.OnMouseMove(event)
 
 	if g.PartyPanel != nil {
@@ -548,6 +563,10 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	mx, my := event.X(), event.Y()
 
 	if g.NPCMenu.OnMouseButtonDown(event) {
+		return true
+	}
+
+	if g.Trade.OnMouseButtonDown(event) {
 		return true
 	}
 
@@ -722,6 +741,7 @@ func (g *GameControls) openEscMenu() {
 func (g *GameControls) Load() {
 	g.hud.Load()
 	g.inventory.Load()
+	g.Trade.Load()
 	g.skilltree.load()
 	g.heroStatsPanel.Load()
 
@@ -794,7 +814,7 @@ func (g *GameControls) isLeftPanelOpen() bool {
 		partyPanel = false
 	}
 
-	return g.heroStatsPanel.IsOpen() || partyPanel || g.questLog.IsOpen() || g.inventory.moveGoldPanel.IsOpen()
+	return g.heroStatsPanel.IsOpen() || partyPanel || g.questLog.IsOpen() || g.inventory.moveGoldPanel.IsOpen() || g.Trade.IsOpen()
 }
 
 func (g *GameControls) isRightPanelOpen() bool {
@@ -847,6 +867,7 @@ func (g *GameControls) Render(target d2interface.Surface) error {
 		return err
 	}
 
+	g.Trade.Render(target)
 	g.NPCMenu.Render(target)
 
 	if err := g.escapeMenu.Render(target); err != nil {
@@ -1146,5 +1167,30 @@ func (g *GameControls) commandLearnSkills(term d2interface.Terminal) func(args [
 		}
 
 		return nil
+	}
+}
+
+// OpenTrade opens the vendor window and the inventory beside it.
+func (g *GameControls) OpenTrade(v d2vendor.Vendor, seed uint32) {
+	g.NPCMenu.Close()
+	g.clearScreen()
+	g.inventory.Open()
+	g.Trade.Open(v, seed, nil) // quest overrides: the quest record is not available here (UNVERIFIED path)
+	g.updateLayout()
+}
+
+func (g *GameControls) onCloseTrade() {
+	if g.inventory.IsOpen() {
+		g.inventory.Close()
+	}
+
+	g.updateLayout()
+}
+
+// saveHero persists the hero after a transaction (the server copies the gold
+// into the HeroState and writes it, see d2server SavePlayer).
+func (g *GameControls) saveHero() {
+	if err := g.inputListener.OnPlayerSave(); err != nil {
+		g.Errorf("saving the hero: %v", err)
 	}
 }
