@@ -10,6 +10,12 @@ import (
 // returns nonzero for classes 0x10f, 0x152, 0x167, 0x230, 0x231).
 var specialACClasses = map[int]bool{0x10f: true, 0x152: true, 0x167: true, 0x230: true, 0x231: true}
 
+// IsMercenaryClass reports whether a monstats id is one of the five classes of helper 0x63fed0
+// (MONSTER_GetHirelingClassIndex): the rogue archer 0x10f, desert guard 0x152, iron wolf 0x167 and
+// the barbarians 0x230 / 0x231. The code and the notes call them "special" classes (attack rating
+// halving, the 13 frame stun cut, the crushing blow divisor of 10): they are the mercenaries.
+func IsMercenaryClass(class int) bool { return specialACClasses[class] }
+
 // HeroAROperands applies 0x57b8b0 (d2combat.AdjustAROperands, VERIFIED by
 // disassembly) for a hero attacking monster m: stat 0x73 zeroes the defense of
 // plain monsters, 0x74 removes a percent of it, 0x7b / 0x7c add attack rating

@@ -18,6 +18,10 @@ const (
 	// "sanctuary"; 0x3e is row 62 "openwounds", 0x15 is row 21 "stunned") that
 	// zeroes positive physical resist against undead defenders (0x579b10).
 	StateSanctuaryPhysZero = "sanctuary"
+
+	// StateUninterruptable is the States.txt row number (0x36) of the monster state that makes the
+	// freeze applier (0x578f50) leave the unit alone.
+	StateUninterruptable = 0x36
 )
 
 // specialCrushingClasses are the monster classes of helper 0x63fed0 (divisor

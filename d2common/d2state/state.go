@@ -170,6 +170,18 @@ func (s *Set) Get(frame int, name string) *Instance {
 // Active reports whether a state is in force.
 func (s *Set) Active(frame int, name string) bool { return s.Get(frame, name) != nil }
 
+// ActiveID reports whether the state with the states.txt row number id is in
+// force at a frame (false without the table).
+func (s *Set) ActiveID(frame, id int) bool {
+	for _, d := range s.defs {
+		if d.ID == id {
+			return s.Active(frame, d.Name)
+		}
+	}
+
+	return false
+}
+
 // Remove ends a state at once.
 func (s *Set) Remove(name string) { delete(s.states, name) }
 

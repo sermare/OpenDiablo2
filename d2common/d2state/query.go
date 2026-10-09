@@ -107,7 +107,27 @@ type Hit struct {
 	// record +0x18 and +0x14) a monster's cold and freeze lengths are
 	// integer-divided by; 0 = none. Only used with HasColdEffect.
 	ChillDiv, FreezeDiv int
+
+	// MonsterRules turns on the monster-only rules of the exe's stun and freeze appliers (0x578830
+	// stun, 0x578f50 freeze), verified by the emulator oracle d2combat/states.go (golden
+	// states_golden.json). Without it the hit behaves exactly as before.
+	//
+	//   - a boss or an immobile monster (monstats Velocity 0, the word at +0x32 the oracle calls the
+	//     stun flag) is never stunned;
+	//   - a monster with data flag 8 (type mask 0x8) shrugs off 90 percent of stuns: one roll of
+	//     StunRoll(100) from the attacker's generator, the stun only lands on a roll of 90 or more;
+	//   - a Special monster (the mercenary classes, helper 0x63fed0) has a stun cut to 13 frames when
+	//     it would be longer, everything else is capped at 250;
+	//   - freeze: an Uninterruptable monster (state 0x36) is left alone, a boss, a data flag 8 monster
+	//     or a Special monster gets a chill of the freeze length instead.
+	MonsterRules                                        bool
+	Boss, Immobile, DataFlag8, Special, Uninterruptable bool
+	// StunRoll is the attacker's generator (Roll(n) in [0, n)); consumed only for DataFlag8 monsters.
+	StunRoll func(n int) int
 }
+
+// SpecialStunFrames is the stun length of a Special monster (verified, 0x578830).
+const SpecialStunFrames = 13
 
 // ApplyHit turns the lengths of a hit into states and streams on the set and
 // returns the names applied (for logs). Verified against 0x578830 (stun),
@@ -120,6 +140,20 @@ type Hit struct {
 // FreezeDiv.
 func (s *Set) ApplyHit(frame int, h Hit) []string {
 	var out []string
+
+	if h.MonsterRules && h.FreezeLen > 0 {
+		switch {
+		case h.Uninterruptable:
+			h.FreezeLen = 0 // 0x578f50: state 0x36 leaves the monster alone
+		case h.Boss || h.DataFlag8 || h.Special:
+			// chill instead, with the undivided freeze length (the chill divisor applies below)
+			if h.FreezeLen > h.ColdLen {
+				h.ColdLen = h.FreezeLen
+			}
+
+			h.FreezeLen = 0
+		}
+	}
 
 	if h.HasColdEffect {
 		if h.ColdEffect == 0 {
@@ -145,8 +179,28 @@ func (s *Set) ApplyHit(frame int, h Hit) []string {
 	}
 
 	if h.StunLen > 0 && !h.CannotStun {
-		s.Apply(frame, Instance{Name: Stun, Until: frame + StunLength(h.StunLen), Source: h.Source, SkillID: h.SkillID})
-		out = append(out, Stun)
+		length := StunLength(h.StunLen)
+		stun := true
+
+		if h.MonsterRules {
+			// the data flag 8 roll comes first and is consumed whatever follows (0x578830)
+			if h.DataFlag8 && h.StunRoll != nil && h.StunRoll(100) < 90 {
+				stun = false
+			}
+
+			if h.Boss || h.Immobile {
+				stun = false
+			}
+
+			if h.Special && h.StunLen >= SpecialStunFrames {
+				length = SpecialStunFrames
+			}
+		}
+
+		if stun {
+			s.Apply(frame, Instance{Name: Stun, Until: frame + length, Source: h.Source, SkillID: h.SkillID})
+			out = append(out, Stun)
+		}
 	}
 
 	if h.FreezeLen > 0 && !h.CannotFreeze {

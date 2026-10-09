@@ -206,19 +206,103 @@ func TestFreezeAgreesWithOracleForPlainMonsters(t *testing.T) {
 	}
 }
 
-// TestStunMonsterImmunitiesAreAKnownGap documents rules the oracle verified
-// that the engine does not apply: d2core/d2skills builds d2state.Hit without
-// ever setting CannotStun, so bosses can be stunned, monsters whose monstats
-// stun flag is 0 can be stunned, special classes are not cut to 13 frames and
-// data-flag-8 monsters do not resist 90 percent of stuns. It is skipped, not
-// asserted, so a later fix can turn it on.
-func TestStunMonsterImmunitiesAreAKnownGap(t *testing.T) {
-	t.Skip("known gap: engine never sets d2state.Hit.CannotStun; see feedback-spawn-cadence-od2.md (review of pass2-s2)")
+type fixedRoll uint32
 
-	u := d2combat.NewStateUnit()
-	u.ApplyStun(0, 100, d2combat.StateTarget{Monster: true, Boss: true, StunFlag: true}, zeroRoll{})
+func (r fixedRoll) Roll(int32) uint32 { return uint32(r) }
 
-	if l := u.Lists[d2combat.StateStun]; l != nil {
-		t.Fatalf("oracle: a boss is never stunned, got end=%d", l.End)
+// monsterKind is one monster target for the stun and freeze appliers. The oracle's StunFlag is the word at
+// monstats +0x32, the Velocity column: a monster that never moves cannot be stunned.
+type monsterKind struct {
+	name                                            string
+	boss, immobile, special, flag8, uninterruptable bool
+	coldEffect, chillDiv, freezeDiv                 int
+}
+
+func (k monsterKind) oracle() d2combat.StateTarget {
+	return d2combat.StateTarget{
+		Monster: true, Record: true, ColdEffect: k.coldEffect, StunFlag: !k.immobile,
+		Boss: k.boss, Special: k.special, DataFlag8: k.flag8, Uninterruptable: k.uninterruptable,
+		ChillDivisor: k.chillDiv, FreezeDivisor: k.freezeDiv,
+	}
+}
+
+func (k monsterKind) hit(roll int) d2state.Hit {
+	return d2state.Hit{
+		MonsterRules: true, Boss: k.boss, Immobile: k.immobile, Special: k.special, DataFlag8: k.flag8,
+		Uninterruptable: k.uninterruptable, HasColdEffect: true, ColdEffect: k.coldEffect,
+		ChillDiv: k.chillDiv, FreezeDiv: k.freezeDiv, StunRoll: func(int) int { return roll },
+	}
+}
+
+// The monster-only rules of the stun and freeze appliers (0x578830, 0x578f50): bosses and immobile monsters
+// are never stunned, data flag 8 monsters resist 90 percent, mercenary classes are cut to 13 frames, freeze
+// turns into a chill for bosses, mercenaries and data flag 8 monsters, and state 0x36 blocks it.
+func TestMonsterStunAgreesWithOracle(t *testing.T) {
+	kinds := []monsterKind{
+		{name: "plain", coldEffect: -50},
+		{name: "boss", boss: true, coldEffect: -50},
+		{name: "immobile (velocity 0)", immobile: true, coldEffect: -50},
+		{name: "special (mercenary class)", special: true, coldEffect: -50},
+		{name: "flag 8", flag8: true, coldEffect: -50},
+		{name: "flag 8 and boss", flag8: true, boss: true, coldEffect: -50},
+		{name: "special and flag 8", special: true, flag8: true, coldEffect: -50},
+	}
+
+	for _, k := range kinds {
+		for _, length := range []int{5, 13, 100, 400} {
+			for _, roll := range []int{0, 50, 89, 90, 95} {
+				u := d2combat.NewStateUnit()
+				u.ApplyStun(0, length, k.oracle(), fixedRoll(roll))
+
+				s := d2state.New()
+				s.ApplyHit(0, func() d2state.Hit { h := k.hit(roll); h.StunLen = length; return h }())
+
+				oa, oe := oracleEnd(u, d2combat.StateStun, 0)
+				ea, ee := engineEnd(s, d2state.Stun, 0)
+
+				if oa != ea || oe != ee {
+					t.Errorf("%s stun %d roll %d: oracle active=%v end=%d, engine active=%v end=%d", k.name, length, roll, oa, oe, ea, ee)
+				}
+			}
+		}
+	}
+}
+
+func TestMonsterFreezeAgreesWithOracle(t *testing.T) {
+	kinds := []monsterKind{
+		{name: "plain", coldEffect: -50, chillDiv: 2, freezeDiv: 4},
+		{name: "boss", boss: true, coldEffect: -50, chillDiv: 2, freezeDiv: 4},
+		{name: "special", special: true, coldEffect: -75, chillDiv: 2, freezeDiv: 4},
+		{name: "flag 8", flag8: true, coldEffect: -50, chillDiv: 4, freezeDiv: 2},
+		{name: "uninterruptable", uninterruptable: true, coldEffect: -50, chillDiv: 2, freezeDiv: 4},
+		{name: "boss, cold effect 0", boss: true, coldEffect: 0, chillDiv: 2, freezeDiv: 4},
+		{name: "boss, cold effect +10", boss: true, coldEffect: 10, chillDiv: 2, freezeDiv: 4},
+		{name: "plain, cold effect +10", coldEffect: 10, chillDiv: 2, freezeDiv: 4},
+		{name: "plain, no divisors", coldEffect: -50},
+	}
+
+	for _, k := range kinds {
+		for _, length := range []int{1, 7, 100, 400} {
+			u := d2combat.NewStateUnit()
+			u.ApplyFreeze(0, length, k.oracle(), fixedRoll(99))
+
+			s := d2state.New()
+			h := k.hit(0)
+			h.FreezeLen = length
+			s.ApplyHit(0, h)
+
+			for _, st := range []struct {
+				oracle int
+				name   string
+			}{{d2combat.StateFreeze, d2state.Freeze}, {d2combat.StateChill, d2state.Chill}} {
+				oa, oe := oracleEnd(u, st.oracle, 0)
+				ea, ee := engineEnd(s, st.name, 0)
+
+				if oa != ea || oe != ee {
+					t.Errorf("%s freeze %d, state %s: oracle active=%v end=%d, engine active=%v end=%d",
+						k.name, length, st.name, oa, oe, ea, ee)
+				}
+			}
+		}
 	}
 }

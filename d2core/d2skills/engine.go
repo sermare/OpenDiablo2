@@ -634,6 +634,8 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 	h.ColdEffect, h.HasColdEffect = coldEffect(m), true
 	h.ChillDiv, h.FreezeDiv = e.coldDivisors(m)
 
+	e.applyMonsterStateRules(&h, m, src, set)
+
 	// a hit ends the states flagged remhit (states.txt)
 	set.Hit(e.frame)
 
@@ -1051,4 +1053,23 @@ func (e *Engine) explosion(name string, x, y float64) {
 	}
 
 	e.fx[ent] = e.frame + life
+}
+
+// applyMonsterStateRules fills the monster facts of the exe's stun and freeze appliers (0x578830, 0x578f50) into a
+// hit (d2state.Hit.MonsterRules): the boss column, monstats Velocity 0 (the oracle's stun flag), the type mask 0x8
+// (data flag 8; UNVERIFIED which spawn kind sets it), the mercenary classes, state 0x36 and the attacker's generator.
+func (e *Engine) applyMonsterStateRules(h *d2state.Hit, m *d2mapentity.Monster, src *d2mapentity.Player, set *d2state.Set) {
+	h.MonsterRules = true
+	h.Boss = m.Stat != nil && m.Stat.IsSpecialBoss
+	h.Immobile = m.Stat != nil && m.Stat.SpeedBase == 0
+	h.DataFlag8 = m.TypeFlags&d2mapentity.MonTypeUnique != 0
+	h.Special = m.Stat != nil && d2monsters.IsMercenaryClass(m.MonstatID())
+	h.Uninterruptable = set.ActiveID(e.frame, StateUninterruptable)
+
+	if src != nil {
+		if hu := e.heroes[src.ID()]; hu != nil {
+			r := hu.Roller()
+			h.StunRoll = func(n int) int { return int(r.Roll(int32(n))) }
+		}
+	}
 }
