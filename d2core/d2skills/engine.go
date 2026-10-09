@@ -13,6 +13,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2state"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
@@ -438,7 +439,7 @@ func (e *Engine) staticField(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Ski
 			dmg = 0
 		}
 
-		res := e.resist(m, "ltng")
+		res := e.resistFrom(m, p, "ltng")
 		dmg = d2combat.ApplyResist(dmg, res)
 		n++
 
@@ -475,6 +476,35 @@ func (e *Engine) applyMissileState(owner d2skill.Unit, t d2missile.Target, state
 
 // resistOf returns the monster's resist percent for a damage type.
 func (e *Engine) resist(m *d2mapentity.Monster, kind string) int {
+	return e.resistFrom(m, nil, kind)
+}
+
+// pierceOf is the attacker's pierce percent against a damage kind: the
+// passive mastery pierce stats 333..336 plus the item pierce stats 305..308.
+// That both families add up is UNVERIFIED (the notes decode only 333..336 in
+// the descriptor table of 0x579b10; confirm where 305..308 are consumed).
+func pierceOf(src *d2mapentity.Player, kind string) (pierce int, has bool) {
+	ids := map[string][2]int{
+		"fire": {d2statlist.StatPierceFire, 333}, "ltng": {d2statlist.StatPierceLight, 334},
+		"cold": {d2statlist.StatPierceCold, 335}, "pois": {d2statlist.StatPiercePoison, 336},
+	}
+
+	pair, ok := ids[kind]
+	if !ok {
+		return 0, false // physical and magic have no pierce stat
+	}
+
+	if src == nil || src.Stats == nil || src.Stats.Totals == nil || src.Stats.Totals.Stats == nil {
+		return 0, true
+	}
+
+	l := src.Stats.Totals.Stats
+
+	return int(l.Get(pair[0]) + l.Get(pair[1])), true
+}
+
+// resistFrom is resist with the attacker's pierce (src may be nil).
+func (e *Engine) resistFrom(m *d2mapentity.Monster, src *d2mapentity.Player, kind string) int {
 	s := m.Stat
 	diff := int(m.Vitals.Difficulty)
 	pick := func(n, nm, h int) int { return [3]int{n, nm, h}[diff] }
@@ -507,7 +537,12 @@ func (e *Engine) resist(m *d2mapentity.Monster, kind string) int {
 	// curses and auras on the monster (Amplify Damage is damageresist -100)
 	res += e.setOf(m.ID()).ResistDelta(e.frame, kind)
 
-	return d2combat.EffectiveResist(d2combat.ResistInput{Resist: res, IsPhysical: phys, NoDifficultyPenalty: true})
+	pierce, hasPierce := pierceOf(src, kind)
+
+	// monsters are not capped: a monstats resist of 100 is an immunity
+	return d2combat.EffectiveResist(d2combat.ResistInput{
+		Resist: res, IsPhysical: phys, NoDifficultyPenalty: true, NoCap: true, Pierce: pierce, HasPierce: hasPierce,
+	})
 }
 
 // hurt applies a rolled damage struct to a monster: resists per type, then
@@ -522,7 +557,7 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 
 	for _, p := range parts {
 		if p.v > 0 {
-			total += d2combat.ApplyResist(int(p.v), e.resist(m, p.kind))
+			total += d2combat.ApplyResist(int(p.v), e.resistFrom(m, src, p.kind))
 		}
 	}
 
@@ -534,11 +569,11 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 	// poison and burn are damage over time: the Damage struct holds the
 	// per-frame 8.8 value, spread over the length
 	set := e.setOf(m.ID())
-	cannotCold := e.resist(m, "cold") >= d2combat.ImmuneResist
+	cannotCold := e.resistFrom(m, src, "cold") >= d2combat.ImmuneResist
 	h := d2state.Hit{
 		ColdLen: int(d.ColdLen), FreezeLen: int(d.FreezeLen), StunLen: int(d.StunLen), Source: e.sourceID(src),
-		Poison: d2combat.ApplyResist(int(d.Poison), e.resist(m, "pois")), PoisonLen: int(d.PoisonLen),
-		Burn: d2combat.ApplyResist(int(d.Burn), e.resist(m, "fire")), BurnLen: int(d.BurnLen),
+		Poison: d2combat.ApplyResist(int(d.Poison), e.resistFrom(m, src, "pois")), PoisonLen: int(d.PoisonLen),
+		Burn: d2combat.ApplyResist(int(d.Burn), e.resistFrom(m, src, "fire")), BurnLen: int(d.BurnLen),
 		CannotChill: cannotCold, CannotFreeze: cannotCold,
 	}
 	h.ColdEffect, h.HasColdEffect = coldEffect(m), true

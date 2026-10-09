@@ -54,6 +54,9 @@ type Hero struct {
 	BaseMana   int
 	BaseStam   int
 	Difficulty int // 0 normal, 1 nightmare, 2 hell
+	// Classic selects the Diablo II (non expansion) resist penalties -20/-50
+	// instead of the Lord of Destruction -40/-100.
+	Classic bool
 }
 
 // Totals is everything derived from the hero and its equipment.
@@ -233,6 +236,9 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 	})
 
 	penalty := d2combat.LoDResistPenalty(h.Difficulty)
+	if h.Classic {
+		penalty = d2combat.ClassicResistPenalty(h.Difficulty)
+	}
 
 	for i, ids := range resistStats {
 		t.Resist[i] = int(list.Get(ids[0]))
