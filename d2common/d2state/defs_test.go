@@ -138,7 +138,8 @@ func TestRealDeathRules(t *testing.T) {
 	}{
 		{"monster", []string{"freeze", "revive", "shatter"}, []string{"poison", "amplifydamage", "stunned", "cold", "terror"}},
 		{"player", []string{"alignment", "sync_warped", "corpse_noselect"}, []string{"freeze", "frozenarmor", "poison", "amplifydamage"}},
-		{"boss", []string{"dopplezon", "revive"}, []string{"freeze", "poison", "weaken"}},
+		// verified 0x627890: a boss's statlists follow monstaydeath
+		{"boss", []string{"dopplezon", "revive", "freeze"}, []string{"poison", "weaken"}},
 	}
 
 	for _, c := range cases {
@@ -344,7 +345,7 @@ func TestStunCapAndRefresh(t *testing.T) {
 		t.Error("stun must last at most 250 frames")
 	}
 
-	// U: a second stun replaces the first, even a shorter one
+	// verified 0x578830: a second stun replaces the first, even a shorter one
 	s.ApplyHit(100, Hit{StunLen: 20})
 
 	if s.Active(120, Stun) {

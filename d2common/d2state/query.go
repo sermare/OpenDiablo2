@@ -42,7 +42,10 @@ const (
 	ChillSpeedPct       = -50
 	ChillAttackSpeedPct = ChillSpeedPct
 
-	// MaxStunFrames caps a stun length (verified: 0x578830, 250 frames).
+	// MaxStunFrames caps a stun length (verified: 0x578830, 250 frames; a
+	// stun replaces the active one's end even when shorter). Monsters with
+	// the MONSTER_IsStatRecordFlag40 / 0x63fed0 property are cut to 13 frames
+	// above 12 (not modelled).
 	MaxStunFrames = 250
 )
 
@@ -59,16 +62,18 @@ func LengthAfterResist(frames, resistPct int) int {
 	return frames * (100 - resistPct) / 100
 }
 
-// CurseLength scales a curse or other timed skill state by the target's
-// curse_resistance (stat 0x6d): 100 or more rejects the state, otherwise the
-// length shrinks by that percent (SKILL_CreateTimedStateStatList 0x56c740;
-// U: rounding).
+// CurseLength scales a curse (a state with the curse flag; the exe applies
+// this to states in the curse mask only) by the target's curse_resistance
+// (stat 0x6d). Verified (SKILL_CreateTimedStateStatList 0x56c740): 100 or more
+// rejects the state; otherwise the length becomes frames - trunc(frames *
+// resist / 100) (MATH_MulDiv truncates), so the result rounds up. A target
+// that carries state 0x39 also rejects the curse (not modelled).
 func CurseLength(frames, curseResist int) int {
-	if curseResist <= 0 {
-		return frames
+	if curseResist >= 100 {
+		return 0
 	}
 
-	return LengthAfterResist(frames, curseResist)
+	return frames - frames*curseResist/100
 }
 
 // StunLength clamps a stun length to MaxStunFrames.
@@ -98,15 +103,45 @@ type Hit struct {
 	// them; U for stun) and any other value is the chill slow.
 	ColdEffect    int
 	HasColdEffect bool
+	// ChillDiv and FreezeDiv are the difficulty divisors (DifficultyLevels
+	// record +0x18 and +0x14) a monster's cold and freeze lengths are
+	// integer-divided by; 0 = none. Only used with HasColdEffect.
+	ChillDiv, FreezeDiv int
 }
 
 // ApplyHit turns the lengths of a hit into states and streams on the set and
-// returns the names applied (for logs).
+// returns the names applied (for logs). Verified against 0x578830 (stun),
+// 0x578990 / 0x578b00 (poison / burn), 0x578ca0 (chill) and 0x578f50
+// (freeze): stun replaces the active stun's end (even with a shorter one);
+// chill and freeze only ever extend an active one (chill keeps its first
+// slow); a monster with ColdEffect 0 is never chilled or frozen, freeze also
+// needs ColdEffect < 0 and stun ignores ColdEffect; with a ColdEffect < 0 the
+// chill length is divided by ChillDiv (minimum 1) and the freeze length by
+// FreezeDiv.
 func (s *Set) ApplyHit(frame int, h Hit) []string {
 	var out []string
 
-	if h.HasColdEffect && h.ColdEffect == 0 {
-		h.CannotChill, h.CannotFreeze = true, true
+	if h.HasColdEffect {
+		if h.ColdEffect == 0 {
+			h.CannotChill, h.CannotFreeze = true, true
+		}
+
+		if h.ColdEffect > 0 {
+			h.CannotFreeze = true
+		}
+
+		if h.ColdEffect < 0 {
+			if h.ChillDiv > 0 && h.ColdLen > 0 {
+				h.ColdLen /= h.ChillDiv
+				if h.ColdLen < 1 {
+					h.ColdLen = 1
+				}
+			}
+
+			if h.FreezeDiv > 0 {
+				h.FreezeLen /= h.FreezeDiv
+			}
+		}
 	}
 
 	if h.StunLen > 0 && !h.CannotStun {
@@ -115,7 +150,7 @@ func (s *Set) ApplyHit(frame int, h Hit) []string {
 	}
 
 	if h.FreezeLen > 0 && !h.CannotFreeze {
-		s.Apply(frame, Instance{Name: Freeze, Until: frame + h.FreezeLen, Source: h.Source, SkillID: h.SkillID})
+		s.extend(frame, Instance{Name: Freeze, Until: frame + h.FreezeLen, Source: h.Source, SkillID: h.SkillID})
 		out = append(out, Freeze)
 	}
 
@@ -125,7 +160,7 @@ func (s *Set) ApplyHit(frame int, h Hit) []string {
 			slow = h.ColdEffect
 		}
 
-		s.Apply(frame, Instance{Name: Chill, Until: frame + h.ColdLen, Source: h.Source, SkillID: h.SkillID,
+		s.extend(frame, Instance{Name: Chill, Until: frame + h.ColdLen, Source: h.Source, SkillID: h.SkillID,
 			Mods: []StatMod{{"velocitypercent", slow}, {"attackrate", slow}, {"other_animrate", slow}}})
 		out = append(out, Chill)
 	}
@@ -141,6 +176,20 @@ func (s *Set) ApplyHit(frame int, h Hit) []string {
 	}
 
 	return out
+}
+
+// extend applies a state that, when already active, only gets a later end
+// (chill, freeze).
+func (s *Set) extend(frame int, in Instance) {
+	if ex := s.Get(frame, in.Name); ex != nil {
+		if ex.Until != 0 && ex.Until < in.Until {
+			ex.Until = in.Until
+		}
+
+		return
+	}
+
+	s.Apply(frame, in)
 }
 
 // CanAct is false while the unit is stunned or frozen.

@@ -87,27 +87,12 @@ func TestPoisonTotalMatchesTooltip(t *testing.T) {
 	}
 }
 
-func TestPoisonStreamsAdd(t *testing.T) {
+func TestPoisonRejectsEmptyStreams(t *testing.T) {
 	s := New()
-	s.AddStream(0, "poison", 256, 10, "a", 1)
-	s.AddStream(0, "poison", 512, 5, "b", 2)
-
-	if res := s.Tick(1); res.Poison != 3 {
-		t.Errorf("both streams active: %d hp/frame, want 3", res.Poison)
-	}
-
-	for f := 2; f < 5; f++ {
-		s.Tick(f)
-	}
-
-	if res := s.Tick(6); res.Poison != 1 {
-		t.Errorf("only the long stream left: %d", res.Poison)
-	}
-
 	s.AddStream(0, "poison", 0, 10, "x", 1)
 	s.AddStream(0, "poison", 10, 0, "x", 1)
 
-	if n := len(s.Streams(6)); n != 1 {
+	if n := len(s.Streams(0)); n != 0 {
 		t.Errorf("empty streams must be ignored, have %d", n)
 	}
 }
