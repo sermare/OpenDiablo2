@@ -260,11 +260,10 @@ func (a *autoQuest) stageGuardian() {
 		a.expect(h, "CUSTOM1 set, state 4", a.bit(h, id, d2quest.FlagCustom1) && a.quest(h, id).State == 4)
 		a.kill(h, d2quest.Event{Monster: d2quest.NPCMephisto})
 		a.state(h, id, "Mephisto dead")
-		a.expect(h, "reward pending + primary goal", a.bit(h, id, d2quest.FlagRewardPending) &&
-			a.bit(h, id, d2quest.FlagPrimaryGoal))
+		a.expect(h, "done + primary goal at once (exe kill bits), no reward pending", a.bit(h, id, d2quest.FlagRewardGranted) &&
+			!a.bit(h, id, d2quest.FlagRewardPending) && a.bit(h, id, d2quest.FlagPrimaryGoal))
 		a.move(h, d2quest.LevelKurastDocktown)
-		a.says(h, "the town cheers", d2quest.NPCAlkor, 657)
-		a.expect(h, "reward granted", a.bit(h, id, d2quest.FlagRewardGranted))
+		a.expect(h, "still granted after the town talk", a.bit(h, id, d2quest.FlagRewardGranted))
 		h.Apply(h.Q().TravelToAct4())
 		a.expect(h, "the Act 3 finished word is set", h.Q().Rec.Get(23, d2quest.FlagRewardGranted))
 	})
@@ -301,11 +300,10 @@ func (a *autoQuest) stageTerror() {
 		a.move(h, d2quest.LevelChaosSanctum)
 		a.expect(h, "ENTERAREA bit, state 3", a.bit(h, id, d2quest.FlagEnterArea) && a.quest(h, id).State == 3)
 		a.kill(h, d2quest.Event{Monster: d2quest.NPCDiablo})
-		a.expect(h, "reward pending + primary goal", a.bit(h, id, d2quest.FlagRewardPending) &&
-			a.bit(h, id, d2quest.FlagPrimaryGoal))
+		a.expect(h, "done + primary goal at once (exe kill bits), no reward pending", a.bit(h, id, d2quest.FlagRewardGranted) &&
+			!a.bit(h, id, d2quest.FlagRewardPending) && a.bit(h, id, d2quest.FlagPrimaryGoal))
 		a.move(h, d2quest.LevelPandemonium)
-		a.says(h, "Tyrael's expansion line", d2quest.NPCTyrael2, 20000)
-		a.expect(h, "reward granted", a.bit(h, id, d2quest.FlagRewardGranted))
+		a.expect(h, "still granted after the move", a.bit(h, id, d2quest.FlagRewardGranted))
 		h.Apply(h.Q().TravelToAct5())
 		a.expect(h, "the Act 4 finished word (slot 28) is set", h.Q().Rec.Get(28, d2quest.FlagRewardGranted))
 	})
@@ -364,12 +362,15 @@ func (a *autoQuest) stageEve() {
 		a.move(h, d2quest.LevelWorldstone1)
 		a.move(h, d2quest.LevelThrone)
 		a.expect(h, "STARTED bit set, state 2", a.bit(h, id, d2quest.FlagStarted) && a.quest(h, id).State == 2)
+		// Baal's death only counts in the Worldstone Chamber (exe 0x58bae0)
+		a.kill(h, d2quest.Event{Monster: d2quest.NPCBaalCrab})
+		a.expect(h, "no bit from a kill in the throne room", !a.bit(h, id, d2quest.FlagRewardGranted))
+		a.move(h, d2quest.LevelWorldstoneChamber)
 		a.kill(h, d2quest.Event{Monster: d2quest.NPCBaalCrab})
 		a.state(h, id, "Baal dead")
-		a.expect(h, "reward pending + primary goal", a.bit(h, id, d2quest.FlagRewardPending) &&
-			a.bit(h, id, d2quest.FlagPrimaryGoal))
+		a.expect(h, "done + primary goal at once (exe kill bits), no reward pending", a.bit(h, id, d2quest.FlagRewardGranted) &&
+			!a.bit(h, id, d2quest.FlagRewardPending) && a.bit(h, id, d2quest.FlagPrimaryGoal))
 		a.move(h, d2quest.LevelHarrogath)
-		a.says(h, "Tyrael's end line", d2quest.NPCTyrael3, 20175)
 		a.expect(h, "reward granted", a.bit(h, id, d2quest.FlagRewardGranted))
 	})
 }

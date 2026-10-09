@@ -28,11 +28,11 @@ func TestSealFlagsFollowObjectOrder(t *testing.T) {
 	}
 }
 
-// PurgeOnArrival (FUN_005b2e60) is off by default and adds one ActPurge.
+// The arrival purge (FUN_005b2e60) is on by default and adds one ActPurge; Seals.LegacyNoPurge removes it.
 func TestPurgeOnArrival(t *testing.T) {
 	for _, on := range []bool{false, true} {
 		m, _ := newTest()
-		m.Encounter("diablo").(*Seals).PurgeOnArrival = on
+		m.Encounter("diablo").(*Seals).LegacyNoPurge = !on
 
 		for _, o := range []int{ObjSealVizier, ObjSealPlainA, ObjSealDeSeis, ObjSealPlainB, ObjSealInfector} {
 			m.Operate(Operate{Object: o})
@@ -55,15 +55,16 @@ func TestPurgeOnArrival(t *testing.T) {
 		}
 
 		if (purges == 1) != on || purges > 1 {
-			t.Errorf("PurgeOnArrival=%v: %d purge actions (%v)", on, purges, as)
+			t.Errorf("purge=%v: %d purge actions (%v)", on, purges, as)
 		}
 	}
 }
 
-// The lair warp gate (0x59b700): blocked until the staff is placed (inferred).
+// The legacy lair warp gate (Tomb.LegacyLairGate): blocked until the staff is placed.
 func TestLairWarpGate(t *testing.T) {
 	m, _ := newTest()
 	tomb := m.Encounter("duriel").(*Tomb)
+	tomb.LegacyLairGate = true
 
 	if !tomb.LairWarpBlocked() {
 		t.Fatal("lair open before the staff")

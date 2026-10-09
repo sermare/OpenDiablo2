@@ -37,19 +37,20 @@ import "fmt"
 // arrival (none found in the timer code; the 0x3000000 unit flags are not decoded), the delay of the dummy after the seal opens
 // (objects.txt animation length), and the spawn of the minions around the seal bosses.
 type Seals struct {
-	// PurgeOnArrival makes the Diablo arrival emit ActPurge (off by default).
-	// The exe sends every other living non-pet monster of level 0x6c a record
+	// LegacyNoPurge restores the earlier model in which the Diablo arrival does not emit ActPurge. By default (false) the arrival
+	// emits it. The exe sends every other living non-pet monster of level 0x6c a record
 	// of mode 0 (FUN_005a5860(unit, 0) + MONAI_Proc_5a5630); mode 0 is the
 	// death mode of the monster mode table, which 0x5a5630 special-cases
 	// together with mode 0xc, so the remaining monsters are put to death.
 	// VERIFIED: the loop and its filter; INFERRED: that mode 0 kills them.
-	PurgeOnArrival bool
+	LegacyNoPurge bool
 
-	// ExeLayout makes the encounter follow the exe's seal layout (off by default, the default keeps the earlier model): the boss of
+	// LegacyLayout restores the earlier, unverified model (392 = Vizier, 396 = Infector, boss at the seal, diabloDelay frames).
+	// By default (false) the encounter follows the exe's seal layout: the boss of
 	// seal 392 is the Infector, of 394 De Seis, of 396 the Vizier (VERIFIED, 0x5b4720/70/840 + 0x5b3360); the boss appears at the
 	// dummy position (seal + SealDummyOffset) when the seal is operated, and Diablo arrives ExeDiabloDelay frames after the last
 	// condition is met instead of diabloDelay.
-	ExeLayout bool
+	LegacyLayout bool
 
 	open        [5]bool
 	killed      map[int]bool // seal boss super unique rows that died
@@ -68,7 +69,8 @@ type seal struct {
 	Boss   string
 }
 
-var sealTable = [5]seal{
+// legacySealTable is the earlier unverified pairing (Seals.LegacyLayout).
+var legacySealTable = [5]seal{
 	{Object: ObjSealVizier, Name: "seal 1 (Grand Vizier of Chaos)", Super: SuperVizier, Class: ClassVizier, Group: 9, Boss: "Grand Vizier of Chaos"},
 	{Object: ObjSealPlainA, Name: "seal 2 (Vizier's second)", Super: -1},
 	{Object: ObjSealDeSeis, Name: "seal 3 (Lord De Seis)", Super: SuperDeSeis, Class: ClassDeSeis, Group: 5, Boss: "Lord De Seis"},
@@ -76,8 +78,8 @@ var sealTable = [5]seal{
 	{Object: ObjSealInfector, Name: "seal 5 (Infector of Souls)", Super: SuperInfector, Class: ClassInfector, Group: 9, Boss: "Infector of Souls"},
 }
 
-// exeSealTable is the exe's pairing (VERIFIED, see the package comment): seal index -> boss.
-var exeSealTable = [5]seal{
+// sealTable is the exe's pairing (VERIFIED, see the package comment): seal index -> boss.
+var sealTable = [5]seal{
 	{Object: ObjSealVizier, Name: "seal 1 (Infector of Souls)", Super: SuperInfector, Class: ClassInfector, Group: 9, Boss: "Infector of Souls"},
 	{Object: ObjSealPlainA, Name: "seal 2 (plain)", Super: -1},
 	{Object: ObjSealDeSeis, Name: "seal 3 (Lord De Seis)", Super: SuperDeSeis, Class: ClassDeSeis, Group: 5, Boss: "Lord De Seis"},
@@ -106,15 +108,15 @@ func SealDummyOffset(object int) (dx, dy int, ok bool) {
 }
 
 // SpawnsClosed reports the exe's rule that, once the arrival has run (quest data +0x13, FUN_005b2e40), the Chaos Sanctuary no longer
-// populates itself with random monsters (FUN_0054ca00 refuses level 108). Only meaningful with ExeLayout.
-func (s *Seals) SpawnsClosed() bool { return s.ExeLayout && s.arrived }
+// populates itself with random monsters (FUN_0054ca00 refuses level 108). Always false with LegacyLayout.
+func (s *Seals) SpawnsClosed() bool { return !s.LegacyLayout && s.arrived }
 
 func (s *Seals) table() *[5]seal {
-	if s.ExeLayout {
-		return &exeSealTable
+	if !s.LegacyLayout {
+		return &sealTable
 	}
 
-	return &sealTable
+	return &legacySealTable
 }
 
 // NewSeals creates the encounter.
@@ -164,7 +166,7 @@ func (s *Seals) OnOperate(m *Manager, o Operate) {
 			s.spawned[sl.Super] = true
 			x, y, note := o.X, o.Y, "seal boss at the seal"
 
-			if dx, dy, ok := SealDummyOffset(o.Object); ok && s.ExeLayout && (x != 0 || y != 0) {
+			if dx, dy, ok := SealDummyOffset(o.Object); ok && !s.LegacyLayout && (x != 0 || y != 0) {
 				x, y, note = x+dx, y+dy, "seal boss at the dummy object next to the seal"
 			}
 
@@ -221,13 +223,13 @@ func (s *Seals) maybeArrive(m *Manager) {
 	m.logf("diablo trigger: all 5 seals open and 3 seal bosses dead -> Diablo is summoned")
 	m.emit("diablo", Action{Kind: ActMessage, Name: "Diablo summoned", Note: "the remaining monsters of the level are sent a record (mode 0, inferred death)"})
 
-	if s.PurgeOnArrival {
+	if !s.LegacyNoPurge {
 		m.emit("diablo", Action{Kind: ActPurge, Name: "remaining monsters of the Chaos Sanctuary", Level: LevelChaos,
 			Note: "FUN_005b2e60: mode 0 record to every living non-pet monster except class 0xf3"})
 	}
 
 	delay := diabloDelay
-	if s.ExeLayout {
+	if !s.LegacyLayout {
 		delay = ExeDiabloDelay
 	}
 

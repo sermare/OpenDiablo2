@@ -501,7 +501,8 @@ func TestAct3QuestLine(t *testing.T) {
 	moveTo(g, LevelDurance1, LevelDurance3)
 	kill(g, NPCMephisto, LevelDurance3)
 
-	if !g.get(guardian, FlagRewardPending) || guardian.State != 5 {
+	// exe kill bits: done at once (done + primary goal), never reward pending
+	if g.get(guardian, FlagRewardPending) || !g.get(guardian, FlagRewardGranted) || !g.get(guardian, FlagPrimaryGoal) {
 		t.Fatalf("mephisto %s", g.Describe(guardian))
 	}
 
@@ -563,9 +564,12 @@ func TestAct4QuestLine(t *testing.T) {
 	kill(g, NPCDiablo, LevelChaosSanctum)
 	moveTo(g, LevelChaosSanctum, LevelPandemonium)
 
-	if msgs, _ := talk(g, NPCTyrael2); !contains2(msgs, 20000) || !g.get(te, FlagRewardGranted) {
-		t.Fatalf("Tyrael exp: %v %s", msgs, g.Describe(te))
+	// exe kill bits: the kill completes the quest (no reward talk)
+	if g.get(te, FlagRewardPending) || !g.get(te, FlagRewardGranted) || !g.get(te, FlagPrimaryGoal) {
+		t.Fatalf("diablo: %s", g.Describe(te))
 	}
+
+	talk(g, NPCTyrael2)
 
 	// the Hellforge: Cain's first line depends on the soulstone
 	if l := g.Activate(NPCCain4).Lines; len(l) == 0 || l[0].Msg != 679 {
@@ -690,18 +694,21 @@ func TestAct5QuestLine(t *testing.T) {
 
 	moveTo(g, LevelHarrogath, LevelWorldstone1)
 	moveTo(g, LevelWorldstone1, LevelThrone)
-	kill(g, NPCBaalCrab, LevelThrone)
-
-	if !g.get(eve, FlagRewardPending) {
-		t.Fatalf("baal %s", g.Describe(eve))
+	// Baal's death counts only in the Worldstone Chamber (exe 0x58bae0); in the throne room it changes nothing
+	if eff := kill(g, NPCBaalCrab, LevelThrone); g.get(eve, FlagRewardGranted) || effectCode(eff, EffectReward, "unlock-difficulty") {
+		t.Fatalf("baal killed in the throne room: %s", g.Describe(eve))
 	}
 
-	moveTo(g, LevelThrone, LevelHarrogath)
+	moveTo(g, LevelThrone, LevelWorldstoneChamber)
 
-	_, eff := talk(g, NPCTyrael3)
-	if !g.get(eve, FlagRewardGranted) || !effectCode(eff, EffectReward, "unlock-difficulty") {
-		t.Fatalf("eve reward %s %+v", g.Describe(eve), eff)
+	eff := kill(g, NPCBaalCrab, LevelWorldstoneChamber)
+	if g.get(eve, FlagRewardPending) || !g.get(eve, FlagRewardGranted) || !g.get(eve, FlagPrimaryGoal) ||
+		!effectCode(eff, EffectReward, "unlock-difficulty") {
+		t.Fatalf("baal %s %+v", g.Describe(eve), eff)
 	}
+
+	moveTo(g, LevelWorldstoneChamber, LevelHarrogath)
+	talk(g, NPCTyrael3)
 }
 
 func TestPrisonOfIce(t *testing.T) {

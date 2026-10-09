@@ -15,9 +15,9 @@ package d2boss
 // UNVERIFIED: the delay between the staff and the portal, where Tyrael
 // stands, and that the exit is a permanent town portal.
 type Tomb struct {
-	// ExeLairGate makes LairWarpBlocked follow the exe: the lair stays closed until the portal timer has run (private byte +0xb = 1,
-	// VERIFIED) instead of opening when the staff is placed. Off by default.
-	ExeLairGate bool
+	// LegacyLairGate restores the earlier model in which the lair opens when the staff is placed. By default (false)
+	// LairWarpBlocked follows the exe: the lair stays closed until the portal timer has run (private byte +0xb = 1, VERIFIED).
+	LegacyLairGate bool
 
 	state tombState
 	// DurielAlive is set between the spawn and the kill.
@@ -124,12 +124,12 @@ func (t *Tomb) OnTick(*Manager, int) {}
 // (table short - 0x4b) / 20 frames); that callback animates the orifice, creates
 // the portal object 100 at (X-13, Y+3) of the object stored in private +0x20
 // and ends with private +0xb = 1, +0xd = 0, +3 = 0. So the lair opens when the
-// portal appears, not when the staff is placed. Default (ExeLairGate off): the
+// portal appears, not when the staff is placed. LegacyLairGate restores the
 // earlier model, blocked only until the staff is placed.
 func (t *Tomb) LairWarpBlocked() bool {
-	if t.ExeLairGate {
-		return t.state < tombPortalOpen
+	if t.LegacyLairGate {
+		return t.state == tombSealed
 	}
 
-	return t.state == tombSealed
+	return t.state < tombPortalOpen
 }

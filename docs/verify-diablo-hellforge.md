@@ -43,4 +43,4 @@ Several routines below are not defined as functions in Ghidra (read from raw byt
   object 100 created at (X-13, Y+3) of the object with id +0x20, then +0xb = 1, +0xd = 0, +3 = 0. Orifice operate = OperateFn 25 = 0x59b850 (needs 'hst ').
 
 ## Options added (all off)
-Seals.ExeLayout (pairing, dummy offsets, 11-frame delay, SpawnsClosed), Tomb.ExeLairGate, Game.ExeBossBits now also drops the hammer on Hephasto.
+(now default; Seals.LegacyLayout restores the old model) Seals.ExeLayout (pairing, dummy offsets, 11-frame delay, SpawnsClosed), Tomb.ExeLairGate, Game.ExeBossBits now also drops the hammer on Hephasto.

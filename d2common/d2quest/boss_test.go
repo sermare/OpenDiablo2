@@ -2,6 +2,7 @@ package d2quest
 
 import "testing"
 
+// TestBossKillsSetQuestBits pins the legacy flow (Game.LegacyBossBits); the exe flow is TestExeBossBits.
 func TestBossKillsSetQuestBits(t *testing.T) {
 	for _, c := range []struct {
 		name  string
@@ -18,6 +19,7 @@ func TestBossKillsSetQuestBits(t *testing.T) {
 		{"baal by class", Event{Kind: EvMonsterKilled, Monster: NPCBaalCrab}, QuestEveOfDestruction, SlotEveOfDestruction, 0, false},
 	} {
 		g, _ := newGame(t)
+		g.LegacyBossBits = true
 
 		if g.Quest(c.id) == nil || g.Quest(c.id).Slot != c.slot {
 			t.Fatalf("%s: no node for quest %d", c.name, c.id)

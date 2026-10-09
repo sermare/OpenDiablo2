@@ -22,7 +22,7 @@ const (
 	ObjOrifice        = 152 // "Where you place the Horadric staff" (OperateFn 25)
 	ObjMephistoBridge = 341 // "mephisto bridge" (OperateFn 4), quest object 0x155 in QUEST_OnObjectOperated
 	ObjHellgate       = 342 // "hellgate" portal (OperateFn 46)
-	ObjSealVizier     = 392 // boss seal (OperateFn 54); the exe pairs it with the Infector (Seals.ExeLayout)
+	ObjSealVizier     = 392 // boss seal (OperateFn 54); the exe pairs it with the Infector (Seals.LegacyLayout restores the old pairing)
 	ObjSealPlainA     = 393 // plain seal (OperateFn 52)
 	ObjSealDeSeis     = 394 // boss seal (OperateFn 55)
 	ObjSealPlainB     = 395 // plain seal (OperateFn 52)
@@ -81,7 +81,7 @@ const (
 	// ActPortal: a portal to Level opens (Class is its object).
 	ActPortal
 	// ActPurge: every other living, non-pet monster of Level goes into death
-	// mode (the record FUN_005b2e60 sends, mode 0; see Seals.PurgeOnArrival).
+	// mode (the record FUN_005b2e60 sends, mode 0; see Seals.LegacyNoPurge).
 	ActPurge
 )
 

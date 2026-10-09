@@ -85,13 +85,13 @@ modes. Exe: Throne 2, Crab 0, Taunt 1, ToStairs 1, Tentacle 1, Clone 0. This tre
 - VERIFIED seals: object 392..396 -> flag 0..4 in order (FUN_005b3240); the bosses are spawned by the dummy object 131 in level 108
   (QUEST_OnObjectOperated -> 0x5b3360, position matched against three stored positions -> super unique id; a failed spawn retries
   after 10 frames); group size = MinGrp/MaxGrp of the super unique row (9, 5, 9). Arrival 0x5b2e60 sends a mode-0 record to every
-  other living non-pet monster of level 108 (`Seals.PurgeOnArrival`, off). The Diablo spawn itself is quest timer 1 (handler not traced).
+  other living non-pet monster of level 108 (default; `Seals.LegacyNoPurge` removes it). The Diablo spawn itself is quest timer 1 (handler not traced).
 - VERIFIED Baal waves: skill 286 is cast with a missile (hit function 54 -> CCMD_Func_54c470 super unique spawn); the super unique
   hcIdx come from the table 0x6e4ab8 = 61..65 = rows "Baal Subject 1..5". The think is gated: no step while a living monster that
   is not hostile to the throne (the previous wave) is within edge distance 0x40 of it (a type-1 scan, callback 0x5db5f0), plus the
   250/100 frame timers. Earlier note "hero within 0x40" was wrong.
 - VERIFIED kill bits: Mephisto 0x5b9d00 slot 22 bits 0xd, 0, 0xb; Diablo 0x5b2950 slot 26 bits 0xd, 0 (+6, 7 classic); Baal 0x58bae0
-  slot 40 bits 0xd, 0 and only in level 132. None sets reward pending. `Game.ExeBossBits` (off) applies them. Baal's death also fires
+  slot 40 bits 0xd, 0 and only in level 132. None sets reward pending. They are the default (`Game.LegacyBossBits` restores the old reward-pending flow). Baal's death also fires
   missile 625 at the corpse (0x58bce0, effect not identified).
 - VERIFIED drops: Mephisto's kill stamps item code "mss " (soulstone) on the unit and drops it (0x557980); Mephistoq has none. The Hellforge
   handler 0x5b4190 stamps "hfh " the same way (which monster is attached: not traced).
@@ -104,7 +104,7 @@ modes. Exe: Throne 2, Crab 0, Taunt 1, ToStairs 1, Tentacle 1, Clone 0. This tre
   offset ((-12,-52), (-39,+33), (+32,+16)) in the quest data (+0x24, +0x2c, +0x34), create a Dummy object (131) there and run the seal
   code 0x5b3240. Operating the dummy matches its coordinates (0x5b3360) and spawns hcIdx 36 (seal 392, Infector of Souls), 37 (394, Lord
   De Seis), 38 (396, Grand Vizier of Chaos); the root table +0xb28/2a/2c is the hcIdx->row array at +0xae0 (index 36..38). The earlier
-  model (392 = Vizier, 396 = Infector) was wrong. The plain seals 393/395 only set their flag. `Seals.ExeLayout` (off) applies this.
+  model (392 = Vizier, 396 = Infector) was wrong. The plain seals 393/395 only set their flag. This is the default (`Seals.LegacyLayout` restores the old pairing).
 - VERIFIED Diablo's arrival: the Dummy object 255 (InitFn 55 = 0x5b31a0) records itself in the quest data (+6, +8 = unit id). When all five
   flags are set and the kill counter is 3, 0x5b2e60 runs once and the quest timer callback 0x5b2830 is added with delay 1; it counts 10
   frames, then spawns Diablo (class 0xf3, 0x5b27b0: exact subtile of dummy 255, else radius 5, else 10), ORs 0x3000000 into his unit flags
@@ -114,7 +114,12 @@ modes. Exe: Throne 2, Crab 0, Taunt 1, ToStairs 1, Tentacle 1, Clone 0. This tre
 - VERIFIED Hellforge: the hammer quest node (24) is attached to class 0x199 = 409 "hephasto" in the monster-create hook 0x5af8c0; its kill
   handler 0x5b4190 (node active) stamps "hfh " on the dying unit and drops it (0x557980 mode 7). The forge object 376 (InitFn 48 = 0x5b3630
   sets the mode from the quest data, OperateFn 49 = 0x5b3820 needs the hammer; both are preset level objects, not created by quest code).
-  Under `Game.ExeBossBits` the quest package drops the hammer on Hephasto's kill.
+  By default the quest package drops the hammer on Hephasto's kill.
 - VERIFIED Duriel lair byte +0xb: written (=1) at the end of the quest timer callback 0x59b450, which the staff placement event 0x59b960
   adds; the callback animates the orifice, creates the portal object 100 at (X-13, Y+3) of the object in +0x20 and then sets +0xb. So the
-  lair opens when the portal appears (`Tomb.ExeLairGate`, off).
+  lair opens when the portal appears (default; `Tomb.LegacyLairGate` restores the staff-time gate).
+
+## Defaults (feat/enable-exe-boss-layout)
+The verified behaviours are now the default: exe seal pairing/dummy offsets/11-frame arrival, arrival purge, lair gate at the portal,
+exe kill bits (Mephisto bit 11, Baal only in level 132, Diablo classic bits) and the Hephasto hammer. `OD2_LEGACY_BOSS=1` (or the
+Legacy* fields) restores the earlier model.

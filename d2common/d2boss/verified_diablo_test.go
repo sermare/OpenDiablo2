@@ -14,8 +14,8 @@ func operateAll(m *Manager, o ...int) []Action {
 	return all
 }
 
-// Seals.ExeLayout (0x5b4720/70/840, 0x5b3360): seal 392 -> hcIdx 36 Infector, 394 -> 37 De Seis, 396 -> 38 Vizier, each at the
-// dummy offset from the seal; the default keeps the earlier pairing and the seal position.
+// The default seal layout (0x5b4720/70/840, 0x5b3360): seal 392 -> hcIdx 36 Infector, 394 -> 37 De Seis, 396 -> 38 Vizier, each at the
+// dummy offset from the seal; Seals.LegacyLayout keeps the earlier pairing and the seal position.
 func TestSealPairingAndDummyOffsets(t *testing.T) {
 	type want struct{ super, dx, dy int }
 
@@ -29,7 +29,7 @@ func TestSealPairingAndDummyOffsets(t *testing.T) {
 	for _, on := range []bool{false, true} {
 		for obj, w := range exe {
 			m, _ := newTest()
-			m.Encounter("diablo").(*Seals).ExeLayout = on
+			m.Encounter("diablo").(*Seals).LegacyLayout = !on
 
 			as := operateAll(m, obj)
 			if len(as) != 1 || as[0].Kind != ActSpawnMonster {
@@ -49,7 +49,7 @@ func TestSealPairingAndDummyOffsets(t *testing.T) {
 	// the plain seals only set a flag in both layouts
 	for _, obj := range []int{ObjSealPlainA, ObjSealPlainB} {
 		m, _ := newTest()
-		m.Encounter("diablo").(*Seals).ExeLayout = true
+		m.Encounter("diablo")
 
 		if as := operateAll(m, obj); len(as) != 0 {
 			t.Errorf("plain seal %d spawned %v", obj, as)
@@ -61,13 +61,13 @@ func TestSealPairingAndDummyOffsets(t *testing.T) {
 	}
 }
 
-// Diablo's arrival (timer callback 0x5b2830): 1 frame timer + 10 frame count = 11 frames with ExeLayout, 100 by default; the level
+// Diablo's arrival (timer callback 0x5b2830): 1 frame timer + 10 frame count = 11 frames by default, 100 with LegacyLayout; the level
 // stops populating itself after the arrival.
 func TestDiabloArrivalDelay(t *testing.T) {
 	for _, on := range []bool{false, true} {
 		m, _ := newTest()
 		s := m.Encounter("diablo").(*Seals)
-		s.ExeLayout = on
+		s.LegacyLayout = !on
 
 		operateAll(m, ObjSealVizier, ObjSealPlainA, ObjSealDeSeis, ObjSealPlainB, ObjSealInfector)
 		m.Killed(Kill{Class: ClassVizier, Super: SuperVizier})
@@ -99,11 +99,10 @@ func TestDiabloArrivalDelay(t *testing.T) {
 	}
 }
 
-// Tomb.ExeLairGate: the lair opens when the portal timer 0x59b450 has run (private +0xb = 1), not when the staff is placed.
+// Default Tomb gate: the lair opens when the portal timer 0x59b450 has run (private +0xb = 1), not when the staff is placed.
 func TestLairGateFollowsPortalTimer(t *testing.T) {
 	m, _ := newTest()
 	tomb := m.Encounter("duriel").(*Tomb)
-	tomb.ExeLairGate = true
 
 	m.Operate(Operate{Object: ObjOrifice, HasStaff: true})
 
