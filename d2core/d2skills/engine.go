@@ -76,12 +76,14 @@ type Engine struct {
 	sets    map[string]*d2state.Set      // unit id -> states and DoT streams
 	timers  []timer
 
-	auras   map[string]*auraRun // hero id -> the aura it keeps on
-	storms  []*stormRun
-	traps   []*trapRun
-	pets    map[string][]*d2mapentity.Monster // hero id -> summons by pet type (see summon.go)
-	watches []*watch
-	dots    map[string]dotTotal
+	auras  map[string]*auraRun // hero id -> the aura it keeps on
+	storms []*stormRun
+	traps  []*trapRun
+
+	fakeCaster trapCaster                        // tests only
+	pets       map[string][]*d2mapentity.Monster // hero id -> summons by pet type (see summon.go)
+	watches    []*watch
+	dots       map[string]dotTotal
 
 	// Counters are updated as events happen.
 	Counters Counters
