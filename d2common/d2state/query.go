@@ -59,17 +59,26 @@ func (s *Set) ApplyHit(frame int, h Hit) []string {
 	var out []string
 
 	if h.StunLen > 0 && !h.CannotStun {
-		s.Apply(frame, Instance{Name: Stun, Until: frame + h.StunLen, Source: h.Source, SkillID: h.SkillID})
+		// Verified (0x578830): lengths are capped at 250 frames, and a new stun
+		// overwrites the end of a live one (a shorter stun replaces a longer).
+		ln := h.StunLen
+		if ln > MaxStunFrames {
+			ln = MaxStunFrames
+		}
+
+		s.Apply(frame, Instance{Name: Stun, Until: frame + ln, Source: h.Source, SkillID: h.SkillID})
 		out = append(out, Stun)
 	}
 
 	if h.FreezeLen > 0 && !h.CannotFreeze {
-		s.Apply(frame, Instance{Name: Freeze, Until: frame + h.FreezeLen, Source: h.Source, SkillID: h.SkillID})
+		// Verified (0x578f50): a live freeze is only ever extended.
+		s.applyLonger(frame, Instance{Name: Freeze, Until: frame + h.FreezeLen, Source: h.Source, SkillID: h.SkillID})
 		out = append(out, Freeze)
 	}
 
 	if h.ColdLen > 0 && !h.CannotChill {
-		s.Apply(frame, Instance{Name: Chill, Until: frame + h.ColdLen, Source: h.Source, SkillID: h.SkillID,
+		// Verified (0x578ca0): a live chill is only ever extended; its slow is kept.
+		s.applyLonger(frame, Instance{Name: Chill, Until: frame + h.ColdLen, Source: h.Source, SkillID: h.SkillID,
 			Mods: []StatMod{{"velocitypercent", ChillSpeedPct}, {"attackrate_speed", ChillAttackSpeedPct}}})
 		out = append(out, Chill)
 	}
@@ -85,6 +94,19 @@ func (s *Set) ApplyHit(frame int, h Hit) []string {
 	}
 
 	return out
+}
+
+// MaxStunFrames is the stun length cap (verified, 0x578830).
+const MaxStunFrames = 250
+
+// applyLonger applies in unless a live instance of the same name already lasts
+// at least as long (the exe only extends chill and freeze lists).
+func (s *Set) applyLonger(frame int, in Instance) {
+	if prev := s.Get(frame, in.Name); prev != nil && prev.Until >= in.Until {
+		return
+	}
+
+	s.Apply(frame, in)
 }
 
 // CanAct is false while the unit is stunned or frozen.

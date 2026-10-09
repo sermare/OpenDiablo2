@@ -114,14 +114,33 @@ func (s *Set) Stat(frame int, stat string) int {
 	return total
 }
 
-// AddStream starts a poison or burn stream. Streams are independent and add
-// up (U: whether the game stacks or replaces them).
+// AddStream starts a poison or burn stream. Verified against the exe's
+// appliers (0x578990 poison, 0x578b00 burn; golden in d2combat): there is ONE
+// stream per kind and unit, so streams do not stack. A new application
+// replaces the live stream of the same kind (end, rate, source) only when its
+// per-frame value is >= the live one; a weaker one changes nothing. Poison and
+// burn are different kinds and do add up.
 func (s *Set) AddStream(frame int, kind string, perFrame, frames int, source string, skillID int) {
 	if perFrame <= 0 || frames <= 0 {
 		return
 	}
 
-	s.streams = append(s.streams, Stream{Kind: kind, PerFrame: perFrame, Until: frame + frames, Source: source, SkillID: skillID})
+	ns := Stream{Kind: kind, PerFrame: perFrame, Until: frame + frames, Source: source, SkillID: skillID}
+
+	for i := range s.streams {
+		old := &s.streams[i]
+		if old.Kind != kind || old.Until <= frame {
+			continue
+		}
+
+		if old.PerFrame <= perFrame {
+			*old = ns
+		}
+
+		return
+	}
+
+	s.streams = append(s.streams, ns)
 }
 
 // Streams returns the active streams.
