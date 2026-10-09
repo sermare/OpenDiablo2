@@ -63,6 +63,12 @@ func (i *Item) Durability() (current, maximum int) {
 	return i.attributes.currentDurability, i.attributes.durability.max
 }
 
+// IsIndestructible reports the "indestructible" property (stat 152): the item
+// never loses durability.
+func (i *Item) IsIndestructible() bool {
+	return i.attributes != nil && i.attributes.indestructable
+}
+
 // SetDurability sets the current durability.
 func (i *Item) SetDurability(n int) {
 	i.attributes.currentDurability = n
@@ -138,4 +144,28 @@ func (i *Item) TradeItem() *d2trade.Item {
 	// Unique and set rows ("cost mult" is a small integer such as 5 in the
 	// shipped tables, not 1/1024 fixed point) are UNVERIFIED and not priced.
 	return it
+}
+
+// GambleBase converts the item's base record to the input of
+// d2trade.GamblePrice (TRADE_CalcGamblePrice reads the item's own base row,
+// its exceptional (UberCode) and elite (UltraCode) rows).
+func (i *Item) GambleBase() d2trade.Gamble {
+	all := i.factory.asset.Records.Item.All
+	rec := i.CommonRecord()
+
+	g := d2trade.Gamble{
+		ReqLevel: rec.RequiredLevel, Cost: rec.Cost, MinStack: rec.MinStack, MaxStack: rec.MaxStack,
+		GambleCost:     rec.GambleCost,
+		IsRingOrAmulet: rec.Code == "rin" || rec.Code == "amu",
+	}
+
+	if x := all[rec.UberCode]; x != nil && rec.UberCode != "" {
+		g.HasExc, g.ExcReq, g.ExcCost = true, x.RequiredLevel, x.Cost
+	}
+
+	if x := all[rec.UltraCode]; x != nil && rec.UltraCode != "" {
+		g.HasElite, g.EliteReq, g.EliteCost = true, x.RequiredLevel, x.Cost
+	}
+
+	return g
 }

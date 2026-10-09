@@ -495,19 +495,22 @@ func (v *SelectHeroClass) onExitButtonClicked() {
 
 func (v *SelectHeroClass) onOkButtonClicked() {
 	heroName := v.heroNameTextbox.GetText()
-	defaultStats := v.asset.Records.Character.Stats[v.selectedHero]
-	statsState := v.CreateHeroStatsState(v.selectedHero, defaultStats)
-
-	playerState, err := v.CreateHeroState(heroName, v.selectedHero, statsState)
+	// the .od2 save and the real .d2s of a new character (never replacing a
+	// .d2s that exists) come from the one creation path
+	playerState, res, err := v.CreateNewHero(heroName, v.selectedHero,
+		v.expansionCheckbox.GetCheckState(), v.hardcoreCheckbox.GetCheckState(), false)
 	if err != nil {
-		v.Errorf("failed to create hero state!, err: %v", err.Error())
+		v.Errorf("failed to create hero!, err: %v", err.Error())
 		return
 	}
 
-	err = v.Save(playerState)
-	if err != nil {
-		v.Errorf("failed to save game state!, err: %v", err.Error())
-		return
+	if res != nil {
+		for _, w := range res.Warnings {
+			v.Warningf("NEWCHAR %s", w)
+		}
+
+		v.Infof("NEWCHAR created %s class=%v expansion=%v hardcore=%v d2s=%s", playerState.HeroName,
+			playerState.HeroType, playerState.Expansion, playerState.Hardcore, res.Path)
 	}
 
 	playerState.Equipment = v.InventoryItemFactory.DefaultHeroItems[v.selectedHero]

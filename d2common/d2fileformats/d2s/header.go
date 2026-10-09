@@ -35,7 +35,6 @@ const (
 	mercTypeOffset   = 0xB9
 	mercExpOffset    = 0xBB
 	activeArmsOffset = 0x10
-	lastPlayedOffset = 0x30
 	hotkeysOffset    = 0x38 // 16 u32 skill ids
 	leftSkillOffset  = 0x78 // then right, left swap, right swap
 	appearanceStart  = 0x88

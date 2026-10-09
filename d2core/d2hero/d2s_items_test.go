@@ -88,11 +88,7 @@ func TestImportedInfo(t *testing.T) {
 	}
 }
 
-func TestMaxIntAndClampLevel(t *testing.T) {
-	if maxInt(869, 1241) != 1241 || maxInt(5, 3) != 5 {
-		t.Fatal("maxInt")
-	}
-
+func TestClampLevel(t *testing.T) {
 	if clampLevel(0) != 1 || clampLevel(94) != 94 {
 		t.Fatal("clampLevel")
 	}

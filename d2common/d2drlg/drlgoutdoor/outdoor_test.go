@@ -1,169 +1,99 @@
 package drlgoutdoor
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
+	"reflect"
 	"testing"
-
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 )
 
-func tables(t *testing.T) *d2drlg.Tables {
-	t.Helper()
+func TestGridAliasing(t *testing.T) {
+	g := NewGrid(3, 2)
+	g.Set(0, 1, 7) // flat index 3
+	g.Op(0, 1, 8, opOr)
 
-	root := os.Getenv("D2_TABLES")
-	if root == "" {
-		t.Skip("D2_TABLES not set")
+	if g.Get(3, 0) != 15 {
+		t.Fatalf("x >= W must read the next row, got %d", g.Get(3, 0))
 	}
 
-	rd := func(p string) []byte {
-		b, err := os.ReadFile(filepath.Join(root, "drlg", p))
-		if err != nil {
-			t.Skip(err)
+	defer func() {
+		if recover() == nil {
+			t.Fatal("an access outside the allocation must panic")
 		}
+	}()
 
-		return b
+	g.Get(0, 2)
+}
+
+// Blood Moor (56x96) with the town to the west and Cold Plains to the south,
+// the example of drlg3.md section 4.
+func TestBloodMoorPolygon(t *testing.T) {
+	head := buildPolygon(Rect{1120, 920, 56, 96}, []Neighbor{
+		{Level: 1, Dir: 0, F8: true, Rect: Rect{1064, 928, 56, 40}},
+		{Level: 3, Dir: 3, Rect: Rect{1080, 1016, 80, 80}},
+	})
+
+	var got [][4]int
+
+	for p := head; ; {
+		got = append(got, [4]int{p.X, p.Y, p.B, p.F})
+
+		if p = p.Next; p == head {
+			break
+		}
 	}
 
-	tb, err := d2drlg.Load(d2drlg.Raw{LvlPrest: rd("patch_d2/LvlPrest.txt"), LvlPrestBin: rd("bin/patch_d2/lvlprest.bin")})
+	want := [][4]int{{0, 11, 0, 0}, {0, 5, 0, 3}, {0, 1, 0, 0}, {0, 0, 0, 0}, {6, 0, 0, 0}, {6, 11, 0, 0}, {4, 11, 0, 1}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("polygon %v, want %v", got, want)
+	}
+}
+
+func TestInsertSortedKeepsHead(t *testing.T) {
+	a := Neighbor{Dir: 2, Rect: Rect{Y: 10}}
+	b := Neighbor{Dir: 1, Rect: Rect{X: 5}}
+	c := Neighbor{Dir: 0, Rect: Rect{Y: 3}}
+	l := insertSorted(nil, a)
+	l = insertSorted(l, b) // one element: compared, goes first
+	l = insertSorted(l, c) // two elements: the head (b) is never compared
+
+	if l[0].Dir != 1 || l[1].Dir != 0 || l[2].Dir != 2 {
+		t.Fatalf("unexpected order %+v", l)
+	}
+}
+
+func TestParsePatternPadsTreesOverRead(t *testing.T) {
+	// version 12, 1x1, one wall and one floor layer is not representable in v12
+	// (single layers), 2 groups announced but only 1 stored: the second is zero.
+	b := []byte{}
+	put := func(v int32) { b = append(b, byte(v), byte(v>>8), byte(v>>16), byte(v>>24)) }
+
+	put(12) // version
+	put(0)  // width-1
+	put(0)  // height-1
+	put(0)  // act
+	put(1)  // substitution type
+	put(0)  // number of file names
+	put(0)
+	put(0) // 8 skipped bytes (versions 9..13)
+	put(1) // wall layers
+
+	for k := 0; k < 4; k++ { // wall, orientation, floor, shadow
+		put(0)
+	}
+
+	put(0) // substitution layer
+	put(0) // objects
+	put(2) // group count
+	put(1)
+	put(2)
+	put(3)
+	put(4)
+
+	p, err := ParsePattern(b)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	return tb
-}
-
-func count(r *Result, def int) int {
-	n := 0
-
-	for _, p := range r.Placed {
-		if p.Def == def {
-			n++
-		}
-	}
-
-	return n
-}
-
-func TestSpecialsOnEmptyGrid(t *testing.T) {
-	tb := tables(t)
-	want := map[int]map[int]int{
-		5:  {0xa1: 1, 0x29: 1, 0x28: 1, 0x1d: 1, 0x1e: 1, 0x33: 1},
-		4:  {0xa0: 1, 0xa2: 1, 0x1f: 1, 0x33: 1},
-		17: {0x6c: 1},
-		39: {0x32: 1, 0x2e: 1, 0x1f: 1, 0x26: 1, 0x27: 1, 0x1d: 1, 0x1e: 1},
-	}
-
-	for id, defs := range want {
-		for s := uint32(1); s <= 60; s++ {
-			base, _ := d2rand.DrlgBaseSeed(s)
-			sz := 80
-
-			if id == 17 {
-				sz = 40
-			}
-
-			r, err := GenerateAct1(tb, Params{LevelID: id, BaseSeed: base, Rect: Rect{1000, 1000, sz, sz}})
-			if err != nil {
-				t.Fatalf("level %d seed %d: %v", id, s, err)
-			}
-
-			for def, n := range defs {
-				if got := count(r, def); got != n && !(def == 0x33 && id == 4 && got == 0) {
-					t.Fatalf("level %d seed %d: def %#x placed %d times, want %d", id, s, def, got, n)
-				}
-			}
-
-			for _, p := range r.Placed {
-				if p.X < 0 || p.Y < 0 || p.X+p.W > r.W || p.Y+p.H > r.H {
-					t.Fatalf("level %d: placement %+v outside %dx%d grid", id, p, r.W, r.H)
-				}
-			}
-		}
-	}
-}
-
-func TestBloodMoorDenFarFromTown(t *testing.T) {
-	tb := tables(t)
-	town := Rect{800, 1000, 56, 40}
-
-	for s := uint32(1); s <= 40; s++ {
-		base, _ := d2rand.DrlgBaseSeed(s)
-
-		r, err := GenerateAct1(tb, Params{LevelID: 2, BaseSeed: base, Rect: Rect{1000, 1000, 96, 56}, Town: town})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if count(r, 0x34) != 1 {
-			t.Fatalf("seed %d: expected exactly one DOE entrance", s)
-		}
-	}
-}
-
-func TestCornerCaveEntranceWhenRiverFlags(t *testing.T) {
-	tb := tables(t)
-
-	for s := uint32(1); s <= 40; s++ {
-		base, _ := d2rand.DrlgBaseSeed(s)
-
-		r, err := GenerateAct1(tb, Params{LevelID: 3, BaseSeed: base, Rect: Rect{1000, 1000, 80, 80}, OdFlags: FlagRiverEdge1})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		var e *Placement
-
-		for i := range r.Placed {
-			if r.Placed[i].Def == 0x33 {
-				e = &r.Placed[i]
-			}
-		}
-
-		// flags 0x4 with 0x10 clear => k = 5: x in {3, 10-5}, y in {3, 10-4}
-		if e == nil || !(e.X == 3 || e.X == 5) || !(e.Y == 3 || e.Y == 6) {
-			t.Fatalf("seed %d: cave entrance %+v", s, e)
-		}
-
-		if r.OdFlags&FlagCavePlaced == 0 {
-			t.Fatal("cave flag not set")
-		}
-	}
-}
-
-func TestDeterminismAndSeedSensitivity(t *testing.T) {
-	tb := tables(t)
-	sig := func(s uint32) string {
-		base, _ := d2rand.DrlgBaseSeed(s)
-
-		r, err := GenerateAct1(tb, Params{LevelID: 6, BaseSeed: base, Rect: Rect{0, 0, 80, 80}})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		return fmt.Sprint(r.Placed)
-	}
-
-	seen := map[string]bool{}
-
-	for s := uint32(1); s <= 30; s++ {
-		if sig(s) != sig(s) {
-			t.Fatal("not deterministic")
-		}
-
-		seen[sig(s)] = true
-	}
-
-	if len(seen) < 25 {
-		t.Errorf("only %d distinct layouts", len(seen))
-	}
-}
-
-func TestUnknownLevel(t *testing.T) {
-	tb := tables(t)
-	if _, err := GenerateAct1(tb, Params{LevelID: 8}); err != ErrUnknownLevel {
-		t.Fatal(err)
+	if len(p.Groups) != 2 || p.Groups[0] != (Group{1, 2, 3, 4, 0}) || p.Groups[1] != (Group{}) {
+		t.Fatalf("groups %+v", p.Groups)
 	}
 }

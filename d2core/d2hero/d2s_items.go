@@ -19,19 +19,6 @@ const (
 	d2sSlotAltLeft   = 12
 )
 
-// ImportedItem is an equipped item of a .d2s in the form the inventory panel needs:
-// the arguments for diablo2item.ItemFactory.NewItem (base code first, then the unique,
-// set or magic affix names) and the equipment slot. Inventory, belt, cube and stash
-// items are not here: they live in HeroState.Containers. The values of an affix are
-// not copied from the save: the UI rolls them from the affix ranges, so tooltips
-// show the right item names and base stats but only approximate magic values.
-type ImportedItem struct {
-	Codes      []string `json:"codes"`
-	Equipped   uint8    `json:"equipped"` // d2s equipment slot (1 head ... 12 weapon set II left)
-	Quality    uint8    `json:"quality"`
-	Identified bool     `json:"identified,omitempty"`
-}
-
 // affixNames maps the ids a .d2s stores to the names in the game tables.
 type affixNames struct {
 	unique, set, prefix, suffix []string
@@ -100,44 +87,13 @@ func (f *HeroStateFactory) resolveNames(it *d2s.Item, names *affixNames) (unique
 	return unique, setItem, prefixes, suffixes
 }
 
-// itemCodes returns the NewItem arguments for an item, or nil when its base
-// code is unknown to the game tables (ears, modded items).
-func (f *HeroStateFactory) itemCodes(it *d2s.Item, names *affixNames) []string {
-	code := strings.TrimSpace(it.Code)
-	if f.asset.Records.Item.All[code] == nil {
-		return nil
+// applyNames replaces the random affixes of an imported item with the unique,
+// set or magic affix names of the save.
+func (f *HeroStateFactory) applyNames(s *StoredItem, it *d2s.Item, names *affixNames) {
+	if u, si, pre, suf := f.resolveNames(it, names); u != "" || si != "" || len(pre)+len(suf) > 0 {
+		s.Unique, s.SetItem, s.Prefixes, s.Suffixes = u, si, pre, suf
+		s.Origin = false
 	}
-
-	unique, setItem, prefixes, suffixes := f.resolveNames(it, names)
-	codes := []string{code}
-
-	for _, n := range append(append([]string{unique, setItem}, prefixes...), suffixes...) {
-		if n != "" {
-			codes = append(codes, n)
-		}
-	}
-
-	return codes
-}
-
-// wornItems converts the equipped items of a save.
-func (f *HeroStateFactory) wornItems(items []d2s.Item) []ImportedItem {
-	names := f.loadAffixNames()
-
-	var out []ImportedItem
-
-	for i := range items {
-		it := &items[i]
-		if it.Location != d2s.LocationEquipped {
-			continue
-		}
-
-		if codes := f.itemCodes(it, names); codes != nil {
-			out = append(out, ImportedItem{Codes: codes, Equipped: it.Equipped, Quality: it.Quality, Identified: it.Identified})
-		}
-	}
-
-	return out
 }
 
 // starterSlots names the location column of charstats.txt: LoD writes tokens,
@@ -204,7 +160,7 @@ func (f *HeroStateFactory) applyStarterItems(state *HeroState, hero d2enum.Hero)
 		return 0, 0, false
 	}
 
-	containers := &HeroContainers{Items: []StoredItem{}}
+	containers := &HeroContainers{Items: []StoredItem{}, Equipped: []StoredItem{}}
 
 	for i, code := range rec.StartItem {
 		code = strings.TrimSpace(code)
@@ -218,7 +174,10 @@ func (f *HeroStateFactory) applyStarterItems(state *HeroState, hero d2enum.Hero)
 		count := rec.StartItemCount[i]
 
 		if slot > 0 {
-			state.Worn = append(state.Worn, ImportedItem{Codes: []string{code}, Equipped: uint8(slot), Quality: d2s.QualityNormal, Identified: true})
+			containers.Equipped = append(containers.Equipped, StoredItem{
+				Code: code, Page: PageEquipped, X: slot, Quality: int(d2s.QualityNormal), Identified: true, Origin: true,
+			})
+
 			continue
 		}
 
@@ -234,6 +193,7 @@ func (f *HeroStateFactory) applyStarterItems(state *HeroState, hero d2enum.Hero)
 		}
 	}
 
+	containers.EquippedSet = len(containers.Equipped) > 0
 	state.Containers = containers
 }
 

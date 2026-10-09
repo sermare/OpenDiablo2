@@ -2,6 +2,7 @@ package d2audio
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"sort"
@@ -46,6 +47,12 @@ func (s *Sound) Report() d2sfx.Report {
 	return s.inst.Report()
 }
 
+// Mix returns the volume (0..1, after distance falloff) and pan (-1..1) the
+// engine computes for this sound right now.
+func (s *Sound) Mix() (vol, pan float64) {
+	return s.bank.Mix(s.inst)
+}
+
 // String returns the sound handle
 func (s *Sound) String() string {
 	return s.handle
@@ -60,6 +67,9 @@ type SoundEngine struct {
 	bank     *d2sfx.Bank
 	ticks    float64
 	mute     bool
+	trace    bool
+	stats    TraceStats
+	lx, ly   float64 // listener in sound units, see SubtileToSound
 	sounds   map[*Sound]struct{}
 
 	*d2util.Logger
@@ -165,9 +175,51 @@ func (m *mutePlayer) IsPlaying() bool {
 	return m.on && (m.loop || m.e.ticks-m.started < d2sfx.TicksPerSecond)
 }
 
-// SetListener tells the engine where the hero is, for positional sounds.
+// SetListener tells the engine where the hero is, for positional sounds, in
+// sound units (see SubtileToSound).
 func (s *SoundEngine) SetListener(x, y float64) {
+	s.lx, s.ly = x, y
 	s.Bank().SetListener(x, y)
+}
+
+// SetListenerSubtile is SetListener for a position in map subtiles.
+func (s *SoundEngine) SetListenerSubtile(x, y float64) {
+	s.SetListener(SubtileToSound(x, y))
+}
+
+// Listener returns the listener position in sound units.
+func (s *SoundEngine) Listener() (x, y float64) { return s.lx, s.ly }
+
+// SetTrace makes every positional sound log a SOUNDAT line with the distance,
+// gain, volume and pan the engine chose (used by the OD2_AUTO* scenarios).
+func (s *SoundEngine) SetTrace(on bool) { s.trace = on }
+
+// TraceStats counts the positional sounds seen while tracing.
+type TraceStats struct {
+	Total, Audible, Inaudible int
+	// Nearest and Farthest are emitter distances in sound units.
+	Nearest, Farthest float64
+	// ByKind counts sounds per PlayOpts.Kind.
+	ByKind map[string]int
+}
+
+// TraceStats returns the counters of the positional sounds played since
+// tracing was enabled.
+func (s *SoundEngine) TraceStats() TraceStats { return s.stats }
+
+// Subtile geometry in sound units. The bank measures distance as the hero
+// relative delta with y doubled (verified) and the falloff radii (400..2000)
+// look like screen pixels (inferred), so emitters are placed at their
+// isometric screen position: one subtile is 16 px across and 8 px down (a
+// 80x40 px tile holds 5x5 subtiles). Doubling y then gives an isotropic circle.
+const (
+	subtilePixelsX = 16.0
+	subtilePixelsY = 8.0
+)
+
+// SubtileToSound converts a map position in subtiles to sound units.
+func SubtileToSound(x, y float64) (sx, sy float64) {
+	return (x - y) * subtilePixelsX, (x + y) * subtilePixelsY
 }
 
 // Advance updates sound engine state, triggering envelopes and cleanup
@@ -204,7 +256,7 @@ func (s *SoundEngine) Reset() {
 }
 
 // PlaySoundID plays a sound by Sounds.txt index (the row ordinal). It returns
-// nil when the engine decided not to play it (index 0, priority 0, no voice...).
+// nil when the engine decided not to play it (index 0, no file, no voice...).
 func (s *SoundEngine) PlaySoundID(id int) *Sound {
 	return s.play(d2sfx.Request{Index: id})
 }
@@ -212,10 +264,40 @@ func (s *SoundEngine) PlaySoundID(id int) *Sound {
 // PlaySoundAt plays a positional sound; x and y are in the same units as
 // SetListener. emitter is an opaque id used by Defer/Stop Inst (0 = none).
 func (s *SoundEngine) PlaySoundAt(id int, x, y float64, emitter int) *Sound {
-	return s.play(d2sfx.Request{Index: id, HasPos: true, X: x, Y: y, Emitter: emitter})
+	return s.play(d2sfx.Request{Index: id, HasPos: true, X: x, Y: y, Emitter: emitter},
+		PlayOpts{X: x, Y: y, Emitter: emitter, Kind: "at"})
 }
 
-func (s *SoundEngine) play(req d2sfx.Request) *Sound {
+// PlayOpts describes a positional play request.
+type PlayOpts struct {
+	// X, Y is the emitter in sound units; use SubtileToSound for map positions.
+	X, Y float64
+	// Emitter identifies the source for Defer/Stop Inst (0 = none).
+	Emitter int
+	// Delay is the number of game ticks (25/s) before the sound may start.
+	Delay int
+	// Volume overrides the Sounds.txt Volume column when > 0.
+	Volume int
+	// Hero marks the local hero as the emitter (priority bonus, verified).
+	Hero bool
+	// Who and Kind only label the SOUNDAT trace line.
+	Who, Kind string
+}
+
+// PlayHandleAt plays a Sounds.txt handle at a position. Unknown handles and
+// empty ones return nil without a warning (tables name sounds that the
+// install may lack).
+func (s *SoundEngine) PlayHandleAt(handle string, o PlayOpts) *Sound {
+	e, ok := s.asset.Records.Sound.Details[handle]
+	if !ok || handle == "" {
+		return nil
+	}
+
+	return s.play(d2sfx.Request{Index: e.Index, HasPos: true, X: o.X, Y: o.Y, Emitter: o.Emitter,
+		Delay: int64(o.Delay), Volume: o.Volume, Hero: o.Hero}, o)
+}
+
+func (s *SoundEngine) play(req d2sfx.Request, opts ...PlayOpts) *Sound {
 	if req.Index == 0 {
 		return nil
 	}
@@ -223,6 +305,46 @@ func (s *SoundEngine) play(req d2sfx.Request) *Sound {
 	inst := s.Bank().Play(req)
 	r := inst.Report()
 	s.Debugf("sound %s", r)
+
+	if s.trace && req.HasPos {
+		var o PlayOpts
+		if len(opts) > 0 {
+			o = opts[0]
+		}
+
+		vol, pan := s.bank.Mix(inst)
+		// the report's distance is only filled once a sound starts; recompute (y doubled, verified)
+		dx, dy := req.X-s.lx, 2*(req.Y-s.ly)
+		dist := math.Hypot(dx, dy)
+
+		s.stats.Total++
+
+		if s.stats.ByKind == nil {
+			s.stats.ByKind = map[string]int{}
+		}
+
+		s.stats.ByKind[o.Kind]++
+
+		if r.Decision == d2sfx.DecisionInaudible {
+			s.stats.Inaudible++
+		} else {
+			s.stats.Audible++
+		}
+
+		if s.stats.Total == 1 || dist < s.stats.Nearest {
+			s.stats.Nearest = dist
+		}
+
+		if dist > s.stats.Farthest {
+			s.stats.Farthest = dist
+		}
+
+		if row := inst.Row(); row != nil {
+			s.Infof("SOUNDAT kind=%s who=%q handle=%s file=%q pos=(%.0f,%.0f) dist=%.0f radius=%.0f gain=%.2f vol=%.2f pan=%+.2f delay=%d decision=%s",
+				o.Kind, o.Who, r.Handle, r.File, req.X, req.Y, dist, d2sfx.FalloffRadius(row.Falloff),
+				d2sfx.DistanceGain(dist*dist, row.Falloff), vol, pan, req.Delay, r.Decision)
+		}
+	}
 
 	switch r.Decision {
 	case d2sfx.DecisionPlayed, d2sfx.DecisionStolen, d2sfx.DecisionQueued, d2sfx.DecisionMerged:

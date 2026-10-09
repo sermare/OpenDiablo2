@@ -34,23 +34,18 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | **Import a real character into the engine — with her gear** | A level-94 Sorceress from a real `.d2s` loads, starts in town and wears her real Spired Helm, Archon Plate, Battle Boots, Light Gauntlets, Flail, Short Staff and Monarch |
 | **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; checked instruction-by-instruction against the real code: no differences |
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~2,320 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
+| Reverse-engineering map of the game | ~2,420 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
-### 🔧 In progress right now (agents run in waves of 5 every 15 minutes)
+### 🔧 In progress right now (agents run in waves; the machine is the limit)
 
 | Work item | Where |
 |---|---|
-| **Skills that work like the real game**: the skill expression language, mana, cooldowns, missiles that hit and kill monsters | branch `feat/skill-pipeline` |
-| **Monsters part 2**: natural packs, more archetypes (Brute, Mummy, bosses), collision | branch `feat/monsters-2` |
-| **Real generated dungeons that render and can be walked**, with screenshots to check them | branch `feat/realmaps-render` |
-| **A ground-truth oracle** for level generation by emulating the real game code | RE notes: `drlg-oracle` |
-| **Imported real characters work in every screen** (character select, stats, skills) | branch `feat/imported-hero-ui` |
-| Stash, Horadric Cube and belt | branch `feat/stash-cube-belt` |
-| **Mercenaries**: hire from Kashya, follow, fight, revive, saved in the `.d2s` | branch `feat/hirelings` |
-| **Real lighting, day/night correction and draw order** (OpenDiablo2 has no lighting today) | branch `feat/renderer-lighting` |
-| **Stairs, doors, waypoints and portals** with the real level-change rules | branch `feat/transitions-objects` |
-| Positional sound and ambient environments | branch `feat/ambient-audio` |
-| Research: Act 1 outdoor generation part 3 (borders, cliffs, rivers) and quests part 2 | RE notes: `drlg3`, `quests-2` |
+| **The quest system** for the intro and Act 1 quests: states, speech, rewards, saved in the `.d2s` | branch `feat/quest-system` |
+| **Skills for all seven classes**, with auras, summons, traps and status effects | branch `feat/class-skills` |
+| **Act 1 outdoors in Go**: Blood Moor, Cold Plains and the other wilderness levels, checked against the real game's code | branch `feat/drlg-outdoor1` |
+| **Mercenaries** and the imported-character UI (being merged with the latest code) | `feat/hirelings`, `feat/imported-hero-ui` |
+| **Automap**, **shrines/wells/other objects**, **equip rules and durability** | `feat/automap`, `feat/objects-2`, `feat/equip-rules` |
+| **A performance pass** with frame-time metrics and profiling | branch `feat/perf-pass` |
 
 ### 🎯 Plan and priorities (set by Claude)
 
@@ -66,6 +61,37 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 Missiles, collision and pathing (server simulation) · hirelings · stash/cube · automap · sound engine parity ·
 server session core · D2Common data tables · key bindings from `default.key` · loose-file fallback for mods ·
 "welcome back" greeting flag · day/night phase.
+
+## Install on a Mac
+
+You need your own copy of Diablo II (and Lord of Destruction). No game files are included.
+
+1. **Get the game files.** The easiest way is Blizzard's official downloader run once under Wine; the steps are in
+   [docs/macos-quickstart.md](docs/macos-quickstart.md). You end up with a folder holding `d2data.mpq`, `d2char.mpq`,
+   `d2music.mpq`, `d2sfx.mpq`, `d2speech.mpq`, `d2video.mpq`, `patch_d2.mpq` (plus `d2exp.mpq`, `d2xmusic.mpq`,
+   `d2xtalk.mpq`, `d2xvideo.mpq` for Lord of Destruction).
+2. **Build the app** (needs `brew install go` and the Xcode command line tools, once):
+   ```sh
+   scripts/make-app.sh          # creates dist/OpenDiablo2.app (arm64, ad-hoc signed)
+   INSTALL=1 scripts/make-app.sh   # same, and copies it to /Applications
+   ```
+   `UNIVERSAL=1` also tries an Intel slice (best effort: the engine needs CGO).
+3. **Double-click `OpenDiablo2.app`** (first time: right-click, Open, because it is not notarised).
+   On first launch it looks for the game files in `/Applications/Diablo II`, `~/Library/Application Support/Diablo II`,
+   Wine prefixes (`~/.wine*/drive_c/Program Files (x86)/Diablo II`), CrossOver bottles and similar, offers what it finds,
+   and otherwise shows a folder picker. It checks the files and writes
+   `~/Library/Application Support/OpenDiablo2/config.json` for you. Missing files give a clear dialog.
+   It does not scan Documents, Desktop or Downloads (macOS would ask for permission); pick the folder by hand if needed.
+4. **Your characters.** Real `.d2s` characters are found automatically in `~/Library/Application Support/Diablo II*`,
+   Wine prefixes (`Saved Games/Diablo II`) and the game folder's `Save`, and imported into the character list. Originals are
+   only read. To use another folder set `"D2SDir"` in config.json (or `OD2_D2S_DIR`).
+5. **Settings** without editing files: press the console key (`` ` ``) in game and type `fullscreen`, `musicvolume 0.5`,
+   `soundvolume 1`, or `windowscale 2` (start window 1x to 4x, applies next launch). They are saved to config.json.
+6. **Logs and problems:** logs go to `~/Library/Logs/OpenDiablo2/OpenDiablo2.log` when started from Finder. If the game
+   crashes a dialog shows the log path. Config, saves and the log are the only things the app writes.
+
+Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>` moves config.json and Saves (for tests),
+`OD2_NO_SETUP=1` skips the first-run dialogs.
 
 ## How this is built
 
@@ -96,6 +122,10 @@ server session core · D2Common data tables · key bindings from `default.key` �
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | Death/respawn/new characters merged (new Druid byte-identical to the real file); the Act 1 outdoor generation algorithm reverse engineered and a reference port matched the real game on 208 levels |
+| 2026-10-09 | **All maze levels of all five acts proven identical to the real game**; equipment affects the hero (explains 1241/869); positional/ambient audio; a double-clickable Mac app |
+| 2026-10-09 | Level generator proven for **all Act 1-3 maze levels**; waypoints, portals, doors and level changes; Gheed's gamble and Cain's identify; test scenarios now launch games without Terminal windows |
+| 2026-10-09 | **Level generator proven identical to the real game** (2,550 maze records, 50 world layouts); real dungeons render and play; skills, monsters part 2, stash/cube/belt, lighting merged; test runner restructured into one file per scenario |
 | 2026-10-09 | Engine saves characters back to real `.d2s`; hireling and renderer reverse engineering done (real lighting model, hire cost and stat formulas) |
 | 2026-10-09 | **Monsters** with the original AI, pathfinding, combat, death and loot run in the engine; test runs no longer collide on the server port |
 | 2026-10-09 | Vendors, ground items and chests, the sound engine, CI + scripted autotests and the Go level generator merged; skills part 2 researched (365 skill functions named, the calc language decoded) |

@@ -67,16 +67,7 @@ func NewAnimatedEntity(x, y int, animation d2interface.Animation) *AnimatedEntit
 func (f *MapEntityFactory) NewPlayer(id, name string, x, y, direction int, heroType d2enum.Hero,
 	stats *d2hero.HeroStatsState, skills map[int]*d2hero.HeroSkill, equipment *d2inventory.CharacterEquipment,
 	leftSkill, rightSkill, gold int) *Player {
-	layerEquipment := &[d2enum.CompositeTypeMax]string{
-		d2enum.CompositeTypeHead:      equipment.Head.GetArmorClass(),
-		d2enum.CompositeTypeTorso:     equipment.Torso.GetArmorClass(),
-		d2enum.CompositeTypeLegs:      equipment.Legs.GetArmorClass(),
-		d2enum.CompositeTypeRightArm:  equipment.RightArm.GetArmorClass(),
-		d2enum.CompositeTypeLeftArm:   equipment.LeftArm.GetArmorClass(),
-		d2enum.CompositeTypeRightHand: equipment.RightHand.GetItemCode(),
-		d2enum.CompositeTypeLeftHand:  equipment.LeftHand.GetItemCode(),
-		d2enum.CompositeTypeShield:    equipment.Shield.GetItemCode(),
-	}
+	layerEquipment := equipmentLayers(equipment)
 
 	composite, err := f.asset.LoadComposite(d2enum.ObjectTypePlayer, heroType.GetToken(),
 		d2resource.PaletteUnits)

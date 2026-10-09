@@ -10,6 +10,8 @@
 // ~/git/d2-re-notes/drlg-oracle.md) and the Act 1 world layout, all 17 Act 1
 // maze levels (rooms and final level seed) and the Act 2/3 creation draws were
 // proven equal to it (oracle_test.go files, golden numbers in testdata/). The
-// Act 1 outdoor generator is still a partial skeleton, and parts the notes
-// mark as unread are left as TODO interfaces and are never invented.
+// Act 1 outdoor generator (drlgoutdoor) is proven equal for levels 2-7, 0x11
+// and 0x27 up to the room tile grids; the per-cell tile records and the DT1
+// tile pick are not ported. Parts the notes mark as unread are left as TODO
+// interfaces and are never invented.
 package d2drlg

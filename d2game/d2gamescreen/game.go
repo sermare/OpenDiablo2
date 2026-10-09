@@ -148,18 +148,28 @@ type Game struct {
 	autoTestElapsed      float64
 	autoTestDone         bool
 	autoScript           *autoScriptState
+	levels               levelState
 	autoSoundElapsed     float64
 	autoSoundDone        bool
 	ground               groundState
+	objects              objectState
+	autoObject           autoObject
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	monsterTest          *monsterTest
+	merc                 mercGame
 	skills               *d2skills.Engine
 	castTestState        *castTest
 	attackTarget         *d2mapentity.Monster
 	attackRepathAcc      float64
+	soundTraceSet        bool
+	heroStepAcc          float64
+	ambientTest          *ambientTest
+	regionEnvs           map[int]int
 	autoPanel            autoPanelState
+	autoEquip            autoEquipState
 	levelStatusAcc       float64
+	death                deathState
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -188,6 +198,10 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"setgold", "sets the hero's gold (saved to the .d2s on the next save)", []string{"amount"}, v.commandSetGold},
 		{"spawnchest", "spawns chests/barrels (objects.txt ids, default 7 1 5) next to the hero",
 			[]string{"id1", "id2", "id3"}, v.commandSpawnChest},
+		{"spawnportal", "spawns a town portal object to the given level next to the hero",
+			[]string{"level"}, v.commandSpawnPortal},
+		{"setwaypoint", "activates (1) or clears (0) the waypoint of a level for the hero",
+			[]string{"level", "0|1"}, v.commandSetWaypoint},
 	}
 
 	for _, cmd := range commands {
@@ -217,7 +231,7 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold"); err != nil {
+	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint"); err != nil {
 		return err
 	}
 
@@ -271,6 +285,7 @@ func (v *Game) Render(screen d2interface.Surface) {
 		}
 	}
 
+	v.renderFade(screen)
 	v.autoShot(screen)
 }
 
@@ -291,13 +306,20 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceAutoScript(elapsed)
 	v.advanceAutosave(elapsed)
 	v.advanceGroundInteraction(elapsed)
+	v.advanceObjects(elapsed)
+	v.advanceAutoObject(elapsed)
+	v.advanceLevels(elapsed)
 	v.advanceAutoGround(elapsed)
+	v.advanceSound(elapsed)
+	v.advanceAutoAmbient(elapsed)
 	v.advanceAutoPanel(elapsed)
+	v.advanceAutoEquip(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
 		v.advanceMonsters(elapsed)
 		v.advanceSkills(elapsed)
+		v.advanceDeath(elapsed)
 	}
 
 	if v.gameControls != nil {
@@ -315,7 +337,9 @@ func (v *Game) Advance(elapsed float64) error {
 
 			if tile != nil {
 				levelDetails := v.asset.Records.Level.Details[int(tile.RegionType)]
-				v.soundEnv.SetEnv(levelDetails.SoundEnvironmentID)
+				if v.ambientTest == nil { // OD2_AUTOAMBIENT picks the environment itself
+					v.soundEnv.SetEnv(v.soundEnvForRegion(tile.RegionType, levelDetails.SoundEnvironmentID))
+				}
 
 				// skip showing zone change text the first time we enter the world
 				if v.lastRegionType != d2enum.RegionNone && v.lastRegionType != tile.RegionType {
@@ -346,7 +370,7 @@ func (v *Game) Advance(elapsed float64) error {
 		v.mapRenderer.SetCameraTarget(&position)
 	}
 
-	v.soundEnv.Advance(elapsed)
+	v.soundEnv.Advance(elapsed * v.ambientSpeed())
 
 	if v.gameControls != nil {
 		if v.gameControls.PartyPanel != nil {
@@ -374,12 +398,9 @@ func (v *Game) bindGameControls() error {
 			return err
 		}
 
-		// an imported .d2s hero shows its real equipment and inventory page
-		if st := v.gameClient.LocalHeroState(); st != nil && st.Imported != nil {
-			v.gameControls.SetImportedItems(st.Worn, st.Imported.WeaponSetII)
-		}
-
 		v.gameControls.Load()
+		v.gameControls.Automap().SetLevelSource(v.currentLevel, v.levelName)
+		v.gameControls.SetEquipSound(v.playHeroUISound)
 
 		if err := v.inputManager.BindHandler(v.gameControls); err != nil {
 			v.Error(bindControlsErrStr + player.ID())
@@ -391,8 +412,20 @@ func (v *Game) bindGameControls() error {
 	return nil
 }
 
-// OnPlayerMove sends the player move action to the server
+// OnPlayerMove is a move order (a click or a script step). It cancels a walk
+// to an object and targets a warp tile if the order lands on one.
 func (v *Game) OnPlayerMove(targetX, targetY float64) {
+	if v.localPlayer.IsDead() {
+		return // the dead do not walk
+	}
+
+	v.levels.use = nil
+	v.targetWarpAt(targetX, targetY)
+	v.movePlayerTo(targetX, targetY)
+}
+
+// movePlayerTo sends the player move action to the server
+func (v *Game) movePlayerTo(targetX, targetY float64) {
 	worldPosition := v.localPlayer.Position.World()
 
 	playerID, worldX, worldY := v.gameClient.PlayerID, worldPosition.X(), worldPosition.Y()
@@ -461,12 +494,14 @@ func (v *Game) advanceNPCInteraction(_ float64) {
 		// the trade window replaces the menu; it closes when the hero walks
 		// away (not in the autotest, where the hero stays where it is)
 		switch {
-		case !v.gameControls.Trade.IsOpen():
+		case !v.gameControls.Trade.IsOpen() && !v.gameControls.Identify.IsOpen():
 			v.tradeActive = false
 			v.npcTarget = nil
-		case dist > npcMenuLeaveDistance && os.Getenv("OD2_AUTOTRADE") == "":
+		case dist > npcMenuLeaveDistance && os.Getenv("OD2_AUTOTRADE") == "" && os.Getenv("OD2_AUTOGAMBLE") == "" &&
+			os.Getenv("OD2_AUTOIDENTIFY") == "":
 			v.Infof("trade window closed: walked away from %q", v.npcTarget.Label())
 			v.gameControls.Trade.Close()
+			v.gameControls.Identify.Close()
 		}
 
 		return
@@ -533,9 +568,43 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 		v.Infof("NPC menu: Talk with %q (voice %q)", npc.Label(), path)
 	case d2player.NPCActionTrade, d2player.NPCActionTradeRepair:
 		v.openTrade(npc, uint32(time.Now().UnixNano()))
+	case d2player.NPCActionHire:
+		v.openHire(npc)
+	case d2player.NPCActionGamble:
+		v.openGamble(npc, uint32(time.Now().UnixNano()))
+	case d2player.NPCActionIdentify:
+		v.openIdentify(npc)
 	default:
 		v.Infof("NPC menu: %s (%s) not implemented yet", row.Action, row.Fallback)
 	}
+}
+
+// openGamble opens the gamble window of a vendor that has one (Gheed).
+func (v *Game) openGamble(npc d2interface.MapEntity, seed uint32) bool {
+	vendor, ok := d2vendor.ByClassID(v.npcClassID(npc))
+	if !ok || !vendor.Gambles {
+		v.Infof("NPC menu: Gamble with %q not implemented yet (no gamble model for class %d)",
+			npc.Label(), v.npcClassID(npc))
+
+		return false
+	}
+
+	if err := v.gameControls.OpenGamble(vendor, seed); err != nil {
+		v.Infof("NPC menu: Gamble with %q: %v", npc.Label(), err)
+
+		return false
+	}
+
+	v.npcTarget, v.tradeActive = npc, true
+
+	return true
+}
+
+// openIdentify opens Deckard Cain's identify window.
+func (v *Game) openIdentify(npc d2interface.MapEntity) {
+	v.gameControls.OpenIdentify()
+
+	v.npcTarget, v.tradeActive = npc, true
 }
 
 // openTrade opens the vendor window for an Act 1 vendor. Other NPCs have a
@@ -653,7 +722,8 @@ func (v *Game) advanceAutoSound(elapsed float64) {
 // OD2_AUTOTEST_MUTE skips playback and OD2_AUTOEXIT quits when done.
 func (v *Game) advanceAutoTest(elapsed float64) {
 	talk, menus, trades := os.Getenv("OD2_AUTOTALK"), os.Getenv("OD2_AUTOMENU"), os.Getenv("OD2_AUTOTRADE")
-	if (talk == "" && menus == "" && trades == "") || v.localPlayer == nil || v.gameControls == nil {
+	gamble, identify := os.Getenv("OD2_AUTOGAMBLE"), os.Getenv("OD2_AUTOIDENTIFY")
+	if (talk == "" && menus == "" && trades == "" && gamble == "" && identify == "") || v.localPlayer == nil || v.gameControls == nil {
 		return
 	}
 
@@ -709,6 +779,8 @@ func (v *Game) advanceAutoTest(elapsed float64) {
 	}
 
 	v.autoTestTrade(trades, byLabel)
+	v.autoTestGamble(gamble, byLabel)
+	v.autoTestIdentify(identify, byLabel)
 
 	if os.Getenv("OD2_AUTOMENU_HOLD") == "" {
 		v.autoTestExit()
@@ -745,6 +817,65 @@ func (v *Game) autoTestTrade(names string, byLabel map[string]d2interface.MapEnt
 
 		v.gameControls.Trade.RunAutoTest() // stays open for OD2_AUTOMENU_HOLD
 	}
+}
+
+// autoTestGamble runs OD2_AUTOGAMBLE=<names>: opens each vendor's gamble
+// window and logs the stock, prices and a scripted purchase (AUTOGAMBLE lines,
+// no clicking). OD2_AUTOTRADE_SEED and OD2_AUTOTRADE_LEVEL apply too.
+func (v *Game) autoTestGamble(names string, byLabel map[string]d2interface.MapEntity) {
+	if names == "" {
+		return
+	}
+
+	seed := uint32(1)
+	if n, err := strconv.ParseUint(os.Getenv("OD2_AUTOTRADE_SEED"), 10, 32); err == nil {
+		seed = uint32(n)
+	}
+
+	if n, err := strconv.Atoi(os.Getenv("OD2_AUTOTRADE_LEVEL")); err == nil {
+		v.gameControls.Trade.LevelOverride = n
+	}
+
+	for _, name := range strings.Split(names, ",") {
+		npc, present := byLabel[name]
+		if !present {
+			v.Infof("AUTOGAMBLE npc=%s in_town=false", name)
+			continue
+		}
+
+		if !v.openGamble(npc, seed) {
+			continue
+		}
+
+		v.gameControls.Trade.RunGambleAutoTest()
+	}
+}
+
+// autoTestIdentify runs OD2_AUTOIDENTIFY=1: it opens Cain's window, logs the
+// unidentified items and fees and identifies them (AUTOIDENTIFY lines).
+func (v *Game) autoTestIdentify(spec string, byLabel map[string]d2interface.MapEntity) {
+	if spec == "" {
+		return
+	}
+
+	var cain d2interface.MapEntity
+
+	for name, e := range byLabel {
+		if strings.Contains(name, "Cain") {
+			cain = e
+		}
+	}
+
+	if cain == nil {
+		// Cain only stands in the camp after his rescue; the window does not
+		// need him, so the test opens it directly
+		v.Infof("AUTOIDENTIFY npc=Cain in_town=false (opening the window directly)")
+		v.gameControls.OpenIdentify()
+	} else {
+		v.openIdentify(cain)
+	}
+
+	v.gameControls.Identify.RunAutoTest()
 }
 
 func (v *Game) autoTestHold(_ float64) {
@@ -785,6 +916,10 @@ func (v *Game) OnPlayerSave() error {
 
 // OnPlayerCast sends the casting skill action to the server
 func (v *Game) OnPlayerCast(skillID int, targetX, targetY float64) {
+	if v.localPlayer != nil && v.localPlayer.IsDead() {
+		return
+	}
+
 	// skills the skill pipeline implements run locally with real missiles; the
 	// rest keep the old path (a CastSkill packet that plays the client effects)
 	if v.localPlayer != nil && v.castWithPipeline(skillID, targetX, targetY) {

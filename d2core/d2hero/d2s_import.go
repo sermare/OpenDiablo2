@@ -47,7 +47,14 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 
 	state.MapSeed = header.MapSeed
 	state.Imported = importedInfo(header)
+	state.Expansion, state.Hardcore, state.Ladder = header.IsExpansion(), header.IsHardcore(), header.IsLadder()
+
+	if header.IsDead() {
+		state.Death = &DeathState{Died: true}
+	}
+
 	state.D2SBase = append([]byte(nil), data...)
+	state.Merc = MercFromHeader(header.Mercenary)
 
 	if diff, _, ok := header.ActiveDifficulty(); ok {
 		state.Difficulty = d2enum.DifficultyType(diff)
@@ -78,16 +85,10 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	}
 
 	f.applyD2SActiveSkills(state, header)
+	f.RecalcStats(state)
+	fmt.Printf("stats: %s %s\n", state.HeroName, StatsSummary(state.Stats))
 
 	return state, nil
-}
-
-func maxInt(a, b int) int {
-	if b > a {
-		return b
-	}
-
-	return a
 }
 
 func clampLevel(level int) int {
@@ -179,16 +180,13 @@ func applyD2SAttributes(state *HeroState, a *d2s.Attributes, f *HeroStateFactory
 	s.Vitality = int(a.Vitality)
 	s.StatsPoints = int(a.UnusedStats)
 	s.SkillPoints = int(a.UnusedSkillPoints)
-	// The saved maximums are the base values (class, level, vitality/energy); the
-	// saved current values already include what the equipment adds, which this
-	// engine does not apply yet. Raising the maximum to the current value keeps the
-	// panel and globes from showing e.g. 1241/869.
+	// the saved maximums are the item-free base values (RecalcStats adds the equipment)
 	s.Health = int(a.CurrentHP)
-	s.MaxHealth = maxInt(int(a.MaxHP), s.Health)
+	s.MaxHealth = int(a.MaxHP)
 	s.Mana = int(a.CurrentMana)
-	s.MaxMana = maxInt(int(a.MaxMana), s.Mana)
+	s.MaxMana = int(a.MaxMana)
 	s.Stamina = float64(a.CurrentStamina)
-	s.MaxStamina = maxInt(int(a.MaxStamina), int(a.CurrentStamina))
+	s.MaxStamina = int(a.MaxStamina)
 	s.NextLevelExp = f.asset.Records.GetExperienceBreakpoint(state.HeroType, s.Level)
 	state.Gold = int(a.Gold)
 }
@@ -250,8 +248,18 @@ func (f *HeroStateFactory) importD2SItems(state *HeroState, data []byte) {
 	state.Equipment = d2inventory.CharacterEquipment{}
 
 	f.applyD2SEquipment(state, character.Items, tables, state.Imported != nil && state.Imported.WeaponSetII)
-	state.Worn = f.wornItems(character.Items)
 	f.applyD2SContainers(state, character.Items)
+
+	if state.Containers != nil {
+		importEquipped(state.Containers, data, character.Items, func(code string) bool { return f.asset.Records.Item.All[code] != nil })
+
+		names := f.loadAffixNames()
+		for i := range state.Containers.Equipped {
+			if st := &state.Containers.Equipped[i]; st.D2S != nil {
+				f.applyNames(st, st.D2S, names)
+			}
+		}
+	}
 }
 
 // applyD2SContainers puts the inventory (page 1), cube (4), stash (5) and belt
@@ -270,10 +278,7 @@ func (f *HeroStateFactory) applyD2SContainers(state *HeroState, items []d2s.Item
 		stored, skip := StoredFromD2S(&items[i], known)
 		if skip == "" {
 			// use the unique, set and affix names of the save instead of random affixes
-			if u, si, pre, suf := f.resolveNames(&items[i], names); u != "" || si != "" || len(pre)+len(suf) > 0 {
-				stored.Unique, stored.SetItem, stored.Prefixes, stored.Suffixes = u, si, pre, suf
-				stored.Origin = false
-			}
+			f.applyNames(&stored, &items[i], names)
 
 			containers.Items = append(containers.Items, stored)
 			continue

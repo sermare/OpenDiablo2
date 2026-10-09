@@ -70,10 +70,10 @@ func row(i int, f func(*Row)) Row {
 	return r
 }
 
-func TestZeroPriorityAndNoRow(t *testing.T) {
-	h := newHarness([]Row{row(0, nil), row(1, func(r *Row) { r.Priority = 0 })}, 2)
+func TestNoFileAndNoRow(t *testing.T) {
+	h := newHarness([]Row{row(0, nil), row(1, func(r *Row) { r.FileName = "" })}, 2)
 
-	for idx, want := range map[int]Decision{0: DecisionNoRow, 99: DecisionNoRow, 1: DecisionZeroPriority} {
+	for idx, want := range map[int]Decision{0: DecisionNoRow, 99: DecisionNoRow, 1: DecisionNoFile} {
 		if got := h.b.Play(Request{Index: idx}).Report().Decision; got != want {
 			t.Errorf("index %d: got %v want %v", idx, got, want)
 		}
@@ -451,5 +451,13 @@ func TestGroupHeadPostPass(t *testing.T) {
 		if tb.Head(i) != want {
 			t.Errorf("head(%d)=%d want %d", i, tb.Head(i), want)
 		}
+	}
+}
+
+func TestZeroPriorityStillPlays(t *testing.T) {
+	h := newHarness([]Row{row(0, nil), row(1, func(r *Row) { r.Priority = 0 })}, 2)
+
+	if got := h.b.Play(Request{Index: 1}).Report().Decision; got != DecisionPlayed {
+		t.Errorf("Priority 0 (footsteps) got %v, want played", got)
 	}
 }

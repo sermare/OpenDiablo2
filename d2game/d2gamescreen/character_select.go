@@ -367,6 +367,9 @@ func characterListText(asset *d2asset.AssetManager, state *d2hero.HeroState) (na
 		hardcore, expansion, dead = state.Imported.Hardcore, state.Imported.Expansion, state.Imported.Dead
 	}
 
+	hardcore = hardcore || state.Hardcore
+	dead = dead || state.IsDeadHardcore()
+
 	nameColor := d2ui.ColorTokenGold
 	if hardcore {
 		nameColor = d2ui.ColorTokenRed
@@ -597,9 +600,10 @@ func (v *CharacterSelect) onOkButtonClicked() {
 		return
 	}
 
-	// the original refuses to load a dead hardcore character
-	if im := v.gameStates[v.selectedCharacter].Imported; im != nil && im.Hardcore && im.Dead {
-		v.Infof("CHARSELECT %s is a dead hardcore character and cannot be played", v.gameStates[v.selectedCharacter].HeroName)
+	// a hardcore character that died cannot be played any more (the original
+	// refuses it at load: d2s status 0x08 with 0x04)
+	if hero := v.gameStates[v.selectedCharacter]; hero.IsDeadHardcore() {
+		v.Warningf("%s is a dead hardcore character and cannot be played", hero.HeroName)
 		return
 	}
 

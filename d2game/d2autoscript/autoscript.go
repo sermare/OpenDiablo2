@@ -24,20 +24,53 @@ const (
 	KindExpect Kind = "expect"
 	KindShot   Kind = "shot"
 	KindExit   Kind = "exit"
+	// KindUse walks to an object (by name or objects.txt id) and uses it.
+	KindUse Kind = "use"
+	// KindAutomap sets the automap: on, off, full, mini or stats (it runs the
+	// "automap" console command).
+	KindAutomap Kind = "automap"
+	// KindWaypoint travels to a waypoint level through the open waypoint panel.
+	KindWaypoint Kind = "waypoint"
 )
+
+// ExpectLevelTimeout is how long (game seconds) an expect:level step waits for
+// a level change in progress (fade out, load, fade in) before it fails.
+const ExpectLevelTimeout = 4.0
 
 // Step is one parsed script step.
 type Step struct {
-	Kind    Kind
-	Seconds float64 // wait
-	X, Y    float64 // move, cast target (tile units)
-	HasXY   bool    // an explicit target was given
-	Arg     string  // skill name, panel name, console command, expected substring
-	Text    string  // the step as written, for logging
+	Kind     Kind
+	Seconds  float64 // wait
+	X, Y     float64 // move, cast target (tile units)
+	HasXY    bool    // an explicit target was given
+	Arg      string  // skill name, panel name, console command, expected substring
+	Level    int     // waypoint: target level; expect:level=: expected level
+	HasLevel bool    // an expect step checks the level
+	Text     string  // the step as written, for logging
 }
 
 // Panels accepted by the panel step.
 var Panels = []string{"inventory", "character", "skills", "quest", "close"}
+
+// AutomapModes are accepted by the automap step.
+var AutomapModes = []string{"on", "off", "toggle", "full", "mini", "stats"}
+
+// LevelHost is implemented by hosts that support the use, waypoint and
+// expect:level steps (it is separate so other hosts need not change).
+type LevelHost interface {
+	// Use walks to the object named (or with the objects.txt id) and operates it.
+	Use(target string) error
+	// Waypoint chooses a level in the open waypoint panel.
+	Waypoint(level int) error
+	// Level reports the current level id and hero position in tiles.
+	Level() (level int, x, y float64)
+	// Busy reports that the hero is walking to an object or a level change is
+	// running; the runner holds the next step until it is over.
+	Busy() bool
+}
+
+// BusyTimeout is the longest the runner waits for a busy host (game seconds).
+const BusyTimeout = 30.0
 
 // Host performs the side effects of steps. Methods must not block.
 type Host interface {
@@ -129,6 +162,11 @@ func parseStep(raw string) (Step, error) {
 		if !contains(Panels, s.Arg) {
 			return s, fmt.Errorf("unknown panel (want %s)", strings.Join(Panels, "|"))
 		}
+	case KindAutomap:
+		s.Arg = strings.ToLower(arg)
+		if !contains(AutomapModes, s.Arg) {
+			return s, fmt.Errorf("unknown automap mode (want %s)", strings.Join(AutomapModes, "|"))
+		}
 	case KindSay:
 		if arg == "" {
 			return s, errors.New("say needs a command")
@@ -138,9 +176,29 @@ func parseStep(raw string) (Step, error) {
 		if arg == "" || strings.ContainsAny(arg, " \t") {
 			return s, errors.New("shot needs a file name without spaces")
 		}
+	case KindUse:
+		if arg == "" {
+			return s, errors.New("use needs an object name or id")
+		}
+	case KindWaypoint:
+		s.Level, err = strconv.Atoi(arg)
+		if err != nil || s.Level <= 0 {
+			return s, errors.New("waypoint needs a level id")
+		}
 	case KindExpect:
+		if strings.HasPrefix(arg, "level=") {
+			s.Level, err = strconv.Atoi(strings.TrimPrefix(arg, "level="))
+			s.HasLevel = true
+
+			if err != nil || s.Level <= 0 {
+				return s, errors.New("expect:level= needs a level id")
+			}
+
+			break
+		}
+
 		if !strings.HasPrefix(arg, "log=") || len(arg) == len("log=") {
-			return s, errors.New("expect needs log=<substring>")
+			return s, errors.New("expect needs log=<substring> or level=<id>")
 		}
 
 		s.Arg = strings.TrimPrefix(arg, "log=")
@@ -185,8 +243,11 @@ type Runner struct {
 	host    Host
 	next    int
 	waiting float64
-	failed  bool
-	done    bool
+	// levelWait is how long the current expect:level step has been waiting.
+	levelWait float64
+	busyWait  float64
+	failed    bool
+	done      bool
 }
 
 // NewRunner creates a runner for the steps.
@@ -220,7 +281,21 @@ func (r *Runner) Advance(elapsed float64) {
 		return
 	}
 
+	if lh, ok := r.host.(LevelHost); ok && lh.Busy() && r.busyWait < BusyTimeout {
+		r.busyWait += elapsed
+		return
+	}
+
+	r.busyWait = 0
+
 	s := r.steps[r.next]
+
+	if s.Kind == KindExpect && s.HasLevel && r.levelWait < ExpectLevelTimeout && !r.levelIs(s.Level) {
+		r.levelWait += elapsed // a level change is still running
+		return
+	}
+
+	r.levelWait = 0
 	r.next++
 	r.host.Logf("AUTOSCRIPT step %d: %s", r.next, s.Text)
 
@@ -253,7 +328,27 @@ func (r *Runner) run(s Step) error {
 		return r.host.Say(s.Arg)
 	case KindShot:
 		return r.host.Say("capframe " + s.Arg)
+	case KindAutomap:
+		return r.host.Say("automap " + s.Arg)
+	case KindUse:
+		lh, ok := r.host.(LevelHost)
+		if !ok {
+			return errors.New("host does not support use")
+		}
+
+		return lh.Use(s.Arg)
+	case KindWaypoint:
+		lh, ok := r.host.(LevelHost)
+		if !ok {
+			return errors.New("host does not support waypoint")
+		}
+
+		return lh.Waypoint(s.Level)
 	case KindExpect:
+		if s.HasLevel {
+			return r.expectLevel(s.Level)
+		}
+
 		if !r.host.LogContains(s.Arg) {
 			return fmt.Errorf("log does not contain %q", s.Arg)
 		}
@@ -272,4 +367,32 @@ func (r *Runner) finish() {
 	}
 
 	r.host.Exit(!r.failed)
+}
+
+func (r *Runner) levelIs(want int) bool {
+	lh, ok := r.host.(LevelHost)
+	if !ok {
+		return false
+	}
+
+	got, _, _ := lh.Level()
+
+	return got == want
+}
+
+// expectLevel logs the level and hero position and fails if the level differs.
+func (r *Runner) expectLevel(want int) error {
+	lh, ok := r.host.(LevelHost)
+	if !ok {
+		return errors.New("host does not support expect:level")
+	}
+
+	got, x, y := lh.Level()
+	r.host.Logf("AUTOSCRIPT level=%d hero=(%.1f,%.1f) want=%d", got, x, y, want)
+
+	if got != want {
+		return fmt.Errorf("level is %d, want %d", got, want)
+	}
+
+	return nil
 }

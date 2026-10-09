@@ -3,10 +3,10 @@ package d2player
 import (
 	"fmt"
 
-	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2equip"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
@@ -87,15 +87,17 @@ type Inventory struct {
 	gold          int
 	moveGoldPanel *MoveGoldPanel
 	cursor        InventoryItem
-	// imported marks a real .d2s hero: its worn items replace the placeholder equipment (see inventory_imported.go)
-	imported      bool
-	importedItems []d2hero.ImportedItem
-	importedSetII bool
 	// savedItems is set when the hero's saved containers fill the grid, which
 	// then starts without the placeholder items.
 	savedItems bool
 	// lastClick is what the latest HandleClick did.
 	lastClick ClickAction
+	// swapSet is the weapon set that is not in the hands (d2equip.LocSwapRight/Left)
+	// and activeArms which set the file calls active (see equip_body.go).
+	swapSet    map[d2equip.Loc]InventoryItem
+	activeArms int
+	// itemHook adds lines to the tooltip of an item (durability, requirements).
+	itemHook func(InventoryItem) []string
 	// priceHook adds lines (sell value, repair cost) to item tooltips while
 	// a trade window is open.
 	priceHook func(InventoryItem) []string
@@ -172,14 +174,6 @@ func (g *Inventory) Load() {
 	g.goldLabel.SetPosition(invGoldLabelX, invGoldLabelY)
 	g.panelGroup.AddWidget(g.goldLabel)
 
-	if g.imported {
-		g.placeImportedItems()
-		g.moveGoldPanel.Load()
-		g.panelGroup.SetVisible(false)
-
-		return
-	}
-
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/795
 	testInventoryCodes := [][]string{
 		{"kit", "Crimson", "of the Bat", "of Frost"},
@@ -208,8 +202,8 @@ func (g *Inventory) Load() {
 
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/795
 	testEquippedItemCodes := map[d2enum.EquippedSlot][]string{
-		d2enum.EquippedSlotLeftArm:   {"wnd"},
-		d2enum.EquippedSlotRightArm:  {"buc"},
+		d2enum.EquippedSlotRightArm:  {"wnd"}, // the weapon is on the right arm (d2s slot 4)
+		d2enum.EquippedSlotLeftArm:   {"buc"}, // the shield on the left (slot 5)
 		d2enum.EquippedSlotHead:      {"crn"},
 		d2enum.EquippedSlotTorso:     {"plt"},
 		d2enum.EquippedSlotLegs:      {"vbt"},
@@ -398,6 +392,10 @@ func (g *Inventory) checkEquippedSlotsHover() bool {
 func (g *Inventory) showGridItemDescriptionTooltip(i InventoryItem) {
 	if !g.moveGoldPanel.IsOpen() {
 		lines := i.GetItemDescription()
+		if g.itemHook != nil {
+			lines = append(lines, g.itemHook(i)...)
+		}
+
 		if g.priceHook != nil {
 			lines = append(lines, g.priceHook(i)...)
 		}
@@ -413,6 +411,10 @@ func (g *Inventory) showGridItemDescriptionTooltip(i InventoryItem) {
 func (g *Inventory) showEquippedItemDescriptionTooltip(slot EquipmentSlot) {
 	if !g.moveGoldPanel.IsOpen() {
 		lines := slot.item.GetItemDescription()
+		if g.itemHook != nil {
+			lines = append(lines, g.itemHook(slot.item)...)
+		}
+
 		if g.priceHook != nil {
 			lines = append(lines, g.priceHook(slot.item)...)
 		}

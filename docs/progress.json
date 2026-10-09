@@ -5,7 +5,7 @@
   "bars": [
     {
       "label": "Game.exe functions named in Ghidra",
-      "done": 2325,
+      "done": 2418,
       "total": 10907,
       "note": "reverse engineering of the original 1.14b binary",
       "color": "#7c5cff"
@@ -19,10 +19,17 @@
     },
     {
       "label": "Source files studied in depth",
-      "done": 190,
+      "done": 210,
       "total": 277,
-      "note": "NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings",
+      "note": "NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
       "color": "#2f9bff"
+    },
+    {
+      "label": "Level generator proven equal to the real game",
+      "done": 5442,
+      "total": 5592,
+      "note": "every maze level of all 5 acts matches the real game (55 levels) + 50 world layouts; Act 1 outdoors, jungle, other outdoors not yet",
+      "color": "#22c1c3"
     },
     {
       "label": "Real .d2s save: read and write verified",
@@ -33,16 +40,16 @@
     },
     {
       "label": "NPC interaction features",
-      "done": 5,
-      "total": 7,
-      "note": "click-walk ✓ greeting ✓ menu ✓ return-greeting mode ✓ vendor trade ✓  |  gamble · quest dialogue · hire ✗",
+      "done": 7,
+      "total": 8,
+      "note": "click-walk · greeting · menu · return greeting · vendors · quest speech lookup · gamble · identify ✓ | mercenary hire UI, quest dialogue ✗",
       "color": "#ef5da8"
     },
     {
       "label": "Roadmap deliverables",
-      "done": 13,
-      "total": 15,
-      "note": "saves r/w · gear · NPC · greetings · RNG · combat · loot · trade · packets · keys · sound · items · monsters+AI ✓ | real maps · missiles",
+      "done": 23,
+      "total": 26,
+      "note": "saves · gear+stats · NPC/vendors/gamble/identify · RNG · combat · loot · packets · keys · sound+ambient · monsters+packs · skills · dungeons · stash/belt · lighting · waypoints · Mac app ✓ | outdoors · mercs · quests · classes",
       "color": "#ff7a45"
     }
   ]

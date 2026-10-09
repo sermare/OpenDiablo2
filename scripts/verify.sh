@@ -9,7 +9,18 @@ cd "${0:A:h}/.."
 
 fail=0
 
-# open returns before the game starts (slowly, on a busy machine): wait until the
+
+# Start a .command file in the user's GUI session WITHOUT opening a Terminal window (every `open x.command`
+# leaves a window behind; hundreds of them stop Terminal from working). Order of preference:
+#   $OD2_VERIFY_LAUNCH (e.g. "launchctl asuser 501 /bin/zsh"), launchctl asuser, then `open` as a last resort.
+launch_game() {
+  if [ -n "${OD2_VERIFY_LAUNCH:-}" ]; then ${=OD2_VERIFY_LAUNCH} $1 >/dev/null 2>&1 &
+  elif launchctl asuser $(id -u) /usr/bin/true >/dev/null 2>&1; then launchctl asuser $(id -u) /bin/zsh $1 >/dev/null 2>&1 &
+  else open $1
+  fi
+}
+
+# the launcher returns before the game starts (slowly, on a busy machine): wait until the
 # game process appears, then until it exits
 wait_run() {
   local i
@@ -68,7 +79,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
       echo "$tmp/od2 2>&1 | tee $log"
     } > $cmd
     chmod +x $cmd; rm -f $log
-    open $cmd   # a GUI session is required; running the binary from a plain shell fails
+    launch_game $cmd
     wait_run
     sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
     scenario_check
