@@ -343,6 +343,18 @@ func (v *Game) applyQuestReward(e d2quest.Effect) {
 		return
 	}
 
+	if e.Code == "life-boost" {
+		// Potion of Life: a permanent addition to the class formula (SOURCE D2MOO, +20 max life, once per
+		// difficulty). LifeBonus survives RecalcStats; the current life rises with the maximum.
+		st := v.localPlayer.Stats
+		st.LifeBonus += e.Value
+		st.MaxHealth += e.Value
+		st.Health += e.Value
+		v.Infof("QUEST EFFECT reward life-boost +%d maxlife=%d", e.Value, st.MaxHealth)
+
+		return
+	}
+
 	v.Infof("QUEST EFFECT reward %s value=%d (%s) [not simulated]", e.Code, e.Value, e.Note)
 }
 
