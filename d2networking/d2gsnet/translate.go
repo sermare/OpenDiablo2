@@ -143,10 +143,10 @@ func (s *ServerSide) Encode(np d2netpacket.NetPacket) ([][]byte, error) {
 			return nil, err
 		}
 
-		in := d2gs.PlayerInGame{UnitID: s.IDs.Assign(p.ID), Class: uint8(p.HeroType), Name: p.Name}
-		if p.Stats != nil {
-			in.Level = uint16(p.Stats.Level)
-		}
+		// real 0x59 layout (verified): x, y at 22/24. Level and party are not in
+		// this packet; they reach other OD2 peers via the tunnelled AddPlayer.
+		in := d2gs.AssignPlayer{UnitID: s.IDs.Assign(p.ID), Class: uint8(p.HeroType), Name: p.Name,
+			X: toSub(float64(p.X)), Y: toSub(float64(p.Y))}
 
 		return append([][]byte{in.Marshal()}, tunnelNP(d2gs.S2CMetaAE, np)...), nil
 	case d2netpackettype.MovePlayer:
@@ -411,7 +411,7 @@ func (c *ClientSide) Decode(plain []byte) (out []d2netpacket.NetPacket, ignored 
 
 			out = append(out, gm)
 		case d2gs.S2CPlayerInGame:
-			in, perr := d2gs.ParsePlayerInGame(p)
+			in, perr := d2gs.ParseAssignPlayer(p)
 			if perr != nil {
 				return out, ignored, perr
 			}

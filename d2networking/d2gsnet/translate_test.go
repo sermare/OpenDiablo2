@@ -271,7 +271,7 @@ func TestUnknownPacketsAreSkippedBySize(t *testing.T) {
 	// client -> server: an id with an unverified size ends the blob: the rest is ignored
 	walk := d2gs.MoveToLocation{X: 5, Y: 5}.MarshalPacket()
 
-	got, ignored, err := s.Decode(wire(t, [][]byte{walk, {0x02, 1, 2, 3, 4, 5, 6, 7, 8}, walk}))
+	got, ignored, err := s.Decode(wire(t, [][]byte{walk, {0x0b, 1, 2, 3, 4, 5, 6, 7, 8}, walk}))
 	if err != nil || len(got) != 1 || ignored != 14 {
 		t.Fatalf("client stream: %v got=%d ignored=%d", err, len(got), ignored)
 	}
