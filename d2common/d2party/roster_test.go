@@ -293,10 +293,6 @@ func TestShareXPRules(t *testing.T) {
 	}
 
 	// a killer without a party keeps everything; unknown killer: nothing
-	if s := r.ShareXP("d", 99); len(s) != 1 || s[0].XP != 99 {
-		_ = s
-	}
-
 	solo := New()
 	solo.Add(Member{ID: "z", Level: 50, Area: 1})
 
