@@ -153,3 +153,14 @@ func (d *Defs) PerLevel() []PerLevel {
 
 	return out
 }
+
+// NamedProp turns a stat name used by skills.txt (aurastatN, passivestatN)
+// into a Prop with that value; false when the name is not in ItemStatCost.
+func (d *Defs) NamedProp(name string, value int) (Prop, bool) {
+	id := d.ID(name)
+	if id < 0 {
+		return Prop{}, false
+	}
+
+	return Prop{ID: id, Value: int64(value)}, true
+}

@@ -42,7 +42,16 @@ type Set struct {
 	states  map[string]*Instance
 	streams []Stream
 	frac    map[string]int // 8.8 remainder per stream kind
+
+	// group maps a state name to its States.txt "group" column (0 = none).
+	group func(name string) int
 }
+
+// SetGroups installs the States.txt "group" lookup. Applying a state of a
+// non-zero group ends every other active state of the same group (Frozen,
+// Shiver and Chilling Armor replace each other). UNVERIFIED in the binary:
+// that the newest state wins and that nothing else uses the column.
+func (s *Set) SetGroups(f func(name string) int) { s.group = f }
 
 // New creates an empty set.
 func New() *Set {
@@ -58,11 +67,27 @@ func (s *Set) Apply(frame int, in Instance) *Instance {
 		prev = nil
 	}
 
+	if g := s.groupOf(in.Name); g != 0 {
+		for n := range s.states {
+			if n != in.Name && s.groupOf(n) == g {
+				delete(s.states, n)
+			}
+		}
+	}
+
 	cp := in
 	cp.Mods = append([]StatMod(nil), in.Mods...)
 	s.states[in.Name] = &cp
 
 	return prev
+}
+
+func (s *Set) groupOf(name string) int {
+	if s.group == nil {
+		return 0
+	}
+
+	return s.group(name)
 }
 
 // Get returns the active instance of a state or nil.

@@ -177,10 +177,24 @@ func (e *Engine) setOf(id string) *d2state.Set {
 	st := e.sets[id]
 	if st == nil {
 		st = d2state.New()
+		st.SetGroups(e.stateGroup)
 		e.sets[id] = st
 	}
 
 	return st
+}
+
+// stateGroup is the States.txt group of a state (0 when unknown).
+func (e *Engine) stateGroup(name string) int {
+	if e.asset == nil || e.asset.Records == nil {
+		return 0
+	}
+
+	if rec := e.asset.Records.States[name]; rec != nil {
+		return rec.Group
+	}
+
+	return 0
 }
 
 func (e *Engine) after(frames int, fn func()) {
