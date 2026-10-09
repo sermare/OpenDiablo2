@@ -863,6 +863,12 @@ func (g *GameControls) AutoPanel(name string) error {
 		return fmt.Errorf("panel %q did not open", name)
 	}
 
+	if name == "character" {
+		// the values the panel shows, for the autotests (scripts/verify.d/89-hero-stats.sh)
+		g.heroStatsPanel.setDerivedValues()
+		g.Infof("PANEL character: %s", d2hero.StatsSummary(g.hero.Stats))
+	}
+
 	return nil
 }
 

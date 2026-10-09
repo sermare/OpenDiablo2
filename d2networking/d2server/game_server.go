@@ -504,6 +504,10 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		}
 		playerState.Containers = savePacket.Player.Containers
 
+		// the client's copy of the stats carries no item list: recompute the totals
+		// (charms moved in the inventory change them) before the hero is written
+		g.heroStateFactory.RecalcStats(playerState)
+
 		err = g.heroStateFactory.Save(playerState)
 		if err != nil {
 			g.Errorf("GameServer: error saving saving Player: %s", err)

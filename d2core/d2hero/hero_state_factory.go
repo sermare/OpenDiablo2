@@ -14,6 +14,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 )
 
@@ -41,7 +42,8 @@ func NewHeroStateFactory(asset *d2asset.AssetManager) (*HeroStateFactory, error)
 type HeroStateFactory struct {
 	asset *d2asset.AssetManager
 	*d2inventory.InventoryItemFactory
-	d2sTables *d2s.ItemTables // loaded on first use by SaveD2S
+	d2sTables *d2s.ItemTables  // loaded on first use by SaveD2S
+	statBases d2statlist.Bases // armor/weapon base data for the stat list, loaded on first use
 }
 
 // CreateHeroState creates a HeroState instance and returns a pointer to it
@@ -266,6 +268,10 @@ func (f *HeroStateFactory) LoadHeroState(filePath string) *HeroState {
 		hs.SkillRecord = f.asset.Records.Skill.Details[hs.Shallow.SkillID]
 		hs.SkillDescriptionRecord = f.asset.Records.Skill.Descriptions[hs.SkillRecord.Skilldesc]
 		hs.SkillPoints = hs.Shallow.SkillPoints
+	}
+
+	if result.Stats != nil && f.asset.Records.Character.Stats[result.HeroType] != nil {
+		f.RecalcStats(result)
 	}
 
 	return result
