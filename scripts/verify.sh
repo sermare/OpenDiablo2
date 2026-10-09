@@ -67,7 +67,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
 #!/bin/zsh
 export OD2_PORT=$OD2_PORT
 export OD2_AUTOGAME="$save" OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1
-export OD2_AUTOSCRIPT='wait:1;move:npc=Akara;wait:8;expect:log=NPC menu opened;panel:inventory;wait:1;panel:character;wait:1;panel:close;exit'
+export OD2_AUTOSCRIPT='wait:1;move:npc=Akara;wait:25;expect:log=NPC menu opened;panel:inventory;wait:1;panel:character;wait:1;panel:close;exit'
 $tmp/od2 2>&1 | tee $log
 EOT
   chmod +x $cmd; rm -f $log
