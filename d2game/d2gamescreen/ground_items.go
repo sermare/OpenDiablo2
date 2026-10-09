@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2object"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2quest"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2ground"
@@ -31,10 +32,12 @@ const (
 
 // groundState is the pending click interaction with a ground item or chest.
 type groundState struct {
-	item    *d2mapentity.Item
-	chest   *d2mapentity.Object
-	stash   *d2mapentity.Object
-	elapsed float64
+	item  *d2mapentity.Item
+	chest *d2mapentity.Object
+	stash *d2mapentity.Object
+	// questObj is a quest object (cairn stone, Malus chest...) the hero walks to.
+	questObj *d2mapentity.Object
+	elapsed  float64
 	// onPickup is called after a successful pickup (used by the autotest).
 	onPickup func(it *d2mapentity.Item)
 	// chestSeq numbers chest openings so each one rolls a different seed.
@@ -108,6 +111,15 @@ func (v *Game) walkToObject(ob *d2mapentity.Object) {
 		return
 	}
 
+	if d2quest.IsQuestObject(ob.Record().Index) {
+		v.ground.item, v.ground.chest, v.ground.questObj, v.ground.elapsed = nil, nil, ob, 0
+
+		v.Infof("walking to quest object %d (%q) at (%.1f,%.1f)", ob.Record().Index, ob.Label(), x, y)
+		v.OnPlayerMove(x, y)
+
+		return
+	}
+
 	switch ob.Kind() {
 	case d2level.ObjectDoor, d2level.ObjectWaypoint, d2level.ObjectPortal:
 		v.useObject(ob)
@@ -169,6 +181,20 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 		}
 	}
 
+	if ob := v.ground.questObj; ob != nil {
+		v.ground.elapsed += elapsed
+		ox, oy := ob.GetPositionF()
+
+		switch {
+		case math.Hypot(px-ox, py-oy) <= chestRange:
+			v.ground.questObj = nil
+			v.questObjectOperated(ob)
+		case v.ground.elapsed > interactTimeout:
+			v.Warningf("gave up walking to quest object %q", ob.Label())
+			v.ground.questObj = nil
+		}
+	}
+
 	if ob := v.ground.chest; ob != nil {
 		v.ground.elapsed += elapsed
 		ox, oy := ob.GetPositionF()
@@ -209,6 +235,7 @@ func (v *Game) pickUp(it *d2mapentity.Item) {
 	v.gameControls.SetCursorItem(it.Item)
 	v.playSoundAt("cursor_point_drop", it.GetPosition(), "pickup")
 	v.Infof("AUTOGROUND pickup name=%q quality=%s -> cursor", plainLabel(it.Label()), it.Item.QualityName())
+	v.questItemPickedUp(it.Item.GetItemCode())
 
 	if v.ground.onPickup != nil {
 		v.ground.onPickup(it)
@@ -237,7 +264,7 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 	v.playSoundAt(handle, ob.GetPosition(), "object")
 
 	ilvl := v.areaLevel()
-	tc := d2ground.ChestTreasureClass(v.localPlayer.Act, d2ground.Normal, ilvl, v.itemFactory().TreasureClassLevel)
+	tc := d2ground.ChestTreasureClass(v.localPlayer.Act, d2ground.Difficulty(v.difficulty()), ilvl, v.itemFactory().TreasureClassLevel)
 
 	v.ground.chestSeq++
 	seed := v.chestSeed() + v.ground.chestSeq

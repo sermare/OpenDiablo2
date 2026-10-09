@@ -43,7 +43,7 @@ func (g *GameClient) ChangeLevelAct(levelID int, prefer ArrivalFunc, actFinished
 	fromAct := d2level.ActOfLevel(g.Level)
 	arrival, err := g.mapGen.LoadLevel(levelID, d2mapgen.LoadRequest{
 		Seed:       d2mapgen.HeroMapSeed,
-		Difficulty: d2drlg.Difficulty(g.Difficulty),
+		Difficulty: d2drlg.Difficulty(g.LevelDifficulty()),
 	})
 	if err != nil {
 		return arrival, err

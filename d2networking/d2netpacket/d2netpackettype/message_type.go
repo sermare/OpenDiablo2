@@ -33,6 +33,7 @@ const (
 	ServerFull                                           // Sent by server when server has reached max connections
 	ChangeLevel                                          // Sent by the client, the hero arrived in another level
 	SetWaypoint                                          // Sent by the client, a waypoint bit was activated or cleared
+	Chat                                                 // Sent by a client, the server relays it to everybody (with the sender's name)
 
 	UnknownPacketType = 666
 )
@@ -54,6 +55,7 @@ func (n NetPacketType) String() string {
 		ServerFull:                      "ServerFull",
 		ChangeLevel:                     "ChangeLevel",
 		SetWaypoint:                     "SetWaypoint",
+		Chat:                            "Chat",
 	}
 
 	return strings[n]

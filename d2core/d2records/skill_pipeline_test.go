@@ -153,3 +153,52 @@ func TestRealMissileSpecs(t *testing.T) {
 		t.Fatalf("firearrow %+v", arrow)
 	}
 }
+
+// classSkills are the starter and mid skills of the seven classes the class
+// skill handlers cover (d2skill/class.go); each must be castable through the
+// pipeline and name only missiles that exist.
+var classSkills = []string{
+	"Bash", "Leap", "Double Swing", "Stun", "Double Throw", "Leap Attack", "Concentrate", "Frenzy", "War Cry",
+	"Battle Orders", "Shout", "Taunt", "Howl", "Berserk",
+	"Jab", "Power Strike", "Poison Javelin", "Lightning Bolt", "Charged Strike", "Multiple Shot", "Guided Arrow",
+	"Strafe", "Fend", "Impale", "Lightning Strike", "Slow Missiles",
+	"Teeth", "Bone Armor", "Poison Dagger", "Corpse Explosion", "Bone Wall", "Bone Spear", "Amplify Damage",
+	"Dim Vision", "Weaken", "Iron Maiden", "Terror", "Raise Skeleton", "Raise Skeletal Mage", "Clay Golem",
+	"Life Tap", "Decrepify", "Lower Resist", "Confuse", "Attract", "Bone Spirit", "Poison Explosion",
+	"Sacrifice", "Smite", "Holy Bolt", "Zeal", "Charge", "Vengeance", "Might", "Prayer", "Resist Fire",
+	"Resist Cold", "Resist Lightning", "Holy Fire", "Thorns", "Defiance", "Cleansing", "Vigor", "Holy Freeze",
+	"Holy Shock", "Sanctuary", "Redemption", "Conviction", "Holy Shield", "Blessed Hammer", "Fist of the Heavens",
+	"Fire Ball", "Nova", "Lightning", "Chain Lightning", "Frost Nova", "Blaze", "Fire Wall", "Meteor", "Blizzard",
+	"Glacial Spike", "Teleport", "Energy Shield", "Thunder Storm", "Enchant", "Inferno", "Shiver Armor",
+	"Firestorm", "Molten Boulder", "Arctic Blast", "Volcano", "Twister", "Tornado", "Hurricane", "Armageddon",
+	"Raven", "Oak Sage", "Summon Spirit Wolf", "Summon Grizzly", "Rabies", "Fury", "Maul", "Shock Wave",
+	"Heart of Wolverine", "Spirit of Barbs", "Wearwolf", "Wearbear", "Feral Rage", "Cyclone Armor",
+	"Fire Trauma", "Shock Field", "Blade Sentinel", "Psychic Hammer", "Tiger Strike", "Dragon Talon", "Dragon Claw",
+	"Dragon Tail", "Cobra Strike", "Fists of Fire", "Blades of Ice", "Claws of Thunder", "Shadow Warrior",
+	"Shadow Master", "Venom", "Lightning Sentry", "Death Sentry", "Wake of Fire Sentry", "Charged Bolt Sentry",
+	"Cloak of Shadows", "Mind Blast", "Royal Strike", "Fade", "Blade Shield",
+}
+
+func TestRealClassSkillsAreImplemented(t *testing.T) {
+	rm := loadRealRecords(t)
+	reg := rm.SkillTable()
+	mt := rm.MissileTable()
+
+	for _, name := range classSkills {
+		sk := reg.ByName(name)
+		if sk == nil {
+			t.Errorf("%s is not in skills.txt", name)
+			continue
+		}
+
+		if !d2skill.Implemented(sk) {
+			t.Errorf("%s (srvstfunc %d, srvdofunc %d) is not implemented", name, sk.SrvStFunc, sk.SrvDoFunc)
+		}
+
+		for _, m := range []string{sk.SrvMissile, sk.SrvMissileA, sk.SrvMissileB, sk.SrvMissileC} {
+			if m != "" && mt.ByName(m) == nil {
+				t.Errorf("%s names the missile %q that missiles.txt does not have", name, m)
+			}
+		}
+	}
+}

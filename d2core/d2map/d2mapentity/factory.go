@@ -80,6 +80,21 @@ func (f *MapEntityFactory) NewPlayer(id, name string, x, y, direction int, heroT
 
 	heroState, _ := f.CreateHeroState(name, heroType, stats)
 
+	// the hero's own skills (spent points) replace the class defaults
+	for id, sk := range skills {
+		if sk != nil && sk.SkillRecord != nil {
+			heroState.Skills[id] = sk
+		}
+	}
+
+	if !d2hero.Selectable(heroState.Skills[leftSkill], true) {
+		leftSkill = 0 // Attack
+	}
+
+	if !d2hero.Selectable(heroState.Skills[rightSkill], false) {
+		rightSkill = 0
+	}
+
 	result := &Player{
 		mapEntity:  newMapEntity(x, y),
 		composite:  composite,

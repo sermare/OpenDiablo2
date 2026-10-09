@@ -28,6 +28,15 @@ const (
 	// KindAutomap sets the automap: on, off, full, mini or stats (it runs the
 	// "automap" console command).
 	KindAutomap Kind = "automap"
+	// KindSkill selects and uses skills and drives the skill popup:
+	// skill:left=<name>, skill:right=<name>, skill:popup=left|right|close,
+	// skill:hover=<name>, skill:click=<name>, skill:use=left|right, skill:spend=<name> and
+	// skill:nospend=<name> (passes when the point is refused).
+	KindSkill Kind = "skill"
+	// KindHotkey assigns a skill to a hotkey: hotkey:F1=<name>[@left].
+	KindHotkey Kind = "hotkey"
+	// KindPress presses a skill hotkey: press:F1.
+	KindPress Kind = "press"
 	// KindWaypoint travels to a waypoint level through the open waypoint panel.
 	KindWaypoint Kind = "waypoint"
 	// KindTravel travels to the town of an act through the act travel rules;
@@ -47,6 +56,7 @@ type Step struct {
 	X, Y     float64 // move, cast target (tile units)
 	HasXY    bool    // an explicit target was given
 	Arg      string  // skill name, panel name, console command, expected substring
+	Op       string  // skill step: the operation (left, right, popup, ...); hotkey step: the key
 	Level    int     // waypoint: target level; expect:level=: expected level
 	HasLevel bool    // an expect step checks the level
 	Text     string  // the step as written, for logging
@@ -54,6 +64,9 @@ type Step struct {
 
 // Panels accepted by the panel step.
 var Panels = []string{"inventory", "character", "skills", "quest", "close"}
+
+// SkillOps are accepted by the skill step.
+var SkillOps = []string{"left", "right", "popup", "hover", "click", "use", "spend", "nospend"}
 
 // AutomapModes are accepted by the automap step.
 var AutomapModes = []string{"on", "off", "toggle", "full", "mini", "stats"}
@@ -77,6 +90,17 @@ type TravelHost interface {
 	// Travel starts the trip to the town of the act (1..5) as the travel NPC or
 	// portal of the hero's act would; it returns the rule's refusal as an error.
 	Travel(act int) error
+}
+
+// SkillHost is implemented by hosts that support the skill, hotkey and press
+// steps (separate so other hosts need not change).
+type SkillHost interface {
+	// Skill runs a skill step (see KindSkill) with its operation and argument.
+	Skill(op, arg string) error
+	// Hotkey puts a skill (name, optionally "@left") on the key ("F1").
+	Hotkey(key, skill string) error
+	// Press presses the hotkey ("F1").
+	Press(key string) error
 }
 
 // BusyTimeout is the longest the runner waits for a busy host (game seconds).
@@ -172,6 +196,29 @@ func parseStep(raw string) (Step, error) {
 		if !contains(Panels, s.Arg) {
 			return s, fmt.Errorf("unknown panel (want %s)", strings.Join(Panels, "|"))
 		}
+	case KindSkill:
+		i := strings.Index(arg, "=")
+		if i <= 0 || i == len(arg)-1 {
+			return s, errors.New("skill needs <op>=<value>")
+		}
+
+		s.Op, s.Arg = strings.ToLower(strings.TrimSpace(arg[:i])), strings.TrimSpace(arg[i+1:])
+		if !contains(SkillOps, s.Op) {
+			return s, fmt.Errorf("unknown skill op (want %s)", strings.Join(SkillOps, "|"))
+		}
+	case KindHotkey:
+		i := strings.Index(arg, "=")
+		if i <= 0 || i == len(arg)-1 {
+			return s, errors.New("hotkey needs <key>=<skill>")
+		}
+
+		s.Op, s.Arg = strings.TrimSpace(arg[:i]), strings.TrimSpace(arg[i+1:])
+	case KindPress:
+		if arg == "" {
+			return s, errors.New("press needs a key")
+		}
+
+		s.Op = arg
 	case KindAutomap:
 		s.Arg = strings.ToLower(arg)
 		if !contains(AutomapModes, s.Arg) {
@@ -345,6 +392,20 @@ func (r *Runner) run(s Step) error {
 		}
 
 		return lh.Use(s.Arg)
+	case KindSkill, KindHotkey, KindPress:
+		sh, ok := r.host.(SkillHost)
+		if !ok {
+			return errors.New("host does not support skill steps")
+		}
+
+		switch s.Kind {
+		case KindSkill:
+			return sh.Skill(s.Op, s.Arg)
+		case KindHotkey:
+			return sh.Hotkey(s.Op, s.Arg)
+		default:
+			return sh.Press(s.Op)
+		}
 	case KindWaypoint:
 		lh, ok := r.host.(LevelHost)
 		if !ok {

@@ -63,6 +63,10 @@ func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain)
 	pick := func(n, nm, h int) int { return [3]int{n, nm, h}[diff] }
 
 	level := d2monster.ResolveLevel(d.classInfo(r), pick(r.LevelNormal, r.LevelNightmare, r.LevelHell), d.areaLevel)
+	if d.forceLevel > 0 { // summoned minions take their owner's level
+		level = d.forceLevel
+	}
+
 	v := d2mapentity.MonsterVitals{Level: level, Difficulty: diff}
 
 	var lv lvlNums
@@ -152,5 +156,22 @@ func monlvlRow(rec *d2records.MonsterLevelRecord, classic bool) [3]lvlNums {
 		{l.Nightmare.Hitpoints, l.Nightmare.DefenseRating, l.Nightmare.AttackRating, l.Nightmare.Damage,
 			l.Nightmare.Experience},
 		{l.Hell.Hitpoints, l.Hell.DefenseRating, l.Hell.AttackRating, l.Hell.Damage, l.Hell.Experience},
+	}
+}
+
+// MonsterResists are the resistances of a class in a difficulty, in the order
+// physical, magic, fire, lightning, cold, poison (the monstats ResDm, ResMa,
+// ResFi, ResLi, ResCo, ResPo columns with their (N) / (H) variants). They are
+// used as they are: the difficulty penalty only applies to players.
+func MonsterResists(r *d2records.MonStatRecord, diff d2monster.Difficulty) [6]int {
+	pick := func(n, nm, h int) int { return [3]int{n, nm, h}[diff] }
+
+	return [6]int{
+		pick(r.ResistancePhysicalNormal, r.ResistancePhysicalNightmare, r.ResistancePhysicalHell),
+		pick(r.ResistanceMagicNormal, r.ResistanceMagicNightmare, r.ResistanceMagicHell),
+		pick(r.ResistanceFireNormal, r.ResistanceFireNightmare, r.ResistanceFireHell),
+		pick(r.ResistanceLightningNormal, r.ResistanceLightningNightmare, r.ResistanceLightningHell),
+		pick(r.ResistanceColdNormal, r.ResistanceColdNightmare, r.ResistanceColdHell),
+		pick(r.ResistancePoisonNormal, r.ResistancePoisonNightmare, r.ResistancePoisonHell),
 	}
 }

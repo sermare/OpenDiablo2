@@ -2,9 +2,9 @@ package d2player
 
 import (
 	"fmt"
-	"sort"
+	"strconv"
+	"strings"
 
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2geom"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
@@ -25,32 +25,28 @@ const (
 	skillListsLength  = 5 // 0 to 4. 0 - General Skills, 1 to 3 - Class-specific skills(based on the 3 different skill trees), 4 - Other skills
 )
 
-// NewHeroSkillsPanel creates a new hero status panel
+// tooltipGap is the space between the popup's tooltip and its top row.
+const tooltipGap = 6
+
+// NewHeroSkillsPanel creates the skill popup of the left or the right button.
 func NewHeroSkillsPanel(asset *d2asset.AssetManager,
 	ui *d2ui.UIManager,
 	hero *d2mapentity.Player,
 	l d2util.LogLevel,
 	isLeftPanel bool) *SkillPanel {
-	var activeSkill *d2hero.HeroSkill
-	if isLeftPanel {
-		activeSkill = hero.LeftSkill
-	} else {
-		activeSkill = hero.RightSkill
-	}
-
 	hoverTooltip := ui.NewTooltip(d2resource.Font16, d2resource.PaletteStatic, d2ui.TooltipXLeft, d2ui.TooltipYTop)
 
 	skillPanel := &SkillPanel{
 		asset:        asset,
-		activeSkill:  activeSkill,
 		ui:           ui,
-		isOpen:       false,
-		ListRows:     make([]*SkillListRow, skillListsLength),
-		renderer:     ui.Renderer(),
 		isLeftPanel:  isLeftPanel,
 		hero:         hero,
 		hoverTooltip: hoverTooltip,
+		sprites:      map[string]*d2ui.Sprite{},
 	}
+
+	skillPanel.levelLabel = ui.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
+	skillPanel.keyLabel = ui.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
 
 	skillPanel.Logger = d2util.NewLogger()
 	skillPanel.Logger.SetLevel(l)
@@ -59,107 +55,45 @@ func NewHeroSkillsPanel(asset *d2asset.AssetManager,
 	return skillPanel
 }
 
-// SkillPanel represents a skill select menu popup that is displayed when the player left clicks on his active left/right skill.
+// SkillPanel is the skill popup shown when the player clicks the left or right skill button: a
+// grid of the skills that button can use, laid out by skilldesc.txt page, row and column.
 type SkillPanel struct {
-	asset                *d2asset.AssetManager
-	activeSkill          *d2hero.HeroSkill
-	hero                 *d2mapentity.Player
-	ListRows             []*SkillListRow
-	renderer             d2interface.Renderer
-	ui                   *d2ui.UIManager
-	hoveredSkill         *d2hero.HeroSkill
-	hoverTooltip         *d2ui.Tooltip
-	isOpen               bool
-	regenerateImageCache bool
-	isLeftPanel          bool
+	asset        *d2asset.AssetManager
+	hero         *d2mapentity.Player
+	ui           *d2ui.UIManager
+	cells        []popupCell
+	sprites      map[string]*d2ui.Sprite
+	hovered      *popupCell
+	hoverTooltip *d2ui.Tooltip
+	levelLabel   *d2ui.Label
+	keyLabel     *d2ui.Label
+	isOpen       bool
+	isLeftPanel  bool
+
+	// keyName returns the name of the key a skill's hotkey slot is bound to ("F1"), or "".
+	keyName func(slot int) string
+	// onSelect is called when the player picks a skill.
+	onSelect func(left bool, id int)
 
 	*d2util.Logger
 }
 
-// Open opens the hero skills panel
+// Open opens the popup and lays the skills out again.
 func (s *SkillPanel) Open() {
 	s.isOpen = true
-	s.regenerateImageCache = true
+	s.RegenerateImageCache()
 }
 
-// Close the hero skills panel
+// Close the popup.
 func (s *SkillPanel) Close() {
 	s.isOpen = false
+	s.hovered = nil
 }
 
-// IsInRect returns whether the X Y coordinates are in some of the list rows of the panel.
-func (s *SkillPanel) IsInRect(x, y int) bool {
-	for _, listRow := range s.ListRows {
-		if listRow != nil && listRow.IsInRect(x, y) {
-			return true
-		}
-	}
+// IsOpen returns true if the popup is open.
+func (s *SkillPanel) IsOpen() bool { return s.isOpen }
 
-	return false
-}
-
-// GetListRowByPos returns the skill list row for a given X and Y, based on the width and height of the skills list.
-func (s *SkillPanel) GetListRowByPos(x, y int) *SkillListRow {
-	for _, listRow := range s.ListRows {
-		if listRow.IsInRect(x, y) {
-			return listRow
-		}
-	}
-
-	return nil
-}
-
-// Render gets called on every tick
-func (s *SkillPanel) Render(target d2interface.Surface) error {
-	if !s.isOpen {
-		return nil
-	}
-
-	if s.regenerateImageCache {
-		if err := s.generateSkillRowImageCache(); err != nil {
-			return err
-		}
-
-		s.regenerateImageCache = false
-	}
-
-	renderedRows := 0
-
-	for _, skillListRow := range s.ListRows {
-		if len(skillListRow.Skills) == 0 {
-			continue
-		}
-
-		startX := s.getRowStartX(skillListRow)
-		rowOffsetY := skillPanelOffsetY - (renderedRows * skillIconHeight)
-
-		target.PushTranslation(startX, rowOffsetY)
-		target.Render(skillListRow.cachedImage)
-		target.Pop()
-
-		renderedRows++
-	}
-
-	if s.hoveredSkill != nil {
-		s.hoverTooltip.Render(target)
-	}
-
-	return nil
-}
-
-// RegenerateImageCache will force re-generating the cached menu image on next Render.
-// Somewhat expensive operation, should not be called often.
-// Currently called every time the panel is opened or when the player learns a new skill.
-func (s *SkillPanel) RegenerateImageCache() {
-	s.regenerateImageCache = true
-}
-
-// IsOpen returns true if the hero skills panel is open
-func (s *SkillPanel) IsOpen() bool {
-	return s.isOpen
-}
-
-// Toggle toggles the visibility of the hero status panel
+// Toggle opens or closes the popup.
 func (s *SkillPanel) Toggle() {
 	if s.isOpen {
 		s.Close()
@@ -168,205 +102,226 @@ func (s *SkillPanel) Toggle() {
 	}
 }
 
-func (s *SkillPanel) generateSkillRowImageCache() error {
-	for idx := range s.ListRows {
-		s.ListRows[idx] = &SkillListRow{Skills: make([]*d2hero.HeroSkill, 0), Rectangle: d2geom.Rectangle{Height: 0, Width: 0}}
+// RegenerateImageCache lays the popup out again (the hero learned a skill).
+func (s *SkillPanel) RegenerateImageCache() {
+	s.cells = layoutSkillPopup(s.hero.Skills, s.isLeftPanel)
+	s.hovered = nil
+}
+
+// IsInRect returns whether the X Y coordinates are on an icon of the popup.
+func (s *SkillPanel) IsInRect(x, y int) bool { return s.isOpen && cellAt(s.cells, x, y) != nil }
+
+// Cells returns the laid out icons (for tests and the autotest log).
+func (s *SkillPanel) Cells() []popupCell { return s.cells }
+
+// Hovered returns the skill under the mouse, or nil.
+func (s *SkillPanel) Hovered() *d2hero.HeroSkill {
+	if !s.isOpen || s.hovered == nil {
+		return nil
 	}
 
-	for _, skill := range s.hero.Skills {
-		// left panel with an incompatible skill(e.g. Paladin auras cant be used as a left skill)
-		if s.isLeftPanel && !skill.Leftskill {
-			continue
+	return s.hovered.Skill
+}
+
+// IsLeft says whether this is the left button's popup.
+func (s *SkillPanel) IsLeft() bool { return s.isLeftPanel }
+
+// cellOfSkill finds the cell of a skill.
+func (s *SkillPanel) cellOfSkill(id int) *popupCell {
+	for i := range s.cells {
+		if s.cells[i].Skill.ID == id {
+			return &s.cells[i]
 		}
-
-		// ListRow is -1 for other skills that should not be shown in the panel(e.g. Kick)
-		if skill.ListRow == -1 || skill.Passive {
-			continue
-		}
-
-		s.ListRows[skill.ListRow].AddSkill(skill)
-	}
-
-	visibleRows := 0
-
-	for idx, skillListRow := range s.ListRows {
-		// row won't be considered as visible
-		if len(skillListRow.Skills) == 0 {
-			continue
-		}
-
-		skillListRow.Rectangle = d2geom.Rectangle{
-			Height: skillIconHeight,
-			Width:  skillListRow.GetWidth(),
-			Left:   s.getRowStartX(skillListRow),
-			Top:    skillPanelOffsetY - (visibleRows * skillIconHeight),
-		}
-
-		skillRow := skillListRow
-
-		sort.SliceStable(skillListRow.Skills, func(a, b int) bool {
-			// left panel skills are aligned by ID (low to high), right panel is the opposite
-			if s.isLeftPanel {
-				return skillRow.Skills[a].ID < skillRow.Skills[b].ID
-			}
-
-			return skillRow.Skills[a].ID > skillRow.Skills[b].ID
-		})
-
-		cachedImage, err := s.createSkillListImage(skillListRow)
-
-		if err != nil {
-			s.Error(err.Error())
-			return err
-		}
-
-		s.ListRows[idx].cachedImage = cachedImage
-		visibleRows++
 	}
 
 	return nil
 }
 
-func (s *SkillPanel) createSkillListImage(skillsListRow *SkillListRow) (d2interface.Surface, error) {
-	surface := s.renderer.NewSurface(len(skillsListRow.Skills)*skillIconWidth, skillIconHeight)
-
-	lastSkillResourcePath := d2resource.GenericSkills
-	skillSprite, _ := s.ui.NewSprite(s.getSkillResourceByClass(""), d2resource.PaletteSky)
-
-	for idx, skill := range skillsListRow.Skills {
-		currentResourcePath := s.getSkillResourceByClass(skill.Charclass)
-		// only load a new sprite if the DCC file path changed
-		if currentResourcePath != lastSkillResourcePath {
-			lastSkillResourcePath = currentResourcePath
-			skillSprite, _ = s.ui.NewSprite(currentResourcePath, d2resource.PaletteSky)
-		}
-
-		if skillSprite.GetFrameCount() <= skill.IconCel {
-			// happens for non-player skills, since they do not have an icon
-			s.Errorf("Invalid IconCel(sprite frame index) [%d] - Skill name: %s, skipping.", skill.IconCel, skill.Name)
-			continue
-		}
-
-		if err := skillSprite.SetCurrentFrame(skill.IconCel); err != nil {
-			return nil, err
-		}
-
-		surface.PushTranslation(idx*skillIconWidth, 50)
-		skillSprite.Render(surface)
-		surface.Pop()
+func (s *SkillPanel) sprite(class string) *d2ui.Sprite {
+	path := getSkillResourceByClass(class)
+	if sp, ok := s.sprites[path]; ok {
+		return sp
 	}
 
-	return surface, nil
-}
-
-func (s *SkillPanel) getRowStartX(skillRow *SkillListRow) int {
-	if s.isLeftPanel {
-		return leftPanelStartX
+	sp, err := s.ui.NewSprite(path, d2resource.PaletteSky)
+	if err != nil {
+		s.Error(err.Error())
 	}
 
-	// for the right panel, we only know where it should end, so we calculate the start based on the width of the list row
-	return rightPanelEndX - skillRow.GetWidth()
+	s.sprites[path] = sp
+
+	return sp
 }
 
-func (s *SkillPanel) getSkillAtPos(x, y int) *d2hero.HeroSkill {
-	listRow := s.GetListRowByPos(x, y)
-
-	if listRow == nil {
+// Render gets called on every frame.
+func (s *SkillPanel) Render(target d2interface.Surface) error {
+	if !s.isOpen {
 		return nil
 	}
 
-	skillIndex := (x - s.getRowStartX(listRow)) / skillIconWidth
-	skill := listRow.Skills[skillIndex]
+	for i := range s.cells {
+		c := &s.cells[i]
 
-	return skill
-}
+		sp := s.sprite(c.Skill.Charclass)
+		if sp == nil || sp.GetFrameCount() <= c.Skill.IconCel {
+			continue // non-player skills have no icon
+		}
 
-func (s *SkillPanel) getSkillIdxAtPos(x, y int) int {
-	listRow := s.GetListRowByPos(x, y)
+		if err := sp.SetCurrentFrame(c.Skill.IconCel); err != nil {
+			return err
+		}
 
-	if listRow == nil {
-		return -1
+		sp.SetPosition(c.X, c.Y+skillIconHeight)
+		sp.Render(target)
+
+		s.levelLabel.SetText(strconv.Itoa(c.Skill.SkillPoints))
+		s.levelLabel.SetPosition(c.X+skillIconWidth-14, c.Y+skillIconHeight-8)
+		s.levelLabel.Render(target)
+
+		if s.keyName != nil {
+			if slot := s.hero.SkillBar.HotkeyOf(c.Skill.ID); slot >= 0 {
+				if name := s.keyName(slot); name != "" {
+					s.keyLabel.SetText(name)
+					s.keyLabel.SetPosition(c.X+2, c.Y+12)
+					s.keyLabel.Render(target)
+				}
+			}
+		}
 	}
 
-	skillIndex := (x - s.getRowStartX(listRow)) / skillIconWidth
+	if s.hovered != nil {
+		s.hoverTooltip.Render(target)
+	}
 
-	return skillIndex
+	return nil
 }
 
-// HandleClick will change the hero's active(left or right) skill and return true.
-// Returns false if the given X, Y is out of panel boundaries.
+// HandleClick picks the skill under the mouse, if any, and tells the owner.
+// It reports whether the click was on an icon.
 func (s *SkillPanel) HandleClick(x, y int) bool {
-	if !s.isOpen || !s.IsInRect(x, y) {
+	if !s.isOpen {
 		return false
 	}
 
-	clickedSkill := s.getSkillAtPos(x, y)
-
-	if clickedSkill == nil {
+	c := cellAt(s.cells, x, y)
+	if c == nil {
 		return false
 	}
 
-	if s.isLeftPanel {
-		s.hero.LeftSkill = clickedSkill
-	} else {
-		s.hero.RightSkill = clickedSkill
+	if s.onSelect != nil {
+		s.onSelect(s.isLeftPanel, c.Skill.ID)
 	}
 
 	return true
 }
 
-// HandleMouseMove will process a mouse move event, if inside the panel.
+// HandleMouseMove updates the hovered icon and its tooltip.
 func (s *SkillPanel) HandleMouseMove(x, y int) bool {
 	if !s.isOpen {
 		return false
 	}
 
-	if !s.IsInRect(x, y) {
-		// panel still open but player hovered outside panel - hide the previously hovered skill(if any)
-		s.hoveredSkill = nil
+	c := cellAt(s.cells, x, y)
+	if c == nil {
+		s.hovered = nil
 		return false
 	}
 
-	previousHovered := s.hoveredSkill
-	s.hoveredSkill = s.getSkillAtPos(x, y)
-
-	if previousHovered != s.hoveredSkill && s.hoveredSkill != nil {
-		skillDescription := s.asset.TranslateString(s.hoveredSkill.ShortKey)
-		s.hoverTooltip.SetText(fmt.Sprintf("%s\n%s", s.hoveredSkill.Skill, skillDescription))
-
-		listRow := s.GetListRowByPos(x, y)
-
-		tooltipX := (s.getSkillIdxAtPos(x, y) * skillIconWidth) + s.getRowStartX(listRow)
-		tooltipY := listRow.Rectangle.Top + listRow.Rectangle.Height
-		s.hoverTooltip.SetPosition(tooltipX, tooltipY)
-	}
+	s.hover(c)
 
 	return true
 }
 
-func (s *SkillPanel) getSkillResourceByClass(class string) string {
-	resource := ""
-
-	switch class {
-	case "":
-		resource = d2resource.GenericSkills
-	case "bar":
-		resource = d2resource.BarbarianSkills
-	case "nec":
-		resource = d2resource.NecromancerSkills
-	case "pal":
-		resource = d2resource.PaladinSkills
-	case "ass":
-		resource = d2resource.AssassinSkills
-	case "sor":
-		resource = d2resource.SorcererSkills
-	case "ama":
-		resource = d2resource.AmazonSkills
-	case "dru":
-		resource = d2resource.DruidSkills
-	default:
-		s.Errorf("Unknown class token: '%s'", class)
+// HoverSkill puts the mouse on the icon of a skill (for the autotests); it
+// reports false if the popup does not show the skill.
+func (s *SkillPanel) HoverSkill(id int) bool {
+	c := s.cellOfSkill(id)
+	if c == nil {
+		return false
 	}
 
-	return resource
+	s.hover(c)
+
+	return true
+}
+
+func (s *SkillPanel) hover(c *popupCell) {
+	if s.hovered == c {
+		return
+	}
+
+	s.hovered = c
+	s.hoverTooltip.SetText(s.tooltipText(c.Skill))
+
+	// the tooltip sits above the top row so it hides no icon
+	top := c.Y
+
+	for i := range s.cells {
+		if s.cells[i].Y < top {
+			top = s.cells[i].Y
+		}
+	}
+
+	_, h := s.hoverTooltip.GetSize()
+	s.hoverTooltip.SetPosition(c.X, top-h-tooltipGap)
+}
+
+// tooltipText is the name, the short description and the level of a skill,
+// and the key it is on.
+func (s *SkillPanel) tooltipText(sk *d2hero.HeroSkill) string {
+	return skillTooltip(s.asset, sk, s.hero.SkillBar, s.keyName)
+}
+
+// skillTooltip builds the tooltip of a skill icon (popup and skill tree).
+func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, bar *d2hero.SkillBar, keyName func(int) string) string {
+	name := asset.TranslateString(sk.NameKey)
+	if name == "" || name == sk.NameKey {
+		name = sk.Skill
+	}
+
+	lines := []string{name}
+
+	if short := asset.TranslateString(sk.ShortKey); short != "" && short != sk.ShortKey {
+		lines = append(lines, short)
+	}
+
+	lines = append(lines, fmt.Sprintf("Skill Level: %d", sk.SkillPoints))
+
+	if bar != nil && keyName != nil {
+		if slot := bar.HotkeyOf(sk.ID); slot >= 0 {
+			if key := keyName(slot); key != "" {
+				lines = append(lines, "Hotkey: "+key)
+			}
+		}
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func getSkillResourceByClass(class string) string {
+	switch class {
+	case "bar":
+		return d2resource.BarbarianSkills
+	case "nec":
+		return d2resource.NecromancerSkills
+	case "pal":
+		return d2resource.PaladinSkills
+	case "ass":
+		return d2resource.AssassinSkills
+	case "sor":
+		return d2resource.SorcererSkills
+	case "ama":
+		return d2resource.AmazonSkills
+	case "dru":
+		return d2resource.DruidSkills
+	default:
+		return d2resource.GenericSkills
+	}
+}
+
+// RefreshHover lays the popup out again and keeps the mouse on a skill (its
+// tooltip shows the hotkey just assigned).
+func (s *SkillPanel) RefreshHover(id int) {
+	s.RegenerateImageCache()
+	s.HoverSkill(id)
 }

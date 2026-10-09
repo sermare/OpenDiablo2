@@ -434,15 +434,22 @@ func (d *Director) nearestEnemy(b *d2monster.Brain) (d2monster.Target, int, bool
 	)
 
 	for _, o := range d.sortedUnits() {
-		if o.merc != nil || !o.m.Alive() || o.b == b {
+		if o.friendly() || o.b.Allied || !o.m.Alive() || o.b == b {
 			continue
 		}
 
 		x, y := o.m.SubtilePos()
 		dist := d2monster.EdgeDistance(b.X-x, b.Y-y, b.Size)
 
+		// a mercenary names its enemies by plain unit id, a converted monster by
+		// the unit-target offset (the plain ids below mercTargetBase are players)
+		id := o.b.ID
+		if me := d.unitOf(b); me == nil || me.merc == nil {
+			id += unitTargetBase
+		}
+
 		if !found || dist < bestDist {
-			best, bestDist, found = d2monster.Target{ID: o.b.ID, X: x, Y: y, Size: 1}, dist, true
+			best, bestDist, found = d2monster.Target{ID: id, X: x, Y: y, Size: 1}, dist, true
 		}
 	}
 
@@ -454,7 +461,7 @@ func (d *Director) mercStrike(u *unit, mode d2monster.Mode) {
 	mu := u.merc
 
 	tu := d.units[u.attackTarget]
-	if tu == nil || tu.merc != nil || !tu.m.Alive() {
+	if tu == nil || tu.friendly() || tu.b.Allied || !tu.m.Alive() {
 		return
 	}
 

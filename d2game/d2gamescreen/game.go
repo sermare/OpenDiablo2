@@ -158,6 +158,7 @@ type Game struct {
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	monsterTest          *monsterTest
+	aiTest               *aiAutoTest
 	merc                 mercGame
 	skills               *d2skills.Engine
 	castTestState        *castTest
@@ -170,6 +171,7 @@ type Game struct {
 	autoPanel            autoPanelState
 	autoEquip            autoEquipState
 	levelStatusAcc       float64
+	questRT              *questRuntime
 	death                deathState
 
 	renderer      d2interface.Renderer
@@ -196,6 +198,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"spawnitemat", "spawns an item at the x,y coordinates",
 			[]string{"x", "y", "code1", "code2", "code3", "code4", "code5"}, v.commandSpawnItemAt},
 		{"spawnmon", "spawn monster at the local player position", []string{"name"}, v.commandSpawnMon},
+		{"forcestate", "puts a forced AI state (fear, blind, taunt, confuse, attract, charm) on a monster for n frames",
+			[]string{"monster id", "state", "frames"}, v.commandForceState},
 		{"setgold", "sets the hero's gold (saved to the .d2s on the next save)", []string{"amount"}, v.commandSetGold},
 		{"spawnchest", "spawns chests/barrels (objects.txt ids, default 7 1 5) next to the hero",
 			[]string{"id1", "id2", "id3"}, v.commandSpawnChest},
@@ -210,6 +214,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"0|1"}, v.commandTravelFree},
 		{"travel", "travels to the town of an act through the act travel rules",
 			[]string{"act"}, v.commandTravel},
+		{"players", "logs the players of the game with their positions", []string{}, v.commandPlayers},
+		{"chat", "sends a chat line to all players (_ for a space)", []string{"text"}, v.commandChat},
 	}
 
 	for _, cmd := range commands {
@@ -239,7 +245,7 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint"); err != nil {
+	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat"); err != nil {
 		return err
 	}
 
@@ -300,6 +306,8 @@ func (v *Game) Render(screen d2interface.Surface) {
 // Advance runs the update logic on the Gameplay screen
 // nolint:gocyclo // not need to change
 func (v *Game) Advance(elapsed float64) error {
+	v.gameClient.Drain()
+
 	v.soundEngine.Advance(elapsed)
 	v.advanceDayClock(elapsed)
 	v.advanceLighting()
@@ -312,6 +320,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceAutoSound(elapsed)
 	v.advanceAutoTest(elapsed)
 	v.advanceAutoScript(elapsed)
+	v.advanceQuests(elapsed)
 	v.advanceAutosave(elapsed)
 	v.advanceGroundInteraction(elapsed)
 	v.advanceObjects(elapsed)
@@ -521,6 +530,7 @@ func (v *Game) advanceNPCInteraction(_ float64) {
 		if dist > npcMenuLeaveDistance {
 			v.Infof("NPC menu closed: walked away from %q", v.npcTarget.Label())
 			menu.Close()
+			v.questClose(v.npcTarget)
 
 			v.npcTarget = nil
 
@@ -574,11 +584,22 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 	switch row.Action {
 	case d2player.NPCActionCancel:
 		v.Infof("NPC menu: Cancel")
+		v.questClose(npc)
+
 		v.npcTarget = nil
 	case d2player.NPCActionTalk:
+		if v.questTalk(npc) {
+			v.gameControls.NPCMenu.Close()
+			v.Infof("NPC menu: Talk with %q (quest speech)", npc.Label())
+
+			return
+		}
+
 		path := v.playNPCGreeting(npc.Label())
 		v.Infof("NPC menu: Talk with %q (voice %q)", npc.Label(), path)
 		v.travelOnTalk(npc)
+	case d2player.NPCActionTopic:
+		v.questTopic(npc, row.StringID)
 	case d2player.NPCActionTrade, d2player.NPCActionTradeRepair:
 		v.openTrade(npc, uint32(time.Now().UnixNano()))
 	case d2player.NPCActionHire:
@@ -669,6 +690,8 @@ func (v *Game) playNPCGreeting(name string) string {
 	if v.returnGreet == nil {
 		v.returnGreet = returnGreetings{}
 	}
+
+	v.armReturnGreeting(name)
 
 	set := loadGreetingSet(v.asset.Records.Sound.Details, name)
 
@@ -915,7 +938,7 @@ func (v *Game) OnPlayerSave() error {
 		v.gameControls.SyncContainers()
 	}
 
-	sp, err := d2netpacket.CreateSavePlayerPacket(playerState, d2enum.DifficultyNormal)
+	sp, err := d2netpacket.CreateSavePlayerPacket(playerState, v.gameClient.Difficulty)
 	if err != nil {
 		return fmt.Errorf("SavePlayerPacket: %v", err)
 	}
@@ -938,6 +961,7 @@ func (v *Game) OnPlayerCast(skillID int, targetX, targetY float64) {
 	// skills the skill pipeline implements run locally with real missiles; the
 	// rest keep the old path (a CastSkill packet that plays the client effects)
 	if v.localPlayer != nil && v.castWithPipeline(skillID, targetX, targetY) {
+		v.announceCast(skillID, targetX, targetY)
 		return
 	}
 

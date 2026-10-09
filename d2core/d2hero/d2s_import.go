@@ -83,6 +83,8 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 		return nil, err
 	}
 
+	applyD2SSkillBar(state, header)
+
 	f.RecalcStats(state)
 	fmt.Printf("stats: %s %s\n", state.HeroName, StatsSummary(state.Stats))
 
@@ -207,4 +209,33 @@ func (f *HeroStateFactory) applyD2SContainers(state *HeroState, items []d2s.Item
 	fmt.Printf("d2s: %s containers: inventory=%d belt=%d cube=%d stash=%d\n", state.HeroName,
 		len(containers.Page(PageInventory)), len(containers.Page(PageBelt)),
 		len(containers.Page(PageCube)), len(containers.Page(PageStash)))
+}
+
+// applyD2SSkillBar reads the assigned skills (hotkeys), the left/right skill
+// and the swap-set skills of the header. The active skills must be skills the
+// hero has; anything else falls back to Attack (id 0).
+func applyD2SSkillBar(state *HeroState, header *d2s.Header) {
+	bar := SkillBarFromBlock(header.SkillBlock())
+	state.SkillBar = bar
+
+	has := func(id int) int {
+		if s := state.Skills[id]; s != nil && s.SkillPoints > 0 {
+			return id
+		}
+
+		return 0
+	}
+
+	state.LeftSkill, state.RightSkill = has(bar.Left.Skill), has(bar.Right.Skill)
+	fmt.Printf("d2s: %s skills left=%d right=%d swap=%d/%d hotkeys=%v\n", state.HeroName,
+		bar.Left.Skill, bar.Right.Skill, bar.LeftSwap.Skill, bar.RightSwap.Skill, hotkeyIDs(bar))
+}
+
+func hotkeyIDs(b *SkillBar) []int {
+	out := make([]int, len(b.Hotkeys))
+	for i, s := range b.Hotkeys {
+		out[i] = s.Skill
+	}
+
+	return out
 }

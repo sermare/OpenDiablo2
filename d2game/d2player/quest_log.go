@@ -78,36 +78,9 @@ func NewQuestLog(asset *d2asset.AssetManager,
 	originX := 0
 	originY := 0
 
-	//nolint:gomnd // this is only test
-	qs := map[int]int{
-		0:  -2,
-		1:  -2,
-		2:  -2,
-		3:  0,
-		4:  1,
-		5:  4,
-		6:  3,
-		7:  -1,
-		8:  0,
-		9:  0,
-		10: 0,
-		11: 0,
-		12: 0,
-		13: 0,
-		14: 0,
-		15: 0,
-		16: 0,
-		17: 0,
-		18: 0,
-		19: 0,
-		20: 0,
-		21: 0,
-		22: 0,
-		23: 0,
-		24: 0,
-		25: 0,
-		26: 0,
-	}
+	// the statuses come from the quest system (SetStatuses); until it reports
+	// them every quest shows as not started
+	qs := map[int]int{}
 
 	var quests [d2enum.ActsNumber]*questEntire
 	for i := 0; i < d2enum.ActsNumber; i++ {
@@ -148,6 +121,7 @@ type QuestLog struct {
 	uiManager     *d2ui.UIManager
 	panel         *d2ui.Sprite
 	onCloseCb     func()
+	onSeen        func(act, index int)
 	panelGroup    *d2ui.WidgetGroup
 	selectedTab   int
 	selectedQuest int
@@ -176,9 +150,13 @@ type questEntire struct {
 	sockets []*d2ui.Sprite
 }
 
-/* questIconTab returns path to quest animation using its
+/*
+	questIconTab returns path to quest animation using its
+
 act and number. From d2resource:
-        QuestLogAQuestAnimation = "/data/global/ui/MENU/a%dq%d.dc6"*/
+
+	QuestLogAQuestAnimation = "/data/global/ui/MENU/a%dq%d.dc6"
+*/
 func (s *QuestLog) questIconsTable(act, number int) string {
 	return fmt.Sprintf(d2resource.QuestLogAQuestAnimation, act, number+1)
 }
@@ -431,6 +409,7 @@ func (s *QuestLog) stopPlayedAnimations() {
 		questID := s.cordsToQuestID(s.selectedTab+1, j)
 		if s.questStatus[questID] == d2enum.QuestStatusCompleting {
 			s.questStatus[questID] = d2enum.QuestStatusCompleted
+			s.markSeen(s.selectedTab+1, j+1)
 
 			err := i.SetCurrentFrame(completedFrame)
 			if err != nil {
@@ -532,7 +511,6 @@ func (s *QuestLog) onQuestClicked(number int) {
 	s.Infof("Quest number %d in tab %d clicked", number, s.selectedTab)
 }
 
-//
 func (s *QuestLog) onDescrClicked() {
 	s.Info("Quest description button clicked")
 }
@@ -593,6 +571,7 @@ func (s *QuestLog) Advance(elapsed float64) {
 
 			if i.GetCurrentFrame() == completedFrame {
 				s.questStatus[questID] = d2enum.QuestStatusCompleted
+				s.markSeen(s.selectedTab+1, j+1)
 			}
 		}
 	}

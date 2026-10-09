@@ -28,6 +28,8 @@ type AddPlayerPacket struct {
 	Containers *d2hero.HeroContainers `json:"containers,omitempty"`
 	// Merc is the hero's mercenary state, if any.
 	Merc *d2hero.MercState `json:"merc,omitempty"`
+	// SkillBar is the hero's hotkeys and swap-set skills (nil: a fresh bar).
+	SkillBar *d2hero.SkillBar `json:"skillBar,omitempty"`
 	// Death is the hero's death record (nil if it never died); Hardcore marks
 	// a hardcore character.
 	Death    *d2hero.DeathState `json:"death,omitempty"`
@@ -106,6 +108,11 @@ func WithContainers(c *d2hero.HeroContainers) AddPlayerOption {
 // WithMerc sends the hero's mercenary state along.
 func WithMerc(m *d2hero.MercState) AddPlayerOption {
 	return func(p *AddPlayerPacket) { p.Merc = m }
+}
+
+// WithSkillBar sends the hero's skill hotkeys and swap-set skills along.
+func WithSkillBar(b *d2hero.SkillBar) AddPlayerOption {
+	return func(p *AddPlayerPacket) { p.SkillBar = b }
 }
 
 // WithDeath sends the hero's death record and hardcore flag along.

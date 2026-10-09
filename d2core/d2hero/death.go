@@ -1,6 +1,7 @@
 package d2hero
 
 import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 )
 
@@ -37,17 +38,14 @@ import (
 // UNVERIFIED: the binary was not searched for the respawn code.
 const RespawnLifeFraction = 0.5
 
-// deathExpPenaltyPercent is DeathExpPenalty of DifficultyLevels.txt for normal,
-// nightmare and hell (read from this install's patch_d2.mpq).
-var deathExpPenaltyPercent = [3]int{0, 5, 10}
-
-// DeathExpPenaltyPercent returns the penalty percentage of a difficulty.
+// DeathExpPenaltyPercent returns the penalty percentage of a difficulty (the
+// DeathExpPenalty column, see d2difficulty).
 func DeathExpPenaltyPercent(difficulty int) int {
-	if difficulty < 0 || difficulty >= len(deathExpPenaltyPercent) {
+	if difficulty < 0 || difficulty >= int(d2difficulty.Count) {
 		return 0
 	}
 
-	return deathExpPenaltyPercent[difficulty]
+	return d2difficulty.DeathExpPenalty(d2difficulty.Level(difficulty))
 }
 
 // Corpse is what a hero left behind. X and Y are subtile coordinates.

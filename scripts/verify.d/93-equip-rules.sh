@@ -2,7 +2,7 @@ scenario_name="equip rules (OD2_AUTOEQUIP: body locations, requirements, class, 
 wb=$tmp/writeback-equip
 scenario_env() {
   mkdir -p $wb   # keeps the exported .d2s out of the Saves folder
-  echo "export OD2_D2S_WRITEBACK=\"$wb\" OD2_AUTOEQUIP=1 OD2_AUTOMONSTER=\"fallen1,pack\" OD2_AUTOMONSTER_SECONDS=20 OD2_DURABILITY_CHANCE=60"
+  echo "export OD2_D2S_WRITEBACK=\"$wb\" OD2_AUTOEQUIP=1 OD2_AUTOMONSTER=\"fallen1,pack\" OD2_AUTOMONSTER_SECONDS=20 OD2_AUTOMONSTER_DIFF=0 OD2_DURABILITY_CHANCE=60"
 }
 scenario_check() {
   grep -E "EQUIP |DURABILITY|SOUND hero voice|equipment loaded" $log.txt | cut -c1-330
