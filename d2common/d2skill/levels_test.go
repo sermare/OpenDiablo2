@@ -28,3 +28,27 @@ func TestEffectiveLevel(t *testing.T) {
 		}
 	}
 }
+
+// Pins the clamp read from 0x645680/0x610ae0: +skills may lift a level-20
+// skill above 20, the ceiling is the character level cap (99).
+func TestEffectiveLevelClamp(t *testing.T) {
+	sk := &Skill{ID: 36, CharClass: "sor"}
+
+	tests := []struct {
+		name string
+		base int
+		b    ItemSkillBonus
+		want int
+	}{
+		{"no bonus unchanged", 20, ItemSkillBonus{}, 20},
+		{"bonus above maxlvl 20", 20, ItemSkillBonus{All: 3, Class: 2}, 25},
+		{"cap at 99", 20, ItemSkillBonus{All: 200}, MaxLevelCap},
+		{"negative floors at 0", 1, ItemSkillBonus{All: -5}, 0},
+	}
+
+	for _, tt := range tests {
+		if got := EffectiveLevel(tt.base, tt.b, sk, "sor", 1); got != tt.want {
+			t.Errorf("%s: got %d want %d", tt.name, got, tt.want)
+		}
+	}
+}

@@ -1,6 +1,8 @@
 package d2hero
 
 import (
+	"strconv"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
@@ -35,10 +37,34 @@ func ItemSkillBonusOf(t *d2statlist.Totals, hero d2enum.Hero, skillID, page int)
 	return b
 }
 
+// TreeLabel is the level label of a skill tree icon. VERIFIED (UI_DrawSkillTreeIcon
+// 0x4a86b0, caller 0x4a8980): the number is the effective level (base points plus
+// the item bonus, the SKILL_GetTotalLevel includeBonus=1 value) and it is
+// drawn whenever the effective level or the base points are non-zero; the
+// colour is blue (palette colour 3) when the items add levels, red (1) when
+// they subtract, white otherwise. The tree click itself only works with the
+// base points (they decide the cap and the cost).
+func TreeLabel(base, effective int) (text, colorToken string, shown bool) {
+	if base == 0 && effective == 0 {
+		return "", "", false
+	}
+
+	text = strconv.Itoa(effective)
+
+	switch {
+	case effective > base:
+		return text, "[blue]", true
+	case effective < base:
+		return text, "[red]", true
+	}
+
+	return text, "", true
+}
+
 // EffectiveSkillLevel is the level of a skill a cast, a calc and the skill
-// tooltip see: the points of the tree plus the +skills of the hero's items.
-// The skill tree itself keeps showing sk.SkillPoints. Without +skill items it
-// equals the base points.
+// tooltip see: the points of the tree plus the +skills of the hero's items,
+// clamped to d2skill.MaxLevelCap. The skill tree icon shows it too (TreeLabel).
+// Without +skill items it equals the base points.
 func EffectiveSkillLevel(st *HeroStatsState, hero d2enum.Hero, sk *HeroSkill) int {
 	if sk == nil {
 		return 0
