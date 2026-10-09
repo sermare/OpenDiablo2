@@ -18,7 +18,9 @@ import (
 // code (and saves the hero, so the .d2s export carries the quest bits).
 //
 //	OD2_AUTOQUEST          den (1), burial (2), tools (3), cain (4), tower (5),
-//	                       andariel (6), radament (8) or act1 (all Act 1 quests in order)
+//	                       andariel (6), radament (8) or act1 (all Act 1 quests in order);
+//	                       act2, act3, act4, act5 or acts2-5 (one quest per act), or a
+//	                       single Acts 2-5 stage (see autoquest_acts.go)
 //	OD2_AUTOQUEST_REAL=1   den: spawn real monsters and let the hero kill them
 //	                       (otherwise kill events are injected)
 //	OD2_AUTOQUEST_AREA     levels.txt id the map stands for when the run starts
@@ -26,6 +28,9 @@ import (
 //
 // The run resets the quest slots it exercises in the hero's record first (and
 // marks the predecessors of the quest as done), so it can start from any save.
+// actLastQuestSlot is the last record slot of Act 5 (slots 8..40 belong to Acts 2-5).
+const actLastQuestSlot = 40
+
 const (
 	autoQuestDelay       = 3.0   // seconds after the hero exists
 	autoQuestStepGap     = 0.05  // seconds between steps
@@ -125,9 +130,12 @@ func newAutoQuest(spec string) *autoQuest {
 		return a
 	}
 
-	if name == "act1" {
+	switch {
+	case name == "act1":
 		a.stages = act1Order
-	} else {
+	case actStageOrder[name] != nil:
+		a.stages = actStageOrder[name]
+	default:
 		a.stages = []string{name}
 	}
 
@@ -154,9 +162,25 @@ func (a *autoQuest) resetRecord(p *d2hero.HeroProgress, diff int) {
 		p.NPC.SetReturnBit(diff, bit, false)
 	}
 
+	// the Acts 2-5 stages start from a clean Acts 2-5 record (a real save has
+	// most of these quests done); the first stage needs its predecessors done
+	for _, st := range a.stages {
+		if _, ok := actStageSlots[st]; ok {
+			for slot := d2s.QuestSlotAct1Finished + 1; slot <= actLastQuestSlot; slot++ {
+				rec.SetSlot(slot, 0)
+			}
+
+			break
+		}
+	}
+
 	if len(a.stages) > 0 {
 		for _, id := range stagePrereq[a.stages[0]] {
 			rec.SetSlot(id, 1<<d2quest.FlagRewardGranted) // slot == quest id for Act 1
+		}
+
+		for _, slot := range actStageSlots[a.stages[0]][1] {
+			rec.SetSlot(slot, 1<<d2quest.FlagRewardGranted)
 		}
 	}
 }
@@ -359,6 +383,8 @@ func (a *autoQuest) addStage(name string) {
 		a.stageAndariel()
 	case "radament":
 		a.stageRadament()
+	default:
+		a.addActStage(name)
 	}
 }
 

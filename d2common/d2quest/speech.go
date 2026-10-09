@@ -64,7 +64,9 @@ var npcByName = map[string]int{
 	"MESHIF2": NPCMeshif2, "CAIN5": NPCCain5, "NAVI": NPCNavi, "NATALYA": NPCNatalya, "TYRAEL2": NPCTyrael2,
 	"MALACHAI": NPCMalachai, "LARZUK": NPCLarzuk, "DREHYA": NPCDrehya, "MALAH": NPCMalah,
 	"NIHLATHAK": NPCNihlathak, "QUAL_KEHK": NPCQualKehk, "CAIN6": NPCCain6, "TYRAEL3": NPCTyrael3,
-	"ACT2GUARD2": 331, "ACT2GUARD4": 377, "ACT2GUARD5": 378,
+	"DREHYAICED": NPCAnyaFrozen, "ANCIENTSTATUE1": NPCAncientStatue1, "ANCIENTSTATUE2": NPCAncientStatue2,
+	"ANCIENTSTATUE3": NPCAncientStatue3,
+	"ACT2GUARD2":     331, "ACT2GUARD4": 377, "ACT2GUARD5": 378,
 }
 
 type messageData struct {
