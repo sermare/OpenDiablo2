@@ -74,6 +74,7 @@ type Engine struct {
 	visuals map[uint32]*d2mapentity.Missile
 	fx      map[*d2mapentity.Missile]int // explosion entities and the frame they vanish at
 	sets    map[string]*d2state.Set      // unit id -> states and DoT streams
+	defs    d2state.Defs                 // states.txt rules shared by the sets
 	timers  []timer
 
 	auras  map[string]*auraRun // hero id -> the aura it keeps on
@@ -174,11 +175,33 @@ func (e *Engine) HasState(unitID, state string) bool {
 	return e.setOf(unitID).Active(e.frame, state)
 }
 
+// stateDefs converts the states.txt records into the rules the state sets use
+// (cached; nil when the records have no states table).
+func (e *Engine) stateDefs() d2state.Defs {
+	if e.defs != nil || e.asset == nil || len(e.asset.Records.States) == 0 {
+		return e.defs
+	}
+
+	e.defs = d2state.Defs{}
+
+	for name, r := range e.asset.Records.States {
+		e.defs[name] = d2state.Def{
+			ID: r.ID, Name: name, Group: r.Group, Curse: r.Curse, RemHit: r.RemHit, Aura: r.Aura,
+			PlrStayDeath: r.PlrStayDeath, MonStayDeath: r.MonStayDeath, BossStayDeath: r.BossStayDeath,
+			Shatter: r.Shatter, Blue: r.Blue, ColorPri: r.ColorPri, ColorShift: r.ColorShift,
+			Overlay1: r.Overlay1, Stat: r.Stat,
+		}
+	}
+
+	return e.defs
+}
+
 // setOf returns the state set of a unit, creating it.
 func (e *Engine) setOf(id string) *d2state.Set {
 	st := e.sets[id]
 	if st == nil {
 		st = d2state.New()
+		st.SetDefs(e.stateDefs())
 		e.sets[id] = st
 	}
 
@@ -518,6 +541,10 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 		Burn: d2combat.ApplyResist(int(d.Burn), e.resist(m, "fire")), BurnLen: int(d.BurnLen),
 		CannotChill: cannotCold, CannotFreeze: cannotCold,
 	}
+	h.ColdEffect, h.HasColdEffect = coldEffect(m), true
+
+	// a hit ends the states flagged remhit (states.txt)
+	set.Hit(e.frame)
 
 	hp0 := m.Vitals.HP
 	e.Counters.Damage += whole
@@ -530,6 +557,7 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 	}
 
 	if !m.Alive() {
+		set.Death("monster")
 		e.Counters.Kills++
 		e.emit("damage", "KILL skill=%q target=%s", what, m.Label())
 
@@ -541,6 +569,14 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 			what, m.Label(), applied, h.StunLen, h.FreezeLen, h.ColdLen, fixed(h.Poison), h.PoisonLen, fixed(h.Burn), h.BurnLen)
 		e.syncMonster(m)
 	}
+}
+
+// coldEffect is the monstats ColdEffect of a monster for its difficulty
+// (negative = slow percent, 0 = cannot be chilled).
+func coldEffect(m *d2mapentity.Monster) int {
+	s := m.Stat
+
+	return [3]int{s.ColdSensitivityNormal, s.ColdSensitivityNightmare, s.ColdSensitivityHell}[int(m.Vitals.Difficulty)]
 }
 
 // afterHit runs the effects of curses on a monster that was hurt by the hero:
