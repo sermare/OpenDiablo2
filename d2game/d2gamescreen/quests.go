@@ -256,7 +256,7 @@ func (v *Game) onMonsterKilled(ev d2monsters.KillEvent) {
 		super = ev.Label
 	}
 
-	v.questDispatch(d2quest.Event{Kind: d2quest.EvMonsterKilled, Monster: ev.Class, Super: super, Level: r.area})
+	v.questDispatch(d2quest.Event{Kind: d2quest.EvMonsterKilled, Monster: ev.Class, Super: super, Name: ev.Label, Level: r.area})
 }
 
 // questObjectOperated is a quest object (cairn stone, Malus chest...) used by the hero.

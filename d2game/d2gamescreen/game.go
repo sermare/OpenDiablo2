@@ -159,6 +159,7 @@ type Game struct {
 	monsters             *d2monsters.Director
 	monsterTest          *monsterTest
 	aiTest               *aiAutoTest
+	bossTest             *bossAutoTest
 	merc                 mercGame
 	skills               *d2skills.Engine
 	castTestState        *castTest

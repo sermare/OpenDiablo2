@@ -94,13 +94,13 @@ func TestParseForced(t *testing.T) {
 }
 
 func TestStateTable(t *testing.T) {
-	for _, id := range []int{2, 3, 6, 8, 9, 10, 11, 12, 14, 17} {
+	for _, id := range []int{2, 3, 6, 8, 9, 10, 11, 12, 13, 14, 16, 17} {
 		if d := StateDef(id); d == nil || !d.Implemented {
 			t.Errorf("state %d is not ported", id)
 		}
 	}
 
-	for _, id := range []int{0, 1, 4, 5, 7, 13, 15, 16, 18, -1} {
+	for _, id := range []int{0, 1, 4, 5, 7, 15, 18, -1} {
 		if StateDef(id) != nil {
 			t.Errorf("state %d should not be in the table", id)
 		}
