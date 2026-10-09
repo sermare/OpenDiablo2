@@ -151,6 +151,7 @@ type Game struct {
 	monsterTest          *monsterTest
 	attackTarget         *d2mapentity.Monster
 	attackRepathAcc      float64
+	levelStatusAcc       float64
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager

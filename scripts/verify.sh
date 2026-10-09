@@ -75,5 +75,28 @@ EOT
   if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in scripted log"; fail=1; fi
 fi
 
+if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
+  step "real maps (DRLG Den of Evil cave: renders, hero walks, monsters aggro, screenshot)"
+  save="${OD2_VERIFY_SAVE:-$tmp/save.d2s}"
+  cmd=$tmp/realmaps.command log=$tmp/realmaps.log shot=$tmp/realmaps.png
+  cat > $cmd <<EOT
+#!/bin/zsh
+export OD2_PORT=$OD2_PORT
+export OD2_AUTOGAME="$save" OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1
+export OD2_REALMAPS=1 OD2_AUTOLEVEL=9
+export OD2_AUTOSCRIPT='wait:1;say:capframe $shot;wait:1;move:33,56;wait:32;expect:log=aggro=1;exit'
+$tmp/od2 2>&1 | tee $log
+EOT
+  chmod +x $cmd; rm -f $log $shot
+  open $cmd
+  for i in {1..150}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
+  sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
+  grep -E "real maze:|AUTOSCRIPT RESULT" $log.txt | cut -c1-200
+  grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: real maps scenario did not pass"; fail=1; }
+  grep -q "real maze: level 9 .* stamps placed" $log.txt || { echo "FAIL: the DRLG level was not generated"; fail=1; }
+  [ -s $shot ] || { echo "FAIL: no screenshot"; fail=1; }
+  if grep -E "\[(ERROR|WARNING)\]|panic|Unknown tile" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in real maps log"; fail=1; fi
+fi
+
 echo
 [ $fail -eq 0 ] && echo "ALL CHECKS PASSED" || { echo "SOME CHECKS FAILED"; exit 1; }

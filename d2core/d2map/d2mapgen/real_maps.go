@@ -9,7 +9,6 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgmaze"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgworld"
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 )
@@ -22,6 +21,21 @@ var HeroMapSeed uint32
 // Only complete parts are wired: Act 1 maze levels (caves, crypts, jail,
 // catacombs). Everything else keeps using the old generator.
 func RealMapsEnabled() bool { return os.Getenv("OD2_REALMAPS") == "1" }
+
+// RealLevel returns the maze level the game should start in when
+// OD2_REALMAPS=1: OD2_AUTOLEVEL=<id> (start directly in that level), or else
+// OD2_AUTOMAP=<id>. 0 means "use the old generator".
+func RealLevel() int {
+	if !RealMapsEnabled() {
+		return 0
+	}
+
+	if v, _ := strconv.Atoi(os.Getenv("OD2_AUTOLEVEL")); v != 0 {
+		return v
+	}
+
+	return AutomapLevel()
+}
 
 // AutomapLevel returns the level id of OD2_AUTOMAP, or 0.
 func AutomapLevel() int {
@@ -162,62 +176,4 @@ func roomGrid(res *drlgmaze.Result) []string {
 	}
 
 	return out
-}
-
-// GenerateRealMaze replaces the map with the DRLG maze level for the hero's
-// seed: every room's chosen preset DS1 is stamped at its room position.
-// Sub-theme/object details beyond the DS1 contents are not generated.
-func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Difficulty) error {
-	tb, err := LoadDRLGTables(g.asset)
-	if err != nil {
-		return err
-	}
-
-	base, _ := d2rand.DrlgBaseSeed(seed)
-
-	res, err := drlgmaze.Generate(tb, drlgmaze.Params{LevelID: levelID, Difficulty: diff, BaseSeed: base})
-	if err != nil {
-		return err
-	}
-
-	lvl, _ := tb.Level(levelID)
-	region := d2enum.RegionIdType(lvl.LevelType)
-	w, h := res.MaxX-res.MinX+2, res.MaxY-res.MinY+2
-
-	g.engine.ResetMap(region, w, h)
-
-	placed := 0
-
-	for _, r := range res.Rooms {
-		rec, ok := g.asset.Records.Level.Presets[r.Def]
-		if !ok || rec.Files[0] == "" || rec.Files[0] == "0" || r.File < 0 {
-			g.Warningf("real maze: Def %d has no usable preset files, room skipped", r.Def)
-			continue
-		}
-
-		for _, f := range rec.Files {
-			g.engine.AddDS1(f)
-		}
-
-		stamp := g.engine.LoadStamp(region, r.Def, r.File)
-		if stamp == nil {
-			continue
-		}
-
-		sz := stamp.Size()
-		ox, oy := r.X-res.MinX, r.Y-res.MinY
-
-		if ox+sz.Width > w || oy+sz.Height > h {
-			g.Warningf("real maze: stamp %s (%dx%d) does not fit, skipped", r.FileName, sz.Width, sz.Height)
-			continue
-		}
-
-		g.engine.PlaceStamp(stamp, ox, oy)
-
-		placed++
-	}
-
-	g.Infof("real maze: level %d seed %#x: %d rooms, %d stamps placed", levelID, seed, len(res.Rooms), placed)
-
-	return nil
 }
