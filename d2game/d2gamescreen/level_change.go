@@ -78,6 +78,7 @@ type levelState struct {
 	edgeArmed bool
 	exitWalk  *exitWalk
 	kill      *killState // the scripted fight of a kill: step
+	loot      *lootState // the scripted pickup of a loot: step
 	// portalStateUntil is when the 75-frame state 0x66 after a portal jump ends.
 	portalStateUntil float64
 }
@@ -253,13 +254,7 @@ func (v *Game) performLevelChange(t *levelTransition) {
 		return
 	}
 
-	v.resetLevelState()
-
-	v.levels.cooldown.Mark(v.levels.clock)
-	v.levels.changes++
-	v.levels.edgeArmed = false
-	v.scanWarps()
-	v.questArea(t.target) // the quest system follows the hero between areas
+	v.afterLevelBuilt(from, t.target, t.via)
 
 	px, py := v.heroTilePos()
 	v.Infof("LEVEL CHANGE from=%d to=%d (%s) act=%d via=%s start=%#x townTransition=%v actChange=%v arrival=(%.1f,%.1f) hero=(%.1f,%.1f)",
@@ -270,6 +265,23 @@ func (v *Game) performLevelChange(t *levelTransition) {
 		v.levels.portalStateUntil = v.levels.clock + portalStateSecond
 		v.Infof("LEVEL portal state %#x for %d frames (%.1f s)", d2level.PortalStateID, d2level.PortalStateFrames, portalStateSecond)
 	}
+}
+
+// afterLevelBuilt is the bookkeeping after the map of a new level was built
+// and the hero put into it: the old level's pending things go, the warp tiles
+// of the new map are listed, the quest system learns the new area and the
+// corpse of a hero who died here comes back.
+func (v *Game) afterLevelBuilt(from, to int, via string) {
+	v.resetLevelState()
+
+	v.levels.cooldown.Mark(v.levels.clock)
+	v.levels.changes++
+	v.levels.edgeArmed = false
+	v.scanWarps()
+	v.questArea(to) // the quest system follows the hero between areas
+	v.restoreCorpse()
+
+	v.Infof("LEVEL built: level %d (%s) via=%s from=%d", to, v.levelName(to), via, from)
 }
 
 // nextToWaypoint picks the waypoint object of a freshly built level as the

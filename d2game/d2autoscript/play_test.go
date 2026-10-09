@@ -53,6 +53,11 @@ func TestParsePlaySteps(t *testing.T) {
 		{"until:x,0", true, Step{}},
 		{"menu:Talk", false, Step{Kind: KindMenu, Arg: "Talk"}},
 		{"menu:", true, Step{}},
+		{"loot:15", false, Step{Kind: KindLoot, Arg: "15", Radius: 15, Seconds: DefaultLootSeconds}},
+		{"loot:8,20", false, Step{Kind: KindLoot, Arg: "8,20", Radius: 8, Seconds: 20}},
+		{"loot:", true, Step{}},
+		{"loot:0", true, Step{}},
+		{"loot:5,x", true, Step{}},
 	}
 
 	for _, tc := range tests {

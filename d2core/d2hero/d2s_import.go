@@ -60,6 +60,8 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 
 	// a brand new character has no body: keep the class defaults
 	if !header.HasBody() {
+		state.Containers = f.StartingContainers(hero)
+
 		return state, nil
 	}
 

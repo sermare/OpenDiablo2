@@ -48,6 +48,8 @@ const (
 	KindKill Kind = "kill"
 	// KindUntil waits for a log line: until:<substring>,<timeout seconds>.
 	KindUntil Kind = "until"
+	// KindLoot picks up the items lying within a radius: loot:<tiles>[,<seconds>].
+	KindLoot Kind = "loot"
 	// KindMenu picks a row of the open NPC menu (menu:Talk, menu:Trade, a topic text).
 	KindMenu Kind = "menu"
 )
@@ -120,6 +122,23 @@ type SkillHost interface {
 	Hotkey(key, skill string) error
 	// Press presses the hotkey ("F1").
 	Press(key string) error
+}
+
+// LootHost is implemented by hosts that can pick up ground items.
+type LootHost interface {
+	// Loot walks to and picks up every item within radius tiles of the hero;
+	// Busy stays true until none is left (or seconds ran out).
+	Loot(radius, seconds float64) error
+}
+
+// LogMarkHost is implemented by hosts that can tell which log lines are new:
+// until: then only accepts lines logged after the step started (otherwise an
+// until:NPC menu opened would be satisfied by the menu of ten steps ago).
+type LogMarkHost interface {
+	// LogMark returns a position in the log.
+	LogMark() int
+	// LogContainsSince reports whether a line logged after the mark contains substr.
+	LogContainsSince(mark int, substr string) bool
 }
 
 // BusyTimeout is the longest the runner waits for a busy host (game seconds).
@@ -288,6 +307,8 @@ func parseStep(raw string) (Step, error) {
 		if arg == "" {
 			return s, errors.New("menu needs a row name")
 		}
+	case KindLoot:
+		err = parseLoot(&s, arg)
 	case KindExpect:
 		if strings.HasPrefix(arg, "level=") {
 			s.Level, err = strconv.Atoi(strings.TrimPrefix(arg, "level="))
@@ -312,6 +333,32 @@ func parseStep(raw string) (Step, error) {
 
 	return s, err
 }
+
+// parseLoot reads "<tiles>[,seconds]".
+func parseLoot(s *Step, arg string) error {
+	rad, secs := arg, ""
+	if i := strings.Index(arg, ","); i >= 0 {
+		rad, secs = strings.TrimSpace(arg[:i]), strings.TrimSpace(arg[i+1:])
+	}
+
+	r, err := strconv.ParseFloat(rad, 64)
+	if err != nil || r <= 0 {
+		return errors.New("loot needs a radius in tiles")
+	}
+
+	s.Radius, s.Seconds = r, DefaultLootSeconds
+
+	if secs != "" {
+		if s.Seconds, err = strconv.ParseFloat(secs, 64); err != nil || s.Seconds <= 0 {
+			return errors.New("loot: bad timeout")
+		}
+	}
+
+	return nil
+}
+
+// DefaultLootSeconds is how long a loot step runs unless it says otherwise.
+const DefaultLootSeconds = 60.0
 
 // parseKill reads "all[,seconds]" or "near=<tiles>[,seconds]".
 func parseKill(s *Step, arg string) error {
@@ -392,6 +439,10 @@ type Runner struct {
 	// until is the waiting until: step and how long it has waited
 	until      *Step
 	untilSince float64
+	untilMark  int
+	// actionMark is the log position at the start of the last step that did something
+	actionMark int
+	markInit   bool
 }
 
 // NewRunner creates a runner for the steps.
@@ -418,6 +469,10 @@ func (r *Runner) Advance(elapsed float64) {
 		}
 
 		r.waiting = 0
+	}
+
+	if lm, ok := r.host.(LogMarkHost); ok && !r.markInit {
+		r.markInit, r.actionMark = true, lm.LogMark() // the log before the script started does not count
 	}
 
 	if r.until != nil {
@@ -447,6 +502,13 @@ func (r *Runner) Advance(elapsed float64) {
 	r.levelWait = 0
 	r.next++
 	r.host.Logf("AUTOSCRIPT step %d: %s", r.next, s.Text)
+
+	// an until: step looks for lines logged since the last step that did
+	// something (not a wait or a check): the action's own lines come before
+	// the until step starts
+	if lm, ok := r.host.(LogMarkHost); ok && s.Kind != KindWait && s.Kind != KindExpect && s.Kind != KindUntil {
+		r.actionMark = lm.LogMark()
+	}
 
 	if err := r.run(s); err != nil {
 		r.failed = true
@@ -507,13 +569,22 @@ func (r *Runner) run(s Step) error {
 		return lh.Waypoint(s.Level)
 	case KindWalkTo, KindKill, KindMenu:
 		return r.play(s)
-	case KindUntil:
-		if r.host.LogContains(s.Arg) {
-			return nil
+	case KindLoot:
+		lh, ok := r.host.(LootHost)
+		if !ok {
+			return errors.New("host does not support loot")
 		}
 
+		return lh.Loot(s.Radius, s.Seconds)
+	case KindUntil:
 		st := s
 		r.until, r.untilSince = &st, 0
+
+		if _, ok := r.host.(LogMarkHost); ok {
+			r.untilMark = r.actionMark
+		} else if r.host.LogContains(s.Arg) {
+			r.until = nil
+		}
 
 		return nil
 	case KindExpect:
@@ -553,7 +624,15 @@ func (r *Runner) play(s Step) error {
 func (r *Runner) advanceUntil(elapsed float64) {
 	s := r.until
 
-	if r.host.LogContains(s.Arg) {
+	seen := false
+
+	if lm, ok := r.host.(LogMarkHost); ok {
+		seen = lm.LogContainsSince(r.untilMark, s.Arg)
+	} else {
+		seen = r.host.LogContains(s.Arg)
+	}
+
+	if seen {
 		r.until = nil
 		return
 	}

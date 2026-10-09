@@ -7,6 +7,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client"
 )
 
@@ -112,6 +113,7 @@ type exitWalk struct {
 	candidates [][2]float64 // local tile positions to try, nearest first
 	next       int
 	standStill float64
+	paused     bool // a defensive fight interrupted the walk
 	lastX      float64
 	lastY      float64
 	warp       *d2mapengine.WarpTile
@@ -224,6 +226,43 @@ func (v *Game) stepExitWalk(e *exitWalk) {
 	v.movePlayerTo(c[0], c[1])
 }
 
+// threatRadius is the distance (tiles) at which a hostile monster makes the
+// walking hero turn round and fight, like a player who is attacked on the way.
+const threatRadius = 5.0
+
+// defendOnTheWay pauses the walk and fights when a monster is close, and
+// resumes the walk when the fight is over. It reports that the walk is paused.
+func (v *Game) defendOnTheWay(e *exitWalk) bool {
+	if v.monsters == nil {
+		return false
+	}
+
+	if v.levels.kill != nil {
+		e.paused = true
+		return true
+	}
+
+	if e.paused {
+		e.paused = false
+		e.standStill = 0
+		hx, hy := v.heroTilePos()
+		e.lastX, e.lastY = hx, hy
+		v.stepExitWalk(e)
+
+		return false
+	}
+
+	k := &killState{radius: threatRadius, deadline: defendSeconds, skip: map[*d2mapentity.Monster]bool{}, defend: true}
+	if k.start = len(v.killCandidates(k)); k.start == 0 {
+		return false
+	}
+
+	v.levels.kill, e.paused = k, true
+	v.Infof("KILL defending against %d monster(s) near the hero on the way to level %d", k.start, e.level)
+
+	return true
+}
+
 // advanceExitWalk keeps the scripted walk going until the level changed, the
 // hero is stuck for good or the time is up.
 func (v *Game) advanceExitWalk(elapsed float64) {
@@ -239,6 +278,10 @@ func (v *Game) advanceExitWalk(elapsed float64) {
 
 	if v.levels.trans != nil {
 		return // crossing right now
+	}
+
+	if v.defendOnTheWay(e) {
+		return
 	}
 
 	e.elapsed += elapsed

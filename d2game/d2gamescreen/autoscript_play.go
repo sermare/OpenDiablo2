@@ -24,6 +24,7 @@ const (
 	// killPotionLife is the life fraction below which the hero drinks a belt potion.
 	killPotionLife = 0.4
 	fireBoltName   = "Fire Bolt"
+	defendSeconds  = 40.0
 )
 
 // killState is a running kill: step of the script.
@@ -39,6 +40,7 @@ type killState struct {
 	skip     map[*d2mapentity.Monster]bool
 	castAcc  float64
 	potions  int
+	defend   bool // a fight started by a walk that was attacked on the way
 }
 
 // WalkToExit implements d2autoscript.PlayHost.
@@ -247,11 +249,100 @@ func (v *Game) drinkIfHurt(k *killState) {
 	}
 }
 
+// lootState is a running loot: step.
+type lootState struct {
+	radius   float64
+	deadline float64
+	elapsed  float64
+	tried    map[*d2mapentity.Item]bool
+	picked   int
+}
+
+// Loot picks up the ground items around the hero, nearest first.
+func (h autoScriptHost) Loot(radius, seconds float64) error {
+	h.v.levels.loot = &lootState{radius: radius, deadline: seconds, tried: map[*d2mapentity.Item]bool{}}
+	h.v.Infof("LOOT start radius=%.0f seconds=%.0f items=%d", radius, seconds, len(h.v.lootCandidates(h.v.levels.loot)))
+
+	return nil
+}
+
+func (v *Game) lootCandidates(l *lootState) []*d2mapentity.Item {
+	var out []*d2mapentity.Item
+
+	hx, hy := v.heroTilePos()
+
+	for _, e := range v.gameClient.MapEngine.Entities() {
+		it, ok := e.(*d2mapentity.Item)
+		if !ok || l.tried[it] {
+			continue
+		}
+
+		if x, y := it.GetPositionF(); math.Hypot(x-hx, y-hy) <= l.radius {
+			out = append(out, it)
+		}
+	}
+
+	return out
+}
+
+// advanceLoot walks to the next item once the previous pickup is over.
+func (v *Game) advanceLoot(elapsed float64) {
+	l := v.levels.loot
+	if l == nil || v.localPlayer == nil {
+		return
+	}
+
+	if l.elapsed += elapsed; l.elapsed > l.deadline {
+		v.Warningf("LOOT ran out of time (%d item(s) picked)", l.picked)
+		v.levels.loot, v.ground.item = nil, nil
+
+		return
+	}
+
+	if v.ground.item != nil {
+		return // still walking to / picking up the current one
+	}
+
+	// a picked-up item sits on the cursor: put it into the inventory like the player would
+	if it := v.gameControls.CursorItem(); it != nil {
+		if x, y, ok := v.gameControls.AutoPlaceCursor(); ok {
+			v.Infof("LOOT stored %q in the inventory at (%d,%d)", it.GetItemCode(), x, y)
+		} else {
+			v.Warningf("LOOT no room in the inventory for %q", it.GetItemCode())
+			v.levels.loot = nil
+
+			return
+		}
+	}
+
+	cands := v.lootCandidates(l)
+	if len(cands) == 0 {
+		v.Infof("LOOT done: %d item(s) walked to, %.1fs", l.picked, l.elapsed)
+		v.levels.loot = nil
+
+		return
+	}
+
+	hx, hy := v.heroTilePos()
+	best, bd := cands[0], math.MaxFloat64
+
+	for _, it := range cands {
+		x, y := it.GetPositionF()
+		if d := math.Hypot(x-hx, y-hy); d < bd {
+			best, bd = it, d
+		}
+	}
+
+	l.tried[best] = true
+	l.picked++
+	v.walkToItem(best)
+}
+
 // playBusy reports that a scripted play step still runs.
 func (v *Game) playBusy() bool {
 	g := v.ground
 
-	return v.levels.kill != nil || g.item != nil || g.chest != nil || g.stash != nil || g.questObj != nil
+	return v.levels.kill != nil || v.levels.loot != nil || g.item != nil || g.chest != nil || g.stash != nil || g.questObj != nil
 }
 
 // autoPlayEnabled says whether the world is populated for a scripted playthrough.

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
@@ -50,6 +51,11 @@ type deathState struct {
 	corpse       *d2mapentity.Player // entity lying at the death spot
 	corpseX      int
 	corpseY      int
+	// corpseLevel is the level the hero died in; the corpse lies there. When
+	// the hero respawns in the town of another level the corpse waits
+	// (corpsePending) until that level is built again.
+	corpseLevel   int
+	corpsePending bool
 
 	test *deathTest
 }
@@ -169,6 +175,7 @@ func (v *Game) heroDies() {
 
 	p.Stats.Experience = out.NewExperience
 	st.corpseX, st.corpseY = x, y
+	st.corpseLevel = v.currentLevel()
 
 	v.takeGold(p.Gold, x, y)
 	p.Die()
@@ -226,14 +233,26 @@ func (v *Game) respawnHero() {
 		corpseEquip = p.Death.Corpse.Equipment
 	}
 
+	// the hero stands up in the town of the act the body lies in; a death in
+	// the wilderness or a dungeon builds that town first (the level change
+	// resets the map, so the corpse is placed afterwards)
+	moved := v.respawnLevel()
+
 	// the dead body stays; the hero walks on without its equipment
-	v.placeCorpse(st.corpseX, st.corpseY)
+	if v.currentLevel() == st.corpseLevel || st.corpseLevel == 0 {
+		v.placeCorpse(st.corpseX, st.corpseY)
+	} else {
+		st.corpse, st.corpsePending = nil, true
+	}
 
 	if p.Equipment != nil {
 		*p.Equipment = d2inventory.CharacterEquipment{}
 	}
 
-	p.SetPositionSubtile(st.townX, st.townY)
+	if !moved {
+		p.SetPositionSubtile(st.townX, st.townY)
+	}
+
 	p.Revive()
 	p.ApplyEquipment()
 	p.SetIsInTown(true)
@@ -246,6 +265,56 @@ func (v *Game) respawnHero() {
 		p.Gold, describeEquipment(p.Equipment), st.corpseX, st.corpseY, describeEquipment(&corpseEquip))
 
 	v.saveBeforeExit()
+}
+
+// respawnLevel moves a hero who died outside the town of his act to that town
+// (no fade: he was dead for a while). It reports whether the level changed; the
+// hero is then already at the town's arrival point.
+func (v *Game) respawnLevel() bool {
+	st := &v.death
+
+	from := st.corpseLevel
+	if from == 0 {
+		from = v.currentLevel()
+	}
+
+	town := d2level.ActStartLevel(d2level.ActOfLevel(from))
+	if v.currentLevel() == town || !v.gameClient.CanLoadLevel(town) {
+		return false
+	}
+
+	// the old map takes the corpse entity with it
+	st.corpse = nil
+
+	if _, err := v.gameClient.ChangeLevel(town, nil); err != nil {
+		v.Errorf("DEATH respawn: cannot build the town (level %d): %v", town, err)
+		return false
+	}
+
+	v.afterLevelBuilt(from, town, "respawn")
+
+	return true
+}
+
+// restoreCorpse puts the hero's corpse back when he enters the level he died in.
+func (v *Game) restoreCorpse() {
+	st := &v.death
+
+	if v.localPlayer == nil || v.localPlayer.Death == nil || v.localPlayer.Death.Corpse == nil {
+		st.corpsePending = false
+		return
+	}
+
+	if st.corpse != nil {
+		st.corpse, st.corpsePending = nil, true // the map was rebuilt
+	}
+
+	if st.corpsePending && v.currentLevel() == st.corpseLevel {
+		v.placeCorpse(st.corpseX, st.corpseY)
+		st.corpsePending = false
+
+		v.Infof("DEATH corpse waits at (%d,%d) in level %d", st.corpseX, st.corpseY, st.corpseLevel)
+	}
 }
 
 // placeCorpse creates the entity of a dead hero at a subtile position.

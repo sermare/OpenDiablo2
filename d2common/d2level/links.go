@@ -255,27 +255,73 @@ const (
 	WarpCaveDown            = 5 // "Act 1 Cave Down"
 )
 
-// TileDestination is Destination for the special tile of a DS1 preset. The
-// style of the tile is the LvlWarp id for stairs inside the mazes, but the
-// cave entrance presets of the wilderness (Act1/Caves/DenEnt.ds1 and its
-// siblings, UNVERIFIED how the exe tells them apart) carry style 5, "Cave
-// Down", while Levels.txt lists the wilderness slots with the ids 0..3
-// ("Wilderness to Cave"). A "Cave Down" tile in a level that has such a slot
-// leads to the slot's level.
-func TileDestination(level, style int) (int, bool) {
-	if to, ok := Destination(level, style); ok {
-		return to, true
-	}
+// upWarps are the LvlWarp ids that lead up (towards the town); the other
+// ids of a dungeon level lead down.
+var upWarps = map[int]bool{4: true, 8: true, 11: true, 13: true, 16: true, 17: true}
 
-	if style != WarpCaveDown {
+// isOutdoor reports a level that borders others on seamless edges.
+func isOutdoor(level int) bool { return len(EdgeNeighbors(level)) > 0 }
+
+// TileDestination is Destination for the special tile of a DS1 preset, by the
+// style the tile carries. UNVERIFIED (the exe resolves the tile through a table
+// that is not decoded): what the Act 1 presets show is
+//
+//   - outdoor levels: the cave entrance presets (Act1/Caves/DenEnt.ds1 and its
+//     siblings) carry style 5, "Cave Down", while Levels.txt lists the
+//     wilderness slots with the ids 0..3 ("Wilderness to Cave"); a style 5 tile
+//     leads to the slot's level. Other styles are matched against the LvlWarp
+//     id of the slots (Burial Grounds: 6 and 7);
+//   - dungeon levels: style 0 is the "up" exit of the entry stairs, style 1 the second
+//     up exit when the level has one (level 10) and else the "next" stairs of
+//     crypts, jail and catacombs, and style 4 is the cave "down" exit (4+n for the next
+//     ones). The LvlWarp id is NOT the style there (style 4 leads down,
+//     LvlWarp 4 is "Cave Up").
+func TileDestination(level, style int) (int, bool) {
+	if isOutdoor(level) {
+		if to, ok := Destination(level, style); ok {
+			return to, true
+		}
+
+		if style != WarpCaveDown {
+			return 0, false
+		}
+
+		for _, l := range allLinks {
+			if l.From == level && l.Kind == KindTile && l.Warp >= 0 && l.Warp <= WarpWildernessToCaveMax {
+				return l.To, true
+			}
+		}
+
 		return 0, false
 	}
 
+	var ups, downs []int
+
 	for _, l := range allLinks {
-		if l.From == level && l.Kind == KindTile && l.Warp >= 0 && l.Warp <= WarpWildernessToCaveMax {
-			return l.To, true
+		if l.From != level || l.Kind != KindTile || l.Warp < 0 {
+			continue
 		}
+
+		if upWarps[l.Warp] {
+			ups = append(ups, l.To)
+		} else {
+			downs = append(downs, l.To)
+		}
+	}
+
+	switch {
+	case style == 0 && len(ups) > 0:
+		return ups[0], true
+	case style == 1 && len(ups) > 1:
+		return ups[1], true // the second up exit (Underground Passage level 1 leads to both its outdoor ends)
+	case style == 1 && len(downs) > 0:
+		return downs[0], true // the "next" stairs of crypts, jail and catacombs
+	case style >= downStyleBase && style-downStyleBase < len(downs):
+		return downs[style-downStyleBase], true
 	}
 
 	return 0, false
 }
+
+// downStyleBase is the tile style of the first "down" exit of a dungeon level.
+const downStyleBase = 4
