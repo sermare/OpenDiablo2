@@ -47,3 +47,29 @@ func TestExportMercFields(t *testing.T) {
 		t.Errorf("replacement merc: err=%v header=%+v items=%d", err, got.Header.Mercenary, len(got.MercItems))
 	}
 }
+
+// TestMercFromHeader pins which header contents count as a merc. The notes
+// (hirelings.md) say a merc exists iff id|exp|nameId are not all zero (V by
+// decompile); the engine keys on the id alone, which is equivalent for every
+// real save because a hired merc always has a non-zero seed (UNVERIFIED for
+// hand-edited saves; the 'jf' item section is likewise only read for id != 0).
+func TestMercFromHeader(t *testing.T) {
+	tests := []struct {
+		name string
+		in   d2s.Mercenary
+		want *MercState
+	}{
+		{"none", d2s.Mercenary{}, nil},
+		{"alive", d2s.Mercenary{ID: 7, NameID: 3, Type: 11, Experience: 100},
+			&MercState{ID: 7, NameID: 3, Type: 11, Experience: 100}},
+		{"dead", d2s.Mercenary{Dead: true, ID: 7, Type: 2, Experience: 1},
+			&MercState{Dead: true, ID: 7, Type: 2, Experience: 1}},
+	}
+
+	for _, tc := range tests {
+		got := MercFromHeader(tc.in)
+		if (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
+			t.Errorf("%s: got %+v, want %+v", tc.name, got, tc.want)
+		}
+	}
+}

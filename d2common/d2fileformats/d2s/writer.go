@@ -100,13 +100,11 @@ func (h *Header) marshal() ([]byte, error) {
 	}
 
 	m := h.Mercenary
-	if (le.Uint16(out[mercDeadOffset:]) != 0) != m.Dead {
-		var dead uint16
+	if (out[mercDeadOffset]&1 != 0) != m.Dead {
+		out[mercDeadOffset] &^= 1
 		if m.Dead {
-			dead = 1
+			out[mercDeadOffset] |= 1
 		}
-
-		le.PutUint16(out[mercDeadOffset:], dead)
 	}
 
 	copy(out[difficultyOffset:], h.Difficulty[:])
