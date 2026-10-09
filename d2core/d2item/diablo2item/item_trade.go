@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2trade"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 )
 
 var errUnknownItemCode = errors.New("unknown item code")
@@ -171,9 +172,23 @@ func (i *Item) GambleBase() d2trade.Gamble {
 	return g
 }
 
-// extraStackStat is ItemStatCost row 254 (stat 0xfe), the per-item addition to
-// the stack limit (ItemStatCost.txt, "item_extra_stack").
-const extraStackStat = "item_extra_stack"
+// extraStackStatID is ItemStatCost id 254 (stat 0xfe), the per-item addition to
+// the stack limit (ITEM_GetMaxStack 0x6297b0). The name is taken from the
+// record with this id instead of being hard-coded; stock data calls it
+// "item_extra_stack".
+const extraStackStatID = 0xfe
+
+// extraStackStatName returns the ItemStatCost name of stat id 0xfe, or "" when
+// the table has no such row.
+func extraStackStatName(stats d2records.ItemStatCosts) string {
+	for name, rec := range stats {
+		if rec != nil && rec.Index == extraStackStatID {
+			return name
+		}
+	}
+
+	return ""
+}
 
 // IsStackable reports whether the base item stacks (armor/weapons/misc.txt
 // "stackable"; the original's test 0x62c9a0).
@@ -185,7 +200,7 @@ func (i *Item) IsStackable() bool {
 
 // StackLimit is the stack size limit: the base record maxstack plus the item's
 // stat 0xfe, clamped to 511 (ITEM_GetMaxStack 0x6297b0, VERIFIED). The stat is
-// found by name in the evaluated stat list; items without it add 0.
+// found by its id (via the ItemStatCost row) in the evaluated stat list; items without it add 0.
 func (i *Item) StackLimit() int {
 	rec := i.CommonRecord()
 	if rec == nil {
@@ -193,10 +208,11 @@ func (i *Item) StackLimit() int {
 	}
 
 	extra := 0
+	extraName := extraStackStatName(i.factory.asset.Records.Item.Stats)
 
-	if i.statList != nil {
+	if i.statList != nil && extraName != "" {
 		for _, s := range i.statList.Stats() {
-			if s.Name() != extraStackStat {
+			if s.Name() != extraName {
 				continue
 			}
 
