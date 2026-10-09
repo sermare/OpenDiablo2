@@ -6,7 +6,7 @@ scenario_check() {
 
   # rewards are applied to the hero, not only logged
   grep -qE "QUEST EFFECT reward life-boost value=20 .* max life [0-9]+ -> [0-9]+" $log.txt || { echo "FAIL: Potion of Life not applied"; fail=1; }
-  grep -qE "QUEST EFFECT reward resist-bonus value=10 .* resistances \+10 now fire=" $log.txt || { echo "FAIL: Malah's scroll not applied"; fail=1; }
+  grep -qE "QUEST EFFECT reward resist-bonus value=10 .* resistances \+10 .*now fire=" $log.txt || { echo "FAIL: Malah's scroll not applied"; fail=1; }
   grep -qE "REWARD socket item=lsd sockets=[1-6] " $log.txt || { echo "FAIL: Larzuk did not socket the sword"; fail=1; }
   grep -qE "REWARD personalize item=[a-z0-9]+ name=" $log.txt || { echo "FAIL: Anya did not personalise the helm"; fail=1; }
   grep -qE "QUEST EFFECT reward hire-barbarians .* mercenaries of barbarians are hirable" $log.txt || { echo "FAIL: Qual-Kehk's reward"; fail=1; }
@@ -19,8 +19,8 @@ scenario_check() {
   done
 
   # the cube recipes of the quests
-  grep -q 'CUBE transmute "Staff of Kings + Viper amulet -> Horadric Staff"' $log.txt || { echo "FAIL: Horadric Staff recipe"; fail=1; }
-  grep -q "CUBE transmute \"Khalim Flail + Heart + Eye + Brain -> Khalim's Will\"" $log.txt || { echo "FAIL: Khalim's Will recipe"; fail=1; }
+  grep -qE 'CUBE transmute row=[0-9]+ recipe=.* products=\[Horadric Staff\]' $log.txt || { echo "FAIL: Horadric Staff recipe"; fail=1; }
+  grep -qE "CUBE transmute row=[0-9]+ recipe=.* products=\[Khalim's Will\]" $log.txt || { echo "FAIL: Khalim's Will recipe"; fail=1; }
 
   # Pandemonium: three portals to the uber areas, their bosses (real monstats rows, own AIs), the organs, Tristram
   for lvl in 133 134 135 136; do

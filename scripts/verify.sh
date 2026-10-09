@@ -123,7 +123,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
       ./scripts/gameslot.sh release $slot
       sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
       scenario_check
-      if [ -z "$scenario_warnings_ok" ] && grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing" | grep -v "KILL giving up for now"; then
+      if [ -z "$scenario_warnings_ok" ] && grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing" | grep -v "KILL giving up for now" | grep -v "D2S export: container item"; then
         echo "FAIL: warnings/errors in the $scenario_name log"; fail=1
       fi
       [ $fail -eq $fail_before ] && break

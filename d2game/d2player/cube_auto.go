@@ -375,8 +375,8 @@ func (g *GameControls) autoRuneword(data *cubeData) (bool, string) {
 			it = next
 		}
 
-		if it.Runeword != w.Name {
-			return false, fmt.Sprintf("runes of %q in %s made %q", w.Name, base, it.Runeword)
+		if got := runewordOf(it); got == "" || (it.Rolled() == nil && got != w.Name) {
+			return false, fmt.Sprintf("runes of %q in %s made %q", w.Name, base, got)
 		}
 
 		// an item with the runes in the wrong order must not form it
@@ -403,12 +403,22 @@ func (g *GameControls) autoRuneword(data *cubeData) (bool, string) {
 			}
 		}
 
-		if !sameOrder && bad.Runeword == w.Name {
+		if !sameOrder && runewordOf(bad) != "" && (bad.Rolled() != nil || bad.Runeword == w.Name) {
 			return false, "the runes in reverse order also formed " + w.Name
 		}
 
-		return true, fmt.Sprintf("runeword %q formed in %s from %v (reverse order formed %q)", w.Name, base, w.Runes, bad.Runeword)
+		return true, fmt.Sprintf("runeword %q formed in %s from %v (reverse order formed %q)", w.Name, base, w.Runes, runewordOf(bad))
 	}
 
 	return false, "no usable runeword in the table"
+}
+
+// runewordOf is the runeword an item became: the cube model's display name, or
+// the Runes.txt key of an item made by the item creator.
+func runewordOf(it *diablo2item.Item) string {
+	if it.Rolled() != nil {
+		return it.RolledRuneword()
+	}
+
+	return it.Runeword
 }

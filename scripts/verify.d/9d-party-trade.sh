@@ -113,12 +113,13 @@ scenario_check() {
   grep -q "PVP BLOCKED target=\"$hn\" reason=\"party members do not hurt each other\"" $j || { echo "FAIL: swing at a party member was not blocked (joiner)"; fail=1; }
   grep -q "PARTY refused op=hostile name=\"$hn\"" $log.txt || { echo "FAIL: hostility inside a party was not refused"; fail=1; }
 
-  # 3 party experience: the awards add up to the kill's experience
+  # 3 party experience: the server scales each member's share by the member's own level against the monster's
+  # (VERIFIED), so the shares no longer add up to the kill's raw experience: each is positive and the sum does not exceed it
   local xp hxp jxp
   xp=$(_9d_nums $log.txt 'PARTYXP kill monster="[^"]*" xp=([0-9]+) sent' | head -1)
   hxp=$(_9d_nums $log.txt 'PARTYXP award amount=([0-9]+) of=' | head -1)
   jxp=$(_9d_nums $j 'PARTYXP award amount=([0-9]+) of=' | head -1)
-  { [ -n "$xp" ] && [ "$xp" -gt 0 ] && [ -n "$hxp" ] && [ -n "$jxp" ] && [ $((hxp + jxp)) -eq "$xp" ]; } || { echo "FAIL: party experience: kill=$xp host=$hxp joiner=$jxp"; fail=1; }
+  { [ -n "$xp" ] && [ "$xp" -gt 0 ] && [ -n "$hxp" ] && [ -n "$jxp" ] && [ "$hxp" -gt 0 ] && [ "$jxp" -gt 0 ] && [ $((hxp + jxp)) -le "$xp" ]; } || { echo "FAIL: party experience: kill=$xp host=$hxp joiner=$jxp"; fail=1; }
   grep -q "PARTYXP kill monster=.*shares=\[$hn=$hxp $jn=$jxp\]\|PARTYXP kill monster=.*shares=\[$jn=$jxp $hn=$hxp\]" $log.txt || { echo "FAIL: server share log differs"; fail=1; }
 
   # 4 trade: item and gold both ways, with the gold totals before and after

@@ -5,7 +5,7 @@ a1=$tmp/act1
 # on the way, enter the Den of Evil cave through its entrance tile, clear it, come back and collect
 # the reward from Akara, then exit (which saves the hero to a .d2s). 9c reloads that .d2s.
 scenario_env() {
-  mkdir -p $a1/new $a1/wb; rm -f $a1/new/*.d2s $a1/wb/*.d2s
+  mkdir -p $a1/new $a1/wb; rm -f $a1/new/*.d2s(N) $a1/wb/*.d2s(N)
   # a brand new Sorceress through the hero creation path (a 335 byte .d2s without items)
   {
     echo '#!/bin/zsh'

@@ -6,7 +6,7 @@ a3=$tmp/act3
 # 3. After `completequest 3 2` the same stairs work; Durance 1 -> 2 -> 3 follow by their stairs.
 scenario_warnings_ok=1
 scenario_env() {
-  mkdir -p $a3/s94 $a3/wb94; rm -f $a3/s94/*.d2s $a3/wb94/*.d2s
+  mkdir -p $a3/s94 $a3/wb94; rm -f $a3/s94/*.d2s(N) $a3/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && go run scripts/d2s-revive.go "$D2S_SAMPLE_BODY" $a3/s94/Hero.d2s "$D2_TABLES" >/dev/null 2>&1; then
     local s="wait:1;say:resetquests;say:completequest 2 6;travel:3;expect:level=75;wait:3;say:setwaypoint 83 1"
     s+=";use:Waypoint;waypoint:83;expect:level=83;wait:3"

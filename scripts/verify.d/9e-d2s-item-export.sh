@@ -13,7 +13,7 @@ scenario_check() {
   grep -E "AUTOTRADE (buy|keep)|GIVEITEM|LOOT|D2S EXPORT|D2S export|AUTOSCRIPT RESULT" $log.txt | cut -c1-260
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: the item export script did not pass"; fail=1; }
   grep -qE "AUTOTRADE buy vendor=Akara .*err=<nil>" $log.txt || { echo "FAIL: no scripted buy at Akara"; fail=1; }
-  ls $wb9e/*.d2s >/dev/null 2>&1 || { echo "FAIL: no exported .d2s in $wb9e"; fail=1; return; }
+  ls $wb9e/*.d2s(N) >/dev/null 2>&1 || { echo "FAIL: no exported .d2s in $wb9e"; fail=1; return; }
 
   # the bought item: its code is in the keep line, and the exported file must hold it
   local code n
