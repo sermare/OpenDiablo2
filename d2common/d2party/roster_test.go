@@ -1,6 +1,7 @@
 package d2party
 
 import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -302,5 +303,75 @@ func TestShareXPRules(t *testing.T) {
 
 	if s := solo.ShareXP("nobody", 99); s != nil {
 		t.Errorf("unknown killer %v", s)
+	}
+}
+
+// TestShareKillXP: the party split of the exe with per-member level scaling,
+// and a solo player exactly as the solo rule (d2herostats.KillXP).
+func TestShareKillXP(t *testing.T) {
+	r := game() // a=20, b=10, c=5 (same area), d elsewhere
+	_ = r.Invite("a", "b")
+	_, _ = r.Accept("b")
+	_ = r.Invite("a", "c")
+	_, _ = r.Accept("c")
+
+	got := map[string]int{}
+	for _, s := range r.ShareKillXP("a", 3500, 10, 99) {
+		got[s.ID] = s.XP
+	}
+
+	// total = 3500 + 2*3500*89>>8 = 5932, split 20:10:5, then each share scaled
+	pool := SplitKillXP(3500, []int{20, 10, 5})
+	want := map[string]int{
+		"a": d2herostats.KillXP(pool[0], 10, 20, 99, 0),
+		"b": d2herostats.KillXP(pool[1], 10, 10, 99, 0),
+		"c": d2herostats.KillXP(pool[2], 10, 5, 99, 0),
+	}
+
+	if len(got) != 3 || got["a"] != want["a"] || got["b"] != want["b"] || got["c"] != want["c"] {
+		t.Errorf("got %v want %v pool %v", got, want, pool)
+	}
+
+	if pool[0]+pool[1]+pool[2] < 5900 || pool[0]+pool[1]+pool[2] > 5932 {
+		t.Errorf("party bonus pool %v", pool)
+	}
+
+	// a solo player (alone in another area): exactly the solo rule
+	lvl := 1
+
+	for _, in := range r.Snapshot().Players {
+		if in.ID == "d" {
+			lvl = in.Level
+		}
+	}
+
+	s := r.ShareKillXP("d", 1000, 40, 99)
+	if len(s) != 1 || s[0].ID != "d" || s[0].XP != d2herostats.KillXP(1000, 40, lvl, 99, 0) {
+		t.Errorf("solo: %v", s)
+	}
+
+	if r.ShareKillXP("nobody", 5, 5, 99) != nil {
+		t.Error("unknown killer")
+	}
+}
+
+// A party never exceeds the 8 recipients of the exe (the roster refuses a ninth member).
+func TestShareKillXPCapsRecipients(t *testing.T) {
+	r := New()
+	id := func(i int) string { return string(rune('a' + i)) }
+
+	for i := 0; i < 10; i++ {
+		r.Add(Member{ID: id(i), Name: id(i), Level: 30, Area: 1})
+	}
+
+	for i := 1; i < 10; i++ {
+		if err := r.Invite("a", id(i)); err == nil {
+			_, _ = r.Accept(id(i))
+		}
+	}
+
+	s := r.ShareKillXP("a", 1000, 30, 99)
+	if len(s) != MaxRecipients || MaxRecipients != d2enum.MaxPlayersInGame {
+		t.Fatalf("%d recipients", len(s))
 	}
 }

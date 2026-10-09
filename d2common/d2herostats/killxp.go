@@ -8,6 +8,9 @@ package d2herostats
 // before scaling (0x7fffff). VERIFIED.
 const killXPCap = 0x7fffff
 
+// KillXPCap is killXPCap for callers that clamp before their own checks.
+const KillXPCap = killXPCap
+
 // Level difference multipliers, in 1/256, indexed by the level difference
 // capped at 10. Numbers read from the exe's data tables. VERIFIED.
 //

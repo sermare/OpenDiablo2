@@ -95,3 +95,14 @@ func statClass(c *d2records.CharStatRecord) d2statlist.Class {
 		ToHitFactor: c.ToHitFactor, BlockFactor: c.BlockFactor,
 	}
 }
+
+// ItemExperiencePct is the item "+% experience" bonus (stat 85,
+// item_addexperience) of the last RecalcStats; 0 for a hero without the bonus
+// or without a stat list (a copy of the stats that travelled over the network).
+func (s *HeroStatsState) ItemExperiencePct() int {
+	if s == nil || s.Totals == nil {
+		return 0
+	}
+
+	return int(s.Totals.Stats.Get(d2statlist.StatAddExp))
+}

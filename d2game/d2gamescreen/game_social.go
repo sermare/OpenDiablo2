@@ -157,12 +157,12 @@ func (v *Game) commandKillNear(_ []string) error {
 
 // partyXP is the monster director's hook: with party members around, the
 // experience of the hero's kill goes to the server, which splits it.
-func (v *Game) partyXP(src *d2mapentity.Player, xp int, monster string) bool {
+func (v *Game) partyXP(src *d2mapentity.Player, xp, monsterLevel int, monster string) bool {
 	if src != v.localPlayer || v.gameClient.IsSinglePlayer() || len(v.gameClient.Roster.PartyMembers(v.me())) < 2 {
 		return false
 	}
 
-	pkt, err := d2netpacket.CreatePartyXPPacket(d2netpacket.PartyXPPacket{Killer: v.me(), Monster: monster, XP: xp})
+	pkt, err := d2netpacket.CreatePartyXPPacket(d2netpacket.PartyXPPacket{Killer: v.me(), Monster: monster, XP: xp, MonsterLevel: monsterLevel})
 	if err != nil || v.gameClient.SendPacketToServer(pkt) != nil {
 		return false
 	}
@@ -178,14 +178,20 @@ func (v *Game) onPartyXP(p d2netpacket.PartyXPPacket) {
 	}
 
 	before := v.localPlayer.Stats.Experience
-	v.localPlayer.Stats.Experience += p.Amount
+	amount := p.Amount
+
+	if p.MonsterLevel > 0 { // the server already scaled by level; the item +% experience is ours
+		amount += amount * v.localPlayer.Stats.ItemExperiencePct() / 100
+	}
+
+	v.localPlayer.Stats.Experience += amount
 	killer := p.Killer
 
 	if m, ok := v.gameClient.Roster.Member(p.Killer); ok {
 		killer = m.Name
 	}
 
-	v.Infof("PARTYXP award amount=%d of=%d killer=%q monster=%q experience %d->%d", p.Amount, p.XP, killer, p.Monster,
+	v.Infof("PARTYXP award amount=%d of=%d killer=%q monster=%q experience %d->%d", amount, p.XP, killer, p.Monster,
 		before, v.localPlayer.Stats.Experience)
 }
 

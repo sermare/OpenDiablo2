@@ -87,8 +87,11 @@ type PartyXPPacket struct {
 	Killer  string `json:"killer"`
 	Monster string `json:"monster,omitempty"`
 	XP      int    `json:"xp"`
-	Player  string `json:"player,omitempty"`
-	Amount  int    `json:"amount,omitempty"`
+	// MonsterLevel lets the server scale each share by the member level; 0 (an
+	// old client) keeps the plain level-proportional split.
+	MonsterLevel int    `json:"monsterLevel,omitempty"`
+	Player       string `json:"player,omitempty"`
+	Amount       int    `json:"amount,omitempty"`
 }
 
 func social(t d2netpackettype.NetPacketType, v interface{}) (NetPacket, error) {

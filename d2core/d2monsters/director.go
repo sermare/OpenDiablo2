@@ -171,12 +171,12 @@ type Director struct {
 	// (the experience shrine).
 	ExpBonusPct func() int
 
-	// PartyXP, when set, is offered the experience of every kill by a hero
-	// (the amount after the shrine bonus). It returns true when the amount is
-	// handled elsewhere (a network party: the server splits it among the
-	// members and each gets its share back as a packet); false leaves the whole
-	// amount to the killer.
-	PartyXP func(src *d2mapentity.Player, xp int, monster string) bool
+	// PartyXP, when set, is offered the UNSCALED experience of every kill by a
+	// hero (after the shrine bonus) and the monster's level. It returns true
+	// when the amount is handled elsewhere (a network party: the server splits
+	// it among the members, scales each share with the member's level and sends
+	// it back as a packet); false leaves the kill to the killer alone.
+	PartyXP func(src *d2mapentity.Player, xp, monsterLevel int, monster string) bool
 
 	pvp map[string]*d2rand.Seed // hero id -> its roller for swings at other heroes
 
