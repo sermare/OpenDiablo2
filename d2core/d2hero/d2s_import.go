@@ -1,0 +1,122 @@
+package d2hero
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+)
+
+// d2sSkillsPerClass is the number of skill slots a .d2s file stores.
+const d2sSkillsPerClass = 30
+
+var d2sClassToHero = map[d2s.Class]d2enum.Hero{
+	d2s.Amazon:      d2enum.HeroAmazon,
+	d2s.Sorceress:   d2enum.HeroSorceress,
+	d2s.Necromancer: d2enum.HeroNecromancer,
+	d2s.Paladin:     d2enum.HeroPaladin,
+	d2s.Barbarian:   d2enum.HeroBarbarian,
+	d2s.Druid:       d2enum.HeroDruid,
+	d2s.Assassin:    d2enum.HeroAssassin,
+}
+
+// ImportD2S converts the contents of a Diablo II .d2s save into a hero state.
+// Name, class, level, experience, attributes, health/mana, gold and the
+// spent skill points are imported; items and quests are not yet.
+func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
+	header, err := d2s.ParseHeader(data)
+	if err != nil {
+		return nil, err
+	}
+
+	hero, ok := d2sClassToHero[header.Class]
+	if !ok {
+		return nil, fmt.Errorf("d2s: class %v has no matching hero", header.Class)
+	}
+
+	classStats := f.asset.Records.Character.Stats[hero]
+	stats := f.CreateHeroStatsState(hero, classStats)
+
+	state, err := f.CreateHeroState(header.Name, hero, stats)
+	if err != nil {
+		return nil, err
+	}
+
+	// a brand new character has no body: keep the class defaults
+	if !header.HasBody() {
+		return state, nil
+	}
+
+	body, err := d2s.ParseBody(data, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	applyD2SAttributes(state, &body.Attributes, f)
+
+	if err := f.applyD2SSkills(state, hero, body.SkillPoints); err != nil {
+		return nil, err
+	}
+
+	return state, nil
+}
+
+func applyD2SAttributes(state *HeroState, a *d2s.Attributes, f *HeroStateFactory) {
+	s := state.Stats
+	s.Level = int(a.Level)
+	s.Experience = int(a.Experience)
+	s.Strength = int(a.Strength)
+	s.Energy = int(a.Energy)
+	s.Dexterity = int(a.Dexterity)
+	s.Vitality = int(a.Vitality)
+	s.StatsPoints = int(a.UnusedStats)
+	s.SkillPoints = int(a.UnusedSkillPoints)
+	s.Health = int(a.CurrentHP)
+	s.MaxHealth = int(a.MaxHP)
+	s.Mana = int(a.CurrentMana)
+	s.MaxMana = int(a.MaxMana)
+	s.Stamina = float64(a.CurrentStamina)
+	s.MaxStamina = int(a.MaxStamina)
+	s.NextLevelExp = f.asset.Records.GetExperienceBreakpoint(state.HeroType, s.Level)
+	state.Gold = int(a.Gold)
+}
+
+// classSkillIDs returns the ids of the hero class' skills in ascending id
+// order, which is the order a .d2s stores its 30 skill allocations in.
+func (f *HeroStateFactory) classSkillIDs(hero d2enum.Hero) []int {
+	token := strings.ToLower(hero.GetToken3())
+	ids := make([]int, 0, d2sSkillsPerClass)
+
+	for id, rec := range f.asset.Records.Skill.Details {
+		if rec.Charclass == token {
+			ids = append(ids, id)
+		}
+	}
+
+	sort.Ints(ids)
+
+	return ids
+}
+
+func (f *HeroStateFactory) applyD2SSkills(state *HeroState, hero d2enum.Hero, points [d2sSkillsPerClass]byte) error {
+	ids := f.classSkillIDs(hero)
+
+	for i, p := range points {
+		if p == 0 || i >= len(ids) {
+			continue
+		}
+
+		rec := f.asset.Records.Skill.Details[ids[i]]
+
+		skill, err := f.CreateHeroSkill(int(p), rec.Skill)
+		if err != nil {
+			continue // skills without a description cannot be shown yet
+		}
+
+		state.Skills[skill.ID] = skill
+	}
+
+	return nil
+}
