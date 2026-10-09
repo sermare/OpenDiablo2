@@ -544,7 +544,7 @@ func (e *Engine) resistFrom(m *d2mapentity.Monster, src *d2mapentity.Player, kin
 	// difficulty penalty, and pierce cannot lower a resist of 100 or more.
 	return d2combat.EffectiveResist(d2combat.ResistInput{
 		Resist: res, IsPhysical: phys, NoDifficultyPenalty: true, Ignore: true, Pierce: pierce, HasPierce: hasPierce,
-		// VERIFIED 0x579b10: attacker state 0x2f (sanctuary) vs a boss-flag defender zeroes positive physical resist
+		// VERIFIED 0x579b10: attacker state 0x2f (sanctuary) vs an undead (lUndead/hUndead, helper 0x63f9e0) defender zeroes positive physical resist
 		ZeroPhysical: phys && e.physNullified(m, src),
 	})
 }

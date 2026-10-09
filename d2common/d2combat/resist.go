@@ -53,8 +53,8 @@ type ResistInput struct {
 	// as the table-driven stat exemption (physical and magic) only.
 	Ignore bool
 	// ZeroPhysical is the state special case for physical resist (stat 36):
-	// the attacker has state 0x2f and the defender's monstats record has the
-	// boss flags (0x63f9e0); then a positive physical resist counts as 0.
+	// the attacker has state 0x2f and the defender is undead (helper 0x63f9e0:
+	// monster unit with monstats lUndead or hUndead; not the boss flag); then a positive physical resist counts as 0.
 	// VERIFIED at 0x579b10. Only the final positive-resist branch is affected.
 	ZeroPhysical bool
 }
@@ -75,7 +75,7 @@ const AbsorbPercentCap = 40
 //	if ignore { return res }
 //	cap = 75 (50 for damageresist w/o max stat); with a max stat: min(75+max, 95)
 //	res = min(res, cap)
-//	if physical && state 0x2f on attacker && boss-flag defender: res = 0
+//	if physical && state 0x2f on attacker && undead defender: res = 0
 //
 // The pierce stat is one per damage type, read from the descriptor table at
 // 0x72ff38: only the passive pierce stats 333..336 are consulted here; the

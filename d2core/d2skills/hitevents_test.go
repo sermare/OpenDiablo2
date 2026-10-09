@@ -104,13 +104,17 @@ func TestOpenWoundsRefresh(t *testing.T) {
 	}
 }
 
-func TestPhysZeroedVsBossWithSanctuary(t *testing.T) {
+func TestPhysZeroedVsUndeadWithSanctuary(t *testing.T) {
 	e := newTestEngine()
 	p := &d2mapentity.Player{}
 	undead := &d2mapentity.Monster{Stat: &d2records.MonStatRecord{}}
-	undead.Stat.IsSpecialBoss = true
+	undead.Stat.IsUndeadLow = true
 	living := &d2mapentity.Monster{Stat: &d2records.MonStatRecord{}}
 	living.Stat.ResistancePhysicalNormal = 40
+	living.Stat.IsSpecialBoss = true // a boss that is not undead keeps its resist
+	hi := &d2mapentity.Monster{Stat: &d2records.MonStatRecord{}}
+	hi.Stat.IsUndeadHigh = true
+	hi.Stat.ResistancePhysicalNormal = 40
 	undead.Stat.ResistancePhysicalNormal = 40
 
 	// without state 0x2f nothing changes
@@ -126,12 +130,13 @@ func TestPhysZeroedVsBossWithSanctuary(t *testing.T) {
 		want int
 	}{
 		{undead, "phys", 0}, // positive physical resist voided
+		{hi, "phys", 0},     // hUndead counts too
 		{living, "phys", 40},
 	}
 
 	for _, tt := range tests {
 		if got := e.resistFrom(tt.m, p, tt.kind); got != tt.want {
-			t.Errorf("%v %s: %d want %d", tt.m.Stat.IsSpecialBoss, tt.kind, got, tt.want)
+			t.Errorf("%v %s: %d want %d", tt.m.Stat.IsUndeadLow, tt.kind, got, tt.want)
 		}
 	}
 

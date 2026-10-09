@@ -16,7 +16,7 @@ const (
 	StateOpenWounds = "openwounds"
 	// StateSanctuaryPhysZero names the attacker state 0x2f (States.txt row 47,
 	// "sanctuary"; 0x3e is row 62 "openwounds", 0x15 is row 21 "stunned") that
-	// zeroes positive physical resist against boss-flag defenders (0x579b10).
+	// zeroes positive physical resist against undead defenders (0x579b10).
 	StateSanctuaryPhysZero = "sanctuary"
 )
 
@@ -28,13 +28,14 @@ func (e *Engine) isUndead(m *d2mapentity.Monster) bool {
 	return m.Stat != nil && (m.Stat.IsUndeadLow || m.Stat.IsUndeadHigh)
 }
 
-// physNullified is the 0x579b10 special case: the attacker has state 0x2f
-// (States.txt row 47 "sanctuary") and the defender's monstats record has the
-// boss flag (bit 6 of the flag dword, verify-boss-flag.md). The helper at
-// 0x63f9e0 is called "boss flags" in verify-resist.md but "undead" in
-// verify-hit-resolution.md; the boss reading is used here (UNRECONCILED).
+// physNullified is the 0x579b10 special case (VERIFIED, verify-undead-helper.md):
+// the stat is physical, the attacker has state 0x2f (States.txt row 47
+// "sanctuary") and the defender is undead. Helper 0x63f9e0 returns 1 only for
+// a monster unit (type 1, class id in range) whose monstats flag byte +0xd has
+// bit 0x08 (lUndead, flag bit 11) or 0x10 (hUndead, flag bit 12). It is NOT the
+// boss flag (bit 6, byte +0xc). The same helper adds stat 0x7c to attack rating.
 func (e *Engine) physNullified(m *d2mapentity.Monster, src *d2mapentity.Player) bool {
-	return src != nil && m.Stat != nil && m.Stat.IsSpecialBoss && e.setOf(src.ID()).Active(e.frame, StateSanctuaryPhysZero)
+	return src != nil && e.isUndead(m) && e.setOf(src.ID()).Active(e.frame, StateSanctuaryPhysZero)
 }
 
 // rawPhysResist is the defender's RAW stat 36 (monstats value of the

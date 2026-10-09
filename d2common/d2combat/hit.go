@@ -340,7 +340,7 @@ type AROperands struct {
 	HalveTargetAC          bool // defender is a player, boss, flag-2 or special monster
 	DemonAR, UndeadAR      int  // attacker stats 0x7b / 0x7c
 	DefenderDemon          bool
-	DefenderUndead         bool
+	DefenderUndead         bool // helper 0x63f9e0 (lUndead|hUndead), the same test as the state 0x2f physical-resist case
 }
 
 // AdjustAROperands applies 0x57b8b0 and returns the new AR and DEF:
