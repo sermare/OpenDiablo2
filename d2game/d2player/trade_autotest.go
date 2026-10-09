@@ -1,6 +1,8 @@
 package d2player
 
 import (
+	"sort"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 )
 
@@ -37,7 +39,8 @@ func (t *TradeWindow) RunAutoTest() {
 	t.Infof("AUTOTRADE vendor=%s gold restored to %d", t.vendor.Name, start)
 }
 
-func (t *TradeWindow) autoBuySell() {
+// cheapestFitting returns the cheapest vendor item the hero can pay and has room for.
+func (t *TradeWindow) cheapestFitting() *diablo2item.Item {
 	var pick *diablo2item.Item
 
 	best := 0
@@ -57,6 +60,65 @@ func (t *TradeWindow) autoBuySell() {
 			pick, best = item, price
 		}
 	}
+
+	return pick
+}
+
+// parkedItem is an inventory item the autotest took out of the grid to make room.
+type parkedItem struct {
+	item InventoryItem
+	x, y int
+}
+
+// parkForRoom frees the smallest inventory item whose removal lets the
+// cheapest affordable vendor item fit (an imported save's inventory can be
+// completely full). The item goes back to its cell with unpark.
+func (t *TradeWindow) parkForRoom() (*parkedItem, *diablo2item.Item) {
+	items := append([]InventoryItem(nil), t.inv.grid.items...)
+
+	area := func(i InventoryItem) int { w, h := i.InventoryGridSize(); return w * h }
+
+	sort.SliceStable(items, func(a, b int) bool { return area(items[a]) < area(items[b]) })
+
+	for _, it := range items {
+		p := &parkedItem{item: it}
+		p.x, p.y = it.InventoryGridSlot()
+
+		t.inv.grid.Remove(it)
+
+		if pick := t.cheapestFitting(); pick != nil {
+			return p, pick
+		}
+
+		_ = t.inv.grid.Set(p.x, p.y, it)
+	}
+
+	return nil, nil
+}
+
+func (t *TradeWindow) unpark(p *parkedItem) {
+	if p == nil {
+		return
+	}
+
+	if err := t.inv.grid.Set(p.x, p.y, p.item); err != nil && !t.inv.grid.AutoPlace(p.item, true) {
+		t.Infof("AUTOTRADE could not give the parked %s back", p.item.GetItemCode())
+	}
+}
+
+func (t *TradeWindow) autoBuySell() {
+	pick := t.cheapestFitting()
+
+	var parked *parkedItem
+
+	if pick == nil {
+		parked, pick = t.parkForRoom()
+		if parked != nil {
+			t.Infof("AUTOTRADE inventory full: %s taken out of the grid for the test", parked.item.GetItemCode())
+		}
+	}
+
+	defer t.unpark(parked)
 
 	if pick == nil {
 		t.Infof("AUTOTRADE buy vendor=%s skipped: nothing affordable (gold=%d) or no room", t.vendor.Name, t.hero.Gold)
@@ -80,7 +142,17 @@ func (t *TradeWindow) autoBuySell() {
 }
 
 func (t *TradeWindow) autoRepair() {
-	for _, it := range t.inv.grid.items {
+	// the inventory first, then the worn items (an imported inventory holds
+	// charms and potions, which have no durability)
+	candidates := append([]InventoryItem(nil), t.inv.grid.items...)
+
+	for _, slot := range t.inv.grid.equipmentSlots {
+		if slot.item != nil {
+			candidates = append(candidates, slot.item)
+		}
+	}
+
+	for _, it := range candidates {
 		item, ok := it.(*diablo2item.Item)
 		if !ok {
 			continue
@@ -100,5 +172,5 @@ func (t *TradeWindow) autoRepair() {
 		}
 	}
 
-	t.Infof("AUTOTRADE repair vendor=%s skipped: no item with durability in the inventory", t.vendor.Name)
+	t.Infof("AUTOTRADE repair vendor=%s skipped: no item with durability in the inventory or worn", t.vendor.Name)
 }

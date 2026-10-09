@@ -407,6 +407,12 @@ func (i *Item) init() *Item {
 		i.SetSeed(0)
 	}
 
+	if i.Seed != 0 && i.factory != nil {
+		// a seeded item rolls its property values from the seed, so that
+		// it can be rebuilt exactly (see Spec)
+		defer i.factory.seedProperties(i.Seed)()
+	}
+
 	i.generateAllProperties()
 	i.updateItemAttributes()
 

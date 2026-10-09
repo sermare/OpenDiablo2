@@ -128,6 +128,7 @@ type ItemCommonRecord struct {
 	Transparent          bool // unused
 	Quivered             bool // if true, requires ammo to use
 	Belt                 bool // tells what kind of belt this item is
+	BeltIndex            int  // the belt column itself: the belts.txt row of a belt (see BeltRecord.Index)
 	SkipName             bool // if true, don't include the base name in the item description
 	Nameable             bool // if true, item can be personalized
 	BarbOneOrTwoHanded   bool // if true, barb can wield this in one or two hands

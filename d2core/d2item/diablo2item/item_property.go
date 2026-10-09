@@ -1,8 +1,6 @@
 package diablo2item
 
 import (
-	"math/rand"
-
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2stats"
 )
@@ -193,7 +191,7 @@ func (p *Property) fnValuesToStat(iscRecord *d2records.ItemStatCostRecord) d2sta
 	}
 
 	// nolint:gosec // not concerned with crypto-strong randomness
-	statValue = float64(rand.Intn(max-min+1) + min)
+	statValue = float64(p.factory.intn(max-min+1) + min)
 
 	return p.factory.stat.NewStat(iscRecord.Name, statValue, propParam)
 }
@@ -210,7 +208,7 @@ func (p *Property) fnComputeInteger() int {
 	}
 
 	// nolint:gosec // not concerned with crypto-strong randomness
-	statValue := rand.Intn(max-min+1) + min
+	statValue := p.factory.intn(max-min+1) + min
 
 	return statValue
 }
@@ -251,7 +249,7 @@ func (p *Property) fnClassSkillTab(iscRecord *d2records.ItemStatCostRecord) d2st
 	classIdx := float64(param / skillTabsPerClass)
 
 	// nolint:gosec // not concerned with crypto-strong randomness
-	level := float64(rand.Intn(max-min+1) + min)
+	level := float64(p.factory.intn(max-min+1) + min)
 
 	return p.factory.stat.NewStat(iscRecord.Name, level, classIdx, skillTabIdx)
 }
@@ -283,7 +281,7 @@ func (p *Property) fnRandomSkill(iscRecord *d2records.ItemStatCostRecord) d2stat
 		skillLevel = float64(p.inputParams[0])
 		min, max := p.inputParams[1], p.inputParams[2]
 		// nolint:gosec // not concerned with crypto-strong randomness
-		skillID = float64(rand.Intn(max-min+1) + min)
+		skillID = float64(p.factory.intn(max-min+1) + min)
 	}
 
 	return p.factory.stat.NewStat(iscRecord.Name, skillLevel, skillID, invalidHeroIndex)
@@ -328,7 +326,7 @@ func (p *Property) fnBoolean() bool {
 	}
 
 	// nolint:gosec // not concerned with crypto-strong randomness
-	statValue := rand.Intn(max-min+1) + min
+	statValue := p.factory.intn(max-min+1) + min
 
 	return statValue > 0
 }
@@ -355,7 +353,7 @@ func (p *Property) fnClassSkills(
 	}
 
 	// nolint:gosec // not concerned with crypto-strong randomness
-	statValue := rand.Intn(max-min+1) + min
+	statValue := p.factory.intn(max-min+1) + min
 	classIdx = propStatRecord.Value
 
 	return p.factory.stat.NewStat(iscRecord.Name, float64(statValue), float64(classIdx))
