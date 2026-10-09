@@ -1,0 +1,194 @@
+package d2monreg
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"reflect"
+	"testing"
+
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
+)
+
+// predWorld is the stand-in map the golden generator uses: deterministic
+// pseudo-random obstacles, so rejected spots and the ring walk are exercised.
+type predWorld struct{}
+
+func (predWorld) Blocked(_ *Room, x, y, radius, mask int) bool {
+	return (x*7+y*13+radius*3+mask)%11 == 0
+}
+
+func (predWorld) Open(_ *Room, x, y int) bool { return (x+y*3)%17 != 0 }
+
+func (predWorld) CellAt(r *Room, x, y int) int {
+	flag := 1
+	if len(r.Cells) > 0 {
+		flag = r.Cells[len(r.Cells)-1].Flag // the generator records the flag of the last cell it saw
+	}
+
+	if (x*y)%23 == 0 {
+		return flag + 1
+	}
+
+	return flag
+}
+
+func (predWorld) NearExit(_ *Room, x, y int) bool { return (x*5+y)%29 == 0 }
+
+type popCell struct {
+	Rect [4]int `json:"rect"`
+	Skip int    `json:"skip"`
+	Flag int    `json:"flag"`
+}
+
+type popRoom struct {
+	Type   int                  `json:"type"`
+	Flags  uint32               `json:"flags"`
+	Rect   [4]int               `json:"rect"`
+	Cells  []popCell            `json:"cells"`
+	Seed0  [2]uint32            `json:"seed0"`
+	GSeed0 [2]uint32            `json:"gseed0"`
+	Events [][]interface{}      `json:"events"`
+	Seed1  [2]uint32            `json:"seed1"`
+	GSeed1 [2]uint32            `json:"gseed1"`
+	Region *struct{ Total int } `json:"region"`
+	Err    string               `json:"err"`
+}
+
+type popLevel struct {
+	Level int       `json:"level"`
+	Rooms []popRoom `json:"rooms"`
+}
+
+type popGold struct {
+	Act      int        `json:"act"`
+	GameSeed uint32     `json:"gameSeed"`
+	Diff     int        `json:"diff"`
+	Exp      int        `json:"exp"`
+	Levels   []popLevel `json:"levels"`
+}
+
+// TestOracleNatural replays the natural population of whole levels against
+// the real FUN_0054cad0 (unicorn) with stand-in map predicates: every room's
+// creation sequence (class, subtile), the unique / champion events, the room
+// seed and the game seed after it.
+func TestOracleNatural(t *testing.T) {
+	tb := realTables(t)
+
+	gp := os.Getenv("ORACLE_NATURAL")
+	if gp == "" {
+		gp = filepath.Join("testdata", "natural.json")
+	}
+
+	raw, err := os.ReadFile(gp)
+	if err != nil {
+		t.Skip(err)
+	}
+
+	var golds []popGold
+	if err := json.Unmarshal(raw, &golds); err != nil {
+		var one popGold
+		if err2 := json.Unmarshal(raw, &one); err2 != nil {
+			t.Fatal(err)
+		}
+
+		golds = []popGold{one}
+	}
+
+	bad, rooms, units := 0, 0, 0
+
+	for _, gd := range golds {
+		g := NewGame(tb, gd.GameSeed, gd.Diff, gd.Exp != 0)
+
+		for _, lv := range gd.Levels {
+			total := -1
+
+			for _, r := range lv.Rooms {
+				if r.Region != nil && r.Region.Total >= 0 {
+					total = r.Region.Total
+
+					break
+				}
+			}
+
+			g.RoomCount = func(int) int { return total }
+
+			for ri, r := range lv.Rooms {
+				name := fmt.Sprintf("act %d game %#x diff %d level %d room %d %v", gd.Act, gd.GameSeed, gd.Diff, lv.Level, ri, r.Rect)
+
+				if r.Err != "" {
+					t.Fatalf("%s: emulator error %s", name, r.Err)
+				}
+
+				if [2]uint32{g.Seed.Lo, g.Seed.Hi} != r.GSeed0 {
+					t.Fatalf("%s: game seed %v before the room, want %v (earlier room diverged)", name, [2]uint32{g.Seed.Lo, g.Seed.Hi}, r.GSeed0)
+				}
+
+				room := &Room{Seed: d2rand.Seed{Lo: r.Seed0[0], Hi: r.Seed0[1]}, X: r.Rect[0], Y: r.Rect[1], W: r.Rect[2], H: r.Rect[3]}
+				if r.Flags&0x800000 == 0 {
+					room.Level = lv.Level
+				}
+
+				for _, c := range r.Cells {
+					room.Cells = append(room.Cells, Cell{X0: c.Rect[0], Y0: c.Rect[1], X1: c.Rect[2], Y1: c.Rect[3], Skip: c.Skip != 0, Flag: c.Flag})
+				}
+
+				var pop Population
+
+				g.PopulateNatural(predWorld{}, room, &pop)
+
+				rooms++
+
+				var got [][]string
+
+				for _, e := range pop.Log {
+					if e.Kind == "c" {
+						got = append(got, []string{"c", fmt.Sprint(e.Class), fmt.Sprint(e.X), fmt.Sprint(e.Y)})
+						units++
+					} else {
+						got = append(got, []string{e.Kind, fmt.Sprint(e.Class)})
+					}
+				}
+
+				var want [][]string
+
+				for _, e := range r.Events {
+					var row []string
+					for _, v := range e {
+						if f, ok := v.(float64); ok {
+							row = append(row, fmt.Sprint(int(f)))
+						} else {
+							row = append(row, fmt.Sprint(v))
+						}
+					}
+
+					want = append(want, row)
+				}
+
+				if !reflect.DeepEqual(got, want) && !(len(got) == 0 && len(want) == 0) {
+					bad++
+					t.Errorf("%s: created %v, want %v", name, got, want)
+				}
+
+				if s := [2]uint32{room.Seed.Lo, room.Seed.Hi}; s != r.Seed1 {
+					bad++
+					t.Errorf("%s: room seed after %v, want %v", name, s, r.Seed1)
+				}
+
+				if s := [2]uint32{g.Seed.Lo, g.Seed.Hi}; s != r.GSeed1 {
+					bad++
+					t.Errorf("%s: game seed after %v, want %v", name, s, r.GSeed1)
+
+					g.Seed = d2rand.Seed{Lo: r.GSeed1[0], Hi: r.GSeed1[1]} // resync to see further differences
+				}
+
+				if bad > 12 {
+					t.Fatal("too many mismatches")
+				}
+			}
+		}
+	}
+
+	t.Logf("%d rooms, %d units compared, %d mismatches", rooms, units, bad)
+}
