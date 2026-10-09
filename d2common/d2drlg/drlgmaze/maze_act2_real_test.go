@@ -7,12 +7,12 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 )
 
-// Every Act 2 maze level generates for many game seeds (with the two special tombs the game seed draws), and the
+// (Level 50, the Harem, and 73, Duriel's lair, are preset levels.) Every Act 2 maze level generates for many game seeds (with the two special tombs the game seed draws), and the
 // real Tal Rasha tomb (TombA) is the only tomb that gets the chamber with the orifice. Needs D2_TABLES.
 func TestAct2MazeLevelsGenerate(t *testing.T) {
 	tb := realTables(t)
 
-	levels := []int{47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 74}
+	levels := []int{47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 74}
 
 	for seed := uint32(1); seed <= 12; seed++ {
 		base, _ := d2rand.DrlgBaseSeed(seed)
