@@ -49,3 +49,29 @@ func TestHeroDiedClearsStatesAndStreams(t *testing.T) {
 		t.Error("hero death should clear states and streams")
 	}
 }
+
+func TestHeroDiedKeepsPlrStayDeathOnly(t *testing.T) {
+	defs := d2state.Defs{"stay": {PlrStayDeath: true}, "gone": {}}
+	e := &Engine{sets: map[string]*d2state.Set{}, defs: defs}
+
+	for _, id := range []string{"dead", "alive"} {
+		set := e.setOf(id)
+		set.Apply(0, d2state.Instance{Name: "stay", Until: 100})
+		set.Apply(0, d2state.Instance{Name: "gone", Until: 100})
+		set.AddStream(0, "poison", 256, 50, "", 0)
+	}
+
+	e.HeroDied("dead")
+
+	if e.HasState("dead", "gone") || len(e.setOf("dead").Streams(1)) != 0 {
+		t.Error("dead hero keeps a state or stream")
+	}
+
+	if !e.HasState("dead", "stay") {
+		t.Error("plrstaydeath state must survive death")
+	}
+
+	if !e.HasState("alive", "gone") || !e.HasState("alive", "stay") || len(e.setOf("alive").Streams(1)) == 0 {
+		t.Error("a hero who did not die was affected")
+	}
+}
