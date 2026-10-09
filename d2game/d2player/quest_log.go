@@ -121,6 +121,7 @@ type QuestLog struct {
 	uiManager     *d2ui.UIManager
 	panel         *d2ui.Sprite
 	onCloseCb     func()
+	onSeen        func(act, index int)
 	panelGroup    *d2ui.WidgetGroup
 	selectedTab   int
 	selectedQuest int
@@ -408,6 +409,7 @@ func (s *QuestLog) stopPlayedAnimations() {
 		questID := s.cordsToQuestID(s.selectedTab+1, j)
 		if s.questStatus[questID] == d2enum.QuestStatusCompleting {
 			s.questStatus[questID] = d2enum.QuestStatusCompleted
+			s.markSeen(s.selectedTab+1, j+1)
 
 			err := i.SetCurrentFrame(completedFrame)
 			if err != nil {
@@ -569,6 +571,7 @@ func (s *QuestLog) Advance(elapsed float64) {
 
 			if i.GetCurrentFrame() == completedFrame {
 				s.questStatus[questID] = d2enum.QuestStatusCompleted
+				s.markSeen(s.selectedTab+1, j+1)
 			}
 		}
 	}

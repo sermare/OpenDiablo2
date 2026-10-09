@@ -17,6 +17,17 @@ func QuestLogKey(act, index int) int {
 	return key
 }
 
+// SetOnCompletionSeen registers a callback for the moment the player has seen
+// a quest's completion animation in the log (the client then tells the server,
+// packet 0x58, which sets the "update quest log" bit 12 of the quest).
+func (s *QuestLog) SetOnCompletionSeen(cb func(act, index int)) { s.onSeen = cb }
+
+func (s *QuestLog) markSeen(act, index int) {
+	if s.onSeen != nil {
+		s.onSeen(act, index)
+	}
+}
+
 // Status returns the stored status of a quest (see d2enum.QuestStatus; values
 // above InProgress are the description page of the quest).
 func (s *QuestLog) Status(act, index int) int {

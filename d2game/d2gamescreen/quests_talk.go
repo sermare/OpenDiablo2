@@ -47,6 +47,21 @@ func (v *Game) refForClass(class int) questNPC {
 	return questNPC{class: class, label: name}
 }
 
+// speechText strips the leading number the speech entries of string.tbl carry
+// ("43 There is a place..."; its meaning - probably a length - is UNVERIFIED).
+func speechText(s string) string {
+	i := 0
+	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+		i++
+	}
+
+	if i > 0 && i < len(s) && (s[i] == ' ' || s[i] == '\n' || s[i] == '\t' || s[i] == '\r') {
+		return strings.TrimSpace(s[i:])
+	}
+
+	return s
+}
+
 func speechSeconds(text string) float64 {
 	return speechSecondsBase + float64(len(text))/speechCharsPerSec
 }
@@ -109,7 +124,7 @@ func (v *Game) questSpeak(npc questNPC, s d2quest.Speech) {
 	text := ""
 	if key != "" {
 		if t := v.asset.TranslateString(key); t != "" && t != key {
-			text = t
+			text = speechText(t)
 		}
 	}
 

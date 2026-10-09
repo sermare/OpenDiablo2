@@ -363,7 +363,7 @@ func newDenOfEvil() *Quest {
 
 		left := g.denSpawned - g.denKilled
 		if left > 0 {
-			if left <= 5 {
+			if left <= 5 && q.LastState != 4 {
 				g.cycle(q, 4, true) // "only a few monsters left" page
 				q.on[EvNpcDeactivate] = nil
 			}

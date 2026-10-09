@@ -27,10 +27,11 @@ import (
 // The run resets the quest slots it exercises in the hero's record first (and
 // marks the predecessors of the quest as done), so it can start from any save.
 const (
-	autoQuestDelay    = 3.0  // seconds after the hero exists
-	autoQuestStepGap  = 0.05 // seconds between steps
-	autoQuestTimeout  = 90.0 // seconds one step may wait
-	autoQuestRealFoes = 3
+	autoQuestDelay       = 3.0   // seconds after the hero exists
+	autoQuestStepGap     = 0.05  // seconds between steps
+	autoQuestTimeout     = 90.0  // seconds one step may wait
+	autoQuestRealTimeout = 240.0 // ... when real monsters have to be killed
+	autoQuestRealFoes    = 3
 )
 
 // autoHost is what the scenario needs from the game: the engine implements it
@@ -251,7 +252,13 @@ func (a *autoQuest) advance(h autoHost, elapsed float64) {
 	}
 
 	a.waited += elapsed
-	if a.waited > autoQuestTimeout {
+
+	limit := autoQuestTimeout
+	if a.real {
+		limit = autoQuestRealTimeout
+	}
+
+	if a.waited > limit {
 		h.Infof("AUTOQUEST step %q timed out", st.desc)
 
 		a.failed++

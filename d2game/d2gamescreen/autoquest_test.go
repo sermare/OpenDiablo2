@@ -40,7 +40,9 @@ func newFakeHost(a *autoQuest, level int) *fakeHost {
 	return h
 }
 
-func (h *fakeHost) Infof(format string, args ...interface{}) { h.log = append(h.log, fmt.Sprintf(format, args...)) }
+func (h *fakeHost) Infof(format string, args ...interface{}) {
+	h.log = append(h.log, fmt.Sprintf(format, args...))
+}
 func (h *fakeHost) Errorf(format string, args ...interface{}) {
 	h.log = append(h.log, "ERROR "+fmt.Sprintf(format, args...))
 }

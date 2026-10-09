@@ -45,6 +45,9 @@ type questRuntime struct {
 	// (both for the autotest).
 	spoken       []int
 	topics       []d2quest.Speech
+	denFoes      map[*d2mapentity.Monster]bool // monsters a scripted run spawned for the Den of Evil
+	barkAcc      float64
+	barkWait     float64 // seconds until Navi may bark again
 	imbuePending bool
 	respec       bool
 	rogueHire    bool
@@ -131,6 +134,11 @@ func (v *Game) quests() *questRuntime {
 
 	r.dirty = true
 
+	v.gameControls.QuestLog().SetOnCompletionSeen(func(act, index int) {
+		r.g.LogSeen(act, index) // client packet 0x58: sets the UPDATEQUESTLOG bit
+		r.dirty = true
+	})
+
 	// the welcome-back flags of the save arm the NPC return greetings
 	for _, class := range r.g.ReturnGreetingNPCs() {
 		if name := d2player.NPCClassName(class); name != "" {
@@ -142,10 +150,15 @@ func (v *Game) quests() *questRuntime {
 		}
 	}
 
-	// the area the map stands for
+	// the area the map stands for (a scripted run starts in town and moves
+	// between areas itself)
 	area := d2mapgen.RealLevel()
 	if a := questAreaAlias(); a != 0 {
 		area = a
+	}
+
+	if r.auto != nil {
+		area = 0
 	}
 
 	if area != 0 && area != r.area {
@@ -180,6 +193,8 @@ func (v *Game) advanceQuests(elapsed float64) {
 	if r.dirty {
 		v.syncQuestLog()
 	}
+
+	v.advanceBarks(elapsed)
 
 	if r.auto != nil {
 		r.auto.advance(engineHost{v}, elapsed)
@@ -225,7 +240,8 @@ func (v *Game) onMonsterKilled(ev d2monsters.KillEvent) {
 		alive := 0
 
 		for _, m := range v.monsters.Monsters() {
-			if m.Alive() {
+			// a scripted run (OD2_AUTOQUEST_REAL) only counts the monsters it spawned
+			if m.Alive() && (len(r.denFoes) == 0 || r.denFoes[m]) {
 				alive++
 			}
 		}
@@ -282,14 +298,14 @@ func (v *Game) applyQuestEffects(effects []d2quest.Effect) {
 			v.Infof("QUEST EFFECT imbue-available (%s)", e.Note)
 		case d2quest.EffectGiveItem:
 			v.Infof("QUEST EFFECT give-item code=%s quality=%d ilvl/count=%d (%s)", e.Code, e.Quality, e.Value, e.Note)
-			v.debugSpawnItemAtPlayer(e.Code)
+			v.spawnQuestItem(e.Code)
 		case d2quest.EffectDeleteItem:
 			ok := v.gameControls.RemoveItemByCode(e.Code)
 			v.Infof("QUEST EFFECT delete-item code=%s removed=%v", e.Code, ok)
 		case d2quest.EffectSpawn:
 			if e.Code != "" {
 				v.Infof("QUEST EFFECT spawn-item code=%s (%s)", e.Code, e.Note)
-				v.debugSpawnItemAtPlayer(e.Code)
+				v.spawnQuestItem(e.Code)
 			} else {
 				v.Infof("QUEST EFFECT spawn (%s) [not simulated]", e.Note)
 			}
@@ -308,6 +324,18 @@ func (v *Game) applyQuestEffects(effects []d2quest.Effect) {
 	}
 }
 
+// spawnQuestItem drops a quest reward at the hero's feet (the engine's reward
+// items are ground items the hero picks up; an approximation of the original,
+// which puts them in the inventory). Unknown item codes are logged, not sent.
+func (v *Game) spawnQuestItem(code string) {
+	if v.asset.Records.Item.All[code] == nil {
+		v.Infof("QUEST EFFECT item code %q is not in the item tables; nothing dropped", code)
+		return
+	}
+
+	v.debugSpawnItemAtPlayer(code)
+}
+
 // syncQuestLog pushes the quest states to the quest log panel.
 func (v *Game) syncQuestLog() {
 	r := v.questRT
@@ -324,6 +352,9 @@ func (v *Game) syncQuestLog() {
 		switch l.Status {
 		case d2quest.LogCompleted:
 			st = d2enum.QuestStatusCompleted
+			if l.Unseen {
+				st = d2enum.QuestStatusCompleting // the log plays the completion animation once
+			}
 		case d2quest.LogInProgress, d2quest.LogCompleting:
 			st = l.Page
 			if st < 1 {

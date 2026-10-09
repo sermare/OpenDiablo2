@@ -17,6 +17,16 @@
 //   - quests that are not implemented (Act 2 after Radament and Acts 3-5) have
 //     no node; their record slots are left untouched.
 //
+// Evidence: the state machines of Act 1 and Radament's Lair follow the clean-room
+// D2MOO quest sources, which the notes checked against the 1.14b binary for the
+// speech tables (all tables, byte for byte) and for the A1Q1/A1Q2/A2Q1 message
+// handlers. UNVERIFIED against the binary: the other quests' handlers, the 1.14b
+// only deltas (the Akara respec bits are from the binary notes, the Uber quests
+// are not modelled), the ids of the attach-sound effects, the topic captions of
+// the Talk submenu, the heard-list handling of the client, the barking distance,
+// and the Charsi message 150 mode (the binary dump says topic, D2MOO says spoken;
+// the binary table is used).
+//
 // Bit meanings are in d2s.QuestBit*; see the constants below for the names
 // the quest code uses.
 package d2quest
@@ -509,6 +519,20 @@ type QuestLog struct {
 	Status LogStatus
 	// Page is the description page (string qstsa<act>q<index><page>), 0 for none.
 	Page int
+	// Unseen is set for a completed quest whose completion the player has not
+	// yet looked at in the log (bit 12 UPDATEQUESTLOG is clear).
+	Unseen bool
+}
+
+// LogSeen records that the player saw the completion of the quest at (act
+// 1..5, index 1..6) in the quest log; the client reports this with packet 0x58
+// and the server sets the UPDATEQUESTLOG bit (D2MOO PlrMsg.cpp, Rcv0x58).
+func (g *Game) LogSeen(act, index int) {
+	for _, q := range g.Quests {
+		if q.Act+1 == act && q.LogIndex == index && g.get(q, FlagRewardGranted) && !g.get(q, FlagUpdateLog) {
+			g.set(q, FlagUpdateLog, "completion seen in the quest log")
+		}
+	}
 }
 
 // Log returns the log entries of the implemented real quests (Act 1 quests 1-6
@@ -526,6 +550,7 @@ func (g *Game) Log() []QuestLog {
 		switch {
 		case g.get(q, FlagRewardGranted):
 			l.Status = LogCompleted
+			l.Unseen = !g.get(q, FlagUpdateLog)
 		case g.get(q, FlagRewardPending) && g.get(q, FlagPrimaryGoal):
 			l.Status, l.Page = LogCompleting, g.LogPage(q)
 		default:
