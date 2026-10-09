@@ -35,8 +35,30 @@ type MercWorld interface {
 	// IsRanged is true for archers and mages (rogue, Iron Wolf).
 	IsRanged(b *Brain) bool
 	// ChooseAndCast is MERC_ChooseAndQueueSkill: weighted skill pick, or the
-	// default attack. It reports whether an action was started.
-	ChooseAndCast(b *Brain, t Target, dist int) bool
+	// default attack (or walking into reach).
+	ChooseAndCast(b *Brain, t Target, dist int) CastResult
+}
+
+// CastResult says what ChooseAndCast did.
+type CastResult int
+
+// Results of ChooseAndCast.
+const (
+	CastFailed  CastResult = iota // nothing was started
+	CastBusy                      // an animation or move runs; the engine wakes the AI when it ends
+	CastInstant                   // a buff took effect at once; the AI should think again soon
+)
+
+// finishCast turns a CastResult into the scheduling the think function owes.
+func finishCast(c *Ctx, r CastResult) {
+	switch r {
+	case CastBusy:
+		c.busy()
+	case CastInstant:
+		c.Sleep(5)
+	default:
+		c.Sleep(10)
+	}
 }
 
 func init() {
@@ -167,11 +189,7 @@ func mercDecideAttack(c *Ctx, w MercWorld, t Target, dist int) {
 			return
 		}
 
-		if !w.ChooseAndCast(b, t, dist) {
-			c.Sleep(10)
-		} else {
-			c.busy()
-		}
+		finishCast(c, w.ChooseAndCast(b, t, dist))
 
 		return
 	}
@@ -193,13 +211,7 @@ func mercDecideAttack(c *Ctx, w MercWorld, t Target, dist int) {
 		return
 	}
 
-	if !w.ChooseAndCast(b, t, dist) {
-		c.Sleep(10)
-
-		return
-	}
-
-	c.busy()
+	finishCast(c, w.ChooseAndCast(b, t, dist))
 }
 
 // WalkNearRandom is MONAI_WalkNearTargetRandom(target, n): walk to a random

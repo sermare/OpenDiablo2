@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2hireling"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
@@ -58,6 +59,9 @@ type Options struct {
 // Counters tally what happened, for autotest summaries.
 type Counters struct {
 	Spawned, Aggro, Attacks, AttackHits, HeroSwings, HeroHits, Deaths, Drops, HeroDeaths int
+
+	// mercenaries
+	MercSpawns, MercAttacks, MercHits, MercSkills, MercDeaths, MercRevives, MercTeleports, MercLevelUps int
 }
 
 // unit is a monster plus its engine-side state.
@@ -66,6 +70,7 @@ type unit struct {
 	b  *d2monster.Brain
 	mv *moveIntent
 
+	merc         *mercUnit // non-nil for a hired mercenary
 	hadTarget    bool
 	attackTarget uint32
 	removeAt     float64
@@ -101,6 +106,9 @@ type Director struct {
 	targets  map[uint32]*d2mapentity.Player
 	grid     mapGrid
 	hero     *d2rand.Seed
+	hire     *d2hireling.Table
+	mercs    map[*d2mapentity.Player]*unit
+	killer   *unit // the merc whose hit is being resolved (kill credit)
 
 	// Counters are updated as events happen.
 	Counters Counters
@@ -124,6 +132,7 @@ func NewDirector(asset *d2asset.AssetManager, engine *d2mapengine.MapEngine,
 		seenNPC:  map[string]bool{},
 		statByID: map[int]*d2records.MonStatRecord{},
 		targets:  map[uint32]*d2mapentity.Player{},
+		mercs:    map[*d2mapentity.Player]*unit{},
 		grid:     mapGrid{engine},
 	}
 
@@ -147,11 +156,14 @@ func (d *Director) emit(kind, format string, args ...interface{}) {
 	}
 }
 
-// Monsters returns the live (not yet removed) monsters, corpses included.
+// Monsters returns the live (not yet removed) hostile monsters, corpses
+// included; mercenaries are not part of it (see Merc).
 func (d *Director) Monsters() []*d2mapentity.Monster {
 	out := make([]*d2mapentity.Monster, 0, len(d.units))
 	for _, u := range d.units {
-		out = append(out, u.m)
+		if u.merc == nil {
+			out = append(out, u.m)
+		}
 	}
 
 	return out
@@ -276,13 +288,17 @@ func (d *Director) step() {
 		d.sync(u)
 		d.handleEvents(u)
 
+		if u.merc != nil {
+			d.stepMerc(u)
+		}
+
 		if u.m.Alive() {
 			d.followIntent(u)
 
 			if d2monster.Tick(d, u.b) {
 				d.noteAggro(u)
 			}
-		} else if u.m.CorpseAge() > corpseSeconds {
+		} else if u.merc == nil && u.m.CorpseAge() > corpseSeconds { // merc corpses stay for a revive
 			d.engine.RemoveEntity(u.m)
 			d.forget(u)
 		}
@@ -429,12 +445,11 @@ func (d *Director) followIntent(u *unit) {
 		return
 	}
 
-	p := d.playerFor(u.mv.target.ID)
-	if p == nil {
+	tx, ty, ok := d.targetPos(u, u.mv.target.ID)
+	if !ok {
 		return
 	}
 
-	tx, ty := playerSubtile(p)
 	sx, sy := u.m.SubtilePos()
 
 	if d2monster.EdgeDistance(sx-tx, sy-ty, u.b.Size) <= u.mv.reach {

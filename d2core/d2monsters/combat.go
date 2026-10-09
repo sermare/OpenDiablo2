@@ -20,6 +20,12 @@ func (d *Director) handleEvents(u *unit) {
 	for _, ev := range u.m.TakeEvents() {
 		switch ev.Kind {
 		case d2mapentity.MonsterEventHitFrame:
+			if u.merc != nil {
+				d.mercStrike(u, ev.Mode)
+
+				continue
+			}
+
 			d.monsterStrike(u, ev.Mode)
 		case d2mapentity.MonsterEventModeDone:
 			u.mv = nil
@@ -52,6 +58,14 @@ func attackFor(v *d2mapentity.MonsterVitals, mode d2monster.Mode) (d2mapentity.M
 func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 	atk, ok := attackFor(&u.m.Vitals, mode)
 	if !ok {
+		return
+	}
+
+	if u.attackTarget >= mercTargetBase {
+		if tu := d.units[u.attackTarget-mercTargetBase]; tu != nil && tu.merc != nil && tu.m.Alive() {
+			d.strikeMerc(u, tu, atk, mode)
+		}
+
 		return
 	}
 
@@ -223,6 +237,10 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 	if src != nil {
 		by = src.Name()
 		src.Stats.Experience += xp
+	}
+
+	if k := d.killer; k != nil {
+		d.creditMerc(k.merc, k, xp)
 	}
 
 	d.emit("death", "MONSTER death name=%s id=%d by=%s xp=%d", u.m.Label(), u.b.ID, by, xp)
