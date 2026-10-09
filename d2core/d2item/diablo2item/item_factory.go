@@ -33,7 +33,7 @@ const (
 
 const (
 	// dynamicItemLevelRange for treasure codes like `armo33`, this code is used to
-	// select all equivalent items (matching `armo` in this case) with item levels 33,34,35
+	// select all equivalent items (matching `armo` in this case) with item levels 31,32,33
 	dynamicItemLevelRange = 3
 )
 
@@ -66,6 +66,7 @@ type ItemFactory struct {
 	asset  *d2asset.AssetManager
 	stat   *diablo2stats.StatFactory
 	rand   *rand.Rand
+	drop   *dropTables
 	source rand.Source
 	Seed   int64
 }
@@ -383,10 +384,11 @@ func (f *ItemFactory) resolveDynamicTreasureCode(code string) []*d2records.ItemC
 
 	for idx := range equivList {
 		record := equivList[idx]
-		minLevel := numericComponent
-		maxLevel := minLevel + dynamicItemLevelRange
+		// the real game uses the range (N-3, N], see d2drop
+		maxLevel := numericComponent
+		minLevel := maxLevel - dynamicItemLevelRange
 
-		if record.Level >= minLevel && record.Level < maxLevel {
+		if record.Level > minLevel && record.Level <= maxLevel {
 			result = append(result, record)
 		}
 	}
