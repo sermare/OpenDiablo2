@@ -85,6 +85,10 @@ type Header struct {
 	Mercenary  Mercenary
 	Appearance [appearanceLen]byte
 	Colors     [colorsLen]byte
+
+	// Raw is the header exactly as read. Write starts from it so bytes this
+	// package does not interpret survive a parse/write round trip.
+	Raw [HeaderSize]byte
 }
 
 // Mercenary is the hired mercenary stored in the header. ID is zero when the
@@ -167,6 +171,7 @@ func ParseHeader(data []byte) (*Header, error) {
 		Experience: le.Uint32(data[mercExpOffset:]),
 	}
 
+	copy(h.Raw[:], data[:HeaderSize])
 	copy(h.Appearance[:], data[appearanceStart:appearanceStart+appearanceLen])
 	copy(h.Colors[:], data[colorsStart:colorsStart+colorsLen])
 
