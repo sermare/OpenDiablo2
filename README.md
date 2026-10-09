@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/progress.svg?v=1791578673" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
+<p align="center"><img src="docs/progress.svg?v=1791588188" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
 <p align="center"><img src="https://raw.githubusercontent.com/sermare/OpenDiablo2/progress-history/docs/progress-history.svg" alt="Progress over time: one line per part, snapshot every 10 minutes" width="880"></p>
 
 # OpenDiablo2 — native macOS fork, driven by Claude

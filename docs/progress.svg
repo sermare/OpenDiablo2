@@ -16,11 +16,11 @@
 <text x="36" y="72" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#b8b9d6">driven by Claude · every number below is measured, not estimated</text>
 <text x="844" y="46" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">updated 2026-10-09</text>
 <text x="36" y="108" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Game.exe functions named in Ghidra</text>
-<text x="844" y="108" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">7,545 / 10,907</text>
+<text x="844" y="108" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11,235 / 11,257</text>
 <rect x="36" y="120" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="120" width="510.5" height="18" rx="9" fill="url(#g0)" filter="url(#glow)"/>
-<text x="844" y="134" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#7c5cff">69%</text>
-<text x="36" y="155" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">original 1.14b binary; 7,275 named by meaning + 270 still auto-labelled placeholders</text>
+<rect x="36" y="120" width="736.6" height="18" rx="9" fill="url(#g0)" filter="url(#glow)"/>
+<text x="844" y="134" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#7c5cff">100%</text>
+<text x="36" y="155" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">original 1.14b binary; 11,147 named by meaning, 88 still auto-labelled; the last 22 are the anti-cheat module, skipped on purpose</text>
 <text x="36" y="186" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Original source files indexed</text>
 <text x="844" y="186" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">277 / 277</text>
 <rect x="36" y="198" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
