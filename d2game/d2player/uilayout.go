@@ -69,7 +69,7 @@ func (m Mode) RightPanelX() int {
 func (m Mode) PanelTop() int {
 	_, y := m.PanelOffset()
 
-	return m.H - 0xe0 - 256 + y
+	return m.H - 0xe0 - 256 - y
 }
 
 // panelShiftY and panelShiftX move the contents of the panels that were laid out before this audit

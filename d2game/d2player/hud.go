@@ -27,10 +27,10 @@ const (
 )
 
 const (
-	expBarWidth          = 120.0
+	expBarWidth          = 119.0
 	expBarHeight         = 4
 	staminaBarWidth      = 102.0
-	staminaBarHeight     = 19.0
+	staminaBarHeight     = 18.0
 	hoverLabelOuterPad   = 5
 	percentStaminaBarLow = 0.25
 )
@@ -48,17 +48,17 @@ const (
 
 const (
 	staminaBarOffsetX  = 273
-	staminaBarOffsetY  = 572
+	staminaBarOffsetY  = 573
 	staminaExperienceY = 535
 
 	experienceBarOffsetX = 256
-	experienceBarOffsetY = 561
+	experienceBarOffsetY = 562
 
-	rightGlobeOffsetX = 8
-	rightGlobeOffsetY = -8
+	rightGlobeOffsetX = 7
+	rightGlobeOffsetY = -9
 
 	miniPanelButtonOffsetX = -8
-	miniPanelButtonOffsetY = -38
+	miniPanelButtonOffsetY = -40
 
 	miniPanelTooltipOffsetX = 7
 	miniPanelTooltipOffsetY = -14
@@ -71,8 +71,8 @@ const (
 )
 
 const (
-	addStatsButtonX, addStatsButtonY = 206, 561
-	addSkillButtonX, addSkillButtonY = 563, 561
+	addStatsButtonX, addStatsButtonY = 206, 562
+	addSkillButtonX, addSkillButtonY = 563, 562
 )
 
 // HUD represents the always visible user interface of the game

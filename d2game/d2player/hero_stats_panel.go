@@ -232,13 +232,13 @@ func (s *HeroStatsPanel) loadNewStatPoints() {
 		{205, 140, func() {
 			s.heroState.Strength++
 		}},
-		{205, 201, func() {
+		{205, 202, func() {
 			s.heroState.Dexterity++
 		}},
-		{205, 286, func() {
+		{205, 288, func() {
 			s.heroState.Vitality++
 		}},
-		{205, 347, func() {
+		{205, 350, func() {
 			s.heroState.Energy++
 		}},
 	}
