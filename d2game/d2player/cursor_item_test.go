@@ -48,7 +48,7 @@ func TestItemGridAutoPlace(t *testing.T) {
 	// empty grid lands in a corner (all-edge neighbours score highest)
 	first := &fakeGridItem{w: 1, h: 1}
 
-	x, y, ok := g.AutoPlace(first)
+	x, y, ok := g.AutoPlaceForPickup(first)
 	if !ok {
 		t.Fatal("empty grid refused an item")
 	}
@@ -60,7 +60,7 @@ func TestItemGridAutoPlace(t *testing.T) {
 	// fill the grid with 2x2 items; every placement must stay inside and not overlap
 	for i := 0; i < 5; i++ {
 		it := &fakeGridItem{w: 2, h: 2}
-		if _, _, ok := g.AutoPlace(it); !ok {
+		if _, _, ok := g.AutoPlaceForPickup(it); !ok {
 			t.Fatalf("2x2 item %d should fit", i)
 		}
 	}
@@ -83,7 +83,7 @@ func TestItemGridAutoPlace(t *testing.T) {
 
 	// a full grid refuses
 	full := newTestGrid(2, 2, &fakeGridItem{w: 2, h: 2})
-	if _, _, ok := full.AutoPlace(&fakeGridItem{w: 1, h: 1}); ok {
+	if _, _, ok := full.AutoPlaceForPickup(&fakeGridItem{w: 1, h: 1}); ok {
 		t.Error("full grid accepted an item")
 	}
 }

@@ -86,8 +86,26 @@ type Inventory struct {
 	gold          int
 	moveGoldPanel *MoveGoldPanel
 	cursor        InventoryItem
+	// priceHook adds lines (sell value, repair cost) to item tooltips while
+	// a trade window is open.
+	priceHook func(InventoryItem) []string
 
 	*d2util.Logger
+}
+
+// SetPriceHook sets (or clears) the source of extra tooltip lines.
+func (g *Inventory) SetPriceHook(h func(InventoryItem) []string) {
+	g.priceHook = h
+}
+
+// Gold returns the gold shown by the inventory.
+func (g *Inventory) Gold() int {
+	return g.moveGoldPanel.gold
+}
+
+// SetGold changes the gold shown by the inventory.
+func (g *Inventory) SetGold(n int) {
+	g.moveGoldPanel.gold = n
 }
 
 // Toggle negates the open state of the inventory
@@ -356,6 +374,10 @@ func (g *Inventory) checkEquippedSlotsHover() bool {
 func (g *Inventory) showGridItemDescriptionTooltip(i InventoryItem) {
 	if !g.moveGoldPanel.IsOpen() {
 		lines := i.GetItemDescription()
+		if g.priceHook != nil {
+			lines = append(lines, g.priceHook(i)...)
+		}
+
 		g.itemTooltip.SetTextLines(lines)
 		_, y := g.grid.SlotToScreen(i.InventoryGridSlot())
 
@@ -367,6 +389,10 @@ func (g *Inventory) showGridItemDescriptionTooltip(i InventoryItem) {
 func (g *Inventory) showEquippedItemDescriptionTooltip(slot EquipmentSlot) {
 	if !g.moveGoldPanel.IsOpen() {
 		lines := slot.item.GetItemDescription()
+		if g.priceHook != nil {
+			lines = append(lines, g.priceHook(slot.item)...)
+		}
+
 		g.itemTooltip.SetTextLines(lines)
 		g.itemTooltip.SetPosition(g.hoverX, slot.y)
 		g.itemTooltip.SetVisible(true)

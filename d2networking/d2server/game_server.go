@@ -496,6 +496,7 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		playerState.RightSkill = savePacket.Player.RightSkill.Shallow.SkillID
 		playerState.Stats = savePacket.Player.Stats
 		playerState.Act = savePacket.Player.Act
+		playerState.Gold = savePacket.Player.Gold // changed by vendor transactions
 		playerState.Difficulty = savePacket.Difficulty
 
 		err = g.heroStateFactory.Save(playerState)

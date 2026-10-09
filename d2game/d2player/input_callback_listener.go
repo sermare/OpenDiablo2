@@ -9,4 +9,5 @@ type inputCallbackListener interface {
 	// OnPlayerDropItem is called when the hero clicks the world while holding
 	// an item on the cursor; the item is already off the cursor.
 	OnPlayerDropItem(item InventoryItem)
+	OnPlayerSave() error
 }

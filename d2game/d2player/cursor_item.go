@@ -4,7 +4,6 @@ import (
 	"math"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
-	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 )
 
 // This file adds the cursor item (the item the hero holds on the mouse, item
@@ -14,25 +13,12 @@ import (
 // its footprint is free, swapped when it overlaps exactly one item and refused
 // when it overlaps more.
 
-// occupancy builds the cell map of the grid for the auto-placement search.
-func (g *ItemGrid) occupancy() *d2inventory.OccupancyGrid {
-	occ := d2inventory.NewOccupancyGrid(g.width, g.height)
-
-	for _, it := range g.items {
-		x, y := it.InventoryGridSlot()
-		w, h := it.InventoryGridSize()
-		occ.Fill(x, y, w, h, true)
-	}
-
-	return occ
-}
-
-// AutoPlace puts the item at the slot found by the original's free-slot search
+// AutoPlaceForPickup puts the item at the slot found by the original's free-slot search
 // (d2inventory.FindFreeSlot with a player owner) and returns it. If that search
 // finds nothing although cells are free (it never accepts a slot without an
 // occupied or edge neighbour) the first-fit scan of Add is used as a fallback,
 // so a pickup is never refused while there is room.
-func (g *ItemGrid) AutoPlace(item InventoryItem) (x, y int, ok bool) {
+func (g *ItemGrid) AutoPlaceForPickup(item InventoryItem) (x, y int, ok bool) {
 	w, h := item.InventoryGridSize()
 
 	if x, y, ok = g.occupancy().FindFreeSlot(w, h, true); ok && g.canFit(x, y, item) {
@@ -71,9 +57,6 @@ func (g *ItemGrid) Contains(mx, my int) bool {
 	return mx >= g.originX && my >= g.originY &&
 		mx < g.originX+g.width*g.slotSize && my < g.originY+g.height*g.slotSize
 }
-
-// Items returns the items in the grid (not the equipped ones).
-func (g *ItemGrid) Items() []InventoryItem { return g.items }
 
 // CursorAnchor is INV_ConvertMouseToGridAnchor: the top-left cell of a w x h
 // item held at the pixel (mx, my). The item is held by its middle: for an even
@@ -134,7 +117,7 @@ func (g *Inventory) AutoPlaceCursor() (x, y int, ok bool) {
 		return 0, 0, false
 	}
 
-	if x, y, ok = g.grid.AutoPlace(g.cursor); ok {
+	if x, y, ok = g.grid.AutoPlaceForPickup(g.cursor); ok {
 		g.cursor = nil
 	}
 

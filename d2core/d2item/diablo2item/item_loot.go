@@ -103,13 +103,6 @@ func (i *Item) QualityName() string {
 	return "normal"
 }
 
-// InventoryFileName returns the DC6 (without extension, "inv..." prefix
-// included) that draws the item in the inventory: the base item's invfile
-// column. The unique/set art overrides are not used by the inventory yet.
-func (i *Item) InventoryFileName() string {
-	return i.CommonRecord().InventoryFile
-}
-
 // WorldFlippyFile returns the DC6 (without extension) that animates the item
 // falling to the ground: the unique/set row's own file if it has one, else the
 // base item's flippyfile.
