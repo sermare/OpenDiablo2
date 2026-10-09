@@ -182,7 +182,10 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 		return
 	}
 
-	if os.Getenv("OD2_AUTOMONSTER_PASSIVE") == "" {
+	switch {
+	case os.Getenv("OD2_AUTOCAST") != "":
+		v.autoCast(elapsed) // the hero casts a skill instead of swinging
+	case os.Getenv("OD2_AUTOMONSTER_PASSIVE") == "":
 		v.autoFight() // OD2_AUTOMONSTER_PASSIVE=1 leaves the hero idle to watch monsters attack
 	}
 
@@ -209,6 +212,8 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 		v.localPlayer.Stats.Health, v.localPlayer.Stats.MaxHealth)
 	v.Infof("AUTOMONSTER world packs=%d shots=%d shot_hits=%d blocked_steps=%d max_stack=%d hit_recoveries=%d",
 		c.Packs, c.Shots, c.ShotHits, c.BlockedSteps, c.MaxStack, c.HitRecoveries)
+
+	v.logCastSummary()
 
 	t.elapsed = math.Inf(-1) // print once
 	t.allDead = 0

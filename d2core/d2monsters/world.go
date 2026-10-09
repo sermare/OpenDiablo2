@@ -45,6 +45,11 @@ func flagsOf(s *d2dt1.SubTileFlags) uint16 {
 	return f
 }
 
+// Grid returns the collision view of the map (DT1 flags mapped to the exe's
+// cell bits; tiles without floor read as the out-of-grid value 0x27), for
+// other simulations such as missiles.
+func (d *Director) Grid() d2path.Grid { return d.grid }
+
 // playerSubtile is the hero's subtile position.
 func playerSubtile(p *d2mapentity.Player) (x, y int) {
 	return int(p.Position.X()), int(p.Position.Y())

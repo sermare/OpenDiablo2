@@ -73,8 +73,9 @@ type DifficultyLevelRecord struct {
 
 	// Maximum cap of the monster hit points percentage that can be damaged through
 	// Static Field. Setting these columns to 0 will make Static Field work the same
-	// way it did in Classic Diablo II.
-	// StaticFieldMin
+	// way it did in Classic Diablo II. Read here as the percent of maximum life
+	// Static Field leaves a monster at (UNVERIFIED reading).
+	StaticFieldMin int
 
 	// Parameters for gambling. They states the odds to find Rares, Sets, Uniques,
 	// Exceptionals and Elite items when gambling. See Appendix A
