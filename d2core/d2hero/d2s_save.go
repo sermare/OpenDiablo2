@@ -111,10 +111,39 @@ func SummarizeD2S(data []byte, tables *d2s.ItemTables) string {
 		merc = fmt.Sprintf("merc=type%d/name%d/exp%d/dead=%v ", m.Type, m.NameID, m.Experience, m.Dead)
 	}
 
+	bar := SkillBarFromBlock(c.Header.SkillBlock())
+	spent := 0
+
+	for _, p := range c.Body.SkillPoints {
+		spent += int(p)
+	}
+
+	skills := fmt.Sprintf("skills=left%d/right%d swap=%d/%d hotkeys=%v spent=%d unused=%d ", bar.Left.Skill, bar.Right.Skill,
+		bar.LeftSwap.Skill, bar.RightSwap.Skill, hotkeyIDs(bar), spent, a.UnusedSkillPoints)
+
 	return fmt.Sprintf("name=%s class=%v level=%d exp=%d gold=%d str=%d dex=%d vit=%d ene=%d hp=%d mana=%d "+
 		"difficulty=%d act=%d seed=%d items=%d equipped=%v status=0x%X hardcore=%v died=%v corpse=%d "+
-		"waypoints=%#x %schecksum=ok",
+		"%swaypoints=%#x %sact1quests=%s checksum=ok",
 		c.Header.Name, c.Header.Class, a.Level, a.Experience, a.Gold, a.Strength, a.Dexterity, a.Vitality,
 		a.Energy, a.MaxHP, a.MaxMana, diff, act+1, c.Header.MapSeed, len(c.Items), eq, c.Header.Status,
-		c.Header.IsHardcore(), c.Header.IsDead(), len(c.Corpse), c.Body.Waypoints[diff], merc)
+		c.Header.IsHardcore(), c.Header.IsDead(), len(c.Corpse), skills, c.Body.Waypoints[diff], merc, act1QuestSlots(c.Body, diff))
+}
+
+// act1QuestSlots lists the non-zero quest slots 0..7 (Act 1 quests and the
+// Act 1 finished word) of a difficulty as slot:0xBITS, e.g. "[1:0x2001 2:0x0001]".
+func act1QuestSlots(b *d2s.Body, difficulty int) string {
+	rec := b.QuestRecord(difficulty)
+	if rec == nil {
+		return "[]"
+	}
+
+	var parts []string
+
+	for slot := 0; slot <= d2s.QuestSlotAct1Finished; slot++ {
+		if v := rec.Slot(slot); v != 0 {
+			parts = append(parts, fmt.Sprintf("%d:0x%04x", slot, v))
+		}
+	}
+
+	return "[" + strings.Join(parts, " ") + "]"
 }

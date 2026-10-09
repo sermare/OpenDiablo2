@@ -48,6 +48,16 @@ type Missile struct {
 	// Tag is free for the caller.
 	Tag interface{}
 
+	// Home is the unit a homing missile (Guided Arrow, Bone Spirit) steers
+	// toward each frame (the original's SpecialSetup/homing do functions are
+	// not read; steering is instant, UNVERIFIED turn rate). HitEvery, when
+	// set, replaces the table's NextHit/NextDelay with a per-target interval
+	// (fire walls and other lingering missiles). ScalePct scales every rolled
+	// damage component (damage "per second" listings).
+	Home     Target
+	HitEvery int
+	ScalePct int
+
 	age      int
 	lastHit  string
 	nextHit  map[string]int
@@ -86,6 +96,19 @@ type CreateParams struct {
 
 	OnHit func(m *Missile, t Target)
 	Tag   interface{}
+
+	// Stationary makes the missile stay where it is created (traps, walls).
+	Stationary bool
+	// Home, HitEvery and ScalePct: see Missile.
+	Home     Target
+	HitEvery int
+	ScalePct int
+}
+
+// Positioned is implemented by targets that know where they are; homing
+// missiles need it.
+type Positioned interface {
+	SubPos() (x, y float64)
 }
 
 // Sim owns the live missiles of a world.
@@ -141,7 +164,9 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 	sp := p.Spec
 
 	vel := p.Velocity
-	if vel == 0 {
+	if p.Stationary {
+		vel = 0
+	} else if vel == 0 {
 		vel = d2combat.MissileVelocity(uint8(sp.Vel), uint8(sp.VelLev), p.Level, sp.CanSlow && p.Slowed, p.SlowPct)
 	}
 
@@ -157,7 +182,7 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 		ID: s.nextID, Spec: sp, Owner: p.Owner, SkillID: p.SkillID, Level: p.Level, Damage: p.Damage,
 		X: p.X, Y: p.Y, DX: ux, DY: uy, Velocity: vel, Life: life, Total: life,
 		CollideFrom: life - sp.Activate, Pierce: p.Pierce, OnHit: p.OnHit, Tag: p.Tag,
-		nextHit: map[string]int{},
+		Home: p.Home, HitEvery: p.HitEvery, ScalePct: p.ScalePct, nextHit: map[string]int{},
 	}
 
 	if p.ClampToDest {
@@ -241,6 +266,15 @@ func (s *Sim) stepOne(m *Missile) {
 		}
 	}
 
+	if m.Home != nil && m.Home.Alive() {
+		if pt, ok := m.Home.(Positioned); ok {
+			hx, hy := pt.SubPos()
+			if d := math.Hypot(hx-m.X, hy-m.Y); d > 0.01 {
+				m.DX, m.DY = (hx-m.X)/d, (hy-m.Y)/d
+			}
+		}
+	}
+
 	// displacement per frame in subtiles: step(8.8) * 16 / 65536 (verified scale)
 	stepSub := float64(d2combat.MissileStep(m.Velocity)) / 4096.0
 
@@ -264,6 +298,11 @@ func (s *Sim) stepOne(m *Missile) {
 
 	if m.Life > m.CollideFrom {
 		return // still in the activation delay
+	}
+
+	if m.Velocity == 0 { // stationary: test the cell it stands on
+		s.testCell(m, int(math.Floor(m.X)), int(math.Floor(m.Y)))
+		return
 	}
 
 	for _, c := range cellsBetween(ox, oy, m.X, m.Y) {
@@ -349,14 +388,23 @@ func (s *Sim) process(m *Missile, t Target) {
 		return
 	}
 
-	if sp.NextHit && m.nextHit[t.ID()] > frame {
+	interval := 0
+
+	switch {
+	case m.HitEvery > 0:
+		interval = m.HitEvery
+	case sp.NextHit:
+		interval = sp.NextDelay
+	}
+
+	if (sp.NextHit || m.HitEvery > 0) && m.nextHit[t.ID()] > frame {
 		return
 	}
 
 	m.lastHit = t.ID()
 
-	if sp.NextHit {
-		m.nextHit[t.ID()] = frame + sp.NextDelay
+	if sp.NextHit || m.HitEvery > 0 {
+		m.nextHit[t.ID()] = frame + interval
 	}
 
 	hit, chance, roll := true, 0, 0
@@ -381,6 +429,14 @@ func (s *Sim) process(m *Missile, t Target) {
 
 	if hit {
 		dmg := m.Damage.Roll(m.Owner.Roller)
+		if m.ScalePct > 0 && m.ScalePct != 100 {
+			dmg.Physical = dmg.Physical * int32(m.ScalePct) / 100
+			dmg.Fire = dmg.Fire * int32(m.ScalePct) / 100
+			dmg.Lightning = dmg.Lightning * int32(m.ScalePct) / 100
+			dmg.Magic = dmg.Magic * int32(m.ScalePct) / 100
+			dmg.Cold = dmg.Cold * int32(m.ScalePct) / 100
+		}
+
 		s.emit(Event{Kind: EventHit, Missile: m, Target: t, Damage: dmg, Chance: chance, Roll: roll})
 
 		if m.OnHit != nil {

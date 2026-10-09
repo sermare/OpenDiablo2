@@ -17,6 +17,10 @@ type heroUnit struct {
 	seed      *d2rand.Seed
 	manaFrac  int // the 8.8 fraction of mana the integer Stats.Mana cannot hold
 	cooldowns map[int]int
+
+	passives     map[string]int
+	passiveFrame int
+	inPassive    bool
 }
 
 func (e *Engine) hero(p *d2mapentity.Player) *heroUnit {
@@ -58,19 +62,52 @@ func (h *heroUnit) skill(id int) int {
 func (h *heroUnit) SkillLevel(id int) int     { return h.skill(id) }
 func (h *heroUnit) BaseSkillLevel(id int) int { return h.skill(id) }
 
+// Stat is a base attribute plus what the hero's states (auras, buffs,
+// charges) and passive skills add to it.
 func (h *heroUnit) Stat(name string) int {
+	v := 0
+
 	switch name {
 	case "strength":
-		return h.p.Stats.Strength
+		v = h.p.Stats.Strength
 	case "dexterity":
-		return h.p.Stats.Dexterity
+		v = h.p.Stats.Dexterity
 	case "energy":
-		return h.p.Stats.Energy
+		v = h.p.Stats.Energy
 	case "vitality":
-		return h.p.Stats.Vitality
+		v = h.p.Stats.Vitality
 	}
 
-	return 0
+	return v + h.e.setOf(h.p.ID()).Stat(h.e.frame, name) + h.passive(name)
+}
+
+// passive sums the passivestat columns of the hero's passive skills (Dodge,
+// Claw Mastery, Warmth...), cached for the frame; the evaluation of a calc
+// that reads a stat does not see the passives (no recursion).
+func (h *heroUnit) passive(name string) int {
+	if h.inPassive {
+		return 0
+	}
+
+	if h.passiveFrame != h.e.frame+1 {
+		h.inPassive = true
+		h.passives = map[string]int{}
+
+		for id, s := range h.p.Skills {
+			if s == nil || s.SkillPoints < 1 {
+				continue
+			}
+
+			for _, m := range h.e.pipe.PassiveStats(h, id) {
+				h.passives[m.Stat] += m.Value
+			}
+		}
+
+		h.inPassive = false
+		h.passiveFrame = h.e.frame + 1
+	}
+
+	return h.passives[name]
 }
 
 func (h *heroUnit) Mana() int { return h.p.Stats.Mana<<8 | h.manaFrac }
@@ -115,7 +152,16 @@ func (h *heroUnit) WeaponDamage() (min, max int) {
 // RangedWeaponMissile is not derived from the weapon type yet (UNVERIFIED /
 // not implemented): weapons are treated as melee.
 func (h *heroUnit) RangedWeaponMissile() string { return "" }
-func (h *heroUnit) ThrownMissile() string       { return "" }
+
+// ThrownMissile is a javelin when the scenario gives infinite ammunition (the
+// weapon type is not mapped to missiles yet; UNVERIFIED), else none.
+func (h *heroUnit) ThrownMissile() string {
+	if h.e.opt.InfiniteAmmo {
+		return "javelin"
+	}
+
+	return ""
+}
 
 func (h *heroUnit) HasAmmo() bool       { return h.e.opt.InfiniteAmmo }
 func (h *heroUnit) ConsumeAmmo() bool   { return h.e.opt.InfiniteAmmo }
@@ -146,7 +192,22 @@ func (t *monsterTarget) IsPlayer() bool { return false }
 func (t *monsterTarget) Alive() bool    { return t.m.Alive() }
 func (t *monsterTarget) Level() int     { return t.m.Vitals.Level }
 func (t *monsterTarget) Defense(bool) int {
-	return t.m.Vitals.Defense
+	set := t.e.setOf(t.m.ID())
+	v := t.m.Vitals.Defense + set.Stat(t.e.frame, "armorclass")
+	v += v * set.DefensePct(t.e.frame) / 100
+
+	if v < 0 {
+		v = 0
+	}
+
+	return v
+}
+
+// SubPos implements d2missile.Positioned (homing, chain lightning).
+func (t *monsterTarget) SubPos() (float64, float64) {
+	x, y := t.m.SubtilePos()
+
+	return float64(x) + 0.5, float64(y) + 0.5
 }
 
 // world adapts the engine to d2missile.World.

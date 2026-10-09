@@ -19,6 +19,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
@@ -215,6 +216,7 @@ func NewGameControls(
 		questLog:       questLog,
 		HelpOverlay:    helpOverlay,
 		NPCMenu:        NewNPCMenu(asset, ui),
+		Speech:         NewSpeechBubble(ui),
 		Waypoints:      NewWaypointPanel(asset, ui),
 		keyMap:         keyMap,
 		bottomMenuRect: &d2geom.Rectangle{
@@ -271,6 +273,18 @@ func NewGameControls(
 	gc.questLog.SetOnCloseCb(gc.onCloseQuestLog)
 	gc.inventory.SetOnCloseCb(gc.onCloseInventory)
 	gc.skilltree.SetOnCloseCb(gc.onCloseSkilltree)
+
+	// skill selection: the popups pick through SelectSkill, the icons show the hotkeys
+	hud.skillSelectMenu.SetCallbacks(gc.onSkillPopupPick, gc.hotkeyName)
+	gc.skilltree.tooltipText = func(s *d2hero.HeroSkill) string {
+		return skillTooltip(asset, s, gc.hero.SkillBar, gc.hotkeyName)
+	}
+
+	if audioProvider != nil {
+		if sfx, err := audioProvider.LoadSound(d2resource.SFXButtonClick, false, false); err == nil {
+			gc.clickSfx = sfx
+		}
+	}
 
 	gc.escapeMenu.SetOnCloseCb(gc.hud.miniPanel.restoreDisabled)
 	gc.HelpOverlay.SetOnCloseCb(gc.hud.miniPanel.restoreDisabled)
@@ -331,7 +345,11 @@ type GameControls struct {
 	FreeCam                bool
 	isSinglePlayer         bool
 	mapEngine              *d2mapengine.MapEngine
-	automap                *Automap // see automap.go
+	automap                *Automap                // see automap.go
+	clickSfx               d2interface.SoundEffect // the button click (skill selection)
+
+	// Speech shows the subtitle of NPC speech and short notices (quest log updated).
+	Speech *SpeechBubble
 
 	*d2util.Logger
 }
@@ -451,6 +469,11 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 		g.automap.Toggle()
 	case d2enum.UseBeltSlot1, d2enum.UseBeltSlot2, d2enum.UseBeltSlot3, d2enum.UseBeltSlot4:
 		g.UseBeltColumn(int(gameEvent - d2enum.UseBeltSlot1))
+	case d2enum.UseSkill1, d2enum.UseSkill2, d2enum.UseSkill3, d2enum.UseSkill4,
+		d2enum.UseSkill5, d2enum.UseSkill6, d2enum.UseSkill7, d2enum.UseSkill8,
+		d2enum.UseSkill9, d2enum.UseSkill10, d2enum.UseSkill11, d2enum.UseSkill12,
+		d2enum.UseSkill13, d2enum.UseSkill14, d2enum.UseSkill15, d2enum.UseSkill16:
+		g.onSkillKey(int(gameEvent - firstHotkeyEvent))
 	default:
 		return false
 	}
@@ -535,7 +558,7 @@ func (g *GameControls) OnMouseButtonRepeat(event d2interface.MouseEvent) bool {
 		}
 
 		if event.KeyMod() == d2enum.KeyModShift {
-			g.inputListener.OnPlayerCast(g.hero.LeftSkill.ID, px, py)
+			g.UseActiveSkill(true, px, py)
 		} else {
 			g.inputListener.OnPlayerMove(px, py)
 		}
@@ -562,7 +585,7 @@ func (g *GameControls) OnMouseButtonRepeat(event d2interface.MouseEvent) bool {
 	if isRight && shouldDoRight && inRect && !g.hero.IsCasting() {
 		g.lastRightBtnActionTime = now
 
-		g.inputListener.OnPlayerCast(g.hero.RightSkill.ID, px, py)
+		g.UseActiveSkill(false, px, py)
 
 		return true
 	}
@@ -593,6 +616,7 @@ func (g *GameControls) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 	g.cube.OnMouseMove(mx, my)
 	g.belt.OnMouseMove(mx, my)
 	g.hud.OnMouseMove(event)
+	g.skilltree.OnMouseMove(mx, my)
 
 	if g.PartyPanel != nil {
 		g.PartyPanel.OnMouseMove(event)
@@ -697,6 +721,10 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 		return false
 	}
 
+	if g.skilltree.IsOpen() && g.skillTreeClick(event) {
+		return true
+	}
+
 	px, py := g.mapRenderer.ScreenToWorld(mx, my)
 	px = truncateFloat64(px)
 	py = truncateFloat64(py)
@@ -737,7 +765,7 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 		}
 
 		if event.KeyMod() == d2enum.KeyModShift {
-			g.inputListener.OnPlayerCast(g.hero.LeftSkill.ID, px, py)
+			g.UseActiveSkill(true, px, py)
 		} else {
 			g.inputListener.OnPlayerMove(px, py)
 		}
@@ -748,7 +776,7 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	if event.Button() == d2enum.MouseButtonRight && !g.isInActiveMenusRect(mx, my) && !g.hero.IsCasting() {
 		g.lastRightBtnActionTime = d2util.Now()
 
-		g.inputListener.OnPlayerCast(g.hero.RightSkill.ID, px, py)
+		g.UseActiveSkill(false, px, py)
 
 		return true
 	}
@@ -1001,6 +1029,7 @@ func (g *GameControls) Advance(elapsed float64) error {
 	g.advancePotions(elapsed)
 	g.automap.Advance(elapsed)
 	g.questLog.Advance(elapsed)
+	g.Speech.Advance(elapsed)
 
 	if g.PartyPanel != nil {
 		g.PartyPanel.Advance(elapsed)
@@ -1012,6 +1041,10 @@ func (g *GameControls) Advance(elapsed float64) error {
 
 	if g.heroStatsPanel.IsOpen() || g.skilltree.IsOpen() {
 		g.setAddButtons()
+	}
+
+	if g.skilltree.IsOpen() {
+		g.skilltree.refresh()
 	}
 
 	return nil
@@ -1105,6 +1138,7 @@ func (g *GameControls) Render(target d2interface.Surface) error {
 	g.cube.Render(target)
 	g.belt.Render(target)
 	g.NPCMenu.Render(target)
+	g.Speech.Render(target)
 	g.Waypoints.Render(target)
 
 	if err := g.escapeMenu.Render(target); err != nil {
@@ -1121,6 +1155,10 @@ func (g *GameControls) renderPanels(target d2interface.Surface) error {
 
 	return nil
 }
+
+// QuestLog returns the quest log panel, so the quest system can feed it the
+// real quest states.
+func (g *GameControls) QuestLog() *QuestLog { return g.questLog }
 
 // SetZoneChangeText sets the zoneChangeText
 func (g *GameControls) SetZoneChangeText(text string) {
@@ -1240,12 +1278,16 @@ func (g *GameControls) bindTerminalCommands(term d2interface.Terminal) error {
 		return err
 	}
 
+	if err := term.Bind("levelup", "give the hero level-ups (skill and stat points)", []string{"levels"}, g.commandLevelUp(term)); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // UnbindTerminalCommands unbinds commands from the terminal
 func (g *GameControls) UnbindTerminalCommands(term d2interface.Terminal) error {
-	return term.Unbind("freecam", "setleftskill", "setrightskill", "learnskills", "learnskillid")
+	return term.Unbind("freecam", "setleftskill", "setrightskill", "learnskills", "learnskillid", "levelup")
 }
 
 func (g *GameControls) setAddButtons() {

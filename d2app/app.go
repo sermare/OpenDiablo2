@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"image"
 	"image/gif"
 	"image/png"
@@ -338,8 +339,16 @@ func (a *App) Run() (err error) {
 	}
 
 	if save := os.Getenv("OD2_AUTOGAME"); save != "" {
-		// a real Diablo II .d2s is imported first, then started like any save
-		if strings.EqualFold(filepath.Ext(save), ".d2s") {
+		if class := os.Getenv("OD2_AUTOCAST_CLASS"); class != "" {
+			// a fresh hero of that class replaces the save (skill scenarios)
+			fresh, err := a.freshHeroSave(class)
+			if err != nil {
+				a.Errorf("OD2_AUTOCAST_CLASS: %v", err)
+			} else {
+				save = fresh
+			}
+		} else if strings.EqualFold(filepath.Ext(save), ".d2s") {
+			// a real Diablo II .d2s is imported first, then started like any save
 			imported, err := a.importD2SSave(save)
 			if err != nil {
 				a.Errorf("could not import %s: %v", save, err)
@@ -348,7 +357,18 @@ func (a *App) Run() (err error) {
 			save = imported
 		}
 
-		a.ToCreateGame(save, d2clientconnectiontype.Local, "")
+		// OD2_HOST=1 hosts a network game (TCP on OD2_PORT, bind address OD2_BIND),
+		// OD2_JOIN=<host:port> joins one; OD2_PROTO=d2gs speaks the D2 game protocol
+		connType, joinAddr := d2clientconnectiontype.Local, ""
+
+		switch join := os.Getenv("OD2_JOIN"); {
+		case os.Getenv("OD2_HOST") == "1":
+			connType = d2clientconnectiontype.LANServer
+		case join != "":
+			connType, joinAddr = d2clientconnectiontype.LANClient, join
+		}
+
+		a.startAutoGame(save, connType, joinAddr)
 	} else if os.Getenv("OD2_AUTOSCREEN") == "charselect" {
 		// OD2_AUTOSCREEN=charselect opens the character select screen directly (for OD2_AUTOSHOT)
 		a.ToCharacterSelect(d2clientconnectiontype.Local, "")
@@ -699,6 +719,57 @@ func (a *App) ToCreateGame(filePath string, connType d2clientconnectiontype.Clie
 
 		a.screen.SetNextScreen(game)
 	}
+}
+
+// startAutoGame starts the OD2_AUTOGAME hero. With OD2_AUTODIFFICULTY=0|1|2 the
+// difficulty is picked like on the difficulty screen (only unlocked ones;
+// OD2_AUTODIFFICULTY_FORCE=1 skips the unlock rule) and saved with the hero.
+func (a *App) startAutoGame(save string, connType d2clientconnectiontype.ClientConnectionType, joinAddr string) {
+	level, ok := d2gamescreen.AutoDifficulty()
+	if !ok {
+		a.ToCreateGame(save, connType, joinAddr)
+
+		return
+	}
+
+	factory, err := d2hero.NewHeroStateFactory(a.asset)
+	hero := (*d2hero.HeroState)(nil)
+
+	if err == nil {
+		hero = factory.LoadHeroState(save)
+	}
+
+	switch {
+	case hero == nil:
+		a.Errorf("OD2_AUTODIFFICULTY: cannot load %s", save)
+	case os.Getenv("OD2_AUTODIFFICULTY_FORCE") != "":
+		if err = hero.ChooseDifficulty(d2difficulty.Level(level), true); err == nil {
+			err = factory.Save(hero)
+		}
+
+		a.Infof("DIFFICULTY forced %v for %s (unlocked=%v) err=%v", level, hero.HeroName, hero.UnlockedDifficulties(), err)
+	case d2gamescreen.NeedsDifficultyChoice(hero):
+		a.ToSelectDifficulty(save, connType, joinAddr)
+
+		return
+	default:
+		a.Warningf("DIFFICULTY %v refused for %s: only Normal is unlocked", level, hero.HeroName)
+	}
+
+	a.ToCreateGame(save, connType, joinAddr)
+}
+
+// ToSelectDifficulty shows the difficulty screen of a saved hero.
+func (a *App) ToSelectDifficulty(filePath string, connType d2clientconnectiontype.ClientConnectionType, host string) {
+	screen, err := d2gamescreen.CreateDifficultySelect(a, a.asset, a.ui, filePath, connType, host, *a.Options.LogLevel)
+	if err != nil {
+		a.Error(err.Error())
+		a.ToCreateGame(filePath, connType, host)
+
+		return
+	}
+
+	a.screen.SetNextScreen(screen)
 }
 
 // ToCharacterSelect forces the game to transition to the Character Select (load character) screen

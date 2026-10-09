@@ -1,0 +1,305 @@
+# Testing
+
+How this fork is checked, from fast unit tests to a full in-game run. Nothing here needs game files unless
+it says so, and **no game file, extracted table or save is ever committed**: tests that need real data read it from
+paths given in environment variables and `t.Skip` when those are unset.
+
+Layers, cheapest first:
+
+1. [Unit tests](#1-unit-tests) (always run, including on Linux CI)
+2. [Real-data tests](#2-real-data-tests-environment-variables) (your own game data, skipped otherwise)
+3. [Oracle tests](#3-oracle-tests-the-level-generator-ground-truth) (committed golden numbers from the real game)
+4. [The in-game harness](#4-the-in-game-harness-od2_auto) (`OD2_AUTO*`, runs the real engine)
+5. [`scripts/verify.sh`](#5-scriptsverifysh-and-scenarios) (the gate that runs 1-4 together)
+
+## 1. Unit tests
+
+```sh
+go build ./... && go vet ./... && go test ./...
+```
+
+* `gofmt` must be clean for the files you touch. The repo has older unformatted upstream files that are deliberately
+  not reformatted; CI gofmt-checks only the directories in `GOFMT_DIRS` (currently `d2game/d2autoscript`).
+* The linker warning `ld: warning: ignoring duplicate libraries: '-lobjc'` is harmless.
+* `go vet ./...` over the whole tree reports older findings (for example in `d2app`); CI vets only the pure packages.
+* Style: table-driven tests; prefer pure packages with small interfaces over code that needs MPQs or a display.
+  The pure rule packages (`d2combat`, `d2monster`, `d2skill`, `d2trade`, ...) are tested with fakes for their
+  interfaces and a seeded `d2rand.Seed`, so results are reproducible.
+* Randomised code: test with a fixed seed. The test vectors for `d2rand` come from an independent Python
+  implementation, not from the Go code.
+
+## 2. Real-data tests (environment variables)
+
+These tests read your own copy of the game data. Set the variable, run the package, and compare against the output
+you expect. Without the variable they skip (they never fail for missing data).
+
+| Variable | What it points to | Used by |
+|---|---|---|
+| `D2_TABLES` | A folder of extracted game tables. The layout is whatever the individual test reads (for example `drlg/patch_d2/Levels.txt`, `drlg/bin/patch_d2/lvlprest.bin`, `itemstatcost.bin`, `armor.txt`, `sound/patch_d2/...`, `skills/...`, `monsters/...`); a test skips when the file it needs is missing. The author keeps it in `~/git/d2-tables`. | DRLG, `d2drop`, `d2sfx`, `d2monster`, `d2hero`, `d2calc`, `d2records`, `d2quest`, `d2statlist`, `d2equip`, `d2hireling`, `d2level`, `d2object`, `d2automap`, `d2s` (about 27 call sites) |
+| `D2S_SAMPLE` | A real `.d2s` | header parser tests in `d2s` |
+| `D2S_SAMPLE_JSON` | Expected parse of that save (nokka `d2s` JSON format) | item parser test in `d2s` |
+| `D2S_SAMPLE_BODY` | A real `.d2s` that has a body (quests, waypoints, stats, skills, items) | body, writer, container, equipment and export tests (`d2s`, `d2hero`) |
+| `D2S_SAMPLE_BODY_JSON` | Expected parse of `D2S_SAMPLE_BODY` from an independent reference parser | `d2s` body test |
+| `D2S_SAMPLE_NEW` | A real new-character save from the game | `d2s` new-character test: every byte must match except the fields tagged as varying |
+| `D2_DS1_ROOT` | Folder holding `patch_d2`, `d2exp`, `d2data`, each with `data/global/tiles` extracted | outdoor oracle test (`drlgoutdoor`) |
+| `D2_INSTALL` | The Diablo II install folder | `default.key` tests (`d2key`, `d2player`) |
+| `D2_DEFAULT_KEY` | A path to a real `default.key` | `d2key` |
+| `D2_PL2` | A real act palette `.pl2` | `d2pl2` shade factors |
+| `D2_STRING_TBL` | `data\local\lng\eng\string.tbl` | `d2quest` speech keys |
+| `ORACLE_MAZE`, `ORACLE_WORLD`, `ORACLE_OUTDOOR` | Override the committed golden JSON with another file (see the next section) | oracle tests |
+
+Typical use:
+
+```sh
+D2_TABLES=$HOME/git/d2-tables \
+D2S_SAMPLE_BODY=/path/to/real.d2s D2S_SAMPLE_BODY_JSON=/path/to/real.d2s.json \
+go test ./d2common/... ./d2core/...
+```
+
+Notes on the data used by the author:
+
+* The primary save oracle is a real level-94 1.14b Sorceress with its expected parse produced by the independent
+  [nokka/d2s](https://github.com/nokka/d2s) (MIT). A second real save is used for the header and body.
+  The README success log gives the headline numbers (byte-identical round trip, 60/60 items).
+* Extract tables from your own install with an MPQ tool, for example `mpqcli extract <mpq> -f 'data\global\excel\X.txt' -o <dir>`.
+  Load order matters: `patch_d2` overrides `d2exp` overrides `d2data`.
+
+## 3. Oracle tests (the level generator ground truth)
+
+The level generator (`d2common/d2drlg`) is only useful if it produces **the same levels as the original game for the
+same seed**. Reading code cannot prove that, so the real `Game.exe` generator itself is used as the oracle.
+
+### 3.1 What an oracle is here
+
+The real 1.14b `Game.exe` DRLG functions (`DRLG_CreateDrlg`, `DRLG_GenerateLevel` and everything below them) are run
+inside an x86-32 CPU emulator (Python, Unicorn engine) by a harness that:
+
+* loads the PE image at its image base, stubs the Windows imports and the allocator, and serves the game's table and
+  DS1 files from a folder of extracted data;
+* calls the generator natively for a chosen game seed, difficulty and level id;
+* walks the resulting level structure (level rectangle, seed, room list, preset info) and writes **numbers only** to JSON.
+
+The Go port is then run on the same inputs and must agree exactly, including the final level seed (which also proves
+the random-number draw order is right, since any extra or missing draw changes the seed).
+
+### 3.2 The committed goldens
+
+`d2common/d2drlg/testdata/` (numbers only; no game data inside):
+
+| File | Content | Test |
+|---|---|---|
+| `world_act1_normal.json` | Act 1 world layout for 50 seeds | `drlgworld` `TestOracleWorld` |
+| `maze_act1.json`, `maze_act23.json`, `maze_act45.json` | Maze levels: rooms (or a count plus a hash of the sorted room keys in the compact files), Def and file index, final level seed | `drlgmaze` `TestOracleMaze` (hard assertions) |
+| `acts.json` | Act-level extra draws (Act 2 tomb choice, Act 3 flip) | `d2drlg` `acts_oracle_test.go` |
+| `outdoor_act1.json` | Act 1 outdoor levels: stage numbers, room list, sha256 digests of the large grids; the first seeds are kept in full | `drlgoutdoor` `oracle_test.go` |
+| `gen_outdoor_compact.py` | The only generator script that lives in the repo: shrinks the big emulator golden to the committed compact file | n/a |
+
+The tests need `D2_TABLES` (and `D2_DS1_ROOT` for the outdoor one) because the Go port needs the same input tables
+the original read. Proven coverage is stated in the package comments and the README status board; cite those rather
+than this page for exact numbers.
+
+### 3.3 Regenerating a golden (procedure)
+
+The emulator harness and its regeneration scripts are **outside this repository** (they embed paths and extracted game
+data on the author's machine). The procedure is:
+
+1. Extract the game tables and DS1 files you need from your own MPQs into the harness's `gamefiles` folder
+   (priority `patch_d2` > `d2exp` > `d2data`).
+2. In the harness virtual environment (Python with `unicorn`, `capstone`, `pefile`), run the generator for the part you
+   changed: `gen_world.py`, `gen_maze.py`, `gen_outdoor.py` or `gen_acts.py`, each as
+   `python gen_X.py <output.json> [number of seeds]` (the author's notes record this form for `gen_maze.py`; check the other scripts' headers). A 6-seed, 3-difficulty maze run takes about a minute; a 50-seed
+   run takes about eight minutes per difficulty.
+3. For outdoors, generate the large golden (30 seeds, about 10 MB) and compress it with
+   `d2common/d2drlg/testdata/gen_outdoor_compact.py big.json out.json [nfull]` before committing.
+4. Copy the small resulting JSON into `d2common/d2drlg/testdata/`. You can run a test against a different file first
+   with `ORACLE_MAZE=/path/to/golden.json go test ./d2common/d2drlg/drlgmaze/` (same for `ORACLE_WORLD`, `ORACLE_OUTDOOR`).
+5. Negative control: perturb a value in the golden and confirm the test fails. A test that cannot fail proves nothing.
+
+Only numbers derived from the generator may be committed. Do not commit extracted tables, DS1/DT1 files or the
+emulator itself.
+
+### 3.4 Caveats stated honestly
+
+* The DT1 tile library is not emulated by the oracle. Where the original picks a random tile, the emulator hook
+  consumes one room-seed step; that is a model, not an observation. `drlgoutdoor` carries the same model
+  (`RoomBuildOptions.PickTile`).
+* Acts 2-5 outdoor generators do not exist in the port yet, so there is no golden for them.
+* A golden is only as wide as its seeds and levels. Passing the committed seeds is strong evidence, not a proof for all
+  2^32 seeds.
+
+## 4. The in-game harness (`OD2_AUTO*`)
+
+The engine can run scripted checks of itself so a change can be verified with no one clicking. It needs a GUI
+session and your game data. All variables below were found by searching for `os.Getenv("OD2_` in the code
+(`d2app`, `d2game`, `d2core`, `d2networking`). Ignore a variable here at your own risk if the code disagrees: the code wins.
+
+### 4.1 Launch rules on macOS
+
+* A plain shell (SSH, a background agent, `go run` from a non-GUI context) cannot start the engine: it fails with a
+  Cocoa display error. The process must start inside the user's **GUI login session**.
+* Build to a scratch path (`go build -o /tmp/od2 .`), put the environment in a small `.command` script
+  (`#!/bin/zsh`, `export OD2_...`, `/tmp/od2 2>&1 | tee run.log`) and launch that.
+* Prefer `launchctl asuser $(id -u) /bin/zsh script.command`. It starts the script in the GUI session **without
+  opening a Terminal window**. `open script.command` also works but leaves a Terminal window behind every time;
+  hundreds of them stop Terminal from working. `scripts/verify.sh` tries `$OD2_VERIFY_LAUNCH`, then `launchctl asuser`,
+  then `open`, in that order.
+* The launcher returns before the game starts. Wait for the game process to appear, then for it to exit, then read the
+  log (strip ANSI colour codes first).
+* Give each run its own port and scratch directory so parallel runs do not collide: `OD2_PORT=<n>` (server and client
+  default port) and `OD2_CONFIG_DIR=<dir>` (config and `Saves`).
+* Use `OD2_AUTOTEST_MUTE=1` so tests are silent and `OD2_AUTOEXIT=1` so they end by themselves.
+
+### 4.2 Variables, grouped
+
+Per-variable behaviour and log lines are in [macos-quickstart.md](macos-quickstart.md) (a table) and in the doc comment
+of the file that reads the variable. Defaults below are from the code.
+
+**Start and control**
+
+| Variable | Meaning |
+|---|---|
+| `OD2_AUTOGAME=<file>` | Start that character directly (a `.d2s` is imported first). Required by most scenarios. |
+| `OD2_AUTOEXIT` | Quit when the scenario finishes (script and quest runs exit 0 on PASS, 1 on FAIL). Some paths save the hero before quitting. |
+| `OD2_AUTOTEST_MUTE` | No audio output; the sound engine still tracks voices. |
+| `OD2_AUTOSCRIPT='step;step'` | Scripted hero actions: `wait:`, `move:x,y` / `move:npc=`, `cast:`, `panel:`, `say:`, `expect:log=`, `use:`, `waypoint:`, `expect:level=`, `automap:`, `exit`. Needs `OD2_AUTOGAME`. Parser: `d2game/d2autoscript`. Ends with `AUTOSCRIPT RESULT PASS` or `FAIL`. |
+| `OD2_PORT` | Server/client port override. |
+| `OD2_CONFIG_DIR` | Move `config.json` and `Saves` (for isolated runs). |
+| `OD2_NO_SETUP`, `OD2_SETUP_AUTOPICK` | Skip the first-run dialogs; select what a scripted setup UI picks. |
+| `OD2_D2S_DIR` | Folder of real `.d2s` characters to import into the character list (read only). |
+| `OD2_D2S_WRITEBACK=<dir>` | Folder where exported `.d2s` files go (otherwise next to the `.od2` save). |
+
+**Worlds and levels**
+
+| Variable | Meaning |
+|---|---|
+| `OD2_REALMAPS=1` | Enable the DRLG level providers (maze and Act 1 outdoor levels). Without it only the Rogue Encampment can be loaded. |
+| `OD2_AUTOLEVEL=<id>` | Start directly in that level (with `OD2_REALMAPS`). |
+| `OD2_AUTOMAP=<id>`, `OD2_AUTOMAP_DIFF`, `OD2_AUTOMAP_ASCII` | Generate that level from the hero's seed and log a summary; difficulty; log the room list and a walkability map. (Not the in-game automap panel; that is `OD2_AUTOSCRIPT` `automap:`.) |
+| `OD2_AUTOTIME=<phase>[@degree]` | Force and freeze the day/night clock. |
+| `OD2_LIGHTING=0` | Turn the light map off. |
+| `OD2_AUTOSHOT=<file.png>`, `_DELAY`, `_SECONDS` | Save a frame after a delay in the world. |
+
+**NPCs, menus, trade**
+
+| Variable | Meaning |
+|---|---|
+| `OD2_AUTOTALK=Warriv,Akara` | Resolve and log each NPC's greeting. |
+| `OD2_AUTOMENU=<npc>`, `OD2_AUTOMENU_CHOOSE`, `OD2_AUTOMENU_HOLD` | Open an NPC menu, choose an entry, keep it open. |
+| `OD2_AUTOTRADE=Akara,Charsi`, `_SEED`, `_LEVEL` | Open vendor windows, log stock and prices, run a scripted buy/sell/repair. |
+| `OD2_AUTOGAMBLE`, `OD2_AUTOIDENTIFY` | Gheed's gamble window; Cain's identify window. |
+| `OD2_AUTOSOUND=<handle,...>` | Play Sounds.txt rows and log the voice decision. |
+
+**Combat, monsters, skills**
+
+| Variable | Meaning |
+|---|---|
+| `OD2_AUTOMONSTER=<id,count>`, `_SECONDS`, `_DIFF`, `_PASSIVE`, `_FAR`, `_AREA` | Spawn monsters near the hero and let the hero fight; difficulty 0..2; hero does not fight back; far ring for sound tests; map stands for an area. Logs `MONSTER ...` and `AUTOMONSTER summary`. |
+| `OD2_AUTOCAST=<skill>,<count>`, `_LEVEL`, `_MANA` | The hero casts a skill at the nearest monster through the skill pipeline. Default 5 casts, grant level 10. |
+| `OD2_AUTOMERC=1`, `_KILL`, `_HEROLEVEL`, `_EXP`, `_SECONDS` | Mercenary hire, fight, death/revive, follow. |
+| `OD2_AUTODEATH=1`, `_MONSTER`, `_LEVEL`, `_HP`, `_HARDCORE` | Death, respawn, corpse recovery, penalties. |
+| `OD2_AUTOAMBIENT=<level>`, `_PHASES`, `_SECONDS`, `_SPEED`, `OD2_AUTOSOUND_TRACE` | Sound environment and day phases; `SOUNDAT` positional-sound lines (the trace variable only switches those lines on). |
+
+**Items, containers, objects, quests**
+
+| Variable | Meaning |
+|---|---|
+| `OD2_AUTOGROUND=<seed>[,count]`, `_TC`, `_ILVL`, `_HOLD` | Drop items and gold from a treasure class around the hero. |
+| `OD2_AUTOCHEST=<seed>[,id...]`, `OD2_AUTOCHEST_SEED` | Spawn chests and barrels and open them. |
+| `OD2_AUTOPICKUP=1` | Pick up every ground item into the inventory. |
+| `OD2_AUTOPANEL=stash,cube,belt,inventory`, `_HOLD` | Open container panels and log items with grid positions. |
+| `OD2_AUTOSTASH`, `OD2_AUTOBELT` | Stash interaction; belt potion hotkeys. |
+| `OD2_AUTOEQUIP=1`, `OD2_DURABILITY_CHANCE=<percent>` | Equip-rule scenario; override the durability-loss chance. |
+| `OD2_AUTOOBJECT=<id\|name>[,count][;...]`, `_SHRINE`, `_LIFE`, `_MANA` | Spawn world objects, force a shrine type, set hero life/mana. |
+| `OD2_AUTOQUEST=<quest>`, `_AREA`, `_DIFF`, `_REAL` | Scripted quest line; logs `AUTOQUEST RESULT PASS`/`FAIL`. |
+
+**Saves and characters**
+
+| Variable | Meaning |
+|---|---|
+| `OD2_AUTOSAVE=1` | Set a known gold value, save and exit; used to test the `.d2s` write-back. |
+| `OD2_AUTONEWCHAR=<Class>[,hardcore][,classic][,ladder]`, `_NAME`, `_REF` | Create a new character, write its `.d2s`, optionally diff it against a real new-character file. |
+
+**Performance**
+
+| Variable | Meaning |
+|---|---|
+| `OD2_AUTOPERF=1`, `_SECONDS` (20), `_WARMUP` (6) | Meter update and render time per frame after a warm-up. |
+| `OD2_PPROF_CPU=<file>`, `OD2_PPROF_HEAP=<file>` | CPU and heap profiles of the run. |
+
+Internal: `OD2_WATCH_PID` and `OD2_WATCH_LOG` are used by the macOS app bundle's crash watcher (`bundle_darwin.go`),
+not by tests. `OD2_VERIFY_LAUNCH` and `OD2_VERIFY_SAVE` belong to `scripts/verify.sh` (below).
+
+### 4.3 Reading the result
+
+Every scenario logs lines with a fixed prefix (`AUTOSCRIPT`, `AUTOCAST`, `MONSTER`, `CAST`, `LEVEL CHANGE`, `D2S EXPORT`, ...)
+and most end with a summary line. A scenario's verdict is whatever its `scenario_check` greps for. A run that logs
+`[ERROR]`, `[WARNING]` or `panic` fails the gate unless the scenario opts out.
+
+## 5. `scripts/verify.sh` and scenarios
+
+`scripts/verify.sh` is the one-command gate. It needs zsh, a GUI session and a game install configured
+(see [macos-quickstart.md](macos-quickstart.md)).
+
+```sh
+D2S_SAMPLE_BODY=/path/to/real.d2s D2S_SAMPLE_BODY_JSON=/path/to/expected.json \
+D2_TABLES=/path/to/extracted/tables ./scripts/verify.sh
+```
+
+What it does, in order:
+
+1. **build** the engine into a scratch directory.
+2. **unit tests**: `go test ./...`, printing only failures.
+3. if `D2S_SAMPLE_BODY` is set: the **real `.d2s` oracle tests** (`d2s` package), then the **save-back round trip**
+   (`go test -run Export ./d2core/d2hero/`, which must include `TestExportUnchangedIsByteIdentical`).
+4. if `D2S_SAMPLE_BODY` is set: **every scenario** `scripts/verify.d/*.sh` in file-name order. Each runs the game
+   once on a copy of the save with `OD2_AUTOGAME`, `OD2_AUTOTEST_MUTE=1` and `OD2_AUTOEXIT=1` plus its own environment.
+5. prints `ALL CHECKS PASSED` or `SOME CHECKS FAILED` (exit 1).
+
+Environment: `D2_TABLES`, `D2S_SAMPLE_BODY`, `D2S_SAMPLE_BODY_JSON` as above; `OD2_VERIFY_SAVE` (a `.d2s` to start in the game
+instead of a copy of the sample); `OD2_VERIFY_LAUNCH` (command prefix used to start the generated `.command` file, for
+example `launchctl asuser 501 /bin/zsh`). It picks a random free port for `OD2_PORT` per run.
+
+### 5.1 Scenario file format
+
+A scenario is one small zsh file in `scripts/verify.d/`, named `NN-title.sh` (the number orders the run). The runner
+sources it and uses these names:
+
+```zsh
+scenario_name="human readable title"          # shown as the step heading
+scenario_env() {                              # echo shell lines for the game's .command file
+  echo 'export OD2_AUTOMONSTER="zombie1,2" OD2_AUTOCAST="Fire Bolt,4"'
+}                                             # may use $save, $tmp, $OD2_PORT
+scenario_check() {                            # inspect "$log.txt" (ANSI stripped); set fail=1 on problems
+  grep -qE "AUTOCAST summary .* kills=[1-9]" $log.txt || { echo "FAIL: no kill"; fail=1; }
+}
+scenario_warnings_ok=1                        # optional: do not fail on [ERROR]/[WARNING] lines
+```
+
+The runner already exports `OD2_PORT`, `OD2_AUTOGAME`, `OD2_AUTOTEST_MUTE` and `OD2_AUTOEXIT` for you.
+
+Existing scenarios (all in `scripts/verify.d/`): menus and trade, scripted walk, autosave, monster pack, containers,
+skill cast, real maze and outdoor maps, waypoint/portal and persistence, maze travel, mercenary, quests, gamble and
+identify, death and new characters, hero stats, ambient audio, automap, world objects, equip rules, performance.
+
+### 5.2 How to add a scenario
+
+1. Make sure the behaviour logs a stable, greppable line (add one in the game code if needed, with a clear prefix).
+2. Create `scripts/verify.d/NN-yourthing.sh` with the three pieces above. Pick `NN` so it runs after what it depends on.
+3. Make the check **specific**: assert on values (`mana_paid=2.50`, `kills=[1-9]`), not only on "something was logged".
+4. Run `./scripts/verify.sh` (the whole gate) at least once; for iteration, copy the generated `.command` approach by
+   hand with your env and the launch rules in section 4.1.
+5. Prove it can fail: break the behaviour (or the expected value) and confirm the scenario goes red.
+6. No edits to `verify.sh` are needed. Update the table in `macos-quickstart.md` if you added a new `OD2_*` variable.
+
+## 6. CI
+
+`.github/workflows/ci.yml` runs on every push and pull request:
+
+* **Linux (pure packages)**: gofmt on `GOFMT_DIRS`, `go build`, `go vet`, `go test` for the packages in `PURE_PKGS` (no
+  display, no cgo, no game data). Add a new pure package to `PURE_PKGS` when you create one.
+* **macOS arm64 (full build)**: gofmt, `go build ./...`, `go vet` on the pure packages and `go test ./...`. Tests that
+  need game data skip themselves because the CI machine has none.
+
+CI therefore checks that the code builds and the unit tests pass. The real-data, oracle (needs `D2_TABLES`) and in-game
+checks run only on a machine with your game install, through `scripts/verify.sh`. That is why the merge rule in
+[CONTRIBUTING.md](../CONTRIBUTING.md) requires the verify gate result, not only green CI.

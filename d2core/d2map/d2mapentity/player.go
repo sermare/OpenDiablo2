@@ -22,8 +22,12 @@ type Player struct {
 	Skills        map[int]*d2hero.HeroSkill
 	LeftSkill     *d2hero.HeroSkill
 	RightSkill    *d2hero.HeroSkill
-	Class         d2enum.Hero
-	Gold          int
+	// SkillBar holds the skill hotkeys and the weapon-swap skills; the active
+	// left/right skills live in LeftSkill/RightSkill and are copied into the
+	// bar by SyncSkillBar before a save.
+	SkillBar *d2hero.SkillBar `json:"skillBar,omitempty"`
+	Class    d2enum.Hero
+	Gold     int
 	// Merc is the hero's mercenary state (hired, revived, levelled); the
 	// game screen keeps it current and the server copies it on a save.
 	Merc              *d2hero.MercState `json:"merc,omitempty"`
@@ -47,6 +51,14 @@ type Player struct {
 	// Containers is the hero's inventory, belt, cube and stash content as last
 	// saved; the game controls refresh it before every save (nil: none saved yet).
 	Containers *d2hero.HeroContainers
+
+	// Progress is the hero's quest records, waypoints and NPC flags; the quest
+	// system works on it in place and the save packet sends it back (nil: the
+	// quest system creates it).
+	Progress *d2hero.HeroProgress
+	// QuestDifficulty is the difficulty (0 normal, 1 nightmare, 2 hell) whose
+	// quest record is in play.
+	QuestDifficulty int
 }
 
 // run speed should be walkspeed * 1.5, since in the original game it is 6 yards walk and 9 yards run.
@@ -112,7 +124,8 @@ func (p *Player) Advance(tickTime float64) {
 	}
 
 	if p.IsCasting() {
-		if p.composite.GetPlayedCount() >= 1 {
+		played := p.composite.GetPlayedCount() >= 1
+		if played {
 			p.isCasting = false
 			p.isAttacking = false
 		}
@@ -121,7 +134,9 @@ func (p *Player) Advance(tickTime float64) {
 		percentDone := float64(p.composite.GetCurrentFrame()) / float64(p.composite.GetFrameCount())
 		isHalfDoneCasting := percentDone >= half
 
-		if isHalfDoneCasting && p.onFinishedCasting != nil {
+		// a long tick can play the whole animation at once (the frame counter
+		// has wrapped): the cast must still happen
+		if (isHalfDoneCasting || played) && p.onFinishedCasting != nil {
 			p.onFinishedCasting()
 			p.onFinishedCasting = nil
 		}
@@ -411,4 +426,22 @@ func (p *Player) LieDead() {
 	p.deathPhase = deathPhaseDead
 	p.StopMoving()
 	p.setDeathMode(d2enum.PlayerAnimationModeDead)
+}
+
+// SyncSkillBar makes the skill bar agree with the active left and right skill
+// (it creates the bar for a hero that has none) and returns it.
+func (p *Player) SyncSkillBar() *d2hero.SkillBar {
+	if p.SkillBar == nil {
+		p.SkillBar = d2hero.NewSkillBar()
+	}
+
+	if p.LeftSkill != nil {
+		p.SkillBar.Left.Skill = p.LeftSkill.ID
+	}
+
+	if p.RightSkill != nil {
+		p.SkillBar.Right.Skill = p.RightSkill.ID
+	}
+
+	return p.SkillBar
 }

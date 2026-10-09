@@ -607,7 +607,16 @@ func (v *CharacterSelect) onOkButtonClicked() {
 		return
 	}
 
-	v.navigator.ToCreateGame(v.gameStates[v.selectedCharacter].FilePath, v.connectionType, v.connectionHost)
+	hero := v.gameStates[v.selectedCharacter]
+
+	// a hero that has unlocked Nightmare or Hell chooses the difficulty first
+	if NeedsDifficultyChoice(hero) {
+		v.navigator.ToSelectDifficulty(hero.FilePath, v.connectionType, v.connectionHost)
+
+		return
+	}
+
+	v.navigator.ToCreateGame(hero.FilePath, v.connectionType, v.connectionHost)
 }
 
 // OnUnload candles cleanup when this screen is closed

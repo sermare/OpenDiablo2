@@ -1,6 +1,7 @@
 package d2hero
 
 import (
+	"encoding/binary"
 	"fmt"
 	"sort"
 	"strings"
@@ -84,7 +85,8 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 		return nil, err
 	}
 
-	f.applyD2SActiveSkills(state, header)
+	applyD2SSkillBar(state, header)
+
 	f.RecalcStats(state)
 	fmt.Printf("stats: %s %s\n", state.HeroName, StatsSummary(state.Stats))
 
@@ -100,65 +102,14 @@ func clampLevel(level int) int {
 }
 
 func importedInfo(h *d2s.Header) *ImportedInfo {
-	info := &ImportedInfo{
-		Hardcore:       h.IsHardcore(),
-		Expansion:      h.IsExpansion(),
-		Ladder:         h.IsLadder(),
-		Dead:           h.IsDead(),
-		WeaponSetII:    h.ActiveWeaponSet != 0,
-		LastPlayed:     h.LastPlayed,
-		SwapLeftSkill:  hotkeyID(h.LeftSwapSkill),
-		SwapRightSkill: hotkeyID(h.RightSwapSkill),
+	return &ImportedInfo{
+		Hardcore:  h.IsHardcore(),
+		Expansion: h.IsExpansion(),
+		Ladder:    h.IsLadder(),
+		Dead:      h.IsDead(),
+		// the active weapon set is the u32 at header offset 0x10
+		WeaponSetII: binary.LittleEndian.Uint32(h.Raw[0x10:]) != 0,
 	}
-
-	for _, k := range h.Hotkeys {
-		info.Hotkeys = append(info.Hotkeys, hotkeyID(k))
-	}
-
-	return info
-}
-
-// hotkeyID converts a stored skill id to an int, with -1 for "no skill".
-func hotkeyID(id uint32) int {
-	if id == d2s.NoSkill || id > d2s.NoSkill {
-		return -1
-	}
-
-	return int(id)
-}
-
-// applyD2SActiveSkills selects the saved left and right mouse skills of the
-// active weapon set. A skill the hero has no entry for (e.g. one granted by an
-// item) is added at level 0 so the HUD can still show its icon; an unknown id
-// falls back to Attack.
-func (f *HeroStateFactory) applyD2SActiveSkills(state *HeroState, h *d2s.Header) {
-	left, right := h.ActiveSkills()
-	state.LeftSkill = f.ensureSkill(state, hotkeyID(left))
-	state.RightSkill = f.ensureSkill(state, hotkeyID(right))
-}
-
-func (f *HeroStateFactory) ensureSkill(state *HeroState, id int) int {
-	if id < 0 {
-		return 0
-	}
-
-	if _, ok := state.Skills[id]; ok {
-		return id
-	}
-
-	rec := f.asset.Records.Skill.Details[id]
-	if rec == nil {
-		return 0
-	}
-
-	skill, err := f.CreateHeroSkill(0, rec.Skill)
-	if err != nil {
-		return 0
-	}
-
-	state.Skills[skill.ID] = skill
-
-	return skill.ID
 }
 
 func quests(body *d2s.Body) [3]d2s.QuestRecord {
@@ -294,4 +245,33 @@ func (f *HeroStateFactory) applyD2SContainers(state *HeroState, items []d2s.Item
 	fmt.Printf("d2s: %s containers: inventory=%d belt=%d cube=%d stash=%d\n", state.HeroName,
 		len(containers.Page(PageInventory)), len(containers.Page(PageBelt)),
 		len(containers.Page(PageCube)), len(containers.Page(PageStash)))
+}
+
+// applyD2SSkillBar reads the assigned skills (hotkeys), the left/right skill
+// and the swap-set skills of the header. The active skills must be skills the
+// hero has; anything else falls back to Attack (id 0).
+func applyD2SSkillBar(state *HeroState, header *d2s.Header) {
+	bar := SkillBarFromBlock(header.SkillBlock())
+	state.SkillBar = bar
+
+	has := func(id int) int {
+		if s := state.Skills[id]; s != nil && s.SkillPoints > 0 {
+			return id
+		}
+
+		return 0
+	}
+
+	state.LeftSkill, state.RightSkill = has(bar.Left.Skill), has(bar.Right.Skill)
+	fmt.Printf("d2s: %s skills left=%d right=%d swap=%d/%d hotkeys=%v\n", state.HeroName,
+		bar.Left.Skill, bar.Right.Skill, bar.LeftSwap.Skill, bar.RightSwap.Skill, hotkeyIDs(bar))
+}
+
+func hotkeyIDs(b *SkillBar) []int {
+	out := make([]int, len(b.Hotkeys))
+	for i, s := range b.Hotkeys {
+		out[i] = s.Skill
+	}
+
+	return out
 }

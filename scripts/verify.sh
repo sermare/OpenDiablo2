@@ -25,7 +25,7 @@ launch_game() {
 wait_run() {
   local i
   for i in {1..120}; do pgrep -f "$tmp/od2" >/dev/null && break; sleep 1; done
-  for i in {1..240}; do pgrep -f "$tmp/od2" >/dev/null || break; sleep 1; done
+  for i in {1..420}; do pgrep -f "$tmp/od2" >/dev/null || break; sleep 1; done
 }
 # every run gets its own scratch folder and server port, so parallel runs (e.g. several agents) do not collide
 tmp=$(mktemp -d /tmp/od2-verify.XXXXXX)

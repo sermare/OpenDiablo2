@@ -10,7 +10,9 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2missile"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2state"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
@@ -40,8 +42,11 @@ type Options struct {
 // Counters tally what happened, for scenario summaries.
 type Counters struct {
 	Casts, Refused, Missiles, Hits, Misses, Walls, Expired, Kills, Melee int
-	ManaSpent                                                            int // 8.8
-	Damage                                                               int // whole points dealt after resists
+	// AreaHits are targets reached by area effects and splash, DotDamage the
+	// poison and burn damage dealt.
+	AreaHits, DotDamage int
+	ManaSpent           int // 8.8
+	Damage              int // whole points dealt after resists
 }
 
 type timer struct {
@@ -68,8 +73,15 @@ type Engine struct {
 	targets map[string]*monsterTarget
 	visuals map[uint32]*d2mapentity.Missile
 	fx      map[*d2mapentity.Missile]int // explosion entities and the frame they vanish at
-	states  map[string]map[string]int    // unit id -> state -> frame it ends
+	sets    map[string]*d2state.Set      // unit id -> states and DoT streams
 	timers  []timer
+
+	auras   map[string]*auraRun // hero id -> the aura it keeps on
+	storms  []*stormRun
+	traps   []*trapRun
+	pets    map[string][]*d2mapentity.Monster // hero id -> summons by pet type (see summon.go)
+	watches []*watch
+	dots    map[string]dotTotal
 
 	// Counters are updated as events happen.
 	Counters Counters
@@ -85,7 +97,7 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 		Logger: d2util.NewLogger(), asset: asset, mapEngine: mapEngine, monsters: monsters, opt: opt,
 		heroes: map[string]*heroUnit{}, targets: map[string]*monsterTarget{},
 		visuals: map[uint32]*d2mapentity.Missile{}, fx: map[*d2mapentity.Missile]int{},
-		states: map[string]map[string]int{},
+		sets: map[string]*d2state.Set{}, auras: map[string]*auraRun{}, pets: map[string][]*d2mapentity.Monster{}, dots: map[string]dotTotal{},
 	}
 
 	e.Logger.SetLevel(l)
@@ -100,6 +112,12 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 		Opt: d2skill.Options{IgnoreTown: opt.IgnoreTown, StaticFieldMinPct: staticFieldMin(asset, monsters)},
 	}
 	e.pipe.ApplyState = e.applyMissileState
+	e.pipe.Near = e.near
+	e.pipe.After = e.after
+	e.pipe.Walkable = func(x, y int) bool {
+		return monsters.Grid().Flags(x, y)&(d2path.FlagWalk|d2path.FlagWall) == 0
+	}
+	monsters.HeroDefense = e.heroDefense
 
 	return e
 }
@@ -151,15 +169,18 @@ func (e *Engine) Supported(skillID int) bool {
 
 // HasState reports whether a unit currently has a state.
 func (e *Engine) HasState(unitID, state string) bool {
-	return e.states[unitID][state] > e.frame
+	return e.setOf(unitID).Active(e.frame, state)
 }
 
-func (e *Engine) setState(unitID, state string, frames int) {
-	if e.states[unitID] == nil {
-		e.states[unitID] = map[string]int{}
+// setOf returns the state set of a unit, creating it.
+func (e *Engine) setOf(id string) *d2state.Set {
+	st := e.sets[id]
+	if st == nil {
+		st = d2state.New()
+		e.sets[id] = st
 	}
 
-	e.states[unitID][state] = e.frame + frames
+	return st
 }
 
 func (e *Engine) after(frames int, fn func()) {
@@ -231,6 +252,16 @@ func fixed(v int) float64 { return float64(v) / 256 }
 func (e *Engine) targetAt(sx, sy int) d2skill.Target {
 	tg := d2skill.Target{X: sx, Y: sy}
 
+	cbest := pickRadius + 1
+
+	for _, m := range e.monsters.Corpses() {
+		mx, my := m.SubtilePos()
+		if d := chebyshev(mx-sx, my-sy); d < cbest {
+			cbest = d
+			tg.Corpse, tg.CX, tg.CY, tg.CorpseID, tg.CorpseHP, tg.CorpseKey = true, mx, my, m.ID(), m.Vitals.MaxHP, m.Stat.Key
+		}
+	}
+
 	best := pickRadius + 1
 
 	for _, m := range e.monsters.Monsters() {
@@ -290,8 +321,12 @@ func (e *Engine) runDo(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, tg
 		e.emit("mana", "MANA paid skill=%q cost=%.2f left=%s", sk.Name, fixed(res.ManaPaid), u.manaString())
 	}
 
-	if m := res.Melee; m != nil {
+	for _, m := range res.Melees {
 		e.meleeResult(p, sk, m)
+	}
+
+	if len(res.Melees) == 0 && res.Melee != nil {
+		e.meleeResult(p, sk, res.Melee)
 	}
 
 	for i := range res.Effects {
@@ -326,6 +361,10 @@ func (e *Engine) meleeResult(p *d2mapentity.Player, sk *d2skill.Skill, r *d2skil
 	mt, _ := r.Target.(*monsterTarget)
 	name := "?"
 
+	if mt != nil && !mt.m.Alive() { // an earlier strike of the same cast killed it
+		return
+	}
+
 	if mt != nil {
 		name = mt.m.Label()
 	}
@@ -343,44 +382,6 @@ func (e *Engine) meleeResult(p *d2mapentity.Player, sk *d2skill.Skill, r *d2skil
 	if mt != nil {
 		e.Counters.Hits++
 		e.hurt(mt.m, p, &r.Damage, sk.Name)
-	}
-}
-
-func (e *Engine) effect(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, ef *d2skill.Effect) {
-	switch ef.Kind {
-	case "self_state":
-		e.setState(p.ID(), ef.State, ef.Frames)
-		e.emit("state", "STATE apply skill=%q unit=%s state=%s frames=%d stats=%v chill_attackers=%d",
-			sk.Name, p.Name(), ef.State, ef.Frames, ef.Stats, ef.Chill)
-	case "area_state":
-		hx, hy := u.Pos()
-		n := 0
-
-		for _, m := range e.monsters.Monsters() {
-			mx, my := m.SubtilePos()
-			if !m.Alive() || chebyshev(mx-hx, my-hy) > ef.Radius {
-				continue
-			}
-
-			n++
-			e.setState(m.ID(), ef.State, ef.Frames)
-
-			for _, st := range ef.Stats {
-				if st.Stat == "armorclass" {
-					m.Vitals.Defense += st.Value
-					v, mm := st.Value, m
-
-					e.after(ef.Frames, func() { mm.Vitals.Defense -= v })
-				}
-			}
-
-			e.emit("state", "STATE apply skill=%q unit=%s state=%s frames=%d stats=%v", sk.Name, m.Label(), ef.State,
-				ef.Frames, ef.Stats)
-		}
-
-		e.emit("state", "STATE area skill=%q state=%s radius=%d affected=%d", sk.Name, ef.State, ef.Radius, n)
-	case "area_damage":
-		e.staticField(p, u, sk, ef)
 	}
 }
 
@@ -433,14 +434,16 @@ func (e *Engine) staticField(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Ski
 }
 
 func (e *Engine) applyMissileState(owner d2skill.Unit, t d2missile.Target, state string, frames int) {
-	e.setState(t.ID(), state, frames)
-
 	name := t.ID()
+
 	if mt, ok := t.(*monsterTarget); ok {
 		name = mt.m.Label()
+		e.applyMonsterState(mt.m, d2state.Instance{Name: state, Until: e.frame + frames, Source: owner.ID()})
+	} else {
+		e.setOf(t.ID()).Apply(e.frame, d2state.Instance{Name: state, Until: e.frame + frames, Source: owner.ID()})
 	}
 
-	e.emit("state", "STATE apply by=%s unit=%s state=%s frames=%d (effect on AI not simulated)", owner.ID(), name, state, frames)
+	e.emit("state", "STATE apply by=%s unit=%s state=%s frames=%d", owner.ID(), name, state, frames)
 }
 
 // ---- damage ----
@@ -476,6 +479,9 @@ func (e *Engine) resist(m *d2mapentity.Monster, kind string) int {
 	// no difficulty penalty: it applies to player defenders (inferred)
 	_ = magic
 
+	// curses and auras on the monster (Amplify Damage is damageresist -100)
+	res += e.setOf(m.ID()).ResistDelta(e.frame, kind)
+
 	return d2combat.EffectiveResist(d2combat.ResistInput{Resist: res, IsPhysical: phys, NoDifficultyPenalty: true})
 }
 
@@ -485,8 +491,7 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 	parts := []struct {
 		kind string
 		v    int32
-	}{{"phys", d.Physical}, {"fire", d.Fire}, {"ltng", d.Lightning}, {"mag", d.Magic}, {"cold", d.Cold},
-		{"pois", d.Poison}}
+	}{{"phys", d.Physical}, {"fire", d.Fire}, {"ltng", d.Lightning}, {"mag", d.Magic}, {"cold", d.Cold}}
 
 	var total int
 
@@ -501,21 +506,84 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 		whole = 1
 	}
 
+	// poison and burn are damage over time: the Damage struct holds the
+	// per-frame 8.8 value, spread over the length
+	set := e.setOf(m.ID())
+	cannotCold := e.resist(m, "cold") >= d2combat.ImmuneResist
+	h := d2state.Hit{
+		ColdLen: int(d.ColdLen), FreezeLen: int(d.FreezeLen), StunLen: int(d.StunLen), Source: e.sourceID(src),
+		Poison: d2combat.ApplyResist(int(d.Poison), e.resist(m, "pois")), PoisonLen: int(d.PoisonLen),
+		Burn: d2combat.ApplyResist(int(d.Burn), e.resist(m, "fire")), BurnLen: int(d.BurnLen),
+		CannotChill: cannotCold, CannotFreeze: cannotCold,
+	}
+
 	hp0 := m.Vitals.HP
 	e.Counters.Damage += whole
 	e.emit("damage", "DAMAGE skill=%q target=%s raw=%.2f after_resist=%.2f dmg=%d hp=%d->%d/%d", what, m.Label(),
-		fixed(int(d.SumTotal(true))), fixed(total), whole, hp0, maxInt(hp0-whole, 0), m.Vitals.MaxHP)
+		fixed(int(d.Physical+d.Fire+d.Lightning+d.Magic+d.Cold)), fixed(total), whole, hp0, maxInt(hp0-whole, 0), m.Vitals.MaxHP)
 
-	if whole <= 0 {
-		return
+	if whole > 0 {
+		e.monsters.Damage(m, whole, src)
+		e.afterHit(m, src, whole)
 	}
-
-	e.monsters.Damage(m, whole, src)
 
 	if !m.Alive() {
 		e.Counters.Kills++
 		e.emit("damage", "KILL skill=%q target=%s", what, m.Label())
+
+		return
 	}
+
+	if applied := set.ApplyHit(e.frame, h); len(applied) > 0 {
+		e.emit("state", "STATE hit skill=%q unit=%s applied=%v stun=%df freeze=%df chill=%df poison=%.2f/f x%df burn=%.2f/f x%df",
+			what, m.Label(), applied, h.StunLen, h.FreezeLen, h.ColdLen, fixed(h.Poison), h.PoisonLen, fixed(h.Burn), h.BurnLen)
+		e.syncMonster(m)
+	}
+}
+
+// afterHit runs the effects of curses on a monster that was hurt by the hero:
+// Iron Maiden (the hero takes a share of the damage), Life Tap (the hero
+// heals a share).
+func (e *Engine) afterHit(m *d2mapentity.Monster, src *d2mapentity.Player, dmg int) {
+	if src == nil {
+		return
+	}
+
+	set := e.setOf(m.ID())
+
+	if pct := set.ReflectPct(e.frame); pct > 0 {
+		back := dmg * pct / 100
+		src.Stats.Health -= back
+
+		if src.Stats.Health < 0 {
+			src.Stats.Health = 0
+		}
+
+		e.emit("damage", "DAMAGE iron_maiden hero=%s dmg=%d hero_hp=%d/%d", src.Name(), back, src.Stats.Health, src.Stats.MaxHealth)
+	}
+
+	if pct := set.LifeTapPct(e.frame); pct > 0 {
+		heal := dmg * pct / 100
+		src.Stats.Health = minInt(src.Stats.Health+heal, src.Stats.MaxHealth)
+		e.emit("damage", "HEAL life_tap hero=%s heal=%d hero_hp=%d/%d", src.Name(), heal, src.Stats.Health, src.Stats.MaxHealth)
+	}
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+
+	return b
+}
+
+// sourceID is the unit id of a damage source (the hero), "" for none.
+func (e *Engine) sourceID(src *d2mapentity.Player) string {
+	if src == nil {
+		return ""
+	}
+
+	return src.ID()
 }
 
 func maxInt(a, b int) int {
@@ -573,6 +641,7 @@ func (e *Engine) Advance(elapsed float64) {
 		e.frame++
 		e.sim.Step()
 		e.runTimers()
+		e.tick()
 	}
 
 	e.syncVisuals()
@@ -629,6 +698,10 @@ func (e *Engine) onSim(ev d2missile.Event) {
 		if mt != nil && ev.Damage.SumTotal(true) > 0 {
 			e.hurt(mt.m, e.owner(m), &ev.Damage, e.skillName(m.SkillID))
 		}
+
+		if mt != nil {
+			e.splash(m, mt.m, &ev.Damage)
+		}
 	case d2missile.EventMiss:
 		e.Counters.Misses++
 		e.emit("hit", "MISSILE miss name=%s id=%d target=%s chance=%d roll=%d", name, m.ID, ev.Target.ID(), ev.Chance, ev.Roll)
@@ -637,6 +710,7 @@ func (e *Engine) onSim(ev d2missile.Event) {
 	case d2missile.EventWall:
 		e.Counters.Walls++
 		e.emit("missile", "MISSILE end name=%s id=%d reason=wall at=(%.1f,%.1f)", name, m.ID, m.X, m.Y)
+		e.splashAt(m)
 	case d2missile.EventExpire:
 		e.Counters.Expired++
 		e.emit("missile", "MISSILE end name=%s id=%d reason=expire at=(%.1f,%.1f)", name, m.ID, m.X, m.Y)

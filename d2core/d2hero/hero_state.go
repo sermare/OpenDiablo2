@@ -21,7 +21,11 @@ type HeroState struct {
 	LeftSkill  int                            `json:"leftSkill"`
 	RightSkill int                            `json:"rightSkill"`
 	Gold       int                            `json:"Gold"`
-	Difficulty d2enum.DifficultyType          `json:"difficulty"`
+	// SkillBar holds the 16 skill hotkeys and the swap-set skills (with the
+	// active left/right skill, which LeftSkill and RightSkill mirror); nil for
+	// heroes that never had any (older hero files omit it).
+	SkillBar   *SkillBar             `json:"skillBar,omitempty"`
+	Difficulty d2enum.DifficultyType `json:"difficulty"`
 	// MapSeed is the level generator seed of an imported .d2s (header 0xAB).
 	MapSeed uint32 `json:"mapSeed,omitempty"`
 	// D2SBase is the .d2s the hero was imported from. ExportD2S starts from it
@@ -61,13 +65,6 @@ type ImportedInfo struct {
 	Dead      bool `json:"dead,omitempty"`
 	// WeaponSetII is set when the second weapon set was active when the game was saved.
 	WeaponSetII bool `json:"weaponSetII,omitempty"`
-	// LastPlayed is the unix time of the original's last save.
-	LastPlayed uint32 `json:"lastPlayed,omitempty"`
-	// Hotkeys are the skill ids on the 16 skill hotkeys, -1 for an empty slot.
-	Hotkeys []int `json:"hotkeys,omitempty"`
-	// SwapLeftSkill and SwapRightSkill are the mouse skills of weapon set II.
-	SwapLeftSkill  int `json:"swapLeftSkill,omitempty"`
-	SwapRightSkill int `json:"swapRightSkill,omitempty"`
 	// Source is the .d2s path the hero was imported from (never written to).
 	Source string `json:"source,omitempty"`
 }

@@ -142,6 +142,10 @@ type skillTree struct {
 	iconGroup       *d2ui.WidgetGroup
 	panel           *d2ui.CustomWidget
 	stats           *d2hero.HeroStatsState
+	tooltip         *d2ui.Tooltip
+	hovered         *skillIcon
+	// tooltipText builds the tooltip of an icon (set by the game controls: it knows the hotkeys).
+	tooltipText func(*d2hero.HeroSkill) string
 
 	*d2util.Logger
 	l d2util.LogLevel
@@ -187,6 +191,13 @@ func (s *skillTree) load() {
 		s.skillIcons = append(s.skillIcons, si)
 		s.iconGroup.AddWidget(si)
 	}
+
+	s.tooltip = s.uiManager.NewTooltip(d2resource.Font16, d2resource.PaletteStatic, d2ui.TooltipXLeft, d2ui.TooltipYTop)
+
+	// the tooltip is a widget of its own: the panel frame is drawn by the UI manager after the
+	// game controls, so a tooltip drawn by them would be hidden behind it
+	tipGroup := s.uiManager.NewWidgetGroup(d2ui.RenderPriorityForeground)
+	tipGroup.AddWidget(s.uiManager.NewCustomWidget(s.RenderOverlay, screenWidth, screenHeight))
 
 	s.panelGroup.SetVisible(false)
 	s.setTab(0)
@@ -412,13 +423,95 @@ func (s *skillTree) SetOnCloseCb(cb func()) {
 	s.onCloseCb = cb
 }
 
+// iconRect is the screen rectangle of an icon: the sprite is anchored at its bottom left.
+func iconRect(si *skillIcon) (left, top, right, bottom int) {
+	x, y := si.GetPosition()
+
+	return x, y - skillIconHeight, x + skillIconWidth, y
+}
+
+// iconAt returns the visible icon under a screen position, or nil.
+func (s *skillTree) iconAt(mx, my int) *skillIcon {
+	if !s.isOpen {
+		return nil
+	}
+
+	for _, si := range s.skillIcons {
+		if !si.GetVisible() {
+			continue
+		}
+
+		if l, t, r, b := iconRect(si); mx >= l && mx < r && my >= t && my < b {
+			return si
+		}
+	}
+
+	return nil
+}
+
+// OnMouseMove tracks the icon under the mouse (for its tooltip and for hotkey assignment).
+func (s *skillTree) OnMouseMove(mx, my int) {
+	s.setHovered(s.iconAt(mx, my))
+}
+
+func (s *skillTree) setHovered(si *skillIcon) {
+	s.hovered = si
+	if si == nil {
+		return
+	}
+
+	text := si.skill.Skill
+	if s.tooltipText != nil {
+		text = s.tooltipText(si.skill)
+	}
+
+	s.tooltip.SetText(text)
+
+	l, t, _, _ := iconRect(si)
+	s.tooltip.SetPosition(l, t+skillIconHeight)
+}
+
+// HoveredSkill returns the skill whose icon is under the mouse, or nil.
+func (s *skillTree) HoveredSkill() *d2hero.HeroSkill {
+	if !s.isOpen || s.hovered == nil || !s.hovered.GetVisible() {
+		return nil
+	}
+
+	return s.hovered.skill
+}
+
+// HoverSkill puts the mouse on the icon of a skill of the shown tab (autotests).
+func (s *skillTree) HoverSkill(id int) bool {
+	for _, si := range s.skillIcons {
+		if si.skill.ID == id && si.GetVisible() {
+			s.setHovered(si)
+			return true
+		}
+	}
+
+	return false
+}
+
+// refresh updates what depends on the hero's points (the unused points label).
+func (s *skillTree) refresh() {
+	s.remainingPoints.SetText(strconv.Itoa(s.stats.SkillPoints))
+}
+
+// RenderOverlay draws the tooltip of the hovered icon above everything else.
+func (s *skillTree) RenderOverlay(target d2interface.Surface) {
+	if s.isOpen && s.hovered != nil && s.hovered.GetVisible() {
+		s.tooltip.Render(target)
+	}
+}
+
 // Summary lists the skills with allocated points in id order as Name(id)=level,
 // the unspent points and how many icons each tab has, for the autotest log.
 func (s *skillTree) Summary() string {
+	token := strings.ToLower(s.heroClass.GetToken3())
 	ids := make([]int, 0, len(s.skills))
 
 	for id, sk := range s.skills {
-		if sk.SkillPoints > 0 && sk.Charclass == strings.ToLower(s.heroClass.GetToken3()) {
+		if sk.SkillPoints > 0 && sk.Charclass == token {
 			ids = append(ids, id)
 		}
 	}
@@ -446,6 +539,7 @@ func (s *skillTree) Summary() string {
 }
 
 func (s *skillTree) setTab(tab int) {
+	s.hovered = nil
 	s.selectedTab = tab
 	s.closeButton.SetPosition(s.tab[tab].closeButtonPosX, skillCloseButtonY)
 

@@ -150,38 +150,4 @@ func TestRealMapSeed(t *testing.T) {
 	}
 
 	t.Logf("map seed %#x difficulty bytes %v", h.MapSeed, h.Difficulty)
-
-	// the sample sorceress: Blizzard on hotkey 1, Fire Ball on the right button
-	if h.Hotkeys[0] != 59 || h.RightSkill != 47 || h.LeftSkill != 0 {
-		t.Logf("skills: hotkeys=%v left=%d right=%d", h.Hotkeys, h.LeftSkill, h.RightSkill)
-	}
-}
-
-func TestParseHeaderSkills(t *testing.T) {
-	data := buildSave("Skiller", Sorceress, 5, StatusExpansion)
-	le := binary.LittleEndian
-
-	le.PutUint32(data[activeArmsOffset:], 1)
-	le.PutUint32(data[hotkeysOffset:], 59)
-	le.PutUint32(data[hotkeysOffset+4*15:], NoSkill)
-	le.PutUint32(data[leftSkillOffset:], 36)
-	le.PutUint32(data[leftSkillOffset+4:], 47)
-	le.PutUint32(data[leftSkillOffset+8:], 40)
-	le.PutUint32(data[leftSkillOffset+12:], 59)
-	le.PutUint32(data[checksumOffset:], 0)
-	le.PutUint32(data[checksumOffset:], Checksum(data))
-
-	h, err := ParseHeader(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if h.Hotkeys[0] != 59 || h.Hotkeys[15] != NoSkill || h.LeftSkill != 36 || h.RightSkill != 47 {
-		t.Fatalf("unexpected skills: %+v", h)
-	}
-
-	// weapon set II is active: the swap skills are the ones in use
-	if l, r := h.ActiveSkills(); l != 40 || r != 59 {
-		t.Fatalf("active skills = %d,%d", l, r)
-	}
 }

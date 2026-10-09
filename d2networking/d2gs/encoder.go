@@ -80,16 +80,15 @@ func (e *Encoder) Flush() []byte {
 	return out
 }
 
-// Compressor is the Huffman layer (FUN_004069c0 in Game.exe).
-//
-// TODO: the notes do not document the Huffman table, so no implementation is
-// provided. Local/in-process mode skips compression entirely, which is all
-// the offline game needs. Do not guess the table; extract it from the binary
-// first.
+// Compressor is the Huffman layer (FUN_004069c0 in Game.exe). Huffman (huffman.go)
+// implements it from the code-length table read from the binary; the
+// in-process local mode of the original skips compression.
 type Compressor interface {
 	Compress(dst, src []byte) []byte
 	Decompress(dst, src []byte) ([]byte, error)
 }
+
+var _ Compressor = (*Huffman)(nil)
 
 // Wire framing (SRV_SendPacketToClient, verified in game-net.md): each
 // compressed blob is prefixed by its length in 1 byte when < 0xF0, otherwise

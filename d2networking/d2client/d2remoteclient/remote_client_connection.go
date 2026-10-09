@@ -1,12 +1,16 @@
 package d2remoteclient
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -15,6 +19,8 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client/d2clientconnectiontype"
+	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2gs"
+	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2gsnet"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket/d2netpackettype"
 )
@@ -30,6 +36,10 @@ type RemoteClientConnection struct {
 	uniqueID       string                      // Unique ID generated on construction
 	tcpConnection  *net.TCPConn                // UDP connection to the server
 	active         bool                        // The connection is currently open
+
+	// OD2_PROTO=d2gs: the game protocol instead of JSON (see d2gsnet)
+	gs      *d2gsnet.ClientSide
+	writeMu sync.Mutex
 
 	*d2util.Logger
 }
@@ -68,13 +78,19 @@ func (r *RemoteClientConnection) Open(connectionString, saveFilePath string) err
 		return err
 	}
 
-	r.tcpConnection, err = net.DialTCP("tcp", nil, tcpAddress)
+	r.tcpConnection, err = dialWithRetry(tcpAddress)
 	if err != nil {
 		return err
 	}
 
 	r.active = true
-	go r.serverListener()
+
+	if d2gsnet.Enabled() {
+		r.gs = &d2gsnet.ClientSide{IDs: d2gsnet.NewIDs(), OnInfo: r.onGameInfo}
+		go r.serverListenerD2GS()
+	} else {
+		go r.serverListener()
+	}
 
 	r.Infof("Connected to server at %s", r.tcpConnection.RemoteAddr().String())
 
@@ -111,17 +127,21 @@ func (r *RemoteClientConnection) Close() error {
 		return err
 	}
 
+	if r.gs != nil { // the leave is on the wire; now close the socket
+		return r.tcpConnection.Close()
+	}
+
 	return nil
 }
 
 // GetUniqueID returns RemoteClientConnection.uniqueID.
-func (r RemoteClientConnection) GetUniqueID() string {
+func (r *RemoteClientConnection) GetUniqueID() string {
 	return r.uniqueID
 }
 
 // GetConnectionType returns an enum representing the connection type.
 // See: d2clientconnectiontype
-func (r RemoteClientConnection) GetConnectionType() d2clientconnectiontype.ClientConnectionType {
+func (r *RemoteClientConnection) GetConnectionType() d2clientconnectiontype.ClientConnectionType {
 	return d2clientconnectiontype.LANClient
 }
 
@@ -133,6 +153,10 @@ func (r *RemoteClientConnection) SetClientListener(listener d2networking.ClientL
 // SendPacketToServer compresses the JSON encoding of a NetPacket and
 // sends it to the server.
 func (r *RemoteClientConnection) SendPacketToServer(packet d2netpacket.NetPacket) error {
+	if r.gs != nil {
+		return r.sendD2GS(packet)
+	}
+
 	encoder := json.NewEncoder(r.tcpConnection)
 
 	err := encoder.Encode(packet)
@@ -240,4 +264,83 @@ func defaultServerPort() string {
 	}
 
 	return "6669"
+}
+
+// dialWithRetry connects to the host. OD2_JOIN_RETRY=<seconds> keeps trying
+// while the host is still starting (used by the two-process autotest).
+func dialWithRetry(addr *net.TCPAddr) (*net.TCPConn, error) {
+	deadline := time.Now()
+
+	if v, err := strconv.Atoi(os.Getenv("OD2_JOIN_RETRY")); err == nil && v > 0 {
+		deadline = deadline.Add(time.Duration(v) * time.Second)
+	}
+
+	for {
+		c, err := net.DialTCP("tcp", nil, addr)
+		if err == nil || time.Now().After(deadline) {
+			return c, err
+		}
+
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+// GameInfoListener is implemented by the game client: the host's map seed and
+// difficulty arrive with the act load of the game protocol.
+type GameInfoListener interface {
+	SetGameInfo(mapSeed uint32, difficulty uint8)
+}
+
+func (r *RemoteClientConnection) onGameInfo(info d2gsnet.GameInfo) {
+	if l, ok := r.clientListener.(GameInfoListener); ok {
+		l.SetGameInfo(info.MapSeed, info.Difficulty)
+	}
+}
+
+// sendD2GS translates a packet to the game protocol and writes it as blobs.
+func (r *RemoteClientConnection) sendD2GS(packet d2netpacket.NetPacket) error {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
+
+	pkts, err := r.gs.Encode(packet)
+	if err != nil {
+		return err
+	}
+
+	blob, err := d2gs.EncodeStream(pkts...)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.tcpConnection.Write(blob)
+
+	return err
+}
+
+// serverListenerD2GS reads blobs from the server until it closes.
+func (r *RemoteClientConnection) serverListenerD2GS() {
+	reader := bufio.NewReader(r.tcpConnection)
+
+	for {
+		plain, err := d2gs.ReadBlob(reader)
+		if err != nil {
+			if !d2gsnet.IsClosed(err) && r.active {
+				r.Errorf("d2gs read: %v", err)
+			}
+
+			return
+		}
+
+		packets, _, err := r.gs.Decode(plain)
+		if err != nil {
+			r.Errorf("d2gs decode: %v", err)
+			return
+		}
+
+		for _, p := range packets {
+			if err := r.clientListener.OnPacketReceived(p); err != nil {
+				r.Errorf("%v %v", p.PacketType, err)
+			}
+		}
+	}
 }

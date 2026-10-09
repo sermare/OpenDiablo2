@@ -99,6 +99,7 @@ func (v *Game) advanceAutoScript(elapsed float64) {
 func (v *Game) autoScriptExit(pass bool) {
 	if os.Getenv("OD2_AUTOEXIT") != "" {
 		v.saveBeforeExit()
+		v.leaveNetworkGame()
 
 		if pass {
 			os.Exit(0)
@@ -164,3 +165,12 @@ func (h autoScriptHost) LogContains(substr string) bool { return h.v.autoScript.
 func (h autoScriptHost) Logf(format string, args ...interface{}) { h.v.Infof(format, args...) }
 
 func (h autoScriptHost) Exit(pass bool) { h.v.autoScriptExit(pass) }
+
+// Skill, Hotkey and Press implement d2autoscript.SkillHost.
+func (h autoScriptHost) Skill(op, arg string) error { return h.v.gameControls.AutoSkill(op, arg) }
+
+func (h autoScriptHost) Hotkey(key, skill string) error {
+	return h.v.gameControls.AutoHotkey(key, skill)
+}
+
+func (h autoScriptHost) Press(key string) error { return h.v.gameControls.AutoPress(key) }

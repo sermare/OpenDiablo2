@@ -55,36 +55,14 @@ func TestNameAt(t *testing.T) {
 	}
 }
 
-func TestHotkeyID(t *testing.T) {
-	tests := []struct {
-		in   uint32
-		want int
-	}{{0, 0}, {59, 59}, {d2s.NoSkill, -1}, {0xFFFFFFFF, -1}}
-
-	for _, tc := range tests {
-		if got := hotkeyID(tc.in); got != tc.want {
-			t.Errorf("hotkeyID(%#x) = %d, want %d", tc.in, got, tc.want)
-		}
-	}
-}
-
 func TestImportedInfo(t *testing.T) {
-	h := &d2s.Header{
-		Status:         d2s.StatusHardcore | d2s.StatusExpansion | d2s.StatusDied,
-		LastPlayed:     1505317599,
-		LeftSwapSkill:  0,
-		RightSwapSkill: 47,
-	}
-	h.Hotkeys[0], h.Hotkeys[1] = 59, d2s.NoSkill
+	h := &d2s.Header{Status: d2s.StatusHardcore | d2s.StatusExpansion | d2s.StatusDied}
+	h.Raw[0x10] = 1
 
 	info := importedInfo(h)
 
-	if !info.Hardcore || !info.Expansion || !info.Dead || info.Ladder {
+	if !info.Hardcore || !info.Expansion || !info.Dead || info.Ladder || !info.WeaponSetII {
 		t.Fatalf("flags: %+v", info)
-	}
-
-	if info.Hotkeys[0] != 59 || info.Hotkeys[1] != -1 || len(info.Hotkeys) != d2s.HotkeyCount || info.SwapRightSkill != 47 {
-		t.Fatalf("skills: %+v", info)
 	}
 }
 

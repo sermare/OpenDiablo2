@@ -24,17 +24,29 @@ func NewSkillSelectMenu(asset *d2asset.AssetManager, ui *d2ui.UIManager, l d2uti
 	return skillSelectMenu
 }
 
-// HandleClick will propagate the click to the panels.
+// HandleClick will propagate the click to the panels and report whether an icon was picked.
 func (sm *SkillSelectMenu) HandleClick(x, y int) bool {
-	if sm.LeftPanel.HandleClick(x, y) {
-		return true
+	return sm.LeftPanel.HandleClick(x, y) || sm.RightPanel.HandleClick(x, y)
+}
+
+// SetCallbacks sets what the popups call when a skill is picked and the name of
+// the key a hotkey slot is bound to (shown on the icons and in the tooltips).
+func (sm *SkillSelectMenu) SetCallbacks(onSelect func(left bool, id int), keyName func(slot int) string) {
+	for _, p := range []*SkillPanel{sm.LeftPanel, sm.RightPanel} {
+		p.onSelect, p.keyName = onSelect, keyName
+	}
+}
+
+// OpenPanel is the open popup, or nil.
+func (sm *SkillSelectMenu) OpenPanel() *SkillPanel {
+	switch {
+	case sm.LeftPanel.IsOpen():
+		return sm.LeftPanel
+	case sm.RightPanel.IsOpen():
+		return sm.RightPanel
 	}
 
-	if sm.RightPanel.HandleClick(x, y) {
-		return true
-	}
-
-	return true
+	return nil
 }
 
 // HandleMouseMove will propagate the mouse move event to the panels.

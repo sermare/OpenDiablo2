@@ -36,7 +36,7 @@ const arrivalRadius = 0x32 // sub-tiles searched for a free cell
 func (g *GameClient) ChangeLevel(levelID int, prefer ArrivalFunc) (d2mapgen.Arrival, error) {
 	arrival, err := g.mapGen.LoadLevel(levelID, d2mapgen.LoadRequest{
 		Seed:       d2mapgen.HeroMapSeed,
-		Difficulty: d2drlg.Difficulty(g.Difficulty),
+		Difficulty: d2drlg.Difficulty(g.LevelDifficulty()),
 	})
 	if err != nil {
 		return arrival, err

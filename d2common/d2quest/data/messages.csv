@@ -1,0 +1,743 @@
+quest,speech_table_index,npc_class,msg_id,mode,sounds_index,sounds_handle,sounds_filename
+A1Q0 Act1 prologue (Warriv),0,WARRIV1,0,0,4336,ESOUND_WARRIV_ACT1_INTRO,act1\warriv\war_act1_intro.wav
+A1Q0 Act1 prologue (Warriv),1,WARRIV1,1,0,4337,ESOUND_WARRIV_ACT1_INTRO_PAL,act1\warriv\war_act1_intro_pal.wav
+A1Q1 Den of Evil,0,AKARA,64,0,3503,ESOUND_AKARA_ACT1_Q1_INIT,act1\akara\aka_act1_q1_init.wav
+A1Q1 Den of Evil,1,AKARA,65,2,3501,ESOUND_AKARA_ACT1_Q1_AFTER,act1\akara\aka_act1_q1_after.wav
+A1Q1 Den of Evil,1,WARRIV1,70,2,4338,ESOUND_WARRIV_ACT1_Q1_AFTER,act1\warriv\war_act1_q1_after.wav
+A1Q1 Den of Evil,1,GHEED,69,2,3929,ESOUND_GHEED_ACT1_Q1_AFTER,act1\gheed\ghe_act1_q1_after.wav
+A1Q1 Den of Evil,1,KASHYA,66,2,4097,ESOUND_KASHYA_ACT1_Q1_AFTER,act1\kashya\kas_act1_q1_after.wav
+A1Q1 Den of Evil,1,CHARSI,67,2,3755,ESOUND_CHARSI_ACT1_Q1_AFTER,act1\charsi\cha_act1_q1_after_main.wav
+A1Q1 Den of Evil,2,KASHYA,72,2,4098,ESOUND_KASHYA_ACT1_Q1_EARLY,act1\kashya\kas_act1_q1_early.wav
+A1Q1 Den of Evil,2,WARRIV1,75,2,4339,ESOUND_WARRIV_ACT1_Q1_EARLY,act1\warriv\war_act1_q1_early.wav
+A1Q1 Den of Evil,2,CHARSI,73,2,3756,ESOUND_CHARSI_ACT1_Q1_EARLY,act1\charsi\cha_act1_q1_early.wav
+A1Q1 Den of Evil,2,AKARA,71,2,3502,ESOUND_AKARA_ACT1_Q1_EARLY,act1\akara\aka_act1_q1_early.wav
+A1Q1 Den of Evil,2,GHEED,74,2,3930,ESOUND_GHEED_ACT1_Q1_EARLY,act1\gheed\ghe_act1_q1_early.wav
+A1Q1 Den of Evil,3,KASHYA,77,2,4099,ESOUND_KASHYA_ACT1_Q1_SUCCESS,act1\kashya\kas_act1_q1_successful.wav
+A1Q1 Den of Evil,3,WARRIV1,80,2,4340,ESOUND_WARRIV_ACT1_Q1_SUCCESS,act1\warriv\war_act1_q1_successful.wav
+A1Q1 Den of Evil,3,CHARSI,78,2,3757,ESOUND_CHARSI_ACT1_Q1_SUCCESS,act1\charsi\cha_act1_q1_successful.wav
+A1Q1 Den of Evil,3,AKARA,76,0,3504,ESOUND_AKARA_ACT1_Q1_SUCCESS,act1\akara\aka_act1_q1_successful.wav
+A1Q1 Den of Evil,3,GHEED,79,2,3931,ESOUND_GHEED_ACT1_Q1_SUCCESS,act1\gheed\ghe_act1_q1_successful.wav
+A1Q1 Den of Evil,4,WARRIV1,80,2,4340,ESOUND_WARRIV_ACT1_Q1_SUCCESS,act1\warriv\war_act1_q1_successful.wav
+A1Q1 Den of Evil,4,CHARSI,78,2,3757,ESOUND_CHARSI_ACT1_Q1_SUCCESS,act1\charsi\cha_act1_q1_successful.wav
+A1Q1 Den of Evil,4,GHEED,79,2,3931,ESOUND_GHEED_ACT1_Q1_SUCCESS,act1\gheed\ghe_act1_q1_successful.wav
+A1Q2 Sisters Burial Grounds,0,KASHYA,81,1,4102,ESOUND_KASHYA_ACT1_Q2_INIT,act1\kashya\kas_act1_q2_init.wav
+A1Q2 Sisters Burial Grounds,1,KASHYA,82,2,4100,ESOUND_KASHYA_ACT1_Q2_AFTER,act1\kashya\kas_act1_q2_after.wav
+A1Q2 Sisters Burial Grounds,1,WARRIV1,86,2,4341,ESOUND_WARRIV_ACT1_Q2_AFTER,act1\warriv\war_act1_q2_after.wav
+A1Q2 Sisters Burial Grounds,1,CHARSI,83,2,3758,ESOUND_CHARSI_ACT1_Q2_AFTER,act1\charsi\cha_act1_q2_after.wav
+A1Q2 Sisters Burial Grounds,1,AKARA,85,2,3505,ESOUND_AKARA_ACT1_Q2_AFTER,act1\akara\aka_act1_q2_after.wav
+A1Q2 Sisters Burial Grounds,1,GHEED,84,2,3932,ESOUND_GHEED_ACT1_Q2_AFTER,act1\gheed\ghe_act1_q2_after.wav
+A1Q2 Sisters Burial Grounds,2,KASHYA,87,2,4101,ESOUND_KASHYA_ACT1_Q2_EARLY,act1\kashya\kas_act1_q2_early.wav
+A1Q2 Sisters Burial Grounds,2,WARRIV1,91,2,4342,ESOUND_WARRIV_ACT1_Q2_EARLY,act1\warriv\war_act1_q2_early.wav
+A1Q2 Sisters Burial Grounds,2,CHARSI,89,2,3759,ESOUND_CHARSI_ACT1_Q2_EARLY,act1\charsi\cha_act1_q2_early.wav
+A1Q2 Sisters Burial Grounds,2,AKARA,88,2,3506,ESOUND_AKARA_ACT1_Q2_EARLY,act1\akara\aka_act1_q2_early.wav
+A1Q2 Sisters Burial Grounds,2,GHEED,90,2,3933,ESOUND_GHEED_ACT1_Q2_EARLY,act1\gheed\ghe_act1_q2_early.wav
+A1Q2 Sisters Burial Grounds,3,KASHYA,92,0,4103,ESOUND_KASHYA_ACT1_Q2_SUCCESS,act1\kashya\kas_act1_q2_successful.wav
+A1Q2 Sisters Burial Grounds,3,WARRIV1,96,2,4343,ESOUND_WARRIV_ACT1_Q2_SUCCESS,act1\warriv\war_act1_q2_successful.wav
+A1Q2 Sisters Burial Grounds,3,CHARSI,94,2,3760,ESOUND_CHARSI_ACT1_Q2_SUCCESS,act1\charsi\cha_act1_q2_successful.wav
+A1Q2 Sisters Burial Grounds,3,AKARA,93,2,3507,ESOUND_AKARA_ACT1_Q2_SUCCESS,act1\akara\aka_act1_q2_successful.wav
+A1Q2 Sisters Burial Grounds,3,GHEED,95,2,3934,ESOUND_GHEED_ACT1_Q2_SUCCESS,act1\gheed\ghe_act1_q2_successful.wav
+A1Q2 Sisters Burial Grounds,4,WARRIV1,96,2,4343,ESOUND_WARRIV_ACT1_Q2_SUCCESS,act1\warriv\war_act1_q2_successful.wav
+A1Q2 Sisters Burial Grounds,4,KASHYA,92,2,4103,ESOUND_KASHYA_ACT1_Q2_SUCCESS,act1\kashya\kas_act1_q2_successful.wav
+A1Q2 Sisters Burial Grounds,4,AKARA,93,2,3507,ESOUND_AKARA_ACT1_Q2_SUCCESS,act1\akara\aka_act1_q2_successful.wav
+A1Q2 Sisters Burial Grounds,4,GHEED,95,2,3934,ESOUND_GHEED_ACT1_Q2_SUCCESS,act1\gheed\ghe_act1_q2_successful.wav
+A1Q3 Tools of the Trade,0,CHARSI,146,1,3763,ESOUND_CHARSI_ACT1_Q3_INIT,act1\charsi\cha_act1_q3_init.wav
+A1Q3 Tools of the Trade,1,AKARA,148,2,3508,ESOUND_AKARA_ACT1_Q3_AFTER,act1\akara\aka_act1_q3_after.wav
+A1Q3 Tools of the Trade,1,KASHYA,149,2,4104,ESOUND_KASHYA_ACT1_Q3_AFTER,act1\kashya\kas_act1_q3_after.wav
+A1Q3 Tools of the Trade,1,CAIN5,147,2,3657,ESOUND_CAIN_ACT1_Q3_AFTER,act1\cain\cain_act1_q3_after.wav
+A1Q3 Tools of the Trade,1,CHARSI,150,2,3761,ESOUND_CHARSI_ACT1_Q3_AFTER,act1\charsi\cha_act1_q3_after.wav
+A1Q3 Tools of the Trade,1,GHEED,151,2,3935,ESOUND_GHEED_ACT1_Q3_AFTER,act1\gheed\ghe_act1_q3_after.wav
+A1Q3 Tools of the Trade,1,WARRIV1,153,2,4344,ESOUND_WARRIV_ACT1_Q3_AFTER,act1\warriv\war_act1_q3_after.wav
+A1Q3 Tools of the Trade,2,KASHYA,156,2,4105,ESOUND_KASHYA_ACT1_Q3_EARLY,act1\kashya\kas_act1_q3_early.wav
+A1Q3 Tools of the Trade,2,WARRIV1,159,2,4345,ESOUND_WARRIV_ACT1_Q3_EARLY,act1\warriv\war_act1_q3_early.wav
+A1Q3 Tools of the Trade,2,CHARSI,157,2,3762,ESOUND_CHARSI_ACT1_Q3_EARLY,act1\charsi\cha_act1_q3_early.wav
+A1Q3 Tools of the Trade,2,CAIN5,154,2,3658,ESOUND_CAIN_ACT1_Q3_EARLY,act1\cain\cain_act1_q3_early.wav
+A1Q3 Tools of the Trade,2,AKARA,155,2,3509,ESOUND_AKARA_ACT1_Q3_EARLY,act1\akara\aka_act1_q3_early.wav
+A1Q3 Tools of the Trade,2,GHEED,158,2,3936,ESOUND_GHEED_ACT1_Q3_EARLY,act1\gheed\ghe_act1_q3_early.wav
+A1Q3 Tools of the Trade,3,KASHYA,162,2,4106,ESOUND_KASHYA_ACT1_Q3_SUCCESS,act1\kashya\kas_act1_q3_successful.wav
+A1Q3 Tools of the Trade,3,WARRIV1,165,2,4346,ESOUND_WARRIV_ACT1_Q3_SUCCESS,act1\warriv\war_act1_q3_successful.wav
+A1Q3 Tools of the Trade,3,CHARSI,163,0,3764,ESOUND_CHARSI_ACT1_Q3_SUCCESS,act1\charsi\cha_act1_q3_successful.wav
+A1Q3 Tools of the Trade,3,CAIN5,160,2,3659,ESOUND_CAIN_ACT1_Q3_SUCCESS,act1\cain\cain_act1_q3_successful.wav
+A1Q3 Tools of the Trade,3,AKARA,161,2,3510,ESOUND_AKARA_ACT1_Q3_SUCCESS,act1\akara\aka_act1_q3_successful.wav
+A1Q3 Tools of the Trade,3,GHEED,164,2,3937,ESOUND_GHEED_ACT1_Q3_SUCCESS,act1\gheed\ghe_act1_q3_successful.wav
+A1Q3 Tools of the Trade,4,KASHYA,162,2,4106,ESOUND_KASHYA_ACT1_Q3_SUCCESS,act1\kashya\kas_act1_q3_successful.wav
+A1Q3 Tools of the Trade,4,WARRIV1,165,2,4346,ESOUND_WARRIV_ACT1_Q3_SUCCESS,act1\warriv\war_act1_q3_successful.wav
+A1Q3 Tools of the Trade,4,CAIN5,160,2,3659,ESOUND_CAIN_ACT1_Q3_SUCCESS,act1\cain\cain_act1_q3_successful.wav
+A1Q3 Tools of the Trade,4,AKARA,161,2,3510,ESOUND_AKARA_ACT1_Q3_SUCCESS,act1\akara\aka_act1_q3_successful.wav
+A1Q3 Tools of the Trade,4,GHEED,164,2,3937,ESOUND_GHEED_ACT1_Q3_SUCCESS,act1\gheed\ghe_act1_q3_successful.wav
+A1Q4 Search for Cain,0,AKARA,97,1,3514,ESOUND_AKARA_ACT1_Q4_INIT,act1\akara\aka_act1_q4_init.wav
+A1Q4 Search for Cain,1,AKARA,99,2,3511,ESOUND_AKARA_ACT1_Q4_AFTER_SCROLL,act1\akara\aka_act1_q4_after_scroll.wav
+A1Q4 Search for Cain,1,KASHYA,98,2,4107,ESOUND_KASHYA_ACT1_Q4_AFTER_SCROLL,act1\kashya\kas_act1_q4_after_scroll.wav
+A1Q4 Search for Cain,1,CHARSI,100,2,3765,ESOUND_CHARSI_ACT1_Q4_AFTER_SCROLL,act1\charsi\cha_act1_q4_after_scroll.wav
+A1Q4 Search for Cain,1,GHEED,102,2,3938,ESOUND_GHEED_ACT1_Q4_AFTER,act1\gheed\ghe_act1_q4_after_scroll.wav
+A1Q4 Search for Cain,1,WARRIV1,101,2,4347,ESOUND_WARRIV_ACT1_Q4_AFTER_SCROLL,act1\warriv\war_act1_q4_after_scroll.wav
+A1Q4 Search for Cain,2,KASHYA,105,2,4109,ESOUND_KASHYA_ACT1_Q4_EARLY_SCROLL,act1\kashya\kas_act1_q4_early_scroll.wav
+A1Q4 Search for Cain,2,WARRIV1,107,2,4349,ESOUND_WARRIV_ACT1_Q4_EARLY_SCROLL,act1\warriv\war_act1_q4_early_scroll.wav
+A1Q4 Search for Cain,2,CHARSI,103,2,3767,ESOUND_CHARSI_ACT1_Q4_INSTRUCTIONS,act1\charsi\cha_act1_q4_instructions.wav
+A1Q4 Search for Cain,2,AKARA,104,2,3513,ESOUND_AKARA_ACT1_Q4_EARLY_SCROLL,act1\akara\aka_act1_q4_early_scroll.wav
+A1Q4 Search for Cain,2,GHEED,106,2,3940,ESOUND_GHEED_ACT1_Q4_EARLY_SCROLL,act1\gheed\ghe_act1_q4_early_scroll.wav
+A1Q4 Search for Cain,3,KASHYA,108,2,4111,ESOUND_KASHYA_ACT1_Q4_SUCCESS_SCROLL,act1\kashya\kas_act1_q4_successful_scroll.wav
+A1Q4 Search for Cain,3,WARRIV1,111,2,4351,ESOUND_WARRIV_ACT1_Q4_SUCCESS_SCROLL,act1\warriv\war_act1_q4_successful_scroll.wav
+A1Q4 Search for Cain,3,CHARSI,109,2,3769,ESOUND_CHARSI_ACT1_Q4_SUCCESS_SCROLL,act1\charsi\cha_act1_q4_successful_scroll.wav
+A1Q4 Search for Cain,3,AKARA,112,0,3515,ESOUND_AKARA_ACT1_Q4_INSTRUCTIONS,act1\akara\aka_act1_q4_instructions.wav
+A1Q4 Search for Cain,3,GHEED,110,2,3942,ESOUND_GHEED_ACT1_Q4_SUCCESS_SCROLL,act1\gheed\ghe_act1_q4_successful_scroll.wav
+A1Q4 Search for Cain,4,KASHYA,113,2,4108,ESOUND_KASHYA_ACT1_Q4_EARLY,act1\kashya\kas_act1_q4_early.wav
+A1Q4 Search for Cain,4,WARRIV1,116,2,4348,ESOUND_WARRIV_ACT1_Q4_EARLY,act1\warriv\war_act1_q4_early.wav
+A1Q4 Search for Cain,4,CHARSI,114,2,3766,ESOUND_CHARSI_ACT1_Q4_EARLY,act1\charsi\cha_act1_q4_early.wav
+A1Q4 Search for Cain,4,AKARA,117,2,3512,ESOUND_AKARA_ACT1_Q4_EARLY,act1\akara\aka_act1_q4_early.wav
+A1Q4 Search for Cain,4,GHEED,115,2,3939,ESOUND_GHEED_ACT1_Q4_EARLY,act1\gheed\ghe_act1_q4_early.wav
+A1Q4 Search for Cain,5,KASHYA,119,2,4110,ESOUND_KASHYA_ACT1_Q4_SUCCESS,act1\kashya\kas_act1_q4_successful.wav
+A1Q4 Search for Cain,5,WARRIV1,122,2,4350,ESOUND_WARRIV_ACT1_Q4_SUCCESS,act1\warriv\war_act1_q4_successful.wav
+A1Q4 Search for Cain,5,CHARSI,121,2,3768,ESOUND_CHARSI_ACT1_Q4_SUCCESS,act1\charsi\cha_act1_q4_successful.wav
+A1Q4 Search for Cain,5,CAIN5,123,1,3663,ESOUND_CAIN_ACT1_Q4_SUCCESS,act1\cain\cain_act1_q4_successful.wav
+A1Q4 Search for Cain,5,AKARA,118,1,3516,ESOUND_AKARA_ACT1_Q4_SUCCESS,act1\akara\aka_act1_q4_successful.wav
+A1Q4 Search for Cain,5,GHEED,120,2,3941,ESOUND_GHEED_ACT1_Q4_SUCCESS,act1\gheed\ghe_act1_q4_successful.wav
+A1Q4 Search for Cain,6,CAIN5,125,1,3661,ESOUND_CAIN_ACT1_Q4_RESCUED_ROGUES,act1\cain\cain_act1_q4_rescuedbyrogues.wav
+A1Q4 Search for Cain,7,CAIN5,123,2,3663,ESOUND_CAIN_ACT1_Q4_SUCCESS,act1\cain\cain_act1_q4_successful.wav
+A1Q4 Search for Cain,7,AKARA,118,2,3516,ESOUND_AKARA_ACT1_Q4_SUCCESS,act1\akara\aka_act1_q4_successful.wav
+A1Q4 Search for Cain,7,GHEED,120,2,3941,ESOUND_GHEED_ACT1_Q4_SUCCESS,act1\gheed\ghe_act1_q4_successful.wav
+A1Q4 Search for Cain,8,CAIN5,125,2,3661,ESOUND_CAIN_ACT1_Q4_RESCUED_ROGUES,act1\cain\cain_act1_q4_rescuedbyrogues.wav
+A1Q4 Search for Cain,9,CAIN1,124,1,3660,ESOUND_CAIN_ACT1_Q4_RESCUED_HERO,act1\cain\cain_act1_q4_rescuedbyhero.wav
+A1Q5 Forgotten Tower,0,CAIN5,131,2,3664,ESOUND_CAIN_ACT1_Q5_AFTER,act1\cain\cain_act1_q5_after.wav
+A1Q5 Forgotten Tower,0,CHARSI,129,2,3770,ESOUND_CHARSI_ACT1_Q5_AFTER,act1\charsi\cha_act1_q5_after.wav
+A1Q5 Forgotten Tower,0,AKARA,130,2,3517,ESOUND_AKARA_ACT1_Q5_AFTER,act1\akara\aka_act1_q5_after.wav
+A1Q5 Forgotten Tower,0,WARRIV1,132,2,4352,ESOUND_WARRIV_ACT1_Q5_AFTER,act1\warriv\war_act1_q5_after.wav
+A1Q5 Forgotten Tower,0,KASHYA,133,2,4112,ESOUND_KASHYA_ACT1_Q5_AFTER,act1\kashya\kas_act1_q5_after.wav
+A1Q5 Forgotten Tower,0,GHEED,128,2,3943,ESOUND_GHEED_ACT1_Q5_AFTER,act1\gheed\ghe_act1_q5_after.wav
+A1Q5 Forgotten Tower,1,KASHYA,134,2,4113,ESOUND_KASHYA_ACT1_Q5_EARLY,act1\kashya\kas_act1_q5_early.wav
+A1Q5 Forgotten Tower,1,WARRIV1,136,2,4353,ESOUND_WARRIV_ACT1_Q5_EARLY,act1\warriv\war_act1_q5_early.wav
+A1Q5 Forgotten Tower,1,CHARSI,137,2,3771,ESOUND_CHARSI_ACT1_Q5_EARLY,act1\charsi\cha_act1_q5_early.wav
+A1Q5 Forgotten Tower,1,AKARA,138,2,3518,ESOUND_AKARA_ACT1_Q5_EARLY,act1\akara\aka_act1_q5_early.wav
+A1Q5 Forgotten Tower,1,CAIN5,135,2,3665,ESOUND_CAIN_ACT1_Q5_EARLY,act1\cain\cain_act1_q5_early.wav
+A1Q5 Forgotten Tower,1,GHEED,139,2,3944,ESOUND_GHEED_ACT1_Q5_EARLY,act1\gheed\ghe_act1_q5_early.wav
+A1Q5 Forgotten Tower,2,KASHYA,140,0,4114,ESOUND_KASHYA_ACT1_Q5_SUCCESS,act1\kashya\kas_act1_q5_successful.wav
+A1Q5 Forgotten Tower,2,WARRIV1,141,0,4354,ESOUND_WARRIV_ACT1_Q5_SUCCESS,act1\warriv\war_act1_q5_successful.wav
+A1Q5 Forgotten Tower,2,CAIN5,145,0,3666,ESOUND_CAIN_ACT1_Q5_SUCCESS,act1\cain\cain_act1_q5_successful.wav
+A1Q5 Forgotten Tower,2,CHARSI,144,0,3772,ESOUND_CHARSI_ACT1_Q5_SUCCESS,act1\charsi\cha_act1_q5_successful.wav
+A1Q5 Forgotten Tower,2,AKARA,143,0,3519,ESOUND_AKARA_ACT1_Q5_SUCCESS,act1\akara\aka_act1_q5_successful.wav
+A1Q5 Forgotten Tower,2,GHEED,142,0,3945,ESOUND_GHEED_ACT1_Q5_SUCCESS,act1\gheed\ghe_act1_q5_successful.wav
+A1Q5 Forgotten Tower,3,KASHYA,140,2,4114,ESOUND_KASHYA_ACT1_Q5_SUCCESS,act1\kashya\kas_act1_q5_successful.wav
+A1Q5 Forgotten Tower,3,WARRIV1,141,2,4354,ESOUND_WARRIV_ACT1_Q5_SUCCESS,act1\warriv\war_act1_q5_successful.wav
+A1Q5 Forgotten Tower,3,CAIN5,145,2,3666,ESOUND_CAIN_ACT1_Q5_SUCCESS,act1\cain\cain_act1_q5_successful.wav
+A1Q5 Forgotten Tower,3,CHARSI,144,2,3772,ESOUND_CHARSI_ACT1_Q5_SUCCESS,act1\charsi\cha_act1_q5_successful.wav
+A1Q5 Forgotten Tower,3,AKARA,143,2,3519,ESOUND_AKARA_ACT1_Q5_SUCCESS,act1\akara\aka_act1_q5_successful.wav
+A1Q5 Forgotten Tower,3,GHEED,142,2,3945,ESOUND_GHEED_ACT1_Q5_SUCCESS,act1\gheed\ghe_act1_q5_successful.wav
+A1Q6 Sisters to the Slaughter,0,CAIN5,166,1,3669,ESOUND_CAIN_ACT1_Q6_INIT,act1\cain\cain_act1_q6_init.wav
+A1Q6 Sisters to the Slaughter,1,AKARA,168,2,3520,ESOUND_AKARA_ACT1_Q6_AFTER,act1\akara\aka_act1_q6_after.wav
+A1Q6 Sisters to the Slaughter,1,KASHYA,172,2,4115,ESOUND_KASHYA_ACT1_Q6_AFTER,act1\kashya\kas_act1_q6_after.wav
+A1Q6 Sisters to the Slaughter,1,CHARSI,169,2,3773,ESOUND_CHARSI_ACT1_Q6_AFTER,act1\charsi\cha_act1_q6_after.wav
+A1Q6 Sisters to the Slaughter,1,CAIN5,167,2,3667,ESOUND_CAIN_ACT1_Q6_AFTER,act1\cain\cain_act1_q6_after.wav
+A1Q6 Sisters to the Slaughter,1,GHEED,170,2,3946,ESOUND_GHEED_ACT1_Q6_AFTER,act1\gheed\ghe_act1_q6_after.wav
+A1Q6 Sisters to the Slaughter,1,WARRIV1,171,2,4355,ESOUND_WARRIV_ACT1_Q6_AFTER,act1\warriv\war_act1_q6_after.wav
+A1Q6 Sisters to the Slaughter,2,KASHYA,178,2,4116,ESOUND_KASHYA_ACT1_Q6_EARLY,act1\kashya\kas_act1_q6_early2.wav
+A1Q6 Sisters to the Slaughter,2,WARRIV1,177,2,4356,ESOUND_WARRIV_ACT1_Q6_EARLY,act1\warriv\war_act1_q6_early.wav
+A1Q6 Sisters to the Slaughter,2,GHEED,175,2,3947,ESOUND_GHEED_ACT1_Q6_EARLY,act1\gheed\ghe_act1_q6_early.wav
+A1Q6 Sisters to the Slaughter,2,CAIN5,173,2,3668,ESOUND_CAIN_ACT1_Q6_EARLY,act1\cain\cain_act1_q6_early.wav
+A1Q6 Sisters to the Slaughter,2,CHARSI,176,2,3774,ESOUND_CHARSI_ACT1_Q6_EARLY,act1\charsi\cha_act1_q6_early.wav
+A1Q6 Sisters to the Slaughter,2,AKARA,174,2,3521,ESOUND_AKARA_ACT1_Q6_EARLY,act1\akara\aka_act1_q6_early.wav
+A1Q6 Sisters to the Slaughter,3,KASHYA,181,0,4117,ESOUND_KASHYA_ACT1_Q6_SUCCESS,act1\kashya\kas_act1_q6_successful.wav
+A1Q6 Sisters to the Slaughter,3,CAIN5,184,0,3670,ESOUND_CAIN_ACT1_Q6_SUCCESS,act1\cain\cain_act1_q6_successful.wav
+A1Q6 Sisters to the Slaughter,3,CHARSI,180,2,3775,ESOUND_CHARSI_ACT1_Q6_SUCCESS,act1\charsi\cha_act1_q6_successful.wav
+A1Q6 Sisters to the Slaughter,3,GHEED,182,2,3948,ESOUND_GHEED_ACT1_Q6_SUCCESS,act1\gheed\ghe_act1_q6_successful.wav
+A1Q6 Sisters to the Slaughter,3,WARRIV1,183,0,4357,ESOUND_WARRIV_ACT1_Q6_SUCCESS,act1\warriv\war_act1_q6_successful.wav
+A1Q6 Sisters to the Slaughter,3,AKARA,179,0,3522,ESOUND_AKARA_ACT1_Q6_SUCCESS,act1\akara\aka_act1_q6_successful.wav
+A1Q6 Sisters to the Slaughter,4,KASHYA,181,2,4117,ESOUND_KASHYA_ACT1_Q6_SUCCESS,act1\kashya\kas_act1_q6_successful.wav
+A1Q6 Sisters to the Slaughter,4,CAIN5,184,2,3670,ESOUND_CAIN_ACT1_Q6_SUCCESS,act1\cain\cain_act1_q6_successful.wav
+A1Q6 Sisters to the Slaughter,4,CHARSI,180,2,3775,ESOUND_CHARSI_ACT1_Q6_SUCCESS,act1\charsi\cha_act1_q6_successful.wav
+A1Q6 Sisters to the Slaughter,4,GHEED,182,2,3948,ESOUND_GHEED_ACT1_Q6_SUCCESS,act1\gheed\ghe_act1_q6_successful.wav
+A1Q6 Sisters to the Slaughter,4,WARRIV1,183,2,4357,ESOUND_WARRIV_ACT1_Q6_SUCCESS,act1\warriv\war_act1_q6_successful.wav
+A1Q6 Sisters to the Slaughter,4,AKARA,179,2,3522,ESOUND_AKARA_ACT1_Q6_SUCCESS,act1\akara\aka_act1_q6_successful.wav
+A2Q0 Act2 prologue (Jerhyn),0,JERHYN,253,0,4064,ESOUND_JERHYN_ACT2_INTRO,act2\jerhyn\jer_act2_intro.wav
+A2Q0 Act2 prologue (Jerhyn),1,CAIN2,125,0,3661,ESOUND_CAIN_ACT1_Q4_RESCUED_ROGUES,act1\cain\cain_act1_q4_rescuedbyrogues.wav
+A2Q1 Radament,0,ATMA,304,0,3632,ESOUND_ATMA_ACT2_Q1_INIT,act2\atma\atm_act2_q1_init.wav
+A2Q1 Radament,1,ATMA,310,2,3630,ESOUND_ATMA_ACT2_Q1_AFTER,act2\atma\atm_act2_q1_after.wav
+A2Q1 Radament,1,WARRIV2,307,2,4365,ESOUND_WARRIV_ACT2_Q1_AFTER,act2\warriv\war_act2_q1_after.wav
+A2Q1 Radament,1,GREIZ,305,2,3970,ESOUND_GREIZ_ACT2_Q1_AFTER,act2\griez\gre_act2_q1_after.wav
+A2Q1 Radament,1,ELZIX,306,2,3831,ESOUND_ELZIX_ACT2_Q1_AFTER,act2\elzix\elz_act2_q1_after.wav
+A2Q1 Radament,1,DROGNAN,312,2,3797,ESOUND_DROGNAN_ACT2_Q1_AFTER,act2\drognan\dro_act2_q1_after.wav
+A2Q1 Radament,1,LYSANDER,313,2,4137,ESOUND_LYSANDER_ACT2_Q1_AFTER,act2\lysander\lys_act2_q1_after.wav
+A2Q1 Radament,1,CAIN2,314,2,3677,ESOUND_CAIN_ACT2_Q1_AFTER,act2\cain\cain_act2_q1_after.wav
+A2Q1 Radament,1,MESHIF1,311,2,4170,ESOUND_MESHIF_ACT2_Q1_AFTER,act2\meshif\mes_act2_q1_after.wav
+A2Q1 Radament,1,GEGLASH,308,2,3897,ESOUND_GEGLASH_ACT2_Q1_AFTER,act2\geglash\geg_act2_q1_after.wav
+A2Q1 Radament,1,FARA,309,2,3864,ESOUND_FARA_ACT2_Q1_AFTER,act2\fara\far_act2_q1_after.wav
+A2Q1 Radament,2,ATMA,317,2,3631,ESOUND_ATMA_ACT2_Q1_EARLY,act2\atma\atm_act2_q1_early.wav
+A2Q1 Radament,2,WARRIV2,315,2,4366,ESOUND_WARRIV_ACT2_Q1_EARLY,act2\warriv\war_act2_q1_early.wav
+A2Q1 Radament,2,GREIZ,318,2,3971,ESOUND_GREIZ_ACT2_Q1_EARLY,act2\griez\gre_act2_q1_early.wav
+A2Q1 Radament,2,ELZIX,320,2,3832,ESOUND_ELZIX_ACT2_Q1_EARLY,act2\elzix\elz_act2_q1_early.wav
+A2Q1 Radament,2,DROGNAN,322,2,3798,ESOUND_DROGNAN_ACT2_Q1_EARLY,act2\drognan\dro_act2_q1_early.wav
+A2Q1 Radament,2,LYSANDER,321,2,4138,ESOUND_LYSANDER_ACT2_Q1_EARLY,act2\lysander\lys_act2_q1_early.wav
+A2Q1 Radament,2,CAIN2,324,2,3678,ESOUND_CAIN_ACT2_Q1_EARLY,act2\cain\cain_act2_q1_early.wav
+A2Q1 Radament,2,MESHIF1,316,2,4171,ESOUND_MESHIF_ACT2_Q1_EARLY,act2\meshif\mes_act2_q1_early.wav
+A2Q1 Radament,2,GEGLASH,319,2,3898,ESOUND_GEGLASH_ACT2_Q1_EARLY,act2\geglash\geg_act2_q1_early.wav
+A2Q1 Radament,2,FARA,323,2,3865,ESOUND_FARA_ACT2_Q1_EARLY,act2\fara\far_act2_q1_early.wav
+A2Q1 Radament,3,ATMA,334,1,3633,ESOUND_ATMA_ACT2_Q1_SUCCESS,act2\atma\atm_act2_q1_successful.wav
+A2Q1 Radament,3,GREIZ,325,2,3972,ESOUND_GREIZ_ACT2_Q1_SUCCESS,act2\griez\gre_act2_q1_successful.wav
+A2Q1 Radament,3,ELZIX,330,2,3833,ESOUND_ELZIX_ACT2_Q1_SUCCESS,act2\elzix\elz_act2_q1_successful.wav
+A2Q1 Radament,3,DROGNAN,326,2,3799,ESOUND_DROGNAN_ACT2_Q1_SUCCESS,act2\drognan\dro_act2_q1_successful.wav
+A2Q1 Radament,3,LYSANDER,327,2,4139,ESOUND_LYSANDER_ACT2_Q1_SUCCESS,act2\lysander\lys_act2_q1_successful.wav
+A2Q1 Radament,3,CAIN2,333,2,3679,ESOUND_CAIN_ACT2_Q1_SUCCESS,act2\cain\cain_act2_q1_successful.wav
+A2Q1 Radament,3,MESHIF1,328,2,4172,ESOUND_MESHIF_ACT2_Q1_SUCCESS,act2\meshif\mes_act2_q1_successful.wav
+A2Q1 Radament,3,GEGLASH,329,2,3899,ESOUND_GEGLASH_ACT2_Q1_SUCCESS,act2\geglash\geg_act2_q1_successful.wav
+A2Q1 Radament,3,FARA,332,2,3866,ESOUND_FARA_ACT2_Q1_SUCCESS,act2\fara\far_act2_q1_successful.wav
+A2Q1 Radament,4,WARRIV2,331,2,4367,ESOUND_WARRIV_ACT2_Q1_SUCCESS,act2\warriv\war_act2_q1_successful.wav
+A2Q1 Radament,4,ATMA,334,2,3633,ESOUND_ATMA_ACT2_Q1_SUCCESS,act2\atma\atm_act2_q1_successful.wav
+A2Q1 Radament,4,GREIZ,325,2,3972,ESOUND_GREIZ_ACT2_Q1_SUCCESS,act2\griez\gre_act2_q1_successful.wav
+A2Q1 Radament,4,ELZIX,330,2,3833,ESOUND_ELZIX_ACT2_Q1_SUCCESS,act2\elzix\elz_act2_q1_successful.wav
+A2Q1 Radament,4,DROGNAN,326,2,3799,ESOUND_DROGNAN_ACT2_Q1_SUCCESS,act2\drognan\dro_act2_q1_successful.wav
+A2Q1 Radament,4,CAIN2,333,2,3679,ESOUND_CAIN_ACT2_Q1_SUCCESS,act2\cain\cain_act2_q1_successful.wav
+A2Q1 Radament,4,MESHIF1,328,2,4172,ESOUND_MESHIF_ACT2_Q1_SUCCESS,act2\meshif\mes_act2_q1_successful.wav
+A2Q1 Radament,4,GEGLASH,329,2,3899,ESOUND_GEGLASH_ACT2_Q1_SUCCESS,act2\geglash\geg_act2_q1_successful.wav
+A2Q1 Radament,4,FARA,332,2,3866,ESOUND_FARA_ACT2_Q1_SUCCESS,act2\fara\far_act2_q1_successful.wav
+A2Q2 Horadric Staff,0,CAIN2,335,0,3682,ESOUND_CAIN_ACT2_Q2_EARLY_SCROLL,act2\cain\cain_act2_q2_earlyscroll.wav
+A2Q2 Horadric Staff,1,CAIN2,336,0,3680,ESOUND_CAIN_ACT2_Q2_EARLY_CAP,act2\cain\cain_act2_q2_earlycap.wav
+A2Q2 Horadric Staff,2,CAIN2,337,0,3683,ESOUND_CAIN_ACT2_Q2_EARLY_STAVE,act2\cain\cain_act2_q2_earlystave.wav
+A2Q2 Horadric Staff,3,CAIN2,338,0,3681,ESOUND_CAIN_ACT2_Q2_EARLY_CUBE,act2\cain\cain_act2_q2_earlycube.wav
+A2Q2 Horadric Staff,4,CAIN2,339,0,3684,ESOUND_CAIN_ACT2_Q2_SUCCESS,act2\cain\cain_act2_q2_successfulstaff.wav
+A2Q2 Horadric Staff,5,CAIN2,339,2,3684,ESOUND_CAIN_ACT2_Q2_SUCCESS,act2\cain\cain_act2_q2_successfulstaff.wav
+A2Q2 Horadric Staff,6,CAIN2,335,2,3682,ESOUND_CAIN_ACT2_Q2_EARLY_SCROLL,act2\cain\cain_act2_q2_earlyscroll.wav
+A2Q2 Horadric Staff,7,CAIN2,336,2,3680,ESOUND_CAIN_ACT2_Q2_EARLY_CAP,act2\cain\cain_act2_q2_earlycap.wav
+A2Q2 Horadric Staff,8,CAIN2,337,2,3683,ESOUND_CAIN_ACT2_Q2_EARLY_STAVE,act2\cain\cain_act2_q2_earlystave.wav
+A2Q2 Horadric Staff,9,CAIN2,338,2,3681,ESOUND_CAIN_ACT2_Q2_EARLY_CUBE,act2\cain\cain_act2_q2_earlycube.wav
+A2Q3 Tainted Sun,0,ATMA,344,2,3634,ESOUND_ATMA_ACT2_Q3_AFTER,act2\atma\atm_act2_q3_after.wav
+A2Q3 Tainted Sun,0,WARRIV2,343,2,4368,ESOUND_WARRIV_ACT2_Q3_AFTER,act2\warriv\war_act2_q3_after.wav
+A2Q3 Tainted Sun,0,GREIZ,341,2,3973,ESOUND_GREIZ_ACT2_Q3_AFTER,act2\griez\gre_act2_q3_after.wav
+A2Q3 Tainted Sun,0,ELZIX,342,2,3834,ESOUND_ELZIX_ACT2_Q3_AFTER,act2\elzix\elz_act2_q3_after.wav
+A2Q3 Tainted Sun,0,DROGNAN,348,1,3800,ESOUND_DROGNAN_ACT2_Q3_AFTER,act2\drognan\dro_act2_q3_after.wav
+A2Q3 Tainted Sun,0,LYSANDER,347,2,4140,ESOUND_LYSANDER_ACT2_Q3_AFTER,act2\lysander\lys_act2_q3_after.wav
+A2Q3 Tainted Sun,0,CAIN2,350,2,3685,ESOUND_CAIN_ACT2_Q3_AFTER,act2\cain\cain_act2_q3_after.wav
+A2Q3 Tainted Sun,0,MESHIF1,349,2,4173,ESOUND_MESHIF_ACT2_Q3_AFTER,act2\meshif\mes_act2_q3_after.wav
+A2Q3 Tainted Sun,0,GEGLASH,345,2,3900,ESOUND_GEGLASH_ACT2_Q3_AFTER,act2\geglash\geg_act2_q3_after.wav
+A2Q3 Tainted Sun,0,JERHYN,340,2,4066,ESOUND_JERHYN_ACT2_Q3_AFTER,act2\jerhyn\jer_act2_q3_after.wav
+A2Q3 Tainted Sun,0,FARA,346,2,3867,ESOUND_FARA_ACT2_Q3_AFTER,act2\fara\far_act2_q3_after.wav
+A2Q3 Tainted Sun,1,ATMA,344,2,3634,ESOUND_ATMA_ACT2_Q3_AFTER,act2\atma\atm_act2_q3_after.wav
+A2Q3 Tainted Sun,1,WARRIV2,343,2,4368,ESOUND_WARRIV_ACT2_Q3_AFTER,act2\warriv\war_act2_q3_after.wav
+A2Q3 Tainted Sun,1,GREIZ,341,2,3973,ESOUND_GREIZ_ACT2_Q3_AFTER,act2\griez\gre_act2_q3_after.wav
+A2Q3 Tainted Sun,1,ELZIX,342,2,3834,ESOUND_ELZIX_ACT2_Q3_AFTER,act2\elzix\elz_act2_q3_after.wav
+A2Q3 Tainted Sun,1,DROGNAN,348,2,3800,ESOUND_DROGNAN_ACT2_Q3_AFTER,act2\drognan\dro_act2_q3_after.wav
+A2Q3 Tainted Sun,1,LYSANDER,347,2,4140,ESOUND_LYSANDER_ACT2_Q3_AFTER,act2\lysander\lys_act2_q3_after.wav
+A2Q3 Tainted Sun,1,CAIN2,350,2,3685,ESOUND_CAIN_ACT2_Q3_AFTER,act2\cain\cain_act2_q3_after.wav
+A2Q3 Tainted Sun,1,MESHIF1,349,2,4173,ESOUND_MESHIF_ACT2_Q3_AFTER,act2\meshif\mes_act2_q3_after.wav
+A2Q3 Tainted Sun,1,GEGLASH,345,2,3900,ESOUND_GEGLASH_ACT2_Q3_AFTER,act2\geglash\geg_act2_q3_after.wav
+A2Q3 Tainted Sun,1,JERHYN,340,2,4066,ESOUND_JERHYN_ACT2_Q3_AFTER,act2\jerhyn\jer_act2_q3_after.wav
+A2Q3 Tainted Sun,1,FARA,346,2,3867,ESOUND_FARA_ACT2_Q3_AFTER,act2\fara\far_act2_q3_after.wav
+A2Q3 Tainted Sun,2,ATMA,361,2,3635,ESOUND_ATMA_ACT2_Q3_EARLY,act2\atma\atm_act2_q3_early.wav
+A2Q3 Tainted Sun,2,WARRIV2,353,2,4369,ESOUND_WARRIV_ACT2_Q3_EARLY,act2\warriv\war_act2_q3_early.wav
+A2Q3 Tainted Sun,2,GREIZ,352,2,3974,ESOUND_GREIZ_ACT2_Q3_EARLY,act2\griez\gre_act2_q3_early.wav
+A2Q3 Tainted Sun,2,ELZIX,359,2,3835,ESOUND_ELZIX_ACT2_Q3_EARLY,act2\elzix\elz_act2_q3_early.wav
+A2Q3 Tainted Sun,2,DROGNAN,358,2,3801,ESOUND_DROGNAN_ACT2_Q3_EARLY,act2\drognan\dro_act2_q3_early.wav
+A2Q3 Tainted Sun,2,LYSANDER,357,2,4141,ESOUND_LYSANDER_ACT2_Q3_EARLY,act2\lysander\lys_act2_q3_early.wav
+A2Q3 Tainted Sun,2,CAIN2,360,2,3686,ESOUND_CAIN_ACT2_Q3_EARLY,act2\cain\cain_act2_q3_early.wav
+A2Q3 Tainted Sun,2,MESHIF1,355,2,4174,ESOUND_MESHIF_ACT2_Q3_EARLY,act2\meshif\mes_act2_q3_early.wav
+A2Q3 Tainted Sun,2,JERHYN,351,2,4067,ESOUND_JERHYN_ACT2_Q3_EARLY,act2\jerhyn\jer_act2_q3_early.wav
+A2Q3 Tainted Sun,2,GEGLASH,354,2,3901,ESOUND_GEGLASH_ACT2_Q3_EARLY,act2\geglash\geg_act2_q3_early.wav
+A2Q3 Tainted Sun,2,FARA,356,2,3868,ESOUND_FARA_ACT2_Q3_EARLY,act2\fara\far_act2_q3_early.wav
+A2Q3 Tainted Sun,3,ATMA,368,1,3636,ESOUND_ATMA_ACT2_Q3_SUCCESS,act2\atma\atm_act2_q3_successful.wav
+A2Q3 Tainted Sun,3,WARRIV2,366,1,4370,ESOUND_WARRIV_ACT2_Q3_SUCCESS,act2\warriv\war_act2_q3_successful.wav
+A2Q3 Tainted Sun,3,GREIZ,363,1,3975,ESOUND_GREIZ_ACT2_Q3_SUCCESS,act2\griez\gre_act2_q3_successful.wav
+A2Q3 Tainted Sun,3,ELZIX,364,1,3836,ESOUND_ELZIX_ACT2_Q3_SUCCESS,act2\elzix\elz_act2_q3_successful.wav
+A2Q3 Tainted Sun,3,DROGNAN,371,1,3802,ESOUND_DROGNAN_ACT2_Q3_SUCCESS,act2\drognan\dro_act2_q3_successful.wav
+A2Q3 Tainted Sun,3,LYSANDER,370,1,4142,ESOUND_LYSANDER_ACT2_Q3_SUCCESS,act2\lysander\lys_act2_q3_successful.wav
+A2Q3 Tainted Sun,3,CAIN2,372,1,3687,ESOUND_CAIN_ACT2_Q3_SUCCESS,act2\cain\cain_act2_q3_successful.wav
+A2Q3 Tainted Sun,3,MESHIF1,367,1,4175,ESOUND_MESHIF_ACT2_Q3_SUCCESS,act2\meshif\mes_act2_q3_successful.wav
+A2Q3 Tainted Sun,3,GEGLASH,365,1,3902,ESOUND_GEGLASH_ACT2_Q3_SUCCESS,act2\geglash\geg_act2_q3_successful.wav
+A2Q3 Tainted Sun,3,JERHYN,362,1,4068,ESOUND_JERHYN_ACT2_Q3_SUCCESS,act2\jerhyn\jer_act2_q3_successful.wav
+A2Q3 Tainted Sun,4,ATMA,368,2,3636,ESOUND_ATMA_ACT2_Q3_SUCCESS,act2\atma\atm_act2_q3_successful.wav
+A2Q3 Tainted Sun,4,WARRIV2,366,2,4370,ESOUND_WARRIV_ACT2_Q3_SUCCESS,act2\warriv\war_act2_q3_successful.wav
+A2Q3 Tainted Sun,4,GREIZ,363,2,3975,ESOUND_GREIZ_ACT2_Q3_SUCCESS,act2\griez\gre_act2_q3_successful.wav
+A2Q3 Tainted Sun,4,JERHYN,362,2,4068,ESOUND_JERHYN_ACT2_Q3_SUCCESS,act2\jerhyn\jer_act2_q3_successful.wav
+A2Q3 Tainted Sun,4,ELZIX,364,2,3836,ESOUND_ELZIX_ACT2_Q3_SUCCESS,act2\elzix\elz_act2_q3_successful.wav
+A2Q3 Tainted Sun,4,DROGNAN,371,2,3802,ESOUND_DROGNAN_ACT2_Q3_SUCCESS,act2\drognan\dro_act2_q3_successful.wav
+A2Q3 Tainted Sun,4,LYSANDER,370,2,4142,ESOUND_LYSANDER_ACT2_Q3_SUCCESS,act2\lysander\lys_act2_q3_successful.wav
+A2Q3 Tainted Sun,4,MESHIF1,367,2,4175,ESOUND_MESHIF_ACT2_Q3_SUCCESS,act2\meshif\mes_act2_q3_successful.wav
+A2Q3 Tainted Sun,4,GEGLASH,365,2,3902,ESOUND_GEGLASH_ACT2_Q3_SUCCESS,act2\geglash\geg_act2_q3_successful.wav
+A2Q3 Tainted Sun,4,FARA,369,2,3869,ESOUND_FARA_ACT2_Q3_SUCCESS,act2\fara\far_act2_q3_successful.wav
+A2Q4 Arcane Sanctuary,0,DROGNAN,373,1,3805,ESOUND_DROGNAN_ACT2_Q4_INIT,act2\drognan\dro_act2_q4_init.wav
+A2Q4 Arcane Sanctuary,1,DROGNAN,373,2,3805,ESOUND_DROGNAN_ACT2_Q4_INIT,act2\drognan\dro_act2_q4_init.wav
+A2Q4 Arcane Sanctuary,1,JERHYN,377,1,4069,ESOUND_JERHYN_ACT2_Q4_AFTER,act2\jerhyn\jer_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,2,ATMA,380,2,3637,ESOUND_ATMA_ACT2_Q4_AFTER,act2\atma\atm_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,2,WARRIV2,381,2,4371,ESOUND_WARRIV_ACT2_Q4_AFTER,act2\warriv\war_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,2,GREIZ,375,2,3976,ESOUND_GREIZ_ACT2_Q4_AFTER,act2\griez\gre_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,2,ELZIX,376,2,3837,ESOUND_ELZIX_ACT2_Q4_AFTER,act2\elzix\elz_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,2,DROGNAN,383,2,3803,ESOUND_DROGNAN_ACT2_Q4_AFTER,act2\drognan\dro_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,2,LYSANDER,382,2,4143,ESOUND_LYSANDER_ACT2_Q4_AFTER,act2\lysander\lys_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,2,CAIN2,378,2,3688,ESOUND_CAIN_ACT2_Q4_AFTER,act2\cain\cain_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,2,JERHYN,377,2,4069,ESOUND_JERHYN_ACT2_Q4_AFTER,act2\jerhyn\jer_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,2,MESHIF1,384,2,4176,ESOUND_MESHIF_ACT2_Q4_AFTER,act2\meshif\mes_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,2,GEGLASH,379,2,3903,ESOUND_GEGLASH_ACT2_Q4_AFTER,act2\geglash\geg_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,2,FARA,374,2,3870,ESOUND_FARA_ACT2_Q4_AFTER,act2\fara\far_act2_q4_after.wav
+A2Q4 Arcane Sanctuary,3,ATMA,393,2,3638,ESOUND_ATMA_ACT2_Q4_EARLY,act2\atma\atm_act2_q4_early.wav
+A2Q4 Arcane Sanctuary,3,WARRIV2,394,2,4372,ESOUND_WARRIV_ACT2_Q4_EARLY,act2\warriv\war_act2_q4_early.wav
+A2Q4 Arcane Sanctuary,3,GREIZ,387,2,3977,ESOUND_GREIZ_ACT2_Q4_EARLY,act2\griez\gre_act2_q4_early.wav
+A2Q4 Arcane Sanctuary,3,ELZIX,385,2,3838,ESOUND_ELZIX_ACT2_Q4_EARLY,act2\elzix\elz_act2_q4_early.wav
+A2Q4 Arcane Sanctuary,3,DROGNAN,388,2,3804,ESOUND_DROGNAN_ACT2_Q4_EARLY,act2\drognan\dro_act2_q4_early.wav
+A2Q4 Arcane Sanctuary,3,JERHYN,386,2,4070,ESOUND_JERHYN_ACT2_Q4_EARLY,act2\jerhyn\jer_act2_q4_early.wav
+A2Q4 Arcane Sanctuary,3,LYSANDER,389,2,4144,ESOUND_LYSANDER_ACT2_Q4_EARLY,act2\lysander\lys_act2_q4_early.wav
+A2Q4 Arcane Sanctuary,3,CAIN2,395,2,3689,ESOUND_CAIN_ACT2_Q4_EARLY,act2\cain\cain_act2_q4_early.wav
+A2Q4 Arcane Sanctuary,3,MESHIF1,392,2,4177,ESOUND_MESHIF_ACT2_Q4_EARLY,act2\meshif\mes_act2_q4_early.wav
+A2Q4 Arcane Sanctuary,3,GEGLASH,391,2,3904,ESOUND_GEGLASH_ACT2_Q4_EARLY,act2\geglash\geg_act2_q4_early.wav
+A2Q4 Arcane Sanctuary,3,FARA,390,2,3871,ESOUND_FARA_ACT2_Q4_EARLY,act2\fara\far_act2_q4_early.wav
+A2Q4 Arcane Sanctuary,4,ATMA,406,1,3639,ESOUND_ATMA_ACT2_Q4_SUCCESS,act2\atma\atm_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,4,WARRIV2,403,1,4373,ESOUND_WARRIV_ACT2_Q4_SUCCESS,act2\warriv\war_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,4,GREIZ,397,1,3978,ESOUND_GREIZ_ACT2_Q4_SUCCESS,act2\griez\gre_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,4,ELZIX,400,1,3839,ESOUND_ELZIX_ACT2_Q4_SUCCESS,act2\elzix\elz_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,4,JERHYN,398,1,4071,ESOUND_JERHYN_ACT2_Q4_SUCCESS,act2\jerhyn\jer_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,4,DROGNAN,399,1,3806,ESOUND_DROGNAN_ACT2_Q4_SUCCESS,act2\drognan\dro_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,4,LYSANDER,405,1,4145,ESOUND_LYSANDER_ACT2_Q4_SUCCESS,act2\lysander\lys_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,4,CAIN2,407,1,3690,ESOUND_CAIN_ACT2_Q4_SUCCESS,act2\cain\cain_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,4,MESHIF1,402,1,4178,ESOUND_MESHIF_ACT2_Q4_SUCCESS,act2\meshif\mes_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,4,GEGLASH,401,1,3905,ESOUND_GEGLASH_ACT2_Q4_SUCCESS,act2\geglash\geg_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,4,FARA,404,1,3872,ESOUND_FARA_ACT2_Q4_SUCCESS,act2\fara\far_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,5,WARRIV2,403,2,4373,ESOUND_WARRIV_ACT2_Q4_SUCCESS,act2\warriv\war_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,5,GREIZ,397,2,3978,ESOUND_GREIZ_ACT2_Q4_SUCCESS,act2\griez\gre_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,5,ELZIX,400,2,3839,ESOUND_ELZIX_ACT2_Q4_SUCCESS,act2\elzix\elz_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,5,JERHYN,398,2,4071,ESOUND_JERHYN_ACT2_Q4_SUCCESS,act2\jerhyn\jer_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,5,DROGNAN,399,2,3806,ESOUND_DROGNAN_ACT2_Q4_SUCCESS,act2\drognan\dro_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,5,LYSANDER,405,2,4145,ESOUND_LYSANDER_ACT2_Q4_SUCCESS,act2\lysander\lys_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,5,CAIN2,407,2,3690,ESOUND_CAIN_ACT2_Q4_SUCCESS,act2\cain\cain_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,5,MESHIF1,402,2,4178,ESOUND_MESHIF_ACT2_Q4_SUCCESS,act2\meshif\mes_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,5,GEGLASH,401,2,3905,ESOUND_GEGLASH_ACT2_Q4_SUCCESS,act2\geglash\geg_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,5,FARA,404,2,3872,ESOUND_FARA_ACT2_Q4_SUCCESS,act2\fara\far_act2_q4_successful.wav
+A2Q4 Arcane Sanctuary,6,ACT2GUARD2,185,1,3983,ESOUND_GUARD_HALT,act2\guard\gua_halt.wav
+A2Q4 Arcane Sanctuary,7,ACT2GUARD2,186,1,3988,ESOUND_GUARD_YOU_MAY_NOT_PASS,act2\guard\gua_youmaynotpass.wav
+A2Q4 Arcane Sanctuary,8,ACT2GUARD2,187,1,3986,ESOUND_GUARD_WELCOME,act2\guard\gua_welcome.wav
+A2Q4 Arcane Sanctuary,9,ACT2GUARD2,188,1,3987,ESOUND_GUARD_YOU_MAY_ENTER,act2\guard\gua_youmayenter.wav
+A2Q4 Arcane Sanctuary,10,ACT2GUARD2,189,1,3985,ESOUND_GUARD_STAY_OUT_OF_TROUBLE,act2\guard\gua_stayoutoftrouble.wav
+A2Q5 Summoner,0,ATMA,414,2,3640,ESOUND_ATMA_ACT2_Q5_EARLY,act2\atma\atm_act2_q5_early.wav
+A2Q5 Summoner,0,WARRIV2,413,2,4374,ESOUND_WARRIV_ACT2_Q5_EARLY,act2\warriv\war_act2_q5_early.wav
+A2Q5 Summoner,0,GREIZ,408,2,3979,ESOUND_GREIZ_ACT2_Q5_EARLY,act2\griez\gre_act2_q5_early.wav
+A2Q5 Summoner,0,ELZIX,417,2,3840,ESOUND_ELZIX_ACT2_Q5_EARLY,act2\elzix\elz_act2_q5_early.wav
+A2Q5 Summoner,0,DROGNAN,410,2,3807,ESOUND_DROGNAN_ACT2_Q5_EARLY,act2\drognan\dro_act2_q5_early.wav
+A2Q5 Summoner,0,LYSANDER,411,2,4146,ESOUND_LYSANDER_ACT2_Q5_EARLY,act2\lysander\lys_act2_q5_early.wav
+A2Q5 Summoner,0,CAIN2,418,2,3691,ESOUND_CAIN_ACT2_Q5_EARLY,act2\cain\cain_act2_q5_early.wav
+A2Q5 Summoner,0,MESHIF1,412,2,4179,ESOUND_MESHIF_ACT2_Q5_EARLY,act2\meshif\mes_act2_q5_early.wav
+A2Q5 Summoner,0,JERHYN,409,2,4072,ESOUND_JERHYN_ACT2_Q5_EARLY,act2\jerhyn\jer_act2_q5_early.wav
+A2Q5 Summoner,0,GEGLASH,415,2,3906,ESOUND_GEGLASH_ACT2_Q5_EARLY,act2\geglash\geg_act2_q5_early.wav
+A2Q5 Summoner,0,FARA,416,2,3873,ESOUND_FARA_ACT2_Q5_EARLY,act2\fara\far_act2_q5_early.wav
+A2Q5 Summoner,1,ATMA,427,1,3641,ESOUND_ATMA_ACT2_Q5_SUCCESS,act2\atma\atm_act2_q5_successful.wav
+A2Q5 Summoner,1,WARRIV2,424,1,4375,ESOUND_WARRIV_ACT2_Q5_SUCCESS,act2\warriv\war_act2_q5_successful.wav
+A2Q5 Summoner,1,GREIZ,419,1,3980,ESOUND_GREIZ_ACT2_Q5_SUCCESS,act2\griez\gre_act2_q5_successful.wav
+A2Q5 Summoner,1,ELZIX,423,1,3841,ESOUND_ELZIX_ACT2_Q5_SUCCESS,act2\elzix\elz_act2_q5_successful.wav
+A2Q5 Summoner,1,DROGNAN,422,1,3808,ESOUND_DROGNAN_ACT2_Q5_SUCCESS,act2\drognan\dro_act2_q5_successful.wav
+A2Q5 Summoner,1,LYSANDER,426,1,4147,ESOUND_LYSANDER_ACT2_Q5_SUCCESS,act2\lysander\lys_act2_q5_successful.wav
+A2Q5 Summoner,1,CAIN2,429,1,3692,ESOUND_CAIN_ACT2_Q5_SUCCESS,act2\cain\cain_act2_q5_successful.wav
+A2Q5 Summoner,1,MESHIF1,425,1,4180,ESOUND_MESHIF_ACT2_Q5_SUCCESS,act2\meshif\mes_act2_q5_successful.wav
+A2Q5 Summoner,1,JERHYN,421,1,4073,ESOUND_JERHYN_ACT2_Q5_SUCCESS,act2\jerhyn\jer_act2_q5_successful.wav
+A2Q5 Summoner,1,GEGLASH,420,1,3907,ESOUND_GEGLASH_ACT2_Q5_SUCCESS,act2\geglash\geg_act2_q5_successful.wav
+A2Q5 Summoner,1,FARA,428,1,3874,ESOUND_FARA_ACT2_Q5_SUCCESS,act2\fara\far_act2_q5_successful.wav
+A2Q5 Summoner,2,ATMA,427,2,3641,ESOUND_ATMA_ACT2_Q5_SUCCESS,act2\atma\atm_act2_q5_successful.wav
+A2Q5 Summoner,2,WARRIV2,424,2,4375,ESOUND_WARRIV_ACT2_Q5_SUCCESS,act2\warriv\war_act2_q5_successful.wav
+A2Q5 Summoner,2,GREIZ,419,2,3980,ESOUND_GREIZ_ACT2_Q5_SUCCESS,act2\griez\gre_act2_q5_successful.wav
+A2Q5 Summoner,2,ELZIX,423,2,3841,ESOUND_ELZIX_ACT2_Q5_SUCCESS,act2\elzix\elz_act2_q5_successful.wav
+A2Q5 Summoner,2,DROGNAN,422,2,3808,ESOUND_DROGNAN_ACT2_Q5_SUCCESS,act2\drognan\dro_act2_q5_successful.wav
+A2Q5 Summoner,2,LYSANDER,426,2,4147,ESOUND_LYSANDER_ACT2_Q5_SUCCESS,act2\lysander\lys_act2_q5_successful.wav
+A2Q5 Summoner,2,CAIN2,429,2,3692,ESOUND_CAIN_ACT2_Q5_SUCCESS,act2\cain\cain_act2_q5_successful.wav
+A2Q5 Summoner,2,MESHIF1,425,2,4180,ESOUND_MESHIF_ACT2_Q5_SUCCESS,act2\meshif\mes_act2_q5_successful.wav
+A2Q5 Summoner,2,JERHYN,421,2,4073,ESOUND_JERHYN_ACT2_Q5_SUCCESS,act2\jerhyn\jer_act2_q5_successful.wav
+A2Q5 Summoner,2,GEGLASH,420,2,3907,ESOUND_GEGLASH_ACT2_Q5_SUCCESS,act2\geglash\geg_act2_q5_successful.wav
+A2Q5 Summoner,2,FARA,428,2,3874,ESOUND_FARA_ACT2_Q5_SUCCESS,act2\fara\far_act2_q5_successful.wav
+A2Q6 Seven Tombs,0,JERHYN,430,1,4075,ESOUND_JERHYN_ACT2_Q6_INIT,act2\jerhyn\jer_act2_q6_init.wav
+A2Q6 Seven Tombs,1,ATMA,434,2,3642,ESOUND_ATMA_ACT2_Q6_AFTER,act2\atma\atm_act2_q6_after.wav
+A2Q6 Seven Tombs,1,WARRIV2,433,2,4376,ESOUND_WARRIV_ACT2_Q6_AFTER,act2\warriv\war_act2_q6_after.wav
+A2Q6 Seven Tombs,1,GREIZ,441,2,3981,ESOUND_GREIZ_ACT2_Q6_AFTER,act2\griez\gre_act2_q6_after.wav
+A2Q6 Seven Tombs,1,ELZIX,432,2,3842,ESOUND_ELZIX_ACT2_Q6_AFTER,act2\elzix\elz_act2_q6_after.wav
+A2Q6 Seven Tombs,1,JERHYN,431,2,4074,ESOUND_JERHYN_ACT2_Q6_AFTER,act2\jerhyn\jer_act2_q6_after.wav
+A2Q6 Seven Tombs,1,DROGNAN,439,2,3809,ESOUND_DROGNAN_ACT2_Q6_AFTER,act2\drognan\dro_act2_q6_after.wav
+A2Q6 Seven Tombs,1,LYSANDER,438,2,4148,ESOUND_LYSANDER_ACT2_Q6_AFTER,act2\lysander\lys_act2_q6_after.wav
+A2Q6 Seven Tombs,1,CAIN2,440,2,3693,ESOUND_CAIN_ACT2_Q6_AFTER,act2\cain\cain_act2_q6_after.wav
+A2Q6 Seven Tombs,1,MESHIF1,436,2,4181,ESOUND_MESHIF_ACT2_Q6_AFTER,act2\meshif\mes_act2_q6_after.wav
+A2Q6 Seven Tombs,1,GEGLASH,435,2,3908,ESOUND_GEGLASH_ACT2_Q6_AFTER,act2\geglash\geg_act2_q6_after.wav
+A2Q6 Seven Tombs,1,FARA,437,2,3875,ESOUND_FARA_ACT2_Q6_AFTER,act2\fara\far_act2_q6_after.wav
+A2Q6 Seven Tombs,2,TYRAEL1,302,1,4309,ESOUND_TYRAEL_ACT2_INTRO,act2\tyreal\tyr_act2_intro.wav
+A2Q6 Seven Tombs,3,ATMA,445,2,3643,ESOUND_ATMA_ACT2_Q6_SUCCESS,act2\atma\atm_act2_q6_successful.wav
+A2Q6 Seven Tombs,3,WARRIV2,446,2,4377,ESOUND_WARRIV_ACT2_Q6_SUCCESS,act2\warriv\war_act2_q6_successful.wav
+A2Q6 Seven Tombs,3,GREIZ,451,2,3982,ESOUND_GREIZ_ACT2_Q6_SUCCESS,act2\griez\gre_act2_q6_successful.wav
+A2Q6 Seven Tombs,3,ELZIX,443,2,3843,ESOUND_ELZIX_ACT2_Q6_SUCCESS,act2\elzix\elz_act2_q6_successful.wav
+A2Q6 Seven Tombs,3,DROGNAN,449,2,3810,ESOUND_DROGNAN_ACT2_Q6_SUCCESS,act2\drognan\dro_act2_q6_successful.wav
+A2Q6 Seven Tombs,3,JERHYN,442,1,4076,ESOUND_JERHYN_ACT2_Q6_SUCCESS,act2\jerhyn\jer_act2_q6_successful.wav
+A2Q6 Seven Tombs,3,TYRAEL1,302,1,4309,ESOUND_TYRAEL_ACT2_INTRO,act2\tyreal\tyr_act2_intro.wav
+A2Q6 Seven Tombs,3,LYSANDER,444,2,4149,ESOUND_LYSANDER_ACT2_Q6_SUCCESS,act2\lysander\lys_act2_q6_successful.wav
+A2Q6 Seven Tombs,3,CAIN2,452,2,3694,ESOUND_CAIN_ACT2_Q6_SUCCESS,act2\cain\cain_act2_q6_successful.wav
+A2Q6 Seven Tombs,3,MESHIF1,450,2,4182,ESOUND_MESHIF_ACT2_Q6_SUCCESS,act2\meshif\mes_act2_q6_successful.wav
+A2Q6 Seven Tombs,3,GEGLASH,448,2,3909,ESOUND_GEGLASH_ACT2_Q6_SUCCESS,act2\geglash\geg_act2_q6_successful.wav
+A2Q6 Seven Tombs,3,FARA,447,2,3876,ESOUND_FARA_ACT2_Q6_SUCCESS,act2\fara\far_act2_q6_successful.wav
+A2Q6 Seven Tombs,4,ATMA,445,2,3643,ESOUND_ATMA_ACT2_Q6_SUCCESS,act2\atma\atm_act2_q6_successful.wav
+A2Q6 Seven Tombs,4,WARRIV2,446,2,4377,ESOUND_WARRIV_ACT2_Q6_SUCCESS,act2\warriv\war_act2_q6_successful.wav
+A2Q6 Seven Tombs,4,GREIZ,451,2,3982,ESOUND_GREIZ_ACT2_Q6_SUCCESS,act2\griez\gre_act2_q6_successful.wav
+A2Q6 Seven Tombs,4,ELZIX,443,2,3843,ESOUND_ELZIX_ACT2_Q6_SUCCESS,act2\elzix\elz_act2_q6_successful.wav
+A2Q6 Seven Tombs,4,DROGNAN,449,2,3810,ESOUND_DROGNAN_ACT2_Q6_SUCCESS,act2\drognan\dro_act2_q6_successful.wav
+A2Q6 Seven Tombs,4,JERHYN,442,2,4076,ESOUND_JERHYN_ACT2_Q6_SUCCESS,act2\jerhyn\jer_act2_q6_successful.wav
+A2Q6 Seven Tombs,4,TYRAEL1,302,1,4309,ESOUND_TYRAEL_ACT2_INTRO,act2\tyreal\tyr_act2_intro.wav
+A2Q6 Seven Tombs,4,LYSANDER,444,2,4149,ESOUND_LYSANDER_ACT2_Q6_SUCCESS,act2\lysander\lys_act2_q6_successful.wav
+A2Q6 Seven Tombs,4,CAIN2,452,2,3694,ESOUND_CAIN_ACT2_Q6_SUCCESS,act2\cain\cain_act2_q6_successful.wav
+A2Q6 Seven Tombs,4,GEGLASH,448,2,3909,ESOUND_GEGLASH_ACT2_Q6_SUCCESS,act2\geglash\geg_act2_q6_successful.wav
+A2Q6 Seven Tombs,4,FARA,447,2,3876,ESOUND_FARA_ACT2_Q6_SUCCESS,act2\fara\far_act2_q6_successful.wav
+A2Q6 Seven Tombs,5,MESHIF1,450,1,4182,ESOUND_MESHIF_ACT2_Q6_SUCCESS,act2\meshif\mes_act2_q6_successful.wav
+A2Q6 Seven Tombs,6,ATMA,445,1,3643,ESOUND_ATMA_ACT2_Q6_SUCCESS,act2\atma\atm_act2_q6_successful.wav
+A2Q6 Seven Tombs,6,WARRIV2,446,1,4377,ESOUND_WARRIV_ACT2_Q6_SUCCESS,act2\warriv\war_act2_q6_successful.wav
+A2Q6 Seven Tombs,6,DROGNAN,449,1,3810,ESOUND_DROGNAN_ACT2_Q6_SUCCESS,act2\drognan\dro_act2_q6_successful.wav
+A2Q6 Seven Tombs,6,LYSANDER,444,1,4149,ESOUND_LYSANDER_ACT2_Q6_SUCCESS,act2\lysander\lys_act2_q6_successful.wav
+A2Q6 Seven Tombs,6,CAIN2,452,1,3694,ESOUND_CAIN_ACT2_Q6_SUCCESS,act2\cain\cain_act2_q6_successful.wav
+A2Q6 Seven Tombs,6,FARA,447,1,3876,ESOUND_FARA_ACT2_Q6_SUCCESS,act2\fara\far_act2_q6_successful.wav
+A2Q7 guard talk A,0,ACT2GUARD4,59,1,4301,ESOUND_ROGUE_TURN_BACK,act1\rogue\rog_turnback.wav
+A2Q7 guard talk A,1,ACT2GUARD4,60,1,4298,ESOUND_ROGUE_COMPLETE_AKARA,act1\rogue\rog_completeakaraquest.wav
+A2Q7 guard talk A,2,ACT2GUARD4,61,1,4299,ESOUND_ROGUE_EVIL_STRONG,act1\rogue\rog_evilstrong.wav
+A2Q7 guard talk A,3,ACT2GUARD4,62,1,4300,ESOUND_ROGUE_MORTAL_DANGER,act1\rogue\rog_mortaldanger.wav
+A2Q7 guard talk A,4,ACT2GUARD4,63,1,4302,ESOUND_ROGUE_WILDERNESS_AHEAD,act1\rogue\rog_wildernessahead.wav
+A2Q8 guard talk B,0,ACT2GUARD5,303,1,,,
+A3Q0 Act3 prologue,0,HRATLI,465,1,4009,ESOUND_HRATLI_ACT3_INTRO,act3\hratli\hra_act3_intro.wav
+A3Q0 Act3 prologue,1,HRATLI,466,1,4010,ESOUND_HRATLI_ACT3_INTRO_SOR,act3\hratli\hra_act3_intro_sor.wav
+A3Q1 Lam Esen,0,ALKOR,549,1,3546,ESOUND_ALKOR_ACT3_Q1_INIT,act3\alkor\alk_act3_q3_init.wav
+A3Q1 Lam Esen,1,ALKOR,550,2,3544,ESOUND_ALKOR_ACT3_Q1_AFTER,act3\alkor\alk_act3_q3_after.wav
+A3Q1 Lam Esen,1,ORMUS,551,2,4268,ESOUND_ORMUS_ACT3_Q1_AFTER,act3\ormus\orm_act3_q3_after.wav
+A3Q1 Lam Esen,1,MESHIF2,552,2,4195,ESOUND_MESHIF_ACT3_Q1_AFTER,act3\meshif\mes_act3_q3_after.wav
+A3Q1 Lam Esen,1,ASHEARA,553,2,3590,ESOUND_ASHEARA_ACT3_Q1_AFTER,act3\asheara\ash_act3_q3_after.wav
+A3Q1 Lam Esen,1,HRATLI,554,2,4011,ESOUND_HRATLI_ACT3_Q1_AFTER,act3\hratli\hra_act3_q3_after.wav
+A3Q1 Lam Esen,1,CAIN3,555,2,3702,ESOUND_CAIN_ACT3_Q1_AFTER,act3\cain\cain_act3_q3_after.wav
+A3Q1 Lam Esen,1,NATALYA,556,2,4229,ESOUND_NATALYA_ACT3_Q1_AFTER,act3\natalya\nat_act3_q3_after.wav
+A3Q1 Lam Esen,2,ALKOR,557,2,3545,ESOUND_ALKOR_ACT3_Q1_EARLY,act3\alkor\alk_act3_q3_early.wav
+A3Q1 Lam Esen,2,ORMUS,558,2,4269,ESOUND_ORMUS_ACT3_Q1_EARLY,act3\ormus\orm_act3_q3_early.wav
+A3Q1 Lam Esen,2,MESHIF2,559,2,4196,ESOUND_MESHIF_ACT3_Q1_EARLY,act3\meshif\mes_act3_q3_early.wav
+A3Q1 Lam Esen,2,ASHEARA,560,2,3591,ESOUND_ASHEARA_ACT3_Q1_EARLY,act3\asheara\ash_act3_q3_early.wav
+A3Q1 Lam Esen,2,HRATLI,561,2,4012,ESOUND_HRATLI_ACT3_Q1_EARLY,act3\hratli\hra_act3_q3_early.wav
+A3Q1 Lam Esen,2,CAIN3,562,2,3703,ESOUND_CAIN_ACT3_Q1_EARLY,act3\cain\cain_act3_q3_early.wav
+A3Q1 Lam Esen,2,NATALYA,563,2,4230,ESOUND_NATALYA_ACT3_Q1_EARLY,act3\natalya\nat_act3_q3_early.wav
+A3Q1 Lam Esen,3,ALKOR,564,1,3547,ESOUND_ALKOR_ACT3_Q1_SUCCESS,act3\alkor\alk_act3_q3_successful.wav
+A3Q1 Lam Esen,3,ORMUS,565,2,4270,ESOUND_ORMUS_ACT3_Q1_SUCCESS,act3\ormus\orm_act3_q3_successful.wav
+A3Q1 Lam Esen,3,MESHIF2,566,2,4197,ESOUND_MESHIF_ACT3_Q1_SUCCESS,act3\meshif\mes_act3_q3_successful.wav
+A3Q1 Lam Esen,3,ASHEARA,567,2,3592,ESOUND_ASHEARA_ACT3_Q1_SUCCESS,act3\asheara\ash_act3_q3_successful.wav
+A3Q1 Lam Esen,3,HRATLI,568,2,4013,ESOUND_HRATLI_ACT3_Q1_SUCCESS,act3\hratli\hra_act3_q3_successful.wav
+A3Q1 Lam Esen,3,CAIN3,569,2,3704,ESOUND_CAIN_ACT3_Q1_SUCCESS,act3\cain\cain_act3_q3_successful.wav
+A3Q1 Lam Esen,3,NATALYA,570,2,4231,ESOUND_NATALYA_ACT3_Q1_SUCCESS,act3\natalya\nat_act3_q3_successful.wav
+A3Q1 Lam Esen,4,CAIN3,569,2,3704,ESOUND_CAIN_ACT3_Q1_SUCCESS,act3\cain\cain_act3_q3_successful.wav
+A3Q1 Lam Esen,4,NATALYA,570,2,4231,ESOUND_NATALYA_ACT3_Q1_SUCCESS,act3\natalya\nat_act3_q3_successful.wav
+A3Q2 Khalim,0,CAIN3,543,1,3705,ESOUND_CAIN_ACT3_Q2_INIT,act3\cain\cain_act3_q2a_init.wav
+A3Q2 Khalim,1,CAIN3,545,1,3707,ESOUND_CAIN_ACT3_Q2_EARLYEYE,act3\cain\cain_act3_q2a_earlyeye.wav
+A3Q2 Khalim,2,CAIN3,544,1,3709,ESOUND_CAIN_ACT3_Q2_EARLYHEART,act3\cain\cain_act3_q2a_earlyheart.wav
+A3Q2 Khalim,3,CAIN3,546,1,3706,ESOUND_CAIN_ACT3_Q2_EARLYBRAIN,act3\cain\cain_act3_q2a_earlybrain.wav
+A3Q2 Khalim,4,CAIN3,547,1,3708,ESOUND_CAIN_ACT3_Q2_EARLYFLAIL,act3\cain\cain_act3_q2a_earlyflail.wav
+A3Q2 Khalim,5,CAIN3,548,1,3710,ESOUND_CAIN_ACT3_Q2_SUCCESSFUL,act3\cain\cain_act3_q2a_successful.wav
+A3Q2 Khalim,6,CAIN3,543,2,3705,ESOUND_CAIN_ACT3_Q2_INIT,act3\cain\cain_act3_q2a_init.wav
+A3Q2 Khalim,7,CAIN3,545,2,3707,ESOUND_CAIN_ACT3_Q2_EARLYEYE,act3\cain\cain_act3_q2a_earlyeye.wav
+A3Q2 Khalim,8,CAIN3,544,2,3709,ESOUND_CAIN_ACT3_Q2_EARLYHEART,act3\cain\cain_act3_q2a_earlyheart.wav
+A3Q2 Khalim,9,CAIN3,546,2,3706,ESOUND_CAIN_ACT3_Q2_EARLYBRAIN,act3\cain\cain_act3_q2a_earlybrain.wav
+A3Q2 Khalim,10,CAIN3,547,2,3708,ESOUND_CAIN_ACT3_Q2_EARLYFLAIL,act3\cain\cain_act3_q2a_earlyflail.wav
+A3Q2 Khalim,11,CAIN3,548,2,3710,ESOUND_CAIN_ACT3_Q2_SUCCESSFUL,act3\cain\cain_act3_q2a_successful.wav
+A3Q3 Blade/Gidbinn,0,HRATLI,571,1,4019,ESOUND_HRATLI_ACT3_Q3_INIT,act3\hratli\hra_act3_q4_init.wav
+A3Q3 Blade/Gidbinn,1,ALKOR,572,2,3551,ESOUND_ALKOR_ACT3_Q3_AFTER,act3\alkor\alk_act3_q4_after.wav
+A3Q3 Blade/Gidbinn,1,ORMUS,573,2,4274,ESOUND_ORMUS_ACT3_Q3_AFTER,act3\ormus\orm_act3_q4_after.wav
+A3Q3 Blade/Gidbinn,1,MESHIF2,574,2,4201,ESOUND_MESHIF_ACT3_Q3_AFTER,act3\meshif\mes_act3_q4_after.wav
+A3Q3 Blade/Gidbinn,1,ASHEARA,575,2,3597,ESOUND_ASHEARA_ACT3_Q3_AFTER,act3\asheara\ash_act3_q4_after.wav
+A3Q3 Blade/Gidbinn,1,HRATLI,576,2,4017,ESOUND_HRATLI_ACT3_Q3_AFTER,act3\hratli\hra_act3_q4_after.wav
+A3Q3 Blade/Gidbinn,1,CAIN3,577,2,3711,ESOUND_CAIN_ACT3_Q3_AFTER,act3\cain\cain_act3_q4_after.wav
+A3Q3 Blade/Gidbinn,1,NATALYA,578,2,4235,ESOUND_NATALYA_ACT3_Q3_AFTER,act3\natalya\nat_act3_q4_after.wav
+A3Q3 Blade/Gidbinn,2,ALKOR,579,2,3552,ESOUND_ALKOR_ACT3_Q3_EARLY,act3\alkor\alk_act3_q4_early.wav
+A3Q3 Blade/Gidbinn,2,ORMUS,580,2,4275,ESOUND_ORMUS_ACT3_Q3_EARLY,act3\ormus\orm_act3_q4_early.wav
+A3Q3 Blade/Gidbinn,2,MESHIF2,581,2,4202,ESOUND_MESHIF_ACT3_Q3_EARLY,act3\meshif\mes_act3_q4_early.wav
+A3Q3 Blade/Gidbinn,2,ASHEARA,582,2,3598,ESOUND_ASHEARA_ACT3_Q3_EARLY,act3\asheara\ash_act3_q4_early.wav
+A3Q3 Blade/Gidbinn,2,HRATLI,583,2,4018,ESOUND_HRATLI_ACT3_Q3_EARLY,act3\hratli\hra_act3_q4_early.wav
+A3Q3 Blade/Gidbinn,2,CAIN3,584,2,3712,ESOUND_CAIN_ACT3_Q3_EARLY,act3\cain\cain_act3_q4_early.wav
+A3Q3 Blade/Gidbinn,2,NATALYA,585,2,4236,ESOUND_NATALYA_ACT3_Q3_EARLY,act3\natalya\nat_act3_q4_early.wav
+A3Q3 Blade/Gidbinn,3,ALKOR,586,2,3553,ESOUND_ALKOR_ACT3_Q3_SUCCESS,act3\alkor\alk_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,3,ORMUS,587,1,4276,ESOUND_ORMUS_ACT3_Q3_SUCCESS,act3\ormus\orm_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,3,MESHIF2,588,2,4203,ESOUND_MESHIF_ACT3_Q3_SUCCESS,act3\meshif\mes_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,3,HRATLI,590,2,4020,ESOUND_HRATLI_ACT3_Q3_SUCCESS,act3\hratli\hra_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,3,CAIN3,591,2,3713,ESOUND_CAIN_ACT3_Q3_SUCCESS,act3\cain\cain_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,3,NATALYA,592,2,4237,ESOUND_NATALYA_ACT3_Q3_SUCCESS,act3\natalya\nat_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,4,MESHIF2,588,2,4203,ESOUND_MESHIF_ACT3_Q3_SUCCESS,act3\meshif\mes_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,4,ALKOR,586,2,3553,ESOUND_ALKOR_ACT3_Q3_SUCCESS,act3\alkor\alk_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,4,CAIN3,591,2,3713,ESOUND_CAIN_ACT3_Q3_SUCCESS,act3\cain\cain_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,4,NATALYA,592,2,4237,ESOUND_NATALYA_ACT3_Q3_SUCCESS,act3\natalya\nat_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,5,MESHIF2,588,2,4203,ESOUND_MESHIF_ACT3_Q3_SUCCESS,act3\meshif\mes_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,5,ASHEARA,589,1,3599,ESOUND_ASHEARA_ACT3_Q3_SUCCESS,act3\asheara\ash_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,5,ALKOR,586,2,3553,ESOUND_ALKOR_ACT3_Q3_SUCCESS,act3\alkor\alk_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,5,CAIN3,591,2,3713,ESOUND_CAIN_ACT3_Q3_SUCCESS,act3\cain\cain_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,5,NATALYA,592,2,4237,ESOUND_NATALYA_ACT3_Q3_SUCCESS,act3\natalya\nat_act3_q4_successful.wav
+A3Q3 Blade/Gidbinn,6,ORMUS,593,1,4277,ESOUND_ORMUS_ACT3_Q3_SUCCESS_REWARD,act3\ormus\orm_act3_q4_successful_reward.wav
+A3Q4 Golden Bird,0,CAIN3,527,1,3715,ESOUND_CAIN_ACT3_Q4_EARLY,act3\cain\cain_act3_q1_early_act3.wav
+A3Q4 Golden Bird,0,ASHEARA,528,2,3601,ESOUND_ASHEARA_ACT3_Q4_EARLY,act3\asheara\ash_act3_q1_early.wav
+A3Q4 Golden Bird,1,MESHIF2,529,1,4205,ESOUND_MESHIF_ACT3_Q4_EARLY,act3\meshif\mes_act3_q1_early.wav
+A3Q4 Golden Bird,2,CAIN3,531,2,3714,ESOUND_CAIN_ACT3_Q4_AFTER,act3\cain\cain_act3_q1_after.wav
+A3Q4 Golden Bird,2,ALKOR,534,1,3557,ESOUND_ALKOR_ACT3_Q4_SUCCESS,act3\alkor\alk_act3_q1_successful.wav
+A3Q4 Golden Bird,2,NATALYA,530,2,4239,ESOUND_NATALYA_ACT3_Q4_EARLY,act3\natalya\nat_act3_q1_early.wav
+A3Q4 Golden Bird,2,HRATLI,532,2,4023,ESOUND_HRATLI_ACT3_Q4_SUCCESS,act3\hratli\hra_act3_q1_successful.wav
+A3Q4 Golden Bird,2,ASHEARA,533,2,3602,ESOUND_ASHEARA_ACT3_Q4_SUCCESS,act3\asheara\ash_act3_q1_successful.wav
+A3Q4 Golden Bird,3,CAIN3,531,1,3714,ESOUND_CAIN_ACT3_Q4_AFTER,act3\cain\cain_act3_q1_after.wav
+A3Q4 Golden Bird,3,HRATLI,532,2,4023,ESOUND_HRATLI_ACT3_Q4_SUCCESS,act3\hratli\hra_act3_q1_successful.wav
+A3Q4 Golden Bird,3,ASHEARA,533,2,3602,ESOUND_ASHEARA_ACT3_Q4_SUCCESS,act3\asheara\ash_act3_q1_successful.wav
+A3Q4 Golden Bird,4,ALKOR,534,2,3557,ESOUND_ALKOR_ACT3_Q4_SUCCESS,act3\alkor\alk_act3_q1_successful.wav
+A3Q4 Golden Bird,4,ORMUS,535,2,4278,ESOUND_ORMUS_ACT3_Q4_AFTER,act3\ormus\orm_act3_q1_after.wav
+A3Q4 Golden Bird,4,HRATLI,536,2,4021,ESOUND_HRATLI_ACT3_Q4_AFTER,act3\hratli\hra_act3_q1_after.wav
+A3Q4 Golden Bird,4,NATALYA,537,2,4238,ESOUND_NATALYA_ACT3_Q4_AFTER,act3\natalya\nat_act3_q1_after.wav
+A3Q4 Golden Bird,5,ALKOR,538,1,3558,ESOUND_ALKOR_ACT3_Q4_SUCCESS_REWARD,act3\alkor\alk_act3_q1_successful_reward.wav
+A3Q4 Golden Bird,5,MESHIF2,539,2,4204,ESOUND_MESHIF_ACT3_Q4_AFTER,act3\meshif\mes_act3_q1_after.wav
+A3Q4 Golden Bird,5,CAIN3,540,2,3716,ESOUND_CAIN_ACT3_Q4_SUCCESS,act3\cain\cain_act3_q1_successful.wav
+A3Q4 Golden Bird,5,ORMUS,541,2,4279,ESOUND_ORMUS_ACT3_Q4_EARLY,act3\ormus\orm_act3_q1_early.wav
+A3Q4 Golden Bird,6,ALKOR,538,2,3558,ESOUND_ALKOR_ACT3_Q4_SUCCESS_REWARD,act3\alkor\alk_act3_q1_successful_reward.wav
+A3Q4 Golden Bird,6,MESHIF2,539,2,4204,ESOUND_MESHIF_ACT3_Q4_AFTER,act3\meshif\mes_act3_q1_after.wav
+A3Q4 Golden Bird,6,CAIN3,540,2,3716,ESOUND_CAIN_ACT3_Q4_SUCCESS,act3\cain\cain_act3_q1_successful.wav
+A3Q4 Golden Bird,6,ORMUS,541,2,4279,ESOUND_ORMUS_ACT3_Q4_EARLY,act3\ormus\orm_act3_q1_early.wav
+A3Q4 Golden Bird,6,NATALYA,542,2,4240,ESOUND_NATALYA_ACT3_Q4_SUCCESS,act3\natalya\nat_act3_q1_successful.wav
+A3Q4 Golden Bird,7,CAIN3,527,2,3715,ESOUND_CAIN_ACT3_Q4_EARLY,act3\cain\cain_act3_q1_early_act3.wav
+A3Q4 Golden Bird,7,ASHEARA,528,2,3601,ESOUND_ASHEARA_ACT3_Q4_EARLY,act3\asheara\ash_act3_q1_early.wav
+A3Q5 Blackened Temple,0,ORMUS,594,1,4283,ESOUND_ORMUS_ACT3_Q5_INIT,act3\ormus\orm_act3_q5_init.wav
+A3Q5 Blackened Temple,1,ALKOR,595,2,3559,ESOUND_ALKOR_ACT3_Q5_AFTER,act3\alkor\alk_act3_q5_after.wav
+A3Q5 Blackened Temple,1,ORMUS,597,2,4281,ESOUND_ORMUS_ACT3_Q5_AFTER,act3\ormus\orm_act3_q5_after.wav
+A3Q5 Blackened Temple,1,MESHIF2,599,2,4206,ESOUND_MESHIF_ACT3_Q5_AFTER,act3\meshif\mes_act3_q5_after.wav
+A3Q5 Blackened Temple,1,ASHEARA,601,2,3603,ESOUND_ASHEARA_ACT3_Q5_AFTER,act3\asheara\ash_act3_q5_after.wav
+A3Q5 Blackened Temple,1,HRATLI,603,2,4024,ESOUND_HRATLI_ACT3_Q5_AFTER,act3\hratli\hra_act3_q5_after.wav
+A3Q5 Blackened Temple,1,CAIN3,605,2,3717,ESOUND_CAIN_ACT3_Q5_AFTER,act3\cain\cain_act3_q5_after.wav
+A3Q5 Blackened Temple,1,NATALYA,607,2,4241,ESOUND_NATALYA_ACT3_Q5_AFTER,act3\natalya\nat_act3_q5_after.wav
+A3Q5 Blackened Temple,2,ALKOR,596,2,3560,ESOUND_ALKOR_ACT3_Q5_AFTER_VA,act3\alkor\alk_act3_q5_after_va.wav
+A3Q5 Blackened Temple,2,ORMUS,598,2,4281,ESOUND_ORMUS_ACT3_Q5_AFTER,act3\ormus\orm_act3_q5_after.wav
+A3Q5 Blackened Temple,2,MESHIF2,600,2,4207,ESOUND_MESHIF_ACT3_Q5_AFTER_VA,act3\meshif\mes_act3_q5_after_va.wav
+A3Q5 Blackened Temple,2,ASHEARA,602,2,3604,ESOUND_ASHEARA_ACT3_Q5_AFTER_VA,act3\asheara\ash_act3_q5_after_va.wav
+A3Q5 Blackened Temple,2,HRATLI,604,2,4025,ESOUND_HRATLI_ACT3_Q5_AFTER_VA,act3\hratli\hra_act3_q5_afterva.wav
+A3Q5 Blackened Temple,2,CAIN3,606,2,3718,ESOUND_CAIN_ACT3_Q5_AFTER_VA,act3\cain\cain_act3_q5_after_va.wav
+A3Q5 Blackened Temple,2,NATALYA,608,2,4242,ESOUND_NATALYA_ACT3_Q5_AFTER_VA,act3\natalya\nat_act3_q5_after_va.wav
+A3Q5 Blackened Temple,3,ALKOR,609,2,3561,ESOUND_ALKOR_ACT3_Q5_EARLY,act3\alkor\alk_act3_q5_early.wav
+A3Q5 Blackened Temple,3,ORMUS,611,2,4282,ESOUND_ORMUS_ACT3_Q5_EARLY,act3\ormus\orm_act3_q5_early.wav
+A3Q5 Blackened Temple,3,MESHIF2,612,2,4208,ESOUND_MESHIF_ACT3_Q5_EARLY,act3\meshif\mes_act3_q5_early.wav
+A3Q5 Blackened Temple,3,ASHEARA,614,2,3605,ESOUND_ASHEARA_ACT3_Q5_EARLY,act3\asheara\ash_act3_q5_early.wav
+A3Q5 Blackened Temple,3,HRATLI,616,2,4026,ESOUND_HRATLI_ACT3_Q5_EARLY,act3\hratli\hra_act3_q5_early.wav
+A3Q5 Blackened Temple,3,CAIN3,618,2,3719,ESOUND_CAIN_ACT3_Q5_EARLY,act3\cain\cain_act3_q5_early.wav
+A3Q5 Blackened Temple,3,NATALYA,619,2,4243,ESOUND_NATALYA_ACT3_Q5_EARLY,act3\natalya\nat_act3_q5_early.wav
+A3Q5 Blackened Temple,4,ALKOR,610,2,3562,ESOUND_ALKOR_ACT3_Q5_EARLY_VA,act3\alkor\alk_act3_q5_early_va.wav
+A3Q5 Blackened Temple,4,MESHIF2,613,2,4209,ESOUND_MESHIF_ACT3_Q5_EARLY_VA,act3\meshif\mes_act3_q5_early_va.wav
+A3Q5 Blackened Temple,4,ASHEARA,615,2,3606,ESOUND_ASHEARA_ACT3_Q5_EARLY_VA,act3\asheara\ash_act3_q5_early_va.wav
+A3Q5 Blackened Temple,4,HRATLI,617,2,4027,ESOUND_HRATLI_ACT3_Q5_EARLY_VA,act3\hratli\hra_act3_q5_earlyva.wav
+A3Q5 Blackened Temple,4,NATALYA,620,2,4243,ESOUND_NATALYA_ACT3_Q5_EARLY,act3\natalya\nat_act3_q5_early.wav
+A3Q5 Blackened Temple,5,ALKOR,621,2,3563,ESOUND_ALKOR_ACT3_Q5_SUCCESS,act3\alkor\alk_act3_q5_successful.wav
+A3Q5 Blackened Temple,5,ORMUS,622,2,4284,ESOUND_ORMUS_ACT3_Q5_SUCCESS,act3\ormus\orm_act3_q5_successful.wav
+A3Q5 Blackened Temple,5,MESHIF2,623,2,4210,ESOUND_MESHIF_ACT3_Q5_SUCCESS,act3\meshif\mes_act3_q5_successful.wav
+A3Q5 Blackened Temple,5,ASHEARA,624,2,3607,ESOUND_ASHEARA_ACT3_Q5_SUCCESS,act3\asheara\ash_act3_q5_successful.wav
+A3Q5 Blackened Temple,5,HRATLI,625,2,4028,ESOUND_HRATLI_ACT3_Q5_SUCCESS,act3\hratli\hra_act3_q5_successful.wav
+A3Q5 Blackened Temple,5,CAIN3,626,1,3720,ESOUND_CAIN_ACT3_Q5_SUCCESS,act3\cain\cain_act3_q5_successful.wav
+A3Q5 Blackened Temple,5,NATALYA,627,2,4244,ESOUND_NATALYA_ACT3_Q5_SUCCESS,act3\natalya\nat_act3_q5_successful.wav
+A3Q5 Blackened Temple,6,ALKOR,621,2,3563,ESOUND_ALKOR_ACT3_Q5_SUCCESS,act3\alkor\alk_act3_q5_successful.wav
+A3Q5 Blackened Temple,6,ORMUS,622,2,4284,ESOUND_ORMUS_ACT3_Q5_SUCCESS,act3\ormus\orm_act3_q5_successful.wav
+A3Q5 Blackened Temple,6,MESHIF2,623,2,4210,ESOUND_MESHIF_ACT3_Q5_SUCCESS,act3\meshif\mes_act3_q5_successful.wav
+A3Q5 Blackened Temple,6,ASHEARA,624,2,3607,ESOUND_ASHEARA_ACT3_Q5_SUCCESS,act3\asheara\ash_act3_q5_successful.wav
+A3Q5 Blackened Temple,6,HRATLI,625,2,4028,ESOUND_HRATLI_ACT3_Q5_SUCCESS,act3\hratli\hra_act3_q5_successful.wav
+A3Q5 Blackened Temple,6,CAIN3,626,2,3720,ESOUND_CAIN_ACT3_Q5_SUCCESS,act3\cain\cain_act3_q5_successful.wav
+A3Q5 Blackened Temple,6,NATALYA,627,2,4244,ESOUND_NATALYA_ACT3_Q5_SUCCESS,act3\natalya\nat_act3_q5_successful.wav
+A3Q6 Guardian,0,ORMUS,628,1,4288,ESOUND_ORMUS_ACT3_Q6_INIT,act3\ormus\orm_act3_q6_init.wav
+A3Q6 Guardian,1,ALKOR,629,2,3564,ESOUND_ALKOR_ACT3_Q6_AFTER,act3\alkor\alk_act3_q6_after.wav
+A3Q6 Guardian,1,ORMUS,631,2,4285,ESOUND_ORMUS_ACT3_Q6_AFTER,act3\ormus\orm_act3_q6_after.wav
+A3Q6 Guardian,1,MESHIF2,633,2,4211,ESOUND_MESHIF_ACT3_Q6_AFTER,act3\meshif\mes_act3_q6_after.wav
+A3Q6 Guardian,1,ASHEARA,635,2,3608,ESOUND_ASHEARA_ACT3_Q6_AFTER,act3\asheara\ash_act3_q6_after.wav
+A3Q6 Guardian,1,HRATLI,637,2,4029,ESOUND_HRATLI_ACT3_Q6_AFTER,act3\hratli\hra_act3_q6_after.wav
+A3Q6 Guardian,1,CAIN3,639,2,3721,ESOUND_CAIN_ACT3_Q6_AFTER,act3\cain\cain_act3_q6_after.wav
+A3Q6 Guardian,1,NATALYA,641,2,4245,ESOUND_NATALYA_ACT3_Q6_AFTER,act3\natalya\nat_act3_q6_after.wav
+A3Q6 Guardian,2,ALKOR,630,2,3565,ESOUND_ALKOR_ACT3_Q6_AFTER_VA,act3\alkor\alk_act3_q6_after_va.wav
+A3Q6 Guardian,2,ORMUS,632,2,4285,ESOUND_ORMUS_ACT3_Q6_AFTER,act3\ormus\orm_act3_q6_after.wav
+A3Q6 Guardian,2,MESHIF2,634,2,4212,ESOUND_MESHIF_ACT3_Q6_AFTER_VA,act3\meshif\mes_act3_q6_after_va.wav
+A3Q6 Guardian,2,HRATLI,638,2,4030,ESOUND_HRATLI_ACT3_Q6_AFTER_VA,act3\hratli\hra_act3_q6_afterva.wav
+A3Q6 Guardian,2,CAIN3,640,2,3722,ESOUND_CAIN_ACT3_Q6_AFTER_VA,act3\cain\cain_act3_q6_after_va.wav
+A3Q6 Guardian,2,NATALYA,642,2,4245,ESOUND_NATALYA_ACT3_Q6_AFTER,act3\natalya\nat_act3_q6_after.wav
+A3Q6 Guardian,3,ALKOR,643,2,3566,ESOUND_ALKOR_ACT3_Q6_EARLY,act3\alkor\alk_act3_q6_early.wav
+A3Q6 Guardian,3,ORMUS,645,2,4286,ESOUND_ORMUS_ACT3_Q6_EARLY,act3\ormus\orm_act3_q6_early.wav
+A3Q6 Guardian,3,MESHIF2,647,2,4213,ESOUND_MESHIF_ACT3_Q6_EARLY,act3\meshif\mes_act3_q6_early.wav
+A3Q6 Guardian,3,ASHEARA,649,2,3610,ESOUND_ASHEARA_ACT3_Q6_EARLY,act3\asheara\ash_act3_q6_early.wav
+A3Q6 Guardian,3,HRATLI,651,2,4031,ESOUND_HRATLI_ACT3_Q6_EARLY,act3\hratli\hra_act3_q6_early.wav
+A3Q6 Guardian,3,CAIN3,653,2,3723,ESOUND_CAIN_ACT3_Q6_EARLY,act3\cain\cain_act3_q6_early.wav
+A3Q6 Guardian,3,NATALYA,655,2,4246,ESOUND_NATALYA_ACT3_Q6_EARLY,act3\natalya\nat_act3_q6_early.wav
+A3Q6 Guardian,4,ALKOR,644,2,3567,ESOUND_ALKOR_ACT3_Q6_EARLY_VA,act3\alkor\alk_act3_q6_early_va.wav
+A3Q6 Guardian,4,ORMUS,646,2,4287,ESOUND_ORMUS_ACT3_Q6_EARLY_VA,act3\ormus\orm_act3_q6_early_va.wav
+A3Q6 Guardian,4,MESHIF2,648,2,4213,ESOUND_MESHIF_ACT3_Q6_EARLY,act3\meshif\mes_act3_q6_early.wav
+A3Q6 Guardian,4,ASHEARA,650,2,3611,ESOUND_ASHEARA_ACT3_Q6_EARLY_VA,act3\asheara\ash_act3_q6_early_va.wav
+A3Q6 Guardian,4,HRATLI,652,2,4032,ESOUND_HRATLI_ACT3_Q6_EARLY_VA,act3\hratli\hra_act3_q6_earlyva.wav
+A3Q6 Guardian,4,CAIN3,654,2,3723,ESOUND_CAIN_ACT3_Q6_EARLY,act3\cain\cain_act3_q6_early.wav
+A3Q6 Guardian,4,NATALYA,656,2,4246,ESOUND_NATALYA_ACT3_Q6_EARLY,act3\natalya\nat_act3_q6_early.wav
+A3Q6 Guardian,5,ALKOR,657,1,3568,ESOUND_ALKOR_ACT3_Q6_SUCCESS,act3\alkor\alk_act3_q6_successful.wav
+A3Q6 Guardian,5,ORMUS,658,1,4289,ESOUND_ORMUS_ACT3_Q6_SUCCESS,act3\ormus\orm_act3_q6_successful.wav
+A3Q6 Guardian,5,MESHIF2,659,1,4214,ESOUND_MESHIF_ACT3_Q6_SUCCESS,act3\meshif\mes_act3_q6_successful.wav
+A3Q6 Guardian,5,ASHEARA,660,1,3612,ESOUND_ASHEARA_ACT3_Q6_SUCCESS,act3\asheara\ash_act3_q6_successful.wav
+A3Q6 Guardian,5,HRATLI,661,1,4033,ESOUND_HRATLI_ACT3_Q6_SUCCESS,act3\hratli\hra_act3_q6_successful.wav
+A3Q6 Guardian,5,CAIN3,662,1,3724,ESOUND_CAIN_ACT3_Q6_SUCCESS,act3\cain\cain_act3_q6_successful.wav
+A3Q6 Guardian,5,NATALYA,663,1,4247,ESOUND_NATALYA_ACT3_Q6_SUCCESS,act3\natalya\nat_act3_q6_successful.wav
+A3Q6 Guardian,6,ALKOR,657,2,3568,ESOUND_ALKOR_ACT3_Q6_SUCCESS,act3\alkor\alk_act3_q6_successful.wav
+A3Q6 Guardian,6,ORMUS,658,2,4289,ESOUND_ORMUS_ACT3_Q6_SUCCESS,act3\ormus\orm_act3_q6_successful.wav
+A3Q6 Guardian,6,MESHIF2,659,2,4214,ESOUND_MESHIF_ACT3_Q6_SUCCESS,act3\meshif\mes_act3_q6_successful.wav
+A3Q6 Guardian,6,ASHEARA,660,2,3612,ESOUND_ASHEARA_ACT3_Q6_SUCCESS,act3\asheara\ash_act3_q6_successful.wav
+A3Q6 Guardian,6,HRATLI,661,2,4033,ESOUND_HRATLI_ACT3_Q6_SUCCESS,act3\hratli\hra_act3_q6_successful.wav
+A3Q6 Guardian,6,CAIN3,662,2,3724,ESOUND_CAIN_ACT3_Q6_SUCCESS,act3\cain\cain_act3_q6_successful.wav
+A3Q6 Guardian,6,NATALYA,663,2,4247,ESOUND_NATALYA_ACT3_Q6_SUCCESS,act3\natalya\nat_act3_q6_successful.wav
+A4Q0 Act4 prologue,0,TYRAEL2,664,1,4311,ESOUND_TYRAEL_ACT4_INTRO,act4\tyreal\tyr_act4_intro.wav
+A4Q1 Fallen Angel,0,TYRAEL2,670,1,4314,ESOUND_TYRAEL_ACT4_Q1_INIT,act4\tyreal\tyr_act4_q1_init.wav
+A4Q1 Fallen Angel,1,TYRAEL2,671,2,4312,ESOUND_TYRAEL_ACT4_Q1_AFTER,act4\tyreal\tyr_act4_q1_after.wav
+A4Q1 Fallen Angel,1,CAIN4,672,2,3728,ESOUND_CAIN_ACT4_Q1_AFTER,act4\cain\cain_act4_q1_after.wav
+A4Q1 Fallen Angel,2,TYRAEL2,673,2,4313,ESOUND_TYRAEL_ACT4_Q1_EARLY,act4\tyreal\tyr_act4_q1_early.wav
+A4Q1 Fallen Angel,2,CAIN4,674,2,3729,ESOUND_CAIN_ACT4_Q1_EARLY,act4\cain\cain_act4_q1_early.wav
+A4Q1 Fallen Angel,3,TYRAEL2,676,1,4315,ESOUND_TYRAEL_ACT4_Q1_SUCCESS,act4\tyreal\tyr_act4_q1_successful.wav
+A4Q1 Fallen Angel,3,CAIN4,677,2,3730,ESOUND_CAIN_ACT4_Q1_SUCCESS,act4\cain\cain_act4_q1_successful.wav
+A4Q1 Fallen Angel,3,IZUALGHOST,675,1,4042,ESOUND_IZUAL_GREETING,act4\izual\izu_act4_q1_successful.wav
+A4Q1 Fallen Angel,4,TYRAEL2,676,2,4315,ESOUND_TYRAEL_ACT4_Q1_SUCCESS,act4\tyreal\tyr_act4_q1_successful.wav
+A4Q1 Fallen Angel,4,CAIN4,677,2,3730,ESOUND_CAIN_ACT4_Q1_SUCCESS,act4\cain\cain_act4_q1_successful.wav
+A4Q2 Terrors End,0,TYRAEL2,681,1,4316,ESOUND_TYRAEL_ACT4_Q2_INIT,act4\tyreal\tyr_act4_q2_init.wav
+A4Q2 Terrors End,1,TYRAEL2,683,2,4316,ESOUND_TYRAEL_ACT4_Q2_INIT,act4\tyreal\tyr_act4_q2_init.wav
+A4Q2 Terrors End,1,CAIN4,682,2,3731,ESOUND_CAIN_ACT4_Q2_AFTER,act4\cain\cain_act4_q2_after.wav
+A4Q2 Terrors End,2,TYRAEL2,684,1,4318,ESOUND_TYRAEL_ACT4_Q2_SUCCESS,act4\tyreal\tyr_act4_q2_successful.wav
+A4Q2 Terrors End,2,CAIN4,685,1,3732,ESOUND_CAIN_ACT4_Q2_SUCCESS,act4\cain\cain_act4_q2_successful.wav
+A4Q2 Terrors End,3,TYRAEL2,684,2,4318,ESOUND_TYRAEL_ACT4_Q2_SUCCESS,act4\tyreal\tyr_act4_q2_successful.wav
+A4Q2 Terrors End,3,CAIN4,685,2,3732,ESOUND_CAIN_ACT4_Q2_SUCCESS,act4\cain\cain_act4_q2_successful.wav
+A4Q2 Terrors End,4,TYRAEL2,20000,1,4319,ESOUND_TYRAEL_ACT4_Q2_SUCCESSEXP,act4\tyreal\tyr_act4_q2_successfulExp.wav
+A4Q2 Terrors End,4,CAIN4,20001,1,3733,ESOUND_CAIN_ACT4_Q2_SUCCESSEXP,act4\cain\cain_act4_q2_successfulExp.wav
+A4Q2 Terrors End,5,TYRAEL2,20000,2,4319,ESOUND_TYRAEL_ACT4_Q2_SUCCESSEXP,act4\tyreal\tyr_act4_q2_successfulExp.wav
+A4Q2 Terrors End,5,CAIN4,20001,2,3733,ESOUND_CAIN_ACT4_Q2_SUCCESSEXP,act4\cain\cain_act4_q2_successfulExp.wav
+A4Q3 Hellforge,0,CAIN4,678,1,3734,ESOUND_CAIN_ACT4_Q3_INIT_HAS_STONE,act4\cain\cain_act4_q3_inithasstone.wav
+A4Q3 Hellforge,1,CAIN4,679,1,3735,ESOUND_CAIN_ACT4_Q3_INIT_NO_STONE,act4\cain\cain_act4_q3_initnostone.wav
+A4Q3 Hellforge,2,CAIN4,680,1,3736,ESOUND_CAIN_ACT4_Q3_SUCCESS,act4\cain\cain_act4_q3_successful.wav
+A4Q3 Hellforge,3,CAIN4,680,2,3736,ESOUND_CAIN_ACT4_Q3_SUCCESS,act4\cain\cain_act4_q3_successful.wav
+A1Q7 Navi,0,NAVI,59,1,4301,ESOUND_ROGUE_TURN_BACK,act1\rogue\rog_turnback.wav
+A1Q7 Navi,1,NAVI,60,1,4298,ESOUND_ROGUE_COMPLETE_AKARA,act1\rogue\rog_completeakaraquest.wav
+A1Q7 Navi,2,NAVI,61,1,4299,ESOUND_ROGUE_EVIL_STRONG,act1\rogue\rog_evilstrong.wav
+A1Q7 Navi,3,NAVI,62,1,4300,ESOUND_ROGUE_MORTAL_DANGER,act1\rogue\rog_mortaldanger.wav
+A1Q7 Navi,4,NAVI,63,1,4302,ESOUND_ROGUE_WILDERNESS_AHEAD,act1\rogue\rog_wildernessahead.wav
+A4Q4 Malachai,0,MALACHAI,668,1,3569,ESOUND_ANGEL_ACT4_STONE,act4\angel\angel_mephistone.wav
+A4Q4 Malachai,1,MALACHAI,669,1,3570,ESOUND_ANGEL_ACT4_STONE_SMASHED,act4\angel\angel_mephistonesmashed.wav
+A5Q1 Siege,0,LARZUK,20077,0,4468,ESOUND_LARZUK_ACT5_Q1_INIT,Act5\Larzuk\lar_act5_q1_init.wav
+A5Q1 Siege,1,LARZUK,20078,2,4470,ESOUND_LARZUK_ACT5_Q1_AFTER,Act5\Larzuk\lar_act5_q1_after.wav
+A5Q1 Siege,1,CAIN6,20079,2,4430,ESOUND_CAIN_ACT5_Q1_AFTER,Act5\Cain\cain_act5_q1_after.wav
+A5Q1 Siege,1,DREHYA,20080,2,4401,ESOUND_ANYA_ACT5_Q1_AFTER,Act5\Anya\any_act5_q1_after.wav
+A5Q1 Siege,1,MALAH,20081,2,4512,ESOUND_MALAH_ACT5_Q1_AFTER,Act5\Malah\mal_act5_q1_after.wav
+A5Q1 Siege,1,NIHLATHAK,20082,2,4553,ESOUND_NIHLATHAK_ACT5_Q1_AFTER,Act5\Nihlathak\nih_act5_q1_after.wav
+A5Q1 Siege,1,QUAL_KEHK,20083,2,4583,ESOUND_QUALKEHK_ACT5_Q1_AFTER,Act5\Qual-Kehk\qua_act5_q1_after.wav
+A5Q1 Siege,2,LARZUK,20084,2,4469,ESOUND_LARZUK_ACT5_Q1_EARLY,Act5\Larzuk\lar_act5_q1_early.wav
+A5Q1 Siege,2,CAIN6,20085,2,4429,ESOUND_CAIN_ACT5_Q1_EARLY,Act5\Cain\cain_act5_q1_early.wav
+A5Q1 Siege,2,DREHYA,20086,2,4400,ESOUND_ANYA_ACT5_Q1_EARLY,Act5\Anya\any_act5_q1_early.wav
+A5Q1 Siege,2,MALAH,20087,2,4513,ESOUND_MALAH_ACT5_Q1_EARLY,Act5\Malah\mal_act5_q1_early.wav
+A5Q1 Siege,2,NIHLATHAK,20088,2,4552,ESOUND_NIHLATHAK_ACT5_Q1_EARLY,Act5\Nihlathak\nih_act5_q1_early.wav
+A5Q1 Siege,2,QUAL_KEHK,20089,2,4582,ESOUND_QUALKEHK_ACT5_Q1_EARLY,Act5\Qual-Kehk\qua_act5_q1_early.wav
+A5Q1 Siege,3,LARZUK,20090,0,4471,ESOUND_LARZUK_ACT5_Q1_SUCCESS,Act5\Larzuk\lar_act5_q1_successful.wav
+A5Q1 Siege,3,CAIN6,20091,2,4431,ESOUND_CAIN_ACT5_Q1_SUCCESS,Act5\Cain\cain_act5_q1_successful.wav
+A5Q1 Siege,3,DREHYA,20092,2,4402,ESOUND_ANYA_ACT5_Q1_SUCCESS,Act5\Anya\any_act5_q1_successful.wav
+A5Q1 Siege,3,MALAH,20093,2,4514,ESOUND_MALAH_ACT5_Q1_SUCCESS,Act5\Malah\mal_act5_q1_successful.wav
+A5Q1 Siege,3,NIHLATHAK,20094,2,4554,ESOUND_NIHLATHAK_ACT5_Q1_SUCCESS,Act5\Nihlathak\nih_act5_q1_successful.wav
+A5Q1 Siege,3,QUAL_KEHK,20095,2,4584,ESOUND_QUALKEHK_ACT5_Q1_SUCCESS,Act5\Qual-Kehk\qua_act5_q1_successful.wav
+A5Q1 Siege,4,LARZUK,20090,2,4471,ESOUND_LARZUK_ACT5_Q1_SUCCESS,Act5\Larzuk\lar_act5_q1_successful.wav
+A5Q1 Siege,4,CAIN6,20091,2,4431,ESOUND_CAIN_ACT5_Q1_SUCCESS,Act5\Cain\cain_act5_q1_successful.wav
+A5Q1 Siege,4,DREHYA,20092,2,4402,ESOUND_ANYA_ACT5_Q1_SUCCESS,Act5\Anya\any_act5_q1_successful.wav
+A5Q1 Siege,4,MALAH,20093,2,4514,ESOUND_MALAH_ACT5_Q1_SUCCESS,Act5\Malah\mal_act5_q1_successful.wav
+A5Q1 Siege,4,NIHLATHAK,20094,2,4554,ESOUND_NIHLATHAK_ACT5_Q1_SUCCESS,Act5\Nihlathak\nih_act5_q1_successful.wav
+A5Q1 Siege,4,QUAL_KEHK,20095,2,4584,ESOUND_QUALKEHK_ACT5_Q1_SUCCESS,Act5\Qual-Kehk\qua_act5_q1_successful.wav
+A5Q2 Rescue,0,QUAL_KEHK,20096,0,4585,ESOUND_QUALKEHK_ACT5_Q2_INIT,Act5\Qual-Kehk\qua_act5_q2_init.wav
+A5Q2 Rescue,1,LARZUK,20100,2,4473,ESOUND_LARZUK_ACT5_Q2_AFTER,Act5\Larzuk\lar_act5_q2_after.wav
+A5Q2 Rescue,1,CAIN6,20098,2,4433,ESOUND_CAIN_ACT5_Q2_AFTER,Act5\Cain\cain_act5_q2_after.wav
+A5Q2 Rescue,1,DREHYA,20099,2,4404,ESOUND_ANYA_ACT5_Q2_AFTER,Act5\Anya\any_act5_q2_after.wav
+A5Q2 Rescue,1,MALAH,20101,2,4515,ESOUND_MALAH_ACT5_Q2_AFTER,Act5\Malah\mal_act5_q2_after.wav
+A5Q2 Rescue,1,NIHLATHAK,20102,2,4556,ESOUND_NIHLATHAK_ACT5_Q2_AFTER,Act5\Nihlathak\nih_act5_q2_after.wav
+A5Q2 Rescue,1,QUAL_KEHK,20097,2,4587,ESOUND_QUALKEHK_ACT5_Q2_AFTER,Act5\Qual-Kehk\qua_act5_q2_after.wav
+A5Q2 Rescue,2,LARZUK,20107,2,4472,ESOUND_LARZUK_ACT5_Q2_EARLY,Act5\Larzuk\lar_act5_q2_early.wav
+A5Q2 Rescue,2,CAIN6,20105,2,4432,ESOUND_CAIN_ACT5_Q2_EARLY,Act5\Cain\cain_act5_q2_early.wav
+A5Q2 Rescue,2,DREHYA,20106,2,4403,ESOUND_ANYA_ACT5_Q2_EARLY,Act5\Anya\any_act5_q2_early.wav
+A5Q2 Rescue,2,MALAH,20108,2,4516,ESOUND_MALAH_ACT5_Q2_EARLY,Act5\Malah\mal_act5_q2_early.wav
+A5Q2 Rescue,2,NIHLATHAK,20109,2,4555,ESOUND_NIHLATHAK_ACT5_Q2_EARLY,Act5\Nihlathak\nih_act5_q2_early.wav
+A5Q2 Rescue,2,QUAL_KEHK,20103,2,4586,ESOUND_QUALKEHK_ACT5_Q2_EARLY,Act5\Qual-Kehk\qua_act5_q2_early.wav
+A5Q2 Rescue,3,LARZUK,20113,2,4474,ESOUND_LARZUK_ACT5_Q2_SUCCESS,Act5\Larzuk\lar_act5_q2_successful.wav
+A5Q2 Rescue,3,CAIN6,20111,2,4434,ESOUND_CAIN_ACT5_Q2_SUCCESS,Act5\Cain\cain_act5_q2_successful.wav
+A5Q2 Rescue,3,DREHYA,20112,2,4405,ESOUND_ANYA_ACT5_Q2_SUCCESS,Act5\Anya\any_act5_q2_successful.wav
+A5Q2 Rescue,3,MALAH,20114,2,4517,ESOUND_MALAH_ACT5_Q2_SUCCESS,Act5\Malah\mal_act5_q2_successful.wav
+A5Q2 Rescue,3,NIHLATHAK,20115,2,4557,ESOUND_NIHLATHAK_ACT5_Q2_SUCCESS,Act5\Nihlathak\nih_act5_q2_successful.wav
+A5Q2 Rescue,3,QUAL_KEHK,20110,0,4589,ESOUND_QUALKEHK_ACT5_Q2_SUCCESS,Act5\Qual-Kehk\qua_act5_q2_successful.wav
+A5Q2 Rescue,4,LARZUK,20113,2,4474,ESOUND_LARZUK_ACT5_Q2_SUCCESS,Act5\Larzuk\lar_act5_q2_successful.wav
+A5Q2 Rescue,4,CAIN6,20111,2,4434,ESOUND_CAIN_ACT5_Q2_SUCCESS,Act5\Cain\cain_act5_q2_successful.wav
+A5Q2 Rescue,4,DREHYA,20112,2,4405,ESOUND_ANYA_ACT5_Q2_SUCCESS,Act5\Anya\any_act5_q2_successful.wav
+A5Q2 Rescue,4,MALAH,20114,2,4517,ESOUND_MALAH_ACT5_Q2_SUCCESS,Act5\Malah\mal_act5_q2_successful.wav
+A5Q2 Rescue,4,NIHLATHAK,20115,2,4557,ESOUND_NIHLATHAK_ACT5_Q2_SUCCESS,Act5\Nihlathak\nih_act5_q2_successful.wav
+A5Q2 Rescue,4,QUAL_KEHK,20110,2,4589,ESOUND_QUALKEHK_ACT5_Q2_SUCCESS,Act5\Qual-Kehk\qua_act5_q2_successful.wav
+A5Q2 Rescue,5,QUAL_KEHK,20104,2,4588,ESOUND_QUALKEHK_ACT5_Q2_NTHMAN,Act5\Qual-Kehk\qua_act5_q2_nthman.wav
+A5Q3 Prison of Ice,0,MALAH,20116,0,4521,ESOUND_MALAH_ACT5_Q3_INIT,Act5\Malah\mal_act5_q3_init.wav
+A5Q3 Prison of Ice,1,LARZUK,20119,2,4476,ESOUND_LARZUK_ACT5_Q3_AFTER,Act5\Larzuk\lar_act5_q3_after.wav
+A5Q3 Prison of Ice,1,CAIN6,20118,2,4436,ESOUND_CAIN_ACT5_Q3_AFTER,Act5\Cain\cain_act5_q3_after.wav
+A5Q3 Prison of Ice,1,MALAH,20117,2,4518,ESOUND_MALAH_ACT5_Q3_AFTER,Act5\Malah\mal_act5_q3_after.wav
+A5Q3 Prison of Ice,1,NIHLATHAK,20120,2,4559,ESOUND_NIHLATHAK_ACT5_Q3_AFTER,Act5\Nihlathak\nih_act5_q3_after.wav
+A5Q3 Prison of Ice,1,QUAL_KEHK,20121,2,4591,ESOUND_QUALKEHK_ACT5_Q3_AFTER,Act5\Qual-Kehk\qua_act5_q3_after.wav
+A5Q3 Prison of Ice,2,LARZUK,20124,2,4475,ESOUND_LARZUK_ACT5_Q3_EARLY,Act5\Larzuk\lar_act5_q3_early.wav
+A5Q3 Prison of Ice,2,CAIN6,20123,2,4435,ESOUND_CAIN_ACT5_Q3_EARLY,Act5\Cain\cain_act5_q3_early.wav
+A5Q3 Prison of Ice,2,MALAH,20122,2,4519,ESOUND_MALAH_ACT5_Q3_EARLY,Act5\Malah\mal_act5_q3_early.wav
+A5Q3 Prison of Ice,2,NIHLATHAK,20125,2,4558,ESOUND_NIHLATHAK_ACT5_Q3_EARLY,Act5\Nihlathak\nih_act5_q3_early.wav
+A5Q3 Prison of Ice,2,QUAL_KEHK,20126,2,4590,ESOUND_QUALKEHK_ACT5_Q3_EARLY,Act5\Qual-Kehk\qua_act5_q3_early.wav
+A5Q3 Prison of Ice,3,LARZUK,20129,2,4477,ESOUND_LARZUK_ACT5_Q3_FOUND,Act5\Larzuk\lar_act5_q3_found.wav
+A5Q3 Prison of Ice,3,CAIN6,20128,2,4437,ESOUND_CAIN_ACT5_Q3_FOUND,Act5\Cain\cain_act5_q3_found.wav
+A5Q3 Prison of Ice,3,DREHYAICED,20131,0,4406,ESOUND_ANYA_ACT5_Q3_FOUND,Act5\Anya\any_act5_q3_found.wav
+A5Q3 Prison of Ice,3,MALAH,20127,0,4520,ESOUND_MALAH_ACT5_Q3_FOUND,Act5\Malah\mal_act5_q3_found.wav
+A5Q3 Prison of Ice,3,QUAL_KEHK,20130,2,4592,ESOUND_QUALKEHK_ACT5_Q3_FOUND,Act5\Qual-Kehk\qua_act5_q3_found.wav
+A5Q3 Prison of Ice,4,LARZUK,20129,2,4477,ESOUND_LARZUK_ACT5_Q3_FOUND,Act5\Larzuk\lar_act5_q3_found.wav
+A5Q3 Prison of Ice,4,CAIN6,20128,2,4437,ESOUND_CAIN_ACT5_Q3_FOUND,Act5\Cain\cain_act5_q3_found.wav
+A5Q3 Prison of Ice,4,QUAL_KEHK,20130,2,4592,ESOUND_QUALKEHK_ACT5_Q3_FOUND,Act5\Qual-Kehk\qua_act5_q3_found.wav
+A5Q3 Prison of Ice,5,LARZUK,20134,2,4478,ESOUND_LARZUK_ACT5_Q3_SUCCESS,Act5\Larzuk\lar_act5_q3_successful.wav
+A5Q3 Prison of Ice,5,CAIN6,20133,2,4438,ESOUND_CAIN_ACT5_Q3_SUCCESS,Act5\Cain\cain_act5_q3_successful.wav
+A5Q3 Prison of Ice,5,DREHYA,20136,0,4408,ESOUND_ANYA_ACT5_Q3_SUCCESS,Act5\Anya\any_act5_q3_successful.wav
+A5Q3 Prison of Ice,5,MALAH,20132,0,4522,ESOUND_MALAH_ACT5_Q3_SUCCESS,Act5\Malah\mal_act5_q3_successful.wav
+A5Q3 Prison of Ice,5,QUAL_KEHK,20135,2,4593,ESOUND_QUALKEHK_ACT5_Q3_SUCCESS,Act5\Qual-Kehk\qua_act5_q3_successful.wav
+A5Q3 Prison of Ice,6,LARZUK,20134,2,4478,ESOUND_LARZUK_ACT5_Q3_SUCCESS,Act5\Larzuk\lar_act5_q3_successful.wav
+A5Q3 Prison of Ice,6,CAIN6,20133,2,4438,ESOUND_CAIN_ACT5_Q3_SUCCESS,Act5\Cain\cain_act5_q3_successful.wav
+A5Q3 Prison of Ice,6,DREHYA,20136,2,4408,ESOUND_ANYA_ACT5_Q3_SUCCESS,Act5\Anya\any_act5_q3_successful.wav
+A5Q3 Prison of Ice,6,MALAH,20132,2,4522,ESOUND_MALAH_ACT5_Q3_SUCCESS,Act5\Malah\mal_act5_q3_successful.wav
+A5Q3 Prison of Ice,6,QUAL_KEHK,20135,2,4593,ESOUND_QUALKEHK_ACT5_Q3_SUCCESS,Act5\Qual-Kehk\qua_act5_q3_successful.wav
+A5Q4 Betrayal,0,DREHYA,20137,0,4409,ESOUND_ANYA_ACT5_Q4_INIT,Act5\Anya\any_act5_q4_init.wav
+A5Q4 Betrayal,1,LARZUK,20141,2,4480,ESOUND_LARZUK_ACT5_Q4_AFTER,Act5\Larzuk\lar_act5_q4_after.wav
+A5Q4 Betrayal,1,CAIN6,20139,2,4440,ESOUND_CAIN_ACT5_Q4_AFTER,Act5\Cain\cain_act5_q4_after.wav
+A5Q4 Betrayal,1,MALAH,20140,2,4523,ESOUND_MALAH_ACT5_Q4_AFTER,Act5\Malah\mal_act5_q4_after.wav
+A5Q4 Betrayal,1,QUAL_KEHK,20142,2,4595,ESOUND_QUALKEHK_ACT5_Q4_AFTER,Act5\Qual-Kehk\qua_act5_q4_after.wav
+A5Q4 Betrayal,2,LARZUK,20145,2,4479,ESOUND_LARZUK_ACT5_Q4_EARLY,Act5\Larzuk\lar_act5_q4_early.wav
+A5Q4 Betrayal,2,CAIN6,20144,2,4439,ESOUND_CAIN_ACT5_Q4_EARLY,Act5\Cain\cain_act5_q4_early.wav
+A5Q4 Betrayal,2,DREHYA,20143,2,4410,ESOUND_ANYA_ACT5_Q4_EARLY,Act5\Anya\any_act5_q4_early.wav
+A5Q4 Betrayal,2,MALAH,20146,2,4524,ESOUND_MALAH_ACT5_Q4_EARLY,Act5\Malah\mal_act5_q4_early.wav
+A5Q4 Betrayal,2,QUAL_KEHK,20147,2,4594,ESOUND_QUALKEHK_ACT5_Q4_EARLY,Act5\Qual-Kehk\qua_act5_q4_early.wav
+A5Q4 Betrayal,3,LARZUK,20150,2,4481,ESOUND_LARZUK_ACT5_Q4_SUCCESS,Act5\Larzuk\lar_act5_q4_successful.wav
+A5Q4 Betrayal,3,CAIN6,20149,2,4441,ESOUND_CAIN_ACT5_Q4_SUCCESSL,Act5\Cain\cain_act5_q4_successful.wav
+A5Q4 Betrayal,3,DREHYA,20148,0,4412,ESOUND_ANYA_ACT5_Q4_SUCCESS,Act5\Anya\any_act5_q4_successful.wav
+A5Q4 Betrayal,3,MALAH,20151,2,4525,ESOUND_MALAH_ACT5_Q4_SUCCESS,Act5\Malah\mal_act5_q4_successful.wav
+A5Q4 Betrayal,3,QUAL_KEHK,20152,2,4596,ESOUND_QUALKEHK_ACT5_Q4_SUCCESS,Act5\Qual-Kehk\qua_act5_q4_successful.wav
+A5Q4 Betrayal,4,LARZUK,20150,2,4481,ESOUND_LARZUK_ACT5_Q4_SUCCESS,Act5\Larzuk\lar_act5_q4_successful.wav
+A5Q4 Betrayal,4,CAIN6,20149,2,4441,ESOUND_CAIN_ACT5_Q4_SUCCESSL,Act5\Cain\cain_act5_q4_successful.wav
+A5Q4 Betrayal,4,DREHYA,20148,2,4412,ESOUND_ANYA_ACT5_Q4_SUCCESS,Act5\Anya\any_act5_q4_successful.wav
+A5Q4 Betrayal,4,MALAH,20151,2,4525,ESOUND_MALAH_ACT5_Q4_SUCCESS,Act5\Malah\mal_act5_q4_successful.wav
+A5Q4 Betrayal,4,QUAL_KEHK,20152,2,4596,ESOUND_QUALKEHK_ACT5_Q4_SUCCESS,Act5\Qual-Kehk\qua_act5_q4_successful.wav
+A5Q5 Rite of Passage,0,QUAL_KEHK,20153,0,4597,ESOUND_QUALKEHK_ACT5_Q5_INIT,Act5\Qual-Kehk\qua_act5_q5_init.wav
+A5Q5 Rite of Passage,1,LARZUK,20157,2,4483,ESOUND_LARZUK_ACT5_Q5_AFTER,Act5\Larzuk\lar_act5_q5_after.wav
+A5Q5 Rite of Passage,1,CAIN6,20155,2,4443,ESOUND_CAIN_ACT5_Q5_AFTER,Act5\Cain\cain_act5_q5_after.wav
+A5Q5 Rite of Passage,1,MALAH,20158,2,4526,ESOUND_MALAH_ACT5_Q5_AFTER,Act5\Malah\mal_act5_q5_after.wav
+A5Q5 Rite of Passage,1,QUAL_KEHK,20154,2,4599,ESOUND_QUALKEHK_ACT5_Q5_AFTER,Act5\Qual-Kehk\qua_act5_q5_after.wav
+A5Q5 Rite of Passage,1,DREHYA,20156,2,4414,ESOUND_ANYA_ACT5_Q5_AFTER,Act5\Anya\any_act5_q5_after.wav
+A5Q5 Rite of Passage,2,LARZUK,20162,2,4482,ESOUND_LARZUK_ACT5_Q5_EARLY,Act5\Larzuk\lar_act5_q5_early.wav
+A5Q5 Rite of Passage,2,CAIN6,20160,2,4442,ESOUND_CAIN_ACT5_Q5_EARLY,Act5\Cain\cain_act5_q5_early.wav
+A5Q5 Rite of Passage,2,DREHYA,20161,2,4413,ESOUND_ANYA_ACT5_Q5_EARLY,Act5\Anya\any_act5_q5_early.wav
+A5Q5 Rite of Passage,2,MALAH,20163,2,4527,ESOUND_MALAH_ACT5_Q5_EARLY,Act5\Malah\mal_act5_q5_early.wav
+A5Q5 Rite of Passage,2,QUAL_KEHK,20159,2,4598,ESOUND_QUALKEHK_ACT5_Q5_EARLY,Act5\Qual-Kehk\qua_act5_q5_early.wav
+A5Q5 Rite of Passage,3,LARZUK,20167,2,4484,ESOUND_LARZUK_ACT5_Q5_SUCCESS,Act5\Larzuk\lar_act5_q5_successful.wav
+A5Q5 Rite of Passage,3,CAIN6,20165,2,4444,ESOUND_CAIN_ACT5_Q5_SUCCESS,Act5\Cain\cain_act5_q5_successful.wav
+A5Q5 Rite of Passage,3,DREHYA,20166,2,4415,ESOUND_ANYA_ACT5_Q5_SUCCESS,Act5\Anya\any_act5_q5_successful.wav
+A5Q5 Rite of Passage,3,MALAH,20168,2,4528,ESOUND_MALAH_ACT5_Q5_SUCCESS,Act5\Malah\mal_act5_q5_successful.wav
+A5Q5 Rite of Passage,3,QUAL_KEHK,20164,2,4600,ESOUND_QUALKEHK_ACT5_Q5_SUCCESS,Act5\Qual-Kehk\qua_act5_q5_successful.wav
+A5Q5 Rite of Passage,4,ANCIENTSTATUE1,20002,0,4378,ESOUND_ANCIENT_ACT5_INTRO,act5\ancients\anc_act5_intro.wav
+A5Q5 Rite of Passage,4,ANCIENTSTATUE2,20002,0,4378,ESOUND_ANCIENT_ACT5_INTRO,act5\ancients\anc_act5_intro.wav
+A5Q5 Rite of Passage,4,ANCIENTSTATUE3,20002,0,4378,ESOUND_ANCIENT_ACT5_INTRO,act5\ancients\anc_act5_intro.wav
+A5Q5 Rite of Passage,5,LARZUK,20167,0,4484,ESOUND_LARZUK_ACT5_Q5_SUCCESS,Act5\Larzuk\lar_act5_q5_successful.wav
+A5Q5 Rite of Passage,5,CAIN6,20165,0,4444,ESOUND_CAIN_ACT5_Q5_SUCCESS,Act5\Cain\cain_act5_q5_successful.wav
+A5Q5 Rite of Passage,5,DREHYA,20166,0,4415,ESOUND_ANYA_ACT5_Q5_SUCCESS,Act5\Anya\any_act5_q5_successful.wav
+A5Q5 Rite of Passage,5,MALAH,20168,0,4528,ESOUND_MALAH_ACT5_Q5_SUCCESS,Act5\Malah\mal_act5_q5_successful.wav
+A5Q5 Rite of Passage,5,QUAL_KEHK,20164,0,4600,ESOUND_QUALKEHK_ACT5_Q5_SUCCESS,Act5\Qual-Kehk\qua_act5_q5_successful.wav
+A5Q6 Eve of Destruction,0,LARZUK,20171,2,4485,ESOUND_LARZUK_ACT5_Q6_EARLY,Act5\Larzuk\lar_act5_q6_early.wav
+A5Q6 Eve of Destruction,0,CAIN6,20170,2,4445,ESOUND_CAIN_ACT5_Q6_EARLY,Act5\Cain\cain_act5_q6_early.wav
+A5Q6 Eve of Destruction,0,MALAH,20172,2,4529,ESOUND_MALAH_ACT5_Q6_EARLY,Act5\Malah\mal_act5_q6_early.wav
+A5Q6 Eve of Destruction,0,QUAL_KEHK,20174,2,4601,ESOUND_QUALKEHK_ACT5_Q6_EARLY ,Act5\Qual-Kehk\qua_act5_q6_early.wav
+A5Q6 Eve of Destruction,0,DREHYA,20173,2,4416,ESOUND_ANYA_ACT5_Q6_EARLY,Act5\Anya\any_act5_q6_early.wav
+A5Q6 Eve of Destruction,1,LARZUK,20178,0,4486,ESOUND_LARZUK_ACT5_Q6_SUCCESS,Act5\Larzuk\lar_act5_q6_successful.wav
+A5Q6 Eve of Destruction,1,CAIN6,20177,0,4446,ESOUND_CAIN_ACT5_Q6_SUCCESS,Act5\Cain\cain_act5_q6_successful.wav
+A5Q6 Eve of Destruction,1,MALAH,20179,0,4530,ESOUND_MALAH_ACT5_Q6_SUCCESS,Act5\Malah\mal_act5_q6_successful.wav
+A5Q6 Eve of Destruction,1,TYRAEL3,20175,0,4611,ESOUND_TYRAEL_ACT5_Q6_SUCCESS,act5\tyreal\tyr_act5_q6_successful.wav
+A5Q6 Eve of Destruction,1,QUAL_KEHK,20180,0,4602,ESOUND_QUALKEHK_ACT5_Q6_SUCCESS,Act5\Qual-Kehk\qua_act5_q6_successful.wav
+A5Q6 Eve of Destruction,1,DREHYA,20176,0,4417,ESOUND_ANYA_ACT5_Q6_SUCCESS,Act5\Anya\any_act5_q6_successful.wav
+A5Q6 Eve of Destruction,2,LARZUK,20178,0,4486,ESOUND_LARZUK_ACT5_Q6_SUCCESS,Act5\Larzuk\lar_act5_q6_successful.wav
+A5Q6 Eve of Destruction,2,MALAH,20179,0,4530,ESOUND_MALAH_ACT5_Q6_SUCCESS,Act5\Malah\mal_act5_q6_successful.wav
+A5Q6 Eve of Destruction,2,TYRAEL3,20175,0,4611,ESOUND_TYRAEL_ACT5_Q6_SUCCESS,act5\tyreal\tyr_act5_q6_successful.wav
+A5Q6 Eve of Destruction,2,QUAL_KEHK,20180,0,4602,ESOUND_QUALKEHK_ACT5_Q6_SUCCESS,Act5\Qual-Kehk\qua_act5_q6_successful.wav
+A5Q6 Eve of Destruction,2,DREHYA,20176,0,4417,ESOUND_ANYA_ACT5_Q6_SUCCESS,Act5\Anya\any_act5_q6_successful.wav
+A5Q6 Eve of Destruction,3,LARZUK,20178,2,4486,ESOUND_LARZUK_ACT5_Q6_SUCCESS,Act5\Larzuk\lar_act5_q6_successful.wav
+A5Q6 Eve of Destruction,3,MALAH,20179,2,4530,ESOUND_MALAH_ACT5_Q6_SUCCESS,Act5\Malah\mal_act5_q6_successful.wav
+A5Q6 Eve of Destruction,3,TYRAEL3,20175,2,4611,ESOUND_TYRAEL_ACT5_Q6_SUCCESS,act5\tyreal\tyr_act5_q6_successful.wav
+A5Q6 Eve of Destruction,3,QUAL_KEHK,20180,2,4602,ESOUND_QUALKEHK_ACT5_Q6_SUCCESS,Act5\Qual-Kehk\qua_act5_q6_successful.wav
+A5Q6 Eve of Destruction,3,DREHYA,20176,2,4417,ESOUND_ANYA_ACT5_Q6_SUCCESS,Act5\Anya\any_act5_q6_successful.wav
+A5Q6 Eve of Destruction,4,CAIN6,20177,0,4446,ESOUND_CAIN_ACT5_Q6_SUCCESS,Act5\Cain\cain_act5_q6_successful.wav
+A5Q6 Eve of Destruction,5,CAIN6,20177,2,4446,ESOUND_CAIN_ACT5_Q6_SUCCESS,Act5\Cain\cain_act5_q6_successful.wav
