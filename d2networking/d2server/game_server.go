@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -26,8 +27,18 @@ import (
 
 const logPrefix = "Game Server"
 
+// listenPort is the server port. OD2_PORT overrides the default so that several
+// instances (for example parallel autotests) can run side by side.
+func listenPort() string {
+	if p := os.Getenv("OD2_PORT"); p != "" {
+		return p
+	}
+
+	return defaultPort
+}
+
 const (
-	port                   = "6669"
+	defaultPort            = "6669"
 	chunkSize          int = 4096 // nolint:deadcode,unused,varcheck // WIP
 	subtilesPerTile        = 5
 	middleOfTileOffset     = 3
@@ -139,9 +150,9 @@ func NewGameServer(asset *d2asset.AssetManager,
 // Start essentially starts all of the game server go routines as well as begins listening for connection. This will
 // return an error if it is unable to bind to a socket.
 func (g *GameServer) Start() error {
-	listenerAddress := "127.0.0.1:" + port
+	listenerAddress := "127.0.0.1:" + listenPort()
 	if g.networkServer {
-		listenerAddress = "0.0.0.0:" + port
+		listenerAddress = "0.0.0.0:" + listenPort()
 	}
 
 	g.Infof("Starting Game Server @ %s\n", listenerAddress)

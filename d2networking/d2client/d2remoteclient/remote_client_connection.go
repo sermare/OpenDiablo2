@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/google/uuid"
@@ -58,7 +59,7 @@ func Create(l d2util.LogLevel, asset *d2asset.AssetManager) (*RemoteClientConnec
 // It also sends a PlayerConnectionRequestPacket packet to the server (see d2netpacket).
 func (r *RemoteClientConnection) Open(connectionString, saveFilePath string) error {
 	if !strings.Contains(connectionString, ":") {
-		connectionString += ":6669"
+		connectionString += ":" + defaultServerPort()
 	}
 
 	tcpAddress, err := net.ResolveTCPAddr("tcp", connectionString)
@@ -230,4 +231,13 @@ func (r *RemoteClientConnection) decodeToPacket(
 	np = d2netpacket.NetPacket{PacketType: t, PacketData: mp}
 
 	return np, nil
+}
+
+// defaultServerPort matches the server's listen port; OD2_PORT overrides it.
+func defaultServerPort() string {
+	if p := os.Getenv("OD2_PORT"); p != "" {
+		return p
+	}
+
+	return "6669"
 }
