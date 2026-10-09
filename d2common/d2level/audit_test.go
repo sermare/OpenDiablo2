@@ -22,10 +22,12 @@ import (
 const lastLevel = 136
 
 // noKnownEntrance are levels no table or note links from the rest of their act:
-// the Act 5 "Hell" mazes (125..127) are not used by the 1.14 game flow, and the
-// Pandemonium event levels (133..136) are entered through key-made portals whose
-// source and rules are not in the notes. UNVERIFIED; they are skipped, not
-// asserted unreachable.
+// the Act 5 "Hell" mazes (125..127) have no Vis/Warp slot and no portal factory
+// call names them (VERIFIED in Game.exe: the 11 callers of QUEST_Func_56ae80
+// 0x56ae80 and its town whitelist 39, 133..136 never mention them), so they look
+// unused; the Pandemonium event levels (133..136) are entered through permanent
+// portals made in Harrogath (the whitelist is VERIFIED, the code that makes them
+// was not located). They are skipped, not asserted unreachable.
 var noKnownEntrance = map[int]bool{125: true, 126: true, 127: true, 133: true, 134: true, 135: true, 136: true}
 
 // warpPartners pairs LvlWarp ids by their names ("Cave Up" is the partner of
@@ -304,7 +306,9 @@ func TestGatesAudit(t *testing.T) {
 	}{
 		{"Palace (and so the Arcane Sanctuary portal) needs slot 11", 40, 50, 2, 3, true},
 		{"Arcane Sanctuary from outside the palace", 40, 74, 2, 3, true},
-		{"Duriel through a tomb needs the Horadric Staff", 66, 73, 2, 2, true},
+		{"Duriel through a tomb needs the Seven Tombs flag (0x59b700)", 66, 73, 2, 6, true},
+		{"Arreat Summit to the Ancients' Way needs Rite of Passage (0x58ae70)", 120, 118, 5, 5, true},
+		{"Worldstone Chamber needs Eve of Destruction (0x58c3f0)", 131, 132, 5, 6, true},
 		{"Duriel's lair level flag from outside the tombs", 40, 73, 2, 5, true},
 		{"Canyon from the Arcane Sanctuary needs The Summoner", 74, 46, 2, 5, true},
 		{"Durance via the Orb", LevelTravincal, LevelDurance1, 3, 2, true},
