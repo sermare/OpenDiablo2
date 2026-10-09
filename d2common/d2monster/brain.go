@@ -130,6 +130,22 @@ func (b *Brain) PopCommand() {
 	}
 }
 
+// FindCommand returns the first queued command of a type, or nil
+// (FUN_0058ccf0: find the queue node whose +8 field equals the argument).
+func (b *Brain) FindCommand(typ int) *Command {
+	for i := range b.queue {
+		if b.queue[i].Type == typ {
+			return &b.queue[i]
+		}
+	}
+
+	return nil
+}
+
+// AppendCommand adds a command at the tail of the queue (used for the anchor,
+// which must not shadow a group alert at the head).
+func (b *Brain) AppendCommand(c Command) { b.queue = append(b.queue, c) }
+
 // QueueLen is the number of queued commands.
 func (b *Brain) QueueLen() int { return len(b.queue) }
 
