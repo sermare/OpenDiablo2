@@ -20,7 +20,9 @@ scenario_check() {
   grep -E "NEWCHAR parse|LEVEL CHANGE|POPULATE|KILL (start|done)|LOOT (start|done)|HERO (LEVEL UP|state)|QUEST EFFECT|AUTOSCRIPT RESULT|D2S EXPORT reparse" $log.txt | cut -c1-260 | tail -40
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: the Act 1 playthrough did not pass"; fail=1; }
   grep -E "AUTOSCRIPT step [0-9]+ FAIL" $log.txt | cut -c1-200
-  grep -q "class=Sorceress level=1 status=0x21" $a1/newchar.log 2>/dev/null || grep -q "NEWCHAR parse: .*class=Sorceress" $a1/newchar.log || { echo "FAIL: no new Sorceress was made"; fail=1; }
+  grep -q "NEWCHAR parse: .*class=Sorceress level=1" $a1/newchar.log 2>/dev/null || { echo "FAIL: no new Sorceress was made"; fail=1; }
+  grep -q "HERO state at start: level=1 exp=0" $log.txt || { echo "FAIL: the playthrough did not start with a level 1 hero"; fail=1; }
+  grep -q "containers loaded: .*belt_items=4" $log.txt || { echo "FAIL: the new hero has no starting potions"; fail=1; }
   # every level change of the route happened through the real exit
   for route in "from=1 to=2 .*via=edge" "from=2 to=8 .*via=warp" "from=8 to=2 .*via=warp" "from=2 to=1 .*via=edge"; do
     grep -qE "LEVEL CHANGE $route" $log.txt || { echo "FAIL: missing level change $route"; fail=1; }

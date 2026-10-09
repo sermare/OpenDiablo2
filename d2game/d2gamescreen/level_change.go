@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
@@ -267,12 +268,30 @@ func (v *Game) performLevelChange(t *levelTransition) {
 	}
 }
 
+// snapCamera puts the camera on the hero at once; the normal follow eases the
+// camera towards him, which after a level change would show the new level
+// from where the old hero stood.
+func (v *Game) snapCamera() {
+	if v.localPlayer == nil {
+		return
+	}
+
+	w := v.localPlayer.Position.World()
+	rx, ry := v.mapRenderer.WorldToOrtho(w.X(), w.Y())
+	pos := d2vector.NewPosition(rx, ry)
+
+	v.mapRenderer.MoveCameraTo(&pos)
+	v.mapRenderer.SetCameraTarget(&pos)
+}
+
 // afterLevelBuilt is the bookkeeping after the map of a new level was built
 // and the hero put into it: the old level's pending things go, the warp tiles
 // of the new map are listed, the quest system learns the new area and the
 // corpse of a hero who died here comes back.
 func (v *Game) afterLevelBuilt(from, to int, via string) {
 	v.resetLevelState()
+	v.gameControls.Speech.Clear() // the NPC who was speaking stayed behind
+	v.snapCamera()
 
 	v.levels.cooldown.Mark(v.levels.clock)
 	v.levels.changes++

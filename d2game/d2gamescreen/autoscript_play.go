@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
@@ -27,6 +28,9 @@ const (
 	killPotionLife = 0.4
 	fireBoltName   = "Fire Bolt"
 	defendSeconds  = 40.0
+	// retargetGain is how much nearer (tiles) another monster must be for the
+	// hero to turn from the one he fights.
+	retargetGain = 3.0
 	// killRetrySeconds is how long a monster the hero could not reach is left alone.
 	killRetrySeconds = 10.0
 )
@@ -103,6 +107,23 @@ func (h autoScriptHost) Kill(radius, seconds float64) error {
 	return nil
 }
 
+// chaseBorderSlack is the extra distance (tiles) from a level border inside
+// which a scripted fight leaves monsters alone.
+const chaseBorderSlack = 2.0
+
+// nearLevelBorder says whether a position (local tiles) is close to a border
+// the hero would cross into another level.
+func (v *Game) nearLevelBorder(x, y, margin float64) bool {
+	w := v.gameClient.MapEngine.World()
+	if w.Level == 0 {
+		return false
+	}
+
+	_, near := d2level.EdgeExit(w.Rects, w.Level, float64(w.OriginX)+x, float64(w.OriginY)+y, margin)
+
+	return near
+}
+
 // killAlive counts the living hostile monsters in range, those waiting for a retry included.
 func (v *Game) killAlive(k *killState) int {
 	n := 0
@@ -114,7 +135,9 @@ func (v *Game) killAlive(k *killState) int {
 			continue
 		}
 
-		if x, y := m.GetPositionF(); k.radius <= 0 || math.Hypot(x-hx, y-hy) <= k.radius {
+		x, y := m.GetPositionF()
+		if (k.radius <= 0 || math.Hypot(x-hx, y-hy) <= k.radius) &&
+			(k.defend || !v.nearLevelBorder(x, y, edgeMargin+chaseBorderSlack)) {
 			n++
 		}
 	}
@@ -137,11 +160,16 @@ func (v *Game) killCandidates(k *killState) []*d2mapentity.Monster {
 			continue // given up for now; it moves, try again later
 		}
 
-		if k.radius > 0 {
-			mx, my := m.GetPositionF()
-			if math.Hypot(mx-hx, my-hy) > k.radius {
-				continue
-			}
+		mx, my := m.GetPositionF()
+
+		if k.radius > 0 && math.Hypot(mx-hx, my-hy) > k.radius {
+			continue
+		}
+
+		// a scripted fight does not chase into the border of the level: the hero would
+		// walk into the next level (a player decides that himself)
+		if !k.defend && v.nearLevelBorder(mx, my, edgeMargin+chaseBorderSlack) {
+			continue
 		}
 
 		out = append(out, m)
@@ -175,7 +203,7 @@ func (v *Game) advanceKill(elapsed float64) {
 			k.kills, k.start, alive, len(k.skip), k.elapsed, k.potions)
 
 		if alive > 0 {
-			v.Warningf("KILL ran out of time with %d monster(s) left", alive)
+			v.Infof("KILL time limit reached with %d monster(s) left", alive)
 		}
 
 		v.levels.kill = nil
@@ -198,16 +226,25 @@ func (v *Game) advanceKill(elapsed float64) {
 
 	hx, hy := v.heroTilePos()
 
-	if k.target == nil {
-		best, bd := (*d2mapentity.Monster)(nil), math.MaxFloat64
+	// the nearest monster is the one to fight; a monster that leaves the hero
+	// alone for a far target is hit first (a player swings at what bites him)
+	best, bd := (*d2mapentity.Monster)(nil), math.MaxFloat64
 
-		for _, m := range cands {
-			mx, my := m.GetPositionF()
-			if d := math.Hypot(mx-hx, my-hy); d < bd {
-				best, bd = m, d
-			}
+	for _, m := range cands {
+		mx, my := m.GetPositionF()
+		if d := math.Hypot(mx-hx, my-hy); d < bd {
+			best, bd = m, d
 		}
+	}
 
+	if k.target != nil {
+		tx, ty := k.target.GetPositionF()
+		if best != k.target && bd+retargetGain < math.Hypot(tx-hx, ty-hy) {
+			k.target = nil
+		}
+	}
+
+	if k.target == nil {
 		k.target, k.since, k.bestDist = best, 0, bd
 		v.OnPlayerAttack(best)
 
@@ -372,7 +409,7 @@ func (v *Game) advanceLoot(elapsed float64) {
 	}
 
 	if l.elapsed += elapsed; l.elapsed > l.deadline {
-		v.Warningf("LOOT ran out of time (%d item(s) picked)", l.picked)
+		v.Infof("LOOT time limit reached (%d item(s) picked)", l.picked)
 		v.levels.loot, v.ground.item = nil, nil
 
 		return
@@ -387,7 +424,7 @@ func (v *Game) advanceLoot(elapsed float64) {
 		if x, y, ok := v.gameControls.AutoPlaceCursor(); ok {
 			v.Infof("LOOT stored %q in the inventory at (%d,%d)", it.GetItemCode(), x, y)
 		} else {
-			v.Warningf("LOOT no room in the inventory for %q", it.GetItemCode())
+			v.Infof("LOOT no room in the inventory for %q", it.GetItemCode())
 			v.levels.loot = nil
 
 			return
@@ -424,12 +461,27 @@ func (v *Game) playBusy() bool {
 	return v.levels.kill != nil || v.levels.loot != nil || g.item != nil || g.chest != nil || g.stash != nil || g.questObj != nil
 }
 
-// autoPlayEnabled says whether the world is populated for a scripted playthrough.
+// autoPlayPopulate says whether the levels get their natural monsters. They do
+// in a normal game and in scripts that play (walkto: / kill: steps); the
+// scenarios that test something else (waypoints, automap, maps, monsters, mercs,
+// death, quests) keep the levels empty or place their own monsters.
+// OD2_POPULATE=1 or 0 forces it.
 func autoPlayPopulate() bool {
+	switch os.Getenv("OD2_POPULATE") {
+	case "1":
+		return true
+	case "0":
+		return false
+	}
+
 	for _, name := range []string{"OD2_AUTOMONSTER", "OD2_AUTOMERC", "OD2_AUTODEATH", "OD2_AUTOQUEST", "OD2_NOPOPULATE"} {
 		if os.Getenv(name) != "" {
 			return false
 		}
+	}
+
+	if spec := os.Getenv("OD2_AUTOSCRIPT"); spec != "" {
+		return strings.Contains(spec, "kill:") || strings.Contains(spec, "walkto:")
 	}
 
 	return true

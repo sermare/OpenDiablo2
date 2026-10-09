@@ -15,18 +15,22 @@ scenario_check() {
   before=$(cat $a1/play.reparse)
   after=$(grep "D2S EXPORT reparse" $log.txt | tail -1)
   # the same hero: every value of the reparse line that the game itself does not change by standing in town
-  for key in name class level exp gold str dex vit ene difficulty act items equipped waypoints act1quests spent unused; do
+  for key in name class level exp gold str dex vit ene difficulty act items equipped waypoints spent unused; do
     b=$(echo "$before" | grep -oE "(^|[ :])$key=[^ ]*" | head -1 | sed 's/^[ :]//')
     a=$(echo "$after" | grep -oE "(^|[ :])$key=[^ ]*" | head -1 | sed 's/^[ :]//')
     [ "$a" = "$b" ] || { echo "FAIL: $key differs after reload: before '$b' after '$a'"; fail=1; }
   done
+  # the quests: the Den of Evil is still done (opening the quest log marks the completion as seen, which
+  # changes the log flags of the slot, so the whole word is not compared)
+  echo "$after" | grep -oE "act1quests=\[[^]]*\]"
+  echo "$after" | grep -qE "act1quests=\[([^]]* )?1:0x[0-9a-f]{3}[13579bdf]" || { echo "FAIL: the Den of Evil is not done after the reload"; fail=1; }
   # the hero is the one that left the game
   if [ -s $a1/play.state ]; then
     s=$(grep -oE "level=[0-9]+ exp=[0-9]+ skillpoints=[0-9]+" $a1/play.state | head -1)
     r=$(grep "HERO state at start" $log.txt | grep -oE "level=[0-9]+ exp=[0-9]+ skillpoints=[0-9]+" | head -1)
     [ "$s" = "$r" ] || { echo "FAIL: the hero at start of the reload ($r) is not the one who left ($s)"; fail=1; }
   fi
-  # Den of Evil is done in the quest log (status 2 = completed) and Akara has nothing more to say about it
-  grep -qE "QUEST LOG act=1 quest=1 status=2" $log.txt || { echo "FAIL: the quest log does not show the Den of Evil as completed"; fail=1; }
+  # Den of Evil is done in the quest log (status 3 = completed) and Akara has nothing more to say about it
+  grep -qE "QUEST LOG act=1 quest=1 status=3" $log.txt || { echo "FAIL: the quest log does not show the Den of Evil as completed"; fail=1; }
   grep -qE "QUEST SPEECH npc=\"Akara\" .* msg=(64|65) " $log.txt && { echo "FAIL: Akara repeats the Den of Evil after it is done"; fail=1; }
 }
