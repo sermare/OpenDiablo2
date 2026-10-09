@@ -8,7 +8,7 @@ scenario_warnings_ok=1
 scenario_env() {
   mkdir -p $a3/s94 $a3/wb94; rm -f $a3/s94/*.d2s(N) $a3/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && go run scripts/d2s-revive.go "$D2S_SAMPLE_BODY" $a3/s94/Hero.d2s "$D2_TABLES" >/dev/null 2>&1; then
-    local s="wait:1;say:resetquests;say:completequest 2 6;travel:3;expect:level=75;wait:3;say:setwaypoint 83 1"
+    local s="wait:1;say:resetquests;say:completequest 1 6;travel:2;expect:level=40;say:completequest 2 6;travel:3;expect:level=75;wait:3;say:setwaypoint 83 1"
     s+=";use:Waypoint;waypoint:83;expect:level=83;wait:3"
     s+=";say:completequest 3 2;walkto:exit=100;expect:level=100;wait:3"
     s+=";walkto:exit=101;expect:level=101;wait:3;walkto:exit=102;expect:level=102;wait:3;exit"
