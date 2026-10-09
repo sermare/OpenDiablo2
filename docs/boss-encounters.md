@@ -54,3 +54,32 @@ De Seis 394, Infector 395+396).
 - FallenShaman 0x5f04d0 (V, re-read): melee first (aip3), corpse scan for classes 19/58 within aip4, alert broadcast aip1, resurrect
   aip1, Skill2 fire aip2 within aip5, circle. The engine's Director has no corpse finder yet, so it does not resurrect in game.
 - State 13 (0x5e4be0): anchor guard, partly U. State 16 (0x5e1c60): imp after Imp Teleport (unit state 0x8f), partly U.
+
+## Oracle audit (feat/boss-oracle)
+Tests: `d2common/d2monster/boss_oracle_test.go` (real monstats via `D2_TABLES`, skipped when unset) pins Skill1-8 (name, mode,
+level), aip1-8, aidel, aidist, threat, Level and the six resists per difficulty for Andariel, Duriel, Mephisto, Diablo, Summoner,
+Izual, Blood Raven, Griswold, Radament and the Baal rows (throne, crab, clone, taunt, to-stairs, tentacles, minion);
+`d2common/d2quest/boss_oracle_test.go` pins the monster class constants of the quest nodes to the file's hcIdx column.
+
+Facts from the table (V = read from the file):
+- Andariel aip 30/10/30/50 (N), 35/8/32/55, 35/6/34/60; Skill1 AndrialSpray, Skill2 AndyPoisonBolt. No Skill3+.
+- Duriel aip1 5/5/6 (aura level), aip2 33 (Smite), aip3 50 (Jab); aip4 and aip5 are empty, so no A2 mix and no Charge ever; Skill4 Holy Freeze (NU).
+- Mephisto aip1 15/20/25, aip2/3 25/33/33 (unused by the ported think); aidist 0/40/46; six skills, all mode A2.
+- Diablo has no aip at all; seven skills (DiabLight SC, DiabCold S2, DiabFire S1, DiabWall S3, DiabRun seq, PrimeFirewall S3, DiabPrison S3).
+- Summoner aip 85/5/63/40/120/33/5/40 (N); 93/.../100/20/8 (NM); 98/.../80/10/11 (H); Skill5 Weaken.
+- Izual aip4 0/75/100 and aip5 20/5/0 vary by difficulty; one skill, Frost Nova.
+- Baal: throne aip1 25, taunt aip 3/10/20, to-stairs aip1 4, tentacles aip1 70..90 / aip2 24..16 / aip3 10; crab and clone carry 7
+  skills (clone: "Baal Clone Teleport" instead of "Baal Teleport"). Monster levels differ per difficulty (crab 60/75/99).
+- Immunities are plain resists >= 100: Griswold Hell poison 120, Baal Minion Hell fire 120, tentacles Hell cold 110..130. No boss
+  in the act list is fully immune otherwise. Resists are used as written (no difficulty penalty for non-merc monsters, verify-resist.md).
+- The hcIdx column already carries the exe numbering: baalthrone 543, baalcrab 544, baalcrabstairs 559, baalclone 570.
+
+Known divergence (not changed here to avoid touching tick.go/ai_baal.go, which feat/verify-monster-ai owns): Baal AI target
+modes. Exe: Throne 2, Crab 0, Taunt 1, ToStairs 1, Tentacle 1, Clone 0. This tree: TargetOnly for all but ToStairs (None).
+`TestBaalTargetModesDivergence` pins today's values and must change with that merge.
+
+Unverified, exe addresses to confirm: Mephisto's moat/blood-guard teleport (no AI code found; likely level preset or the 0x5aedc0
+wounded-teleport helper, 0x5aedc0 and class list), Diablo seal summon wave sizes (0x5b2e60, 0x5b3360), the Baal wave contents of
+skill 286 (FUN_005ee2f0), Diablo and Baal kill quest bits (kill handlers near 0x5ba440 pattern; Baal 0x58bce0), Mephisto hellforge
+soulstone drop (treasureclass "Mephistoq"), Andariel -> Act 2 travel (0x5446e0 slot 15 boarding), Duriel lair lock (object 100
+handler, quest private byte +0xb at 0x59b700).
