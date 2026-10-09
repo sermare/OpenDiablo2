@@ -390,6 +390,12 @@ func DecodeClient(b []byte) (Message, error) {
 	}
 	var m decodable
 	switch b[0] {
+	case C2SWalkToLocation, C2SRunToLocation:
+		m = &MoveToLocation{Run: b[0] == C2SRunToLocation}
+	case C2SCastLeftLocation, C2SCastRightLocation:
+		m = &CastOnLocation{Right: b[0] == C2SCastRightLocation}
+	case C2SSelectSkill:
+		m = &SelectSkill{}
 	case C2SInteractUnit:
 		m = &InteractUnit{}
 	case C2SPickUpUnit:
