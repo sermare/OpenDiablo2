@@ -218,7 +218,7 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 func (g *MapGenerator) placeExactTiles(lv *drlgoutdoor.Level, rect drlgoutdoor.Rect, region d2enum.RegionIdType) (int, string) {
 	tiles, err := lv.BuildTiles()
 	if err != nil {
-		g.Warningf("real outdoor: exact tile build failed (%v); plain rooms use the grid lookup, presets keep the stamped tiles", err)
+		g.Infof("real outdoor: exact tiles unavailable for this level type (%v); plain rooms use the grid lookup, presets keep the stamped tiles", err)
 		return g.placePlainRoomsLookup(lv, rect, region), ", dword lookup"
 	}
 
