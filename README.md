@@ -29,25 +29,25 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | **Click an NPC** → hero walks up → NPC **speaks their real voice line** | Greeting rows come from the game's `Sounds.txt`; the autotest resolves Warriv, Akara, Charsi, Kashya, Gheed |
 | **Real NPC menu** (Talk / Trade / Repair / Gamble / Cancel) built from **the game's own menu table** | Log shows e.g. Akara `[talk trade cancel]`, Charsi `[talk trade/repair cancel]`, Gheed `[talk trade Gamble cancel]`; not yet checked visually |
 | Greeting logic ported from the real picker (inactive group, time-of-day lines, no repeats) | Unit tests; Warriv (no plain hello row) now speaks |
-| **Whole `.d2s` character save**: header, quests, waypoints, stats, skills, **items**, corpse, mercenary | Checksum, all 16 attributes, 30 skills and **60/60 items** match a reference parser on a real level-94 save; header/body also on a second real save |
+| **Whole `.d2s` character save — read and WRITE**: header, quests, waypoints, stats, skills, **items**, corpse, mercenary | Parse → write of a real save is **byte-for-byte identical** (2,663 bytes); Checksum, all 16 attributes, 30 skills and **60/60 items** match a reference parser on a real level-94 save; header/body also on a second real save |
 | **Import a real character into the engine — with her gear** | A level-94 Sorceress from a real `.d2s` loads, starts in town and wears her real Spired Helm, Archon Plate, Battle Boots, Light Gauntlets, Flail, Short Staff and Monarch |
-| **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; emulator check in progress |
+| **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; checked instruction-by-instruction against the real code: no differences |
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~960 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
+| Reverse-engineering map of the game | ~1,270 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
-### 🔧 In progress right now (9 parallel agents)
+### 🔧 In progress right now (agents run in waves of 5 every 15 minutes)
 
 | Work item | Where |
 |---|---|
-| Combat formulas as tested Go code (to-hit, defence, block, crits, mana cost) | branch `feat/combat-formulas` |
-| Check the random number generator against the real binary | RE notes: `rng-verify` |
-| Level generation, part 2: maze rooms and outdoor generators (to reproduce real maps) | RE notes: `drlg2` |
-| Missiles, collision and pathfinding | RE notes: `missiles-pathing` |
-| Server session core: game seed, act changes, loading a save on the server side | RE notes: `session-core` |
 | Real loot: drops, quality rolls, affixes ported to Go | branch `feat/itemgen-real` |
-| Monster AI and NPC server logic | RE notes: `monster-ai` |
-| Quests (all acts) | RE notes: `quests` |
-| Inventory, stash and trade (price formulas) | RE notes: `inventory-trade` |
+| Real packet layer (framing, size tables, typed packets) | branch `feat/packet-layer` |
+| Quest state, waypoints, NPC flags from saves + the "welcome back" greeting | branch `feat/quest-state` |
+| Trade price formulas + inventory grid fixes and auto-placement | branch `feat/trade-inventory` |
+| Key bindings from `default.key` + day/night phase for greetings | branch `feat/keys-daynight` |
+| Monster AI: name and document the think functions | RE notes: `monster-ai-2` |
+| Level generation part 2: maze rooms, outdoor generators | RE notes: `drlg2` |
+| Missiles, collision and pathfinding | RE notes: `missiles-pathing` |
+| Server session core: the game seed, act changes, loading saves | RE notes: `session-core` |
 
 ### 🎯 Plan and priorities (set by Claude)
 
@@ -93,6 +93,8 @@ server session core · D2Common data tables · key bindings from `default.key` �
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | `.d2s` **writer**: a real save round-trips byte-for-byte; combat formulas implemented and verified against 12 binary functions |
+| 2026-10-09 | Quests (state layout, framework, Den of Evil) and inventory/trade (price formulas, packets) reverse engineered |
 | 2026-10-09 | Item generation reverse engineered: treasure classes, quality rolls with magic find, affixes, property stats (12 gaps vs OpenDiablo2 listed) |
 | 2026-10-09 | Monster AI mapped: 148 AI types, aggro rules, spawning and level scaling |
 | 2026-10-09 | Random number generator checked instruction-by-instruction against the real binary: no differences |

@@ -5,7 +5,7 @@
   "bars": [
     {
       "label": "Game.exe functions named in Ghidra",
-      "done": 959,
+      "done": 1268,
       "total": 10907,
       "note": "reverse engineering of the original 1.14b binary",
       "color": "#7c5cff"
@@ -19,16 +19,16 @@
     },
     {
       "label": "Source files studied in depth",
-      "done": 75,
+      "done": 95,
       "total": 277,
-      "note": "NPC menu, units, saves, packets, rendering, sound, skills & combat, level generation",
+      "note": "NPC menu, units, saves, packets, rendering, sound, combat, level gen, items, monster AI, quests, trade",
       "color": "#2f9bff"
     },
     {
-      "label": "Real .d2s save sections verified",
+      "label": "Real .d2s save: read and write verified",
       "done": 9,
       "total": 10,
-      "note": "header · quests · waypoints · NPC · stats · skills · items · corpse · mercenary (golem unverified)",
+      "note": "9 sections read; whole file written back byte-for-byte (golem section unverified)",
       "color": "#f2a81d"
     },
     {
@@ -40,9 +40,9 @@
     },
     {
       "label": "Roadmap deliverables",
-      "done": 5,
-      "total": 12,
-      "note": "d2s parse ✓ · hero + equipment import ✓ · NPC menu ✓ · greeting logic ✓ · RNG ✓  |  combat code · trade · missiles · real maps · item gen · monster AI · protocol",
+      "done": 7,
+      "total": 13,
+      "note": "d2s read+write ✓ · hero+gear import ✓ · NPC menu ✓ · greetings ✓ · RNG ✓ · combat ✓  |  trade · missiles · real maps · loot · monster AI · protocol",
       "color": "#ff7a45"
     }
   ]
