@@ -625,6 +625,7 @@ func (d *Director) dropLoot(u *unit) {
 
 	loot, err := d.engine.DropLoot(tc, diablo2item.DropOptions{
 		Seed: u.b.Seed.Step(), ILvl: level, UpgradeLevel: upgrade, Players: 1,
+		RollExtras: true, Difficulty: int(d.opt.Difficulty),
 	}, 0)
 	if err != nil {
 		d.emit("drop", "MONSTER drop name=%s tc=%q error=%v", u.m.Label(), tc, err)

@@ -17,6 +17,11 @@ func extrasFactory() (*ItemFactory, *dropTables) {
 	rec.Item.Types["helm"] = &d2records.ItemTypeRecord{Code: "helm", Rare: true, MaxSock1: 2, MaxSock25: 2, MaxSock40: 3}
 	rec.Item.Types["armo"] = &d2records.ItemTypeRecord{Code: "armo", Rare: true}
 
+	rec.Item.Treasure.Expansion["Caps"] = &d2records.TreasureClassRecord{
+		Name: "Caps", NumPicks: 3,
+		Treasures: []*d2records.Treasure{{Code: "cap", Probability: 1}, {Code: "skp", Probability: 1}},
+	}
+
 	return f, f.dropTables()
 }
 
@@ -111,5 +116,97 @@ func TestRollExtrasDeterministicAndOptIn(t *testing.T) {
 
 	if (DropOptions{}).RollExtras {
 		t.Error("extras must be off by default")
+	}
+}
+
+// Switching RollExtras on must not change anything but the extras: for a fixed
+// seed the drop stream, codes, qualities, levels and seeds are identical.
+func TestRollExtrasLeavesOtherFieldsUnchanged(t *testing.T) {
+	f, _ := extrasFactory()
+
+	type key struct {
+		code     string
+		ilvl     int
+		seed     int64
+		q        d2drop.Quality
+		pre, suf int
+	}
+
+	flat := func(items []*Item) []key {
+		var out []key
+		for _, it := range items {
+			out = append(out, key{it.CommonCode, it.itemLevel, it.Seed, it.genQuality, len(it.PrefixCodes), len(it.SuffixCodes)})
+		}
+
+		return out
+	}
+
+	extras := 0
+
+	for seed := uint32(1); seed <= 300; seed++ {
+		off, err := f.DropItems("Caps", DropOptions{Seed: seed, ILvl: 30, Players: 1, MaxDrops: 6})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		on, err := f.DropItems("Caps", DropOptions{Seed: seed, ILvl: 30, Players: 1, MaxDrops: 6, RollExtras: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		a, b := flat(off), flat(on)
+		if len(a) != len(b) {
+			t.Fatalf("seed %d: %d items off, %d on", seed, len(a), len(b))
+		}
+
+		for i := range a {
+			if a[i] != b[i] {
+				t.Fatalf("seed %d item %d: %+v != %+v", seed, i, a[i], b[i])
+			}
+
+			if on[i].IsEthereal() || on[i].NumSockets() > 0 {
+				extras++
+			}
+		}
+	}
+
+	if extras == 0 {
+		t.Error("no extras rolled in 300 seeds")
+	}
+}
+
+// Sockets and the halved durability of an ethereal item survive Spec ->
+// ItemFromSpec.
+func TestSpecKeepsExtras(t *testing.T) {
+	f, _ := extrasFactory()
+	seenS, seenE := false, false
+
+	for seed := uint32(1); seed <= 300; seed++ {
+		items, err := f.DropItems("Caps", DropOptions{Seed: seed, ILvl: 30, Players: 1, MaxDrops: 6, RollExtras: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, it := range items {
+			again, err := f.ItemFromSpec(it.Spec())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			c1, m1 := it.Durability()
+			c2, m2 := again.Durability()
+
+			if again.NumSockets() != it.NumSockets() || again.IsEthereal() != it.IsEthereal() || c1 != c2 || m1 != m2 {
+				t.Fatalf("seed %d: sockets %d/%d eth %v/%v dur %d/%d vs %d/%d", seed,
+					it.NumSockets(), again.NumSockets(), it.IsEthereal(), again.IsEthereal(), c1, m1, c2, m2)
+			}
+
+			seenS = seenS || it.NumSockets() > 0
+			seenE = seenE || it.IsEthereal()
+		}
+	}
+
+	if !seenS || !seenE {
+		t.Errorf("not exercised: sockets %v ethereal %v", seenS, seenE)
 	}
 }

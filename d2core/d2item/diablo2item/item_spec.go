@@ -27,6 +27,11 @@ type Spec struct {
 	Ethereal   bool
 	Quantity   int // 0 = leave the default
 	Durability int // current durability, -1 = leave the default
+	// Sockets is the rolled socket count (0 = none), see Item.NumSockets.
+	Sockets int
+	// MaxDurability is the maximum durability when it differs from the base
+	// record's (ethereal items have base/2+1); 0 = leave the default.
+	MaxDurability int
 }
 
 // intn rolls a property value. While an item with a seed is being built the
@@ -72,8 +77,14 @@ func (i *Item) Spec() Spec {
 		s.Ethereal = i.attributes.ethereal
 		s.Quantity = i.attributes.currentStackSize
 
+		s.Sockets = i.attributes.numSockets
+
 		if i.attributes.durable {
 			s.Durability = i.attributes.currentDurability
+
+			if rec := i.CommonRecord(); rec != nil && i.attributes.durability.max != rec.Durability {
+				s.MaxDurability = i.attributes.durability.max
+			}
 		}
 	}
 
@@ -109,6 +120,14 @@ func (f *ItemFactory) ItemFromSpec(s Spec) (*Item, error) {
 	}
 
 	item.attributes.ethereal = s.Ethereal
+
+	if s.Sockets > 0 {
+		item.attributes.numSockets = s.Sockets
+	}
+
+	if s.MaxDurability > 0 && item.attributes.durable {
+		item.attributes.durability.max = s.MaxDurability
+	}
 
 	if s.Quantity > 0 {
 		item.SetQuantity(s.Quantity)
