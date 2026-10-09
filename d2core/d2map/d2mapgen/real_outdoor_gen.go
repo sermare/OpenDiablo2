@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgmaze"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgoutdoor"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgworld"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -44,13 +45,25 @@ func isPresetLevel(id int) bool {
 		return true
 	}
 
-	return false
+	return isAct1Preset(id)
 }
+
+// isAct1Preset reports the Act 1 DrlgType 2 levels outside the world layout: the
+// small cave levels Cave Level 2 .. Underground Passage Level 2 (Hole/Pit 2,
+// ids 13..16) and Catacombs Level 4 (37, Andariel). GeneratePreset is proven
+// equal to the real game for them (TestOraclePresetAct1).
+func isAct1Preset(id int) bool { return (id >= 13 && id <= 16) || id == 37 }
 
 // levelParams runs the world placement of the level's act and derives the
 // generator inputs (rectangle, od.flags, vis/warp, neighbour list).
 func levelParams(tb *d2drlg.Tables, levelID int, seed uint32, diff d2drlg.Difficulty) (drlgoutdoor.Params, *drlgworld.Layout, error) {
 	rec, _ := tb.Level(levelID)
+
+	if isAct1Preset(levelID) {
+		p, err := drlgoutdoor.ParamsPreset(tb, levelID, seed, diff)
+
+		return p, nil, err
+	}
 
 	if isAct23Outdoor(levelID) { // no drlgworld.Layout: the Act 2/3 placers have their own world
 		p, err := drlgoutdoor.ParamsAct23(tb, seed, diff, levelID)
@@ -366,7 +379,9 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 	}
 
 	g.engine.ResetMap(region, pl.Rect.W, pl.Rect.H)
-	g.engine.SetWorld(d2mapengine.World{Level: levelID, OriginX: pl.Rect.X, OriginY: pl.Rect.Y, Rects: worldRects(lay)})
+	if lay != nil {
+		g.engine.SetWorld(d2mapengine.World{Level: levelID, OriginX: pl.Rect.X, OriginY: pl.Rect.Y, Rects: worldRects(lay)})
+	}
 
 	path := drlgoutdoor.NormalizePrestFile(pr.File[pl.File])
 	g.engine.AddDS1(path)
@@ -397,7 +412,17 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 	g.engine.BlockEmptyTiles()
 	g.engine.UseCollisionPaths(true)
 
-	sx, sy, how := g.outdoorEntry(&drlgoutdoor.Level{}, pl.Rect)
+	var (
+		sx, sy float64
+		how    string
+	)
+
+	if isAct1Preset(levelID) {
+		sx, sy, how = g.findEntry(&drlgmaze.Result{}, []roomRect{{0, 0, pl.Rect.W, pl.Rect.H, path}}, 0)
+	} else {
+		sx, sy, how = g.outdoorEntry(&drlgoutdoor.Level{}, pl.Rect)
+	}
+
 	g.engine.SetStartPosition(sx, sy)
 
 	g.Infof("real preset: level %d seed %#x: Def %d file %d (%s), %d rooms%s, map %dx%d tiles",
