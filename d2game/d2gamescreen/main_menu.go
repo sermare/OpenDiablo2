@@ -406,10 +406,11 @@ func (v *MainMenu) createMultiplayerMenuButtons() {
 	v.multiplayerButton.OnActivated(func() { v.onMultiplayerClicked() })
 
 	// the original lists OPEN BATTLE.NET first; there is no Battle.net to
-	// connect to, so the button is shown but cannot be used
+	// connect to, so the button is shown and does nothing (wide buttons have no
+	// disabled picture: SetEnabled(false) would crash when it is drawn)
 	v.openBattleNetButton = v.uiManager.NewButton(d2ui.ButtonTypeWide, v.asset.TranslateString(d2enum.OpenBattleNetLabel))
 	v.openBattleNetButton.SetPosition(battleNetBtnX, battleNetBtnY)
-	v.openBattleNetButton.SetEnabled(false)
+	v.openBattleNetButton.OnActivated(func() { v.Info("Open Battle.net is not available") })
 
 	v.networkTCPIPButton = v.uiManager.NewButton(d2ui.ButtonTypeWide, v.asset.TranslateString(d2enum.TCPIPGameLabel))
 	v.networkTCPIPButton.SetPosition(tcpNetBtnX, tcpNetBtnY)
