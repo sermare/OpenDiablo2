@@ -27,11 +27,14 @@ type Def struct {
 	PlrStayDeath, MonStayDeath, BossStayDeath bool
 	// Shatter: a unit that dies with this state shatters (freeze).
 	Shatter bool
-	// Blue overrides every other colour change (freeze, cold, holywindcold,
-	// blue). U: the exe may only rely on ColorPri.
+	// Blue is the states.txt column. Verified (0x4d65a0): the client's colour
+	// choice does not read it; only ColorPri and ColorShift decide (the
+	// column is used elsewhere, not located).
 	Blue bool
 	// ColorPri and ColorShift pick the palette shift of the unit: the state
-	// with the highest ColorPri wins, ties go to the lowest id. ColorShift
+	// with the highest ColorPri wins, ties go to the lowest id (verified,
+	// FUN_004d65a0 scans ids upward with a strict greater-than from priority
+	// 0 and ignores id 0). ColorShift
 	// indexes the PL2 HueVariations (111 entries). 0 ColorPri = no shift.
 	ColorPri, ColorShift int
 	Overlay1             string
@@ -91,9 +94,29 @@ func (d Defs) exclusive(a, b string) bool {
 
 func isShrine(name string) bool { return len(name) > 7 && name[:7] == "shrine_" }
 
-// stays reports whether a state survives the death of a unit of a kind
-// ("player", "monster" or "boss"). States without a row are cleared.
+// stays reports whether a state's statlist survives the death of a unit of
+// a kind ("player", "monster" or "boss"). States without a row are cleared.
+// Verified (0x63b5b0): players use plrstaydeath, every monster including a
+// boss uses monstaydeath.
 func (d Defs) stays(name, kind string) bool {
+	df, ok := d[name]
+	if !ok {
+		return false
+	}
+
+	if kind == "player" {
+		return df.PlrStayDeath
+	}
+
+	return df.MonStayDeath
+}
+
+// BitStays reports whether the state bit (the visual, sent to clients)
+// survives death: the death routines 0x57d310 and 0x5a3f20 clear the unit's
+// bits with the plr mask for players, the mon mask for monsters and the boss
+// mask for monsters whose record passes MONSTER_IsStatRecordFlag40 (kind
+// "boss").
+func (d Defs) BitStays(name, kind string) bool {
 	df, ok := d[name]
 	if !ok {
 		return false

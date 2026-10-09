@@ -862,6 +862,7 @@ func (e *Engine) dot(m *d2mapentity.Monster, poison, burn int) {
 
 	if !m.Alive() {
 		e.Counters.Kills++
+		e.setOf(m.ID()).Death("monster")
 		e.flushDotFor(m)
 		e.emit("damage", "KILL skill=%q target=%s", "damage over time", m.Label())
 	}
