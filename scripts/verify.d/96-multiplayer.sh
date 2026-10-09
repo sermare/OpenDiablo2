@@ -1,3 +1,4 @@
+scenario_realtime=1
 scenario_name="multiplayer (two processes over TCP with the d2gs protocol: join, see each other, walk, cast, chat, leave)"
 # The runner starts one process per scenario (the host, with $save). This scenario starts the joiner itself from
 # scenario_env (it retries until the host listens) with a second character, writes its own log to $tmp/96-join.log

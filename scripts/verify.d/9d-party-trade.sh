@@ -1,3 +1,4 @@
+scenario_realtime=1
 scenario_name="party, trade and PvP (two processes over TCP with the d2gs protocol: party, roster panel, party experience, trade both ways, hostile hits, leave)"
 # The runner starts the host with $save (a real level 94 hero); this scenario starts the joiner itself, with a
 # copy of the same save under another hero name (the roster tells players apart by id, the scripts by name).

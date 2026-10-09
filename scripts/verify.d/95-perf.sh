@@ -1,3 +1,4 @@
+scenario_realtime=1
 scenario_name="frame-time meter (OD2_AUTOPERF reports update/render/frame percentiles and runtime stats; the engine stays far inside a 16.7 ms frame)"
 scenario_env() { echo 'export OD2_AUTOPERF=1 OD2_AUTOPERF_SECONDS=6 OD2_AUTOPERF_WARMUP=4 OD2_AUTOMONSTER="fallen1,pack" OD2_AUTOMONSTER_SECONDS=120'; }
 scenario_check() {
