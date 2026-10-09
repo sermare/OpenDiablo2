@@ -72,28 +72,6 @@ func TestBlockMana(t *testing.T) {
 	}
 }
 
-func TestDamage(t *testing.T) {
-	tests := []struct {
-		name     string
-		label    string
-		min, max int
-		want     string
-		ok       bool
-	}{
-		{"range", "Damage: ", 3, 9, "Damage: 3-9", true},
-		{"fixed", "Damage: ", 5, 5, "Damage: 5", true},
-		{"none", "Damage: ", 0, 0, "", false},
-		{"no label", "", 1, 2, "", false},
-	}
-
-	for _, tc := range tests {
-		got, ok := Damage(tc.label, tc.min, tc.max)
-		if got != tc.want || ok != tc.ok {
-			t.Errorf("%s: got (%q,%v)", tc.name, got, ok)
-		}
-	}
-}
-
 func TestCurrentLevel(t *testing.T) {
 	if got := CurrentLevel("Current Skill Level: ", 7); got != "Current Skill Level: 7" {
 		t.Fatalf("got %q", got)
@@ -110,24 +88,23 @@ func TestNextLevel(t *testing.T) {
 	tests := []struct {
 		name         string
 		level, maxLv int
-		dmg          string
 		want         []string
 	}{
-		{"block without the dsc2 rows", 3, 20, "Damage: 1-2", []string{"Next:", "Damage: 1-2", "Dur: 4 seconds", "Mana Cost: 3"}},
-		{"capped", 20, 20, "", nil},
-		{"uncapped when max 0", 99, 0, "", []string{"Next:", "Dur: 4 seconds", "Mana Cost: 3"}},
+		{"block without the dsc2 rows", 3, 20, []string{"Next:", "Dur: 4 seconds", "Mana Cost: 3"}},
+		{"capped", 20, 20, nil},
+		{"uncapped when max 0", 99, 0, []string{"Next:", "Dur: 4 seconds", "Mana Cost: 3"}},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := NextLevel("Next:", d, tc.level, tc.maxLv, tc.dmg, testTr, testEval, mana)
+			got := NextLevel("Next:", d, tc.level, tc.maxLv, testTr, testEval, &Ctx{Mana: mana})
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got %v want %v", got, tc.want)
 			}
 		})
 	}
 
-	if got := NextLevel("Next:", Desc{}, 1, 0, "", testTr, testEval, nil); got != nil {
+	if got := NextLevel("Next:", Desc{}, 1, 0, testTr, testEval, nil); got != nil {
 		t.Fatalf("empty desc should give no block, got %v", got)
 	}
 }

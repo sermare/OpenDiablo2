@@ -76,45 +76,103 @@ const (
 	// KindSynergy is dsc3 kind 63 (0x4ebcd8 -> 0x4e96b0, flags 1,1): texta,
 	// ": ", the signed value, "%", " ", textb. Value 0 gives no line.
 	KindSynergy = 63
+
+	// KindToHit is kind 8 (0x4eaf90 -> 0x4e9380 -> 0x4e4f40, flag 1): the
+	// skill's attack-rating bonus (SKILL_GetToHitBonus 0x645da0) as
+	// "To Attack Rating: +n percent" (StrSkill10, StrSkill23). 0 gives no line.
+	KindToHit = 8
+	// KindPhysDamage is kind 9 (0x4eafe9 -> 0x4e9140): texta, textb, then
+	// "Damage: " (StrSkill4) and the skill's physical damage range, see
+	// PhysDamageLine.
+	KindPhysDamage = 9
+	// KindElemDamage is kind 10 (0x4eb048 -> 0x4e9080 -> 0x4e8f90): texta,
+	// textb, the element label and the skill's elemental range, see
+	// ElemDamageLine.
+	KindElemDamage = 10
+	// KindElemLength is kind 11 (0x4eb0ab -> 0x4eab70): the cold ("Cold
+	// Length: ", StrSkill13) or poison ("Poison Length: ", StrSkill14)
+	// duration of the skill's elemental damage; other elements give no line.
+	KindElemLength = 11
+	// KindLife is kind 13 (0x4eb140 -> 0x4e8ed0): "Life: " (StrSkill42) and the
+	// life of the summoned monster, see LifeLine. It is NOT a descdam
+	// dispatcher.
+	KindLife = 13
+	// KindLabelText is kind 15 (0x4eb1cd): texta, ": ", textb.
+	KindLabelText = 15
+	// KindDurationRange is kind 16 (0x4eb211 -> 0x4e4680): "Duration: "
+	// (StrSkill20), calcA and calcB as frames shown as seconds "a-b seconds",
+	// each end with one decimal when not whole. textb comes first, texta is
+	// not printed.
+	KindDurationRange = 16
+	// KindWrapped is kind 18 (0x4eb272): texta alone as a wrapped paragraph.
+	KindWrapped = 18
+	// KindWrapped2 is kind 25 (0x4eb429): texta immediately followed by textb
+	// as one wrapped paragraph.
+	KindWrapped2 = 25
+	// KindCurseDuration is kind 31 (0x4eb645 -> 0x4eb3c2 -> 0x4eaa50): texta
+	// and calcA frames divided by a per-difficulty divisor (field +0x1c of the
+	// 0x58-byte record from 0x610fd0, applied when positive; U: AiCurseDiv of
+	// DifficultyLevels.txt) shown as seconds.
+	KindCurseDuration = 31
+	// KindSynergySigned is dsc3 kind 67 (0x4ebd56 -> 0x4e96b0, flags plus=1,
+	// percent=0): like kind 63 without the "%".
+	KindSynergySigned = 67
+	// KindFormatted is dsc3 kind 71 (0x4ebde5): texta, ": ", then textb used
+	// as a printf format with the calcA value. Both texts must be set.
+	KindFormatted = 71
 )
 
 var (
 	// UNVERIFIED (not read in the binary; taken from the shipped table):
 	// texta + "a-b" + textb; kind 38 is the verified one of these.
-	rangeKinds = map[int]bool{16: true, 43: true, 52: true}
-	// UNVERIFIED: plain texta + n + textb (31 goes through 0x4eb645 and a
-	// divisor, 57 was not read).
-	plainKinds = map[int]bool{31: true, 57: true}
-	// UNVERIFIED: dsc3 synergy variants of kind 63 (67, 71 not read).
-	synKinds = map[int]bool{67: true, 71: true}
+	rangeKinds = map[int]bool{43: true, 52: true}
+	// UNVERIFIED: plain texta + n + textb (57 was not read).
+	plainKinds = map[int]bool{57: true}
 )
+
+// Ctx carries the per-skill, per-level values that rows of kinds 1, 8-11 and
+// 13 need beyond the calc evaluator. Every hook is optional; a row whose hook
+// is nil gives no line.
+type Ctx struct {
+	// Mana renders the kind-1 line of the level being shown.
+	Mana func() (string, bool)
+	// ToHit is the skill's attack-rating bonus percent (kind 8).
+	ToHit func() int
+	// Phys is the skill's physical damage range in whole points, including
+	// the weapon part (SrcDam/128 of the weapon) (kind 9).
+	Phys func() (lo, hi int)
+	// Elem is the skill's elemental range in whole points and the skills.txt
+	// element type 1..5 (kind 10); ElemLen its length in frames (kind 11).
+	Elem    func() (lo, hi, etype int)
+	ElemLen func() int
+	// Life is the average life of the summoned monster (kind 13).
+	Life func() (avg int, ok bool)
+	// CurseDiv is the divisor of kind 31; values below 1 mean no division.
+	CurseDiv int
+}
 
 // Block renders rows without a mana line (kind 1 rows are skipped).
 func Block(rows []Row, tr func(string) string, eval func(string) int) []string {
-	return BlockMana(rows, tr, eval, nil)
+	return BlockCtx(rows, tr, eval, nil)
 }
 
 // BlockMana renders rows in order. mana, when non-nil, renders the kind-1 line
-// of the level being shown. tr translates a text column (returning the key
-// when it is unknown; empty stays empty), eval evaluates a calc source at the
-// level being shown. Unmodelled kinds are skipped.
+// of the level being shown.
 func BlockMana(rows []Row, tr func(string) string, eval func(string) int, mana func() (string, bool)) []string {
+	return BlockCtx(rows, tr, eval, &Ctx{Mana: mana})
+}
+
+// BlockCtx renders rows in order. tr translates a text column (returning the
+// key when it is unknown; empty stays empty), eval evaluates a calc source at
+// the level being shown and ctx (may be nil) supplies the skill values.
+// Unmodelled kinds are skipped. The game appends every line to one text
+// buffer, so the caller shows them in the same box (VERIFIED: 0x4a86b0 calls
+// one builder and draws once).
+func BlockCtx(rows []Row, tr func(string) string, eval func(string) int, ctx *Ctx) []string {
 	var out []string
 
 	for _, r := range rows {
-		if r.Kind == KindMana {
-			if mana == nil {
-				continue
-			}
-
-			if line, ok := mana(); ok {
-				out = append(out, line)
-			}
-
-			continue
-		}
-
-		if line, ok := RowLine(r, tr, eval); ok {
+		if line, ok := RowLineCtx(r, tr, eval, ctx); ok {
 			out = append(out, line)
 		}
 	}
@@ -140,12 +198,53 @@ func tenths(whole, tenth int) string {
 	return strconv.Itoa(whole) + "." + strconv.Itoa(tenth)
 }
 
-// RowLine renders one row.
+// RowLine renders one row without skill context.
 func RowLine(r Row, tr func(string) string, eval func(string) int) (string, bool) {
+	return RowLineCtx(r, tr, eval, nil)
+}
+
+// RowLineCtx renders one row.
+func RowLineCtx(r Row, tr func(string) string, eval func(string) int, ctx *Ctx) (string, bool) {
 	a, b := tr(r.TextA), tr(r.TextB)
 	va, vb := eval(r.CalcA), eval(r.CalcB)
 
+	if ctx == nil {
+		ctx = &Ctx{}
+	}
+
+	if line, ok, handled := damageRow(r, a, b, va, vb, tr, ctx); handled {
+		return line, ok
+	}
+
 	switch {
+	case r.Kind == KindMana:
+		if ctx.Mana == nil {
+			return "", false
+		}
+
+		return ctx.Mana()
+	case r.Kind == KindLabelText:
+		return a + ": " + b, true
+	case r.Kind == KindDurationRange:
+		return durationRangeLine(b, tr("StrSkill20"), va, vb, tr)
+	case r.Kind == KindWrapped:
+		return a, a != ""
+	case r.Kind == KindWrapped2:
+		return a + b, a+b != ""
+	case r.Kind == KindCurseDuration:
+		if ctx.CurseDiv > 0 {
+			va /= ctx.CurseDiv
+		}
+
+		return durationLine(a, "", va, tr)
+	case r.Kind == KindSynergySigned:
+		return synergyLine(a, b, va, false), true
+	case r.Kind == KindFormatted:
+		if r.TextA == "" || r.TextB == "" {
+			return "", false
+		}
+
+		return a + ": " + strings.Replace(b, "%d", strconv.Itoa(va), 1), true
 	case r.Kind == KindSignedValue || r.Kind == KindValue:
 		if va == 0 {
 			return "", false
@@ -183,9 +282,7 @@ func RowLine(r Row, tr func(string) string, eval func(string) int) (string, bool
 			return "", false
 		}
 
-		return synergyLine(a, b, va), true
-	case synKinds[r.Kind]:
-		return a + ": +" + strconv.Itoa(va) + "% " + b, true
+		return synergyLine(a, b, va, true), true
 	case r.Kind == KindSynergyHead:
 		if r.TextA == "" {
 			return "", false
@@ -197,14 +294,20 @@ func RowLine(r Row, tr func(string) string, eval func(string) int) (string, bool
 	return "", false
 }
 
-// synergyLine is the dsc3 kind-63 line.
-func synergyLine(a, b string, v int) string {
+// synergyLine is the dsc3 kind-63 line (percent) and the kind-67 line (no
+// percent): [texta ": "] signed value ["%"] " " textb, 0x4e96b0.
+func synergyLine(a, b string, v int, percent bool) string {
 	head := ""
 	if a != "" {
 		head = a + ": "
 	}
 
-	return head + signed(v, true) + "% " + b
+	pct := ""
+	if percent {
+		pct = "%"
+	}
+
+	return head + signed(v, true) + pct + " " + b
 }
 
 // durationLine is kind 12: frames to seconds, 0x4eaa50.
@@ -245,25 +348,6 @@ func radiusLine(a, b string, v int, twoThirds bool, tr func(string) string) (str
 	return b + a + tenths(whole, tenth) + unit, true
 }
 
-// Damage formats a damage line from the skill's own damage in whole points:
-// label (the StrSkill4 "Damage: " text), then "a-b", or "n" when both are
-// equal. VERIFIED wording and format for the generic damage lines (kind 9
-// 0x4e9140 and the elemental kind 10 0x4e8f90 both use "%d-%d"); kind 9 writes
-// "+n" when min and max are equal. UNVERIFIED: the original builds damage from
-// the rows of kinds 8-11 and 13 (descdam function 0x4e8ed0) at their row
-// position, not as one synthesized line; no damage gives no line.
-func Damage(label string, minDmg, maxDmg int) (string, bool) {
-	if maxDmg <= 0 || label == "" {
-		return "", false
-	}
-
-	if minDmg == maxDmg {
-		return label + strconv.Itoa(maxDmg), true
-	}
-
-	return label + strconv.Itoa(minDmg) + "-" + strconv.Itoa(maxDmg), true
-}
-
 // CurrentLevel is the "Current Skill Level: n" label line (StrSkill2, 0x109e,
 // built at 0x4ec3dd/0x4ec5d0): the label then the level, no separator.
 func CurrentLevel(label string, level int) string {
@@ -272,23 +356,19 @@ func CurrentLevel(label string, level int) string {
 
 // NextLevel renders the "Next Level" block: the label (StrSkill1 "Next Level",
 // or StrSkill17 "First Level" when the skill has no points yet, chosen by the
-// caller), then the damage line and the main block evaluated at level+1. The
-// second (dsc2) block is NOT part of it: the builder at 0x4ec180 evaluates
-// descline indexes 0..5 only for this block. mana renders the kind-1 line of
-// level+1. It is empty when nothing would be shown or when the skill is at its
-// cap (maxLvl > 0).
-func NextLevel(label string, d Desc, level, maxLvl int, dmg string,
-	tr func(string) string, evalNext func(string) int, mana func() (string, bool)) []string {
+// caller), then the main block evaluated at level+1 (damage lines come from
+// its kind 8-11 and 13 rows through ctx, at their row position). The second
+// (dsc2) block is NOT part of it: the builder at 0x4ec180 evaluates descline
+// indexes 0..5 only for this block. ctx supplies the level+1 values. It is
+// empty when nothing would be shown or when the skill is at its cap
+// (maxLvl > 0).
+func NextLevel(label string, d Desc, level, maxLvl int,
+	tr func(string) string, evalNext func(string) int, ctx *Ctx) []string {
 	if maxLvl > 0 && level >= maxLvl {
 		return nil
 	}
 
-	var body []string
-	if dmg != "" {
-		body = append(body, dmg)
-	}
-
-	body = append(body, BlockMana(d.Lines, tr, evalNext, mana)...)
+	body := BlockCtx(d.Lines, tr, evalNext, ctx)
 
 	if len(body) == 0 {
 		return nil
