@@ -1,6 +1,7 @@
 package d2hero
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
@@ -68,7 +69,7 @@ func TestMercFromHeader(t *testing.T) {
 
 	for _, tc := range tests {
 		got := MercFromHeader(tc.in)
-		if (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
+		if (got == nil) != (tc.want == nil) || (got != nil && !reflect.DeepEqual(got, tc.want)) {
 			t.Errorf("%s: got %+v, want %+v", tc.name, got, tc.want)
 		}
 	}

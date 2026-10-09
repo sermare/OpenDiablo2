@@ -334,6 +334,7 @@ type GameControls struct {
 	equipSound             func(handle string)
 	equipTouched           bool
 	equipNoSave            bool // the equip autotest saves once at the end
+	mercHost               MercGearHost
 	equipRand              *rand.Rand
 	equipStatus            map[d2equip.Loc]d2hero.EquipStatus
 	regen                  d2inventory.Regen
