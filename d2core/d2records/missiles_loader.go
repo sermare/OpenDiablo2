@@ -5,6 +5,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2txt"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calc"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calculation"
 )
 
@@ -25,8 +26,9 @@ func missilesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			ServerDamageFunc:    d.Number("pSrvDmgFunc"),
 
 			ServerMovementCalc: MissileCalc{
-				Calc: "SrvCalc1",
-				Desc: "*srv calc 1 desc",
+				Calc:    "SrvCalc1",
+				Program: d2calc.Compile(d.String("SrvCalc1"), d2calc.KindMissile),
+				Desc:    "*srv calc 1 desc",
 				Params: []MissileCalcParam{
 					{
 						d.Number("Param1"),
@@ -52,8 +54,9 @@ func missilesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			},
 
 			ClientMovementCalc: MissileCalc{
-				Calc: "CltCalc1",
-				Desc: "*client calc 1 desc",
+				Calc:    "CltCalc1",
+				Program: d2calc.Compile(d.String("CltCalc1"), d2calc.KindMissile),
+				Desc:    "*client calc 1 desc",
 				Params: []MissileCalcParam{
 					{
 						d.Number("CltParam1"),
@@ -79,8 +82,9 @@ func missilesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			},
 
 			ServerCollisionCalc: MissileCalc{
-				Calc: "SHitCalc1",
-				Desc: "*server hit calc 1 desc",
+				Calc:    "SHitCalc1",
+				Program: d2calc.Compile(d.String("SHitCalc1"), d2calc.KindMissile),
+				Desc:    "*server hit calc 1 desc",
 				Params: []MissileCalcParam{
 					{
 						d.Number("sHitPar1"),
@@ -98,8 +102,9 @@ func missilesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			},
 
 			ClientCollisionCalc: MissileCalc{
-				Calc: "CHitCalc1",
-				Desc: "*client hit calc 1 desc",
+				Calc:    "CHitCalc1",
+				Program: d2calc.Compile(d.String("CHitCalc1"), d2calc.KindMissile),
+				Desc:    "*client hit calc 1 desc",
 				Params: []MissileCalcParam{
 					{
 						d.Number("cHitPar1"),
@@ -117,8 +122,9 @@ func missilesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			},
 
 			ServerDamageCalc: MissileCalc{
-				Calc: "DmgCalc1",
-				Desc: "*damage calc 1",
+				Calc:    "DmgCalc1",
+				Program: d2calc.Compile(d.String("DmgCalc1"), d2calc.KindMissile),
+				Desc:    "*damage calc 1",
 				Params: []MissileCalcParam{
 					{
 						d.Number("dParam1"),
@@ -235,21 +241,21 @@ func missilesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			ElementalDamage: MissileElementalDamage{
 				ElementType: d.String("EType"),
 				Damage: MissileDamage{
-					MinDamage: d.Number("MinEDamage"),
+					MinDamage: d.Number("EMin"),
 					MinLevelDamage: [5]int{
-						d.Number("MinELevDam1"),
-						d.Number("MinELevDam2"),
-						d.Number("MinELevDam3"),
-						d.Number("MinELevDam4"),
-						d.Number("MinELevDam5"),
+						d.Number("MinELev1"),
+						d.Number("MinELev2"),
+						d.Number("MinELev3"),
+						d.Number("MinELev4"),
+						d.Number("MinELev5"),
 					},
-					MaxDamage: d.Number("MaxEDamage"),
+					MaxDamage: d.Number("EMax"),
 					MaxLevelDamage: [5]int{
-						d.Number("MaxELevDam1"),
-						d.Number("MaxELevDam2"),
-						d.Number("MaxELevDam3"),
-						d.Number("MaxELevDam4"),
-						d.Number("MaxELevDam5"),
+						d.Number("MaxELev1"),
+						d.Number("MaxELev2"),
+						d.Number("MaxELev3"),
+						d.Number("MaxELev4"),
+						d.Number("MaxELev5"),
 					},
 					DamageSynergyPerCalc: d2calculation.CalcString(d.String("EDmgSymPerCalc")),
 				},

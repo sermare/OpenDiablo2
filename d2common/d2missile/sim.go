@@ -362,12 +362,21 @@ func (s *Sim) process(m *Missile, t Target) {
 	hit, chance, roll := true, 0, 0
 
 	if sp.ToHit {
-		hit, chance, roll = d2combat.RollToHit(m.Owner.Roller, d2combat.ToHitInput{
-			AttackRating:  m.Owner.AttackRating + m.Damage.ToHit,
+		in := d2combat.ToHitInput{
+			AttackRating:  m.Owner.AttackRating,
 			Defense:       t.Defense(true),
 			AttackerLevel: m.Owner.Level,
 			DefenderLevel: t.Level(),
-		})
+		}
+		// the skill's to-hit is a percent bonus for players, a flat bonus for
+		// monsters (COMBAT_RollToHit; the percent reading is UNVERIFIED)
+		if m.Owner.IsPlayer {
+			in.AttackRatingPct = m.Damage.ToHit
+		} else {
+			in.AttackRating += m.Damage.ToHit
+		}
+
+		hit, chance, roll = d2combat.RollToHit(m.Owner.Roller, in)
 	}
 
 	if hit {
