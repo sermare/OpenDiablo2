@@ -18,7 +18,7 @@ const (
 	EpilogueLabel
 	SelectCinematicLabel
 
-	_
+	OpenBattleNetLabel
 	TCPIPGameLabel
 	TCPIPOptionsLabel
 	TCPIPHostGameLabel

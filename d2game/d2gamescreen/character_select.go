@@ -2,7 +2,6 @@ package d2gamescreen
 
 import (
 	"math"
-	"os"
 	"strconv"
 	"strings"
 
@@ -520,6 +519,8 @@ func (v *CharacterSelect) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 
 // Advance runs the update logic on the Character Select screen
 func (v *CharacterSelect) Advance(tickTime float64) error {
+	v.advanceFlow(tickTime)
+
 	for _, hero := range v.characterImage {
 		if hero != nil {
 			v.tickTimer += tickTime
@@ -535,9 +536,14 @@ func (v *CharacterSelect) onDeleteCharButtonClicked() {
 }
 
 func (v *CharacterSelect) onDeleteCharacterConfirmClicked() {
-	err := os.Remove(v.gameStates[v.selectedCharacter].FilePath)
-	if err != nil {
-		v.Error(err.Error())
+	if v.selectedCharacter >= 0 && v.selectedCharacter < len(v.gameStates) {
+		hero := v.gameStates[v.selectedCharacter]
+
+		if err := v.HeroStateFactory.DeleteHero(hero); err != nil {
+			v.Error(err.Error())
+		} else {
+			v.Infof("CHARSELECT deleted %q", hero.HeroName)
+		}
 	}
 
 	v.charScrollbar.SetCurrentOffset(0)

@@ -70,6 +70,8 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   [ -f "$save" ] || cp "$D2S_SAMPLE_BODY" "$save"
 
   for f in scripts/verify.d/*.sh(N); do
+    # OD2_VERIFY_ONLY=<glob> (e.g. "83-*") runs only the scenarios whose file name matches
+    [ -n "${OD2_VERIFY_ONLY:-}" ] && [[ ${f:t} != ${~OD2_VERIFY_ONLY} ]] && continue
     unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""
     source "$f"
     step "$scenario_name"

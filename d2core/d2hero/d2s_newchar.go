@@ -65,7 +65,7 @@ func (f *HeroStateFactory) CreateNewHero(name string, hero d2enum.Hero, expansio
 
 	state.Expansion, state.Hardcore, state.Ladder = expansion, hardcore, ladder
 
-	res := &D2SExport{Path: D2SPath(state)}
+	res := &D2SExport{Path: newD2SPath(state)}
 
 	data, err := NewCharacterD2S(state, time.Now())
 	if err != nil {
@@ -77,6 +77,12 @@ func (f *HeroStateFactory) CreateNewHero(name string, hero d2enum.Hero, expansio
 	} else {
 		state.D2SBase = data
 		res.Summary = SummarizeD2S(data, nil)
+
+		// the file is the character from now on: saves go back to it
+		if header, perr := d2s.ParseHeader(data); perr == nil {
+			state.Imported = importedInfo(header)
+			state.Imported.Source = res.Path
+		}
 	}
 
 	if err := f.Save(state); err != nil {
