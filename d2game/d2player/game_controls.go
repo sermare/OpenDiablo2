@@ -2,6 +2,7 @@ package d2player
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2vendor"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2equip"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
@@ -248,6 +250,7 @@ func NewGameControls(
 	gc.Identify = NewIdentifyWindow(asset, ui, l, inventory, hero, gc.saveHero, gc.onCloseTrade)
 
 	inventory.savedItems = hero.Containers != nil
+	inventory.itemHook = gc.itemTooltipLines
 	gc.stash = NewContainerPanel(asset, ui, l, inventory, stashKind, gc.saveHero)
 	gc.cube = NewContainerPanel(asset, ui, l, inventory, cubeKind, gc.saveHero)
 	gc.belt = NewBeltPanel(asset, ui, l, inventory, gc.beltBoxes, gc.saveHero)
@@ -311,6 +314,11 @@ type GameControls struct {
 	cube                   *ContainerPanel
 	belt                   *BeltPanel
 	itemOrigin             map[InventoryItem]*d2s.Item
+	equipSound             func(handle string)
+	equipTouched           bool
+	equipNoSave            bool // the equip autotest saves once at the end
+	equipRand              *rand.Rand
+	equipStatus            map[d2equip.Loc]d2hero.EquipStatus
 	regen                  d2inventory.Regen
 	regenHP, regenMana     float64 // fractions of points not yet applied
 	bottomMenuRect         *d2geom.Rectangle
@@ -435,6 +443,8 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 		g.hud.onToggleRunButton(true)
 	case d2enum.ToggleHelpScreen:
 		g.toggleHelpOverlay()
+	case d2enum.SwapWeapons:
+		g.SwapWeapons()
 	case d2enum.ToggleBelts:
 		g.belt.Toggle()
 	case d2enum.ToggleAutomap:

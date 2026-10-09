@@ -74,6 +74,12 @@ type Options struct {
 	// OnSound, if set, receives the monsters' MonSounds.txt sounds (attack,
 	// weapon, skill, hit, death, taunt, neutral, footstep) with their position.
 	OnSound func(SoundEvent)
+	// OnHeroHit, if set, is called when a monster's attack hit a hero (after the
+	// damage was applied): the hero's armor may lose durability.
+	OnHeroHit func(p *d2mapentity.Player)
+	// OnHeroStrike, if set, is called when a hero's swing hit a monster: the weapon
+	// may lose durability.
+	OnHeroStrike func(p *d2mapentity.Player)
 }
 
 // Counters tally what happened, for autotest summaries.

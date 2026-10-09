@@ -166,6 +166,10 @@ func (f *HeroStateFactory) importD2SItems(state *HeroState, data []byte) {
 
 	f.applyD2SEquipment(state, character.Items, tables)
 	f.applyD2SContainers(state, character.Items)
+
+	if state.Containers != nil {
+		importEquipped(state.Containers, data, character.Items, func(code string) bool { return f.asset.Records.Item.All[code] != nil })
+	}
 }
 
 // applyD2SContainers puts the inventory (page 1), cube (4), stash (5) and belt

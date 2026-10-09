@@ -62,6 +62,16 @@ type HeroContainers struct {
 	// belt cells). The equipment model has no belt slot yet, so an imported
 	// save keeps the code here; empty when unknown.
 	BeltCode string `json:"beltCode,omitempty"`
+
+	// Equipped is what the hero wears (Page PageEquipped, X the .d2s body
+	// location: weapon set II in 11 and 12). EquippedSet says the list is
+	// authoritative even when empty; without it (older files, new heroes) the
+	// stat list falls back on the imported save or the base equipment.
+	Equipped    []StoredItem `json:"equipped,omitempty"`
+	EquippedSet bool         `json:"equippedSet,omitempty"`
+	// ActiveArms is the weapon set in the hands: 0 set I (locations 4/5), 1 set
+	// II (11/12). It is the .d2s header field at 0x10.
+	ActiveArms int `json:"activeArms,omitempty"`
 }
 
 // d2sSlotBelt is the .d2s equipment slot of the belt.
@@ -99,20 +109,44 @@ func d2sQuality(q uint8) int {
 // (equipped, cursor, socketed), is an ear, or known(code) says OpenDiablo2 has
 // no record for its base item.
 func StoredFromD2S(it *d2s.Item, known func(code string) bool) (s StoredItem, skip string) {
+	return storedFromD2S(it, -1, known)
+}
+
+// storedFromD2S is StoredFromD2S; a page >= 0 forces the page (worn items,
+// whose location is not a container).
+func storedFromD2S(it *d2s.Item, forcePage int, known func(code string) bool) (s StoredItem, skip string) {
 	var page int
 
+	switch {
+	case forcePage >= 0:
+		page = forcePage
+	default:
+		page, skip = containerPage(it)
+		if skip != "" {
+			return s, skip
+		}
+	}
+
+	return finishStored(it, page, known)
+}
+
+func containerPage(it *d2s.Item) (page int, skip string) {
 	switch it.Location {
 	case d2s.LocationStored:
 		page = int(it.Page)
 		if page != PageInventory && page != PageCube && page != PageStash {
-			return s, "unknown page"
+			return 0, "unknown page"
 		}
 	case d2s.LocationBelt:
 		page = PageBelt
 	default:
-		return s, "not in a container"
+		return 0, "not in a container"
 	}
 
+	return page, ""
+}
+
+func finishStored(it *d2s.Item, page int, known func(code string) bool) (s StoredItem, skip string) {
 	if it.Ear {
 		return s, "player ear"
 	}

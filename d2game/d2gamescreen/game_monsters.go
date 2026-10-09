@@ -52,6 +52,17 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 		// the scenario spawns monsters next to a hero who may still be in town
 		IgnoreTown: os.Getenv("OD2_AUTOMONSTER") != "",
 		OnSound:    v.onMonsterSound,
+		// worn items lose durability when the hero is hit or hits (d2equip)
+		OnHeroHit: func(p *d2mapentity.Player) {
+			if v.gameControls != nil && p == v.localPlayer {
+				v.gameControls.OnHeroHit()
+			}
+		},
+		OnHeroStrike: func(p *d2mapentity.Player) {
+			if v.gameControls != nil && p == v.localPlayer {
+				v.gameControls.OnHeroStrike()
+			}
+		},
 	}
 
 	if diff, err := strconv.Atoi(os.Getenv("OD2_AUTOMONSTER_DIFF")); err == nil && diff >= 0 && diff <= 2 {

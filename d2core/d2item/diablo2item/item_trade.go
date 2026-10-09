@@ -63,6 +63,12 @@ func (i *Item) Durability() (current, maximum int) {
 	return i.attributes.currentDurability, i.attributes.durability.max
 }
 
+// IsIndestructible reports the "indestructible" property (stat 152): the item
+// never loses durability.
+func (i *Item) IsIndestructible() bool {
+	return i.attributes != nil && i.attributes.indestructable
+}
+
 // SetDurability sets the current durability.
 func (i *Item) SetDurability(n int) {
 	i.attributes.currentDurability = n

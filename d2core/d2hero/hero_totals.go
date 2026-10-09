@@ -33,11 +33,21 @@ func (f *HeroStateFactory) loadStatBases() d2statlist.Bases {
 // equippedStatItems returns the equipment of the hero as stat list items:
 // the exact items of the imported save when there is one, the base items of
 // the equipment otherwise.
-func (f *HeroStateFactory) equippedStatItems(state *HeroState) []d2statlist.Item {
+func (f *HeroStateFactory) equippedStatItems(state *HeroState, hero d2statlist.Hero) []d2statlist.Item {
 	// the equipment of a hero who died is on the corpse: it counts for nothing
 	// until the corpse is recovered
 	if state.Death != nil && state.Death.Corpse != nil {
 		return []d2statlist.Item{}
+	}
+
+	// the worn items the game keeps (HeroContainers.Equipped) win: they follow every change
+	// of the body, and the activation pass switches off what the hero cannot use
+	if c := state.Containers; c != nil && c.EquippedSet {
+		items, status := f.ResolveEquipped(c, hero, f.charmStatItems(state))
+		if len(status) > 0 || items != nil {
+			f.lastEquipStatus = status
+			return items
+		}
 	}
 
 	if state.statEquipped != nil {
@@ -170,12 +180,14 @@ func (f *HeroStateFactory) RecalcStats(state *HeroState) {
 	life, mana, stam = life+st.LifeBonus, mana+st.ManaBonus, stam+st.StaminaBonus
 	st.BaseMaxHealth, st.BaseMaxMana, st.BaseMaxStamina = life, mana, stam
 
-	items := append(append([]d2statlist.Item{}, f.equippedStatItems(state)...), f.charmStatItems(state)...)
-
-	tot := d2statlist.Compute(d2statlist.Hero{
+	hero := d2statlist.Hero{
 		Class: class, Level: st.Level, Str: st.Strength, Dex: st.Dexterity, Vit: st.Vitality, Ene: st.Energy,
 		BaseLife: life, BaseMana: mana, BaseStam: stam, Difficulty: int(state.Difficulty),
-	}, items, nil)
+	}
+	items := append(append([]d2statlist.Item{}, f.equippedStatItems(state, hero)...), f.charmStatItems(state)...)
+
+	tot := d2statlist.Compute(hero, items, nil)
+	st.Difficulty = int(state.Difficulty)
 
 	st.Totals = &tot
 	st.MaxHealth, st.MaxMana, st.MaxStamina = tot.MaxLife, tot.MaxMana, tot.MaxStamina

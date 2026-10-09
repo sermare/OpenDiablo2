@@ -15,6 +15,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2equip"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
@@ -46,6 +47,12 @@ type HeroStateFactory struct {
 	*d2inventory.InventoryItemFactory
 	d2sTables *d2s.ItemTables  // loaded on first use by SaveD2S
 	statBases d2statlist.Bases // armor/weapon base data for the stat list, loaded on first use
+
+	// lastEquipStatus is the verdict of the last activation pass (for logs).
+	lastEquipStatus []EquipStatus
+	equipTried      bool // EquipRules was attempted
+	equipRules      d2equip.Rules
+	equipBases      d2equip.Bases
 }
 
 // CreateHeroState creates a HeroState instance and returns a pointer to it
