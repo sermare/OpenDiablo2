@@ -30,6 +30,9 @@ type AddPlayerPacket struct {
 	// a hardcore character.
 	Death    *d2hero.DeathState `json:"death,omitempty"`
 	Hardcore bool               `json:"hardcore,omitempty"`
+	// Progress and Difficulty carry the waypoints (and quests) of the hero.
+	Progress   *d2hero.HeroProgress  `json:"progress,omitempty"`
+	Difficulty d2enum.DifficultyType `json:"difficulty,omitempty"`
 }
 
 // CreateAddPlayerPacket returns a NetPacket which declares an
@@ -42,6 +45,7 @@ func CreateAddPlayerPacket(
 	skills map[int]*d2hero.HeroSkill,
 	equipment d2inventory.CharacterEquipment,
 	leftSkill, rightSkill, gold int,
+	progress *d2hero.HeroProgress, difficulty d2enum.DifficultyType,
 	options ...AddPlayerOption) (NetPacket, error) {
 	addPlayerPacket := AddPlayerPacket{
 		ID:         id,
@@ -55,6 +59,8 @@ func CreateAddPlayerPacket(
 		LeftSkill:  leftSkill,
 		RightSkill: rightSkill,
 		Gold:       gold,
+		Progress:   progress,
+		Difficulty: difficulty,
 	}
 
 	for _, option := range options {

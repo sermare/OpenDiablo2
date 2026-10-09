@@ -91,7 +91,27 @@ type StatsPanelLabels struct {
 	MaxMana      *d2ui.Label
 	MaxStamina   *d2ui.Label
 	Stamina      *d2ui.Label
+
+	// derived from the equipment (d2statlist totals)
+	Defense      *d2ui.Label
+	AttackRating *d2ui.Label
+	Damage       *d2ui.Label
+	Resist       [4]*d2ui.Label // fire, cold, lightning, poison
 }
+
+// Positions of the derived value labels. UNVERIFIED against the original
+// layout (no screenshot comparison): the resist numbers sit right of their
+// captions, defense right of its caption, attack rating and damage below the
+// strength and dexterity values.
+const (
+	labelDefenseValueX, labelDefenseValueY = 345, 263
+	labelDamageValueX, labelDamageValueY   = 140, 177
+	labelARValueX, labelARValueY           = 140, 237
+	labelResValueX                         = 375
+)
+
+// resistValueY are the y positions of the fire, cold, lightning and poison values.
+var resistValueY = [4]int{400, 448, 424, 472}
 
 // NewHeroStatsPanel creates a new hero status panel
 func NewHeroStatsPanel(asset *d2asset.AssetManager,
@@ -240,6 +260,11 @@ func (s *HeroStatsPanel) loadNewStatPoints() {
 		button.OnActivated(func() {
 			currentValue.cb()
 			s.heroState.StatsPoints--
+
+			if s.heroState.Recalc != nil {
+				s.heroState.Recalc() // life, mana, defense, attack rating follow the new attribute
+			}
+
 			s.remainingPoints.SetText(strconv.Itoa(s.heroState.StatsPoints))
 			s.setStatValues()
 			s.setLayout()
@@ -415,6 +440,37 @@ func (s *HeroStatsPanel) initStatValueLabels() {
 	for _, cfg := range valueLabelConfigs {
 		*cfg.assignTo = s.createStatValueLabel(cfg.value, cfg.x, cfg.y)
 	}
+
+	small := func(x, y int) *d2ui.Label {
+		return s.createTextLabel(PanelText{X: x, Y: y, Text: "0", Font: d2resource.Font6, AlignCenter: true})
+	}
+
+	s.labels.Defense = s.createStatValueLabel(0, labelDefenseValueX, labelDefenseValueY)
+	s.labels.Damage = small(labelDamageValueX, labelDamageValueY)
+	s.labels.AttackRating = small(labelARValueX, labelARValueY)
+
+	for i := range s.labels.Resist {
+		s.labels.Resist[i] = small(labelResValueX, resistValueY[i])
+	}
+
+	s.setDerivedValues()
+}
+
+// setDerivedValues shows the defense, attack rating, damage and resistances
+// computed from the equipment.
+func (s *HeroStatsPanel) setDerivedValues() {
+	t := s.heroState.Totals
+	if t == nil || s.labels.Defense == nil {
+		return
+	}
+
+	s.labels.Defense.SetText(strconv.Itoa(t.Defense))
+	s.labels.AttackRating.SetText("AR " + strconv.Itoa(t.AttackRating))
+	s.labels.Damage.SetText("Dmg " + strconv.Itoa(t.DamageMin) + "-" + strconv.Itoa(t.DamageMax))
+
+	for i, l := range s.labels.Resist {
+		l.SetText(strconv.Itoa(t.ResistShown[i]))
+	}
 }
 
 func (s *HeroStatsPanel) setStatValues() {
@@ -435,6 +491,8 @@ func (s *HeroStatsPanel) setStatValues() {
 
 	s.labels.MaxMana.SetText(strconv.Itoa(s.heroState.MaxMana))
 	s.labels.Mana.SetText(strconv.Itoa(s.heroState.Mana))
+
+	s.setDerivedValues()
 }
 
 func (s *HeroStatsPanel) createStatValueLabel(stat, x, y int) *d2ui.Label {

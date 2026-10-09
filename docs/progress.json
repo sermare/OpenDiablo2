@@ -5,7 +5,7 @@
   "bars": [
     {
       "label": "Game.exe functions named in Ghidra",
-      "done": 2325,
+      "done": 2417,
       "total": 10907,
       "note": "reverse engineering of the original 1.14b binary",
       "color": "#7c5cff"
@@ -26,9 +26,9 @@
     },
     {
       "label": "Level generator proven equal to the real game",
-      "done": 2600,
-      "total": 2650,
-      "note": "world layout 50 seeds + 17 Act 1 maze levels x 50 seeds x 3 difficulties = 2,550 records identical; Act 1 outdoors not yet",
+      "done": 4830,
+      "total": 5030,
+      "note": "all Act 1-3 maze levels (38 incl. barracks) match 60/60 each + 50 world layouts; Act 1 outdoors and Acts 4-5 not yet",
       "color": "#22c1c3"
     },
     {
@@ -40,16 +40,16 @@
     },
     {
       "label": "NPC interaction features",
-      "done": 6,
-      "total": 7,
-      "note": "click-walk · greeting · menu · return greeting · vendor trade · quest speech lookup ✓ | gamble, hire UI ✗",
+      "done": 7,
+      "total": 8,
+      "note": "click-walk · greeting · menu · return greeting · vendors · quest speech lookup · gamble · identify ✓ | mercenary hire UI, quest dialogue ✗",
       "color": "#ef5da8"
     },
     {
       "label": "Roadmap deliverables",
-      "done": 17,
-      "total": 22,
-      "note": "saves r/w+back · gear · NPC · RNG · combat · loot · trade · packets · keys · sound · items · monsters+packs · skills · real dungeons · stash/belt · lighting ✓ | outdoors · mercs · quests · missiles net · render port",
+      "done": 19,
+      "total": 24,
+      "note": "saves r/w+back · gear · NPC+vendors+gamble+identify · RNG · combat · loot · packets · keys · sound · monsters+packs · skills · real dungeons · stash/belt · lighting · waypoints ✓ | outdoors · mercs · quests · classes",
       "color": "#ff7a45"
     }
   ]

@@ -15,6 +15,7 @@ type CharStatRecord struct {
 	InitVit     int // initial vitality
 	InitEne     int // initial energy
 	InitStamina int // initial stamina
+	HpAdd       int // charstats "hpadd": the starting life is HpAdd + InitVit (checked for all classes)
 
 	ManaRegen   int // number of seconds to regen mana completely
 	ToHitFactor int // added to basic AR of character class

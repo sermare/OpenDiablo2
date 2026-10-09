@@ -181,3 +181,7 @@ func RespawnLife(maxLife int) int {
 func (h *HeroState) IsDeadHardcore() bool {
 	return h != nil && h.Hardcore && h.Death != nil && h.Death.Died
 }
+
+// EquipmentChanged drops the cached equipment stat items; call it after the
+// equipment moved to or came back from a corpse, before RecalcStats.
+func (h *HeroState) EquipmentChanged() { h.statEquipped = nil }

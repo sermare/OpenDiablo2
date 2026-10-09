@@ -2,6 +2,7 @@ package d2hero
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -9,11 +10,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2config"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 )
 
@@ -41,7 +44,8 @@ func NewHeroStateFactory(asset *d2asset.AssetManager) (*HeroStateFactory, error)
 type HeroStateFactory struct {
 	asset *d2asset.AssetManager
 	*d2inventory.InventoryItemFactory
-	d2sTables *d2s.ItemTables // loaded on first use by SaveD2S
+	d2sTables *d2s.ItemTables  // loaded on first use by SaveD2S
+	statBases d2statlist.Bases // armor/weapon base data for the stat list, loaded on first use
 }
 
 // CreateHeroState creates a HeroState instance and returns a pointer to it
@@ -114,8 +118,8 @@ func (f *HeroStateFactory) GetAllHeroStates() ([]*HeroState, error) {
 // in the directory named by OD2_D2S_DIR that are not already in the list. The
 // originals are only read; each import is saved as a new .od2 file.
 func (f *HeroStateFactory) importD2SCharacters(existing []*HeroState) []*HeroState {
-	dir := os.Getenv("OD2_D2S_DIR")
-	if dir == "" {
+	dirs := ImportDirs()
+	if len(dirs) == 0 {
 		return nil
 	}
 
@@ -124,6 +128,16 @@ func (f *HeroStateFactory) importD2SCharacters(existing []*HeroState) []*HeroSta
 		known[strings.ToLower(h.HeroName)] = true
 	}
 
+	imported := make([]*HeroState, 0)
+
+	for _, dir := range dirs {
+		imported = append(imported, f.importD2SDir(dir, known)...)
+	}
+
+	return imported
+}
+
+func (f *HeroStateFactory) importD2SDir(dir string, known map[string]bool) []*HeroState {
 	files, _ := ioutil.ReadDir(dir)
 	imported := make([]*HeroState, 0)
 
@@ -268,16 +282,20 @@ func (f *HeroStateFactory) LoadHeroState(filePath string) *HeroState {
 		hs.SkillPoints = hs.Shallow.SkillPoints
 	}
 
+	if result.Stats != nil && f.asset.Records.Character.Stats[result.HeroType] != nil {
+		f.RecalcStats(result)
+	}
+
 	return result
 }
 
 func (f *HeroStateFactory) getGameBaseSavePath() (string, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
+	configDir := d2config.ConfigDir()
+	if configDir == "" {
+		return "", errors.New("no user config directory")
 	}
 
-	return filepath.Join(configDir, "OpenDiablo2", "Saves"), nil
+	return filepath.Join(configDir, "Saves"), nil
 }
 
 func (f *HeroStateFactory) getFirstFreeFileName() string {

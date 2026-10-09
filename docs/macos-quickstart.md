@@ -57,6 +57,8 @@ from a non-GUI shell fails with a Cocoa display error):
 | `OD2_AUTONEWCHAR=Druid[,hardcore][,classic][,ladder]` | Create a new character through the hero creation path, write its real `.d2s` (335 byte header, status new) to `OD2_D2S_WRITEBACK` without replacing existing files, log `NEWCHAR parse:` and, with `OD2_AUTONEWCHAR_REF=<real new character .d2s>`, `NEWCHAR diff` and `NEWCHAR oracle byte_identical=`. The hero list entry it makes is removed again. |
 | `OD2_AUTOTEST_MUTE=1` | Do not play sound during the autotest. |
 | `OD2_AUTOTRADE=Akara,Charsi` | Open each Act 1 vendor's trade window, log the stock with computed buy prices, run one scripted buy and sell (and a repair for Charsi) with the gold before and after, then restore the gold. `OD2_AUTOTRADE_SEED=<n>` fixes the stock, `OD2_AUTOTRADE_LEVEL=<n>` generates it for that hero level (a high level only gets magic items). |
+| `OD2_AUTOGAMBLE=Gheed` | Open the vendor's gamble window and log `AUTOGAMBLE` lines: the 14 stock items (slot 0 ring, slot 1 amulet; unidentified name, quality, item level, gamble price), a scripted buy that reveals the item (gold before/after), a sell back, and a restock check (clock moved past four minutes). Uses `OD2_AUTOTRADE_SEED` / `OD2_AUTOTRADE_LEVEL`. |
+| `OD2_AUTOIDENTIFY=1` | Open Deckard Cain's identify window (directly if he is not in the camp) and log `AUTOIDENTIFY` lines: a few inventory items are marked unidentified, then identified one by one (100 gold each), with a Tome and a Scroll of Identify, and all at once, with the gold before/after. |
 | `OD2_AUTOPANEL=stash,cube,belt,inventory` | Open each container panel and log its items with grid positions (`AUTOPANEL panel=stash item #n code= x= y= w= h=`), then check that every saved item rebuilds identically from its spec. Compare with the save's own parse (nokkasorc.json: alt_position_id 1 inventory, 4 cube, 5 stash). `OD2_AUTOPANEL_HOLD=<s>` keeps it open. Scripts can use `panel:stash`, `panel:cube`, `panel:belt` too. |
 | `OD2_AUTOSTASH=1` | Walk to the town stash object (objects.txt id 267) as a click does and log whether the stash opened. |
 | `OD2_AUTOBELT=1,2,3,4` | Drink the belt potion of each column (hotkeys 1 to 4) at 40% life and mana and log the restored amounts; nothing is saved. |
@@ -81,7 +83,13 @@ a semicolon-separated list of steps, run a few seconds after the game starts:
 | `panel:inventory\|character\|skills\|quest\|close` | Open a panel, or close all. |
 | `say:<command>` | Run an in-game console command. |
 | `expect:log=<substring>` | Fail the run unless the game log already contains it. |
+| `use:<object name or id>` | Walk to the nearest matching object (objects.txt name or id: `Waypoint`, `Door`, `Portal`, `119`) and operate it. Doors open/close and change collision, the waypoint opens its panel, portals change level. The next step waits until the walk or level change is over. |
+| `waypoint:<level id>` | Choose that level in the open waypoint panel (greyed entries fail the step). Logs `WAYPOINT travel` and `LEVEL CHANGE`. |
+| `expect:level=<id>` | Wait up to 4 s, then fail unless the hero is in that level; logs `AUTOSCRIPT level=<id> hero=(x,y)`. |
 | `exit` | Finish; with `OD2_AUTOEXIT=1` the process exits 0 on PASS, 1 on FAIL. |
+
+Console commands for these steps: `spawnportal <level>` (a portal object next to the hero), `setwaypoint <level> <0|1>`.
+Without `OD2_REALMAPS=1` only the Rogue Encampment can be loaded; other waypoints are listed greyed out. With it the Act 1 maze levels (for example Jail Level 1 = 29, Catacombs Level 2 = 35) load.
 
 Each step logs `AUTOSCRIPT step N: ...` and the end logs
 `AUTOSCRIPT RESULT PASS` or `AUTOSCRIPT RESULT FAIL`. Example:
