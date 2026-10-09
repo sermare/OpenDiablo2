@@ -4,6 +4,14 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
 )
 
+// Stat ids skills use (ItemStatCost.txt, verified by the D2_TABLES oracle test).
+const (
+	StatSkillStaminaPct     = 162 // skill_staminapercent, op 1 on maxstamina
+	StatSkillPassiveStamPct = 163 // skill_passive_staminapercent, op 1 on maxstamina
+	StatSkillArmorPct       = 171 // skill_armor_percent, defense percent from skills
+	StatArmorOverridePct    = 182 // armor_override_percent, last term of GetDefense (0x6225a0)
+)
+
 // Class is the part of charstats.txt the derivations use. The "per" values
 // are in quarters (8 means 2 per point) exactly as in the table.
 type Class struct {
@@ -143,6 +151,20 @@ func itemSpecific(id int) bool {
 type Env struct {
 	Gems GemTable
 	Sets SetTable
+
+	// Skill is what the hero's skills put on its stat list: passive skills
+	// (passivestat1..5), the active aura and timed buffs (aurastat1..6), in
+	// ItemStatCost ids with the calc already evaluated. It is merged into the
+	// same list as the item stats (all stats are summed per (id, parameter);
+	// the percent stats 76/77/162/163/171 are summed first and applied once).
+	//
+	// Verified: aurastat1..6 are stored into the buff's statlist in column
+	// order, zero values skipped (0x5c4c60), and the unit's stat is the sum of
+	// its lists; percent stats are read as one summed stat (GetDefense adds 171
+	// and 16 before the multiply, 0x6225a0). The passive path of true passives
+	// (Iron Skin, Resist Fire...) is NOT located in the exe: 0x5c4d70 is only
+	// called from the buff casts, so callers must not pass passives (U).
+	Skill *List
 }
 
 // Compute aggregates the active items onto the hero and derives the totals.
@@ -197,6 +219,9 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 		}
 	}
 
+	// skill sourced stats (passives, aura, buffs) join the item stats
+	list.Merge(env.Skill)
+
 	// per-level stats fold into their targets
 	for _, pl := range perLevelTable {
 		if v := list.Get(pl.stat); v != 0 {
@@ -219,9 +244,15 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 
 	life = life * (100 + list.Get(StatMaxHPPct)) / 100
 	mana = mana * (100 + list.Get(StatMaxManaPct)) / 100
+	// skill_staminapercent (162, Sanctuary-like, Battle Orders) and
+	// skill_passive_staminapercent (163, Vigor): ItemStatCost op 1 on maxstamina.
+	stam = stam * (100 + list.Get(StatSkillStaminaPct) + list.Get(StatSkillPassiveStamPct)) / 100
 	t.MaxLife, t.MaxMana, t.MaxStamina = int(life>>8), int(mana>>8), int(stam>>8)
 
-	t.Defense = d2combat.Defense(armor, t.Dex, 0)
+	// GetDefense (0x6225a0, verified): the percent is stat 171
+	// (skill_armor_percent: Iron Skin, Frozen Armor, Shout, Defiance...) plus
+	// stat 16, which here is already inside the item defense.
+	t.Defense = d2combat.DefenseOverride(armor, t.Dex, int(list.Get(StatSkillArmorPct)), int(list.Get(StatArmorOverridePct)))
 
 	toHit := int(list.Get(StatToHit))
 	t.AttackRating = d2combat.PlayerAttackRating(toHit, t.Dex, h.Class.ToHitFactor)

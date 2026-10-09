@@ -51,6 +51,11 @@ type HeroStatsState struct {
 	// damage, resists, block and so on. Nil until the first recalculation. It
 	// travels to the client with the hero (its stat list does not).
 	Totals *d2statlist.Totals `json:"totals,omitempty"`
+	// SkillStats, when set, returns the stats the hero's active buffs and
+	// auras put on it (ItemStatCost name -> summed value). RecalcStats merges
+	// them into the item stat list. Nil (the default) means no skill stats and
+	// leaves every total exactly as the items give it.
+	SkillStats func() map[string]int `json:"-"`
 	// Recalc recomputes Totals and the maxima after strength/dexterity/
 	// vitality/energy or equipment changed. Set by the hero state factory.
 	Recalc func() `json:"-"`

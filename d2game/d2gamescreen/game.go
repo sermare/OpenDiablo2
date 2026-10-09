@@ -163,6 +163,7 @@ type Game struct {
 	bossTest             *bossAutoTest
 	merc                 mercGame
 	skills               *d2skills.Engine
+	skillStatSig         string // last sum of the hero's skill stats, to know when to recalculate
 	castTestState        *castTest
 	attackTarget         *d2mapentity.Monster
 	attackRepathAcc      float64

@@ -11,8 +11,10 @@ import (
 // cold = 11, stunned = 21, ...), which matches the ids the exe uses (0x2f
 // sanctuary, 0x73 burning, 0x36 uninterruptable, 0x6d...).
 type Def struct {
-	ID    int
-	Name  string
+	ID   int
+	Name string
+	// Group: verified, the column is read by Set.ClearGroup's exe twin
+	// 0x56a480 (buff casts) and the monster AI check 0x5ea850.
 	Group int
 	// Curse: a new curse replaces the old one (U, see Defs.exclusive).
 	Curse bool
@@ -75,7 +77,8 @@ func ParseDefs(data []byte) (defs Defs, err error) {
 }
 
 // exclusive reports whether applying state a must end the active state b
-// (same nonzero group, or both are curses). Shrine states carry the curse
+// (both are curses; the group column is handled by Set.ClearGroup, which the
+// cast code calls, not by the timed-state function). Shrine states carry the curse
 // flag in states.txt but are not skill curses; they are left alone (U).
 func (d Defs) exclusive(a, b string) bool {
 	da, oka := d[a]
@@ -83,10 +86,6 @@ func (d Defs) exclusive(a, b string) bool {
 
 	if !oka || !okb || a == b {
 		return false
-	}
-
-	if da.Group != 0 && da.Group == db.Group {
-		return true
 	}
 
 	return da.Curse && db.Curse && !isShrine(a) && !isShrine(b)

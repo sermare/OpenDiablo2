@@ -76,11 +76,9 @@ func (s *Set) Apply(frame int, in Instance) *Instance {
 //     statlist and creates the new one.
 //
 // Without a SkillID (stun, chill, auras, tests) a state of the same name is
-// simply replaced. With defs, active states of the same nonzero group also
-// end (U: the exe does not use the group column in 0x56c740; it reads it in
-// the monster AI check 0x5ea850 "has another state of this group"; the armor
-// exclusivity this models is unconfirmed), and shrine states are not
-// curses (U). The returned prev is the replaced or refreshed instance.
+// simply replaced. The States.txt group column is NOT read here (verified):
+// group exclusion is ClearGroup, called by the cast code. Shrine states are
+// not curses (U). The returned prev is the replaced or refreshed instance.
 func (s *Set) ApplyTimed(frame int, in Instance) (applied bool, prev *Instance) {
 	var old string
 
@@ -131,6 +129,35 @@ func (s *Set) ApplyTimed(frame int, in Instance) (applied bool, prev *Instance) 
 	return true, prev
 }
 
+// ClearGroup is FUN_0056a480 called with its flag set (verified, 0x56a480):
+// for a state whose States.txt group is nonzero it ends every active state of
+// that group, the state itself included (toggles the bit off and frees its
+// statlist); group 0 does nothing. Only the buff do-function SRVDO_
+// FrozenArmorState (0x5c7540, srvdofunc 18), BladeShield, Whirlwind, Wearwolf
+// and a few more call it, right before the timed statlist is created, so
+// Frozen / Shiver / Chilling / Bone Armor (group 1, with justhit) replace each
+// other and Burst of Speed (quickness) and Fade (group 2) do the same.
+// SKILL_CreateTimedStateStatList (0x56c740) itself never reads the column.
+// It reports whether any state was ended.
+func (s *Set) ClearGroup(frame int, name string) bool {
+	d, ok := s.defs[name]
+	if !ok || d.Group == 0 {
+		return false
+	}
+
+	ended := false
+
+	for n, x := range s.states {
+		if dx, ok := s.defs[n]; ok && dx.Group == d.Group && x.Active(frame) {
+			delete(s.states, n)
+
+			ended = true
+		}
+	}
+
+	return ended
+}
+
 // Get returns the active instance of a state or nil.
 func (s *Set) Get(frame int, name string) *Instance {
 	if in := s.states[name]; in.Active(frame) {
@@ -178,6 +205,30 @@ func (s *Set) Stat(frame int, stat string) int {
 	}
 
 	return total
+}
+
+// StatMods sums every stat over all active states (what Stat does for one
+// name). Zero totals are left out.
+func (s *Set) StatMods(frame int) map[string]int {
+	out := map[string]int{}
+
+	for _, in := range s.states {
+		if !in.Active(frame) {
+			continue
+		}
+
+		for _, m := range in.Mods {
+			out[m.Stat] += m.Value
+		}
+	}
+
+	for k, v := range out {
+		if v == 0 {
+			delete(out, k)
+		}
+	}
+
+	return out
 }
 
 // AddStream starts a poison or burn stream. Verified (0x578990 poison,

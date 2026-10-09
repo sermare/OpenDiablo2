@@ -116,6 +116,7 @@ func TestRealCurseReplacement(t *testing.T) {
 	for _, c := range cases {
 		s := withDefs(d)
 		s.Apply(0, Instance{Name: c.first, Until: 1000})
+		s.ClearGroup(10, c.second) // the buff cast does this first (0x56a480)
 		s.Apply(10, Instance{Name: c.second, Until: 1000})
 
 		if both := s.Active(11, c.first) && s.Active(11, c.second); both != c.wantBoth {
@@ -254,8 +255,12 @@ func TestParseDefsSynthetic(t *testing.T) {
 	s.Apply(0, Instance{Name: "a", Until: 50})
 	s.Apply(1, Instance{Name: "b", Until: 50})
 
-	if s.Active(2, "a") {
-		t.Error("same group: b must replace a")
+	if !s.Active(2, "a") {
+		t.Error("Apply must not use the group column (0x56c740)")
+	}
+
+	if s.ClearGroup(2, "b"); s.Active(2, "a") || s.Active(2, "b") {
+		t.Error("ClearGroup must end the whole group (0x56a480)")
 	}
 
 	// without defs the set behaves as before

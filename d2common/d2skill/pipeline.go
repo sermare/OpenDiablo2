@@ -459,6 +459,47 @@ func (p *Pipeline) passiveStats(u Unit, sk *Skill, lvl int) []StatMod {
 	return out
 }
 
+// TruePassiveMod is one stat of a true passive. Param is the passiveitype
+// (weapon type) the stat is keyed to, "" when it is not weapon-keyed.
+type TruePassiveMod struct {
+	Stat  string
+	Value int
+	Param string
+}
+
+// TruePassiveStats returns the stats the game applies for a skill the unit
+// has, the way the skill-change / join path does (0x648130, verified): the
+// gate is the passivestate column (> 0), NOT the passive flag, so Resist
+// Fire/Cold/Lightning and Blessed Aim count too. passivestat1..5 are
+// evaluated with passivecalc1..5 at the skill's total level; the stat list
+// is removed at level 0. passiveitype is not a gate: the exe stores it as the
+// stat's param (layer), so a mastery's stats exist always and the combat code
+// reads the entry for the equipped weapon type (the lookup side is unverified).
+// Unverified: slot values of 0 are kept here (the aura writer 0x5c4d70 skips
+// them); the removal when the unit has the aurastate (+0x80) is not modelled.
+func (p *Pipeline) TruePassiveStats(u Unit, skillID int) []TruePassiveMod {
+	sk := p.Skills.ByID(skillID)
+	lvl := u.SkillLevel(skillID)
+
+	if sk == nil || lvl < 1 || sk.PassiveState == "" {
+		return nil
+	}
+
+	env := p.env(sk, lvl, u)
+
+	var out []TruePassiveMod
+
+	for i := 1; i <= 5; i++ {
+		if sk.PassiveStat[i] == "" {
+			break // the exe stops at the first invalid stat id
+		}
+
+		out = append(out, TruePassiveMod{Stat: sk.PassiveStat[i], Value: env.eval(sk.PassiveCalc[i]), Param: sk.PassiveIType})
+	}
+
+	return out
+}
+
 type castOpts struct {
 	angle    float64
 	velocity int
