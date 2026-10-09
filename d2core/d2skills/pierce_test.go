@@ -24,8 +24,8 @@ func TestPierceOf(t *testing.T) {
 		wantHas  bool
 		wantResp int // resist of an immune (100) monster after pierce
 	}{
-		{p, "fire", 15, true, 85},
-		{p, "ltng", 20, true, 80},
+		{p, "fire", 10, true, 100}, // 306 (item) is not added: only 333..336 are read
+		{p, "ltng", 20, true, 100}, // monster immunity cannot be pierced
 		{p, "cold", 0, true, 100},
 		{p, "phys", 0, false, 100},
 		{p, "mag", 0, false, 100},
@@ -39,7 +39,7 @@ func TestPierceOf(t *testing.T) {
 			t.Errorf("%s: pierce %d,%v want %d,%v", tt.kind, got, has, tt.want, tt.wantHas)
 		}
 
-		res := d2combat.EffectiveResist(d2combat.ResistInput{Resist: 100, NoCap: true, Pierce: got, HasPierce: has})
+		res := d2combat.EffectiveResist(d2combat.ResistInput{Resist: 100, Ignore: true, Pierce: got, HasPierce: has})
 		if res != tt.wantResp {
 			t.Errorf("%s: immune monster resist %d want %d", tt.kind, res, tt.wantResp)
 		}

@@ -62,6 +62,10 @@ func (f *ItemFactory) DropLoot(tcName string, opts DropOptions, goldFindPercent 
 		}
 
 		if item := f.itemFromDrop(t, rng, d); item != nil {
+			if opts.RollExtras {
+				f.rollExtras(t, item, opts.Difficulty)
+			}
+
 			loot.Entries = append(loot.Entries, LootEntry{Item: item})
 		}
 	}

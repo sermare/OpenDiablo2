@@ -24,7 +24,7 @@ func (g *GameControls) handleContainerClick(mx, my int, ctrl bool) bool {
 
 	if g.inventory.HandleClick(mx, my, ctrl) {
 		switch g.inventory.lastClick {
-		case ClickPlace, ClickSwap, ClickAuto:
+		case ClickPlace, ClickSwap, ClickAuto, ClickMerge:
 			g.saveHero()
 		}
 

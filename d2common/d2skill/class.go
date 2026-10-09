@@ -257,6 +257,12 @@ func rollRange(r d2combat.Roller, lo, hi int32) int32 {
 	return lo + int32(r.Roll(hi-lo))
 }
 
+// AROperandAdjuster is implemented by a Unit that applies the attack rating
+// operands of 0x57b8b0 (stats 0x73, 0x74, 0x7b, 0x7c) before the to-hit roll.
+type AROperandAdjuster interface {
+	AdjustAROperands(t d2missile.Target, ar, def int) (newAR, newDef int)
+}
+
 // strike resolves one melee strike of a skill against a target (the shared
 // core of SRVDO_Attack / SRVDO_MeleeSkillResolveHit, skills-2.md 4.1, 4.2,
 // 4.10, 4.14): to-hit roll, weapon damage plus percent, SrcDam scaling,
@@ -268,8 +274,13 @@ func (p *Pipeline) strike(u Unit, sk *Skill, lvl int, t d2missile.Target, env *E
 	if sk.Kick || o.autoHit {
 		mr.Hit, mr.Chance = true, 100
 	} else {
+		ar, def := u.AttackRating(), t.Defense(false)
+		if adj, ok := u.(AROperandAdjuster); ok {
+			ar, def = adj.AdjustAROperands(t, ar, def) // 0x57b8b0, player attackers only
+		}
+
 		mr.Hit, mr.Chance, mr.Roll = d2combat.RollToHit(u.Roller(), d2combat.ToHitInput{
-			AttackRating: u.AttackRating(), Defense: t.Defense(false),
+			AttackRating: ar, Defense: def,
 			AttackerLevel: u.Level(), DefenderLevel: t.Level(), AttackRatingPct: o.toHitPct + u.Stat("item_tohit_percent"),
 		})
 	}

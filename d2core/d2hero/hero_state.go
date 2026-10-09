@@ -21,6 +21,11 @@ type HeroState struct {
 	LeftSkill  int                            `json:"leftSkill"`
 	RightSkill int                            `json:"rightSkill"`
 	Gold       int                            `json:"Gold"`
+	// StashGold is the gold in the stash (.d2s stat 0x0f), capped at
+	// d2inventory.StashGoldLimit on load. nil for heroes whose stash gold is
+	// unknown (older hero files, heroes made in this engine): the exporter then
+	// keeps the value stored in D2SBase.
+	StashGold *int `json:"stashGold,omitempty"`
 	// SkillBar holds the 16 skill hotkeys and the swap-set skills (with the
 	// active left/right skill, which LeftSkill and RightSkill mirror); nil for
 	// heroes that never had any (older hero files omit it).

@@ -9,6 +9,13 @@ func (g *Game) grantedOrPending(q *Quest) bool {
 	return g.get(q, FlagRewardGranted) || g.get(q, FlagRewardPending)
 }
 
+// rewardOwed reports a saved "reward pending" that was not claimed yet. Loading a record copies bit 1 to bit
+// 15 (completed before, BIN QUESTREC_LoadFromBuffer), which makes the node inert for the session; the owed
+// reward must still be claimable after a death or a reload, so the claim path ignores the inert mark.
+func (g *Game) rewardOwed(q *Quest) bool {
+	return g.get(q, FlagRewardPending) && !g.get(q, FlagRewardGranted)
+}
+
 // updateStateFlags mirrors the quest state into the record bits
 // (ACT1Qn_UnitIterate_UpdateQuestStateFlags): state 2 -> STARTED, state 3 ->
 // LEAVETOWN when the last log page is 1, else ENTERAREA.

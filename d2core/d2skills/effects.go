@@ -862,6 +862,7 @@ func (e *Engine) dot(m *d2mapentity.Monster, poison, burn int) {
 
 	if !m.Alive() {
 		e.Counters.Kills++
+		e.setOf(m.ID()).Death("monster")
 		e.flushDotFor(m)
 		e.emit("damage", "KILL skill=%q target=%s", "damage over time", m.Label())
 	}
@@ -892,20 +893,28 @@ func (e *Engine) flushDot() {
 
 // ---- hero defense ----
 
-// heroDefense is the Director's HeroDefense hook: dodge / avoid / evade
-// (d2combat.RollAvoid), Energy Shield, Bone Armor type pools, Thorns.
-func (e *Engine) heroDefense(p *d2mapentity.Player, attacker *d2mapentity.Monster, melee bool, dmg int) (int, string) {
+// heroAvoid is the Director's HeroAvoid hook: dodge / avoid / evade
+// (d2combat.RollAvoid), rolled before the damage roll.
+func (e *Engine) heroAvoid(p *d2mapentity.Player, _ *d2mapentity.Monster, melee bool) (bool, string) {
 	u := e.hero(p)
-	set := e.setOf(p.ID())
 	vel := p.GetVelocity()
 
-	if out := d2combat.RollAvoid(u.seed, d2combat.AvoidInput{
+	switch out := d2combat.RollAvoid(u.seed, d2combat.AvoidInput{
 		Moving:      !vel.IsZero(),
 		EvadeChance: u.Stat("passive_evade"), DodgeChance: u.Stat("passive_dodge"), AvoidChance: u.Stat("passive_avoid"),
 		IsMissile: !melee,
-	}); out == d2combat.AvoidAvoided || out == d2combat.AvoidDodged || out == d2combat.AvoidEvaded {
-		return 0, fmt.Sprintf(" avoided=%d", out)
+	}); out {
+	case d2combat.AvoidAvoided, d2combat.AvoidDodged, d2combat.AvoidEvaded:
+		return true, fmt.Sprintf(" avoided=%d", out)
 	}
+
+	return false, ""
+}
+
+// heroDefense is the Director's HeroDefense hook: Energy Shield, Bone Armor
+// type pools, Thorns (dodge / avoid / evade moved to heroAvoid).
+func (e *Engine) heroDefense(p *d2mapentity.Player, attacker *d2mapentity.Monster, melee bool, dmg int) (int, string) {
+	set := e.setOf(p.ID())
 
 	note := ""
 

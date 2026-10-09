@@ -21,6 +21,10 @@ const (
 	// KindEdge is a seamless border between two neighbouring outdoor levels:
 	// the player just walks across, no level change happens in the original.
 	KindEdge
+	// KindPortal is a level reached through a portal object or a script, not a
+	// warp tile or a border (cow portal, Tristram, Arcane Sanctuary, the portal
+	// out of the Summoner's lair, Anya's red portal). It has no LvlWarp id.
+	KindPortal
 )
 
 // Source records how well a link is known.
@@ -36,6 +40,9 @@ const (
 	// SourceDRLG links are the verified neighbours of the Act 1 world search
 	// (drlg2.md, cluster tables 0x6f1d00 and 0x6f1df0).
 	SourceDRLG
+	// SourceNotes links come from the quest/level notes and play rules, not
+	// from any table; portalLinks in gates.go states each one's confidence.
+	SourceNotes
 )
 
 // Link is a directed connection between two levels.
@@ -63,6 +70,22 @@ var drlgEdges = [][2]int{
 	// Hills, Far Oasis, Lost City, Valley of Snakes in a chain. The Canyon of the
 	// Magi (46) has no seamless neighbour.
 	{41, 40}, {42, 41}, {43, 42}, {44, 43}, {45, 44},
+	// Act 3 (drlg-act23-outdoor.md 4.1/4.2): the jungle grows north of the town,
+	// so Spider Forest (76) touches the town (75) and the second jungle level (77)
+	// always touches the first (the only level in the set when it is placed). The
+	// third (78) attaches to a random one of the two, so exactly one of {76,78} and
+	// {77,78} exists per seed; both are listed (EdgeExit still needs the rects to
+	// touch). Kurast (79..83) is one centred column stacked above 78.
+	{75, 76}, {76, 77}, {76, 78}, {77, 78},
+	{78, 79}, {79, 80}, {80, 81}, {81, 82}, {82, 83},
+	// Act 4 (drlg-act45-outdoor.md 2): pass 3 registers {level, ref} for the
+	// Outer Steppes (104, east of the Fortress), 105 and 106 (pinwheel placers
+	// next to their reference). 108 is joined to 107 by a Levels.txt warp (-1).
+	{104, 103}, {105, 104}, {106, 105},
+	// Act 5 (drlg-act45-outdoor.md 2): DRLG_LinkAdjacentLevelRange always registers
+	// Harrogath-Bloody Foothills, Foothills-Frigid Highlands and Highlands-Arreat
+	// Plateau; Frozen Tundra (117) has no outdoor neighbour.
+	{109, 110}, {110, 111}, {111, 112},
 }
 
 var allLinks []Link
@@ -70,6 +93,10 @@ var allLinks []Link
 func init() {
 	for _, e := range levelsTxtLinks {
 		allLinks = append(allLinks, Link{From: e[0], To: e[1], Warp: e[2], Kind: KindTile, Source: SourceLevelsTxt})
+	}
+
+	for _, e := range portalLinks {
+		allLinks = append(allLinks, Link{From: e.From, To: e.To, Warp: -1, Kind: KindPortal, Source: SourceNotes})
 	}
 
 	for _, e := range drlgEdges {
@@ -282,8 +309,10 @@ var upWarps = map[int]bool{4: true, 8: true, 11: true, 13: true, 16: true, 17: t
 	// the Kings exits 45, maggot lair 48 (the "up" slots of Levels.txt rows 47..72)
 	21: true, 22: true, 25: true, 26: true, 27: true, 30: true, 31: true, 45: true, 48: true}
 
-// isOutdoor reports a level that borders others on seamless edges.
-func isOutdoor(level int) bool { return len(EdgeNeighbors(level)) > 0 }
+// isOutdoor reports a level that borders others on seamless edges. Only Acts 1
+// and 2 count: the TileDestination rules below were observed there, and the Act
+// 3..5 borders were added to the table for the level graph audit.
+func isOutdoor(level int) bool { return ActOfLevel(level) <= 2 && len(EdgeNeighbors(level)) > 0 }
 
 // TileDestination is Destination for the special tile of a DS1 preset, by the
 // style the tile carries. UNVERIFIED (the exe resolves the tile through a table

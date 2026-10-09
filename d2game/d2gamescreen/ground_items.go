@@ -229,8 +229,18 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 // for gold, straight into the hero's purse.
 func (v *Game) pickUp(it *d2mapentity.Item) {
 	if it.IsGold() {
-		v.gameClient.MapEngine.RemoveEntity(it)
-		v.gameControls.AddGold(it.Gold)
+		before := v.localPlayer.Gold
+		pile := goldPileFuncs{
+			remove: func() { v.gameClient.MapEngine.RemoveEntity(it) },
+			leave:  func(amount int) { v.dropGoldOverflow(it, amount) },
+		}
+
+		if !pickUpGoldPile(v.gameControls, pile, it.Gold) {
+			// the purse is full: the pile stays where it is (the original leaves the overflow on the ground)
+			v.Infof("gold pickup refused: carrying the maximum (%d)", before)
+			return
+		}
+
 		v.playSoundAt("item_gold", it.GetPosition(), "pickup")
 		v.Infof("AUTOGROUND pickup gold amount=%d total=%d", it.Gold, v.localPlayer.Gold)
 
@@ -299,7 +309,7 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 			return d2ground.ChestTreasureClass(act, diff, lvl, v.itemFactory().TreasureClassLevel)
 		},
 		Drop: func(class string, lvl int, sd uint32) int {
-			loot, derr = v.itemFactory().DropLoot(class, diablo2item.DropOptions{Seed: sd, ILvl: lvl, Players: 1}, 0)
+			loot, derr = v.itemFactory().DropLoot(class, diablo2item.DropOptions{Seed: sd, ILvl: lvl, Players: 1, RollExtras: true, Difficulty: v.difficulty()}, 0)
 			if loot == nil {
 				return 0
 			}
@@ -314,7 +324,7 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 	} else {
 		// unknown object row: keep the original direct path
 		tc = d2ground.ChestTreasureClass(v.localPlayer.Act, diff, ilvl, v.itemFactory().TreasureClassLevel)
-		loot, derr = v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: seed, ILvl: ilvl, Players: 1}, 0)
+		loot, derr = v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: seed, ILvl: ilvl, Players: 1, RollExtras: true, Difficulty: v.difficulty()}, 0)
 	}
 
 	if derr != nil {
@@ -408,6 +418,22 @@ func (v *Game) spawnGroundItem(it *diablo2item.Item, c d2ground.Cell) (*d2mapent
 	v.playSoundAt(ent.DropSound, ent.GetPosition(), "drop")
 
 	return ent, nil
+}
+
+// dropGoldOverflow leaves the gold that did not fit in the purse as a new pile
+// where the picked-up one lay (0x558e40 -> 0x557fe0, VERIFIED).
+func (v *Game) dropGoldOverflow(from *d2mapentity.Item, amount int) {
+	x, y := from.GetPositionF()
+
+	ent, err := v.gameClient.MapEngine.NewGoldPile(amount, v.asset.TranslateString("gld"),
+		int(math.Round(x*subtilesInTile)), int(math.Round(y*subtilesInTile)))
+	if err != nil {
+		v.Warningf("could not leave the gold overflow on the ground: %v", err)
+		return
+	}
+
+	v.gameClient.MapEngine.AddEntity(ent)
+	v.Infof("gold pickup: %d did not fit, left on the ground", amount)
 }
 
 func (v *Game) spawnGoldPile(amount int, c d2ground.Cell) (*d2mapentity.Item, error) {

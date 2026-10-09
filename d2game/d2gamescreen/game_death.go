@@ -188,6 +188,12 @@ func (v *Game) heroDies() {
 	v.takeGold(p.Gold, x, y)
 	p.Die()
 
+	// the death routine ends the hero's states (except plrstaydeath) and his
+	// damage-over-time streams before any respawn (verified, 0x57d310)
+	if v.skills != nil {
+		v.skills.HeroDied(p.ID())
+	}
+
 	v.Infof("DEATH hero=%s hardcore=%v pos=(%d,%d) level=%d exp_lost=%d exp=%d gold_dropped=%d deaths=%d died_flag=%v corpse=%v",
 		p.Name(), p.Hardcore, x, y, level, out.ExpLost, p.Stats.Experience, out.GoldDropped, p.Death.Deaths,
 		p.Death.Died, describeEquipment(&equip))

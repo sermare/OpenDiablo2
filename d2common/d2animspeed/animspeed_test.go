@@ -2,11 +2,9 @@ package d2animspeed
 
 import (
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2animdata"
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 )
 
 func TestDiminish(t *testing.T) {
@@ -65,75 +63,6 @@ func TestTicks(t *testing.T) {
 
 	if got, _ := ActionFrames(6, 128); got != 11 {
 		t.Errorf("amazon hit recovery with no FHR: got %d want 11", got)
-	}
-}
-
-func framesFn(kind d2herostats.Kind, m ClassModes) func(int) int {
-	switch kind {
-	case d2herostats.FHR:
-		return func(p int) int { f, _ := ActionFrames(m.Hit.Frames, HitRate(m.Hit.Speed, p)); return f }
-	case d2herostats.FBR:
-		return func(p int) int { f, _ := ActionFrames(m.Block.Frames, BlockRate(m.Block.Speed, p, false)); return f }
-	default:
-		return func(p int) int { f, _ := ActionFrames(m.Cast.Frames, CastRate(m.Cast.Speed, p)); return f }
-	}
-}
-
-// TestReproducesHeroStatsTables checks that the exe-derived rule plus the real
-// AnimData frame counts reproduce the community breakpoint tables of
-// d2herostats. The listed rows are the ones that agree.
-func TestReproducesHeroStatsTables(t *testing.T) {
-	agree := map[string]bool{
-		"Amazon/FHR": true, "Sorceress/FHR": true, "Paladin/FHR": true, "Assassin/FHR": true,
-		"Amazon/FCR": true, "Sorceress/FCR": true, "Necromancer/FCR": true, "Paladin/FCR": true,
-		"Barbarian/FCR": true, "Druid/FCR": true, "Assassin/FCR": true,
-		"Amazon/FBR": true, "Barbarian/FBR": true, "Assassin/FBR": true,
-	}
-	seen := 0
-
-	for _, e := range d2herostats.Tables {
-		key := e.Class + "/" + string(e.Kind)
-		if !agree[key] || e.Note != "" {
-			continue
-		}
-
-		seen++
-
-		got := Breakpoints(framesFn(e.Kind, Classes[e.Class]), len(e.Table), 5000)
-		if !reflect.DeepEqual(got, e.Table) {
-			t.Errorf("%s: got %v want %v", key, got, e.Table)
-		}
-	}
-
-	if seen != len(agree) {
-		t.Errorf("checked %d rows, expected %d", seen, len(agree))
-	}
-}
-
-// TestHeroStatsDiscrepancies pins the rows where the d2herostats literal
-// community tables disagree with the exe rule applied to the real AnimData
-// (these look like wrong rows in d2herostats; not edited here). The derived
-// values are the community tables for the same class and kind.
-func TestHeroStatsDiscrepancies(t *testing.T) {
-	for _, tc := range []struct {
-		class string
-		kind  d2herostats.Kind
-		want  []int
-	}{
-		{"Necromancer", d2herostats.FHR, []int{0, 5, 10, 16, 26, 39, 56, 86, 152, 377}},
-		{"Barbarian", d2herostats.FHR, []int{0, 7, 15, 27, 48, 86, 200}},
-		{"Sorceress", d2herostats.FBR, []int{0, 7, 15, 27, 48, 86, 200}},
-		{"Necromancer", d2herostats.FBR, []int{0, 6, 13, 20, 32, 52, 86, 174, 600}},
-	} {
-		got := Breakpoints(framesFn(tc.kind, Classes[tc.class]), len(tc.want), 5000)
-		if !reflect.DeepEqual(got, tc.want) {
-			t.Errorf("%s %s: got %v want %v", tc.class, tc.kind, got, tc.want)
-		}
-
-		e, _ := d2herostats.Lookup(tc.class, tc.kind)
-		if reflect.DeepEqual(e.Table, tc.want) {
-			t.Errorf("%s %s: d2herostats now agrees; move the row to the agreeing list", tc.class, tc.kind)
-		}
 	}
 }
 

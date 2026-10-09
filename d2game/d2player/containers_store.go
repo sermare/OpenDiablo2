@@ -23,6 +23,7 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		Code: s.Code, Quality: s.Quality, ILvl: s.ILvl, Seed: s.Seed,
 		Unique: s.Unique, SetItem: s.SetItem, Set: s.Set, Prefixes: s.Prefixes, Suffixes: s.Suffixes,
 		Identified: s.Identified, Ethereal: s.Ethereal, Quantity: s.Quantity, Durability: -1,
+		Sockets: s.Sockets, MaxDurability: s.MaxDurability,
 	}
 
 	if s.Durability != nil {
@@ -40,6 +41,7 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		rolled := it.Spec()
 		rolled.Identified, rolled.Ethereal = spec.Identified, spec.Ethereal
 		rolled.Quantity, rolled.Durability = spec.Quantity, spec.Durability
+		rolled.Sockets, rolled.MaxDurability = spec.Sockets, spec.MaxDurability
 
 		spec = rolled
 	}
@@ -55,6 +57,7 @@ func storedFromItem(it *diablo2item.Item, page, x, y int, orig *d2s.Item) d2hero
 		Quality: spec.Quality, ILvl: spec.ILvl, Seed: spec.Seed,
 		Unique: spec.Unique, SetItem: spec.SetItem, Set: spec.Set, Prefixes: spec.Prefixes, Suffixes: spec.Suffixes,
 		Identified: spec.Identified, Ethereal: spec.Ethereal, Quantity: spec.Quantity,
+		Sockets: spec.Sockets, MaxDurability: spec.MaxDurability,
 		D2S: orig,
 	}
 
@@ -261,20 +264,28 @@ func (g *GameControls) SpecRoundTripMismatches() (checked, mismatched int) {
 	return checked, mismatched
 }
 
-// beltBoxes is the number of belt cells the equipped belt gives
-// (belts.txt numboxes via the armor.txt belt column); without a belt it is the
-// "default" row of belts.txt.
+// beltBoxes is the number of belt cells the equipped belt gives: the
+// Belts.txt numboxes of the belt type (armor.txt belt column, ITEM_GetBeltType
+// 0x6220b0), and the "default" row (4) without a belt (0x63d700, VERIFIED).
+// d2inventory.BeltBoxes holds the verified 7-row table; a belt type outside it
+// falls back to the default row.
 func (g *GameControls) beltBoxes() int {
 	rec := g.inventory.grid.equipmentSlots[d2enum.EquippedSlotBelt].item
 
 	item, ok := rec.(*diablo2item.Item)
 	if !ok {
-		return d2inventory.BeltDefaultBoxes
+		return beltBoxesFor(false, 0)
 	}
 
-	if b := g.asset.Records.Item.Belts.ByIndex(item.CommonRecord().BeltIndex); b != nil {
-		return b.NumBoxes
+	return beltBoxesFor(true, item.CommonRecord().BeltIndex)
+}
+
+// beltBoxesFor is the pure part of beltBoxes: a worn belt of an armor.txt belt
+// column value, or no belt at all.
+func beltBoxesFor(worn bool, beltType int) int {
+	if !worn {
+		beltType = d2inventory.BeltDefaultType
 	}
 
-	return d2inventory.BeltDefaultBoxes
+	return d2inventory.BeltBoxes(beltType)
 }

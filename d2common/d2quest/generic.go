@@ -336,7 +336,7 @@ func newSpecQuest(s *spec) *Quest {
 	}
 
 	q.on[EvMessageHeard] = func(g *Game, q *Quest, e *Event) {
-		if !q.NotIntro {
+		if !q.NotIntro && !g.rewardOwed(q) {
 			return
 		}
 
@@ -426,7 +426,7 @@ func newSpecQuest(s *spec) *Quest {
 	}
 
 	q.activate = func(g *Game, q *Quest, npc int) []Speech {
-		if !q.NotIntro {
+		if !q.NotIntro && !g.rewardOwed(q) {
 			return nil
 		}
 
@@ -461,7 +461,7 @@ func newSpecQuest(s *spec) *Quest {
 
 	q.active = func(g *Game, q *Quest, npc int) bool {
 		switch {
-		case !q.NotIntro || g.get(q, FlagRewardGranted):
+		case (!q.NotIntro && !g.rewardOwed(q)) || g.get(q, FlagRewardGranted):
 			return false
 		case g.get(q, FlagRewardPending):
 			return q.hasGiverLine(npc, s.rpTable(g))

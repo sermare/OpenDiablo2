@@ -33,6 +33,14 @@ type DropOptions struct {
 	Players      int
 	MagicFind    int
 	MaxDrops     int
+	// RollExtras makes the generator roll ethereal (5%) and sockets (33%,
+	// normal and superior items) for LoD items, VERIFIED in Game.exe (see
+	// d2drop/extras.go). Off by default, so existing drops are unchanged; the
+	// rolls use a generator derived from the item seed and never touch the
+	// drop stream.
+	RollExtras bool
+	// Difficulty (0 normal, 1 nightmare, 2 hell) caps the rolled sockets.
+	Difficulty int
 }
 
 // dropTables adapts the parsed records to the d2drop interfaces.
@@ -254,6 +262,10 @@ func (f *ItemFactory) DropItems(tcName string, opts DropOptions) ([]*Item, error
 
 	for i := range drops {
 		if item := f.itemFromDrop(t, rng, &drops[i]); item != nil {
+			if opts.RollExtras {
+				f.rollExtras(t, item, opts.Difficulty)
+			}
+
 			result = append(result, item)
 		}
 	}
@@ -298,6 +310,8 @@ func (f *ItemFactory) itemFromDrop(t *dropTables, rng *d2rand.Seed, drop *d2drop
 
 		quality = next
 	}
+
+	item.genQuality = quality
 
 	return item.init()
 }
