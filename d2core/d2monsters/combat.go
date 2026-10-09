@@ -366,6 +366,7 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 
 	if u.m.Vitals.HP > 0 {
 		d.emit("hit", "MONSTER hit name=%s id=%d dmg=%d hp=%d/%d", u.m.Label(), u.b.ID, dmg, u.m.Vitals.HP, u.m.Vitals.MaxHP)
+		d.playPlans(u, hitPlans(d.soundRecord(u)))
 
 		// hit recovery: the monster drops what it was doing (a blow that was
 		// winding up is lost), plays GH and thinks again when it ends. Aggro
@@ -393,6 +394,7 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 	u.m.Die()
 	d.fp.Remove(u.b.ID) // a dying monster stops blocking (UNVERIFIED); the corpse flag is set when DT ends
 	d.Counters.Deaths++
+	d.playPlans(u, deathPlans(d.soundRecord(u)))
 	d.leaderDied(u)
 
 	by := "unknown"

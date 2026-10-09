@@ -28,6 +28,10 @@ type AddPlayerPacket struct {
 	Containers *d2hero.HeroContainers `json:"containers,omitempty"`
 	// Merc is the hero's mercenary state, if any.
 	Merc *d2hero.MercState `json:"merc,omitempty"`
+	// Death is the hero's death record (nil if it never died); Hardcore marks
+	// a hardcore character.
+	Death    *d2hero.DeathState `json:"death,omitempty"`
+	Hardcore bool               `json:"hardcore,omitempty"`
 	// Progress and Difficulty carry the waypoints (and quests) of the hero.
 	Progress   *d2hero.HeroProgress  `json:"progress,omitempty"`
 	Difficulty d2enum.DifficultyType `json:"difficulty,omitempty"`
@@ -96,4 +100,12 @@ func WithContainers(c *d2hero.HeroContainers) AddPlayerOption {
 // WithMerc sends the hero's mercenary state along.
 func WithMerc(m *d2hero.MercState) AddPlayerOption {
 	return func(p *AddPlayerPacket) { p.Merc = m }
+}
+
+// WithDeath sends the hero's death record and hardcore flag along.
+func WithDeath(d *d2hero.DeathState, hardcore bool) AddPlayerOption {
+	return func(p *AddPlayerPacket) {
+		p.Death = d
+		p.Hardcore = hardcore
+	}
 }

@@ -2,7 +2,7 @@
 // Act 1 caves, crypts, jail, catacombs and barracks, Act 2 sewers, harem,
 // palace cellar, tombs, lairs and the Arcane Sanctuary, Act 3 spider caves,
 // dungeons, sewers and Durance of Hate (levels 84-101), from drlg2.md part A
-// and the drlg-act23 notes. Act 4 and Act 5 maze types return ErrUnsupported.
+// and the drlg-act23 notes. Act 4 and Act 5 maze types (maze_act45.go) are covered too.
 //
 // Provenance of each step is noted in comments. Everything here is compared
 // against the emulated real game in oracle_test.go.
@@ -55,16 +55,20 @@ const (
 	typeSewer3    = 25
 )
 
+// Act 4/5 level types are in maze_act45.go.
+
 // Def bases of the 16 door-mask variants per level type (verified for cave
 // and crypt against LvlPrest; the others by the same pattern).
 var typeBase = map[int]int{typeCave: 0x34, typeCrypt: 0x6c, typeBarracks: 0xa7, typeJail: 0xcd, typeCatacombs: 0x101,
-	typeSewer2: 0x12d, typeTomb: 0x19d, typeLair: 0x1e1, typeArcane: 0x1fd, typeMephisto: 0x2f1, typeDungeon: 0x298, typeSewer3: 0x2c0}
+	typeSewer2: 0x12d, typeTomb: 0x19d, typeLair: 0x1e1, typeArcane: 0x1fd, typeMephisto: 0x2f1, typeDungeon: 0x298, typeSewer3: 0x2c0,
+	typeLava: 0x344, typeIce: 0x3ea, typeBaal: 0x422}
 
 // fileBase lists the level types whose Defs in (base, base+16) get the
 // round-robin file choice (ChoosePresetFile 0x676640, verified from the
 // jump table: arcane, harem, basement and spider are not in it).
 var fileBase = map[int]int{typeCave: 0x34, typeCrypt: 0x6c, typeBarracks: 0xa7, typeJail: 0xcd, typeCatacombs: 0x101,
-	typeSewer2: 0x12d, typeTomb: 0x19d, typeLair: 0x1e1, typeMephisto: 0x2f1, typeDungeon: 0x298, typeSewer3: 0x2c0}
+	typeSewer2: 0x12d, typeTomb: 0x19d, typeLair: 0x1e1, typeMephisto: 0x2f1, typeDungeon: 0x298, typeSewer3: 0x2c0,
+	typeLava: 0x344, typeIce: 0x3ea, typeBaal: 0x422, typeHell: 0x41c}
 
 // themeBase lists the types ApplyMazeThemeRooms upgrades (0x676360).
 var themeBase = map[int]int{typeCave: 0x34, typeCrypt: 0x6c, typeBarracks: 0xa7, typeJail: 0xcd, typeCatacombs: 0x101,
@@ -102,6 +106,9 @@ type Params struct {
 	// 1 north, 2 east in the game's data+4), needed only for the barracks
 	// (level 28), which is placed relative to it.
 	L27 Level27
+	// L108 is the rect of level 108 (Chaos Sanctuary) that River of Flame
+	// (level 107) is placed against.
+	L108 Level27
 }
 
 // Level27 is what the barracks joint needs from level 27.
@@ -216,6 +223,14 @@ func (l *level) tryPlace(cur *room, dir int, n *room) bool {
 		n.x, n.y = cur.x+cur.w, cur.y
 	case South:
 		n.x, n.y = cur.x, cur.y+cur.h
+	case 4:
+		n.x, n.y = cur.x-cur.w, cur.y-cur.h
+	case 5:
+		n.x, n.y = cur.x+cur.w, cur.y-cur.h
+	case 6:
+		n.x, n.y = cur.x+cur.w, cur.y+cur.h
+	case 7:
+		n.x, n.y = cur.x-cur.w, cur.y+cur.h
 	}
 
 	for _, nb := range cur.nb {
@@ -273,12 +288,16 @@ func adjacencyDir(a, b *room) int {
 func (l *level) selectDef(r *room) {
 	mask := 0
 	for _, n := range r.nb {
-		mask |= dirMask[n.dir]
+		mask |= maskOf(n.dir)
 	}
 
 	def, file := 0, -1
 
 	switch l.typ {
+	case typeTemple:
+		def = templeDef[mask]
+	case typeHell:
+		def = hellDef[mask]
 	case typeHarem:
 		def = haremDef[mask]
 	case typeBasement: // 0x673710 case 7
@@ -720,7 +739,8 @@ func Generate(t Tables, p Params) (*Result, error) {
 
 	switch rec.LevelType {
 	case typeCave, typeCrypt, typeJail, typeCatacombs, typeBarracks, typeSewer2, typeHarem, typeBasement,
-		typeTomb, typeLair, typeArcane, typeMephisto, typeSpider, typeDungeon, typeSewer3:
+		typeTomb, typeLair, typeArcane, typeMephisto, typeSpider, typeDungeon, typeSewer3,
+		typeLava, typeTemple, typeIce, typeBaal, typeHell:
 	default:
 		return nil, fmt.Errorf("%w: level %d LevelType %d", ErrUnsupported, p.LevelID, rec.LevelType)
 	}
@@ -750,6 +770,15 @@ func Generate(t Tables, p Params) (*Result, error) {
 		}
 
 		l.normalize(ox, oy) // NormalizeMazeRooms (verified as a bbox translate)
+	case typeLava, typeTemple, typeIce, typeBaal, typeHell:
+		done, err := l.buildAct45(target, res)
+		if err != nil {
+			return nil, err
+		}
+
+		if !done {
+			l.normalize(ox, oy)
+		}
 	default:
 		done, err := l.buildAct23(target, res)
 		if err != nil {
@@ -795,7 +824,7 @@ func (l *level) commit(p Params, res *Result) {
 		}
 
 		for _, n := range r.nb {
-			out.Doors |= dirMask[n.dir]
+			out.Doors |= maskOf(n.dir)
 			out.Links = append(out.Links, idx[n.r])
 		}
 

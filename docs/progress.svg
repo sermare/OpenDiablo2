@@ -16,9 +16,9 @@
 <text x="36" y="72" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#b8b9d6">driven by Claude · every number below is measured, not estimated</text>
 <text x="844" y="46" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">updated 2026-10-09</text>
 <text x="36" y="108" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Game.exe functions named in Ghidra</text>
-<text x="844" y="108" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">2,417 / 10,907</text>
+<text x="844" y="108" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">2,418 / 10,907</text>
 <rect x="36" y="120" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="120" width="163.5" height="18" rx="9" fill="url(#g0)" filter="url(#glow)"/>
+<rect x="36" y="120" width="163.6" height="18" rx="9" fill="url(#g0)" filter="url(#glow)"/>
 <text x="844" y="134" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#7c5cff">22%</text>
 <text x="36" y="155" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">reverse engineering of the original 1.14b binary</text>
 <text x="36" y="186" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Original source files indexed</text>
@@ -34,11 +34,11 @@
 <text x="844" y="290" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2f9bff">76%</text>
 <text x="36" y="311" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting</text>
 <text x="36" y="342" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Level generator proven equal to the real game</text>
-<text x="844" y="342" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">4,830 / 5,030</text>
+<text x="844" y="342" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">5,442 / 5,592</text>
 <rect x="36" y="354" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="354" width="708.7" height="18" rx="9" fill="url(#g3)" filter="url(#glow)"/>
-<text x="844" y="368" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#22c1c3">96%</text>
-<text x="36" y="389" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">all Act 1-3 maze levels (38 incl. barracks) match 60/60 each + 50 world layouts; Act 1 outdoors and Acts 4-5 not yet</text>
+<rect x="36" y="354" width="718.2" height="18" rx="9" fill="url(#g3)" filter="url(#glow)"/>
+<text x="844" y="368" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#22c1c3">97%</text>
+<text x="36" y="389" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">every maze level of all 5 acts matches the real game (55 levels) + 50 world layouts; Act 1 outdoors, jungle, other outdoors not yet</text>
 <text x="36" y="420" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real .d2s save: read and write verified</text>
 <text x="844" y="420" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">9 / 10</text>
 <rect x="36" y="432" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -52,9 +52,9 @@
 <text x="844" y="524" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ef5da8">88%</text>
 <text x="36" y="545" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">click-walk · greeting · menu · return greeting · vendors · quest speech lookup · gamble · identify ✓ | mercenary hire UI, quest dialogue ✗</text>
 <text x="36" y="576" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Roadmap deliverables</text>
-<text x="844" y="576" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">19 / 24</text>
+<text x="844" y="576" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">23 / 26</text>
 <rect x="36" y="588" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="588" width="584.2" height="18" rx="9" fill="url(#g6)" filter="url(#glow)"/>
-<text x="844" y="602" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">79%</text>
-<text x="36" y="623" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">saves r/w+back · gear · NPC+vendors+gamble+identify · RNG · combat · loot · packets · keys · sound · monsters+packs · skills · real dungeons · stash/belt · lighting · waypoints ✓ | outdoors · mercs · quests · classes</text>
+<rect x="36" y="588" width="652.8" height="18" rx="9" fill="url(#g6)" filter="url(#glow)"/>
+<text x="844" y="602" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">88%</text>
+<text x="36" y="623" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">saves · gear+stats · NPC/vendors/gamble/identify · RNG · combat · loot · packets · keys · sound+ambient · monsters+packs · skills · dungeons · stash/belt · lighting · waypoints · Mac app ✓ | outdoors · mercs · quests · classes</text>
 </svg>

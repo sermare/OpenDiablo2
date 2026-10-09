@@ -9,3 +9,10 @@ import "image/color"
 type ShadedSurface interface {
 	RenderShaded(src Surface, cols, rows int, shade func(x, y float64) color.RGBA)
 }
+
+// ShadedGridSurface is the allocation-free form of ShadedSurface: vals holds the (cols+1)*(rows+1)
+// vertex colours row by row (the values RenderShaded's callback would return for the grid vertices),
+// and the surface does not keep vals after the call.
+type ShadedGridSurface interface {
+	RenderShadedGrid(src Surface, cols, rows int, vals []color.RGBA)
+}

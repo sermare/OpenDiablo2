@@ -240,6 +240,8 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 
 	newPlayer.Containers = player.Containers
 	newPlayer.Merc = player.Merc
+	newPlayer.Death = player.Death
+	newPlayer.Hardcore = player.Hardcore
 
 	g.Players[newPlayer.ID()] = newPlayer
 	g.MapEngine.AddEntity(newPlayer)

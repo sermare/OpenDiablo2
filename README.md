@@ -36,18 +36,16 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
 | Reverse-engineering map of the game | ~2,420 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
-### 🔧 In progress right now (agents run in waves of 5 every 15 minutes)
+### 🔧 In progress right now (agents run in waves; the machine is the limit)
 
 | Work item | Where |
 |---|---|
 | **The quest system** for the intro and Act 1 quests: states, speech, rewards, saved in the `.d2s` | branch `feat/quest-system` |
 | **Skills for all seven classes**, with auras, summons, traps and status effects | branch `feat/class-skills` |
-| **Death, respawn and creating new characters** that the real game also accepts | branch `feat/death-newchar` |
-| **Equipment really affects the hero**: item stat aggregation, defence/attack rating/resists on the character panel | branch `feat/hero-stats` |
-| **A double-clickable `OpenDiablo2.app`** with a first-run folder picker and automatic import of real saves | branch `feat/macos-app` |
+| **Act 1 outdoors in Go**: Blood Moor, Cold Plains and the other wilderness levels, checked against the real game's code | branch `feat/drlg-outdoor1` |
+| **Mercenaries** and the imported-character UI (being merged with the latest code) | `feat/hirelings`, `feat/imported-hero-ui` |
+| **Automap**, **shrines/wells/other objects**, **equip rules and durability** | `feat/automap`, `feat/objects-2`, `feat/equip-rules` |
 | **A performance pass** with frame-time metrics and profiling | branch `feat/perf-pass` |
-| **Mercenaries** (being merged with the latest monster code), imported-character UI, positional audio | `feat/hirelings`, `feat/imported-hero-ui`, `feat/ambient-audio` |
-| Research: Act 1 outdoor generation part 3 (borders, cliffs, rivers) | RE notes: `drlg3` |
 
 ### 🎯 Plan and priorities (set by Claude)
 
@@ -124,6 +122,8 @@ Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | Death/respawn/new characters merged (new Druid byte-identical to the real file); the Act 1 outdoor generation algorithm reverse engineered and a reference port matched the real game on 208 levels |
+| 2026-10-09 | **All maze levels of all five acts proven identical to the real game**; equipment affects the hero (explains 1241/869); positional/ambient audio; a double-clickable Mac app |
 | 2026-10-09 | Level generator proven for **all Act 1-3 maze levels**; waypoints, portals, doors and level changes; Gheed's gamble and Cain's identify; test scenarios now launch games without Terminal windows |
 | 2026-10-09 | **Level generator proven identical to the real game** (2,550 maze records, 50 world layouts); real dungeons render and play; skills, monsters part 2, stash/cube/belt, lighting merged; test runner restructured into one file per scenario |
 | 2026-10-09 | Engine saves characters back to real `.d2s`; hireling and renderer reverse engineering done (real lighting model, hire cost and stat formulas) |
