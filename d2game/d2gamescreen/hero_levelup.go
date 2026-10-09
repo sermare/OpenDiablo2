@@ -1,5 +1,7 @@
 package d2gamescreen
 
+import "github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
+
 // The hero's level follows his experience: the monster kills only add
 // experience points (d2monsters), the level-up itself (the new level, one skill
 // point and five stat points, full life and mana) happens here.
@@ -20,6 +22,13 @@ func (v *Game) advanceHeroLevel() {
 
 	if st.NextLevelExp == 0 { // heroes made before the breakpoint was filled in
 		st.NextLevelExp = recs.GetExperienceBreakpoint(p.Class, st.Level)
+	}
+
+	// experience is capped at the threshold of row MaxLvl-1 (VERIFIED 0x0057c510)
+	tbl := d2herostats.NewExpTable(maxLevel, func(l int) int64 { return int64(recs.GetExperienceBreakpoint(p.Class, l)) })
+	if maxLevel >= 2 && tbl.Threshold[maxLevel-1] > 0 {
+		capped, _ := tbl.ApplyExperience(st.Level, int64(st.Experience))
+		st.Experience = int(capped)
 	}
 
 	gained := levelsGained(st.Experience, st.Level, maxLevel, func(l int) int { return recs.GetExperienceBreakpoint(p.Class, l) })

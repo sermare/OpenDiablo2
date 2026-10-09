@@ -7,6 +7,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2summon"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 )
@@ -45,6 +46,10 @@ type MinionOptions struct {
 	Level int
 	// Tag is free for the caller (the skill name).
 	Tag string
+	// Stats, when set, replace the monstats-derived life, defense, attack
+	// rating and damage (d2summon.Compute); HPPct/HPFlat/DamagePct/ToHit/
+	// ArmorClass are then ignored for those numbers.
+	Stats *d2summon.Stats
 }
 
 type allyState struct {
@@ -55,6 +60,7 @@ type allyState struct {
 	target   *unit
 	strikeAt *unit
 	thought  int
+	trap     *TrapSpec // set by ArmTrap (see trapfire.go)
 }
 
 // SpawnMinion creates an allied unit near a subtile.
@@ -88,10 +94,17 @@ func (d *Director) SpawnMinion(stat *d2records.MonStatRecord, subX, subY int, op
 	}
 
 	v := &m.Vitals
-	v.MaxHP += v.MaxHP*opt.HPPct/100 + opt.HPFlat
-	v.HP = v.MaxHP
 
-	v.Defense += opt.ArmorClass
+	if s := opt.Stats; s != nil {
+		v.MaxHP, v.Defense = s.MaxHP, s.Defense
+		v.A1 = d2mapentity.MonsterAttack{ToHit: s.AR, Min: s.DmgMin, Max: s.DmgMax}
+		v.HP = v.MaxHP
+	} else {
+		v.MaxHP += v.MaxHP*opt.HPPct/100 + opt.HPFlat
+		v.HP = v.MaxHP
+		v.Defense += opt.ArmorClass
+	}
+
 	v.Experience = 0
 	v.TreasureClass = ""
 
@@ -114,7 +127,7 @@ func ownerName(p *d2mapentity.Player) string {
 func (d *Director) Minions() []*d2mapentity.Monster {
 	var out []*d2mapentity.Monster
 
-	for _, u := range d.units {
+	for _, u := range d.sortedUnits() {
 		if u.ally != nil && u.m.Alive() {
 			out = append(out, u.m)
 		}
@@ -136,7 +149,7 @@ func (d *Director) MinionKind(m *d2mapentity.Monster) (kind, tag string) {
 func (d *Director) Corpses() []*d2mapentity.Monster {
 	var out []*d2mapentity.Monster
 
-	for _, u := range d.units {
+	for _, u := range d.sortedUnits() {
 		if !u.friendly() && !u.m.Alive() {
 			out = append(out, u.m)
 		}
@@ -277,6 +290,19 @@ func (d *Director) flee(u *unit) {
 
 // ---- minion AI ----
 
+// petTick runs the ported pet AI for a minion that has one and reports whether
+// it did (the caller then skips the generic nearest-hostile minion logic).
+func (d *Director) petTick(u *unit) bool {
+	if !usesPetAI(u) {
+		return false
+	}
+
+	d.followIntent(u)
+	d2monster.Tick(d, u.b)
+
+	return true
+}
+
 func (d *Director) allyStep(u *unit) {
 	a := u.ally
 	m := u.m
@@ -296,6 +322,10 @@ func (d *Director) allyStep(u *unit) {
 		return
 	}
 
+	if a.kind == "trap" && !d.held(u) && d.trapTick(u) {
+		return
+	}
+
 	if a.kind != "minion" || d.held(u) {
 		return
 	}
@@ -303,6 +333,10 @@ func (d *Director) allyStep(u *unit) {
 	switch m.Mode() {
 	case d2monster.ModeNeutral, d2monster.ModeWalk, d2monster.ModeRun:
 	default:
+		return
+	}
+
+	if d.petTick(u) {
 		return
 	}
 

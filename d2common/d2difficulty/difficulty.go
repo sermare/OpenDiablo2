@@ -262,19 +262,6 @@ func MonsterStat(noRatio bool, monlvl, ratioPct, raw int) int {
 	return ScaleStat(monlvl, ratioPct)
 }
 
-// MonsterLevel is the level rule of a new monster (VERIFIED, monster-ai.md):
-// noRatio and boss classes take the monstats Level of the difficulty, others
-// the levels.txt MonLvl of the area (columns MonLvl1/2/3 for Normal/Nightmare/
-// Hell, the Ex columns in the expansion). An unknown area (<= 0) falls back to
-// the monstats level.
-func MonsterLevel(noRatioOrBoss bool, statLevel, areaLevel int) int {
-	if noRatioOrBoss || areaLevel <= 0 {
-		return statLevel
-	}
-
-	return areaLevel
-}
-
 // ---------------------------------------------------------------------------
 // Penalties
 

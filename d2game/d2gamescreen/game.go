@@ -18,7 +18,6 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
 
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
@@ -79,7 +78,6 @@ func CreateGame(
 		gameClient:           gameClient,
 		gameControls:         nil,
 		localPlayer:          nil,
-		lastRegionType:       d2enum.RegionNone,
 		ticksSinceLevelCheck: 0,
 		mapRenderer: d2maprenderer.CreateMapRenderer(asset, renderer,
 			gameClient.MapEngine, term, l, startX, startY),
@@ -99,7 +97,7 @@ func CreateGame(
 	game.Logger.SetPrefix(logPrefix)
 	game.initAutoScript()
 	game.hookNetwork()
-	activeGame = game
+	setActiveGame(game)
 
 	game.soundEnv = d2audio.NewSoundEnvironment(game.soundEngine)
 
@@ -130,7 +128,8 @@ type Game struct {
 	uiManager            *d2ui.UIManager
 	gameControls         *d2player.GameControls
 	localPlayer          *d2mapentity.Player
-	lastRegionType       d2enum.RegionIdType
+	lastZoneLevel        int // Levels.txt id last announced; 0 = none yet
+	lightLogLevel        int // level whose base light was last logged
 	travel               travelState
 	ticksSinceLevelCheck float64
 	escapeMenu           *d2player.EscapeMenu
@@ -265,9 +264,7 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if activeGame == v {
-		activeGame = nil
-	}
+	clearActiveGame(v)
 
 	if err := v.gameClient.Close(); err != nil {
 		return err
@@ -365,21 +362,28 @@ func (v *Game) Advance(elapsed float64) error {
 			tile := v.gameClient.MapEngine.TileAt(int(tilePosition.X()), int(tilePosition.Y()))
 
 			if tile != nil {
-				levelDetails := v.asset.Records.Level.Details[int(tile.RegionType)]
-				if v.ambientTest == nil { // OD2_AUTOAMBIENT picks the environment itself
-					v.soundEnv.SetEnv(v.soundEnvForRegion(tile.RegionType, levelDetails.SoundEnvironmentID))
+				// tile.RegionType is the LevelType, not a Levels.txt id: index
+				// Details by the id of the level the hero is actually in.
+				levelID := v.currentLevel()
+				levelDetails := v.asset.Records.Level.Details[levelID]
+
+				fallbackEnv := 0
+				if levelDetails != nil {
+					fallbackEnv = levelDetails.SoundEnvironmentID
 				}
 
-				// skip showing zone change text the first time we enter the world
-				if v.lastRegionType != d2enum.RegionNone && v.lastRegionType != tile.RegionType {
-					areaName := levelDetails.LevelDisplayName
-					areaChgStr := fmt.Sprintf("Entering The %s", areaName)
-					v.gameControls.SetZoneChangeText(areaChgStr)
+				if v.ambientTest == nil { // OD2_AUTOAMBIENT picks the environment itself
+					v.soundEnv.SetEnv(v.soundEnvForRegion(tile.RegionType, fallbackEnv))
+				}
+
+				// skipped the first time we enter the world
+				if text, ok := zoneChangeText(v.lastZoneLevel, levelID, levelDetails); ok {
+					v.gameControls.SetZoneChangeText(text)
 					v.gameControls.ShowZoneChangeText()
 					v.gameControls.HideZoneChangeTextAfter(hideZoneTextAfterSeconds)
 				}
 
-				v.lastRegionType = tile.RegionType
+				v.lastZoneLevel = levelID
 			}
 		}
 	}

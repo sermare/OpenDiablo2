@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 )
 
@@ -165,7 +166,12 @@ func (f *HeroStateFactory) RecalcStats(state *HeroState) {
 		}
 	}
 
-	life, mana, stam := class.BaseMax(st.Level, st.Vitality, st.Energy)
+	// d2herostats.Derive is proven equal to the class formula and to the exe's
+	// 1/256 quarter-point rule (TestDeriveEqualsEngineRecalc)
+	derived := d2herostats.Derive(class, d2herostats.Attributes{
+		Level: st.Level, Str: st.Strength, Dex: st.Dexterity, Vit: st.Vitality, Ene: st.Energy,
+	})
+	life, mana, stam := derived.MaxLife, derived.MaxMana, derived.MaxStamina
 
 	if !st.StatsBonusInit {
 		// a hero imported from a .d2s: its stored maxima are the class formula

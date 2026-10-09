@@ -42,7 +42,8 @@ func init() {
 		row{"skill": "Raise Skeleton", "Id": "309", "charclass": "nec", "srvstfunc": "15", "srvdofunc": "31",
 			"calc1": "(lvl < 4) ? 0 : (par2 * (lvl - 3))", "Param2": "50", "summon": "necroskeleton", "pettype": "skeleton",
 			"petmax": "(lvl < 4) ?lvl:(2+lvl/3)", "summode": "S1", "targetcorpse": "1", "TargetCorpse": "1",
-			"aurastat1": "damagepercent", "aurastatcalc1": "((lvl < 4) ? 0 : ((lvl-3)*par3))", "Param3": "7", "manashift": "8"},
+			"aurastat1": "damagepercent", "aurastatcalc1": "((lvl < 4) ? 0 : ((lvl-3)*par3))", "Param3": "7", "manashift": "8",
+			"passivestat1": "maxhp", "passivecalc1": "lvl * par2 * 256"},
 		row{"skill": "Raven", "Id": "310", "srvdofunc": "114", "summon": "druidhawk", "pettype": "raven",
 			"petmax": "min(lvl,par2)", "Param2": "5", "summode": "S1", "manashift": "8"},
 		row{"skill": "Teleport", "Id": "311", "srvdofunc": "27", "manashift": "8"},
@@ -506,6 +507,31 @@ func TestGuidedArrowHomes(t *testing.T) {
 	_, r := cf.castOn("Guided Arrow", z)
 	if !r.OK || len(r.Missiles) != 1 || r.Missiles[0].Home == nil {
 		t.Fatalf("homing missile: %+v", r)
+	}
+}
+
+func TestSummonPassives(t *testing.T) {
+	cf := newClassFixture(map[string]int{"Raise Skeleton": 7})
+	id := cf.id("Raise Skeleton")
+
+	// the skill is not a passive: PassiveStats stays empty, SummonPassives reads
+	// the passivestat columns (fixture calc: lvl * par2 * 256 = 7*50*256)
+	if got := cf.p.PassiveStats(cf.u, id); got != nil {
+		t.Errorf("PassiveStats of a summon: %+v", got)
+	}
+
+	got := cf.p.SummonPassives(cf.u, id)
+	if len(got) != 1 || got[0] != (StatMod{"maxhp", 7 * 50 * 256}) {
+		t.Errorf("SummonPassives %+v", got)
+	}
+
+	if cf.p.SummonPassives(cf.u, 99999) != nil {
+		t.Error("unknown skill")
+	}
+
+	cf0 := newClassFixture(map[string]int{})
+	if cf0.p.SummonPassives(cf0.u, cf0.id("Raise Skeleton")) != nil {
+		t.Error("level 0")
 	}
 }
 

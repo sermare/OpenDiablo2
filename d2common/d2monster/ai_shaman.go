@@ -6,8 +6,10 @@ package d2monster
 
 func init() {
 	register("FallenShaman", TargetStandard, thinkFallenShaman)
-	regState(StateLeash, TargetOnly, thinkState13)
-	regState(StateImp, TargetOnly, thinkState16)
+	// Both rows are target mode 1 in the exe's state table (VERIFIED, 0x73a548
+	// rows 13 and 16): with nobody inside the aggro radius the tick idles.
+	regState(StateLeash, TargetStandard, thinkState13)
+	regState(StateImp, TargetStandard, thinkState16)
 }
 
 // Classes the Shaman resurrects: exe monster classes 19 (Fallen) and 58

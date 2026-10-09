@@ -242,7 +242,14 @@ func (d *Director) ReviveMerc(owner *d2mapentity.Player) error {
 }
 
 func (d *Director) teleportNextToOwner(u *unit) bool {
-	ox, oy := playerSubtile(u.merc.owner)
+	var owner *d2mapentity.Player
+	if u.merc != nil {
+		owner = u.merc.owner
+	} else {
+		owner = u.ally.owner
+	}
+
+	ox, oy := playerSubtile(owner)
 
 	p, ok := d2path.NearestFree(d.grid, d2path.MaskMonster, d2path.Point{X: ox + 2, Y: oy}, 10)
 	if !ok {
@@ -258,9 +265,11 @@ func (d *Director) teleportNextToOwner(u *unit) bool {
 
 // ---- d2monster.MercWorld ----
 
-func (d *Director) ownerTargetID(mu *mercUnit) uint32 {
+func (d *Director) ownerTargetID(mu *mercUnit) uint32 { return d.playerTargetID(mu.owner) }
+
+func (d *Director) playerTargetID(owner *d2mapentity.Player) uint32 {
 	for id, p := range d.targets {
-		if p == mu.owner {
+		if p == owner {
 			return id
 		}
 	}
@@ -272,6 +281,15 @@ func (d *Director) ownerTargetID(mu *mercUnit) uint32 {
 // movement since the last frame (walking, or running when the hero runs).
 func (d *Director) Owner(b *d2monster.Brain) (d2monster.OwnerInfo, bool) {
 	u := d.unitOf(b)
+	if u != nil && u.merc == nil && u.ally != nil && u.ally.owner != nil { // a summoned pet
+		x, y := playerSubtile(u.ally.owner)
+
+		return d2monster.OwnerInfo{
+			Target: d2monster.Target{ID: d.playerTargetID(u.ally.owner), X: x, Y: y, Size: 1, IsPlayer: true},
+			Mode:   d2monster.ModeNeutral,
+		}, true
+	}
+
 	if u == nil || u.merc == nil || u.merc.owner == nil {
 		return d2monster.OwnerInfo{}, false
 	}
@@ -288,6 +306,10 @@ func (d *Director) Owner(b *d2monster.Brain) (d2monster.OwnerInfo, bool) {
 // Teleport implements d2monster.MercWorld.
 func (d *Director) Teleport(b *d2monster.Brain) bool {
 	u := d.unitOf(b)
+	if u != nil && u.merc == nil && u.ally != nil && u.ally.owner != nil {
+		return d.teleportNextToOwner(u)
+	}
+
 	if u == nil || u.merc == nil {
 		return false
 	}
@@ -444,7 +466,7 @@ func (d *Director) nearestEnemy(b *d2monster.Brain) (d2monster.Target, int, bool
 		// a mercenary names its enemies by plain unit id, a converted monster by
 		// the unit-target offset (the plain ids below mercTargetBase are players)
 		id := o.b.ID
-		if me := d.unitOf(b); me == nil || me.merc == nil {
+		if me := d.unitOf(b); me == nil || (me.merc == nil && me.ally == nil) {
 			id += unitTargetBase
 		}
 

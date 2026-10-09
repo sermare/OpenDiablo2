@@ -5,6 +5,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2geom"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapstamp"
@@ -35,6 +36,8 @@ type MapGenerator struct {
 	engine *d2mapengine.MapEngine
 
 	providers []LevelProvider
+
+	rng *d2rand.Seed // layout rolls of the fake overworld (see intn)
 
 	*d2util.Logger
 }

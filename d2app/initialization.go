@@ -175,7 +175,13 @@ func (a *App) loadStrings() error {
 		_, err := a.asset.LoadStringTable(tablePath)
 		if err != nil {
 			if tablePath == d2resource.ExpansionStringTable {
+				// non-English installs fold the expansion strings into string.tbl
 				a.Warning("skipping missing expansion strings (no Lord of Destruction files)")
+				continue
+			}
+
+			if tablePath == d2resource.PatchStringTable {
+				a.Warning("skipping missing patch strings (unpatched install)")
 				continue
 			}
 

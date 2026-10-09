@@ -1,6 +1,9 @@
 package d2records
 
-import "github.com/OpenDiablo2/OpenDiablo2/d2common/d2calculation"
+import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calculation"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skilldesc"
+)
 
 // SkillDescriptions stores all of the SkillDescriptionRecords
 type SkillDescriptions map[string]*SkillDescriptionRecord
@@ -121,4 +124,8 @@ type SkillDescriptionRecord struct {
 	Dsc3textb7   string                    // dsc3textb7
 	Dsc3calca7   d2calculation.Calculation // dsc3calca7
 	Dsc3calcb7   d2calculation.Calculation // dsc3calcb7
+
+	// Desc holds the line rows with their calc source strings, evaluated by
+	// d2skilldesc.Block (the parsed Calculation fields above predate it).
+	Desc d2skilldesc.Desc
 }

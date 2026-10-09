@@ -1,11 +1,15 @@
 package d2records
 
 import (
+	"strconv"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calculation/d2parser"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2txt"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skilldesc"
 )
 
 // Loadrecords loads skill description records from skilldesc.txt
+//
 //nolint:funlen // doesn't make sense to split
 func skillDescriptionLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 	records := make(map[string]*SkillDescriptionRecord)
@@ -128,6 +132,7 @@ func skillDescriptionLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			d.String("dsc3textb7"),
 			parser.Parse(d.String("dsc3calca7")),
 			parser.Parse(d.String("dsc3calcb7")),
+			descRows(d),
 		}
 
 		records[record.Name] = record
@@ -142,4 +147,33 @@ func skillDescriptionLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 	r.Debugf("Loaded %d SkillDescription records", len(records))
 
 	return nil
+}
+
+// descRows reads the line rows (with calc source strings) of the current row.
+func descRows(d *d2txt.DataDictionary) d2skilldesc.Desc {
+	group := func(prefix string, n int) []d2skilldesc.Row {
+		var rows []d2skilldesc.Row
+
+		for i := 1; i <= n; i++ {
+			s := strconv.Itoa(i)
+
+			kind := d.Number(prefix + "line" + s)
+			if kind == 0 {
+				continue
+			}
+
+			rows = append(rows, d2skilldesc.Row{
+				Kind:  kind,
+				TextA: d.String(prefix + "texta" + s), TextB: d.String(prefix + "textb" + s),
+				CalcA: d.String(prefix + "calca" + s), CalcB: d.String(prefix + "calcb" + s),
+			})
+		}
+
+		return rows
+	}
+
+	return d2skilldesc.Desc{
+		DescDam: d.Number("descdam"),
+		Lines:   group("desc", 6), Lines2: group("dsc2", 4), Lines3: group("dsc3", 7),
+	}
 }

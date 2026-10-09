@@ -135,35 +135,48 @@ func (i *Item) Label() string {
 		str = i.factory.asset.TranslateString(i.CommonRecord().NameString)
 	}
 
-	if i.attributes.crafted {
-		return d2ui.ColorTokenize(str, d2ui.ColorTokenCraftedItem)
+	token := nameColorToken(nameColorInput{
+		crafted:  i.attributes.crafted,
+		set:      i.SetItemRecord() != nil,
+		unique:   i.UniqueRecord() != nil,
+		affixes:  len(i.PrefixRecords()) + len(i.SuffixRecords()),
+		socketed: len(i.sockets) > 0,
+		ethereal: i.attributes.ethereal,
+	})
+
+	return d2ui.ColorTokenize(str, token)
+}
+
+// nameColorInput is what decides the colour of an item's name.
+type nameColorInput struct {
+	crafted, set, unique bool
+	affixes              int
+	socketed, ethereal   bool
+}
+
+// nameColorToken is the colour of an item name by quality: crafted orange, set
+// green, unique gold, magic blue (1-2 affixes), rare yellow, and a plain item
+// white, or grey when it is socketed or ethereal. Verified for the ground
+// labels (INV_DrawGroundItemLabels: magic 3, set 2, rare 9, unique 4, crafted 8,
+// socketed/ethereal normal 5); the inventory tooltip name is UNVERIFIED to
+// follow the same rule.
+func nameColorToken(in nameColorInput) d2ui.ColorToken {
+	switch {
+	case in.crafted:
+		return d2ui.ColorTokenCraftedItem
+	case in.set:
+		return d2ui.ColorTokenSetItem
+	case in.unique:
+		return d2ui.ColorTokenUniqueItem
+	case in.affixes > maxAffixesOnMagicItem:
+		return d2ui.ColorTokenRareItem
+	case in.affixes > 0:
+		return d2ui.ColorTokenMagicItem
+	case in.socketed || in.ethereal:
+		return d2ui.ColorTokenSocketedItem
 	}
 
-	if i.SetItemRecord() != nil {
-		return d2ui.ColorTokenize(str, d2ui.ColorTokenSetItem)
-	}
-
-	if i.UniqueRecord() != nil {
-		return d2ui.ColorTokenize(str, d2ui.ColorTokenUniqueItem)
-	}
-
-	numAffixes := len(i.PrefixRecords()) + len(i.SuffixRecords())
-
-	if numAffixes > 0 && numAffixes <= maxAffixesOnMagicItem {
-		return d2ui.ColorTokenize(str, d2ui.ColorTokenMagicItem)
-	}
-
-	if numAffixes > maxAffixesOnMagicItem {
-		return d2ui.ColorTokenize(str, d2ui.ColorTokenRareItem)
-	}
-
-	if i.sockets != nil {
-		if len(i.sockets) > 0 {
-			return d2ui.ColorTokenize(str, d2ui.ColorTokenSocketedItem)
-		}
-	}
-
-	return d2ui.ColorTokenize(str, d2ui.ColorTokenNormalItem)
+	return d2ui.ColorTokenNormalItem
 }
 
 // Context returns the statContext that is being used to evaluate stats. for example,
@@ -473,13 +486,19 @@ func (i *Item) generateProperties(pool PropertyPool) {
 	// in the case one of the properties is a stat-less prop for indestructable/ethereal
 	// we need to set the item attributes to the rolled values. we use `||` here just in
 	// case another property has already set the flag
-	for propIdx := range props {
-		prop := props[propIdx]
+	applyFlagProperties(i.attributes, props)
+}
+
+// applyFlagProperties sets the ethereal and indestructible attributes from
+// stat-less properties. The two flags are independent: an ethereal item is
+// not indestructible (it only has reduced durability and cannot be repaired).
+func applyFlagProperties(attrs *itemAttributes, props []*Property) {
+	for _, prop := range props {
 		switch prop.record.Code {
 		case propertyEthereal:
-			i.attributes.ethereal = i.attributes.ethereal || prop.computedBool
+			attrs.ethereal = attrs.ethereal || prop.computedBool
 		case propertyIndestructable:
-			i.attributes.indestructable = i.attributes.ethereal || prop.computedBool
+			attrs.indestructable = attrs.indestructable || prop.computedBool
 		}
 	}
 }

@@ -135,7 +135,7 @@ func (d *Director) Nearest(b *d2monster.Brain) (d2monster.Target, int, bool) {
 		found    bool
 	)
 
-	if u := d.unitOf(b); u != nil && u.merc != nil {
+	if u := d.unitOf(b); u != nil && u.friendly() {
 		return d.nearestEnemy(b)
 	}
 
@@ -188,7 +188,7 @@ func (d *Director) Nearest(b *d2monster.Brain) (d2monster.Target, int, bool) {
 // AttackTarget implements d2monster.Senses: the nearest hero inside the
 // monster's aggro radius (the exe's filter is UNVERIFIED).
 func (d *Director) AttackTarget(b *d2monster.Brain) (d2monster.Target, int, bool) {
-	if u := d.unitOf(b); u != nil && u.merc != nil {
+	if u := d.unitOf(b); u != nil && u.friendly() {
 		return d.nearestEnemy(b)
 	}
 
@@ -258,6 +258,10 @@ func (d *Director) Attack(b *d2monster.Brain, mode d2monster.Mode, t d2monster.T
 	}
 
 	u.attackTarget = t.ID
+
+	if u.ally != nil { // the pet AI names its victim by unit id
+		u.ally.strikeAt = d.units[t.ID]
+	}
 	d.playPlans(u, attackPlans(d.soundRecord(u), mode, d.snd.Intn))
 	u.aimX, u.aimY = t.X, t.Y
 
@@ -275,6 +279,10 @@ func (d *Director) Cast(b *d2monster.Brain, slot int, t d2monster.Target) bool {
 	mode := b.Profile.Skills[slot].Mode
 	if mode == 0 {
 		mode = d2monster.ModeAttack1
+	}
+
+	if handled, ok := d.fireTrap(d.unitOf(b), t); handled {
+		return ok
 	}
 
 	if t.ID >= corpseTargetBase {
@@ -341,4 +349,17 @@ func (d *Director) targetPos(u *unit, id uint32) (x, y int, ok bool) {
 	}
 
 	return 0, 0, false
+}
+
+// targetIDs returns the target table ids in ascending order, so that loops
+// over the heroes do not depend on map iteration order.
+func (d *Director) targetIDs() []uint32 {
+	ids := make([]uint32, 0, len(d.targets))
+	for id := range d.targets {
+		ids = append(ids, id)
+	}
+
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+
+	return ids
 }

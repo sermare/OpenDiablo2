@@ -66,12 +66,6 @@ func TestMonLvlIndex(t *testing.T) {
 	}
 }
 
-func TestMonsterLevel(t *testing.T) {
-	if MonsterLevel(true, 40, 26) != 40 || MonsterLevel(false, 40, 26) != 26 || MonsterLevel(false, 40, 0) != 40 {
-		t.Error("MonsterLevel")
-	}
-}
-
 func TestPenaltiesAgreeWithCombat(t *testing.T) {
 	for l := Normal; l < Count; l++ {
 		if got, want := ResistPenalty(false, l), d2combat.LoDResistPenalty(int(l)); got != want {
