@@ -155,12 +155,16 @@ func (l *Level) drawBoundaryEdges() {
 		if a.F&1 != 0 && a.F&2 == 0 {
 			mx := min(a.X, b.X) + cdiv(length*abs(dx1), 2)
 			my := min(a.Y, b.Y) + cdiv(length*abs(dy1), 2)
-			l.Flag.Op(mx, my, cellFileMask, opAndNot)
-
-			if l.Params.ID == 0x11 {
-				l.Flag.Op(mx, my, 0x40400, opOr)
+			if l.LType == 0x10 { // Act 2: two door pieces instead of exit markers
+				l.act2Notch(mx, my, dx1, dy1)
 			} else {
-				l.Flag.Op(mx, my, 0x30400, opOr)
+				l.Flag.Op(mx, my, cellFileMask, opAndNot)
+
+				if l.Params.ID == 0x11 {
+					l.Flag.Op(mx, my, 0x40400, opOr)
+				} else {
+					l.Flag.Op(mx, my, 0x30400, opOr)
+				}
 			}
 		}
 

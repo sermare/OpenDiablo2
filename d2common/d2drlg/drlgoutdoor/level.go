@@ -58,6 +58,19 @@ type Params struct {
 	OdFlags   int
 	BaseSeed  uint32
 	Town      Rect // rectangle of level 1, used by the Blood Moor farthest-cave search
+
+	// Flip is the Act 3 Kurast layout flip bit (drlg+0x474) and Jungle the
+	// piece array of levels 76..78 (level+0x1bc / 0x1b8), both computed by the
+	// Act 3 world placer (see PlaceAct3World).
+	Flip   int
+	Jungle JungleInfo
+}
+
+// JungleInfo is what the jungle placer stores in a jungle level: the 2x6 piece
+// Defs (row-major) and the number of special ("clearing") pieces among them.
+type JungleInfo struct {
+	Arr   [12]int
+	Count int
 }
 
 // DS1Loader returns the bytes of a DS1 file named like the tables name them
@@ -181,6 +194,9 @@ type Level struct {
 	ctr  map[int]*counter
 	town Rect
 	err  error
+
+	// presetSize overrides the Def size in placePresetRooms (town levels).
+	presetSize [2]int
 }
 
 // Level accessors for callers.

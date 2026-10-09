@@ -13,9 +13,14 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapstamp"
 )
 
-// isOutdoorLevel reports the Act 1 wilderness levels the drlgoutdoor port
-// covers: Blood Moor .. Tamoe Highland, Burial Grounds and Moo Moo Farm.
-func isOutdoorLevel(id int) bool { return (id >= 2 && id <= 7) || id == 0x11 || id == 0x27 }
+// isOutdoorLevel reports the outdoor levels the drlgoutdoor port covers: the
+// Act 1 wilderness (Blood Moor .. Tamoe Highland, Burial Grounds, Moo Moo
+// Farm), the Act 2 desert (41..46) and the Act 3 jungle and Kurast (76..83).
+func isOutdoorLevel(id int) bool {
+	return (id >= 2 && id <= 7) || id == 0x11 || id == 0x27 || isAct23Outdoor(id)
+}
+
+func isAct23Outdoor(id int) bool { return (id >= 41 && id <= 46) || (id >= 76 && id <= 83) }
 
 // outdoorProvider builds Act 1 wilderness levels with the DRLG port. Like the
 // maze provider it is only active with OD2_REALMAPS=1.
@@ -48,12 +53,18 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 		return err
 	}
 
-	lay, err := drlgworld.Generate(tb, seed, diff)
-	if err != nil {
-		return err
+	var p drlgoutdoor.Params
+
+	if isAct23Outdoor(levelID) {
+		p, err = drlgoutdoor.ParamsAct23(tb, seed, diff, levelID)
+	} else {
+		var lay *drlgworld.Layout
+
+		if lay, err = drlgworld.Generate(tb, seed, diff); err == nil {
+			p, err = drlgoutdoor.ParamsFromLayout(tb, lay, levelID, seed)
+		}
 	}
 
-	p, err := drlgoutdoor.ParamsFromLayout(tb, lay, levelID, seed)
 	if err != nil {
 		return err
 	}
