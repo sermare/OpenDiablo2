@@ -582,7 +582,7 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 
 	// d2summon.Roster decides how many minions appear and which old ones make
 	// room; the Summoner computes their stats (d2monsters/petworld.go).
-	ids, plan := e.monsters.Summoner().Cast(p.ID(), stat.Key, o, nil, func(i, n int) (int, int) {
+	ids, plan := e.monsters.Summoner().Cast(p.ID(), stat.Key, o, e.pipe.SummonPassives(u, sk.ID), func(i, n int) (int, int) {
 		if o.Kind == "wall" {
 			return wallCell(hx, hy, x, y, i, n, o.Mode)
 		}

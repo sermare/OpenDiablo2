@@ -289,6 +289,19 @@ func (d *Director) flee(u *unit) {
 
 // ---- minion AI ----
 
+// petTick runs the ported pet AI for a minion that has one and reports whether
+// it did (the caller then skips the generic nearest-hostile minion logic).
+func (d *Director) petTick(u *unit) bool {
+	if !usesPetAI(u) {
+		return false
+	}
+
+	d.followIntent(u)
+	d2monster.Tick(d, u.b)
+
+	return true
+}
+
 func (d *Director) allyStep(u *unit) {
 	a := u.ally
 	m := u.m
@@ -318,10 +331,7 @@ func (d *Director) allyStep(u *unit) {
 		return
 	}
 
-	if usesPetAI(u) {
-		d.followIntent(u)
-		d2monster.Tick(d, u.b)
-
+	if d.petTick(u) {
 		return
 	}
 

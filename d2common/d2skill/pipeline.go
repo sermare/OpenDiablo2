@@ -424,6 +424,28 @@ func (p *Pipeline) PassiveStats(u Unit, skillID int) []StatMod {
 		return nil
 	}
 
+	return p.passiveStats(u, sk, lvl)
+}
+
+// SummonPassives evaluates the passivestat columns of a summoning skill at
+// the caster's level (Raise Skeleton's maxhp from Skeleton Mastery, the golems'
+// and druid pets' damage/tohit...). Unlike PassiveStats the skill itself is
+// not a passive: the columns describe the minion, not the caster.
+func (p *Pipeline) SummonPassives(u Unit, skillID int) []StatMod {
+	sk := p.Skills.ByID(skillID)
+	if sk == nil {
+		return nil
+	}
+
+	lvl := u.SkillLevel(skillID)
+	if lvl < 1 {
+		return nil
+	}
+
+	return p.passiveStats(u, sk, lvl)
+}
+
+func (p *Pipeline) passiveStats(u Unit, sk *Skill, lvl int) []StatMod {
 	env := p.env(sk, lvl, u)
 
 	var out []StatMod
