@@ -28,9 +28,10 @@ func testDropFactory() *ItemFactory {
 	}
 	rec.Item.Treasure.Expansion = d2records.TreasureClass{
 		"Boss": {Name: "Boss", NumPicks: 1, FreqUnique: 1024, Treasures: []*d2records.Treasure{{Code: "armo6", Probability: 1}}},
-		"G1":   {Name: "G1", Group: 3, Level: 0, NumPicks: 1},
-		"G3":   {Name: "G3", Group: 3, Level: 30, NumPicks: 1},
-		"G2":   {Name: "G2", Group: 3, Level: 10, NumPicks: 1},
+		// names sort against the file order on purpose
+		"Z1": {Name: "Z1", Index: 1, Group: 3, Level: 0, NumPicks: 1},
+		"Y2": {Name: "Y2", Index: 2, Group: 3, Level: 10, NumPicks: 1},
+		"X3": {Name: "X3", Index: 3, Group: 3, Level: 30, NumPicks: 1},
 	}
 
 	return &ItemFactory{asset: &d2asset.AssetManager{Records: rec}}
@@ -47,9 +48,11 @@ func TestDropTablesAdapter(t *testing.T) {
 	}
 
 	// level groups survive the map -> table conversion
-	g1, _ := tab.tcs.TreasureClass("G1")
-	if got := tab.tcs.Upgrade(g1, 15).Name; got != "G2" {
-		t.Errorf("upgrade at 15 = %s", got)
+	g1, _ := tab.tcs.TreasureClass("Z1")
+	for lv, want := range map[int]string{0: "Z1", 9: "Z1", 10: "Y2", 15: "Y2", 30: "X3", 99: "X3"} {
+		if got := tab.tcs.Upgrade(g1, lv).Name; got != want {
+			t.Errorf("upgrade at %d = %s, want %s", lv, got, want)
+		}
 	}
 
 	if _, ok := tab.ItemRatio(false, false); !ok {

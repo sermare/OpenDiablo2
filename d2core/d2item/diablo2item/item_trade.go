@@ -91,10 +91,11 @@ func (i *Item) InventoryFileName() string {
 // TradeItem converts the item to the input of d2trade.ItemPrice.
 //
 // Not covered (price terms are left out rather than invented): the
-// ItemStatCost per-stat price columns, the socketed items' cost, ethereal
-// (the factory does not roll it), the recharge cost of charged items, tome
-// and body part tables, and gamble flags. Magic affixes use PriceScale/PriceAdd (1/1024 fixed
-// point, checked against MagicPrefix.txt); unique and set rows are not priced.
+// ItemStatCost per-stat price columns, the single skill price, the socketed
+// items' cost, ethereal (the factory does not roll it), the recharge cost of
+// charged items, tome and body part tables, automagic rows and gamble flags.
+// Magic affixes use PriceScale/PriceAdd (1/1024 fixed point, checked against
+// MagicPrefix.txt); unique and set rows are not priced.
 func (i *Item) TradeItem() *d2trade.Item {
 	rec := i.CommonRecord()
 	typ := i.factory.asset.Records.Item.Types[rec.Type] // TypeCode is only set for dropped items
@@ -112,6 +113,7 @@ func (i *Item) TradeItem() *d2trade.Item {
 		Stackable:  rec.Stackable,
 		IsArmour:   rec.MaxAC > 0 && rec.Source == d2enum.InventoryItemTypeArmor,
 		Defense:    i.attributes.defense,
+		MinAC:      rec.MinAC,
 		MaxAC:      rec.MaxAC,
 
 		HasDurability: maxDur > 0,
@@ -129,18 +131,22 @@ func (i *Item) TradeItem() *d2trade.Item {
 		it.Repairable = typ.Repair && maxDur > 0 && it.Identified && !it.Ethereal
 	}
 
-	it.StackableRepairable = rec.Stackable && it.Repairable
-
 	if !it.Identified {
 		return it
 	}
 
-	for _, p := range i.PrefixRecords() {
-		it.Terms = append(it.Terms, d2trade.Term{Mult: p.PriceScale, Add: p.PriceAdd})
+	// The price function picks the affix rows by quality (one prefix and one
+	// suffix for magic items, three of each for rare and crafted ones).
+	for n, p := range i.PrefixRecords() {
+		if n < len(it.Affixes.Prefix) {
+			it.Affixes.Prefix[n] = &d2trade.Term{Mult: p.PriceScale, Add: p.PriceAdd}
+		}
 	}
 
-	for _, s := range i.SuffixRecords() {
-		it.Terms = append(it.Terms, d2trade.Term{Mult: s.PriceScale, Add: s.PriceAdd})
+	for n, s := range i.SuffixRecords() {
+		if n < len(it.Affixes.Suffix) {
+			it.Affixes.Suffix[n] = &d2trade.Term{Mult: s.PriceScale, Add: s.PriceAdd}
+		}
 	}
 
 	// Unique and set rows ("cost mult" is a small integer such as 5 in the
@@ -149,24 +155,30 @@ func (i *Item) TradeItem() *d2trade.Item {
 }
 
 // GambleBase converts the item's base record to the input of
-// d2trade.GamblePrice (TRADE_CalcGamblePrice reads the item's own base row,
-// its exceptional (UberCode) and elite (UltraCode) rows).
+// d2trade.GamblePrice. TRADE_CalcGamblePrice works on the normal-tier row of
+// the item's family (its NormalCode), whose exceptional (UberCode) and elite
+// (UltraCode) rows it also reads; the levels it uses are the base item levels
+// (byte +0xfd, the "level" column), not the required levels. VERIFIED.
 func (i *Item) GambleBase() d2trade.Gamble {
 	all := i.factory.asset.Records.Item.All
 	rec := i.CommonRecord()
 
+	if n := all[rec.NormalCode]; n != nil && rec.NormalCode != "" {
+		rec = n
+	}
+
 	g := d2trade.Gamble{
-		ReqLevel: rec.RequiredLevel, Cost: rec.Cost, MinStack: rec.MinStack, MaxStack: rec.MaxStack,
+		ReqLevel: rec.Level, Cost: rec.Cost, MinStack: rec.MinStack, MaxStack: rec.MaxStack,
 		GambleCost:     rec.GambleCost,
 		IsRingOrAmulet: rec.Code == "rin" || rec.Code == "amu",
 	}
 
 	if x := all[rec.UberCode]; x != nil && rec.UberCode != "" {
-		g.HasExc, g.ExcReq, g.ExcCost = true, x.RequiredLevel, x.Cost
+		g.HasExc, g.ExcReq, g.ExcCost = true, x.Level, x.Cost
 	}
 
 	if x := all[rec.UltraCode]; x != nil && rec.UltraCode != "" {
-		g.HasElite, g.EliteReq, g.EliteCost = true, x.RequiredLevel, x.Cost
+		g.HasElite, g.EliteReq, g.EliteCost = true, x.Level, x.Cost
 	}
 
 	return g
