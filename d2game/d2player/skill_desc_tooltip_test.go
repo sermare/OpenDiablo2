@@ -55,14 +55,14 @@ func TestSkillDescTexts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := skillDescTexts(tr, reg, sk, desc, tc.points, 20, map[int]int{1: tc.points}, mana, [2]int{})
+			got := skillDescTexts(tr, reg, sk, desc, tc.points, 20, map[int]int{1: tc.points}, mana, heroInputs{})
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got %+v\nwant %+v", got, tc.want)
 			}
 		})
 	}
 
-	if got := skillDescTexts(tr, reg, nil, desc, 1, 1, nil, nil, [2]int{}); !reflect.DeepEqual(got, descTexts{}) {
+	if got := skillDescTexts(tr, reg, nil, desc, 1, 1, nil, nil, heroInputs{}); !reflect.DeepEqual(got, descTexts{}) {
 		t.Fatalf("nil skill: %+v", got)
 	}
 }
@@ -104,7 +104,7 @@ func TestSkillDescWeaponDamage(t *testing.T) {
 	}}
 	tr := func(s string) string { return s }
 
-	got := skillDescTexts(tr, reg, sk, desc, 1, 1, map[int]int{1: 1}, nil, [2]int{10, 20})
+	got := skillDescTexts(tr, reg, sk, desc, 1, 1, map[int]int{1: 1}, nil, heroInputs{Weapon: [2]int{10, 20}})
 	want := []string{"Current Skill Level: 1", "Damage: 7-14"}
 
 	if !reflect.DeepEqual(got.Current, want) {

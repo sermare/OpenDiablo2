@@ -77,7 +77,7 @@ func label(tr func(string) string, key, fallback string) string {
 // translates a string key (returning the key when unknown) and mana renders the
 // kind-1 line for a level (nil: no mana lines).
 func skillDescTexts(tr func(string) string, reg *d2skill.Registry, sk *d2skill.Skill, desc d2skilldesc.Desc,
-	points, heroLevel int, pts map[int]int, mana func(level int) (string, bool), weapon [2]int) descTexts {
+	points, heroLevel int, pts map[int]int, mana func(level int) (string, bool), hero heroInputs) descTexts {
 	var out descTexts
 
 	if sk == nil {
@@ -123,13 +123,21 @@ func skillDescTexts(tr func(string) string, reg *d2skill.Registry, sk *d2skill.S
 		c := &d2skilldesc.Ctx{
 			ToHit: func() int { return sk.ToHitBonus(env, level) },
 			Phys: func() (int, int) {
-				return int(sk.PhysMin(env, level, weapon[0], true) >> 8),
-					int(sk.PhysMax(env, level, weapon[1], true) >> 8)
+				return int(sk.PhysMin(env, level, hero.Weapon[0], true) >> 8),
+					int(sk.PhysMax(env, level, hero.Weapon[1], true) >> 8)
 			},
 			Elem: func() (int, int, int) {
 				return int(sk.ElemMin(env, level) >> 8), int(sk.ElemMax(env, level) >> 8), elemType(sk.EType)
 			},
 			ElemLen: func() int { return sk.ElemLen(env, level) },
+			// kind 31: UNVERIFIED divisor source, see heroInputs.CurseDiv.
+			CurseDiv: hero.CurseDiv,
+		}
+
+		// kind 13 (0x4eb140): the summoned monster's average life; calcA and
+		// calcB are applied by the row. The level only enters through them.
+		if hero.Templates != nil && sk.Summon != "" {
+			c.Life = func() (int, bool) { return hero.Templates.AvgLife(sk.Summon, hero.Diff) }
 		}
 
 		if mana != nil {
@@ -172,7 +180,12 @@ func skillDescTexts(tr func(string) string, reg *d2skill.Registry, sk *d2skill.S
 // skillDescLines is the skilldesc part of a tooltip: the dsc2 lines, the
 // current-level block, the Next Level block and the synergy lines.
 func skillDescLines(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, level int,
-	skills map[int]*d2hero.HeroSkill, heroLevel int) []string {
+	skills map[int]*d2hero.HeroSkill, stats *d2hero.HeroStatsState) []string {
+	heroLevel := 0
+	if stats != nil {
+		heroLevel = stats.Level
+	}
+
 	if sk == nil || sk.SkillRecord == nil || sk.SkillDescriptionRecord == nil || asset.Records == nil {
 		return nil
 	}
@@ -202,9 +215,8 @@ func skillDescLines(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, level int
 		}
 	}
 
-	// The equipped weapon is not reachable from here yet, so the weapon part
-	// of kind-9 damage (SrcDam/128 of the weapon) is 0 in the live tooltip.
-	t := skillDescTexts(tr, reg, reg.ByID(sk.ID), sk.Desc, level, heroLevel, pts, mana, [2]int{})
+	t := skillDescTexts(tr, reg, reg.ByID(sk.ID), sk.Desc, level, heroLevel, pts, mana,
+		heroInputsFrom(stats, monstatsTemplates(asset), curseDivisors(asset)))
 
 	var lines []string
 

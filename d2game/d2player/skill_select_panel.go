@@ -270,13 +270,13 @@ func (s *SkillPanel) hover(c *popupCell) {
 // tooltipText is the name, the short description and the level of a skill,
 // and the key it is on.
 func (s *SkillPanel) tooltipText(sk *d2hero.HeroSkill) string {
-	return skillTooltip(s.asset, sk, d2hero.EffectiveSkillLevel(s.hero.Stats, s.hero.Class, sk), s.hero.SkillBar, s.keyName, s.hero.Skills, s.hero.Stats.Level)
+	return skillTooltip(s.asset, sk, d2hero.EffectiveSkillLevel(s.hero.Stats, s.hero.Class, sk), s.hero.SkillBar, s.keyName, s.hero.Skills, s.hero.Stats)
 }
 
 // skillTooltip builds the tooltip of a skill icon (popup and skill tree).
 // level is the effective level (points plus item bonuses, d2hero.EffectiveSkillLevel).
 func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, level int, bar *d2hero.SkillBar, keyName func(int) string,
-	skills map[int]*d2hero.HeroSkill, heroLevel int) string {
+	skills map[int]*d2hero.HeroSkill, stats *d2hero.HeroStatsState) string {
 	name := asset.TranslateString(sk.NameKey)
 	if name == "" || name == sk.NameKey {
 		name = sk.Skill
@@ -292,7 +292,7 @@ func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, level int, 
 		// VERIFIED order (0x4ec180): dsc2 block, "Current Skill Level: n" with
 		// its lines (the mana line is a descline row of kind 1), "Next Level",
 		// synergies. level is the effective level (points plus item bonuses).
-		lines = append(lines, skillDescLines(asset, sk, level, skills, heroLevel)...)
+		lines = append(lines, skillDescLines(asset, sk, level, skills, stats)...)
 	} else {
 		// no skilldesc row: the level label and the mana cost only
 		levelLabel := asset.TranslateString(keyCurrentLevel)
