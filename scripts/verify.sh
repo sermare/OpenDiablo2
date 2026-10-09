@@ -30,9 +30,13 @@ wait_run() {
   local i
   for i in {1..120}; do pgrep -f "$tmp/od2" >/dev/null && break; sleep 1; done
   for i in {1..420}; do pgrep -f "$tmp/od2" >/dev/null || break; sleep 1; done
+  # a game still alive now is stuck (e.g. on the title screen): kill it, never leave windows behind.
+  # The pattern is this run's private scratch dir, so other runs/agents/the user's own games are untouched.
+  if pgrep -f "$tmp/od2" >/dev/null; then echo "REAPED: game of this scenario did not finish (stuck?), killing it"; pkill -f "$tmp/od2"; sleep 1; pkill -9 -f "$tmp/od2" 2>/dev/null; fi
 }
 # every run gets its own scratch folder and server port, so parallel runs (e.g. several agents) do not collide
 tmp=$(mktemp -d /tmp/od2-verify.XXXXXX)
+trap 'pkill -f "$tmp/od2" 2>/dev/null; pkill -f "$tmp/[0-9a-z-]*\.command" 2>/dev/null' EXIT INT TERM
 step() { printf '\n== %s\n' "$1"; }
 
 # every run uses its own server port so parallel runs (e.g. several agents) do not collide
