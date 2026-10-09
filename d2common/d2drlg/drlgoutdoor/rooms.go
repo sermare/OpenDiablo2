@@ -105,10 +105,10 @@ func presetChunkBits(d *Pattern, cx, cy int) uint32 {
 	return bits
 }
 
-// normalizePrestFile turns a LvlPrest file column into the form the loader
+// NormalizePrestFile turns a LvlPrest file column into the form the loader
 // expects ("Act1/Outdoors/x.ds1"): the compiled table stores the full
 // "data\global\tiles\" path.
-func normalizePrestFile(f string) string {
+func NormalizePrestFile(f string) string {
 	f = strings.ReplaceAll(f, "\\", "/")
 	if i := strings.Index(strings.ToLower(f), "data/global/tiles/"); i >= 0 {
 		f = f[i+len("data/global/tiles/"):]
@@ -140,7 +140,7 @@ func (l *Level) placePresetRooms(def, file, tx, ty int, gB uint32) {
 	var ds1 *Pattern
 
 	if file >= 0 && file < len(rec.File) && rec.File[file] != "" {
-		if p, err := l.env.Pattern(normalizePrestFile(rec.File[file])); err == nil {
+		if p, err := l.env.Pattern(NormalizePrestFile(rec.File[file])); err == nil {
 			ds1 = p
 		}
 	}

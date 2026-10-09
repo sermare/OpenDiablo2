@@ -158,4 +158,8 @@ func (g *MapGenerator) installDefaultProviders() {
 	mp := &mazeProvider{}
 	mp.probe(tb)
 	g.providers = append([]LevelProvider{mp}, g.providers...)
+
+	// Act 1 wilderness levels (proven equal to the real game down to the room
+	// grids, see drlgoutdoor); the tile records are approximated
+	g.providers = append([]LevelProvider{outdoorProvider{}}, g.providers...)
 }

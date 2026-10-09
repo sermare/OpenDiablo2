@@ -40,6 +40,33 @@ type StampFactory struct {
 // LoadStamp loads the Stamp data from file, using the given level type, level preset index, and
 // level file index.
 func (f *StampFactory) LoadStamp(levelType d2enum.RegionIdType, levelPreset, fileIndex int) *Stamp {
+	preset := f.asset.Records.Level.Presets[levelPreset]
+
+	var levelFilesToPick []string
+
+	for _, fileRecord := range preset.Files {
+		if fileRecord != "" && fileRecord != "0" {
+			levelFilesToPick = append(levelFilesToPick, fileRecord)
+		}
+	}
+
+	// nolint:gosec // not a big deal for now
+	levelIndex := int(math.Round(float64(len(levelFilesToPick)-1) * rand.Float64()))
+	if fileIndex >= 0 && fileIndex < len(levelFilesToPick) {
+		levelIndex = fileIndex
+	}
+
+	if levelFilesToPick == nil {
+		panic("no level files to pick from")
+	}
+
+	return f.LoadStampPath(levelType, levelPreset, levelFilesToPick[levelIndex])
+}
+
+// LoadStampPath is LoadStamp for an explicit DS1 file (relative to
+// data/global/tiles). The DRLG outdoor generator uses it because the compiled
+// lvlprest.bin lists preset files the txt-based records lack.
+func (f *StampFactory) LoadStampPath(levelType d2enum.RegionIdType, levelPreset int, path string) *Stamp {
 	stamp := &Stamp{
 		factory:     f,
 		entity:      f.entity,
@@ -62,25 +89,7 @@ func (f *StampFactory) LoadStamp(levelType d2enum.RegionIdType, levelPreset, fil
 		stamp.tiles = append(stamp.tiles, dt1.Tiles...)
 	}
 
-	var levelFilesToPick []string
-
-	for _, fileRecord := range stamp.levelPreset.Files {
-		if fileRecord != "" && fileRecord != "0" {
-			levelFilesToPick = append(levelFilesToPick, fileRecord)
-		}
-	}
-
-	// nolint:gosec // not a big deal for now
-	levelIndex := int(math.Round(float64(len(levelFilesToPick)-1) * rand.Float64()))
-	if fileIndex >= 0 && fileIndex < len(levelFilesToPick) {
-		levelIndex = fileIndex
-	}
-
-	if levelFilesToPick == nil {
-		panic("no level files to pick from")
-	}
-
-	stamp.regionPath = levelFilesToPick[levelIndex]
+	stamp.regionPath = path
 	fileData, err := f.asset.LoadFile("/data/global/tiles/" + stamp.regionPath)
 
 	if err != nil {
