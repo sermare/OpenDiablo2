@@ -12,6 +12,8 @@ Layers, cheapest first:
 4. [The in-game harness](#4-the-in-game-harness-od2_auto) (`OD2_AUTO*`, runs the real engine)
 5. [`scripts/verify.sh`](#5-scriptsverifysh-and-scenarios) (the gate that runs 1-4 together)
 
+What each layer is evidence for, feature by feature: [STATUS_MATRIX.md](STATUS_MATRIX.md).
+
 ## 1. Unit tests
 
 ```sh
@@ -41,12 +43,14 @@ you expect. Without the variable they skip (they never fail for missing data).
 | `D2S_SAMPLE_BODY` | A real `.d2s` that has a body (quests, waypoints, stats, skills, items) | body, writer, container, equipment and export tests (`d2s`, `d2hero`) |
 | `D2S_SAMPLE_BODY_JSON` | Expected parse of `D2S_SAMPLE_BODY` from an independent reference parser | `d2s` body test |
 | `D2S_SAMPLE_NEW` | A real new-character save from the game | `d2s` new-character test: every byte must match except the fields tagged as varying |
+| `D2_DS1` | A folder with the real town DS1 files (`LutW.ds1`, `LutN.ds1`, `DockTown3.ds1`, `Fortress.ds1`, `townWest.ds1`) | `d2mapgen` `TestRealTownDS1` |
+| `D2_DIFFICULTYLEVELS` | The `patch_d2` `DifficultyLevels.txt` | `d2difficulty` `TestRealTable` |
 | `D2_DS1_ROOT` | Folder holding `patch_d2`, `d2exp`, `d2data`, each with `data/global/tiles` extracted | outdoor oracle test (`drlgoutdoor`) |
 | `D2_INSTALL` | The Diablo II install folder | `default.key` tests (`d2key`, `d2player`) |
 | `D2_DEFAULT_KEY` | A path to a real `default.key` | `d2key` |
 | `D2_PL2` | A real act palette `.pl2` | `d2pl2` shade factors |
 | `D2_STRING_TBL` | `data\local\lng\eng\string.tbl` | `d2quest` speech keys |
-| `ORACLE_MAZE`, `ORACLE_WORLD`, `ORACLE_OUTDOOR` | Override the committed golden JSON with another file (see the next section) | oracle tests |
+| `ORACLE_MAZE`, `ORACLE_WORLD`, `ORACLE_OUTDOOR`, `ORACLE_OUTDOOR45`, `ORACLE_TILES` | Override the committed golden JSON with another file (see the next section) | oracle tests |
 
 Typical use:
 
@@ -92,10 +96,13 @@ the random-number draw order is right, since any extra or missing draw changes t
 | `maze_act1.json`, `maze_act23.json`, `maze_act45.json` | Maze levels: rooms (or a count plus a hash of the sorted room keys in the compact files), Def and file index, final level seed | `drlgmaze` `TestOracleMaze` (hard assertions) |
 | `acts.json` | Act-level extra draws (Act 2 tomb choice, Act 3 flip) | `d2drlg` `acts_oracle_test.go` |
 | `outdoor_act1.json` | Act 1 outdoor levels: stage numbers, room list, sha256 digests of the large grids; the first seeds are kept in full | `drlgoutdoor` `oracle_test.go` |
+| `outdoor_act2.json`, `outdoor_act3.json` | Act 2 and 3 outdoor levels (41-46, 76-83) and the preset towns 40 and 75 | `drlgoutdoor` `TestOracleAct2Levels`, `TestOracleAct3Levels` |
+| `preset_act1.json` | Act 1 preset levels | `drlgoutdoor` `TestOraclePresetAct1` |
+| `tiles_act1.json`, `tiles_act23.json`, `tiles_act45.json` | Per-cell tile records (tile ids) of the rooms for Acts 1 to 5 | `drlgoutdoor` `TestOracleTiles` (override with `ORACLE_TILES`) |
 | `outdoor_act45.json` | Acts 4/5 outdoor and preset levels: 12 seeds x 3 difficulties x 16 levels, numbers and digests (rect, vis, od.flags, neighbours, grids, room list, final seed) | `drlgoutdoor` `TestOracleAct45` |
-| `gen_outdoor_compact.py` | The only generator script that lives in the repo: shrinks the big emulator golden to the committed compact file | n/a |
+| `gen_outdoor_compact.py`, `gen_tiles_compact.py` | The only generator scripts that live in the repo: shrink the big emulator goldens to the committed compact files | n/a |
 
-The tests need `D2_TABLES` (and `D2_DS1_ROOT` for the outdoor one) because the Go port needs the same input tables
+The tests need `D2_TABLES` (and `D2_DS1_ROOT` for the outdoor and tile ones) because the Go port needs the same input tables
 the original read. Proven coverage is stated in the package comments and the README status board; cite those rather
 than this page for exact numbers.
 
@@ -107,7 +114,7 @@ data on the author's machine). The procedure is:
 1. Extract the game tables and DS1 files you need from your own MPQs into the harness's `gamefiles` folder
    (priority `patch_d2` > `d2exp` > `d2data`).
 2. In the harness virtual environment (Python with `unicorn`, `capstone`, `pefile`), run the generator for the part you
-   changed: `gen_world.py`, `gen_maze.py`, `gen_outdoor.py` or `gen_acts.py`, each as
+   changed: `gen_world.py`, `gen_maze.py`, `gen_outdoor.py`, `gen_acts.py` or `gen_tiles.py`, each as
    `python gen_X.py <output.json> [number of seeds]` (the author's notes record this form for `gen_maze.py`; check the other scripts' headers). A 6-seed, 3-difficulty maze run takes about a minute; a 50-seed
    run takes about eight minutes per difficulty.
 3. For outdoors, generate the large golden (30 seeds, about 10 MB) and compress it with
@@ -124,7 +131,8 @@ emulator itself.
 * The DT1 tile library is not emulated by the oracle. Where the original picks a random tile, the emulator hook
   consumes one room-seed step; that is a model, not an observation. `drlgoutdoor` carries the same model
   (`RoomBuildOptions.PickTile`).
-* Acts 2-5 outdoor generators do not exist in the port yet, so there is no golden for them.
+* Level 134 (Forgotten Sands) runs the Act 2 desert generator and is not ported, so it has no golden; the tile goldens
+  cover the rooms the sampled games reach, and tile code paths no golden room reaches return an error.
 * A golden is only as wide as its seeds and levels. Passing the committed seeds is strong evidence, not a proof for all
   2^32 seeds.
 
@@ -168,12 +176,18 @@ of the file that reads the variable. Defaults below are from the code.
 | `OD2_NO_SETUP`, `OD2_SETUP_AUTOPICK` | Skip the first-run dialogs; select what a scripted setup UI picks. |
 | `OD2_D2S_DIR` | Folder of real `.d2s` characters to import into the character list (read only). |
 | `OD2_D2S_WRITEBACK=<dir>` | Folder where exported `.d2s` files go (otherwise next to the `.od2` save). |
+| `OD2_AUTOSCREEN=charselect` | Open the character select screen directly (used with `OD2_AUTOSHOT`). |
+| `OD2_AUTOSPEED=<factor>` | Run game time (movement, fights, timers, script waits) that many times faster than real time, for long playthroughs; values above 1 only, capped. |
+| `OD2_AUTOOPTIONS=1` | Drive the options menu rows (sound, video, automap pages) and check `config.json`. |
+| `OD2_NOPERSIST=1` | Turn off level persistence (a revisited level is rebuilt). |
+| `OD2_POPULATE=1\|0`, `OD2_NOPOPULATE` | Force the natural monster population on or off. By default it is on only in scripts that play (`walkto:` / `kill:` steps) and off in scenarios that test something else. |
 
 **Worlds and levels**
 
 | Variable | Meaning |
 |---|---|
 | `OD2_REALMAPS=1` | Enable the DRLG level providers (maze and Act 1 outdoor levels). Without it only the Rogue Encampment can be loaded. |
+| `OD2_AUTOMAPSEED=<n>` | Play the maps of another game seed (for example `1` gives the other Lut Gholein variant). |
 | `OD2_AUTOLEVEL=<id>` | Start directly in that level (with `OD2_REALMAPS`). |
 | `OD2_AUTOMAP=<id>`, `OD2_AUTOMAP_DIFF`, `OD2_AUTOMAP_ASCII` | Generate that level from the hero's seed and log a summary; difficulty; log the room list and a walkability map. (Not the in-game automap panel; that is `OD2_AUTOSCRIPT` `automap:`.) |
 | `OD2_AUTOTIME=<phase>[@degree]` | Force and freeze the day/night clock. |
@@ -196,16 +210,30 @@ of the file that reads the variable. Defaults below are from the code.
 |---|---|
 | `OD2_AUTOMONSTER=<id,count>`, `_SECONDS`, `_DIFF`, `_PASSIVE`, `_FAR`, `_AREA` | Spawn monsters near the hero and let the hero fight; difficulty 0..2; hero does not fight back; far ring for sound tests; map stands for an area. Logs `MONSTER ...` and `AUTOMONSTER summary`. |
 | `OD2_AUTOCAST=<skill>,<count>`, `_LEVEL`, `_MANA` | The hero casts a skill at the nearest monster through the skill pipeline. Default 5 casts, grant level 10. |
+| `OD2_AUTOCAST_CLASS=<Class>`, `OD2_AUTOCAST_CLVL=<n>` | Replace the save with a fresh hero of that class (character level default 18) so class skills can be cast. |
+| `OD2_AUTOAI=<archetype\|monster>[,state=fear+confuse+...]`, `_SECONDS` | Spawn one monster of an AI archetype (such as Vulture or Summoner) or a monstats id, let its AI run, then force the states fear, confuse, attract, charm, blind, taunt through the `forcestate` console command; logs `MONSTER aistate ... from= to=`. |
+| `OD2_AUTOBOSS=<names>` | Boss encounter triggers (Duriel tomb, Mephisto, Diablo seals, Baal throne waves) driven through `d2boss`. |
+| `OD2_AUTODIFFICULTY=0\|1\|2`, `_FORCE` | Pick that difficulty on the difficulty screen; `_FORCE` also unlocks it in the save. |
 | `OD2_AUTOMERC=1`, `_KILL`, `_HEROLEVEL`, `_EXP`, `_SECONDS` | Mercenary hire, fight, death/revive, follow. |
+| `OD2_AUTOMARKDEAD=1` | Turn the `OD2_AUTOGAME` hero into a dead hardcore character, to test the load refusal. |
 | `OD2_AUTODEATH=1`, `_MONSTER`, `_LEVEL`, `_HP`, `_HARDCORE` | Death, respawn, corpse recovery, penalties. |
 | `OD2_AUTOAMBIENT=<level>`, `_PHASES`, `_SECONDS`, `_SPEED`, `OD2_AUTOSOUND_TRACE` | Sound environment and day phases; `SOUNDAT` positional-sound lines (the trace variable only switches those lines on). |
+
+**Multiplayer** (two processes, see `96-multiplayer.sh` and `9d-party-trade.sh`)
+
+| Variable | Meaning |
+|---|---|
+| `OD2_HOST=1` | Host a network game: TCP on `OD2_PORT`, bind address `OD2_BIND` (default 0.0.0.0 when hosting, loopback otherwise). |
+| `OD2_JOIN=<host:port>`, `OD2_JOIN_RETRY=<seconds>` | Join a host; keep retrying while the host is still starting. |
+| `OD2_PROTO=d2gs` | Use the Diablo II game protocol (`d2gs`, `d2gsnet`) instead of the default JSON packets; host and client must agree. |
+| `OD2_AUTOPARTY=1` | Marks the party scenario: the monster director may spawn monsters while the hero is still in town. The party, trade and PvP steps themselves are `OD2_AUTOSCRIPT` steps. |
 
 **Items, containers, objects, quests**
 
 | Variable | Meaning |
 |---|---|
-| `OD2_AUTOGROUND=<seed>[,count]`, `_TC`, `_ILVL`, `_HOLD` | Drop items and gold from a treasure class around the hero. |
-| `OD2_AUTOCHEST=<seed>[,id...]`, `OD2_AUTOCHEST_SEED` | Spawn chests and barrels and open them. |
+| `OD2_AUTOGROUND=<seed>[,count]`, `_TC`, `_ILVL` (item level; default the hero's level), `_HOLD` | Drop items and gold from a treasure class around the hero. |
+| `OD2_AUTOCHEST=<seed>[,id...]`, `OD2_AUTOCHEST_SEED` (base of the chest drop seeds) | Spawn chests and barrels and open them. |
 | `OD2_AUTOPICKUP=1` | Pick up every ground item into the inventory. |
 | `OD2_AUTOPANEL=stash,cube,belt,inventory`, `_HOLD` | Open container panels and log items with grid positions. |
 | `OD2_AUTOSTASH`, `OD2_AUTOBELT` | Stash interaction; belt potion hotkeys. |
@@ -272,7 +300,8 @@ What it does, in order:
    once on a copy of the save with `OD2_AUTOGAME`, `OD2_AUTOTEST_MUTE=1` and `OD2_AUTOEXIT=1` plus its own environment.
 5. prints `ALL CHECKS PASSED` or `SOME CHECKS FAILED` (exit 1).
 
-Environment: `D2_TABLES`, `D2S_SAMPLE_BODY`, `D2S_SAMPLE_BODY_JSON` as above; `OD2_VERIFY_SAVE` (a `.d2s` to start in the game
+Environment: `D2_TABLES`, `D2S_SAMPLE_BODY`, `D2S_SAMPLE_BODY_JSON` as above; `OD2_VERIFY_SOUND=1` (play real audio in
+every scenario instead of muting; a scenario can also set `scenario_unmuted=1`); `OD2_VERIFY_SAVE` (a `.d2s` to start in the game
 instead of a copy of the sample); `OD2_VERIFY_LAUNCH` (command prefix used to start the generated `.command` file, for
 example `launchctl asuser 501 /bin/zsh`). It picks a random free port for `OD2_PORT` per run.
 
@@ -292,11 +321,28 @@ scenario_check() {                            # inspect "$log.txt" (ANSI strippe
 scenario_warnings_ok=1                        # optional: do not fail on [ERROR]/[WARNING] lines
 ```
 
-The runner already exports `OD2_PORT`, `OD2_AUTOGAME`, `OD2_AUTOTEST_MUTE` and `OD2_AUTOEXIT` for you.
+The runner already exports `OD2_PORT`, `OD2_AUTOGAME`, `OD2_AUTOTEST_MUTE` (unless sound is requested) and `OD2_AUTOEXIT` for you.
+Two more optional variables: `scenario_unmuted=1` (real audio for this scenario) and `scenario_warnings_ok=1`.
 
-Existing scenarios (all in `scripts/verify.d/`): menus and trade, scripted walk, autosave, monster pack, containers,
-skill cast, real maze and outdoor maps, waypoint/portal and persistence, maze travel, mercenary, quests, gamble and
-identify, death and new characters, hero stats, ambient audio, automap, world objects, equip rules, performance.
+How a scenario runs, exactly (`scripts/verify.sh`): for each file in name order the runner unsets the previous
+functions, sources the file, writes `$tmp/<NN-title>.command` (shebang, `OD2_PORT`, `OD2_AUTOGAME`, `OD2_AUTOEXIT`, mute
+line, your `scenario_env` output, then `od2 | tee <log>`), launches it, waits for the game process to appear and exit,
+strips ANSI colours into `<log>.txt`, runs `scenario_check`, and fails the scenario when the log holds `[ERROR]`,
+`[WARNING]` or `panic` lines (except the known `skipping missing` and `KILL giving up for now` lines) unless
+`scenario_warnings_ok=1`. A failed scenario is **run once more** (they are timing sensitive on a loaded machine); it is
+red only if the second attempt fails too. Two-process scenarios (`96-multiplayer.sh`, `9d-party-trade.sh`) start the
+joiner themselves and synchronise on `waitlog:` autoscript steps rather than on timing.
+
+Existing scenarios (44 files in `scripts/verify.d/`, in run order): `10-menus-trade`, `20-script-walk`, `30-autosave`,
+`40-monster-pack`, `50-containers`, `60-skill-cast`, `70-real-maps`, `71-real-outdoor`, `72-real-act45`,
+`80-imported-hero-ui`, `80-waypoint-portal`, `81-charselect`, `81-waypoint-persist`, `82-maze-travel`,
+`83-cave-chain-persist`, `84-mercenary`, `85-quests`, `85-quests-acts2-5`, `86-class-skills`, `87-gamble-identify`,
+`88-death-newchar`, `89-hero-stats`, `8b-options`, `8c-hardcore`, `8d-hardcore-death`, `90-ambient-audio`,
+`91-ambient-env`, `91-automap`, `92-objects2`, `93-equip-rules`, `95-perf`, `96-multiplayer`, `97-ai-states`,
+`98-skillbar`, `99-act-travel`, `9a-difficulty`, `9b-act1-playthrough`, `9c-act1-reload`, `9c-bosses`,
+`9d-act1-sample-hero`, `9d-party-trade`, `9e-act2-playthrough`, `9e-real-audio`, `9f-act2-lutn`. Which feature each
+one is evidence for is in [STATUS_MATRIX.md](STATUS_MATRIX.md). Prefix order matters: `9c-act1-reload` loads the `.d2s`
+that `9b-act1-playthrough` exported.
 
 ### 5.2 How to add a scenario
 
