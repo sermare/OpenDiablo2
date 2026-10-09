@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/progress.svg?v=1791578673" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
+<p align="center"><img src="docs/progress.svg?v=1791589746" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
 <p align="center"><img src="https://raw.githubusercontent.com/sermare/OpenDiablo2/progress-history/docs/progress-history.svg" alt="Progress over time: one line per part, snapshot every 10 minutes" width="880"></p>
 
 [![CI](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml/badge.svg)](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml)
@@ -20,7 +20,7 @@
 > [Testing](docs/TESTING.md) · [Reverse engineering](docs/REVERSE_ENGINEERING.md)
 
 Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The graphic above is generated from
-[`docs/progress.json`](docs/progress.json) by [`scripts/make_progress_svg.py`](scripts/make_progress_svg.py).
+[`docs/progress.json`](docs/progress.json) (what each bar measures: [docs/progress-targets.md](docs/progress-targets.md)) by [`scripts/make_progress_svg.py`](scripts/make_progress_svg.py).
 
 ## Status board
 
