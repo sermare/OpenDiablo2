@@ -89,6 +89,12 @@ func storedFromItem(it *diablo2item.Item, page, x, y int, orig *d2s.Item) d2hero
 		s.Stat = &stat
 	}
 
+	if orig == nil {
+		// made in the game: keep the rolled numbers for the .d2s export
+		f := it.Facts()
+		s.Facts = &f
+	}
+
 	if spec.Durability >= 0 {
 		d := spec.Durability
 		s.Durability = &d

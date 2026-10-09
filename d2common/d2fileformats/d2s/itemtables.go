@@ -65,6 +65,7 @@ const (
 type itemInfo struct {
 	kind         ItemKind
 	stackable    bool
+	compact      bool // compactsave: saved without extended data (a "simple" item)
 	noDurability bool
 	itemType     string
 }
@@ -158,6 +159,12 @@ func (t *ItemTables) ItemKindOf(code string) ItemKind {
 // IsStackable reports whether items of this code carry a quantity field.
 func (t *ItemTables) IsStackable(code string) bool {
 	return t.items[code].stackable
+}
+
+// IsCompact reports whether items of this code are saved without extended
+// data (the compactsave column: potions, scrolls, gems, runes, keys, ...).
+func (t *ItemTables) IsCompact(code string) bool {
+	return t.items[code].compact
 }
 
 // IsTome reports whether the item code is of item type "book" (or derived
@@ -300,6 +307,7 @@ func (t *ItemTables) loadItems(data []byte, kind ItemKind) error {
 		t.items[code] = itemInfo{
 			kind:         kind,
 			stackable:    atoi(cell(r, col, "stackable")) != 0,
+			compact:      atoi(cell(r, col, "compactsave")) != 0,
 			noDurability: atoi(cell(r, col, "nodurability")) != 0,
 			itemType:     cell(r, col, "type"),
 		}

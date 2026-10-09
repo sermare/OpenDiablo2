@@ -73,6 +73,11 @@ type StoredItem struct {
 	// count without the item being rebuilt.
 	Spec *diablo2item.Spec `json:"spec,omitempty"`
 	Stat *d2statlist.Item  `json:"stat,omitempty"`
+
+	// Facts are the numbers the game rolled for the item (defense, durability,
+	// sockets, stats per source), kept so that an item made in the game can be
+	// written to a .d2s (D2SItemFromStored).
+	Facts *diablo2item.ItemFacts `json:"facts,omitempty"`
 }
 
 // StoredMod is a property a Horadric Cube recipe attached to an item.
@@ -230,9 +235,9 @@ func trimCode(code string) string {
 
 // ExportD2SItems returns the container items as .d2s items for the item list
 // of a save: the item exactly as imported, with its page, position and (for
-// the belt) cell updated from the stored item. Items made in the game have no
-// bit-exact form yet and are reported in skipped (the writer needs the item's
-// property list, which the item model does not keep).
+// the belt) cell updated from the stored item. Items made in the game are
+// reported in skipped: they are encoded by MergeContainerItems, which has the
+// item tables.
 func ExportD2SItems(c *HeroContainers) (out []d2s.Item, skipped []StoredItem) {
 	if c == nil {
 		return nil, nil

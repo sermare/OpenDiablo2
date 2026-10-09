@@ -660,6 +660,10 @@ func (g *GameServer) saveD2S(state *d2hero.HeroState) {
 
 	g.Infof("D2S EXPORT path=%s", res.Path)
 	g.Infof("D2S EXPORT reparse: %s", res.Summary)
+
+	for _, l := range res.NewItems {
+		g.Infof("D2S EXPORT new item %s", l)
+	}
 }
 
 // onChangeLevel records where the hero is after a level change.

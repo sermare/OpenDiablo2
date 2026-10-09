@@ -1,6 +1,7 @@
 package d2player
 
 import (
+	"os"
 	"sort"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
@@ -132,6 +133,12 @@ func (t *TradeWindow) autoBuySell() {
 		t.vendor.Name, name, price, before, t.hero.Gold, err)
 
 	if err != nil {
+		return
+	}
+
+	if os.Getenv("OD2_AUTOTRADE_KEEP") == "1" {
+		// the item stays in the inventory: the .d2s export scenario checks that it is written
+		t.Infof("AUTOTRADE keep vendor=%s code=%s quality=%d ilvl=%d", t.vendor.Name, pick.GetItemCode(), pick.Quality(), pick.ItemLevel())
 		return
 	}
 
