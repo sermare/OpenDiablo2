@@ -2,6 +2,7 @@ package d2hero
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2config"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
@@ -116,8 +118,8 @@ func (f *HeroStateFactory) GetAllHeroStates() ([]*HeroState, error) {
 // in the directory named by OD2_D2S_DIR that are not already in the list. The
 // originals are only read; each import is saved as a new .od2 file.
 func (f *HeroStateFactory) importD2SCharacters(existing []*HeroState) []*HeroState {
-	dir := os.Getenv("OD2_D2S_DIR")
-	if dir == "" {
+	dirs := ImportDirs()
+	if len(dirs) == 0 {
 		return nil
 	}
 
@@ -126,6 +128,16 @@ func (f *HeroStateFactory) importD2SCharacters(existing []*HeroState) []*HeroSta
 		known[strings.ToLower(h.HeroName)] = true
 	}
 
+	imported := make([]*HeroState, 0)
+
+	for _, dir := range dirs {
+		imported = append(imported, f.importD2SDir(dir, known)...)
+	}
+
+	return imported
+}
+
+func (f *HeroStateFactory) importD2SDir(dir string, known map[string]bool) []*HeroState {
 	files, _ := ioutil.ReadDir(dir)
 	imported := make([]*HeroState, 0)
 
@@ -278,12 +290,12 @@ func (f *HeroStateFactory) LoadHeroState(filePath string) *HeroState {
 }
 
 func (f *HeroStateFactory) getGameBaseSavePath() (string, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
+	configDir := d2config.ConfigDir()
+	if configDir == "" {
+		return "", errors.New("no user config directory")
 	}
 
-	return filepath.Join(configDir, "OpenDiablo2", "Saves"), nil
+	return filepath.Join(configDir, "Saves"), nil
 }
 
 func (f *HeroStateFactory) getFirstFreeFileName() string {

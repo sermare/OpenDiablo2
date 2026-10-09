@@ -18,6 +18,11 @@ type Configuration struct {
 	RunInBackground bool
 	VsyncEnabled    bool
 	Backend         string
+	// WindowScale multiplies the 800x600 start window size (0 or 1 = normal).
+	WindowScale int
+	// D2SDir is an optional folder of real Diablo II .d2s characters to import
+	// (read only). When empty, well-known locations are searched.
+	D2SDir string
 	path            string
 }
 
