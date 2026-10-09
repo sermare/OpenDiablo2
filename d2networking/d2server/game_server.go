@@ -22,6 +22,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapgen"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client/d2clientconnectiontype"
+	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2gsnet"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket/d2netpackettype"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2server/d2tcpclientconnection"
@@ -69,6 +70,13 @@ type GameServer struct {
 	packetManagerChan chan ReceivedPacket
 	heroStateFactory  *d2hero.HeroStateFactory
 
+	// d2gs: OD2_PROTO=d2gs speaks the Diablo II game protocol (package d2gsnet)
+	// on the TCP port instead of JSON.
+	d2gs       bool
+	unitIDs    *d2gsnet.IDs
+	hostInfo   d2gsnet.GameInfo // difficulty of the first hero (the host)
+	hostInfoOK bool
+
 	*d2util.Logger
 }
 
@@ -112,6 +120,15 @@ func NewGameServer(asset *d2asset.AssetManager,
 		scriptEngine:      d2script.CreateScriptEngine(),
 		seed:              time.Now().UnixNano(),
 		heroStateFactory:  heroStateFactory,
+		d2gs:              d2gsnet.Enabled(),
+		unitIDs:           d2gsnet.NewIDs(),
+	}
+
+	if gameServer.d2gs {
+		// the protocol carries the game seed in 32 bits (LoadAct): use the map
+		// seed of the host's .d2s when it has one
+		gameServer.seed = int64(d2gsnet.GameSeed(d2mapgen.HeroMapSeed, gameServer.seed))
+		gameServer.hostInfo.MapSeed = uint32(gameServer.seed)
 	}
 
 	gameServer.Logger = d2util.NewLogger()
@@ -156,6 +173,10 @@ func (g *GameServer) Start() error {
 	listenerAddress := "127.0.0.1:" + listenPort()
 	if g.networkServer {
 		listenerAddress = "0.0.0.0:" + listenPort()
+	}
+
+	if bind := os.Getenv("OD2_BIND"); bind != "" {
+		listenerAddress = bind + ":" + listenPort()
 	}
 
 	g.Infof("Starting Game Server @ %s\n", listenerAddress)
@@ -230,6 +251,11 @@ func (g *GameServer) sendPacketToClients(packet d2netpacket.NetPacket) {
 // handleConnection accepts an individual connection and starts pooling for new packets. It is recommended this is called
 // via Go Routine. Context should be a property of the GameServer Struct.
 func (g *GameServer) handleConnection(conn net.Conn) {
+	if g.d2gs {
+		g.handleConnectionD2GS(conn)
+		return
+	}
+
 	var (
 		connected int
 		client    ClientConnection
@@ -268,7 +294,7 @@ func (g *GameServer) handleConnection(conn net.Conn) {
 				g.Infof("Closing connection with %s: did not receive new player connection request...", conn.RemoteAddr().String())
 			}
 
-			if client, err = g.registerConnection(packet.PacketData, conn); err != nil {
+			if client, err = g.registerConnection(packet.PacketData, conn, nil); err != nil {
 				return
 			}
 
@@ -292,7 +318,10 @@ func (g *GameServer) handleConnection(conn net.Conn) {
 // Errors:
 // - errServerFull
 // - errPlayerAlreadyExists
-func (g *GameServer) registerConnection(b []byte, conn net.Conn) (ClientConnection, error) {
+//
+// mk (optional) makes the connection object for the player id; the default is
+// the JSON-over-TCP one.
+func (g *GameServer) registerConnection(b []byte, conn net.Conn, mk func(id string) ClientConnection) (ClientConnection, error) {
 	var client ClientConnection
 
 	g.Lock()
@@ -300,6 +329,10 @@ func (g *GameServer) registerConnection(b []byte, conn net.Conn) (ClientConnecti
 
 	// check to see if the server is full
 	if len(g.connections) >= g.maxConnections {
+		if g.d2gs {
+			return client, errServerFull
+		}
+
 		sf, serverFullErr := d2netpacket.CreateServerFullPacket()
 		if serverFullErr != nil {
 			g.Errorf("ServerFullPacket: %v", serverFullErr)
@@ -329,7 +362,12 @@ func (g *GameServer) registerConnection(b []byte, conn net.Conn) (ClientConnecti
 	}
 
 	// Client a new TCP Client Connection and add it to the connections map
-	client = d2tcpclientconnection.CreateTCPClientConnection(conn, packet.ID)
+	if mk != nil {
+		client = mk(packet.ID)
+	} else {
+		client = d2tcpclientconnection.CreateTCPClientConnection(conn, packet.ID)
+	}
+
 	client.SetPlayerState(packet.PlayerState)
 
 	g.OnClientConnected(client)
@@ -355,6 +393,16 @@ func (g *GameServer) OnClientConnected(client ClientConnection) {
 	// --------------------------------------------------------------------
 
 	g.Infof("Client connected with an id of %s", client.GetUniqueID())
+
+	if !g.hostInfoOK { // the first hero is the host: its difficulty rules the game
+		g.hostInfoOK = true
+		g.hostInfo.Difficulty = uint8(clientPlayerState.Difficulty)
+		g.hostInfo.Hardcore = clientPlayerState.Hardcore
+		g.hostInfo.Expansion = true
+	}
+
+	g.Infof("PLAYER JOIN name=%q id=%s level=%d players=%d proto=%s", clientPlayerState.HeroName, client.GetUniqueID(),
+		heroLevel(clientPlayerState), len(g.connections)+1, g.protoName())
 	g.connections[client.GetUniqueID()] = client
 
 	g.handleClientConnection(client, sx, sy)
@@ -458,6 +506,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 // If this client was the host, disconnects all clients and kills GameServer.
 func (g *GameServer) OnClientDisconnected(client ClientConnection) {
 	g.Infof("Client disconnected with an id of %s", client.GetUniqueID())
+	g.Infof("PLAYER LEAVE name=%q id=%s players=%d", playerName(client), client.GetUniqueID(), len(g.connections)-1)
 	delete(g.connections, client.GetUniqueID())
 
 	if client.GetConnectionType() == d2clientconnectiontype.Local {
@@ -547,6 +596,8 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		}
 
 		g.saveD2S(playerState)
+	case d2netpackettype.Chat:
+		return g.onChat(client, packet)
 	case d2netpackettype.ChangeLevel:
 		return g.onChangeLevel(client, packet)
 	case d2netpackettype.SetWaypoint:
@@ -635,4 +686,48 @@ func (g *GameServer) onSetWaypoint(client ClientConnection, packet d2netpacket.N
 	g.saveD2S(state)
 
 	return nil
+}
+
+// onChat relays a chat line to every client with the sender's id and name.
+func (g *GameServer) onChat(client ClientConnection, packet d2netpacket.NetPacket) error {
+	p, err := d2netpacket.UnmarshalChat(packet.PacketData)
+	if err != nil {
+		return err
+	}
+
+	name := playerName(client)
+	g.Infof("CHAT from=%q text=%q", name, p.Text)
+
+	relay, err := d2netpacket.CreateChatPacket(client.GetUniqueID(), name, p.Text)
+	if err != nil {
+		return err
+	}
+
+	g.sendPacketToClients(relay)
+
+	return nil
+}
+
+func playerName(client ClientConnection) string {
+	if st := client.GetPlayerState(); st != nil {
+		return st.HeroName
+	}
+
+	return ""
+}
+
+func heroLevel(st *d2hero.HeroState) int {
+	if st == nil || st.Stats == nil {
+		return 0
+	}
+
+	return st.Stats.Level
+}
+
+func (g *GameServer) protoName() string {
+	if g.d2gs {
+		return "d2gs"
+	}
+
+	return "json"
 }

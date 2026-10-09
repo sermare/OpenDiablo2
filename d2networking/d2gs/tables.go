@@ -55,6 +55,10 @@ var serverSizes = map[byte]int{
 // Other in-game ids have a handler but their sizes are NOT yet verified, so
 // they are deliberately absent (ExpectedSize reports SizeUnknown for them).
 var clientSizes = map[byte]int{
+	// verified in Ghidra by the length check of the handlers (multiplayer work):
+	// 0x01/0x03 (0x547690/0x5477a0 via 0x5475b0: len must be 5), 0x05 (0x547bf0, same
+	// helper), 0x0c (0x547ed0, same helper), 0x3c (0x549ca0: len must be 9).
+	0x01: 5, 0x03: 5, 0x05: 5, 0x0c: 5, 0x3c: 9,
 	0x13: 9,
 	0x16: 13, 0x17: 5, 0x18: 17, 0x19: 5, 0x1a: 9, 0x1b: 9, 0x1c: 3, 0x1d: 9,
 	0x1e: 9, 0x1f: 17, 0x20: 13, 0x21: 9, 0x22: 5, 0x23: 9, 0x24: 5, 0x25: 9,

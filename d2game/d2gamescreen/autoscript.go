@@ -99,6 +99,7 @@ func (v *Game) advanceAutoScript(elapsed float64) {
 func (v *Game) autoScriptExit(pass bool) {
 	if os.Getenv("OD2_AUTOEXIT") != "" {
 		v.saveBeforeExit()
+		v.leaveNetworkGame()
 
 		if pass {
 			os.Exit(0)
