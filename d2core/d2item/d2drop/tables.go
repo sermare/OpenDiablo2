@@ -68,7 +68,7 @@ type ItemType struct {
 	VarInvGfx            int
 	Throwable            bool
 	Body                 bool
-	Quiver               bool
+	Quiver               bool // the Quiver column names the weapon type it feeds (bow, xbow)
 	AutoStack            bool
 	StaffMods            string
 	CostFormula          int
