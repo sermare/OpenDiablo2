@@ -4,6 +4,8 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2equip"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 )
 
 // This file is the engine side of giving items to the hero's mercenary and taking
@@ -18,6 +20,9 @@ import (
 type MercGearHost struct {
 	Ref     func() (d2hero.MercRef, bool)
 	Changed func()
+	// Drink gives a potion's effect to the merc (healing and rejuvenation heal it; others
+	// are used up with no effect). Optional.
+	Drink func(d2inventory.PotionEffect)
 }
 
 // SetMercGearHost sets the merc the controls give items to.
@@ -71,6 +76,10 @@ func (g *GameControls) GiveCursorToMerc() MercGiveVerdict {
 	}
 
 	if res.Consumed {
+		if it, isPotion := item.(*diablo2item.Item); isPotion && g.mercHost.Drink != nil {
+			g.mercHost.Drink(d2inventory.PotionEffectOf(it.CommonRecord()))
+		}
+
 		g.inventory.SetCursorItem(nil)
 		g.Infof("MERC give decision=ok item=%s consumed=true", item.GetItemCode())
 

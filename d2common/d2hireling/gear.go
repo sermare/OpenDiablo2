@@ -20,6 +20,11 @@ type Gear struct {
 	DmgMax   int
 	// Resist is fire, cold, lightning, poison (d2statlist.ResFire...).
 	Resist [4]int
+	// RawResist is the same sum before the (UNVERIFIED) cap above, and MaxResistBonus the
+	// items' max resist stats: the combat code feeds both to d2combat.EffectiveResist, which
+	// applies the verified difficulty penalty first and the cap after it.
+	RawResist      [4]int
+	MaxResistBonus [4]int
 	// PhysResist and DamageReduction are the item stats 36 and 34.
 	PhysResist      int
 	DamageReduction int
@@ -92,6 +97,8 @@ func ApplyGear(s Stats, items []d2statlist.Item) Gear {
 
 	for i, ids := range res {
 		g.Resist[i] += int(list.Get(ids[0]))
+		g.RawResist[i] = g.Resist[i]
+		g.MaxResistBonus[i] = int(list.Get(ids[1]))
 
 		// UNVERIFIED: the usual 75 cap (+ the items' max resist bonus), no difficulty penalty
 		if limit := 75 + int(list.Get(ids[1])); g.Resist[i] > limit && g.Resist[i] > s.Resist {

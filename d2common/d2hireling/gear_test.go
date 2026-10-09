@@ -14,7 +14,8 @@ func TestApplyGearNoItemsIsIdentity(t *testing.T) {
 	s := gearBase()
 	g := ApplyGear(s, nil)
 
-	want := Gear{Str: 60, Dex: 50, MaxHP: 300, Defense: 100, AR: 200, DmgMin: 5, DmgMax: 9, Resist: [4]int{20, 20, 20, 20}}
+	want := Gear{Str: 60, Dex: 50, MaxHP: 300, Defense: 100, AR: 200, DmgMin: 5, DmgMax: 9, Resist: [4]int{20, 20, 20, 20},
+		RawResist: [4]int{20, 20, 20, 20}}
 	if g != want {
 		t.Errorf("no gear: %+v, want %+v", g, want)
 	}

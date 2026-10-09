@@ -278,7 +278,7 @@ func (d *Director) strikeUnit(u, tu *unit, atk d2mapentity.MonsterAttack, mode d
 	}
 
 	if tu.merc != nil {
-		d.damageMerc(tu, dmg, u.m.Label())
+		d.damageMerc(tu, d.takenByMerc(tu, dmg), u.m.Label())
 
 		return
 	}

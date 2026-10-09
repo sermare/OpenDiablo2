@@ -77,6 +77,7 @@ type mercUnit struct {
 	lastOwnerX, lastOwnerY int
 	ownerMode              d2monster.Mode
 	skill                  string // the skill being cast, for logs
+	regen                  mercRegen
 }
 
 // SetHirelings gives the director the parsed hireling.txt; without it no merc
@@ -511,6 +512,10 @@ func (d *Director) stepMerc(u *unit) {
 	}
 
 	mu.lastOwnerX, mu.lastOwnerY = x, y
+
+	if u.m.Alive() {
+		mu.stepRegen(&u.m.Vitals)
+	}
 }
 
 // nearestEnemy is the merc's attack target: the nearest living hostile
@@ -608,8 +613,6 @@ func (d *Director) mercStrike(u *unit, mode d2monster.Mode) {
 
 // strikeMerc resolves a monster's attack on a merc.
 func (d *Director) strikeMerc(u *unit, tu *unit, atk d2mapentity.MonsterAttack, mode d2monster.Mode) {
-	mu := tu.merc
-
 	tx, ty := tu.m.SubtilePos()
 	sx, sy := u.m.SubtilePos()
 	dist := d2monster.EdgeDistance(sx-tx, sy-ty, u.b.Size)
@@ -627,31 +630,42 @@ func (d *Director) strikeMerc(u *unit, tu *unit, atk d2mapentity.MonsterAttack, 
 		return
 	}
 
-	in := d2combat.ToHitInput{
-		AttackRating:  d2combat.MonsterAttackRating(atk.ToHit, 0, 0),
-		Defense:       tu.m.Vitals.Defense,
-		AttackerLevel: u.m.Vitals.Level,
-		DefenderLevel: mu.level,
-	}
-
-	hit, chance, roll := d2combat.RollToHit(u.b.Seed, in)
-	dmg := 0
+	hit, chance, roll, dmg := d.rollMercHit(u, tu, atk)
 
 	if hit {
-		dmg = atk.Min + int(u.b.Seed.Roll(int32(atk.Max-atk.Min+1)))
-		if dmg < 1 {
-			dmg = 1
-		}
-
 		d.Counters.AttackHits++
 	}
 
-	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s target=merc hit=%v chance=%d roll=%d dmg=%d merc_hp=%d/%d",
-		u.m.Label(), u.b.ID, mode, hit, chance, roll, dmg, maxInt(tu.m.Vitals.HP-dmg, 0), tu.m.Vitals.MaxHP)
+	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s target=merc hit=%v chance=%d roll=%d dmg=%d merc_hp=%d/%d def=%d",
+		u.m.Label(), u.b.ID, mode, hit, chance, roll, dmg, maxInt(tu.m.Vitals.HP-dmg, 0), tu.m.Vitals.MaxHP, tu.m.Vitals.Defense)
 
 	if hit {
 		d.damageMerc(tu, dmg, u.m.Label())
 	}
+}
+
+// rollMercHit rolls a monster attack against a merc: the to-hit against the merc's total
+// defense (table plus gear, kept in its vitals), then the attack's damage after the merc's
+// gear (flat reduction, physical resist; both are no-ops without gear).
+func (d *Director) rollMercHit(u, tu *unit, atk d2mapentity.MonsterAttack) (hit bool, chance, roll, dmg int) {
+	in := d2combat.ToHitInput{
+		AttackRating:  d2combat.MonsterAttackRating(atk.ToHit, 0, 0),
+		Defense:       tu.m.Vitals.Defense,
+		AttackerLevel: u.m.Vitals.Level,
+		DefenderLevel: tu.merc.level,
+	}
+
+	hit, chance, roll = d2combat.RollToHit(u.b.Seed, in)
+	if !hit {
+		return hit, chance, roll, 0
+	}
+
+	dmg = atk.Min + int(u.b.Seed.Roll(int32(atk.Max-atk.Min+1)))
+	if dmg < 1 {
+		dmg = 1
+	}
+
+	return hit, chance, roll, d.takenByMerc(tu, dmg)
 }
 
 func (d *Director) damageMerc(tu *unit, dmg int, by string) {

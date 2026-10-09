@@ -13,6 +13,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
@@ -158,6 +159,7 @@ func (v *Game) wireMercGear(p *d2mapentity.Player) {
 
 			return d2hero.MercRef{Class: info.Rec.Class, Base: info.Base}, true
 		},
+		Drink: func(e d2inventory.PotionEffect) { v.monsters.DrinkMerc(p, e) },
 		Changed: func() {
 			if v.monsters.SetMercItems(p, v.gameControls.MercStatItems()) {
 				if info, ok := v.monsters.Merc(p); ok {
