@@ -126,8 +126,12 @@ func twoHanded(class string, it *Item) bool {
 
 // canWieldOffhandWeapon says whether a class may hold a weapon (not a shield or
 // ammunition) in the left hand slot. Barbarians (any one handed weapon) and
-// Assassins (claws, type h2h) only: INV_CheckHandItemsCompatible special-cases
-// classes 4 and 6 (inventory-trade.md, the claw type check is UNVERIFIED).
+// Assassins (claws, type h2h) only. VERIFIED, INV_CheckHandItemsCompatible
+// (0x63ec50): for two weapons class 4 is always compatible (after the
+// two-handed test) and class 6 needs BOTH items to be of ItemTypes id 0x43,
+// which is Hand to Hand (h2h; ids after the "Expansion" row of ItemTypes.txt
+// are one lower than the line index) and so also Hand to Hand 2. A weapon
+// with a non-weapon (shield) is always compatible; a pair of non-weapons is not.
 func (r Rules) canWieldOffhandWeapon(class string, it *Item) bool {
 	switch class {
 	case ClassBarbarian:
@@ -157,7 +161,8 @@ func (r Rules) CheckHands(class string, right, left *Item) *Decision {
 	}
 
 	if left.Weapon && !r.IsShield(left.Type) {
-		if !r.canWieldOffhandWeapon(class, left) || twoHanded(class, left) {
+		if !r.canWieldOffhandWeapon(class, left) || twoHanded(class, left) ||
+			(class == ClassAssassin && right != nil && right.Weapon && !r.Types.IsA(right.Type, "h2h")) {
 			d := refuse(ReasonDualWield, "%s cannot hold %s in the off hand", class, left.Code)
 
 			return &d

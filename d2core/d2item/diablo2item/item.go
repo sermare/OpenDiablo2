@@ -85,6 +85,8 @@ type Item struct {
 	GridX int
 	GridY int
 
+	genQuality d2drop.Quality // quality the generator ended with (0 if not generated)
+
 	sockets []*d2item.Item // there will be checks for handling the craziness this might entail
 }
 
