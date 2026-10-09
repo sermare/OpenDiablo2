@@ -100,10 +100,8 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 	}
 
 	if opts.Affixes != nil && state.Containers != nil {
-		added, removed := MergeContainerItems(c, state.Containers, tables, opts.Affixes, opts.Known, warn)
-		if added+removed > 0 {
-			warn("items: %d added, %d removed in the item list", added, removed)
-		}
+		// the counts are reported by NewItemsInD2S; only the items that could not be written warn
+		MergeContainerItems(c, state.Containers, tables, opts.Affixes, opts.Known, warn)
 	}
 
 	exportWorld(c.Header, state)
