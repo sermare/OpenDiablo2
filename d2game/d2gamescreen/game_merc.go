@@ -10,6 +10,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2hireling"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
@@ -41,6 +42,18 @@ type mercGame struct {
 	offers     map[int]*sellerOffers
 	spawnedFor *d2monsters.Director // the director the merc was spawned into: a new level has a new one, so the merc follows the hero
 	test       *mercTest
+	// carry is what the merc takes along from a level to the next: the hit
+	// points it had (a unit that follows its owner is moved, not made anew, so
+	// it is not healed), and whether it was dead (a dead merc stays behind).
+	carry mercCarry
+	// gameRng is the generator the offer tables draw from (see offerTable)
+	gameRng *d2rand.Seed
+}
+
+type mercCarry struct {
+	valid bool
+	hp    int
+	dead  bool
 }
 
 // mercTest is the state of the OD2_AUTOMERC scenario.
@@ -54,6 +67,14 @@ type mercTest struct {
 	startY  float64
 	logAcc  float64
 	done    bool
+	// the OD2_AUTOMERC_LEVELS phases (levelsPhase)
+	level   int // the level the merc is taken to
+	home    int // the level it comes back to
+	hpLeave int
+	// OD2_AUTOMERC_TYPES: hireling ids hired one after the other, each fights
+	// a while (mercTestTypes)
+	types  []int
+	probed bool
 }
 
 // hirelingTable loads hireling.txt once (nil when the game data has none:
@@ -116,10 +137,7 @@ func (v *Game) advanceMerc(elapsed float64) {
 
 	if v.merc.spawnedFor != d && p.Merc != nil && d.Hirelings() != nil && !soloTest {
 		v.merc.spawnedFor = v.monsters
-
-		if _, err := d.SpawnMerc(p, saveOf(p.Merc)); err != nil {
-			v.Errorf("MERC spawn: %v", err)
-		}
+		v.arriveMerc(d, p)
 	}
 
 	if info, ok := d.Merc(p); ok && p.Merc != nil {
@@ -128,6 +146,73 @@ func (v *Game) advanceMerc(elapsed float64) {
 	}
 
 	v.advanceMercTest(elapsed)
+}
+
+// arriveMerc brings the hero's merc into a freshly built level. A living merc
+// follows the hero through the exit, the stairs, the waypoint or the town
+// portal and arrives next to him with the hit points it had (MERC_RelocatePetsWithOwner
+// moves living pets only); a merc that died stays behind: it has no unit in
+// the new level until a hireling NPC revives it. The first spawn of a game
+// (from the save) gives a dead merc a corpse next to the hero and a living one
+// full life.
+func (v *Game) arriveMerc(d *d2monsters.Director, p *d2mapentity.Player) {
+	c := v.merc.carry
+	save := saveOf(p.Merc)
+
+	spawn, hp := mercArrival(c, save.Dead)
+	if !spawn {
+		v.Infof("MERC stays behind dead (revive it at a mercenary vendor) level=%d", v.currentLevel())
+		return
+	}
+
+	if _, err := d.SpawnMercHP(p, save, hp); err != nil {
+		v.Errorf("MERC spawn: %v", err)
+		return
+	}
+
+	if c.valid {
+		info, _ := d.Merc(p)
+		v.Infof("MERC arrive level=%d hp=%d/%d (carried hp=%d) pos_hero=(%.0f,%.0f)", v.currentLevel(), info.HP, info.MaxHP, hp,
+			p.Position.X(), p.Position.Y())
+	}
+}
+
+// mercArrival decides what happens to the merc in a freshly built level: a
+// merc that travelled (carry valid) and was dead stays behind; a living one
+// arrives with the life it had (hp 0 means full life: the first spawn of a game,
+// where a dead merc from the save gets its corpse next to the hero).
+func mercArrival(c mercCarry, saveDead bool) (spawn bool, hp int) {
+	if c.valid && (c.dead || saveDead) {
+		return false, 0
+	}
+
+	if c.valid {
+		return true, c.hp
+	}
+
+	return true, 0
+}
+
+// captureMerc records the merc's state before a level change drops the
+// director that holds it.
+func (v *Game) captureMerc() {
+	p, d := v.localPlayer, v.monsters
+
+	if p == nil || d == nil || p.Merc == nil {
+		return
+	}
+
+	if info, ok := d.Merc(p); ok {
+		p.Merc.Experience, p.Merc.Dead = info.Save.Experience, info.Save.Dead
+		v.merc.carry = mercCarry{valid: true, hp: info.HP, dead: info.Save.Dead}
+		v.Infof("MERC leaves its level hp=%d/%d dead=%v exp=%d", info.HP, info.MaxHP, info.Save.Dead,
+			info.Save.Experience)
+
+		return
+	}
+
+	// no unit (it stayed behind dead in an earlier level): the save's flags carry on
+	v.merc.carry = mercCarry{valid: true, dead: p.Merc.Dead}
 }
 
 func saveOf(m *d2hero.MercState) d2monsters.MercSave {
@@ -151,9 +236,18 @@ func (v *Game) offerTable(seller int) *sellerOffers {
 		return o
 	}
 
-	// the exe draws from the game seed's own generator; the game seed plus the
-	// seller class is the deterministic stand-in here (UNVERIFIED)
-	rng := d2rand.New(uint32(v.gameClient.MapEngine.Seed()) + uint32(seller))
+	// NPCSRV_AllocHireOfferTable draws every slot seed and the ten offered slots
+	// from the game's one seed (game+0x1d24, an LCG with the multiplier
+	// 0x6ac690c5: V in hirelings.md), so the vendors of a game share one stream
+	// and what a vendor offers depends on the order the hero meets them. The
+	// exe's stream is also used by other game logic before the first visit, so
+	// its exact state at that moment is not reproducible here: a generator
+	// seeded with the game seed stands in (UNVERIFIED).
+	if v.merc.gameRng == nil {
+		v.merc.gameRng = d2rand.New(uint32(v.gameClient.MapEngine.Seed()))
+	}
+
+	rng := v.merc.gameRng
 
 	tab := t.NewOfferTable(rng, seller, v.mercDifficulty())
 	if tab == nil {
@@ -207,7 +301,7 @@ func (v *Game) openHire(npc d2interface.MapEntity) {
 		lines = append(lines, fmt.Sprintf("%s [slot %d, %s]", line, slot, offer.Rec.HireDesc))
 	}
 
-	if info, ok := v.monsters.Merc(v.localPlayer); ok && info.Save.Dead {
+	if info, ok := v.deadMerc(); ok {
 		rows = append(rows, d2player.NPCMenuRow{
 			Fallback: fmt.Sprintf("Revive %s  %dg", v.mercDisplayName(info.Rec, int(info.Save.NameID)), info.ReviveCost),
 			Action:   d2player.NPCActionReviveMerc,
@@ -286,6 +380,7 @@ func (v *Game) hireOffer(seller, slot int) error {
 
 	p.Merc = &d2hero.MercState{ID: save.ID, NameID: save.NameID, Type: save.Type, Experience: save.Experience, Replaced: true}
 	v.merc.spawnedFor = v.monsters
+	v.merc.carry = mercCarry{}
 
 	o.table.Slots[slot].Hired = true
 	if o.table.Regenerate(tab, o.rng) {
@@ -298,12 +393,45 @@ func (v *Game) hireOffer(seller, slot int) error {
 	return v.OnPlayerSave()
 }
 
-// reviveMerc revives the dead merc for min(50000, lvl^2/2*15) gold.
+// deadMerc describes the hero's dead merc: the corpse in this level, or the
+// one that stayed behind in an earlier level (it has no unit here, only the
+// save's flags).
+func (v *Game) deadMerc() (d2monsters.MercInfo, bool) {
+	p := v.localPlayer
+	if p == nil || v.monsters == nil {
+		return d2monsters.MercInfo{}, false
+	}
+
+	if info, ok := v.monsters.Merc(p); ok {
+		return info, info.Save.Dead
+	}
+
+	tab := v.hirelingTable()
+	if p.Merc == nil || !p.Merc.Dead || tab == nil {
+		return d2monsters.MercInfo{}, false
+	}
+
+	save := saveOf(p.Merc)
+	level := tab.LevelFromExp(int(save.Type), save.Experience)
+	st, rec := tab.StatsFor(int(save.Type), level)
+
+	if rec == nil {
+		return d2monsters.MercInfo{}, false
+	}
+
+	return d2monsters.MercInfo{Save: save, Level: level, MaxHP: st.MaxHP, Rec: rec, Stats: st,
+		ReviveCost: d2hireling.ReviveCost(level)}, true
+}
+
+// reviveMerc revives the dead merc for min(50000, lvl^2/2*15) gold. A merc
+// that stayed behind in another level comes back with a fresh unit next to
+// the hero (HIRE_ServerHandleReviveMercenary, MERC_ReviveUnit: full life, at
+// the owner).
 func (v *Game) reviveMerc() error {
 	p := v.localPlayer
 
-	info, ok := v.monsters.Merc(p)
-	if !ok || !info.Save.Dead {
+	info, ok := v.deadMerc()
+	if !ok {
 		return errors.New("no dead mercenary")
 	}
 
@@ -311,9 +439,23 @@ func (v *Game) reviveMerc() error {
 		return fmt.Errorf("not enough gold: %d < %d", p.Gold, info.ReviveCost)
 	}
 
-	if err := v.monsters.ReviveMerc(p); err != nil {
-		return err
+	if _, has := v.monsters.Merc(p); has {
+		if err := v.monsters.ReviveMerc(p); err != nil {
+			return err
+		}
+	} else {
+		save := info.Save
+		save.Dead = false
+
+		if _, err := v.monsters.SpawnMerc(p, save); err != nil {
+			return err
+		}
+
+		v.merc.spawnedFor = v.monsters
+		v.Infof("MERC revive: a new unit for the merc that stayed behind level=%d", info.Level)
 	}
+
+	v.merc.carry = mercCarry{}
 
 	v.gameControls.AddGold(-info.ReviveCost)
 
@@ -366,6 +508,13 @@ func (v *Game) advanceMercTest(elapsed float64) {
 	t.elapsed += elapsed
 	t.phaseT += elapsed
 
+	// the long scenarios keep the hero alive: a hardcore hero who dies ends the game
+	if os.Getenv("OD2_AUTOMERC_TYPES") != "" || os.Getenv("OD2_AUTOMERC_LEVELS") != "" {
+		if p := v.localPlayer; p.Stats.Health < p.Stats.MaxHealth/2 {
+			p.Stats.Health = p.Stats.MaxHealth
+		}
+	}
+
 	if t.elapsed < mercTestDelay {
 		return
 	}
@@ -379,6 +528,12 @@ func (v *Game) advanceMercTest(elapsed float64) {
 		v.mercTestRevive(t)
 	case 3:
 		v.mercTestFollow(t, elapsed)
+	case 4:
+		v.mercTestFinish(t)
+	case mercTypesFirst, mercTypesFirst + 1:
+		v.mercTestTypes(t)
+	case mercLevelsFirst, mercLevelsFirst + 1, mercLevelsFirst + 2, mercLevelsFirst + 3, mercLevelsFirst + 4, mercLevelsFirst + 5:
+		v.mercTestLevels(t)
 	default:
 		v.mercTestFinish(t)
 	}
@@ -467,13 +622,24 @@ func (v *Game) mercTestSetup(t *mercTest) {
 		d.GrantMercExp(p, uint32(n))
 	}
 
+	if !v.mercTestSpawn(t) {
+		return
+	}
+
+	v.next(t)
+}
+
+// mercTestSpawn puts the scenario's hostile monsters in a ring around the hero.
+func (v *Game) mercTestSpawn(t *mercTest) bool {
+	p, d := v.localPlayer, v.monsters
+
 	stat := d.FindStat(t.ref)
 	if stat == nil {
 		v.Errorf("AUTOMERC: unknown monster %q", t.ref)
 		t.done = true
 		v.autoTestExit()
 
-		return
+		return false
 	}
 
 	hx, hy := int(p.Position.X()), int(p.Position.Y())
@@ -499,7 +665,7 @@ func (v *Game) mercTestSetup(t *mercTest) {
 		}
 	}
 
-	v.next(t)
+	return true
 }
 
 func (v *Game) livingMonsters() int {
@@ -591,6 +757,25 @@ func (v *Game) mercTestFollow(t *mercTest, elapsed float64) {
 	}
 
 	if t.phaseT > 12 {
+		v.afterFollow(t)
+	}
+}
+
+// afterFollow chooses the phase after the follow phase: the hireling types,
+// the level changes, or the end.
+func (v *Game) afterFollow(t *mercTest) {
+	for _, f := range strings.Split(os.Getenv("OD2_AUTOMERC_TYPES"), ",") {
+		if n, err := strconv.Atoi(strings.TrimSpace(f)); err == nil {
+			t.types = append(t.types, n)
+		}
+	}
+
+	switch {
+	case len(t.types) > 0:
+		t.phase, t.phaseT = mercTypesFirst, 0
+	case os.Getenv("OD2_AUTOMERC_LEVELS") != "":
+		t.phase, t.phaseT = mercLevelsFirst, 0
+	default:
 		v.next(t)
 	}
 }
@@ -608,4 +793,245 @@ func (v *Game) mercTestFinish(t *mercTest) {
 	t.done = true
 
 	v.autoTestExit()
+}
+
+// ---- OD2_AUTOMERC_LEVELS: the merc through level changes ----
+
+// The phases run after the follow phase when OD2_AUTOMERC_LEVELS is set:
+//
+//	+0 hurt the merc to half life and take the hero to OD2_AUTOMERC_LEVEL (default 29, a
+//	   waypoint level; with OD2_REALMAPS=1 that is a real DRLG map)
+//	+1 wait for the arrival: the merc must come along with the life it had
+//	+2 fight monsters spawned around the hero in the new level, then kill the merc
+//	+3 take the hero back to town (OD2_AUTOMERC_HOME, default 1)
+//	+4 the dead merc must have stayed behind; revive it at the "vendor"
+//	+5 the revived merc is at full life next to the hero; finish
+const mercLevelsFirst = 10
+
+func (v *Game) mercTestLevels(t *mercTest) {
+	p, d := v.localPlayer, v.monsters
+
+	switch t.phase - mercLevelsFirst {
+	case 0:
+		t.level, t.home = mercEnvInt("OD2_AUTOMERC_LEVEL", 29), mercEnvInt("OD2_AUTOMERC_HOME", 1)
+
+		d.ClearHostiles()
+
+		info, ok := d.Merc(p)
+		if !ok {
+			v.Errorf("AUTOMERC levels: the hero has no merc")
+			v.finishLevels(t)
+
+			return
+		}
+
+		if info.Save.Dead { // the last hireling of the types phase died
+			if err := d.ReviveMerc(p); err != nil {
+				v.Errorf("AUTOMERC levels: revive: %v", err)
+			}
+
+			info, _ = d.Merc(p)
+		}
+
+		d.SetMercHP(p, info.MaxHP/2)
+		info, _ = d.Merc(p)
+		t.hpLeave = info.HP
+		v.Infof("AUTOMERC levels: merc hp=%d/%d, taking the hero from level %d to level %d", info.HP, info.MaxHP, v.currentLevel(), t.level)
+
+		if !v.startLevelChange(t.level, d2level.WaypointStartType(t.level), "waypoint") {
+			v.Errorf("AUTOMERC levels: level %d cannot be entered", t.level)
+			v.finishLevels(t)
+
+			return
+		}
+
+		v.next(t)
+	case 1:
+		if v.levels.trans != nil || v.monsters == nil || v.currentLevel() != t.level {
+			return
+		}
+
+		info, ok := v.monsters.Merc(p)
+		if !ok {
+			if t.phaseT > 5 {
+				v.Errorf("AUTOMERC levels: the merc did not arrive in level %d", t.level)
+				v.finishLevels(t)
+			}
+
+			return
+		}
+
+		v.Infof("AUTOMERC levels: arrived level=%d merc hp=%d/%d expected_hp=%d alive=%v", t.level, info.HP, info.MaxHP, t.hpLeave,
+			!info.Save.Dead)
+
+		v.mercTestSpawn(t)
+		v.next(t)
+	case 2:
+		limit := 25.0
+		if v.livingMonsters() == 0 || t.phaseT > limit {
+			c := v.monsters.Counters
+			v.Infof("AUTOMERC levels: fight over level=%d alive_monsters=%d merc_attacks=%d merc_hits=%d merc_skills=%d", t.level,
+				v.livingMonsters(), c.MercAttacks, c.MercHits, c.MercSkills)
+			v.monsters.KillMerc(p, "autotest-levels")
+			v.next(t)
+		}
+	case 3:
+		if t.phaseT < 2 { // let the death animation play
+			return
+		}
+
+		if !v.startLevelChange(t.home, d2level.StartPortal, "portal") {
+			v.Errorf("AUTOMERC levels: level %d cannot be entered", t.home)
+			v.finishLevels(t)
+
+			return
+		}
+
+		v.next(t)
+	case 4:
+		if v.levels.trans != nil || v.monsters == nil || v.currentLevel() != t.home || t.phaseT < 1.5 {
+			return
+		}
+
+		if _, has := v.monsters.Merc(p); has {
+			v.Errorf("AUTOMERC levels: a dead merc followed the hero to level %d", t.home)
+		} else {
+			v.Infof("AUTOMERC levels: the dead merc stayed behind, level=%d", t.home)
+		}
+
+		if info, ok := v.deadMerc(); ok {
+			if p.Gold < info.ReviveCost {
+				v.gameControls.AddGold(info.ReviveCost - p.Gold)
+			}
+
+			if err := v.reviveMerc(); err != nil {
+				v.Errorf("AUTOMERC levels: revive: %v", err)
+			}
+		} else {
+			v.Errorf("AUTOMERC levels: no dead merc to revive")
+		}
+
+		v.next(t)
+	default:
+		if t.phaseT < 1.5 {
+			return
+		}
+
+		if info, ok := v.monsters.Merc(p); ok {
+			v.Infof("AUTOMERC levels: revived level=%d merc hp=%d/%d alive=%v", v.currentLevel(), info.HP, info.MaxHP, !info.Save.Dead)
+		} else {
+			v.Errorf("AUTOMERC levels: the revived merc has no unit")
+		}
+
+		v.finishLevels(t)
+	}
+}
+
+func (v *Game) finishLevels(t *mercTest) { t.phase, t.phaseT = 4, 0 }
+
+func mercEnvInt(name string, def int) int {
+	if n, err := strconv.Atoi(os.Getenv(name)); err == nil && n > 0 {
+		return n
+	}
+
+	return def
+}
+
+// ---- OD2_AUTOMERC_TYPES: every kind of hireling fights ----
+
+const (
+	mercTypesFirst = 20
+	mercTypeSecs   = 14.0
+)
+
+// mercTestTypes hires the listed hireling ids one after the other, lets each
+// fight the scenario's monsters for a while and logs what its skills did
+// through the skill engine.
+func (v *Game) mercTestTypes(t *mercTest) {
+	p, d := v.localPlayer, v.monsters
+	tab := v.hirelingTable()
+
+	if t.phase == mercTypesFirst {
+		if len(t.types) == 0 {
+			v.leaveTypes(t)
+
+			return
+		}
+
+		id := t.types[0]
+		t.types = t.types[1:]
+
+		d.ClearHostiles()
+
+		level := mercEnvInt("OD2_AUTOMERC_MERCLEVEL", 40)
+		if p.Stats.Level < level+1 {
+			p.Stats.Level = level + 1
+		}
+
+		save := d2monsters.MercSave{ID: uint32(0x1000 + id), Type: uint16(id), Experience: tab.StartExp(id, level)}
+
+		if _, err := d.SpawnMerc(p, save); err != nil {
+			v.Errorf("AUTOMERC types: hireling %d: %v", id, err)
+
+			return
+		}
+
+		p.Merc = &d2hero.MercState{ID: save.ID, Type: save.Type, Experience: save.Experience, Replaced: true}
+		v.merc.spawnedFor = d
+		info, _ := d.Merc(p)
+
+		v.Infof("AUTOMERC types: hired id=%d class=%d level=%d skills=%s", id, info.Rec.Class, info.Level, v.mercSkillList(info.Rec))
+		t.hpLeave = d.Counters.MercSkills
+		v.mercTestSpawn(t)
+		v.next(t)
+
+		return
+	}
+
+	if !t.probed {
+		// every skill of the hireling once, through the engine
+		t.probed = true
+
+		for _, m := range d.Monsters() {
+			if m.Alive() {
+				v.Infof("AUTOMERC types: probe %s", strings.Join(d.ProbeMercSkills(p, m), " "))
+
+				break
+			}
+		}
+	}
+
+	if v.livingMonsters() == 0 || t.phaseT > mercTypeSecs {
+		t.probed = false
+		c := d.Counters
+		sk := v.skillEngine()
+
+		v.Infof("AUTOMERC types: fight over merc_attacks=%d merc_hits=%d merc_skills=%d (this type %d) casts=%d missiles=%d "+
+			"missile_hits=%d melee=%d damage=%d", c.MercAttacks, c.MercHits, c.MercSkills, c.MercSkills-t.hpLeave,
+			sk.Counters.Casts, sk.Counters.Missiles, sk.Counters.Hits, sk.Counters.Melee, sk.Counters.Damage)
+		t.phase, t.phaseT = mercTypesFirst, 0
+	}
+}
+
+func (v *Game) leaveTypes(t *mercTest) {
+	if os.Getenv("OD2_AUTOMERC_LEVELS") != "" {
+		t.phase, t.phaseT = mercLevelsFirst, 0
+
+		return
+	}
+
+	t.phase, t.phaseT = 4, 0
+}
+
+// mercSkillList names the hireling's six skills.
+func (v *Game) mercSkillList(rec *d2hireling.Record) string {
+	var out []string
+
+	for _, sk := range rec.Skills {
+		if sk.Name != "" {
+			out = append(out, fmt.Sprintf("%s/mode%d", sk.Name, sk.Mode))
+		}
+	}
+
+	return strings.Join(out, ",")
 }

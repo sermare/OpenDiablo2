@@ -69,7 +69,7 @@ type castTest struct {
 // skillEngine returns the skill engine, creating it once the hero and the
 // monster director exist.
 func (v *Game) skillEngine() *d2skills.Engine {
-	if v.skills != nil {
+	if v.skills != nil && v.monsters != nil && v.skills.Director() == v.monsters {
 		return v.skills
 	}
 
@@ -82,10 +82,18 @@ func (v *Game) skillEngine() *d2skills.Engine {
 		return nil
 	}
 
+	if v.skills != nil { // a level change built a new director: follow it
+		if v.skills.Director() != md {
+			v.skills.Rebind(md)
+		}
+
+		return v.skills
+	}
+
 	scenario := os.Getenv("OD2_AUTOCAST") != ""
 	v.skills = d2skills.New(v.asset, v.gameClient.MapEngine, md, v.logLevel, d2skills.Options{
 		Seed:         uint32(v.gameClient.MapEngine.Seed()),
-		IgnoreTown:   scenario || os.Getenv("OD2_AUTOMONSTER") != "",
+		IgnoreTown:   scenario || os.Getenv("OD2_AUTOMONSTER") != "" || os.Getenv("OD2_AUTOMERC") != "",
 		InfiniteAmmo: scenario,
 	})
 

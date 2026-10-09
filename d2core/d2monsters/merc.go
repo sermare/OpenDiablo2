@@ -58,6 +58,10 @@ type mercUnit struct {
 	lastOwnerX, lastOwnerY int
 	ownerMode              d2monster.Mode
 	skill                  string // the skill being cast, for logs
+	// viaEngine marks the cast in progress as one the skill engine runs at the
+	// hit frame (skillLevel is its level); false is the old own-damage attack.
+	viaEngine  bool
+	skillLevel int
 }
 
 // SetHirelings gives the director the parsed hireling.txt; without it no merc
@@ -76,6 +80,13 @@ var fallbackClass = map[int]int{271: 270} //nolint:gochecknoglobals // static lo
 // from its saved fields. The level is derived from the experience. A dead
 // merc is spawned as a corpse so it can be revived.
 func (d *Director) SpawnMerc(owner *d2mapentity.Player, save MercSave) (*d2mapentity.Monster, error) {
+	return d.SpawnMercHP(owner, save, 0)
+}
+
+// SpawnMercHP is SpawnMerc for a merc who arrives with the hit points it had
+// (a level change or town portal: the unit is moved, not made anew, so it is
+// not healed). hp <= 0 means full life; it is clamped to the maximum.
+func (d *Director) SpawnMercHP(owner *d2mapentity.Player, save MercSave, hp int) (*d2mapentity.Monster, error) {
 	if d.hire == nil {
 		return nil, errors.New("no hireling table")
 	}
@@ -106,16 +117,16 @@ func (d *Director) SpawnMerc(owner *d2mapentity.Player, save MercSave) (*d2mapen
 		p = d2path.Point{X: ox, Y: oy}
 	}
 
-	m, err := d.spawnMercAt(owner, stat, rec, save, level, st, p.X, p.Y)
+	m, err := d.spawnMercAt(owner, stat, rec, save, level, st, hp, p.X, p.Y)
 	if err != nil && fallbackClass[rec.Class] != 0 && d.statByID[fallbackClass[rec.Class]] != stat {
-		m, err = d.spawnMercAt(owner, d.statByID[fallbackClass[rec.Class]], rec, save, level, st, p.X, p.Y)
+		m, err = d.spawnMercAt(owner, d.statByID[fallbackClass[rec.Class]], rec, save, level, st, hp, p.X, p.Y)
 	}
 
 	return m, err
 }
 
 func (d *Director) spawnMercAt(owner *d2mapentity.Player, stat *d2records.MonStatRecord, rec *d2hireling.Record,
-	save MercSave, level int, st d2hireling.Stats, x, y int) (*d2mapentity.Monster, error) {
+	save MercSave, level int, st d2hireling.Stats, hp, x, y int) (*d2mapentity.Monster, error) {
 	prof := profileFromRecord(stat, d.opt.Difficulty)
 	d.nextID++
 
@@ -138,6 +149,10 @@ func (d *Director) spawnMercAt(owner *d2mapentity.Player, stat *d2records.MonSta
 	m.Vitals = d2mapentity.MonsterVitals{
 		Level: level, HP: st.MaxHP, MaxHP: st.MaxHP, Defense: st.Defense, Difficulty: d.opt.Difficulty,
 		A1: MonsterAttackFrom(st.AR, st.DmgMin, st.DmgMax),
+	}
+
+	if hp > 0 && hp < st.MaxHP {
+		m.Vitals.HP = hp
 	}
 
 	b.Wake = d.frame
@@ -164,7 +179,7 @@ func (d *Director) spawnMercAt(owner *d2mapentity.Player, stat *d2records.MonSta
 
 	d.Counters.MercSpawns++
 	d.emit("merc", "MERC spawn name=%s id=%08x type=%d class=%d level=%d hp=%d/%d defense=%d dmg=%d-%d exp=%d dead=%v pos=(%d,%d)",
-		d.MercName(rec, save), save.ID, save.Type, rec.Class, level, st.MaxHP, st.MaxHP, st.Defense, st.DmgMin, st.DmgMax,
+		d.MercName(rec, save), save.ID, save.Type, rec.Class, level, m.Vitals.HP, st.MaxHP, st.Defense, st.DmgMin, st.DmgMax,
 		save.Experience, save.Dead, x, y)
 
 	if save.Dead {
@@ -231,6 +246,7 @@ func (d *Director) ReviveMerc(owner *d2mapentity.Player) error {
 	u.m.Revive()
 	u.m.Vitals.HP = u.m.Vitals.MaxHP
 	u.merc.save.Dead = false
+	u.merc.buffs = map[string]int{} // auras ended with the death
 	u.b.Wake = d.frame
 	d.teleportNextToOwner(u)
 
@@ -372,6 +388,24 @@ func (d *Director) ChooseAndCast(b *d2monster.Brain, t d2monster.Target, dist in
 		mode, instant = tableMode(ch.Skill.Mode)
 	}
 
+	engine := !ch.Default && d.mercHooks.Supported != nil && d.mercHooks.Cast != nil && d.mercHooks.Supported(ch.Skill.Name)
+
+	if instant && engine {
+		// a buff or aura: the skill engine keeps it going until the merc dies
+		if d.mercHooks.Cast(d.mercCastFor(u, ch.Skill.Name, ch.Level, nil)) {
+			mu.buffs[ch.Skill.Name] = 1 << 30
+			d.Counters.MercSkills++
+			d.emit("merc", "MERC skill name=%s id=%08x skill=%q level=%d mode=NU engine=true", u.m.Label(), mu.save.ID,
+				ch.Skill.Name, ch.Level)
+
+			return d2monster.CastInstant
+		}
+
+		mu.buffs[ch.Skill.Name] = d.frame + 2*25 // refused: try again in a moment
+
+		return d2monster.CastFailed
+	}
+
 	if instant {
 		mu.buffs[ch.Skill.Name] = d.frame + buffSeconds*25
 		d.Counters.MercSkills++
@@ -391,11 +425,14 @@ func (d *Director) ChooseAndCast(b *d2monster.Brain, t d2monster.Target, dist in
 	}
 
 	mu.skill = ch.Skill.Name
+	mu.viaEngine, mu.skillLevel = engine, ch.Level
+
 	if ch.Default {
 		mu.skill = ""
 	} else {
 		d.Counters.MercSkills++
-		d.emit("merc", "MERC skill name=%s id=%08x skill=%q level=%d mode=%s", u.m.Label(), mu.save.ID, ch.Skill.Name, ch.Level, mode)
+		d.emit("merc", "MERC skill name=%s id=%08x skill=%q level=%d mode=%s engine=%v", u.m.Label(), mu.save.ID, ch.Skill.Name,
+			ch.Level, mode, engine)
 	}
 
 	if d.Attack(b, mode, t) {
@@ -482,8 +519,24 @@ func (d *Director) mercStrike(u *unit, mode d2monster.Mode) {
 		return
 	}
 
+	// a skill of the engine (skills.txt: missiles, melee effects, area states)
+	// replaces the merc's own damage; a refused cast falls back to it
+	if viaEngine := mu.viaEngine; viaEngine {
+		mu.viaEngine = false
+
+		if d.mercHooks.Cast(d.mercCastFor(u, mu.skill, mu.skillLevel, tu.m)) {
+			d.Counters.MercHits++
+			d.emit("merc", "MERC attack name=%s id=%08x target=%s mode=%s skill=%q engine=true", u.m.Label(), mu.save.ID,
+				tu.m.Label(), mode, mu.skill)
+
+			return
+		}
+
+		d.emit("merc", "MERC skill name=%s id=%08x skill=%q refused by the engine: own damage", u.m.Label(), mu.save.ID, mu.skill)
+	}
+
 	in := d2combat.ToHitInput{
-		AttackRating:  d2combat.MonsterAttackRating(mu.stats.AR, 0, mu.stats.Dex),
+		AttackRating:  d2combat.MonsterAttackRating(mu.stats.AR+mu.stats.AR*d.mercStat(mu, "item_tohit_percent")/100, 0, mu.stats.Dex),
 		Defense:       tu.m.Vitals.Defense,
 		AttackerLevel: mu.level,
 		DefenderLevel: tu.m.Vitals.Level,
@@ -498,6 +551,8 @@ func (d *Director) mercStrike(u *unit, mode d2monster.Mode) {
 	}
 
 	dmg := mu.stats.DmgMin + int(u.b.Seed.Roll(int32(mu.stats.DmgMax-mu.stats.DmgMin+1)))
+	dmg += dmg * d.mercStat(mu, "damagepercent") / 100
+
 	if dmg < 1 {
 		dmg = 1
 	}
@@ -534,7 +589,7 @@ func (d *Director) strikeMerc(u *unit, tu *unit, atk d2mapentity.MonsterAttack, 
 
 	in := d2combat.ToHitInput{
 		AttackRating:  d2combat.MonsterAttackRating(atk.ToHit, 0, 0),
-		Defense:       tu.m.Vitals.Defense,
+		Defense:       d.mercDefense(mu, tu.m.Vitals.Defense),
 		AttackerLevel: u.m.Vitals.Level,
 		DefenderLevel: mu.level,
 	}
@@ -555,8 +610,25 @@ func (d *Director) strikeMerc(u *unit, tu *unit, atk d2mapentity.MonsterAttack, 
 		u.m.Label(), u.b.ID, mode, hit, chance, roll, dmg, maxInt(tu.m.Vitals.HP-dmg, 0), tu.m.Vitals.MaxHP)
 
 	if hit {
+		if d.mercHooks.Defense != nil {
+			dmg = d.mercHooks.Defense(mu.owner, u.m, !attackIsRanged(u.m.Stat, mode), dmg)
+		}
+
 		d.damageMerc(tu, dmg, u.m.Label())
 	}
+}
+
+// mercDefense is the merc's defense with the armor its states add (Defiance,
+// Iron Skin...).
+func (d *Director) mercDefense(mu *mercUnit, base int) int {
+	v := base + d.mercStat(mu, "armorclass")
+	v += v * (d.mercStat(mu, "item_armor_percent") + d.mercStat(mu, "skill_armor_percent")) / 100
+
+	if v < 0 {
+		v = 0
+	}
+
+	return v
 }
 
 func (d *Director) damageMerc(tu *unit, dmg int, by string) {
@@ -585,6 +657,7 @@ func (d *Director) damageMerc(tu *unit, dmg int, by string) {
 	d.fp.Remove(tu.b.ID)
 	tu.mv = nil
 	tu.merc.save.Dead = true
+	tu.merc.buffs = map[string]int{}
 	d.Counters.MercDeaths++
 	d.emit("merc", "MERC death name=%s id=%08x level=%d by=%s revive_cost=%d", tu.m.Label(), tu.merc.save.ID, tu.merc.level, by,
 		d2hireling.ReviveCost(tu.merc.level))
@@ -679,4 +752,33 @@ func (d *Director) GrantMercExp(owner *d2mapentity.Player, exp uint32) {
 
 	u.merc.save.Experience += exp
 	d.emit("merc", "MERC exp granted name=%s id=%08x exp=%d", u.m.Label(), u.merc.save.ID, u.merc.save.Experience)
+}
+
+// SetMercHP sets the owner's merc's hit points (scenario helper), clamped to
+// 1..max for a living merc.
+func (d *Director) SetMercHP(owner *d2mapentity.Player, hp int) {
+	u := d.mercs[owner]
+	if u == nil || !u.m.Alive() {
+		return
+	}
+
+	u.m.Vitals.HP = maxInt(minInt(hp, u.m.Vitals.MaxHP), 1)
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+
+	return b
+}
+
+// HealMerc gives the merc spawn with that token hit points (Prayer's pulse).
+func (d *Director) HealMerc(owner *d2mapentity.Player, token uint32, hp int) {
+	u := d.mercs[owner]
+	if u == nil || u.b.ID != token || !u.m.Alive() || hp <= 0 {
+		return
+	}
+
+	u.m.Vitals.HP = minInt(u.m.Vitals.HP+hp, u.m.Vitals.MaxHP)
 }
