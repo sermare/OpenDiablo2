@@ -18,6 +18,8 @@ const (
 	FlagEnterArea      = 4
 	FlagCustom1        = 5
 	FlagCustom2        = 6
+	FlagCustom3        = 7
+	FlagCustom4        = 8
 	FlagCustom6        = 10
 	FlagUpdateLog      = d2s.QuestBitClosed // 12
 	FlagPrimaryGoal    = d2s.QuestBitUpdated

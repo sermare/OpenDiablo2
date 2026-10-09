@@ -463,8 +463,12 @@ func TestAct3QuestLine(t *testing.T) {
 
 	// Alkor takes the bird (534) and pays out (538) in one talk
 	msgs, eff = talk(g, NPCAlkor)
-	if !contains2(msgs, 534) || !contains2(msgs, 538) || !g.get(bird, FlagRewardGranted) || !effectCode(eff, EffectReward, "life-boost") {
+	if !contains2(msgs, 534) || !contains2(msgs, 538) || !g.get(bird, FlagRewardGranted) || !effectCode(eff, EffectSpawn, ItemPotionOfLife) || effectCode(eff, EffectReward, "life-boost") {
 		t.Fatalf("bird reward %s %+v", g.Describe(bird), eff)
+	}
+
+	if eff = g.DrinkPotionOfLife(); !effectCode(eff, EffectReward, "life-boost") || g.DrinkPotionOfLife() != nil {
+		t.Fatalf("potion %+v", eff)
 	}
 
 	// Blackened Temple (opened by the Blade) and the Guardian
@@ -741,8 +745,12 @@ func TestPrisonOfIce(t *testing.T) {
 	moveTo(g, LevelFrozenRiver, LevelHarrogath)
 
 	_, eff = talk(g, NPCMalah)
-	if !g.get(q, FlagRewardGranted) || !effectCode(eff, EffectReward, "resist-bonus") {
+	if !g.get(q, FlagRewardGranted) || !effectCode(eff, EffectSpawn, ItemMalahScroll) || effectCode(eff, EffectReward, "resist-bonus") {
 		t.Fatalf("claim %s %+v", g.Describe(q), eff)
+	}
+
+	if eff = g.ReadScrollOfResistance(); !effectCode(eff, EffectReward, "resist-bonus") || g.ResistBonus() != 10 || g.ReadScrollOfResistance() != nil {
+		t.Fatalf("scroll %+v", eff)
 	}
 }
 

@@ -344,8 +344,8 @@ func (v *Game) applyQuestReward(e d2quest.Effect) {
 	}
 
 	if e.Code == "life-boost" {
-		// Potion of Life: a permanent addition to the class formula (SOURCE D2MOO, +20 max life, once per
-		// difficulty). LifeBonus survives RecalcStats; the current life rises with the maximum.
+		// Potion of Life, paid when the potion is drunk (VERIFIED Game.exe 0x55bfd0: base max-life stat +20,
+		// once per difficulty record). LifeBonus survives RecalcStats; the current life rises with the maximum.
 		st := v.localPlayer.Stats
 		st.LifeBonus += e.Value
 		st.MaxHealth += e.Value
@@ -355,6 +355,9 @@ func (v *Game) applyQuestReward(e d2quest.Effect) {
 		return
 	}
 
+	// resist-bonus (Scroll of Resistance read): the exe adds a stat list with base stats 39/41/43/45 = +Value,
+	// summed over the three difficulty records and re-applied on join (notes: verify-quest-rewards.md). The hero
+	// has no quest resist slot yet, so it is only logged.
 	v.Infof("QUEST EFFECT reward %s value=%d (%s) [not simulated]", e.Code, e.Value, e.Note)
 }
 

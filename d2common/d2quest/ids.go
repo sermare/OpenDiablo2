@@ -189,6 +189,8 @@ const (
 	ItemMephistoSoulstone = "mss"
 	ItemHellforgeHammer   = "hfh"
 	ItemMalahScroll       = "tr2"
+	ItemPotionOfLife      = "xyz"
+	ItemMalahPotion       = "ice"
 )
 
 // Difficulty indexes of the record.

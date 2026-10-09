@@ -6,23 +6,29 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 )
 
-// Reward audit (d2-re-notes quests-2.md section 3, quests.md). The rules pinned here:
+// Reward audit (d2-re-notes quests-2.md section 3, quests.md, verify-quest-rewards.md). The rules pinned here:
 //
-//	VERIFIED   (binary) Den of Evil claim (Akara msg 76): RG set, RP cleared, +1 skill point and the slot-41 respec.
-//	SOURCE     (D2MOO, not re-derived in the binary) Radament +1 skill point when the Book of Skill is read (not
-//	           at the claim), Fallen Angel +2 skill points, Lam Esen +5 stat points, Golden Bird +20 life,
-//	           Prison of Ice +10 all resistances (the difficulty penalty is applied separately by d2difficulty).
-//	UNVERIFIED the exact handler addresses of the A2Q1/A3Q1/A3Q4/A4Q1/A5Q3 reward code.
+//	VERIFIED (Game.exe 1.14b) Den of Evil claim (Akara msg 76, 0x58dba0): RG set, RP cleared, +1 skill point and
+//	           the slot-41 respec. Radament (Atma msg 334, 0x596710): RG set, RP cleared, NO reward; the Book of
+//	           Skill ("ass", ITEMACT_ServerUseItem 0x55bfd0) gives +1 skill point when read while A2Q1 bit 5 is set.
+//	           Lam Esen (Alkor msg 564, 0x5b53e0 + queued 0x5b5220): +5 stat points (stat 4). Golden Bird (Alkor
+//	           msg 538, 0x5b7f40): the claim hands out the Potion of Life ("xyz"); drinking it (0x55bfd0, A3Q4 bit
+//	           5) adds +20 base max life. Fallen Angel (Tyrael msg 676, 0x5b15c0): +2 skill points (stat 5).
+//	           Prison of Ice: Malah's line (msg 20132) gives the Scroll of Resistance ("tr2"); reading it (0x55bfd0,
+//	           A5Q3 bit 8 set / bit 7 clear) applies +10 to stats 39/41/43/45 through 0x587f90, summed over the
+//	           three difficulty records and re-applied on game join. Siege (Larzuk msg 20090, 0x584d60): no points.
+//	           Betrayal, Rite of Passage and Eve of Destruction message handlers (0x589040, 0x58a0c0, 0x58b720) pay
+//	           nothing. All rewards are per difficulty record; the amounts do not scale with difficulty.
+//	UNRESOLVED where Larzuk's RG is set (the exe's msg handler does not), the exact Anya/Malah RG condition of
+//	           Prison of Ice, and the completion/reward code of Rite of Passage and Eve of Destruction (not in ev11).
 //
-// Exe addresses still to confirm (Game.exe 1.14b; the quest node init functions are reached from the static
-// tables at 0x72F000 / 0x72F37C, QUEST_CreateGameQuests): the ev11 (message acked) handler of each of
-// A2Q1 (Atma 334 / Book of Skill use), A3Q1 (Alkor 564), A3Q4 (Alkor 538, life), A4Q1 (Tyrael 676, 2 points),
-// A5Q3 (Malah/Anya scroll read: resist +10 and when it is applied), A5Q1 (Larzuk sockets), plus the item-use
-// code that adds STAT_SKILLPTS / STAT_NEWSKILLS for the Book of Skill, and the load path QUESTREC_LoadFromBuffer
-// 0x65e9e0 + QUEST_SyncPlayerOnGameEnter 0x544140 (does a saved RP+bit15 node still accept its claim line?
-// the engine assumes yes, because the Den of Evil handler 0x543490/ev11 clearly does).
-// UNVERIFIED engine choices: the Prison of Ice resist bonus is only logged (no quest-resist stat slot), and
-// it is paid at Malah's claim, whereas the original applies it when the scroll is read.
+// Load path (VERIFIED, QUESTREC_LoadFromBuffer 0x65e9e0 + QUEST_SyncPlayerOnGameEnter 0x544140): a save load clears
+// bits 13/14 and turns RP (bit 1) into COMPLETEDBEFORE (bit 15). The join code then makes every non-prologue
+// node with RG or bit 15 inert (active flags +9/+A/+B cleared), so it ignores the unforced events (kills, area
+// changes, item events). The NPC click (ev0) and message-acked (ev11) events are dispatched FORCED
+// (0x5415c0 with param_1 = 1), and the claim handlers test only the record bits (RP), so a saved pending-reward
+// node stays claimable: the engine's choice (quests-2.md) is right, quests.md "inert" is true only for the
+// other events.
 //
 // Invariants for every reward: it is emitted exactly once per difficulty record, only at the claim (the
 // reward-pending flag is set by the kill and survives death and save/load), and a reload never re-grants it.
@@ -126,8 +132,8 @@ func rewardCases() []rewardCase {
 			claim: claimBy(NPCAlkor),
 		},
 		{
-			name: "Golden Bird (Potion of Life)", id: QuestGoldenBird, town: LevelKurastDocktown,
-			want: rewardTally{"life-boost": 20},
+			name: "Golden Bird (claim gives the potion, drinking pays +20 life)", id: QuestGoldenBird, town: LevelKurastDocktown,
+			want: rewardTally{},
 			drive: func(g *Game) {
 				moveTo(g, 1, LevelKurastDocktown)
 				pickup(g, ItemJadeFigurine)
@@ -136,7 +142,9 @@ func rewardCases() []rewardCase {
 				// Alkor takes the bird (534); the potion line (538) is the claim
 				g.Hear(NPCAlkor, 534)
 			},
-			claim: claimBy(NPCAlkor),
+			claim:      claimBy(NPCAlkor),
+			afterClaim: func(g *Game) []Effect { return g.DrinkPotionOfLife() },
+			afterWant:  rewardTally{"life-boost": 20},
 		},
 		{
 			name: "Fallen Angel", id: QuestFallenAngel, town: LevelPandemonium,
@@ -152,7 +160,7 @@ func rewardCases() []rewardCase {
 		},
 		{
 			name: "Prison of Ice", id: QuestPrison, town: LevelHarrogath,
-			want: rewardTally{"resist-bonus": 10},
+			want: rewardTally{},
 			drive: func(g *Game) {
 				moveTo(g, 1, LevelHarrogath)
 				talk(g, NPCMalah)
@@ -162,7 +170,9 @@ func rewardCases() []rewardCase {
 				g.Dispatch(Event{Kind: EvItemRemoved, Item: ItemMalahScroll})
 				moveTo(g, LevelFrozenRiver, LevelHarrogath)
 			},
-			claim: claimBy(NPCMalah),
+			claim:      claimBy(NPCMalah),
+			afterClaim: func(g *Game) []Effect { return g.ReadScrollOfResistance() },
+			afterWant:  rewardTally{"resist-bonus": 10},
 		},
 		{
 			name: "Siege (sockets, no points)", id: QuestSiege, town: LevelHarrogath,
