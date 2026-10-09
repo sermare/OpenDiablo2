@@ -42,8 +42,12 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 |---|---|
 | **The quest system** for the intro and Act 1 quests: states, speech, rewards, saved in the `.d2s` | branch `feat/quest-system` |
 | **Skills for all seven classes**, with auras, summons, traps and status effects | branch `feat/class-skills` |
-| **Imported-character UI** (character select, panels), last merge pending | `feat/imported-hero-ui` |
-| Next: exact tile ids for the outdoors, the Act 3 jungle, multiplayer, remaining monster behaviours | spawning |
+| **Multiplayer**: two game instances, host and join over the real packet format | branch `feat/multiplayer` |
+| **Exact outdoor tile ids** (Blood Moor etc.), proven against the real game | branch `feat/drlg-tiles` |
+| **Skill hotkeys and skill selection screen**; **remaining boss/monster behaviours** | `feat/skillbar`, `feat/monster-ai-3` |
+| **Acts 2 to 5 towns and travelling between acts**; **Nightmare and Hell difficulty** | `feat/act-towns`, `feat/difficulty` |
+| Research: Act 2 desert, Act 3 jungle, Act 4 and 5 outdoors (generators) | RE notes: `drlg-act23-outdoor`, `drlg-act45-outdoor` |
+| Imported-character UI, last merge pending | `feat/imported-hero-ui` |
 
 ### 🎯 Plan and priorities (set by Claude)
 
