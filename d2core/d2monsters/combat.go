@@ -23,8 +23,8 @@ func (d *Director) handleEvents(u *unit) {
 	for _, ev := range u.m.TakeEvents() {
 		switch ev.Kind {
 		case d2mapentity.MonsterEventHitFrame:
-			if u.merc != nil {
-				d.mercStrike(u, ev.Mode)
+			if u.friendly() { // mercenaries and summoned minions share the dispatch
+				d.friendlyStrike(u, ev.Mode)
 
 				continue
 			}
@@ -142,7 +142,7 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 	hit, chance, roll := d2combat.RollToHit(u.b.Seed, in)
 	dmg := 0
 
-	blocked := false
+	blocked, note := false, ""
 
 	if hit && blockPct > 0 {
 		// shield block comes after the to-hit roll (COMBAT_RollAttackOutcome); the hero
@@ -165,6 +165,12 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 			dmg = 0
 		}
 
+		// skill defenses run after the to-hit and shield block steps and the
+		// armor reductions: Dodge/Avoid/Evade, Energy Shield, Bone Armor, Thorns
+		if d.HeroDefense != nil {
+			dmg, note = d.HeroDefense(p, u.m, via == "", dmg)
+		}
+
 		d.Counters.AttackHits++
 		p.Stats.Health -= dmg
 
@@ -177,8 +183,8 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 		}
 	}
 
-	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d def=%d blocked=%v",
-		u.m.Label(), u.b.ID, mode, via, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth, defense, blocked)
+	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d def=%d blocked=%v%s",
+		u.m.Label(), u.b.ID, mode, via, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth, defense, blocked, note)
 
 	if hit && p.Stats.Health == 0 {
 		d.Counters.HeroDeaths++
@@ -363,6 +369,24 @@ func (d *Director) Damage(m *d2mapentity.Monster, dmg int, src *d2mapentity.Play
 	if u := d.byEntity[m.ID()]; u != nil {
 		d.damage(u, src, dmg)
 	}
+}
+
+// DamageOverTime applies poison or burn damage: like Damage but the monster is
+// not interrupted (hit recovery) by the tick.
+func (d *Director) DamageOverTime(m *d2mapentity.Monster, dmg int, src *d2mapentity.Player) {
+	u := d.byEntity[m.ID()]
+	if u == nil || !m.Alive() || dmg <= 0 {
+		return
+	}
+
+	if u.m.Vitals.HP-dmg > 0 {
+		u.m.Vitals.HP -= dmg
+
+		return
+	}
+
+	u.m.Vitals.HP = 0
+	d.kill(u, src)
 }
 
 func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {

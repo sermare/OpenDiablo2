@@ -96,6 +96,8 @@ type Counters struct {
 	// interrupted by damage; MaxStack is the most live monsters ever seen in
 	// one subtile (1 when nobody stacks).
 	Packs, BlockedSteps, HitRecoveries, MaxStack int
+	// Minions summoned; MinionAttacks swings and MinionHits that connected.
+	Minions, MinionAttacks, MinionHits int
 }
 
 // unit is a monster plus its engine-side state.
@@ -112,6 +114,14 @@ type unit struct {
 	aimX, aimY   int // ground point of the last attack request (Target ID 0)
 	blocked      int // consecutive refused steps
 	removeAt     float64
+
+	// ally marks a summoned minion (see minions.go); stunUntil and fleeUntil
+	// are frames until which a stun/freeze or fear holds the monster.
+	ally                *allyState
+	stunUntil           int
+	fleeUntil           int
+	slowPct             int
+	lastFlee, lastThink int
 }
 
 type moveIntent struct {
@@ -158,6 +168,14 @@ type Director struct {
 	ExpBonusPct func() int
 
 	areaLevel int // levels.txt MonLvl of the current area (0 = unknown)
+	// forceLevel, when set, replaces the resolved monster level of a spawn.
+	forceLevel int
+
+	// HeroDefense, if set, is called when a monster attack hits a hero. It
+	// returns the damage that gets through (0 when avoided or absorbed) and
+	// a note for the log (skills: dodge, avoid, Energy Shield, Bone Armor,
+	// Thorns...). melee is false for projectiles.
+	HeroDefense func(p *d2mapentity.Player, attacker *d2mapentity.Monster, melee bool, dmg int) (int, string)
 
 	// Counters are updated as events happen.
 	Counters Counters
@@ -222,11 +240,11 @@ func (d *Director) emit(kind, format string, args ...interface{}) {
 }
 
 // Monsters returns the live (not yet removed) hostile monsters, corpses
-// included; mercenaries are not part of it (see Merc).
+// included; mercenaries and summoned minions are not part of it (see Merc, Minions).
 func (d *Director) Monsters() []*d2mapentity.Monster {
 	out := make([]*d2mapentity.Monster, 0, len(d.units))
 	for _, u := range d.units {
-		if u.merc == nil {
+		if !u.friendly() {
 			out = append(out, u.m)
 		}
 	}
@@ -258,6 +276,10 @@ func (d *Director) FindStat(ref string) *d2records.MonStatRecord {
 
 // Spawn creates a monster of the given monstats record at a subtile position.
 func (d *Director) Spawn(stat *d2records.MonStatRecord, subX, subY int) (*d2mapentity.Monster, error) {
+	return d.spawn(stat, subX, subY, nil)
+}
+
+func (d *Director) spawn(stat *d2records.MonStatRecord, subX, subY int, ally *allyState) (*d2mapentity.Monster, error) {
 	prof := profileFromRecord(stat, d.opt.Difficulty)
 	d.nextID++
 
@@ -279,10 +301,14 @@ func (d *Director) Spawn(stat *d2records.MonStatRecord, subX, subY int) (*d2mape
 	m.Blocker = func(x, y int) bool { return d.fp.BlockedFor(b.ID, x, y) }
 	d.fp.Move(b.ID, subX, subY, d2path.FlagMonster)
 
-	u := &unit{m: m, b: b}
+	u := &unit{m: m, b: b, ally: ally}
 	d.units[b.ID] = u
 	d.byEntity[m.ID()] = u
 	d.engine.AddEntity(m)
+
+	if ally != nil {
+		return m, nil
+	}
 
 	d.Counters.Spawned++
 	d.emit("spawn", "MONSTER spawn name=%s id=%s class=%d ai=%s level=%d hp=%d defense=%d pos=(%d,%d)%s",
@@ -363,7 +389,17 @@ func (d *Director) step() {
 			d.stepMerc(u)
 		}
 
+		if u.ally != nil {
+			d.allyStep(u)
+
+			continue
+		}
+
 		if u.m.Alive() {
+			if d.held(u) {
+				continue
+			}
+
 			d.followIntent(u)
 
 			if d2monster.Tick(d, u.b) {

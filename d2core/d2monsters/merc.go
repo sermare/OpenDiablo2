@@ -434,7 +434,7 @@ func (d *Director) nearestEnemy(b *d2monster.Brain) (d2monster.Target, int, bool
 	)
 
 	for _, o := range d.sortedUnits() {
-		if o.merc != nil || !o.m.Alive() || o.b == b {
+		if o.friendly() || !o.m.Alive() || o.b == b {
 			continue
 		}
 
@@ -454,7 +454,7 @@ func (d *Director) mercStrike(u *unit, mode d2monster.Mode) {
 	mu := u.merc
 
 	tu := d.units[u.attackTarget]
-	if tu == nil || tu.merc != nil || !tu.m.Alive() {
+	if tu == nil || tu.friendly() || !tu.m.Alive() {
 		return
 	}
 
