@@ -114,7 +114,7 @@ func ownerName(p *d2mapentity.Player) string {
 func (d *Director) Minions() []*d2mapentity.Monster {
 	var out []*d2mapentity.Monster
 
-	for _, u := range d.units {
+	for _, u := range d.sortedUnits() {
 		if u.ally != nil && u.m.Alive() {
 			out = append(out, u.m)
 		}
@@ -136,7 +136,7 @@ func (d *Director) MinionKind(m *d2mapentity.Monster) (kind, tag string) {
 func (d *Director) Corpses() []*d2mapentity.Monster {
 	var out []*d2mapentity.Monster
 
-	for _, u := range d.units {
+	for _, u := range d.sortedUnits() {
 		if !u.friendly() && !u.m.Alive() {
 			out = append(out, u.m)
 		}

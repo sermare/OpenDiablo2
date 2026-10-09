@@ -7,15 +7,20 @@ import (
 func statesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 	records := make(map[string]*StateRecord)
 
+	// the state id is the row number (STATE_NONE = 0, freeze = 1, poison = 2,
+	// cold = 11, ...); skills and the exe refer to states by it
+	id := 0
+
 	for d.Next() {
 		record := &StateRecord{
+			ID:            id,
 			State:         d.String("state"),
 			Group:         d.Number("group"),
 			RemHit:        d.Number("remhit") > 0,
 			NoSend:        d.Number("nosend") > 0,
 			Transform:     d.Number("transform") > 0,
 			Aura:          d.Number("aura") > 0,
-			Cureable:      d.Number("cureable") > 0,
+			Cureable:      d.Number("curable") > 0,
 			Curse:         d.Number("curse") > 0,
 			Active:        d.Number("active") > 0,
 			Restrict:      d.Number("restrict") > 0,
@@ -55,12 +60,12 @@ func statesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			Overlay2:      d.String("overlay2"),
 			Overlay3:      d.String("overlay3"),
 			Overlay4:      d.String("overlay4"),
-			PgOverlay:     d.String("pgoverlay"),
+			PgOverlay:     d.String("pgsvoverlay"),
 			CastOverlay:   d.String("castoverlay"),
 			RemOverlay:    d.String("removerlay"),
 			Stat:          d.String("stat"),
 			SetFunc:       d.Number("setfunc"),
-			RemFunc:       d.Number("remfun"),
+			RemFunc:       d.Number("remfunc"),
 			Missile:       d.String("missile"),
 			Skill:         d.String("skill"),
 			ItemType:      d.String("itemtype"),
@@ -76,11 +81,12 @@ func statesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			GfxClass:      d.Number("gfxclass"),
 			CltEvent:      d.String("cltevent"),
 			CltEventFunc:  d.Number("clteventfunc"),
-			CltActiveFunc: d.Number("cltactivefun"),
+			CltActiveFunc: d.Number("cltactivefunc"),
 			SrvActiveFunc: d.Number("srvactivefunc"),
 		}
 
 		records[record.State] = record
+		id++
 	}
 
 	if d.Err != nil {

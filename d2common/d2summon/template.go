@@ -1,0 +1,130 @@
+package d2summon
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2txt"
+)
+
+// Difficulty indexes the per-difficulty monstats columns.
+type Difficulty int
+
+// Difficulties.
+const (
+	Normal Difficulty = iota
+	Nightmare
+	Hell
+)
+
+var diffSuffix = [3]string{"", "(N)", "(H)"}
+
+// Resist indexes Template.Res.
+const (
+	ResPhysical = iota
+	ResMagic
+	ResFire
+	ResLightning
+	ResCold
+	ResPoison
+	numRes
+)
+
+var resCols = [numRes]string{"ResDm", "ResMa", "ResFi", "ResLi", "ResCo", "ResPo"}
+
+// Base holds the monstats numbers of one difficulty.
+type Base struct {
+	MinHP, MaxHP int
+	AC           int
+	A1Min, A1Max int
+	A1TH         int
+	Res          [numRes]int
+}
+
+// Template is one monstats row, the data a minion starts from. Summoned
+// monsters have no Level column: their numbers are flat per difficulty and
+// the skill level only enters through the summon modifiers (VERIFIED: the
+// necroskeleton row is 21 life, the clay golem 100).
+type Template struct {
+	Class  int // hcIdx
+	ID     string
+	AI     string
+	Walk   int
+	Run    int
+	Diff   [3]Base
+	Skill1 string // monstats Skill1 (the skill traps and casters use)
+}
+
+// Templates indexes monstats rows by id (case insensitive) and class.
+type Templates struct {
+	byID    map[string]*Template
+	byClass map[int]*Template
+}
+
+// LoadTemplates parses the contents of monstats.txt.
+func LoadTemplates(monstats []byte) (*Templates, error) {
+	d := d2txt.LoadDataDictionary(monstats)
+	t := &Templates{byID: map[string]*Template{}, byClass: map[int]*Template{}}
+
+	for d.Next() {
+		id := d.String("Id")
+		if id == "" {
+			continue
+		}
+
+		tp := &Template{
+			Class: d.Number("hcIdx"), ID: id, AI: d.String("AI"),
+			Walk: d.Number("Velocity"), Run: d.Number("Run"), Skill1: d.String("Skill1"),
+		}
+
+		for i, s := range diffSuffix {
+			b := &tp.Diff[i]
+			b.MinHP = d.Number(hpCol("minHP", i))
+			b.MaxHP = d.Number(hpCol("maxHP", i))
+			b.AC = d.Number("AC" + s)
+			b.A1Min = d.Number("A1MinD" + s)
+			b.A1Max = d.Number("A1MaxD" + s)
+			b.A1TH = d.Number("A1TH" + s)
+
+			for r, col := range resCols {
+				b.Res[r] = d.Number(col + s)
+			}
+		}
+
+		t.byID[strings.ToLower(id)] = tp
+		t.byClass[tp.Class] = tp
+	}
+
+	if len(t.byID) == 0 {
+		return nil, fmt.Errorf("d2summon: no monsters in monstats")
+	}
+
+	return t, nil
+}
+
+// hpCol spells the HP column names: the normal columns are minHP/maxHP, the
+// others MinHP(N)/MaxHP(H) (VERIFIED against patch_d2 monstats.txt).
+func hpCol(base string, diff int) string {
+	if diff == 0 {
+		return base
+	}
+
+	return strings.ToUpper(base[:1]) + base[1:] + diffSuffix[diff]
+}
+
+// ByID returns the template for a monstats id such as "necroskeleton".
+func (t *Templates) ByID(id string) (*Template, bool) {
+	tp, ok := t.byID[strings.ToLower(id)]
+
+	return tp, ok
+}
+
+// ByClass returns the template for a monstats hcIdx.
+func (t *Templates) ByClass(class int) (*Template, bool) {
+	tp, ok := t.byClass[class]
+
+	return tp, ok
+}
+
+// Len is the number of rows.
+func (t *Templates) Len() int { return len(t.byID) }

@@ -107,7 +107,7 @@ func (v *Label) GetTextMetrics(text string) (width, height int) {
 
 // SetText sets the label's text
 func (v *Label) SetText(newText string) {
-	v.text = v.processColorTokens(newText)
+	v.text = v.processColorTokens(ConvertColorCodes(newText))
 	v.BaseWidget.width, v.BaseWidget.height = v.font.GetTextMetrics(v.text)
 }
 
@@ -193,6 +193,10 @@ func getColor(token ColorToken) color.Color {
 		ColorTokenOrange: d2util.Color(colorOrange100Alpha),
 		ColorTokenRed:    d2util.Color(colorRed100Alpha),
 		ColorTokenBlack:  d2util.Color(colorBlack100Alpha),
+
+		ColorTokenTan:       d2util.Color(colorTanAlpha),
+		ColorTokenDarkGreen: d2util.Color(colorDarkGreenAlpha),
+		ColorTokenPurple:    d2util.Color(colorPurpleAlpha),
 	}
 
 	chosen := colors[token]

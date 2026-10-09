@@ -342,3 +342,16 @@ func (d *Director) targetPos(u *unit, id uint32) (x, y int, ok bool) {
 
 	return 0, 0, false
 }
+
+// targetIDs returns the target table ids in ascending order, so that loops
+// over the heroes do not depend on map iteration order.
+func (d *Director) targetIDs() []uint32 {
+	ids := make([]uint32, 0, len(d.targets))
+	for id := range d.targets {
+		ids = append(ids, id)
+	}
+
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+
+	return ids
+}

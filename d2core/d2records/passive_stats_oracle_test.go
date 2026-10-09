@@ -431,10 +431,18 @@ func TestStateGroups(t *testing.T) {
 		}
 	}
 
+	defs := d2state.Defs{}
+	for n, r := range rm.States {
+		defs[n] = d2state.Def{Name: n, Group: r.Group}
+	}
+
+	// the buff cast (0x5c7540) calls 0x56a480 (ClearGroup) before it builds
+	// the new statlist, so a new armor ends the old one (verified).
 	s := d2state.New()
-	s.SetGroups(grp)
+	s.SetDefs(defs)
 	s.Apply(0, d2state.Instance{Name: "frozenarmor", Mods: []d2state.StatMod{{Stat: "skill_armor_percent", Value: 30}}})
 	s.Apply(1, d2state.Instance{Name: "might", Mods: []d2state.StatMod{{Stat: "damagepercent", Value: 40}}})
+	s.ClearGroup(2, "shiverarmor")
 	s.Apply(2, d2state.Instance{Name: "shiverarmor", Mods: []d2state.StatMod{{Stat: "skill_armor_percent", Value: 45}}})
 
 	if s.Active(3, "frozenarmor") || !s.Active(3, "shiverarmor") || !s.Active(3, "might") {

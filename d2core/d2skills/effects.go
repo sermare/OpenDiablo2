@@ -186,6 +186,9 @@ func (e *Engine) selfState(p *d2mapentity.Player, sk *d2skill.Skill, ef *d2skill
 		}
 	}
 
+	// SRVDO_FrozenArmorState (0x5c7540) ends every state of the same States.txt
+	// group (itself included) before it builds the new statlist (0x56a480).
+	set.ClearGroup(e.frame, ef.State)
 	set.Apply(e.frame, inst)
 	e.emit("state", "STATE apply skill=%q unit=%s state=%s frames=%d stacks=%d stats=%s chill_attackers=%d", sk.Name, p.Name(),
 		ef.State, ef.Frames, inst.Count, describeMods(ef.Stats), ef.Chill)
