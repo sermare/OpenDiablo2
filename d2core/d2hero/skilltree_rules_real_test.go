@@ -87,6 +87,7 @@ func realTrees(t *testing.T) map[string]map[int]*HeroSkill {
 		rec := &d2records.SkillRecord{
 			ID: atoi(r["Id"]), Skill: r["skill"], Charclass: r["charclass"], Reqlevel: atoi(r["reqlevel"]),
 			Maxlvl: atoi(r["maxlvl"]), Reqskill1: r["reqskill1"], Reqskill2: r["reqskill2"], Reqskill3: r["reqskill3"],
+			Reqstr: atoi(r["reqstr"]), Reqdex: atoi(r["reqdex"]), Reqint: atoi(r["reqint"]), Reqvit: atoi(r["reqvit"]),
 			Passive: r["passive"] == "1", Leftskill: r["leftskill"] == "1",
 		}
 
@@ -180,10 +181,8 @@ func TestRealTreeLayout(t *testing.T) {
 }
 
 // reqlevel follows the row of the tree: 1, 6, 12, 18, 24, 30 for rows 1..6.
-// There is no per-point level column in skills.txt, so the character level gate
-// applies to the first point only (the skill level is bounded by maxlvl 20 and
-// the unused points). UNVERIFIED against the executable: whether the original
-// tree also refuses later points below some character level.
+// VERIFIED (0x645b20/0x645b90): the gate is reqlevel plus the points already in
+// the skill, for every point (see TestRealPerPointLevelGate).
 func TestRealReqLevelByRow(t *testing.T) {
 	want := map[int]int{1: 1, 2: 6, 3: 12, 4: 18, 5: 24, 6: 30}
 

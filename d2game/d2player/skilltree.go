@@ -188,6 +188,9 @@ func (s *skillTree) load() {
 		}
 
 		si := newSkillIcon(s.uiManager, s.resources.skillSprite, s.l, skill)
+		si.effective = func(sk *d2hero.HeroSkill) int {
+			return d2hero.EffectiveSkillLevel(s.stats, s.heroClass, sk)
+		}
 		s.skillIcons = append(s.skillIcons, si)
 		s.iconGroup.AddWidget(si)
 	}
