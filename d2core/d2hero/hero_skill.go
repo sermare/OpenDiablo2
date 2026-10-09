@@ -24,7 +24,13 @@ type shallowHeroSkill struct {
 // MarshalJSON overrides the default logic used when the HeroSkill is serialized to a byte array.
 func (hs *HeroSkill) MarshalJSON() ([]byte, error) {
 	// only serialize the Shallow object instead of the SkillRecord & SkillDescriptionRecord
-	bytes, err := json.Marshal(hs.Shallow)
+	// (the live points win: some code adds points without touching Shallow)
+	shallow := hs.Shallow
+	if hs.SkillRecord != nil {
+		shallow = &shallowHeroSkill{SkillID: hs.SkillRecord.ID, SkillPoints: hs.SkillPoints}
+	}
+
+	bytes, err := json.Marshal(shallow)
 	if err != nil {
 		return nil, err
 	}
@@ -42,4 +48,19 @@ func (hs *HeroSkill) UnmarshalJSON(data []byte) error {
 	hs.Shallow = shallow
 
 	return nil
+}
+
+// SetPoints sets the points of the skill, keeping the serialised copy
+// (Shallow, the part a save keeps) in step with the live value.
+func (hs *HeroSkill) SetPoints(n int) {
+	hs.SkillPoints = n
+
+	if hs.Shallow == nil {
+		hs.Shallow = &shallowHeroSkill{}
+		if hs.SkillRecord != nil {
+			hs.Shallow.SkillID = hs.SkillRecord.ID
+		}
+	}
+
+	hs.Shallow.SkillPoints = n
 }

@@ -337,6 +337,7 @@ func (g *GameControls) TryUnequipToCursor(loc d2equip.Loc) bool {
 // SwapWeapons switches the weapon set (the W key).
 func (g *GameControls) SwapWeapons() {
 	g.inventory.SwapWeaponSets()
+	g.swapSkillSets()
 
 	verdict := g.afterEquipChange("swap")
 	g.Infof("EQUIP decision=ok swap active_arms=%d rhand=%s lhand=%s %s", g.inventory.activeArms,

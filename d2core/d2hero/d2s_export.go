@@ -91,6 +91,11 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 	}
 
 	exportWorld(c.Header, state)
+
+	if state.SkillBar != nil {
+		c.Header.SetSkillBlock(state.SkillBar.Block())
+	}
+
 	exportMerc(c, state)
 	exportDeath(c, state)
 
