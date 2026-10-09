@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="880" height="520" viewBox="0 0 880 520" role="img" aria-label="Progress over time">
 <rect width="880" height="520" rx="18" fill="#14162a"/>
 <text x="56" y="36" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="22" font-weight="700" fill="#fff">Progress over time</text>
-<text x="856" y="36" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">snapshot every 10 min · latest 2026-10-09 16:44 UTC</text>
+<text x="856" y="36" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">snapshot every 10 min · latest 2026-10-09 16:54 UTC</text>
 <line x1="56" y1="370.0" x2="856" y2="370.0" stroke="#fff" stroke-opacity="0.22"/>
 <text x="48" y="374.0" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">0%</text>
 <line x1="56" y1="308.8" x2="856" y2="308.8" stroke="#fff" stroke-opacity="0.08"/>
@@ -17,30 +17,30 @@
 <line x1="56.0" y1="64" x2="56.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
 <text x="56.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 02:19</text>
 <line x1="189.3" y1="64" x2="189.3" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="189.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 03:33</text>
+<text x="189.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 03:35</text>
 <line x1="322.7" y1="64" x2="322.7" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="322.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 04:47</text>
+<text x="322.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 04:51</text>
 <line x1="456.0" y1="64" x2="456.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="456.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 06:02</text>
+<text x="456.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 06:07</text>
 <line x1="589.3" y1="64" x2="589.3" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="589.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 07:16</text>
+<text x="589.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 07:22</text>
 <line x1="722.7" y1="64" x2="722.7" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="722.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 08:30</text>
+<text x="722.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 08:38</text>
 <line x1="856.0" y1="64" x2="856.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="856.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 09:44</text>
-<polyline points="56.0,346.2 61.4,343.1 67.3,343.1 72.7,334.4 99.6,327.0 143.9,315.4 148.1,315.4 156.3,309.0 183.0,304.8 217.8,304.8 267.6,302.2 293.2,302.2 303.0,302.2 368.6,302.2 398.3,302.2 417.5,302.2 459.8,299.9 657.1,299.9 743.3,248.8 746.5,248.8 746.9,248.8 747.7,248.8 765.8,248.8 783.8,248.8 801.8,248.8 819.9,248.8 837.9,248.8 856.0,248.8" fill="none" stroke="#7c5cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="856.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 09:54</text>
+<polyline points="56.0,346.2 61.3,343.1 67.0,343.1 72.3,334.4 98.7,327.0 142.0,315.4 146.0,315.4 154.1,309.0 180.2,304.8 214.2,304.8 263.0,302.2 287.9,302.2 297.5,302.2 361.7,302.2 390.8,302.2 409.5,302.2 450.9,299.9 643.9,299.9 728.1,248.8 731.3,248.8 731.7,248.8 732.5,248.8 750.1,248.8 767.8,248.8 785.4,248.8 803.0,248.8 820.7,248.8 838.4,248.8 856.0,248.8" fill="none" stroke="#7c5cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="248.8" r="4" fill="#7c5cff"/>
-<polyline points="56.0,64.0 61.4,64.0 67.3,64.0 72.7,64.0 99.6,64.0 143.9,64.0 148.1,64.0 156.3,64.0 183.0,64.0 217.8,64.0 267.6,64.0 293.2,64.0 303.0,64.0 368.6,64.0 398.3,64.0 417.5,64.0 459.8,64.0 657.1,64.0 743.3,64.0 746.5,64.0 746.9,64.0 747.7,64.0 765.8,64.0 783.8,64.0 801.8,64.0 819.9,64.0 837.9,64.0 856.0,64.0" fill="none" stroke="#2fb67c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="56.0,64.0 61.3,64.0 67.0,64.0 72.3,64.0 98.7,64.0 142.0,64.0 146.0,64.0 154.1,64.0 180.2,64.0 214.2,64.0 263.0,64.0 287.9,64.0 297.5,64.0 361.7,64.0 390.8,64.0 409.5,64.0 450.9,64.0 643.9,64.0 728.1,64.0 731.3,64.0 731.7,64.0 732.5,64.0 750.1,64.0 767.8,64.0 785.4,64.0 803.0,64.0 820.7,64.0 838.4,64.0 856.0,64.0" fill="none" stroke="#2fb67c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#2fb67c"/>
-<polyline points="56.0,320.3 61.4,303.7 67.3,287.1 72.7,265.0 99.6,231.9 143.9,193.3 148.1,193.3 156.3,176.7 183.0,160.1 217.8,138.0 267.6,138.0 293.2,138.0 303.0,138.0 368.6,138.0 398.3,138.0 417.5,138.0 459.8,160.1 657.1,160.1 743.3,160.1 746.5,160.1 746.9,160.1 747.7,160.1 765.8,160.1 783.8,160.1 801.8,160.1 819.9,160.1 837.9,160.1 856.0,160.1" fill="none" stroke="#2f9bff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="56.0,320.3 61.3,303.7 67.0,287.1 72.3,265.0 98.7,231.9 142.0,193.3 146.0,193.3 154.1,176.7 180.2,160.1 214.2,138.0 263.0,138.0 287.9,138.0 297.5,138.0 361.7,138.0 390.8,138.0 409.5,138.0 450.9,160.1 643.9,160.1 728.1,160.1 731.3,160.1 731.7,160.1 732.5,160.1 750.1,160.1 767.8,160.1 785.4,160.1 803.0,160.1 820.7,160.1 838.4,160.1 856.0,160.1" fill="none" stroke="#2f9bff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="160.1" r="4" fill="#2f9bff"/>
-<polyline points="217.8,69.8 267.6,76.2 293.2,72.2 303.0,72.2 368.6,67.2 398.3,67.2 417.5,67.2 459.8,66.6 657.1,66.1 743.3,66.1 746.5,66.1 746.9,66.1 747.7,66.1 765.8,66.1 783.8,66.1 801.8,66.1 819.9,66.1 837.9,66.1 856.0,66.1" fill="none" stroke="#22c1c3" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="214.2,69.8 263.0,76.2 287.9,72.2 297.5,72.2 361.7,67.2 390.8,67.2 409.5,67.2 450.9,66.6 643.9,66.1 728.1,66.1 731.3,66.1 731.7,66.1 732.5,66.1 750.1,66.1 767.8,66.1 785.4,66.1 803.0,66.1 820.7,66.1 838.4,66.1 856.0,66.1" fill="none" stroke="#22c1c3" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="66.1" r="4" fill="#22c1c3"/>
-<polyline points="72.7,94.6 99.6,94.6 143.9,94.6 148.1,94.6 156.3,94.6 183.0,94.6 217.8,94.6 267.6,94.6 293.2,94.6 303.0,94.6 368.6,94.6 398.3,94.6 417.5,94.6 459.8,94.6 657.1,94.6 743.3,94.6 746.5,94.6 746.9,94.6 747.7,94.6 765.8,94.6 783.8,94.6 801.8,94.6 819.9,94.6 837.9,94.6 856.0,94.6" fill="none" stroke="#f2a81d" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="72.3,94.6 98.7,94.6 142.0,94.6 146.0,94.6 154.1,94.6 180.2,94.6 214.2,94.6 263.0,94.6 287.9,94.6 297.5,94.6 361.7,94.6 390.8,94.6 409.5,94.6 450.9,94.6 643.9,94.6 728.1,94.6 731.3,94.6 731.7,94.6 732.5,94.6 750.1,94.6 767.8,94.6 785.4,94.6 803.0,94.6 820.7,94.6 838.4,94.6 856.0,94.6" fill="none" stroke="#f2a81d" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="94.6" r="4" fill="#f2a81d"/>
-<polyline points="56.0,238.8 61.4,238.8 67.3,238.8 72.7,238.8 99.6,195.2 143.9,151.4 148.1,151.4 156.3,151.4 183.0,151.4 217.8,107.7 267.6,102.2 293.2,102.2 303.0,102.2 368.6,102.2 398.3,64.0 417.5,64.0 459.8,64.0 657.1,64.0 743.3,64.0 746.5,64.0 746.9,64.0 747.7,64.0 765.8,64.0 783.8,64.0 801.8,64.0 819.9,64.0 837.9,64.0 856.0,64.0" fill="none" stroke="#ef5da8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="56.0,238.8 61.3,238.8 67.0,238.8 72.3,238.8 98.7,195.2 142.0,151.4 146.0,151.4 154.1,151.4 180.2,151.4 214.2,107.7 263.0,102.2 287.9,102.2 297.5,102.2 361.7,102.2 390.8,64.0 409.5,64.0 450.9,64.0 643.9,64.0 728.1,64.0 731.3,64.0 731.7,64.0 732.5,64.0 750.1,64.0 767.8,64.0 785.4,64.0 803.0,64.0 820.7,64.0 838.4,64.0 856.0,64.0" fill="none" stroke="#ef5da8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#ef5da8"/>
-<polyline points="56.0,268.0 61.4,242.5 67.3,242.5 72.7,205.2 99.6,134.6 143.9,125.2 148.1,104.8 156.3,104.8 183.0,104.8 217.8,133.6 267.6,127.7 293.2,111.1 303.0,99.3 368.6,103.5 398.3,93.6 417.5,83.7 459.8,96.2 657.1,105.7 743.3,105.7 746.5,105.7 746.9,105.7 747.7,105.7 765.8,105.7 783.8,105.7 801.8,105.7 819.9,105.7 837.9,105.7 856.0,105.7" fill="none" stroke="#ff7a45" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="56.0,268.0 61.3,242.5 67.0,242.5 72.3,205.2 98.7,134.6 142.0,125.2 146.0,104.8 154.1,104.8 180.2,104.8 214.2,133.6 263.0,127.7 287.9,111.1 297.5,99.3 361.7,103.5 390.8,93.6 409.5,83.7 450.9,96.2 643.9,105.7 728.1,105.7 731.3,105.7 731.7,105.7 732.5,105.7 750.1,105.7 767.8,105.7 785.4,105.7 803.0,105.7 820.7,105.7 838.4,105.7 856.0,105.7" fill="none" stroke="#ff7a45" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="105.7" r="4" fill="#ff7a45"/>
 <rect x="56" y="401" width="14" height="4" rx="2" fill="#7c5cff"/>
 <text x="78" y="410" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Game.exe functions named in Ghidra — 40%</text>
