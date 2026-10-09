@@ -44,6 +44,8 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 		return nil, err
 	}
 
+	state.MapSeed = header.MapSeed
+
 	// a brand new character has no body: keep the class defaults
 	if !header.HasBody() {
 		return state, nil

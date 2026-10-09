@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/profile"
 	"golang.org/x/image/colornames"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
@@ -35,6 +36,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2input"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapgen"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2render/ebiten"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2screen"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2term"
@@ -725,6 +727,18 @@ func (a *App) importD2SSave(path string) (string, error) {
 	a.Infof("imported %s (%v level %d, %d skills) -> %s",
 		state.HeroName, state.HeroType, state.Stats.Level, len(state.Skills), state.FilePath)
 	a.Infof("equipment: %s", describeEquipment(&state.Equipment))
+
+	// the hero's map seed drives OD2_REALMAPS and the OD2_AUTOMAP log
+	d2mapgen.HeroMapSeed = state.MapSeed
+
+	if lvl := d2mapgen.AutomapLevel(); lvl != 0 {
+		d2mapgen.LogDRLGSummary(a.asset, state.MapSeed, lvl, d2drlg.Difficulty(state.Difficulty), a.Infof)
+
+		// log-only check: nothing to look at, so quit when asked to
+		if os.Getenv("OD2_AUTOEXIT") != "" && !d2mapgen.RealMapsEnabled() {
+			os.Exit(0)
+		}
+	}
 
 	return state.FilePath, nil
 }
