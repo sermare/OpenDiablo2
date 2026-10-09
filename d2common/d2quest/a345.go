@@ -363,7 +363,7 @@ func newTerrorsEnd() *Quest {
 
 // A4Q3 The Hellforge (Cain): smash the Mephisto Soulstone on the Hellforge
 // with the Hellforge Hammer. Cain's first line depends on the soulstone.
-// UNVERIFIED: the object (376) and the item codes.
+// VERIFIED: the object (376, OperateFn 49 = 0x5b3820 asks for the hammer "hfh "), the hammer drop by Hephasto (see below).
 func newHellforge() *Quest {
 	return newSpecQuest(&spec{
 		id: QuestHellforge, slot: 27, act: 3, logIndex: 3, name: "The Hellforge", label: "A4Q3",
@@ -386,6 +386,15 @@ func newHellforge() *Quest {
 
 					return []Effect{{Kind: EffectDeleteItem, Quest: q.ID, Code: ItemMephistoSoulstone,
 						Note: "the soulstone is smashed on the Hellforge"}}
+				}},
+			// Hephasto's kill drops the hammer (Game.ExeBossBits only). VERIFIED (QUEST_A4_TheHellforge_OnMonsterKilled 0x5b4190, attached to
+			// class 0x199 by 0x5af8c0): while the node is active the dying unit's item code (+0xb8) is stamped "hfh " and dropped through
+			// 0x557980; no check of the quest state beyond the node being active, no bit is set.
+			{ev: EvMonsterKilled, monster: NPCHephasto, names: []string{"hephasto"}, min: 1, bit: -1,
+				cond: func(g *Game, q *Quest) bool { return g.ExeBossBits },
+				fx: func(g *Game, q *Quest) []Effect {
+					return []Effect{{Kind: EffectGiveItem, Quest: q.ID, Code: ItemHellforgeHammer,
+						Note: "Hephasto drops the hammer (exe: unit code override \"hfh \", 0x5b4190)"}}
 				}},
 		},
 		noLeaveRule: true,

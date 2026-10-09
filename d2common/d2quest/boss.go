@@ -38,6 +38,9 @@ const (
 const (
 	NPCDuriel   = 211
 	NPCMephisto = 242
+	// NPCHephasto is monstats row 409 "hephasto" (the Hell Forge smith demon); VERIFIED: the monster-create hook 0x5af8c0 attaches
+	// the Hellforge quest node (id 24) to class 0x199 (= 409).
+	NPCHephasto = 409
 	NPCDiablo   = 243
 	NPCBaalCrab = 544 // exe class of the Baal who dies in the Worldstone Chamber (row 545 "Baal Crab")
 )

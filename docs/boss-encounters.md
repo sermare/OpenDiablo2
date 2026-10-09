@@ -99,4 +99,22 @@ modes. Exe: Throne 2, Crab 0, Taunt 1, ToStairs 1, Tentacle 1, Clone 0. This tre
 - VERIFIED Duriel lair gate: warp into level 73 is blocked while the Seven Tombs node is active and private byte +0xb is 0 (0x59b700);
   the writer of +0xb was not found (`Tomb.LairWarpBlocked` assumes: staff placed).
 
-Still unverified: Diablo's arrival spawn (timer 1 handler), which dummy object pairs with which seal, the Hellforge hammer's monster.
+## Second pass (feat/verify-diablo-hellforge, details in d2-re-notes/verify-diablo-hellforge.md)
+- VERIFIED seal pairing: the boss seals 392/394/396 (OperateFn 54/55/56 = 0x5b4720/0x5b4770/0x5b4840) store the seal position plus an
+  offset ((-12,-52), (-39,+33), (+32,+16)) in the quest data (+0x24, +0x2c, +0x34), create a Dummy object (131) there and run the seal
+  code 0x5b3240. Operating the dummy matches its coordinates (0x5b3360) and spawns hcIdx 36 (seal 392, Infector of Souls), 37 (394, Lord
+  De Seis), 38 (396, Grand Vizier of Chaos); the root table +0xb28/2a/2c is the hcIdx->row array at +0xae0 (index 36..38). The earlier
+  model (392 = Vizier, 396 = Infector) was wrong. The plain seals 393/395 only set their flag. `Seals.ExeLayout` (off) applies this.
+- VERIFIED Diablo's arrival: the Dummy object 255 (InitFn 55 = 0x5b31a0) records itself in the quest data (+6, +8 = unit id). When all five
+  flags are set and the kill counter is 3, 0x5b2e60 runs once and the quest timer callback 0x5b2830 is added with delay 1; it counts 10
+  frames, then spawns Diablo (class 0xf3, 0x5b27b0: exact subtile of dummy 255, else radius 5, else 10), ORs 0x3000000 into his unit flags
+  and sets +0x11. 11 frames in total (`ExeDiabloDelay`). No cutscene lock was found in this code; after the arrival the level no longer
+  populates itself (0x54ca00 -> 0x5b2e40). The Terror's End node is attached to the monsters by class (0x5af8c0: Diablo 0xf3) and to the
+  three seal bosses by hcIdx 36..38 (0x5a2480), so the kill counter counts those four.
+- VERIFIED Hellforge: the hammer quest node (24) is attached to class 0x199 = 409 "hephasto" in the monster-create hook 0x5af8c0; its kill
+  handler 0x5b4190 (node active) stamps "hfh " on the dying unit and drops it (0x557980 mode 7). The forge object 376 (InitFn 48 = 0x5b3630
+  sets the mode from the quest data, OperateFn 49 = 0x5b3820 needs the hammer; both are preset level objects, not created by quest code).
+  Under `Game.ExeBossBits` the quest package drops the hammer on Hephasto's kill.
+- VERIFIED Duriel lair byte +0xb: written (=1) at the end of the quest timer callback 0x59b450, which the staff placement event 0x59b960
+  adds; the callback animates the orifice, creates the portal object 100 at (X-13, Y+3) of the object in +0x20 and then sets +0xb. So the
+  lair opens when the portal appears (`Tomb.ExeLairGate`, off).

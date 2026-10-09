@@ -15,6 +15,10 @@ package d2boss
 // UNVERIFIED: the delay between the staff and the portal, where Tyrael
 // stands, and that the exit is a permanent town portal.
 type Tomb struct {
+	// ExeLairGate makes LairWarpBlocked follow the exe: the lair stays closed until the portal timer has run (private byte +0xb = 1,
+	// VERIFIED) instead of opening when the staff is placed. Off by default.
+	ExeLairGate bool
+
 	state tombState
 	// DurielAlive is set between the spawn and the kill.
 	DurielAlive bool
@@ -114,8 +118,18 @@ func (t *Tomb) OnTick(*Manager, int) {}
 // LairWarpBlocked is the gate of the warp into Duriel's Lair (level 73):
 // SERVER_EnterWarpTile 0x553140 asks FUN_00543a70, which for level 73 calls
 // FUN_0059b700 = "the Seven Tombs node (id 13) is active and its private byte
-// +0xb is 0" and cancels the warp then. VERIFIED: that test. INFERRED: that
-// byte +0xb becomes non-zero when the staff is in the orifice (no writer was
-// found in the quest's handlers 0x59a730, 0x59a390, 0x59adb0 or the helpers
-// next to 0x59b700), so the lair is blocked until the staff is placed.
-func (t *Tomb) LairWarpBlocked() bool { return t.state == tombSealed }
+// +0xb is 0" and cancels the warp then. VERIFIED: that test, and the writer of
+// +0xb: the staff placement event 0x59b960 (removes the staff, amulet and shaft,
+// sets private +0xd/+0xe, adds the quest timer 0x59b450 with a delay of
+// (table short - 0x4b) / 20 frames); that callback animates the orifice, creates
+// the portal object 100 at (X-13, Y+3) of the object stored in private +0x20
+// and ends with private +0xb = 1, +0xd = 0, +3 = 0. So the lair opens when the
+// portal appears, not when the staff is placed. Default (ExeLairGate off): the
+// earlier model, blocked only until the staff is placed.
+func (t *Tomb) LairWarpBlocked() bool {
+	if t.ExeLairGate {
+		return t.state < tombPortalOpen
+	}
+
+	return t.state == tombSealed
+}

@@ -83,3 +83,29 @@ func TestExeBossBitsOffByDefault(t *testing.T) {
 		t.Errorf("default flow changed: 0x%04x", got)
 	}
 }
+
+// TestHephastoDropsTheHammer pins 0x5b4190 / 0x5af8c0: with ExeBossBits Hephasto's death (class 409) drops the Hellforge
+// hammer and changes no quest bit; without the option nothing happens.
+func TestHephastoDropsTheHammer(t *testing.T) {
+	for _, on := range []bool{false, true} {
+		g, _ := newGame(t)
+		g.ExeBossBits = on
+		before := g.Rec.Slot(g.Quest(QuestHellforge).Slot)
+
+		effects := g.Dispatch(Event{Kind: EvMonsterKilled, Monster: NPCHephasto, Name: "hephasto"})
+
+		drop := false
+
+		for _, f := range effects {
+			drop = drop || (f.Kind == EffectGiveItem && f.Code == ItemHellforgeHammer)
+		}
+
+		if drop != on {
+			t.Errorf("ExeBossBits=%v: hammer drop = %v", on, drop)
+		}
+
+		if after := g.Rec.Slot(g.Quest(QuestHellforge).Slot); after != before {
+			t.Errorf("ExeBossBits=%v: slot changed 0x%04x -> 0x%04x", on, before, after)
+		}
+	}
+}
