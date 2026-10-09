@@ -90,7 +90,9 @@ func SummarizeD2S(data []byte, tables *d2s.ItemTables) string {
 	}
 
 	if c.Body == nil {
-		return fmt.Sprintf("name=%s class=%v (new character, no body)", c.Header.Name, c.Header.Class)
+		return fmt.Sprintf("name=%s class=%v level=%d status=0x%X expansion=%v hardcore=%v ladder=%v died=%v "+
+			"(new character, no body) checksum=ok", c.Header.Name, c.Header.Class, c.Header.Level, c.Header.Status,
+			c.Header.IsExpansion(), c.Header.IsHardcore(), c.Header.IsLadder(), c.Header.IsDead())
 	}
 
 	a := c.Body.Attributes
@@ -105,7 +107,9 @@ func SummarizeD2S(data []byte, tables *d2s.ItemTables) string {
 	}
 
 	return fmt.Sprintf("name=%s class=%v level=%d exp=%d gold=%d str=%d dex=%d vit=%d ene=%d hp=%d mana=%d "+
-		"difficulty=%d act=%d seed=%d items=%d equipped=%v waypoints=%#x checksum=ok",
+		"difficulty=%d act=%d seed=%d items=%d equipped=%v status=0x%X hardcore=%v died=%v corpse=%d "+
+		"waypoints=%#x checksum=ok",
 		c.Header.Name, c.Header.Class, a.Level, a.Experience, a.Gold, a.Strength, a.Dexterity, a.Vitality,
-		a.Energy, a.MaxHP, a.MaxMana, diff, act+1, c.Header.MapSeed, len(c.Items), eq, c.Body.Waypoints[diff])
+		a.Energy, a.MaxHP, a.MaxMana, diff, act+1, c.Header.MapSeed, len(c.Items), eq, c.Header.Status,
+		c.Header.IsHardcore(), c.Header.IsDead(), len(c.Corpse), c.Body.Waypoints[diff])
 }

@@ -45,6 +45,12 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	}
 
 	state.MapSeed = header.MapSeed
+	state.Expansion, state.Hardcore, state.Ladder = header.IsExpansion(), header.IsHardcore(), header.IsLadder()
+
+	if header.IsDead() {
+		state.Death = &DeathState{Died: true}
+	}
+
 	state.D2SBase = append([]byte(nil), data...)
 
 	if diff, _, ok := header.ActiveDifficulty(); ok {

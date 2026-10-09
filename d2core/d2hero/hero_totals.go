@@ -34,6 +34,12 @@ func (f *HeroStateFactory) loadStatBases() d2statlist.Bases {
 // the exact items of the imported save when there is one, the base items of
 // the equipment otherwise.
 func (f *HeroStateFactory) equippedStatItems(state *HeroState) []d2statlist.Item {
+	// the equipment of a hero who died is on the corpse: it counts for nothing
+	// until the corpse is recovered
+	if state.Death != nil && state.Death.Corpse != nil {
+		return []d2statlist.Item{}
+	}
+
 	if state.statEquipped != nil {
 		return state.statEquipped
 	}

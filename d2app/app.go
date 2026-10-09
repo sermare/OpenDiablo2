@@ -329,6 +329,11 @@ func (a *App) Run() (err error) {
 		a.Warning("OD2_AUTOSCRIPT needs OD2_AUTOGAME: the script only runs inside a game")
 	}
 
+	// OD2_AUTONEWCHAR=<class>[,hardcore] creates a new character and logs the result
+	if a.runAutoNewChar() && os.Getenv("OD2_AUTOEXIT") != "" && os.Getenv("OD2_AUTOGAME") == "" {
+		os.Exit(0)
+	}
+
 	if save := os.Getenv("OD2_AUTOGAME"); save != "" {
 		// a real Diablo II .d2s is imported first, then started like any save
 		if strings.EqualFold(filepath.Ext(save), ".d2s") {
