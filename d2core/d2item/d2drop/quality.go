@@ -47,11 +47,10 @@ func DiminishMagicFind(x, factor int) int {
 // the treasure class modifier in 1/1024, the 128 floor) and the order of
 // the tests.
 //
-// UNVERIFIED: the modulus handed to the generator in the final
-// superior/normal/low tests is held in a register the decompiler dropped; it
-// is assumed to be the tested value, like in the other tests. The tail
-// therefore gives superior = 128/(HiQ*128) and low = 128/(Normal*128) of the
-// remainder.
+// The whole function, tail included, is checked roll for roll against the
+// real game running under an emulator (testdata/quality.json): the modulus of
+// the superior and normal tests is the tested value, a roll below 128 in the
+// last test gives normal quality and anything else low quality.
 func RollQuality(rng RNG, r *Ratio, in QualityInput) Quality {
 	if in.TypeNormal {
 		return QualityNormal
@@ -103,11 +102,12 @@ func rollTail(rng RNG, r *Ratio, d int) Quality {
 		return QualityNormal
 	}
 
+	// VERIFIED (5569e9): rand < 128 gives normal, otherwise low quality.
 	if rng.Roll(int32(normal)) < qualityFloor {
-		return QualityLow
+		return QualityNormal
 	}
 
-	return QualityNormal
+	return QualityLow
 }
 
 // div is C integer division, 0 for a zero divisor (the game's tables never
