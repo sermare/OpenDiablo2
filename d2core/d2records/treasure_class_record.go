@@ -10,7 +10,7 @@ type TreasureClassRecord struct {
 	// in file order and level groups (Group/Level) are walked in that order,
 	// which the TreasureClass map alone cannot tell.
 	Index      int
-	Group     int
+	Group      int
 	Level      int
 	NumPicks   int
 	FreqUnique int

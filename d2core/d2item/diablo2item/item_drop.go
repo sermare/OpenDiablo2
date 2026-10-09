@@ -33,6 +33,16 @@ type DropOptions struct {
 	Players      int
 	MagicFind    int
 	MaxDrops     int
+	// Classic is a game without the expansion: classic probabilities and no
+	// throwing weapons (see d2drop.Context.Classic).
+	Classic bool
+	// QualityLevel, if UseQualityLevel, replaces the item level in the quality
+	// roll (chests use their tier, see d2drop.Chest).
+	QualityLevel    int
+	UseQualityLevel bool
+	// GoldFind is the gold find of the killer plus that of its owner, applied to
+	// the gold amounts of DropAll.
+	GoldFind int
 }
 
 // dropTables adapts the parsed records to the d2drop interfaces.
@@ -85,9 +95,12 @@ func (f *ItemFactory) dropTables() *dropTables {
 		}
 		info.Uber = d2drop.UberTier(code, icr.UberCode, icr.UltraCode, icr.Type, info.Types, icr.Quest != 0)
 
+		info.Version = icr.Version
+
 		if tr := rec.Item.Types[icr.Type]; tr != nil {
 			info.TypeNormal, info.TypeMagic, info.TypeRare = tr.Normal, tr.Magic, tr.Rare
 			info.TypeRarity = tr.Rarity
+			info.Throwable = tr.Throwable
 		}
 
 		// The class-specific rows are chosen by the item's own type only.
@@ -178,7 +191,7 @@ func (t *dropTables) loadTreasure() {
 			switch {
 			case t.items[e.Code] != nil, src[e.Code] != nil:
 			case t.rec.Item.Unique[e.Code] != nil:
-				e.Kind, e.Base = d2drop.EntryUnique, t.rec.Item.Unique[e.Code].Code
+				e.Kind, e.Base, e.Version = d2drop.EntryUnique, t.rec.Item.Unique[e.Code].Code, t.rec.Item.Unique[e.Code].Version
 			case t.rec.Item.SetItems[e.Code] != nil:
 				e.Kind, e.Base = d2drop.EntrySet, t.rec.Item.SetItems[e.Code].ItemCode
 			}
@@ -229,31 +242,74 @@ func affixesFromRecords(m map[string]*d2records.ItemAffixCommonRecord, prefix bo
 	return out
 }
 
+// DropResult is what a treasure class produced.
+type DropResult struct {
+	Items []*Item
+	// Gold holds the amounts of the gold drops, in drop order.
+	Gold []int
+}
+
 // DropItems rolls the treasure class tcName the way the real game does (see
 // package d2drop): nested classes, NoDrop, quality from ItemRatio with magic
 // find, item level from the dropper, weighted affix selection. Results are
-// reproducible from opts.Seed.
+// reproducible from opts.Seed. Gold drops are left out; see DropAll.
 func (f *ItemFactory) DropItems(tcName string, opts DropOptions) ([]*Item, error) {
+	res, err := f.DropAll(tcName, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Items, nil
+}
+
+// DropAll is DropItems that also returns the gold. The amount of a gold drop is
+// rolled on a generator of its own seeded from the dropper's (the way every
+// dropped item is created): rand(5*ilvl)+ilvl, scaled by the "mul" of the
+// entry, then by the gold find (VERIFIED formulas, see d2drop.GoldAmount).
+func (f *ItemFactory) DropAll(tcName string, opts DropOptions) (*DropResult, error) {
 	t := f.dropTables()
 	rng := d2rand.New(opts.Seed)
 
 	drops, err := t.dropper.Roll(&d2drop.Context{
 		RNG: rng, ILvl: opts.ILvl, UpgradeLevel: opts.UpgradeLevel, Players: opts.Players,
-		MagicFind: opts.MagicFind, MaxDrops: opts.MaxDrops,
+		MagicFind: opts.MagicFind, MaxDrops: opts.MaxDrops, Classic: opts.Classic,
+		QualityLevel: opts.QualityLevel, UseQualityLevel: opts.UseQualityLevel,
 	}, tcName)
 	if err != nil {
 		return nil, fmt.Errorf("rolling %q: %w", tcName, err)
 	}
 
-	result := make([]*Item, 0, len(drops))
+	res := &DropResult{}
 
 	for i := range drops {
+		if drops[i].Code == d2drop.GoldCode {
+			res.Gold = append(res.Gold, goldDrop(rng, &drops[i], opts.GoldFind))
+
+			continue
+		}
+
 		if item := f.itemFromDrop(t, rng, &drops[i]); item != nil {
-			result = append(result, item)
+			res.Items = append(res.Items, item)
 		}
 	}
 
-	return result, nil
+	return res, nil
+}
+
+// goldDrop rolls the amount of one gold drop.
+func goldDrop(rng *d2rand.Seed, drop *d2drop.Drop, goldFind int) int {
+	own := d2rand.New(rng.Step())
+	amount := d2drop.GoldAmount(own, drop.ILvl, 0)
+
+	if drop.Mul != 0 {
+		amount = d2drop.ScaleGoldMul(amount, drop.Mul)
+	}
+
+	if goldFind != 0 {
+		amount = d2drop.ApplyGoldFind(amount, goldFind, 0)
+	}
+
+	return amount
 }
 
 func (f *ItemFactory) itemFromDrop(t *dropTables, rng *d2rand.Seed, drop *d2drop.Drop) *Item {
