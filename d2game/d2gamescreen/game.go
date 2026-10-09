@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"image/color"
+	"math"
 	"strconv"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
 
@@ -102,6 +104,12 @@ func CreateGame(
 }
 
 // Game represents the Gameplay screen
+const (
+	npcInteractDistance = 3.0 // tiles
+	npcBubbleSeconds    = 3.0
+	npcBubbleLift       = 30 // pixels above the NPC's head
+)
+
 type Game struct {
 	*d2mapentity.MapEntityFactory
 	asset                *d2asset.AssetManager
@@ -117,6 +125,9 @@ type Game struct {
 	soundEnv             d2audio.SoundEnvironment
 	guiManager           *d2gui.GuiManager
 	keyMap               *d2player.KeyMap
+	npcTarget            d2interface.MapEntity
+	npcBubble            *d2ui.Label
+	npcBubbleTTL         float64
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -210,6 +221,7 @@ func (v *Game) Render(screen d2interface.Surface) {
 
 	screen.Clear(color.Black)
 	v.mapRenderer.Render(screen)
+	v.renderNPCBubble(screen)
 
 	if v.gameControls != nil {
 		if v.gameControls.HelpOverlay != nil && v.gameControls.HelpOverlay.IsOpen() {
@@ -226,6 +238,7 @@ func (v *Game) Render(screen d2interface.Surface) {
 // nolint:gocyclo // not need to change
 func (v *Game) Advance(elapsed float64) error {
 	v.soundEngine.Advance(elapsed)
+	v.advanceNPCInteraction(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
@@ -341,7 +354,56 @@ func (v *Game) OnPlayerInteract(entity d2interface.MapEntity) {
 
 	v.Infof("interacting with %q", entity.Label())
 
+	v.npcTarget = entity
+	v.npcBubbleTTL = 0
+
 	v.OnPlayerMove(targetX, targetY)
+}
+
+// advanceNPCInteraction shows a text bubble over the NPC the player clicked
+// once the player has walked close enough, and hides it after a few seconds.
+func (v *Game) advanceNPCInteraction(elapsed float64) {
+	if v.npcBubbleTTL > 0 {
+		v.npcBubbleTTL -= elapsed
+		if v.npcBubbleTTL <= 0 {
+			v.npcTarget = nil
+		}
+
+		return
+	}
+
+	if v.npcTarget == nil || v.localPlayer == nil {
+		return
+	}
+
+	px, py := v.localPlayer.GetPositionF()
+	nx, ny := v.npcTarget.GetPositionF()
+
+	if math.Hypot(px-nx, py-ny) > npcInteractDistance {
+		return
+	}
+
+	if v.npcBubble == nil {
+		v.npcBubble = v.uiManager.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
+	}
+
+	// no dialogue system yet: just acknowledge the NPC
+	v.npcBubble.SetText(v.npcTarget.Label() + ": Greetings, stranger.")
+	v.npcBubbleTTL = npcBubbleSeconds
+}
+
+// renderNPCBubble draws the interaction text bubble above the NPC.
+func (v *Game) renderNPCBubble(target d2interface.Surface) {
+	if v.npcBubbleTTL <= 0 || v.npcTarget == nil || v.npcBubble == nil {
+		return
+	}
+
+	sx, sy := v.mapRenderer.WorldToScreenF(v.npcTarget.GetPositionF())
+	_, h := v.npcTarget.GetSize()
+	w, _ := v.npcBubble.GetTextMetrics(v.npcBubble.GetText())
+
+	v.npcBubble.SetPosition(int(sx)-w/2, int(sy)-h-npcBubbleLift)
+	v.npcBubble.Render(target)
 }
 
 // OnPlayerSave instructs the server to save our player data
