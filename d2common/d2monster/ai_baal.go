@@ -23,6 +23,7 @@ func init() {
 	register("BaalToStairs", TargetNone, thinkBaalToStairs)
 	register("BaalTentacle", TargetOnly, thinkBaalTentacle)
 	register("BaalCrab", TargetOnly, thinkBaalCrab)
+	register("UberBaal", TargetOnly, thinkBaalCrab) // same think function; the uber row only has other stats (UNVERIFIED in the exe)
 	register("BaalCrabClone", TargetOnly, thinkBaalCrabClone)
 }
 

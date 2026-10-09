@@ -119,7 +119,8 @@ const (
 	EffectSound
 	// EffectRespec: Akara offers the free stat/skill reset (slot 41).
 	EffectRespec
-	// EffectPortal: a town portal / the portal to Tristram opens (Note says which).
+	// EffectPortal: a portal opens (Note says which); Value is the destination
+	// level id when the quest knows it, 0 otherwise.
 	EffectPortal
 	// EffectBark: an overhead speech bubble, Value is the message id.
 	EffectBark

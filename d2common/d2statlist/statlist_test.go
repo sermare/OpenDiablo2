@@ -154,6 +154,20 @@ func TestResistances(t *testing.T) {
 	}
 }
 
+func TestQuestResistBonus(t *testing.T) {
+	h := hero()
+	base := Compute(h, nil, nil).Resist
+
+	h.QuestResist = 10
+	got := Compute(h, nil, nil)
+
+	for i := range got.Resist {
+		if got.Resist[i] != base[i]+10 {
+			t.Errorf("resist %d: %d, want %d", i, got.Resist[i], base[i]+10)
+		}
+	}
+}
+
 func TestAttackRatingDamageBlockAndSkills(t *testing.T) {
 	h := hero() // dex 40
 	weapon := Item{Slot: SlotRightHand, Weapon: &WeaponBase{Min: 10, Max: 20, StrBonus: 100},

@@ -161,6 +161,8 @@ type Game struct {
 	monsterTest          *monsterTest
 	aiTest               *aiAutoTest
 	bossTest             *bossAutoTest
+	uber                 *uberRuntime
+	uberTest             *uberAutoTest
 	merc                 mercGame
 	skills               *d2skills.Engine
 	castTestState        *castTest
@@ -227,6 +229,10 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"pvp", "swings at another player (melee, needs hostility)", []string{"name"}, v.commandPvP},
 		{"giveitem", "puts a new item into the inventory", []string{"code"}, v.commandGiveItem},
 		{"killnear", "kills the nearest monster as the hero (party experience tests)", []string{}, v.commandKillNear},
+		{"rewarditem", "spends a pending Larzuk (socket) or Anya (personalize) quest reward on an item",
+			[]string{"socket|personalize"}, v.commandRewardItem},
+		{"transmute", "transmutes the quest recipes in the Horadric Cube (Staff, Khalim's Will, Pandemonium portals)",
+			nil, v.commandTransmute},
 	}
 
 	for _, cmd := range commands {
@@ -257,7 +263,7 @@ func (v *Game) OnUnload() error {
 	}
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
-		"party", "hostile", "roster", "trade", "pvp", "giveitem", "killnear"); err != nil {
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "killnear", "rewarditem", "transmute"); err != nil {
 		return err
 	}
 

@@ -183,6 +183,7 @@ func (f *HeroStateFactory) RecalcStats(state *HeroState) {
 	hero := d2statlist.Hero{
 		Class: class, Level: st.Level, Str: st.Strength, Dex: st.Dexterity, Vit: st.Vitality, Ene: st.Energy,
 		BaseLife: life, BaseMana: mana, BaseStam: stam, Difficulty: int(state.Difficulty),
+		QuestResist: st.ResistBonus,
 	}
 	items := append(append([]d2statlist.Item{}, f.equippedStatItems(state, hero)...), f.charmStatItems(state)...)
 

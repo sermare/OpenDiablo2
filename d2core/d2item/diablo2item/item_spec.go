@@ -27,6 +27,10 @@ type Spec struct {
 	Ethereal   bool
 	Quantity   int // 0 = leave the default
 	Durability int // current durability, -1 = leave the default
+
+	// Sockets and Personal are what quest rewards added (Larzuk, Anya).
+	Sockets  int
+	Personal string
 }
 
 // intn rolls a property value. While an item with a seed is being built the
@@ -71,6 +75,8 @@ func (i *Item) Spec() Spec {
 		s.Identified = i.attributes.identitified
 		s.Ethereal = i.attributes.ethereal
 		s.Quantity = i.attributes.currentStackSize
+		s.Sockets = i.attributes.numSockets
+		s.Personal = i.attributes.personalization
 
 		if i.attributes.durable {
 			s.Durability = i.attributes.currentDurability
@@ -109,6 +115,8 @@ func (f *ItemFactory) ItemFromSpec(s Spec) (*Item, error) {
 	}
 
 	item.attributes.ethereal = s.Ethereal
+	item.attributes.numSockets = s.Sockets
+	item.attributes.personalization = s.Personal
 
 	if s.Quantity > 0 {
 		item.SetQuantity(s.Quantity)

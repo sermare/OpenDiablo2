@@ -268,6 +268,7 @@ func (v *Game) performLevelChange(t *levelTransition) {
 		plan.ActChange, arrival.X, arrival.Y, px, py)
 
 	if plan.ActChange {
+		v.questActChange(plan.FromAct, plan.ToAct, t.via)
 		v.Infof("ACT CHANGE %d -> %d LoadAct packet % x", plan.FromAct, plan.ToAct, plan.LoadAct.Encode())
 		v.logActArrival(t.target)
 	}
@@ -308,6 +309,7 @@ func (v *Game) afterLevelBuilt(from, to int, via string) {
 	v.levels.edgeArmed = false
 	v.scanWarps()
 	v.questArea(to) // the quest system follows the hero between areas
+	v.uberEnter(to)
 	v.restoreCorpse()
 	v.restoreLevel(to)
 
@@ -637,7 +639,7 @@ func (v *Game) operatePortal(ob *d2mapentity.Object) {
 // portal object leading to that level, next to the hero.
 func (v *Game) commandSpawnPortal(args []string) error {
 	level, err := strconv.Atoi(args[0])
-	if err != nil || level < 1 || level > 132 {
+	if err != nil || level < 1 || level > 136 {
 		return fmt.Errorf("invalid level %q", args[0])
 	}
 

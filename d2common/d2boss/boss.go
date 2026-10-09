@@ -110,10 +110,13 @@ const (
 	ActWake
 	// ActPortal: a portal to Level opens (Class is its object).
 	ActPortal
+	// ActDropItem: the item with the code Key drops at the encounter (Name
+	// says why).
+	ActDropItem
 )
 
 func (k ActionKind) String() string {
-	return [...]string{"spawn-monster", "spawn-npc", "spawn-object", "object-mode", "message", "wake", "portal"}[k]
+	return [...]string{"spawn-monster", "spawn-npc", "spawn-object", "object-mode", "message", "wake", "portal", "drop-item"}[k]
 }
 
 // Action is one request to the engine.
@@ -392,4 +395,21 @@ func (m *Manager) WaveSpawned(n int) {
 			m.logf("baal wave %d: %d monsters created", t.Wave, n)
 		}
 	}
+}
+
+// Emit queues an action for the engine on behalf of an encounter that lives
+// in another package (the Pandemonium event, d2common/d2uber).
+func (m *Manager) Emit(enc string, a Action) { m.emit(enc, a) }
+
+// After runs fn after the given number of frames.
+func (m *Manager) After(frames int, fn func()) { m.after(frames, fn) }
+
+// Logf writes a "BOSS ..." line.
+func (m *Manager) Logf(format string, args ...interface{}) { m.logf(format, args...) }
+
+// Do runs fn (which may Emit actions) and returns the actions it queued.
+func (m *Manager) Do(fn func()) []Action {
+	fn()
+
+	return m.take()
 }

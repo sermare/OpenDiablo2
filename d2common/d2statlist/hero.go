@@ -54,6 +54,9 @@ type Hero struct {
 	BaseMana   int
 	BaseStam   int
 	Difficulty int // 0 normal, 1 nightmare, 2 hell
+	// QuestResist is the permanent bonus to the four resistances from Malah's
+	// scroll (Prison of Ice); it counts like an item resistance.
+	QuestResist int
 }
 
 // Totals is everything derived from the hero and its equipment.
@@ -235,7 +238,7 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 	penalty := d2combat.LoDResistPenalty(h.Difficulty)
 
 	for i, ids := range resistStats {
-		t.Resist[i] = int(list.Get(ids[0]))
+		t.Resist[i] = int(list.Get(ids[0])) + h.QuestResist
 		t.MaxResist[i] = d2combat.DefaultMaxResist + int(list.Get(ids[1]))
 
 		if t.MaxResist[i] > d2combat.MaxResistCeiling {

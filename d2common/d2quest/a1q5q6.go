@@ -369,7 +369,7 @@ func newSistersToTheSlaughter() *Quest {
 			}
 
 			g.after(10, func() {
-				g.emit(Effect{Kind: EffectPortal, Quest: q.ID, Note: "town portal at Andariel's corpse"})
+				g.emit(Effect{Kind: EffectPortal, Quest: q.ID, Value: LevelRogueEncampment, Note: "town portal at Andariel's corpse"})
 			})
 			g.after(12, func() {
 				if q.LastState != 3 && q.LastState != 13 {

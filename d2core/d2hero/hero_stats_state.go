@@ -38,6 +38,9 @@ type HeroStatsState struct {
 	ManaBonus      int  `json:"manaBonus,omitempty"`
 	StaminaBonus   int  `json:"staminaBonus,omitempty"`
 	StatsBonusInit bool `json:"statsBonusInit,omitempty"`
+	// ResistBonus is the permanent resistance bonus of Malah's scrolls (all four
+	// elements). Not part of the .d2s model yet: kept for native heroes.
+	ResistBonus int `json:"resistBonus,omitempty"`
 
 	// values which are not saved/loaded(computed)
 	NextLevelExp int `json:"-"`

@@ -37,6 +37,9 @@ type StoredItem struct {
 	Identified bool `json:"identified,omitempty"`
 	Ethereal   bool `json:"ethereal,omitempty"`
 	Quantity   int  `json:"quantity,omitempty"`
+	// Sockets and Personal are added by quest rewards (Larzuk, Anya).
+	Sockets  int    `json:"sockets,omitempty"`
+	Personal string `json:"personal,omitempty"`
 	// Durability is the current durability; nil leaves the item's default.
 	Durability *int `json:"durability,omitempty"`
 

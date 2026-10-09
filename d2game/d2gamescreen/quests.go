@@ -8,6 +8,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2quest"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2reward"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapgen"
@@ -55,6 +56,10 @@ type questRuntime struct {
 	imbuePending bool
 	respec       bool
 	rogueHire    bool
+	// rewards is the state of the quest rewards (Larzuk, Anya, Malah...).
+	rewards d2reward.State
+	// actPortalLevel is the level in which the act portal was opened (0: none).
+	actPortalLevel int
 }
 
 // d2sClass converts the engine's hero enum to the .d2s class number.
@@ -201,6 +206,7 @@ func (v *Game) advanceQuests(elapsed float64) {
 	}
 
 	v.advanceBarks(elapsed)
+	v.advanceUber(elapsed)
 
 	if r.auto != nil {
 		r.auto.advance(engineHost{v}, elapsed)
@@ -218,6 +224,7 @@ func (v *Game) questDispatch(e d2quest.Event) {
 	v.applyQuestEffects(r.g.Dispatch(e))
 
 	r.dirty = true
+	v.maybeOpenActPortal()
 }
 
 // questArea tells the quest system the hero moved to another area.
@@ -261,6 +268,8 @@ func (v *Game) onMonsterKilled(ev d2monsters.KillEvent) {
 	}
 
 	v.questDispatch(d2quest.Event{Kind: d2quest.EvMonsterKilled, Monster: ev.Class, Super: super, Name: ev.Label, Level: r.area})
+	v.questKillDrops(ev.Label, ev.Class)
+	v.uberKilled(ev)
 }
 
 // questObjectOperated is a quest object (cairn stone, Malus chest...) used by the hero.
@@ -321,7 +330,7 @@ func (v *Game) applyQuestEffects(effects []d2quest.Effect) {
 		case d2quest.EffectSound:
 			v.Infof("QUEST EFFECT sound id=%d quest=%d (%s) [not played: the attach-sound table is not decoded]", e.Value, e.Quest, e.Note)
 		case d2quest.EffectPortal:
-			v.Infof("QUEST EFFECT portal (%s) [not simulated]", e.Note)
+			v.questPortal(e)
 		case d2quest.EffectUnlockAct:
 			v.Infof("QUEST EFFECT unlock act %d", e.Value)
 		case d2quest.EffectBark:
@@ -330,20 +339,6 @@ func (v *Game) applyQuestEffects(effects []d2quest.Effect) {
 			v.applyQuestReward(e)
 		}
 	}
-}
-
-// applyQuestReward does the rewards of the later acts the engine can: stat
-// points are added, the others are logged (no mercenary, socketing or
-// personalisation UI yet).
-func (v *Game) applyQuestReward(e d2quest.Effect) {
-	if e.Code == "stat-points" {
-		v.localPlayer.Stats.StatsPoints += e.Value
-		v.Infof("QUEST EFFECT reward stat-points +%d total=%d", e.Value, v.localPlayer.Stats.StatsPoints)
-
-		return
-	}
-
-	v.Infof("QUEST EFFECT reward %s value=%d (%s) [not simulated]", e.Code, e.Value, e.Note)
 }
 
 // spawnQuestItem drops a quest reward at the hero's feet (the engine's reward
