@@ -151,6 +151,9 @@ func (d *Director) SpawnPack(plan d2monster.Pack, center d2path.Point) (*PackRes
 
 		if res.Leader == nil {
 			res.Leader = m
+			if plan.SuperUnique != "" {
+				m.TypeFlags |= d2mapentity.MonTypeSuperUnique
+			}
 		} else {
 			res.Leader.Brain.AddMinion(m.Brain)
 		}
