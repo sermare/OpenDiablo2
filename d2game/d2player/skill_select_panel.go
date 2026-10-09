@@ -270,11 +270,12 @@ func (s *SkillPanel) hover(c *popupCell) {
 // tooltipText is the name, the short description and the level of a skill,
 // and the key it is on.
 func (s *SkillPanel) tooltipText(sk *d2hero.HeroSkill) string {
-	return skillTooltip(s.asset, sk, s.hero.SkillBar, s.keyName)
+	return skillTooltip(s.asset, sk, s.hero.SkillBar, s.keyName, s.hero.Skills, s.hero.Stats.Level)
 }
 
 // skillTooltip builds the tooltip of a skill icon (popup and skill tree).
-func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, bar *d2hero.SkillBar, keyName func(int) string) string {
+func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, bar *d2hero.SkillBar, keyName func(int) string,
+	skills map[int]*d2hero.HeroSkill, heroLevel int) string {
 	name := asset.TranslateString(sk.NameKey)
 	if name == "" || name == sk.NameKey {
 		name = sk.Skill
@@ -305,6 +306,8 @@ func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, bar *d2hero
 			lines = append(lines, line)
 		}
 	}
+
+	lines = append(lines, skillDescLines(asset, sk, skills, heroLevel)...)
 
 	if bar != nil && keyName != nil {
 		if slot := bar.HotkeyOf(sk.ID); slot >= 0 {
