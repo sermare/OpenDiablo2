@@ -55,6 +55,11 @@ type Brain struct {
 	// (VERIFIED 0x5aed10).
 	WakeShouted bool
 
+	// CanTeleport is AiGeneral flag 0x20 (+8 ushort, test 0x5dbf60), the gate
+	// of the wounded MonTeleport (0x5aedc0, VERIFIED). Which code sets it is
+	// UNVERIFIED, so it stays false (feature off) unless the host sets it.
+	CanTeleport bool
+
 	// TargetID/HasTarget record the target of the last acquisition (AiGeneral
 	// +0x08); Tick keeps them current.
 	TargetID  uint32

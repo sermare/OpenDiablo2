@@ -201,13 +201,27 @@ type StateSetter interface {
 	SetUnitState(b *Brain, state int, on bool)
 }
 
+// OverlayShower is an optional Actor extension for 0x622020 (VERIFIED): it
+// adds the unit's own stat list (flag 0x80) with stat 0xb2 = unit_dooverlay
+// set to the given overlay id (low 16 bits) and refreshes the unit in its
+// room - a purely visual effect. The SandRaider uses overlay 0x96 when
+// aip6 == 1 and 0x2e otherwise, at the moment its charge counter hits aip5.
+type OverlayShower interface {
+	ShowOverlay(b *Brain, overlay int)
+}
+
+const (
+	raiderOverlayA = 0x96
+	raiderOverlayB = 0x2e
+)
+
 // thinkSandRaider is MONAI_Think_SandRaider 0x5ef800 (VERIFIED, re-read from
 // the disassembly in this pass; the roll order below is the exe's). aip1 hurt%
 // below which it runs to an ally, aip2 strafe%, aip3 melee gate%, aip4 approach
 // %, aip5 charge ticks, aip6 selects which of two states/sounds, aip7 A2%.
 //
 //  1. counter == 0: clear states 0x5a/0x5b and the charged flag. counter++.
-//  2. counter == aip5: (a FUN_00622020 call, UNVERIFIED, not ported) sleep
+//  2. counter == aip5: (0x622020: unit_dooverlay 0x96/0x2e, OverlayShower) sleep
 //     aidel+1, end. counter > aip5: set state 0x5a (aip6 == 1) or 0x5b, flag.
 //  3. defend < 7 and hp% < aip1: walk to the nearest ally if any (end), else
 //     defend++. (no roll)
@@ -237,6 +251,14 @@ func thinkSandRaider(c *Ctx) {
 
 	switch k := b.Scratch[raiderCount]; {
 	case k == b.AIP(5):
+		if o, ok := c.W.(OverlayShower); ok {
+			if b.AIP(6) == 1 {
+				o.ShowOverlay(b, raiderOverlayA)
+			} else {
+				o.ShowOverlay(b, raiderOverlayB)
+			}
+		}
+
 		c.Sleep(p.AIDel + 1)
 
 		return
