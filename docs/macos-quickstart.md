@@ -53,6 +53,9 @@ from a non-GUI shell fails with a Cocoa display error):
 | `OD2_AUTOSOUND=akara_greeting_1,3480` | After a few seconds, play each Sounds.txt handle or index through the voice bank and log `AUTOSOUND` lines (row, file, priority, decision). Silent with `OD2_AUTOTEST_MUTE`. |
 | `OD2_AUTOTEST_MUTE=1` | Do not play sound during the autotest. |
 | `OD2_AUTOTRADE=Akara,Charsi` | Open each Act 1 vendor's trade window, log the stock with computed buy prices, run one scripted buy and sell (and a repair for Charsi) with the gold before and after, then restore the gold. `OD2_AUTOTRADE_SEED=<n>` fixes the stock, `OD2_AUTOTRADE_LEVEL=<n>` generates it for that hero level (a high level only gets magic items). |
+| `OD2_AUTOPANEL=stash,cube,belt,inventory` | Open each container panel and log its items with grid positions (`AUTOPANEL panel=stash item #n code= x= y= w= h=`), then check that every saved item rebuilds identically from its spec. Compare with the save's own parse (nokkasorc.json: alt_position_id 1 inventory, 4 cube, 5 stash). `OD2_AUTOPANEL_HOLD=<s>` keeps it open. Scripts can use `panel:stash`, `panel:cube`, `panel:belt` too. |
+| `OD2_AUTOSTASH=1` | Walk to the town stash object (objects.txt id 267) as a click does and log whether the stash opened. |
+| `OD2_AUTOBELT=1,2,3,4` | Drink the belt potion of each column (hotkeys 1 to 4) at 40% life and mana and log the restored amounts; nothing is saved. |
 | `OD2_AUTOEXIT=1` | Quit when the autotest finishes. |
 
 ### Scripted scenarios (`OD2_AUTOSCRIPT`)

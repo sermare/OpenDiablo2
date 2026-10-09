@@ -146,6 +146,7 @@ type Game struct {
 	autoSoundDone        bool
 	ground               groundState
 	autoGround           autoGround
+	autoPanel            autoPanelState
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -264,6 +265,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceAutoScript(elapsed)
 	v.advanceGroundInteraction(elapsed)
 	v.advanceAutoGround(elapsed)
+	v.advanceAutoPanel(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
@@ -727,6 +729,10 @@ func (v *Game) autoTestExit() {
 // OnPlayerSave instructs the server to save our player data
 func (v *Game) OnPlayerSave() error {
 	playerState := v.gameClient.Players[v.gameClient.PlayerID]
+
+	if v.gameControls != nil {
+		v.gameControls.SyncContainers()
+	}
 
 	sp, err := d2netpacket.CreateSavePlayerPacket(playerState, d2enum.DifficultyNormal)
 	if err != nil {

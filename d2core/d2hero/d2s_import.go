@@ -151,4 +151,35 @@ func (f *HeroStateFactory) importD2SItems(state *HeroState, data []byte) {
 	}
 
 	f.applyD2SEquipment(state, character.Items, tables)
+	f.applyD2SContainers(state, character.Items)
+}
+
+// applyD2SContainers puts the inventory (page 1), cube (4), stash (5) and belt
+// items of a save into the hero's containers. Items without an OpenDiablo2
+// record are skipped with a warning.
+func (f *HeroStateFactory) applyD2SContainers(state *HeroState, items []d2s.Item) {
+	known := func(code string) bool { return f.asset.Records.Item.All[code] != nil }
+	containers := &HeroContainers{Items: []StoredItem{}}
+
+	for i := range items {
+		if it := &items[i]; it.Location == d2s.LocationEquipped && it.Equipped == d2sSlotBelt && known(trimCode(it.Code)) {
+			containers.BeltCode = trimCode(it.Code)
+		}
+
+		stored, skip := StoredFromD2S(&items[i], known)
+		if skip == "" {
+			containers.Items = append(containers.Items, stored)
+			continue
+		}
+
+		// equipped items and the like are not a container's business
+		if items[i].Location == d2s.LocationStored || items[i].Location == d2s.LocationBelt {
+			fmt.Printf("d2s: skipping item %q of %s: %s\n", items[i].Code, state.HeroName, skip)
+		}
+	}
+
+	state.Containers = containers
+	fmt.Printf("d2s: %s containers: inventory=%d belt=%d cube=%d stash=%d\n", state.HeroName,
+		len(containers.Page(PageInventory)), len(containers.Page(PageBelt)),
+		len(containers.Page(PageCube)), len(containers.Page(PageStash)))
 }

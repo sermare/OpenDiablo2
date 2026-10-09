@@ -75,5 +75,29 @@ EOT
   if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in scripted log"; fail=1; fi
 fi
 
+if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
+  step "containers (stash, cube, belt, inventory import; stash object; belt potions)"
+  save="${OD2_VERIFY_SAVE:-$tmp/save.d2s}"
+  cmd=$tmp/panel.command log=$tmp/panel.log
+  cat > $cmd <<EOT
+#!/bin/zsh
+export OD2_PORT=$OD2_PORT
+export OD2_AUTOGAME="$save" OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1
+export OD2_AUTOSTASH=1 OD2_AUTOPANEL=stash,cube,belt,inventory OD2_AUTOBELT=1,2,3,4
+$tmp/od2 2>&1 | tee $log
+EOT
+  chmod +x $cmd; rm -f $log
+  open $cmd
+  for i in {1..90}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
+  sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
+  grep -E "AUTOPANEL (stash object|panel=[a-z]+ size|spec round)|containers loaded" $log.txt | cut -c1-200
+  grep -qE "AUTOPANEL stash object opened the stash" $log.txt || { echo "FAIL: the stash object did not open the stash"; fail=1; }
+  for p in stash cube belt inventory; do
+    grep -qE "AUTOPANEL panel=$p size=" $log.txt || { echo "FAIL: no $p panel"; fail=1; }
+  done
+  grep -qE "AUTOPANEL spec round trip: checked=[0-9]+ mismatched=0" $log.txt || { echo "FAIL: saved items do not rebuild identically"; fail=1; }
+  if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in container log"; fail=1; fi
+fi
+
 echo
 [ $fail -eq 0 ] && echo "ALL CHECKS PASSED" || { echo "SOME CHECKS FAILED"; exit 1; }

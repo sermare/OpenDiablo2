@@ -31,12 +31,17 @@ const (
 type groundState struct {
 	item    *d2mapentity.Item
 	chest   *d2mapentity.Object
+	stash   *d2mapentity.Object
 	elapsed float64
 	// onPickup is called after a successful pickup (used by the autotest).
 	onPickup func(it *d2mapentity.Item)
 	// chestSeq numbers chest openings so each one rolls a different seed.
 	chestSeq uint32
 }
+
+// stashObjectID is the objects.txt id of the town stash ("bank", token b6; the
+// row is read from the shipped objects.txt: Id 267, Selectable0 = 1).
+const stashObjectID = 267
 
 // lootContainers are the objects.txt ids that open into a treasure class drop.
 // The ids and names come from objects.txt (Act 1 and 2 caskets, chests, barrels,
@@ -92,6 +97,15 @@ func (v *Game) walkToObject(ob *d2mapentity.Object) {
 	x, y := ob.GetPositionF()
 	v.npcTarget = nil
 
+	if ob.Record().Index == stashObjectID {
+		v.ground.item, v.ground.chest, v.ground.stash, v.ground.elapsed = nil, nil, ob, 0
+
+		v.Infof("walking to the stash (object %d) at (%.1f,%.1f)", stashObjectID, x, y)
+		v.OnPlayerMove(x, y)
+
+		return
+	}
+
 	if _, ok := lootContainers[ob.Record().Index]; !ok {
 		v.OnPlayerMove(x, y)
 		return
@@ -125,6 +139,20 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 		case v.ground.elapsed > interactTimeout:
 			v.Warningf("gave up walking to %q", plainLabel(it.Label()))
 			v.ground.item = nil
+		}
+	}
+
+	if ob := v.ground.stash; ob != nil {
+		v.ground.elapsed += elapsed
+		ox, oy := ob.GetPositionF()
+
+		switch {
+		case math.Hypot(px-ox, py-oy) <= chestRange:
+			v.ground.stash = nil
+			v.gameControls.OpenStash()
+		case v.ground.elapsed > interactTimeout:
+			v.Warningf("gave up walking to the stash")
+			v.ground.stash = nil
 		}
 	}
 

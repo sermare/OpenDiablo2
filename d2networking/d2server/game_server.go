@@ -398,6 +398,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 		playerState.LeftSkill,
 		playerState.RightSkill,
 		playerState.Gold,
+		d2netpacket.WithContainers(playerState.Containers),
 	)
 	if err != nil {
 		g.Errorf("AddPlayerPacket: %v", err)
@@ -497,6 +498,7 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		playerState.Stats = savePacket.Player.Stats
 		playerState.Act = savePacket.Player.Act
 		playerState.Gold = savePacket.Player.Gold // changed by vendor transactions
+		playerState.Containers = savePacket.Player.Containers
 		playerState.Difficulty = savePacket.Difficulty
 
 		err = g.heroStateFactory.Save(playerState)

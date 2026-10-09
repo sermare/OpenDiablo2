@@ -31,6 +31,10 @@ type Player struct {
 	isCasting         bool
 	onFinishedCasting func()
 	Act               int
+
+	// Containers is the hero's inventory, belt, cube and stash content as last
+	// saved; the game controls refresh it before every save (nil: none saved yet).
+	Containers *d2hero.HeroContainers
 }
 
 // run speed should be walkspeed * 1.5, since in the original game it is 6 yards walk and 9 yards run.

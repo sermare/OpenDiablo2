@@ -5,6 +5,11 @@ type Belts map[string]*BeltRecord
 
 // BeltRecord is a representation of the belt ui-panel dimensions/positioning
 type BeltRecord struct {
+	// Index is the row of belts.txt (0 based, the "Expansion" marker row not
+	// counted, so the 800x600 rows continue at 7); the "belt" column of armor.txt
+	// refers to it (Sash = 1, Light Belt = 4, Girdle = 3, Heavy Belt = 5,
+	// the exceptional and elite belts = 6, no belt = 2 "default").
+	Index     int
 	Name      string
 	NumBoxes  int
 	BoxWidth  int
@@ -89,4 +94,17 @@ type BeltRecord struct {
 	Box16Right  int
 	Box16Top    int
 	Box16Bottom int
+}
+
+// ByIndex returns the belt of a belts.txt row number (the armor.txt belt
+// column) from the first set of rows (the 640x480 layout; the 800x600 rows
+// that follow the "Expansion" marker have the same box counts), or nil.
+func (b Belts) ByIndex(index int) *BeltRecord {
+	for _, rec := range b {
+		if rec.Index == index {
+			return rec
+		}
+	}
+
+	return nil
 }
