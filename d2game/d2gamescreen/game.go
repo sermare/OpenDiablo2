@@ -134,6 +134,7 @@ type Game struct {
 	npcTarget            d2interface.MapEntity
 	greetingLast         map[string]string
 	greetingRecent       map[string]string
+	returnGreet          returnGreetings
 	autoTestElapsed      float64
 	autoTestDone         bool
 
@@ -468,10 +469,14 @@ func (v *Game) playNPCGreeting(name string) string {
 		v.greetingRecent = make(map[string]string)
 	}
 
+	if v.returnGreet == nil {
+		v.returnGreet = returnGreetings{}
+	}
+
 	set := loadGreetingSet(v.asset.Records.Sound.Details, name)
 
 	// nolint:gosec // not concerned with crypto-strong randomness
-	handle := pickGreeting(set, greetingNormal, phaseFromHour(time.Now().Hour()),
+	handle := pickGreeting(set, v.returnGreet.Take(name), phaseFromHour(time.Now().Hour()),
 		v.greetingLast[name], v.greetingRecent, rand.Intn)
 	if handle == "" {
 		return ""
