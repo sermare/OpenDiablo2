@@ -4,11 +4,12 @@ This is a fork of [OpenDiablo2](https://github.com/OpenDiablo2/OpenDiablo2) that
 playable with **your own game data**. The upstream contribution notes are in [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md);
 this page describes how work is organised here.
 
-Start with the three guides:
+Start with the guides:
 
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the packages and how data flows
 * [docs/TESTING.md](docs/TESTING.md): unit, real-data, oracle and in-game tests; the verify gate
-* [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md): where the facts come from, the legal stance, the rules
+* [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md): where the facts come from, the Ghidra workflow, naming, the notes index, the legal stance, the rules
+* [docs/STATUS_MATRIX.md](docs/STATUS_MATRIX.md): per feature, what is implemented, verified against the original, or approximate, with the test or scenario that is the evidence
 
 ## Never commit game files
 
@@ -36,12 +37,22 @@ from environment variables (`D2_TABLES`, `D2S_SAMPLE_BODY`, ...) and skip when u
 3. For gameplay changes, add or update a scenario in `scripts/verify.d/` and run `scripts/verify.sh` on a Mac with a game
    install (it needs a GUI session). See [docs/TESTING.md](docs/TESTING.md#5-scriptsverifysh-and-scenarios).
 4. New pure packages are added to `PURE_PKGS` in `.github/workflows/ci.yml` so Linux CI covers them.
-5. Honest evidence level on new behaviour: `VERIFIED`, `inferred` or `UNVERIFIED` in comments
+5. Documentation that goes with the change (docs only changes follow the same gate, minus the scenarios):
+   * every package has a `doc.go` with one honest paragraph: what it is for, key types, who uses it, what is verified against
+     the original and what is approximate. A new package gets its `doc.go` in the same commit.
+   * a new `OD2_*` or `D2_*` environment variable is listed in [docs/TESTING.md](docs/TESTING.md) (and in
+     `docs/macos-quickstart.md` if a user would set it); a new scenario is listed there too.
+   * a change in what is verified or approximate updates the row in [docs/STATUS_MATRIX.md](docs/STATUS_MATRIX.md); name a test or
+     scenario that exists as evidence, or write "no evidence found".
+   * a structural change (new package, new data flow) updates [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+6. Honest evidence level on new behaviour: `VERIFIED`, `inferred` or `UNVERIFIED` in comments
    (see [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md#4-evidence-levels)).
 
 ## Commits and pushes
 
 * Messages say what changed and why. Agent-written commits end with the co-author trailer used in this fork's history.
+* Do not put game data, decompiled Blizzard code or saves in commits, messages or test fixtures. Golden test files contain
+  numbers derived from the real generator only.
 * `git push -u fork <your-branch>`. Pull requests are not used for internal work.
 * Table-driven tests, small interfaces, pure packages where possible.
 
