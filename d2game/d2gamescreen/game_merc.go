@@ -36,11 +36,11 @@ type sellerOffers struct {
 
 // mercGame is the merc-related state of the game screen.
 type mercGame struct {
-	table   *d2hireling.Table
-	tried   bool
-	offers  map[int]*sellerOffers
-	spawned bool
-	test    *mercTest
+	table      *d2hireling.Table
+	tried      bool
+	offers     map[int]*sellerOffers
+	spawnedFor *d2monsters.Director // the director the merc was spawned into: a new level has a new one, so the merc follows the hero
+	test       *mercTest
 }
 
 // mercTest is the state of the OD2_AUTOMERC scenario.
@@ -111,8 +111,8 @@ func (v *Game) advanceMerc(elapsed float64) {
 
 	p := v.localPlayer
 
-	if !v.merc.spawned && p.Merc != nil && d.Hirelings() != nil {
-		v.merc.spawned = true
+	if v.merc.spawnedFor != d && p.Merc != nil && d.Hirelings() != nil {
+		v.merc.spawnedFor = v.monsters
 
 		if _, err := d.SpawnMerc(p, saveOf(p.Merc)); err != nil {
 			v.Errorf("MERC spawn: %v", err)
@@ -282,7 +282,7 @@ func (v *Game) hireOffer(seller, slot int) error {
 	v.gameControls.AddGold(-offer.Cost)
 
 	p.Merc = &d2hero.MercState{ID: save.ID, NameID: save.NameID, Type: save.Type, Experience: save.Experience, Replaced: true}
-	v.merc.spawned = true
+	v.merc.spawnedFor = v.monsters
 
 	o.table.Slots[slot].Hired = true
 	if o.table.Regenerate(tab, o.rng) {

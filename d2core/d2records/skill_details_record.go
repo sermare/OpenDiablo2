@@ -1,7 +1,7 @@
 package d2records
 
 import (
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calculation"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calc"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 )
 
@@ -15,9 +15,9 @@ type SkillRecord struct {
 	Skill             string
 	Charclass         string
 	Skilldesc         string
-	Prgcalc1          d2calculation.Calculation
-	Prgcalc2          d2calculation.Calculation
-	Prgcalc3          d2calculation.Calculation
+	Prgcalc1          *d2calc.Program
+	Prgcalc2          *d2calc.Program
+	Prgcalc3          *d2calc.Program
 	Srvmissile        string
 	Srvmissilea       string
 	Srvmissileb       string
@@ -25,20 +25,20 @@ type SkillRecord struct {
 	Srvoverlay        string
 	Aurastate         string
 	Auratargetstate   string
-	Auralencalc       d2calculation.Calculation
-	Aurarangecalc     d2calculation.Calculation
+	Auralencalc       *d2calc.Program
+	Aurarangecalc     *d2calc.Program
 	Aurastat1         string
-	Aurastatcalc1     d2calculation.Calculation
+	Aurastatcalc1     *d2calc.Program
 	Aurastat2         string
-	Aurastatcalc2     d2calculation.Calculation
+	Aurastatcalc2     *d2calc.Program
 	Aurastat3         string
-	Aurastatcalc3     d2calculation.Calculation
+	Aurastatcalc3     *d2calc.Program
 	Aurastat4         string
-	Aurastatcalc4     d2calculation.Calculation
+	Aurastatcalc4     *d2calc.Program
 	Aurastat5         string
-	Aurastatcalc5     d2calculation.Calculation
+	Aurastatcalc5     *d2calc.Program
 	Aurastat6         string
-	Aurastatcalc6     d2calculation.Calculation
+	Aurastatcalc6     *d2calc.Program
 	Auraevent1        string
 	Auraevent2        string
 	Auraevent3        string
@@ -47,31 +47,31 @@ type SkillRecord struct {
 	Passivestate      string
 	Passiveitype      string
 	Passivestat1      string
-	Passivecalc1      d2calculation.Calculation
+	Passivecalc1      *d2calc.Program
 	Passivestat2      string
-	Passivecalc2      d2calculation.Calculation
+	Passivecalc2      *d2calc.Program
 	Passivestat3      string
-	Passivecalc3      d2calculation.Calculation
+	Passivecalc3      *d2calc.Program
 	Passivestat4      string
-	Passivecalc4      d2calculation.Calculation
+	Passivecalc4      *d2calc.Program
 	Passivestat5      string
-	Passivecalc5      d2calculation.Calculation
+	Passivecalc5      *d2calc.Program
 	Passiveevent      string
 	Passiveeventfunc  string
 	Summon            string
 	Pettype           string
-	Petmax            d2calculation.Calculation
+	Petmax            *d2calc.Program
 	Summode           string
 	Sumskill1         string
-	Sumsk1calc        d2calculation.Calculation
+	Sumsk1calc        *d2calc.Program
 	Sumskill2         string
-	Sumsk2calc        d2calculation.Calculation
+	Sumsk2calc        *d2calc.Program
 	Sumskill3         string
-	Sumsk3calc        d2calculation.Calculation
+	Sumsk3calc        *d2calc.Program
 	Sumskill4         string
-	Sumsk4calc        d2calculation.Calculation
+	Sumsk4calc        *d2calc.Program
 	Sumskill5         string
-	Sumsk5calc        d2calculation.Calculation
+	Sumsk5calc        *d2calc.Program
 	Sumoverlay        string
 	Stsound           string
 	Stsoundclass      string
@@ -90,9 +90,9 @@ type SkillRecord struct {
 	Cltmissileb       string
 	Cltmissilec       string
 	Cltmissiled       string
-	Cltcalc1          d2calculation.Calculation
-	Cltcalc2          d2calculation.Calculation
-	Cltcalc3          d2calculation.Calculation
+	Cltcalc1          *d2calc.Program
+	Cltcalc2          *d2calc.Program
+	Cltcalc3          *d2calc.Program
 	Range             string
 	Itypea1           string
 	Itypea2           string
@@ -109,23 +109,23 @@ type SkillRecord struct {
 	Monanim           string
 	ItemCastSound     string
 	ItemCastOverlay   string
-	Skpoints          d2calculation.Calculation
+	Skpoints          *d2calc.Program
 	Reqskill1         string
 	Reqskill2         string
 	Reqskill3         string
 	State1            string
 	State2            string
 	State3            string
-	Perdelay          d2calculation.Calculation
-	Calc1             d2calculation.Calculation
-	Calc2             d2calculation.Calculation
-	Calc3             d2calculation.Calculation
-	Calc4             d2calculation.Calculation
-	ToHitCalc         d2calculation.Calculation
-	DmgSymPerCalc     d2calculation.Calculation
+	Perdelay          *d2calc.Program
+	Calc1             *d2calc.Program
+	Calc2             *d2calc.Program
+	Calc3             *d2calc.Program
+	Calc4             *d2calc.Program
+	ToHitCalc         *d2calc.Program
+	DmgSymPerCalc     *d2calc.Program
 	EType             string
-	EDmgSymPerCalc    d2calculation.Calculation
-	ELenSymPerCalc    d2calculation.Calculation
+	EDmgSymPerCalc    *d2calc.Program
+	ELenSymPerCalc    *d2calc.Program
 	ID                int
 	Srvstfunc         int
 	Srvdofunc         int
@@ -160,7 +160,7 @@ type SkillRecord struct {
 	Reqint            int
 	Reqvit            int
 	Restrict          int
-	Delay             int
+	Delay             *d2calc.Program // delay is a calc string, frames of cooldown
 	Checkfunc         int
 	Startmana         int
 	Minmana           int

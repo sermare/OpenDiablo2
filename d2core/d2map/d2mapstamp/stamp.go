@@ -1,6 +1,8 @@
 package d2mapstamp
 
 import (
+	"fmt"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2ds1"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2dt1"
@@ -52,6 +54,18 @@ func (mr *Stamp) RegionID() d2enum.RegionIdType {
 // RegionPath returns the file path of the region.
 func (mr *Stamp) RegionPath() string {
 	return mr.regionPath
+}
+
+// Objects returns the DS1 object list (monster, object and other placements
+// in sub-tile coordinates relative to the stamp).
+func (mr *Stamp) Objects() []d2ds1.Object {
+	return mr.ds1.Objects
+}
+
+// Act returns the act number stored in the DS1 (1 to 5), which selects the
+// monpreset / object lookup tables.
+func (mr *Stamp) Act() int {
+	return int(mr.ds1.Act)
 }
 
 // Tile represents a map tile, which can have a variable amount of floors, walls, shadows as layers.
@@ -118,7 +132,7 @@ func (mr *Stamp) Entities(tileOffsetX, tileOffsetY int) []d2interface.MapEntity 
 				// Temorary use of Lookup.
 				// nolint:gomnd // constant modifier
 				npcX, npcY := (tileOffsetX*5)+object.X, (tileOffsetY*5)+object.Y
-				npc, err := mr.entity.NewNPC(npcX, npcY, monstat, 0)
+				npc, err := mr.newNPC(npcX, npcY, monstat)
 
 				if err == nil {
 					npc.SetPaths(convertPaths(tileOffsetX, tileOffsetY, object.Paths))
@@ -140,10 +154,10 @@ func (mr *Stamp) Entities(tileOffsetX, tileOffsetY int) []d2interface.MapEntity 
 
 			if objectRecord != nil {
 				// nolint:gomnd // constant
-				entity, err := mr.entity.NewObject((tileOffsetX*5)+object.X,
-					(tileOffsetY*5)+object.Y, objectRecord, d2resource.PaletteUnits)
+				entity, err := mr.newObject((tileOffsetX*5)+object.X, (tileOffsetY*5)+object.Y, objectRecord)
 				if err != nil {
-					panic(err)
+					mr.factory.Warningf("skipping object %d at (%d,%d): %v", object.ID, object.X, object.Y, err)
+					continue
 				}
 
 				entities = append(entities, entity)
@@ -152,6 +166,29 @@ func (mr *Stamp) Entities(tileOffsetX, tileOffsetY int) []d2interface.MapEntity 
 	}
 
 	return entities
+}
+
+// newNPC creates an NPC; some monster animation data in the game files is not
+// accepted by the loaders (they panic), which must not take the whole map down.
+func (mr *Stamp) newNPC(x, y int, monstat *d2records.MonStatRecord) (npc *d2mapentity.NPC, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			npc, err = nil, fmt.Errorf("%v", r)
+			mr.factory.Warningf("skipping monster %s at (%d,%d): %v", monstat.Key, x, y, r)
+		}
+	}()
+
+	return mr.entity.NewNPC(x, y, monstat, 0)
+}
+
+func (mr *Stamp) newObject(x, y int, rec *d2records.ObjectDetailRecord) (obj *d2mapentity.Object, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			obj, err = nil, fmt.Errorf("%v", r)
+		}
+	}()
+
+	return mr.entity.NewObject(x, y, rec, d2resource.PaletteUnits)
 }
 
 func convertPaths(tileOffsetX, tileOffsetY int, paths []d2path.Path) []d2path.Path {

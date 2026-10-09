@@ -11,8 +11,10 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2vendor"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
@@ -242,6 +244,11 @@ func NewGameControls(
 
 	gc.Trade = trade
 
+	inventory.savedItems = hero.Containers != nil
+	gc.stash = NewContainerPanel(asset, ui, l, inventory, stashKind, gc.saveHero)
+	gc.cube = NewContainerPanel(asset, ui, l, inventory, cubeKind, gc.saveHero)
+	gc.belt = NewBeltPanel(asset, ui, l, inventory, gc.beltBoxes, gc.saveHero)
+
 	if !isSinglePlayer {
 		PartyPanel := NewPartyPanel(asset, ui, hero.Name(), l, hero, hero.Stats, players)
 		gc.PartyPanel = PartyPanel
@@ -294,6 +301,12 @@ type GameControls struct {
 	HelpOverlay            *HelpOverlay
 	NPCMenu                *NPCMenu
 	Trade                  *TradeWindow
+	stash                  *ContainerPanel
+	cube                   *ContainerPanel
+	belt                   *BeltPanel
+	itemOrigin             map[InventoryItem]*d2s.Item
+	regen                  d2inventory.Regen
+	regenHP, regenMana     float64 // fractions of points not yet applied
 	bottomMenuRect         *d2geom.Rectangle
 	leftMenuRect           *d2geom.Rectangle
 	rightMenuRect          *d2geom.Rectangle
@@ -404,6 +417,10 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 		g.hud.onToggleRunButton(true)
 	case d2enum.ToggleHelpScreen:
 		g.toggleHelpOverlay()
+	case d2enum.ToggleBelts:
+		g.belt.Toggle()
+	case d2enum.UseBeltSlot1, d2enum.UseBeltSlot2, d2enum.UseBeltSlot3, d2enum.UseBeltSlot4:
+		g.UseBeltColumn(int(gameEvent - d2enum.UseBeltSlot1))
 	default:
 		return false
 	}
@@ -540,6 +557,9 @@ func (g *GameControls) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 
 	g.NPCMenu.OnMouseMove(event)
 	g.Trade.OnMouseMove(event)
+	g.stash.OnMouseMove(mx, my)
+	g.cube.OnMouseMove(mx, my)
+	g.belt.OnMouseMove(mx, my)
 	g.hud.OnMouseMove(event)
 
 	if g.PartyPanel != nil {
@@ -600,10 +620,6 @@ func (g *GameControls) CursorItem() InventoryItem { return g.inventory.CursorIte
 // SetCursorItem puts an item on the cursor.
 func (g *GameControls) SetCursorItem(item InventoryItem) { g.inventory.SetCursorItem(item) }
 
-// AutoPlaceCursor moves the cursor item into the inventory with the original's
-// auto-placement search and returns its slot.
-func (g *GameControls) AutoPlaceCursor() (x, y int, ok bool) { return g.inventory.AutoPlaceCursor() }
-
 // AddGold adds gold to the hero.
 func (g *GameControls) AddGold(amount int) {
 	g.hero.Gold += amount
@@ -645,8 +661,14 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	px = truncateFloat64(px)
 	py = truncateFloat64(py)
 
-	if event.Button() == d2enum.MouseButtonLeft && g.inventory.HandleClick(mx, my, event.KeyMod() == d2enum.KeyModControl) {
+	if event.Button() == d2enum.MouseButtonLeft && g.handleContainerClick(mx, my, event.KeyMod() == d2enum.KeyModControl) {
 		g.lastLeftBtnActionTime = d2util.Now()
+
+		return true
+	}
+
+	if event.Button() == d2enum.MouseButtonRight && g.handleContainerRightClick(mx, my) {
+		g.lastRightBtnActionTime = d2util.Now()
 
 		return true
 	}
@@ -702,6 +724,8 @@ func (g *GameControls) clearLeftScreenSide() {
 	}
 
 	g.questLog.Close()
+	g.stash.Close()
+	g.cube.Close()
 	g.hud.skillSelectMenu.ClosePanels()
 	g.updateLayout()
 }
@@ -803,6 +827,18 @@ func (g *GameControls) AutoPanel(name string) error {
 		return nil
 	case "inventory":
 		panel = g.inventory
+	case "stash":
+		g.OpenStash()
+
+		return nil
+	case "cube":
+		g.OpenCube()
+
+		return nil
+	case "belt":
+		g.belt.SetExpanded(true)
+
+		return nil
 	case "character":
 		panel = g.heroStatsPanel
 	case "skills":
@@ -858,8 +894,12 @@ func (g *GameControls) Load() {
 	g.hud.Load()
 	g.inventory.Load()
 	g.Trade.Load()
+	g.stash.Load()
+	g.cube.Load()
+	g.belt.Load()
 	g.skilltree.load()
 	g.heroStatsPanel.Load()
+	g.loadContainers()
 
 	if g.PartyPanel != nil {
 		g.PartyPanel.Load()
@@ -887,6 +927,7 @@ func (g *GameControls) Advance(elapsed float64) error {
 	g.mapRenderer.Advance(elapsed)
 	g.hud.Advance(elapsed)
 	g.inventory.Advance(elapsed)
+	g.advancePotions(elapsed)
 	g.questLog.Advance(elapsed)
 
 	if g.PartyPanel != nil {
@@ -930,7 +971,8 @@ func (g *GameControls) isLeftPanelOpen() bool {
 		partyPanel = false
 	}
 
-	return g.heroStatsPanel.IsOpen() || partyPanel || g.questLog.IsOpen() || g.inventory.moveGoldPanel.IsOpen() || g.Trade.IsOpen()
+	return g.heroStatsPanel.IsOpen() || partyPanel || g.questLog.IsOpen() || g.inventory.moveGoldPanel.IsOpen() || g.Trade.IsOpen() ||
+		g.stash.IsOpen() || g.cube.IsOpen()
 }
 
 func (g *GameControls) isRightPanelOpen() bool {
@@ -984,6 +1026,9 @@ func (g *GameControls) Render(target d2interface.Surface) error {
 	}
 
 	g.Trade.Render(target)
+	g.stash.Render(target)
+	g.cube.Render(target)
+	g.belt.Render(target)
 	g.NPCMenu.Render(target)
 
 	if err := g.escapeMenu.Render(target); err != nil {
@@ -1308,6 +1353,8 @@ func (g *GameControls) onCloseTrade() {
 // saveHero persists the hero after a transaction (the server copies the gold
 // into the HeroState and writes it, see d2server SavePlayer).
 func (g *GameControls) saveHero() {
+	g.SyncContainers()
+
 	if err := g.inputListener.OnPlayerSave(); err != nil {
 		g.Errorf("saving the hero: %v", err)
 	}

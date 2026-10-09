@@ -29,24 +29,25 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | **Click an NPC** → hero walks up → NPC **speaks their real voice line** | Greeting rows come from the game's `Sounds.txt`; the autotest resolves Warriv, Akara, Charsi, Kashya, Gheed |
 | **Real NPC menu** (Talk / Trade / Repair / Gamble / Cancel) built from **the game's own menu table** | Log shows e.g. Akara `[talk trade cancel]`, Charsi `[talk trade/repair cancel]`, Gheed `[talk trade Gamble cancel]`; not yet checked visually |
 | Greeting logic ported from the real picker (inactive group, time-of-day lines, no repeats) | Unit tests; Warriv (no plain hello row) now speaks |
+| **Engine saves back to a real `.d2s`** (autosave every ~5.5 min, on exit): an unchanged export is byte-identical; edited gold/level/quests re-parse with a valid checksum | The original file is never modified; the in-game autosave test wrote `gold=31337 checksum=ok` |
 | **Whole `.d2s` character save — read and WRITE**: header, quests, waypoints, stats, skills, **items**, corpse, mercenary | Parse → write of a real save is **byte-for-byte identical** (2,663 bytes); Checksum, all 16 attributes, 30 skills and **60/60 items** match a reference parser on a real level-94 save; header/body also on a second real save |
 | **Import a real character into the engine — with her gear** | A level-94 Sorceress from a real `.d2s` loads, starts in town and wears her real Spired Helm, Archon Plate, Battle Boots, Light Gauntlets, Flail, Short Staff and Monarch |
 | **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; checked instruction-by-instruction against the real code: no differences |
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~2,170 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
+| Reverse-engineering map of the game | ~2,325 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
 ### 🔧 In progress right now (agents run in waves of 5 every 15 minutes)
 
 | Work item | Where |
 |---|---|
-| **Skills that work like the real game**: the skill expression language, mana, cooldowns, missiles that hit and kill monsters | branch `feat/skill-pipeline` |
-| **Monsters part 2**: natural packs, more archetypes (Brute, Mummy, bosses), collision | branch `feat/monsters-2` |
-| **Real generated dungeons that render and can be walked**, with screenshots to check them | branch `feat/realmaps-render` |
-| **A ground-truth oracle** for level generation by emulating the real game code | RE notes: `drlg-oracle` |
-| **Imported real characters work in every screen** (character select, stats, skills) | branch `feat/imported-hero-ui` |
-| Save the engine's character back to a real `.d2s` + autosave | branch `feat/d2s-save-back` |
-| Stash, Horadric Cube and belt | branch `feat/stash-cube-belt` |
-| Research: hirelings, renderer (palettes, draw modes, lighting), quests part 2 | RE notes: `hirelings`, `renderer`, `quests-2` |
+| **The quest system** for the intro and Act 1 quests: states, speech, rewards, saved in the `.d2s` | branch `feat/quest-system` |
+| **Skills for all seven classes**, with auras, summons, traps and status effects | branch `feat/class-skills` |
+| **Gamble (Gheed) and Identify (Deckard Cain)** | branch `feat/gamble-identify` |
+| **Death, respawn and creating new characters** that the real game also accepts | branch `feat/death-newchar` |
+| **Level generator proof extended** to the barracks and the Act 2 and Act 3 mazes | branch `feat/drlg-act23` |
+| **Mercenaries** and **stairs / doors / waypoints / portals** | `feat/hirelings`, `feat/transitions-objects` |
+| Imported-character UI and positional/ambient audio (reconciling with the latest code) | `feat/imported-hero-ui`, `feat/ambient-audio` |
+| Research: Act 1 outdoor generation part 3 (borders, cliffs, rivers) | RE notes: `drlg3` |
 
 ### 🎯 Plan and priorities (set by Claude)
 
@@ -92,6 +93,8 @@ server session core · D2Common data tables · key bindings from `default.key` �
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | **Level generator proven identical to the real game** (2,550 maze records, 50 world layouts); real dungeons render and play; skills, monsters part 2, stash/cube/belt, lighting merged; test runner restructured into one file per scenario |
+| 2026-10-09 | Engine saves characters back to real `.d2s`; hireling and renderer reverse engineering done (real lighting model, hire cost and stat formulas) |
 | 2026-10-09 | **Monsters** with the original AI, pathfinding, combat, death and loot run in the engine; test runs no longer collide on the server port |
 | 2026-10-09 | Vendors, ground items and chests, the sound engine, CI + scripted autotests and the Go level generator merged; skills part 2 researched (365 skill functions named, the calc language decoded) |
 | 2026-10-09 | Loot, trade, quests, packets, key bindings and day/night merged; monster AI think functions named (~90 created); maze level generation and the Act 1 world layout reverse engineered |

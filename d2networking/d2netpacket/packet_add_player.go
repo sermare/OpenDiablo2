@@ -24,6 +24,8 @@ type AddPlayerPacket struct {
 	LeftSkill  int                            `json:"leftSkill"`
 	RightSkill int                            `json:"rightSkill"`
 	Gold       int
+	// Containers is the hero's saved inventory, belt, cube and stash (nil if none).
+	Containers *d2hero.HeroContainers `json:"containers,omitempty"`
 	// Merc is the hero's mercenary state, if any.
 	Merc *d2hero.MercState `json:"merc,omitempty"`
 }
@@ -37,7 +39,8 @@ func CreateAddPlayerPacket(
 	stats *d2hero.HeroStatsState,
 	skills map[int]*d2hero.HeroSkill,
 	equipment d2inventory.CharacterEquipment,
-	leftSkill, rightSkill, gold int, merc ...*d2hero.MercState) (NetPacket, error) {
+	leftSkill, rightSkill, gold int,
+	options ...AddPlayerOption) (NetPacket, error) {
 	addPlayerPacket := AddPlayerPacket{
 		ID:         id,
 		Name:       name,
@@ -51,8 +54,8 @@ func CreateAddPlayerPacket(
 		RightSkill: rightSkill,
 		Gold:       gold,
 	}
-	if len(merc) > 0 {
-		addPlayerPacket.Merc = merc[0]
+	for _, option := range options {
+		option(&addPlayerPacket)
 	}
 
 	b, err := json.Marshal(addPlayerPacket)
@@ -74,4 +77,17 @@ func UnmarshalAddPlayer(packet []byte) (AddPlayerPacket, error) {
 	}
 
 	return p, nil
+}
+
+// AddPlayerOption sets an optional field of an AddPlayerPacket.
+type AddPlayerOption func(*AddPlayerPacket)
+
+// WithContainers sends the hero's saved inventory, belt, cube and stash along.
+func WithContainers(c *d2hero.HeroContainers) AddPlayerOption {
+	return func(p *AddPlayerPacket) { p.Containers = c }
+}
+
+// WithMerc sends the hero's mercenary state along.
+func WithMerc(m *d2hero.MercState) AddPlayerOption {
+	return func(p *AddPlayerPacket) { p.Merc = m }
 }

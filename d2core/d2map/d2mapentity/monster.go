@@ -24,6 +24,9 @@ const (
 	MonsterEventModeDone
 	// MonsterEventDied fires when the death animation has played once.
 	MonsterEventDied
+	// MonsterEventBlocked fires every rendering tick in which a step into
+	// another unit's subtile was refused by the Blocker.
+	MonsterEventBlocked
 )
 
 // MonsterEvent is one animation event.
@@ -70,6 +73,11 @@ type Monster struct {
 	walkSpeed  float64
 	runSpeed   float64
 	selectable bool
+
+	// Blocker, if set, is asked before the monster enters a new subtile; true
+	// refuses the step and the monster stays where it was (unit-vs-unit
+	// collision, see d2monsters).
+	Blocker func(x, y int) bool
 }
 
 // subtile speed of a monstats velocity: V/16 subtile per 25 Hz frame
@@ -226,13 +234,27 @@ func (m *Monster) Die() {
 	m.Brain.Mode = d2monster.ModeDying
 }
 
+// DropHitEvents discards pending attack hit-frame events: a monster that is
+// hit while winding up loses its blow (hit recovery).
+func (m *Monster) DropHitEvents() {
+	kept := m.events[:0]
+
+	for _, ev := range m.events {
+		if ev.Kind != MonsterEventHitFrame {
+			kept = append(kept, ev)
+		}
+	}
+
+	m.events = kept
+}
+
 // CorpseAge is the time in seconds since the monster finished dying.
 func (m *Monster) CorpseAge() float64 { return m.deadTime }
 
 // Advance processes one rendering tick.
 func (m *Monster) Advance(tickTime float64) {
 	if !m.dead {
-		m.Step(tickTime)
+		m.stepBlocked(tickTime)
 	}
 
 	if err := m.composite.Advance(tickTime); err != nil {
@@ -240,6 +262,25 @@ func (m *Monster) Advance(tickTime float64) {
 	}
 
 	m.checkEvents(tickTime)
+}
+
+// stepBlocked moves along the path unless the next subtile is refused.
+func (m *Monster) stepBlocked(tickTime float64) {
+	if m.Blocker == nil {
+		m.Step(tickTime)
+
+		return
+	}
+
+	px, py := m.Position.X(), m.Position.Y()
+	ox, oy := m.SubtilePos()
+
+	m.Step(tickTime)
+
+	if nx, ny := m.SubtilePos(); (nx != ox || ny != oy) && m.Blocker(nx, ny) {
+		m.Position.Set(px, py)
+		m.events = append(m.events, MonsterEvent{MonsterEventBlocked, m.mode})
+	}
 }
 
 func (m *Monster) checkEvents(tickTime float64) {

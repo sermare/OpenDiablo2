@@ -142,6 +142,8 @@ func (d *Director) spawnMercAt(owner *d2mapentity.Player, stat *d2records.MonSta
 
 	b.Wake = d.frame
 	m.SetSelectable(false)
+	m.Blocker = func(x, y int) bool { return d.fp.BlockedFor(b.ID, x, y) }
+	d.fp.Move(b.ID, x, y, d2path.FlagMonster)
 
 	if key := d.MercName(rec, save); d.asset.TranslateString(key) != "" && d.asset.TranslateString(key) != key {
 		m.SetLabel(d.asset.TranslateString(key))
@@ -320,7 +322,7 @@ func (d *Director) isRanged(u *unit) bool {
 		return u.merc.ranged
 	}
 
-	return u.m.Stat.IsRanged
+	return attackIsRanged(u.m.Stat, d2monster.ModeAttack1)
 }
 
 // tableMode converts a hireling.txt ModeN number (1 NU, 4 A1, 5 A2, 7 SC,
@@ -559,6 +561,7 @@ func (d *Director) damageMerc(tu *unit, dmg int, by string) {
 
 	if tu.m.Vitals.HP > 0 {
 		tu.m.StopMoving()
+		tu.m.DropHitEvents()
 		tu.mv = nil
 
 		if tu.m.SetMode(d2monster.ModeGetHit) {
@@ -572,6 +575,7 @@ func (d *Director) damageMerc(tu *unit, dmg int, by string) {
 
 	tu.m.Vitals.HP = 0
 	tu.m.Die()
+	d.fp.Remove(tu.b.ID)
 	tu.mv = nil
 	tu.merc.save.Dead = true
 	d.Counters.MercDeaths++

@@ -27,6 +27,7 @@ func difficultyLevelsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			AiCurseDivisor:         d.Number("AiCurseDivisor"),
 			LifeStealDivisor:       d.Number("LifeStealDivisor"),
 			ManaStealDivisor:       d.Number("ManaStealDivisor"),
+			StaticFieldMin:         d.Number("StaticFieldMin"),
 		}
 		switch record.Name {
 		case "Normal":

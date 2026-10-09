@@ -40,6 +40,33 @@ func (m *Missile) SetRadians(angle float64, done func()) {
 	m.setTarget(d2vector.NewPosition(x, y), done)
 }
 
+// Place puts the missile at a simulated subtile position (from d2missile.Sim)
+// and turns it along (dx, dy). The entity is then only drawn; the simulation
+// owns movement and collisions.
+func (m *Missile) Place(x, y, dx, dy float64) {
+	m.Position.Set(x, y)
+	m.Target = m.Position
+
+	if dx == 0 && dy == 0 {
+		return
+	}
+
+	dir := m.Position.Vector.DirectionTo(*d2vector.NewVector(x+dx, y+dy))
+	// the 16 entity directions map onto the record's direction count
+	if n := m.record.NumDirections; n > 1 && n != 16 {
+		dir = dir * n / 16
+	} else if n <= 1 {
+		dir = 0
+	}
+
+	if dir != m.direction {
+		m.rotate(dir)
+	}
+}
+
+// Record returns the missiles.txt row of the entity.
+func (m *Missile) Record() *d2records.MissileRecord { return m.record }
+
 // Advance is called once per frame and processes a
 // single game tick.
 func (m *Missile) Advance(tickTime float64) {

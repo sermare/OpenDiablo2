@@ -167,6 +167,36 @@ func (c *Ctx) Wander(n int) bool {
 	return c.move(Point{b.X + dx, b.Y + dy}, nil, 0, false)
 }
 
+// WalkNearTarget is MONAI_WalkNearTargetRandom(target, n): the Wander offset
+// scheme applied around the target instead of the monster (VERIFIED
+// description, the offsets share Wander's UNVERIFIED reading). Without a
+// target it falls back to Wander(2).
+func (c *Ctx) WalkNearTarget(t *Target, n int) bool {
+	if t == nil {
+		return c.Wander(2)
+	}
+
+	b := c.B
+	s1 := b.Seed.Step()
+	other := b.Roll(n + 1)
+
+	major, minor := n, other
+	if s1&2 != 0 {
+		major = -major
+	}
+
+	if b.Seed.Lo&1 != 0 {
+		minor = -minor
+	}
+
+	dx, dy := major, minor
+	if s1&1 == 0 {
+		dx, dy = minor, major
+	}
+
+	return c.move(Point{t.X + dx, t.Y + dy}, nil, 0, false)
+}
+
 // Circle is MONAI_CircleOrStrafeTarget. The notes only say it consumes one
 // LCG step and queues a walk with no coordinates (UNVERIFIED), so this port
 // consumes the step and strafes n subtiles perpendicular to the target

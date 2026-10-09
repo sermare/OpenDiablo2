@@ -3,21 +3,18 @@ package d2records
 import (
 	"fmt"
 
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calculation/d2parser"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calc"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2txt"
 )
 
 // LoadSkills loads skills.txt file contents into a skill record map
+//
 //nolint:funlen // Makes no sense to split
 func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 	records := make(map[int]*SkillRecord)
 
-	parser := d2parser.New()
-
 	for d.Next() {
-		name := d.String("skill")
-		parser.SetCurrentReference("skill", name)
 
 		anim, err := animToEnum(d.String("anim"))
 		if err != nil {
@@ -35,9 +32,9 @@ func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			Srvprgfunc1:       d.Number("srvprgfunc1"),
 			Srvprgfunc2:       d.Number("srvprgfunc2"),
 			Srvprgfunc3:       d.Number("srvprgfunc3"),
-			Prgcalc1:          parser.Parse(d.String("prgcalc1")),
-			Prgcalc2:          parser.Parse(d.String("prgcalc2")),
-			Prgcalc3:          parser.Parse(d.String("prgcalc3")),
+			Prgcalc1:          calc(d.String("prgcalc1")),
+			Prgcalc2:          calc(d.String("prgcalc2")),
+			Prgcalc3:          calc(d.String("prgcalc3")),
 			Prgdam:            d.Number("prgdam"),
 			Srvmissile:        d.String("srvmissile"),
 			Decquant:          d.Bool("decquant"),
@@ -49,20 +46,20 @@ func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			Aurafilter:        d.Number("aurafilter"),
 			Aurastate:         d.String("aurastate"),
 			Auratargetstate:   d.String("auratargetstate"),
-			Auralencalc:       parser.Parse(d.String("auralencalc")),
-			Aurarangecalc:     parser.Parse(d.String("aurarangecalc")),
+			Auralencalc:       calc(d.String("auralencalc")),
+			Aurarangecalc:     calc(d.String("aurarangecalc")),
 			Aurastat1:         d.String("aurastat1"),
-			Aurastatcalc1:     parser.Parse(d.String("aurastatcalc1")),
+			Aurastatcalc1:     calc(d.String("aurastatcalc1")),
 			Aurastat2:         d.String("aurastat2"),
-			Aurastatcalc2:     parser.Parse(d.String("aurastatcalc2")),
+			Aurastatcalc2:     calc(d.String("aurastatcalc2")),
 			Aurastat3:         d.String("aurastat3"),
-			Aurastatcalc3:     parser.Parse(d.String("aurastatcalc3")),
+			Aurastatcalc3:     calc(d.String("aurastatcalc3")),
 			Aurastat4:         d.String("aurastat4"),
-			Aurastatcalc4:     parser.Parse(d.String("aurastatcalc4")),
+			Aurastatcalc4:     calc(d.String("aurastatcalc4")),
 			Aurastat5:         d.String("aurastat5"),
-			Aurastatcalc5:     parser.Parse(d.String("aurastatcalc5")),
+			Aurastatcalc5:     calc(d.String("aurastatcalc5")),
 			Aurastat6:         d.String("aurastat6"),
-			Aurastatcalc6:     parser.Parse(d.String("aurastatcalc6")),
+			Aurastatcalc6:     calc(d.String("aurastatcalc6")),
 			Auraevent1:        d.String("auraevent1"),
 			Auraeventfunc1:    d.Number("auraeventfunc1"),
 			Auraevent2:        d.String("auraevent2"),
@@ -74,31 +71,31 @@ func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			Passivestate:      d.String("passivestate"),
 			Passiveitype:      d.String("passiveitype"),
 			Passivestat1:      d.String("passivestat1"),
-			Passivecalc1:      parser.Parse(d.String("passivecalc1")),
+			Passivecalc1:      calc(d.String("passivecalc1")),
 			Passivestat2:      d.String("passivestat2"),
-			Passivecalc2:      parser.Parse(d.String("passivecalc2")),
+			Passivecalc2:      calc(d.String("passivecalc2")),
 			Passivestat3:      d.String("passivestat3"),
-			Passivecalc3:      parser.Parse(d.String("passivecalc3")),
+			Passivecalc3:      calc(d.String("passivecalc3")),
 			Passivestat4:      d.String("passivestat4"),
-			Passivecalc4:      parser.Parse(d.String("passivecalc4")),
+			Passivecalc4:      calc(d.String("passivecalc4")),
 			Passivestat5:      d.String("passivestat5"),
-			Passivecalc5:      parser.Parse(d.String("passivecalc5")),
+			Passivecalc5:      calc(d.String("passivecalc5")),
 			Passiveevent:      d.String("passiveevent"),
 			Passiveeventfunc:  d.String("passiveeventfunc"),
 			Summon:            d.String("summon"),
 			Pettype:           d.String("pettype"),
-			Petmax:            parser.Parse(d.String("petmax")),
+			Petmax:            calc(d.String("petmax")),
 			Summode:           d.String("summode"),
 			Sumskill1:         d.String("sumskill1"),
-			Sumsk1calc:        parser.Parse(d.String("sumsk1calc")),
+			Sumsk1calc:        calc(d.String("sumsk1calc")),
 			Sumskill2:         d.String("sumskill2"),
-			Sumsk2calc:        parser.Parse(d.String("sumsk2calc")),
+			Sumsk2calc:        calc(d.String("sumsk2calc")),
 			Sumskill3:         d.String("sumskill3"),
-			Sumsk3calc:        parser.Parse(d.String("sumsk3calc")),
+			Sumsk3calc:        calc(d.String("sumsk3calc")),
 			Sumskill4:         d.String("sumskill4"),
-			Sumsk4calc:        parser.Parse(d.String("sumsk4calc")),
+			Sumsk4calc:        calc(d.String("sumsk4calc")),
 			Sumskill5:         d.String("sumskill5"),
-			Sumsk5calc:        parser.Parse(d.String("sumsk5calc")),
+			Sumsk5calc:        calc(d.String("sumsk5calc")),
 			Sumumod:           d.Number("sumumod"),
 			Sumoverlay:        d.String("sumoverlay"),
 			Stsuccessonly:     d.Bool("stsuccessonly"),
@@ -126,9 +123,9 @@ func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			Cltmissileb:       d.String("cltmissileb"),
 			Cltmissilec:       d.String("cltmissilec"),
 			Cltmissiled:       d.String("cltmissiled"),
-			Cltcalc1:          parser.Parse(d.String("cltcalc1")),
-			Cltcalc2:          parser.Parse(d.String("cltcalc2")),
-			Cltcalc3:          parser.Parse(d.String("cltcalc3")),
+			Cltcalc1:          calc(d.String("cltcalc1")),
+			Cltcalc2:          calc(d.String("cltcalc2")),
+			Cltcalc3:          calc(d.String("cltcalc3")),
 			Warp:              d.Bool("warp"),
 			Immediate:         d.Bool("immediate"),
 			Enhanceable:       d.Bool("enhanceable"),
@@ -173,7 +170,7 @@ func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			ItemCltCheckStart: d.Bool("ItemCltCheckStart"),
 			ItemCastSound:     d.String("ItemCastSound"),
 			ItemCastOverlay:   d.String("ItemCastOverlay"),
-			Skpoints:          parser.Parse(d.String("skpoints")),
+			Skpoints:          calc(d.String("skpoints")),
 			Reqlevel:          d.Number("reqlevel"),
 			Maxlvl:            d.Number("maxlvl"),
 			Reqstr:            d.Number("reqstr"),
@@ -187,7 +184,7 @@ func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			State1:            d.String("State1"),
 			State2:            d.String("State2"),
 			State3:            d.String("State3"),
-			Delay:             d.Number("delay"),
+			Delay:             calc(d.String("delay")),
 			Leftskill:         d.Bool("leftskill"),
 			Repeat:            d.Bool("repeat"),
 			Checkfunc:         d.Number("checkfunc"),
@@ -202,16 +199,16 @@ func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			InTown:            d.Bool("InTown"),
 			Aura:              d.Bool("aura"),
 			Periodic:          d.Bool("periodic"),
-			Perdelay:          parser.Parse(d.String("perdelay")),
+			Perdelay:          calc(d.String("perdelay")),
 			Finishing:         d.Bool("finishing"),
 			Passive:           d.Bool("passive"),
 			Progressive:       d.Bool("progressive"),
 			General:           d.Bool("general"),
 			Scroll:            d.Bool("scroll"),
-			Calc1:             parser.Parse(d.String("calc1")),
-			Calc2:             parser.Parse(d.String("calc2")),
-			Calc3:             parser.Parse(d.String("calc3")),
-			Calc4:             parser.Parse(d.String("calc4")),
+			Calc1:             calc(d.String("calc1")),
+			Calc2:             calc(d.String("calc2")),
+			Calc3:             calc(d.String("calc3")),
+			Calc4:             calc(d.String("calc4")),
 			Param1:            d.Number("Param1"),
 			Param2:            d.Number("Param2"),
 			Param3:            d.Number("Param3"),
@@ -223,7 +220,7 @@ func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			InGame:            d.Bool("InGame"),
 			ToHit:             d.Number("ToHit"),
 			LevToHit:          d.Number("LevToHit"),
-			ToHitCalc:         parser.Parse(d.String("ToHitCalc")),
+			ToHitCalc:         calc(d.String("ToHitCalc")),
 			ResultFlags:       d.Number("ResultFlags"),
 			HitFlags:          d.Number("HitFlags"),
 			HitClass:          d.Number("HitClass"),
@@ -242,7 +239,7 @@ func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			MaxLevDam3:        d.Number("MaxLevDam3"),
 			MaxLevDam4:        d.Number("MaxLevDam4"),
 			MaxLevDam5:        d.Number("MaxLevDam5"),
-			DmgSymPerCalc:     parser.Parse(d.String("DmgSymPerCalc")),
+			DmgSymPerCalc:     calc(d.String("DmgSymPerCalc")),
 			EType:             d.String("EType"),
 			EMin:              d.Number("EMin"),
 			EMinLev1:          d.Number("EMinLev1"),
@@ -256,12 +253,12 @@ func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			EMaxLev3:          d.Number("EMaxLev3"),
 			EMaxLev4:          d.Number("EMaxLev4"),
 			EMaxLev5:          d.Number("EMaxLev5"),
-			EDmgSymPerCalc:    parser.Parse(d.String("EDmgSymPerCalc")),
+			EDmgSymPerCalc:    calc(d.String("EDmgSymPerCalc")),
 			ELen:              d.Number("ELen"),
 			ELevLen1:          d.Number("ELevLen1"),
 			ELevLen2:          d.Number("ELevLen2"),
 			ELevLen3:          d.Number("ELevLen3"),
-			ELenSymPerCalc:    parser.Parse(d.String("ELenSymPerCalc")),
+			ELenSymPerCalc:    calc(d.String("ELenSymPerCalc")),
 			Aitype:            d.Number("aitype"),
 			Aibonus:           d.Number("aibonus"),
 			CostMult:          d.Number("cost mult"),
@@ -281,6 +278,10 @@ func skillDetailsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 
 	return nil
 }
+
+// calc compiles a skills.txt calc cell; the program is evaluated with a
+// d2skill.Env (see SkillTable).
+func calc(src string) *d2calc.Program { return d2calc.Compile(src, d2calc.KindSkill) }
 
 func animToEnum(anim string) (d2enum.PlayerAnimationMode, error) {
 	switch anim {

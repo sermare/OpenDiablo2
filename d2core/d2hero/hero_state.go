@@ -29,6 +29,9 @@ type HeroState struct {
 	// Progress is the quest/waypoint/NPC state imported from a .d2s; nil for
 	// heroes that have none (older hero files omit it).
 	Progress *HeroProgress `json:"progress,omitempty"`
+	// Containers is the inventory, belt, cube and stash content; nil for
+	// heroes that never saved any (older hero files omit it).
+	Containers *HeroContainers `json:"containers,omitempty"`
 	// Merc is the hired mercenary (the d2s header fields); nil when the hero
 	// has none. The merc level is not stored: it is derived from Experience.
 	Merc *MercState `json:"merc,omitempty"`

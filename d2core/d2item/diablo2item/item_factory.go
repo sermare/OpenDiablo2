@@ -69,6 +69,8 @@ type ItemFactory struct {
 	drop   *dropTables
 	source rand.Source
 	Seed   int64
+	// propRand rolls property values while a seeded item is built (see intn).
+	propRand *rand.Rand
 }
 
 // SetSeed sets the item generator seed
