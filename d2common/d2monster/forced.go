@@ -193,7 +193,7 @@ func init() {
 	regState(StateRelease, TargetStandard, thinkState9)
 	regState(StateBlind, TargetStandard, thinkState10)
 	regState(StateFear, TargetStandard, thinkState11)
-	regState(StateTaunted, TargetStandard, thinkState12)
+	regState(StateTaunted, TargetNone, thinkState12) // exe row 12 is mode 0 (VERIFIED): the think acquires itself
 	regState(StateCharge, TargetStandard, thinkState14)
 	regState(StateBlind2, TargetOnly, thinkState10)
 }
@@ -761,9 +761,12 @@ func thinkState12(c *Ctx) {
 			return
 		}
 
-		if c.Target != nil && c.InRange {
+		// Table mode 0: the tick acquires nothing; the think calls the
+		// standard acquisition itself (0x5dd6b0, VERIFIED at 0x5e72d5) and
+		// attacks what it finds with mode 4 whether or not it is in reach.
+		if ot, found := c.findStandard(); found {
 			b.Scratch[0] = 0
-			c.Attack(ModeAttack1, *c.Target)
+			c.Attack(ModeAttack1, ot)
 
 			return
 		}

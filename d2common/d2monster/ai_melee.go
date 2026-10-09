@@ -110,7 +110,7 @@ func thinkWraith(c *Ctx) {
 
 // thinkZombie is MONAI_Think_Zombie 0x5eef40 (VERIFIED flow). In range:
 // chance(aip4) ? A1 : A2 (no aip3 gate). Out of range: unless the unit is
-// "aggressive" (flag meaning UNVERIFIED, see Brain.Aggressive), a unit
+// "aggressive" (flag VERIFIED as pUnitData+0x54 in {3,0x13}, see Brain.Aggressive), a unit
 // closer than aip2 chases with chance aip1; otherwise it wanders 3, except in
 // the Graveyard (level 17) where it always chases. The chase is a run.
 func thinkZombie(c *Ctx) {

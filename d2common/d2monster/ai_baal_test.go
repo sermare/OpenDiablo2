@@ -9,20 +9,23 @@ import (
 // fakeBaal adds the Baal extensions to the scripted fakeWorld.
 type fakeBaal struct {
 	*fakeWorld
-	steps    []string
-	portal   Point
-	portalOK bool
-	portalD  int
-	left     bool
-	dismiss  bool
-	corpse   Target
-	corpseOK bool
-	raw      []string
-	idle     bool
-	pulled   bool
-	cleared  bool
-	hasGate  bool
+	steps     []string
+	portal    Point
+	portalOK  bool
+	portalD   int
+	left      bool
+	dismiss   bool
+	corpse    Target
+	corpseOK  bool
+	raw       []string
+	idle      bool
+	pulled    bool
+	cleared   bool
+	hasGate   bool
+	ownerGone bool
 }
+
+func (f *fakeBaal) OwnerGone(*Brain) bool { return f.ownerGone }
 
 func (f *fakeBaal) Throne(_ *Brain, s ThroneStep, wave int) bool {
 	f.steps = append(f.steps, fmt.Sprintf("%d:%d", s, wave))
@@ -174,7 +177,7 @@ func TestBaalThroneWaveGate(t *testing.T) {
 
 func TestBaalToStairs(t *testing.T) {
 	// aip1 = 5: inside the radius Baal enters; farther he walks.
-	w := &fakeBaal{fakeWorld: newFake(80, false), portal: Point{140, 100}, portalOK: true, portalD: 30}
+	w := &fakeBaal{fakeWorld: newFake(30, false), portal: Point{140, 100}, portalOK: true, portalD: 30}
 	b := brainAt(profile("BaalToStairs", 5))
 
 	Tick(w, b)
@@ -242,18 +245,18 @@ func TestBaalTaunt(t *testing.T) {
 }
 
 func TestBaalTentacle(t *testing.T) {
-	// aip1 100: always attacks while alive; lifetime (aip3 + roll(10)) * 25
+	// aip1 100: always attacks while alive; lifetime (aip3 + roll(aip3)) * 25 (VERIFIED)
 	w := &fakeBaal{fakeWorld: newFake(5, true)}
 	b := brainAt(profile("BaalTentacle", 100, 7, 4))
 	w.frame = 10
 	Tick(w, b)
 
-	if w.last() != "attack5" {
+	if w.last() != "attack4" { // mode 4 = A1 (VERIFIED push 4 at 0x5ee9db)
 		t.Fatalf("log %v", w.log)
 	}
 
 	life := b.Scratch[2] - 10
-	if life < 4*25 || life > 13*25 || life%25 != 0 {
+	if life < 4*25 || life > 7*25 || life%25 != 0 {
 		t.Fatalf("lifetime %d frames", life)
 	}
 
@@ -265,13 +268,30 @@ func TestBaalTentacle(t *testing.T) {
 		t.Fatal("expired tentacle not dismissed")
 	}
 
-	// without a target it goes away at once
+	// without a target the tick (mode 1) idles instead of running the think
 	w2 := &fakeBaal{fakeWorld: newFake(5, true)}
 	w2.hasTarget = false
 	Tick(w2, brainAt(profile("BaalTentacle", 100, 7, 4)))
 
-	if !w2.dismiss {
-		t.Fatal("targetless tentacle kept")
+	if w2.dismiss {
+		t.Fatal("targetless tentacle must idle, not dismiss (exe mode 1)")
+	}
+
+	// the owner going away dismisses it (VERIFIED 0x5ee93d)
+	w3 := &fakeBaal{fakeWorld: newFake(5, true), ownerGone: true}
+	Tick(w3, brainAt(profile("BaalTentacle", 100, 7, 4)))
+
+	if !w3.dismiss {
+		t.Fatal("ownerless tentacle kept")
+	}
+
+	// out of reach: it stalls aip2 frames instead of attacking
+	w4 := &fakeBaal{fakeWorld: newFake(5, false)}
+	b4 := brainAt(profile("BaalTentacle", 100, 7, 4))
+	Tick(w4, b4)
+
+	if len(w4.log) != 0 || b4.Wake != 7 {
+		t.Fatalf("out-of-reach tentacle: log=%v wake=%d", w4.log, b4.Wake)
 	}
 }
 

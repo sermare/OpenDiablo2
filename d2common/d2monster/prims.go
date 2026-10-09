@@ -139,29 +139,30 @@ func (c *Ctx) away(t Target, n int, run bool) bool {
 	return c.move(Point{b.X + n*sign(b.X-t.X), b.Y + n*sign(b.Y-t.Y)}, nil, 0, run)
 }
 
-// Wander is MONAI_WanderRandomNearby(n). The notes describe it only as "two
-// LCG steps decide magnitude/sign per axis: the first step's parity picks
-// which axis gets n and which a bounded roll, then the sign flips by parity".
-// UNVERIFIED reading used here: step 1 parity selects the axis that gets the
-// full n, step 1 bit 1 its sign; step 2 is a bounded roll in [0,n] for the
-// other axis whose sign comes from step 2's low bit.
+// Wander is MONAI_WanderRandomNearby(n) 0x5dcff0 (VERIFIED from the
+// disassembly): four LCG steps. Step 1's low bit picks the axis that gets the
+// full n (set: x, clear: y); step 2 is a bounded roll(n) (0x457b60: [0,n)) for
+// the other axis; step 3's low bit negates x, step 4's low bit negates y. The
+// destination is the monster's position plus the offsets (0x5dd980, walk
+// mode, no target).
 func (c *Ctx) Wander(n int) bool {
 	b := c.B
 	s1 := b.Seed.Step()
-	other := b.Roll(n + 1)
+	r := int(b.Seed.Roll(int32(n)))
+	sx := b.Seed.Step()
+	sy := b.Seed.Step()
 
-	major, minor := n, other
-	if s1&2 != 0 {
-		major = -major
+	dx, dy := r, n
+	if s1&1 != 0 {
+		dx, dy = n, r
 	}
 
-	if b.Seed.Lo&1 != 0 {
-		minor = -minor
+	if sx&1 != 0 {
+		dx = -dx
 	}
 
-	dx, dy := major, minor
-	if s1&1 == 0 {
-		dx, dy = minor, major
+	if sy&1 != 0 {
+		dy = -dy
 	}
 
 	return c.move(Point{b.X + dx, b.Y + dy}, nil, 0, false)
@@ -169,7 +170,8 @@ func (c *Ctx) Wander(n int) bool {
 
 // WalkNearTarget is MONAI_WalkNearTargetRandom(target, n): the Wander offset
 // scheme applied around the target instead of the monster (VERIFIED
-// description, the offsets share Wander's UNVERIFIED reading). Without a
+// description; the offsets still follow Wander's old UNVERIFIED reading, not
+// the verified 0x5dcff0 scheme). Without a
 // target it falls back to Wander(2).
 func (c *Ctx) WalkNearTarget(t *Target, n int) bool {
 	if t == nil {
@@ -197,17 +199,20 @@ func (c *Ctx) WalkNearTarget(t *Target, n int) bool {
 	return c.move(Point{t.X + dx, t.Y + dy}, nil, 0, false)
 }
 
-// Circle is MONAI_CircleOrStrafeTarget. The notes only say it consumes one
-// LCG step and queues a walk with no coordinates (UNVERIFIED), so this port
-// consumes the step and strafes n subtiles perpendicular to the target
-// direction, the side chosen by the step's parity.
+// Circle is MONAI_CircleOrStrafeTarget 0x5de5e0. VERIFIED: it consumes one
+// LCG step, whose low byte (not bit 0) picks the move-speed override value, 5
+// when below 0x80 and 6 otherwise (the two strafe directions), then queues a
+// walk (mode 2) toward the target unit with no coordinates and extra flag 4
+// when its third argument is set. UNVERIFIED: what the override values do to
+// the walk; this port strafes n subtiles perpendicular to the target, the
+// side following the exe's 5/6 split (below 0x80: counter-clockwise).
 func (c *Ctx) Circle(t Target, n int) bool {
 	b := c.B
 	s := b.Seed.Step()
 	dx, dy := t.X-b.X, t.Y-b.Y
 	px, py := -sign(dy), sign(dx)
 
-	if s&1 == 0 {
+	if s&0xff >= 0x80 {
 		px, py = -px, -py
 	}
 

@@ -82,7 +82,7 @@ func TestMonsterAI4(t *testing.T) {
 			want:  []string{"attack5"}},
 		{name: "SandLeaper leaps", prof: withSkills(profile("SandLeaper", 100, 0, 0, 0), 0), dist: 3, want: []string{"cast0"}},
 		{name: "SandLeaper bites", prof: profile("SandLeaper", 0, 100, 0, 0), dist: 6, inRange: true, want: []string{"attack5"}},
-		{name: "SandRaider approaches", prof: profile("SandRaider", 0, 100, 0, 0, 100), dist: 20, want: []string{"walk-target/7"}},
+		{name: "SandRaider approaches", prof: profile("SandRaider", 0, 0, 0, 100, 100), dist: 20, want: []string{"walk-target/0"}},
 		{name: "GreaterMummy hits", prof: profile("GreaterMummy", 100, 0, 0, 0, 10), dist: 3, inRange: true, want: []string{"attack4"}},
 		{name: "GreaterMummy breath", prof: profile("GreaterMummy", 100, 0, 0, 0, 10), dist: 3, want: []string{"attack5"}},
 		{name: "GreaterMummy raises", prof: withSkills(profile("GreaterMummy", 0, 0, 100, 0, 10), 1), dist: 9,

@@ -23,15 +23,18 @@ func (r ref) chance(p int) bool {
 	return r.roll(100) < p
 }
 
-// wander consumes what MONAI_WanderRandomNearby consumes: two LCG steps.
+// wander consumes what MONAI_WanderRandomNearby 0x5dcff0 consumes (VERIFIED):
+// parity step, roll(n), then one sign step per axis.
 func (r ref) wander(n int) string {
 	r.s.Step()
-	r.roll(n + 1)
+	r.roll(n)
+	r.s.Step()
+	r.s.Step()
 
 	return "walk-to"
 }
 
-// circle consumes one LCG step.
+// circle consumes one LCG step (VERIFIED 0x5de5e0).
 func (r ref) circle() string {
 	r.s.Step()
 
@@ -454,15 +457,9 @@ func TestOracleIdleSleeps(t *testing.T) {
 // with the reason; everything else must equal the table. Each entry is a
 // question for Ghidra, not a statement that the port is right.
 var targetModeDivergences = map[string]string{
-	"SandMaggot":    "table 4 (NoSleep variant); the port uses TargetOnly so the think runs without a target (5f0860 reads one itself)",
-	"BaalTaunt":     "table 1; ported from a direct read of 0x5ee810 with TargetOnly",
-	"BaalToStairs":  "table 1; ported from 0x5ee720 with TargetNone",
-	"BaalTentacle":  "table 1; ported from 0x5ee920 with TargetOnly",
-	"BaalCrab":      "table 0; ported from 0x5fc200 with TargetOnly",
-	"BaalCrabClone": "table 0; ported from 0x5fc440 with TargetOnly",
-	"Raven":         "table 2; ai_pet.go (owned by another pass) registers TargetNone",
-	"Vines":         "table 2; ai_pet.go registers TargetNone",
-	"CycleOfLife":   "table 2; ai_pet.go registers TargetNone",
+	"Raven":       "table 2; ai_pet.go (owned by another pass) registers TargetNone",
+	"Vines":       "table 2; ai_pet.go registers TargetNone",
+	"CycleOfLife": "table 2; ai_pet.go registers TargetNone",
 }
 
 func TestOracleTargetModesMatchExeTable(t *testing.T) {
@@ -485,10 +482,13 @@ func TestOracleTargetModesMatchExeTable(t *testing.T) {
 		}
 	}
 
-	// spot pins of the table itself
+	// spot pins of the table itself (rows 134-147 re-read from 0x739c08 in the
+	// verification pass: BaalCrab/BaalCrabClone 0, Taunt/ToStairs/Tentacle 1)
 	for name, want := range map[string]int{
 		"Skeleton": 1, "Idle": 0, "Npc": 0, "SandMaggot": 4, "FrogDemon": 5,
 		"Tentacle": 2, "Hireable": 0, "Summoner": 1, "ShadowWarrior": 2, "BaalThrone": 2,
+		"BaalCrab": 0, "BaalTaunt": 1, "BaalToStairs": 1, "BaalTentacle": 1, "BaalCrabClone": 0,
+		"BaalMinion": 1, "UberBaal": 1, "SandRaider": 1,
 	} {
 		if got, ok := AITargetMode(name); !ok || got != want {
 			t.Errorf("table %s = %d,%v want %d", name, got, ok, want)
