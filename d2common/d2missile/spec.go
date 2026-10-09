@@ -61,6 +61,9 @@ type Owner struct {
 	Level        int
 	AttackRating int
 	Roller       d2combat.Roller
+	// Gone, when set, reports that the owner is dead or gone; SrvDoFunc 7
+	// (Guided Arrow) destroys its missile then (0x5ac2c0, verified).
+	Gone func() bool
 }
 
 // Target is a unit a missile can hit.
@@ -85,6 +88,15 @@ type World interface {
 	Frame() int
 }
 
+// Finder is optionally implemented by a World to let hit function 10 (Guided
+// Arrow, 0x5a8100 -> 0x5a8060) look for a new target where the arrow ran out.
+type Finder interface {
+	// NearestEnemy returns the living enemy of the owner closest to (x, y)
+	// within radius subtiles, or nil. Which unit the exe prefers is UNVERIFIED
+	// (callback 0x569a40 not read).
+	NearestEnemy(o Owner, x, y float64, radius int) Target
+}
+
 // EventKind classifies a simulation event.
 type EventKind string
 
@@ -98,6 +110,14 @@ const (
 	EventExpire  EventKind = "expire"  // lifetime ran out
 	EventExplode EventKind = "explode" // client side explosion missile
 	EventPierce  EventKind = "pierce"  // passed through a target
+	// EventVanish: destroyed without running the hit function (the exe's
+	// "return 2" paths: entering a wall bit that is not in the CollideType
+	// block mask, owner gone for SrvDoFunc 7).
+	EventVanish EventKind = "vanish"
+	// EventArea: an area damage hit function (1, 14) fired at the missile;
+	// Damage is rolled once and applies to every enemy within Radius subtiles
+	// (squared distance <= Radius^2, verified 0x569510).
+	EventArea EventKind = "area"
 )
 
 // Event is one thing that happened to a missile.
@@ -110,4 +130,5 @@ type Event struct {
 	Chance int // to-hit chance (EventHit / EventMiss), 0 when no roll
 	Roll   int
 	Name   string // explosion missile name (EventExplode)
+	Radius int    // EventArea: radius in subtiles
 }

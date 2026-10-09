@@ -961,23 +961,47 @@ func (e *Engine) heroDefense(p *d2mapentity.Player, attacker *d2mapentity.Monste
 
 // ---- splash ----
 
-// splashRadius is the radius of the area damage hit functions (1: sHitPar1,
-// 13: Glacial Spike's aurarangecalc); 0 for other missiles. U: that the
-// radius of function 1 is sHitPar1 subtiles.
+// splashRadius is the radius of the glacial spike style splash (hit func 13:
+// aurarangecalc); hit funcs 1 and 14 are exact area hits (EventArea).
 func (e *Engine) splashRadius(m *d2missile.Missile) int {
 	h := e.heroes[m.Owner.ID]
 	if h == nil {
 		return 0
 	}
 
-	switch m.Spec.SrvHitFunc {
-	case 1:
-		return m.Spec.SHitPar[0]
-	case 13:
+	if m.Spec.SrvHitFunc == 13 {
 		return e.pipe.AuraRange(h, m.SkillID)
 	}
 
 	return 0
+}
+
+// areaDamage applies an area hit function (1: Fire Ball style, 14: Meteor,
+// 0x5a7500 / 0x5a8680): one damage roll for every monster whose subtile is
+// within radius subtiles of the missile (squared distance <= radius^2). Hit
+// function 1 deals no direct damage to the unit that was struck, only this.
+func (e *Engine) areaDamage(ev d2missile.Event) {
+	m := ev.Missile
+
+	h := e.heroes[m.Owner.ID]
+	if h == nil || ev.Radius <= 0 {
+		return
+	}
+
+	n := 0
+
+	for _, o := range e.monstersNear(int(m.X), int(m.Y), ev.Radius) {
+		d := ev.Damage
+		n++
+
+		e.target(o)
+		e.hurt(o, h.p, &d, e.skillName(m.SkillID)+" area")
+	}
+
+	if n > 0 {
+		e.Counters.AreaHits += n
+		e.emit("hit", "SKILL area skill=%q at=(%d,%d) radius=%d targets=%d", e.skillName(m.SkillID), int(m.X), int(m.Y), ev.Radius, n)
+	}
 }
 
 // splash damages the other monsters near the one a missile just hit with the
@@ -1009,7 +1033,7 @@ func (e *Engine) splash(m *d2missile.Missile, primary *d2mapentity.Monster, dmg 
 	}
 }
 
-// splashAt is the splash of a missile that ended on a wall.
+// splashAt is the splash of a missile that ended on a wall or ran out.
 func (e *Engine) splashAt(m *d2missile.Missile) {
 	r := e.splashRadius(m)
 	if r <= 0 {
