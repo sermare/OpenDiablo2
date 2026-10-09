@@ -98,6 +98,7 @@ func CreateGame(
 	game.Logger.SetLevel(l)
 	game.Logger.SetPrefix(logPrefix)
 	game.initAutoScript()
+	game.hookNetwork()
 	activeGame = game
 
 	game.soundEnv = d2audio.NewSoundEnvironment(game.soundEngine)
@@ -130,6 +131,7 @@ type Game struct {
 	gameControls         *d2player.GameControls
 	localPlayer          *d2mapentity.Player
 	lastRegionType       d2enum.RegionIdType
+	travel               travelState
 	ticksSinceLevelCheck float64
 	escapeMenu           *d2player.EscapeMenu
 	soundEngine          *d2audio.SoundEngine
@@ -140,8 +142,6 @@ type Game struct {
 	tradeActive          bool // a vendor window opened from the NPC menu is open
 	greetingLast         map[string]string
 	dayClock             *dayClock
-	autoShotElapsed      float64
-	autoShotDone         bool
 	greetingRecent       map[string]string
 	returnGreet          returnGreetings
 	autosaveElapsed      float64
@@ -152,12 +152,14 @@ type Game struct {
 	autoSoundElapsed     float64
 	autoSoundDone        bool
 	ground               groundState
+	populated            int // levels.changes+1 of the level that was populated with monsters
 	objects              objectState
 	autoObject           autoObject
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	monsterTest          *monsterTest
 	aiTest               *aiAutoTest
+	bossTest             *bossAutoTest
 	merc                 mercGame
 	skills               *d2skills.Engine
 	castTestState        *castTest
@@ -172,6 +174,7 @@ type Game struct {
 	levelStatusAcc       float64
 	questRT              *questRuntime
 	death                deathState
+	social               socialState
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -206,8 +209,23 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"level"}, v.commandSpawnPortal},
 		{"setwaypoint", "activates (1) or clears (0) the waypoint of a level for the hero",
 			[]string{"level", "0|1"}, v.commandSetWaypoint},
+		{"completequest", "marks quest <act> <quest> done for the hero (debug)",
+			[]string{"act", "quest"}, v.commandCompleteQuest},
+		{"resetquests", "clears the hero's quest record in memory (debug)", nil, v.commandResetQuests},
+		{"travelfree", "1 lets act travel skip the quest and NPC rules (debug), 0 restores them",
+			[]string{"0|1"}, v.commandTravelFree},
+		{"travel", "travels to the town of an act through the act travel rules",
+			[]string{"act"}, v.commandTravel},
 		{"players", "logs the players of the game with their positions", []string{}, v.commandPlayers},
 		{"chat", "sends a chat line to all players (_ for a space)", []string{"text"}, v.commandChat},
+		{"party", "party invite|accept|decline|leave|list <name or ->", []string{"op", "name"}, v.commandParty},
+		{"hostile", "declares (1) or withdraws (0) hostility toward a player", []string{"name", "0|1"}, v.commandHostile},
+		{"roster", "logs the roster and the party panel", []string{}, v.commandRoster},
+		{"trade", "trade request|yes|no|add|remove|gold|accept|cancel <name, item code, amount or ->",
+			[]string{"op", "arg"}, v.commandTrade},
+		{"pvp", "swings at another player (melee, needs hostility)", []string{"name"}, v.commandPvP},
+		{"giveitem", "puts a new item into the inventory", []string{"code"}, v.commandGiveItem},
+		{"killnear", "kills the nearest monster as the hero (party experience tests)", []string{}, v.commandKillNear},
 	}
 
 	for _, cmd := range commands {
@@ -237,7 +255,8 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat"); err != nil {
+	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "killnear"); err != nil {
 		return err
 	}
 
@@ -292,21 +311,18 @@ func (v *Game) Render(screen d2interface.Surface) {
 	}
 
 	v.renderFade(screen)
-	v.autoShot(screen)
 }
 
 // Advance runs the update logic on the Gameplay screen
 // nolint:gocyclo // not need to change
 func (v *Game) Advance(elapsed float64) error {
+	elapsed *= autoTimeScale()
+
 	v.gameClient.Drain()
 
 	v.soundEngine.Advance(elapsed)
 	v.advanceDayClock(elapsed)
 	v.advanceLighting()
-
-	if v.localPlayer != nil {
-		v.autoShotElapsed += elapsed
-	}
 
 	v.advanceNPCInteraction(elapsed)
 	v.advanceAutoSound(elapsed)
@@ -318,16 +334,19 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceObjects(elapsed)
 	v.advanceAutoObject(elapsed)
 	v.advanceLevels(elapsed)
+	v.advanceSavedAct()
 	v.advanceAutoGround(elapsed)
 	v.advanceSound(elapsed)
 	v.advanceAutoAmbient(elapsed)
 	v.advanceAutoPanel(elapsed)
 	v.advanceAutoEquip(elapsed)
+	v.advanceSocial(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
 		v.advanceMonsters(elapsed)
 		v.advanceSkills(elapsed)
+		v.advanceHeroLevel()
 		v.advanceDeath(elapsed)
 	}
 
@@ -474,6 +493,7 @@ func (v *Game) OnPlayerInteract(entity d2interface.MapEntity) {
 	v.npcTarget = entity
 
 	v.OnPlayerMove(targetX, targetY)
+	v.levels.warpTarget = nil // an NPC that wanders near an exit is not a click on the exit
 }
 
 // npcClassID returns the monstats class id (hcIdx) of an NPC entity, or -1.
@@ -540,6 +560,16 @@ func (v *Game) advanceNPCInteraction(_ float64) {
 	v.playNPCGreeting(v.npcTarget.Label())
 }
 
+// endConversationUnlessMenuOpen forgets the NPC the hero walked up to once its
+// menu is gone: advanceNPCInteraction would otherwise open the menu again at
+// once (and play another greeting); like in the original the player clicks the
+// NPC again to talk again.
+func (v *Game) endConversationUnlessMenuOpen() {
+	if !v.gameControls.NPCMenu.IsOpen() {
+		v.npcTarget = nil
+	}
+}
+
 func (v *Game) anchorNPCMenu(menu *d2player.NPCMenu, npc d2interface.MapEntity) {
 	sx, sy := v.mapRenderer.WorldToScreenF(npc.GetPositionF())
 	_, h := npc.GetSize()
@@ -551,6 +581,8 @@ func (v *Game) anchorNPCMenu(menu *d2player.NPCMenu, npc d2interface.MapEntity) 
 func (v *Game) openNPCMenu(menu *d2player.NPCMenu, npc d2interface.MapEntity) []d2player.NPCMenuRow {
 	classID := v.npcClassID(npc)
 	rows, known := d2player.NPCMenuFor(classID)
+
+	rows = v.withTravelRows(classID, rows)
 
 	menu.Open(npc.Label(), rows, 0, 0, func(row d2player.NPCMenuRow) {
 		v.onNPCMenuChoice(npc, row)
@@ -576,17 +608,23 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 
 		v.npcTarget = nil
 	case d2player.NPCActionTalk:
+		// the Talk row ends the menu; questTalk may open the topic submenu in its place
+		v.gameControls.NPCMenu.Close()
+
 		if v.questTalk(npc) {
-			v.gameControls.NPCMenu.Close()
 			v.Infof("NPC menu: Talk with %q (quest speech)", npc.Label())
+			v.endConversationUnlessMenuOpen()
 
 			return
 		}
 
 		path := v.playNPCGreeting(npc.Label())
 		v.Infof("NPC menu: Talk with %q (voice %q)", npc.Label(), path)
+		v.travelOnTalk(npc)
+		v.endConversationUnlessMenuOpen()
 	case d2player.NPCActionTopic:
 		v.questTopic(npc, row.StringID)
+		v.endConversationUnlessMenuOpen()
 	case d2player.NPCActionTrade, d2player.NPCActionTradeRepair:
 		v.openTrade(npc, uint32(time.Now().UnixNano()))
 	case d2player.NPCActionHire:
@@ -595,6 +633,8 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 		v.openGamble(npc, uint32(time.Now().UnixNano()))
 	case d2player.NPCActionIdentify:
 		v.openIdentify(npc)
+	case d2player.NPCActionTravelWest, d2player.NPCActionSailWest, d2player.NPCActionTravelEast, d2player.NPCActionSailEast:
+		v.travelFromNPC(npc, row)
 	default:
 		v.Infof("NPC menu: %s (%s) not implemented yet", row.Action, row.Fallback)
 	}
@@ -746,6 +786,17 @@ func (v *Game) advanceAutoSound(elapsed float64) {
 func (v *Game) advanceAutoTest(elapsed float64) {
 	talk, menus, trades := os.Getenv("OD2_AUTOTALK"), os.Getenv("OD2_AUTOMENU"), os.Getenv("OD2_AUTOTRADE")
 	gamble, identify := os.Getenv("OD2_AUTOGAMBLE"), os.Getenv("OD2_AUTOIDENTIFY")
+	if os.Getenv("OD2_AUTOOPTIONS") != "" && v.localPlayer != nil && v.gameControls != nil && !v.autoTestDone {
+		v.autoTestElapsed += elapsed
+		if v.autoTestElapsed >= autoTestDelaySeconds {
+			v.autoTestDone = true
+			v.gameControls.RunOptionsAutoTest()
+			v.autoTestExit()
+		}
+
+		return
+	}
+
 	if (talk == "" && menus == "" && trades == "" && gamble == "" && identify == "") || v.localPlayer == nil || v.gameControls == nil {
 		return
 	}

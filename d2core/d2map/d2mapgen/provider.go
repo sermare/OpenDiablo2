@@ -143,7 +143,7 @@ func (*mazeProvider) Load(g *MapGenerator, levelID int, req LoadRequest) error {
 // needs the DRLG tables, which come from the archives; if they cannot be read
 // it stays inactive.
 func (g *MapGenerator) installDefaultProviders() {
-	g.providers = []LevelProvider{townProvider{}}
+	g.providers = []LevelProvider{actTownProvider{}, townProvider{}}
 
 	if !RealMapsEnabled() {
 		return
@@ -161,5 +161,5 @@ func (g *MapGenerator) installDefaultProviders() {
 
 	// Act 1 wilderness levels (proven equal to the real game down to the room
 	// grids, see drlgoutdoor); the tile records are approximated
-	g.providers = append([]LevelProvider{outdoorProvider{}}, g.providers...)
+	g.providers = append([]LevelProvider{outdoorProvider{}, presetProvider{}}, g.providers...)
 }

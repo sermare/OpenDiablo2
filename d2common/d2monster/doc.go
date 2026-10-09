@@ -31,10 +31,12 @@
 // Attract / Charm conditions with their durations, their override of the think
 // function and the restore of the class AI.
 //
-// Not ported: FallenShaman (needs corpse scanning), PantherWoman, QuillRat,
-// SandLeaper, SandRaider, Fetish, CorruptLancer, GreaterMummy, the Baal wave
-// AIs other than BaalMinion (BaalThrone, BaalTaunt, BaalToStairs, BaalCrab,
-// BaalTentacle), the forced states 13 and 16 and the monster-side hooks of
+// Ported in the boss pass (ai_baal.go, ai_shaman.go): FallenShaman, the Baal
+// wave AIs BaalThrone, BaalTaunt, BaalToStairs, BaalCrab(+Clone), BaalTentacle
+// and the forced states 13 and 16.
+//
+// Not ported: PantherWoman, QuillRat,
+// SandLeaper, SandRaider, Fetish, CorruptLancer, GreaterMummy, the monster-side hooks of
 // Cloak of Shadows / Overseer whip, and MONAI_PostTargetChecks (wounded
 // MonTeleport, Summoner wake-up, threat re-targeting).
 package d2monster

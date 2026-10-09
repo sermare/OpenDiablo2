@@ -37,7 +37,9 @@ type groundState struct {
 	stash *d2mapentity.Object
 	// questObj is a quest object (cairn stone, Malus chest...) the hero walks to.
 	questObj *d2mapentity.Object
-	elapsed  float64
+	elapsed  float64 // seconds since the hero last got closer to the target
+	best     float64 // the smallest distance to the target so far
+	bestFor  interface{}
 	// onPickup is called after a successful pickup (used by the autotest).
 	onPickup func(it *d2mapentity.Item)
 	// chestSeq numbers chest openings so each one rolls a different seed.
@@ -142,6 +144,15 @@ func (v *Game) walkToObject(ob *d2mapentity.Object) {
 	v.OnPlayerMove(x, y)
 }
 
+// progress restarts the give-up clock whenever the hero gets closer to the
+// target: only a walk that makes no headway is abandoned, however far away
+// the item or chest lies.
+func (g *groundState) progress(target interface{}, dist float64) {
+	if g.bestFor != target || dist < g.best-walkProgressStep {
+		g.bestFor, g.best, g.elapsed = target, dist, 0
+	}
+}
+
 // advanceGroundInteraction completes a pending pickup or chest opening once the
 // hero has arrived.
 func (v *Game) advanceGroundInteraction(elapsed float64) {
@@ -152,8 +163,9 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 	px, py := v.localPlayer.GetPositionF()
 
 	if it := v.ground.item; it != nil {
-		v.ground.elapsed += elapsed
 		ix, iy := it.GetPositionF()
+		v.ground.progress(it, math.Hypot(px-ix, py-iy))
+		v.ground.elapsed += elapsed
 
 		switch {
 		case v.gameClient.MapEngine.Entities()[it.ID()] == nil:
@@ -168,8 +180,9 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 	}
 
 	if ob := v.ground.stash; ob != nil {
-		v.ground.elapsed += elapsed
 		ox, oy := ob.GetPositionF()
+		v.ground.progress(ob, math.Hypot(px-ox, py-oy))
+		v.ground.elapsed += elapsed
 
 		switch {
 		case math.Hypot(px-ox, py-oy) <= chestRange:
@@ -182,8 +195,9 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 	}
 
 	if ob := v.ground.questObj; ob != nil {
-		v.ground.elapsed += elapsed
 		ox, oy := ob.GetPositionF()
+		v.ground.progress(ob, math.Hypot(px-ox, py-oy))
+		v.ground.elapsed += elapsed
 
 		switch {
 		case math.Hypot(px-ox, py-oy) <= chestRange:
@@ -196,8 +210,9 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 	}
 
 	if ob := v.ground.chest; ob != nil {
-		v.ground.elapsed += elapsed
 		ox, oy := ob.GetPositionF()
+		v.ground.progress(ob, math.Hypot(px-ox, py-oy))
+		v.ground.elapsed += elapsed
 
 		switch {
 		case math.Hypot(px-ox, py-oy) <= chestRange:

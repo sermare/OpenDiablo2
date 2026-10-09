@@ -114,7 +114,13 @@ func (a *Automap) On() bool { return a.on }
 func (a *Automap) Size() d2automap.Size { return a.size }
 
 // Toggle is the Tab key.
-func (a *Automap) Toggle() { a.SetOn(!a.on) }
+func (a *Automap) Toggle() {
+	if !a.on {
+		a.size = automapSizeOption() // Options -> Automap Options -> Automap Size
+	}
+
+	a.SetOn(!a.on)
+}
 
 // SetOn shows or hides the map.
 func (a *Automap) SetOn(on bool) {
@@ -178,7 +184,8 @@ func (a *Automap) logMarkers() {
 		switch v := e.(type) {
 		case *d2mapentity.Player:
 			if v != a.hero {
-				a.Infof("AUTOMAP marker other-player id=%s pos=(%.1f,%.1f)", id, x, y)
+				a.Infof("AUTOMAP marker other-player id=%s name=%q party=%v pos=(%.1f,%.1f)", id, v.Name(),
+					a.gc.isPartyMember(v), x, y)
 			}
 		case *d2mapentity.NPC:
 			a.Infof("AUTOMAP marker npc %q pos=(%.1f,%.1f)", v.Label(), x, y)

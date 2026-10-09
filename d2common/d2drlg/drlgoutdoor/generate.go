@@ -31,12 +31,14 @@ func Generate(env *Env, p Params) (lv *Level, err error) {
 		return nil, fmt.Errorf("drlgoutdoor: level %d unknown", p.ID)
 	}
 
-	if rec.LevelType != 2 {
-		return nil, errors.New("drlgoutdoor: only LevelType 2 (Act 1 wilderness) is ported")
+	switch rec.LevelType {
+	case 2, 0x10, 0x15, 0x16, 0x1b, 0x1c, 0x1e, 0x1f: // Act 1 wilderness, Act 2 desert, Act 3 jungle and Kurast, Act 4 mesa/chaos, Act 5 siege/snow
+	default:
+		return nil, errors.New("drlgoutdoor: LevelType not ported")
 	}
 
 	l := &Level{Params: p, LType: rec.LevelType, env: env, ctr: map[int]*counter{}, town: p.Town}
-	l.Seed = d2rand.New(p.BaseSeed + uint32(p.ID))
+	l.Seed = newLevelSeed(p)
 	l.OdFlags = p.OdFlags
 	l.W, l.H = p.Rect.W>>3, p.Rect.H>>3
 	l.Def, l.GridB, l.Flag, l.GridD = NewGrid(l.W, l.H), NewGrid(l.W, l.H), NewGrid(l.W, l.H), NewGrid(l.W, l.H)
@@ -46,7 +48,22 @@ func Generate(env *Env, p Params) (lv *Level, err error) {
 		l.PolygonAtAct = append(l.PolygonAtAct, Vertex{X: v.X, Y: v.Y, B: v.B, F: v.F})
 	}
 
-	if err := l.generateAct1(); err != nil {
+	var gen func() error
+
+	switch rec.LevelType {
+	case 0x10:
+		gen = l.generateAct2
+	case 0x15, 0x16:
+		gen = l.generateAct3
+	case 0x1b, 0x1c:
+		gen = func() error { l.generateAct4(); return nil }
+	case 0x1e, 0x1f:
+		gen = func() error { l.generateAct5(); return nil }
+	default:
+		gen = l.generateAct1
+	}
+
+	if err := gen(); err != nil {
 		return nil, err
 	}
 
@@ -122,3 +139,5 @@ func (l *Level) generateAct1() error {
 
 	return nil
 }
+
+func newLevelSeed(p Params) *d2rand.Seed { return d2rand.New(p.BaseSeed + uint32(p.ID)) }

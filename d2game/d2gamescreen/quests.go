@@ -131,6 +131,8 @@ func (v *Game) quests() *questRuntime {
 	r.g.Start()
 	v.Infof("QUEST system started difficulty=%d class=%d level=%d (Acts 1-5)",
 		diff, r.g.Hero.Class, r.g.Hero.Level)
+	v.Infof("HERO state at start: level=%d exp=%d skillpoints=%d statpoints=%d gold=%d", p.Stats.Level, p.Stats.Experience,
+		p.Stats.SkillPoints, p.Stats.StatsPoints, p.Gold)
 
 	for _, l := range r.g.Log() {
 		v.Infof("QUEST LOG act=%d quest=%d status=%d page=%d", l.Act, l.Index, l.Status, l.Page)
@@ -258,7 +260,7 @@ func (v *Game) onMonsterKilled(ev d2monsters.KillEvent) {
 		super = ev.Label
 	}
 
-	v.questDispatch(d2quest.Event{Kind: d2quest.EvMonsterKilled, Monster: ev.Class, Super: super, Level: r.area})
+	v.questDispatch(d2quest.Event{Kind: d2quest.EvMonsterKilled, Monster: ev.Class, Super: super, Name: ev.Label, Level: r.area})
 }
 
 // questObjectOperated is a quest object (cairn stone, Malus chest...) used by the hero.

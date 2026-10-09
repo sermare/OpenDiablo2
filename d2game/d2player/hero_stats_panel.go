@@ -1,6 +1,7 @@
 package d2player
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -493,6 +494,21 @@ func (s *HeroStatsPanel) setStatValues() {
 	s.labels.Mana.SetText(strconv.Itoa(s.heroState.Mana))
 
 	s.setDerivedValues()
+}
+
+// Summary describes the values the panel shows, for the autotest PANEL log line.
+// shownExp and shownNext are the label texts as drawn.
+func (s *HeroStatsPanel) Summary() string {
+	s.setStatValues()
+
+	st := s.heroState
+
+	return fmt.Sprintf("level=%d name=%q class=%s str=%d dex=%d vit=%d ene=%d hp=%d/%d mana=%d/%d stamina=%d/%d "+
+		"exp=%d next=%d statpoints=%d skillpoints=%d shownExp=%s shownNext=%s",
+		st.Level, s.heroName, s.heroClass, st.Strength, st.Dexterity, st.Vitality, st.Energy,
+		st.Health, st.MaxHealth, st.Mana, st.MaxMana, int(st.Stamina), st.MaxStamina,
+		st.Experience, st.NextLevelExp, st.StatsPoints, st.SkillPoints,
+		s.labels.Experience.GetText(), s.labels.NextLevelExp.GetText())
 }
 
 func (s *HeroStatsPanel) createStatValueLabel(stat, x, y int) *d2ui.Label {

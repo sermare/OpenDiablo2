@@ -37,6 +37,10 @@ func (g *GameControls) handleContainerClick(mx, my int, ctrl bool) bool {
 // handleContainerRightClick opens the Horadric Cube from a right click on it
 // and drinks a potion that is right-clicked in the inventory.
 func (g *GameControls) handleContainerRightClick(mx, my int) bool {
+	if g.tradeRightClick(mx, my) {
+		return true
+	}
+
 	var item InventoryItem
 
 	var from *ItemGrid
@@ -96,6 +100,21 @@ func (g *GameControls) OpenCube() {
 
 // IsStashOpen reports whether the stash panel is open.
 func (g *GameControls) IsStashOpen() bool { return g.stash.IsOpen() }
+
+// BeltFrontCode returns the item code of the potion a belt column (0 to 3)
+// would drink, or "" when the column is empty.
+func (g *GameControls) BeltFrontCode(col int) string {
+	cell, ok := d2inventory.FrontOfColumn(g.belt.kinds(), g.belt.Boxes(), col)
+	if !ok {
+		return ""
+	}
+
+	if it := g.belt.items[cell]; it != nil {
+		return it.GetItemCode()
+	}
+
+	return ""
+}
 
 // UseBeltColumn drinks the front potion of a belt column (hotkeys 1 to 4).
 func (g *GameControls) UseBeltColumn(col int) {

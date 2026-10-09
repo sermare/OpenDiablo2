@@ -57,6 +57,9 @@ func TestParse(t *testing.T) {
 		{"cast:", 0, true},
 		{"say:", 0, true},
 		{"dance", 0, true},
+		{"shot:/tmp/a.png", 1, false},
+		{"shot:", 0, true},
+		{"shot:a b.png", 0, true},
 	}
 	for _, tc := range tests {
 		steps, err := Parse(tc.spec)
@@ -163,6 +166,22 @@ func TestRunnerEndsWithoutExitStep(t *testing.T) {
 	}
 }
 
+func TestRunnerShot(t *testing.T) {
+	steps, err := Parse("shot:/tmp/x.png;exit")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h := &fakeHost{}
+	r := NewRunner(steps, h)
+	r.Advance(0)
+	r.Advance(0)
+
+	if len(h.calls) != 1 || h.calls[0] != "say capframe /tmp/x.png" {
+		t.Fatalf("calls = %v", h.calls)
+	}
+}
+
 type fakeLevelHost struct {
 	fakeHost
 	level    int
@@ -247,6 +266,53 @@ func TestExpectLevelWaitsForChange(t *testing.T) {
 
 	if !r.Done() || !r.Failed() {
 		t.Fatalf("a level that never arrives must fail: done=%v failed=%v", r.Done(), r.Failed())
+	}
+}
+
+type fakeTravelHost struct {
+	fakeLevelHost
+	refuse bool
+}
+
+func (h *fakeTravelHost) Travel(act int) error {
+	if h.refuse {
+		return fmt.Errorf("refused")
+	}
+
+	return h.rec(fmt.Sprintf("travel %d", act))
+}
+
+func TestTravelSteps(t *testing.T) {
+	for _, spec := range []string{"travel:2", "refuse:5"} {
+		if _, err := Parse(spec); err != nil {
+			t.Errorf("Parse(%q): %v", spec, err)
+		}
+	}
+
+	for _, spec := range []string{"travel:", "travel:0", "travel:6", "refuse:x"} {
+		if _, err := Parse(spec); err == nil {
+			t.Errorf("Parse(%q) should fail", spec)
+		}
+	}
+
+	h := &fakeTravelHost{}
+	if r := runHost(t, "travel:3;exit", h, 10); r.Failed() || strings.Join(h.calls, "|") != "travel 3" {
+		t.Errorf("travel: failed=%v calls=%v", r.Failed(), h.calls)
+	}
+
+	h = &fakeTravelHost{refuse: true}
+	if r := runHost(t, "refuse:5;exit", h, 10); r.Failed() {
+		t.Errorf("a refused trip must satisfy refuse: %v", h.log)
+	}
+
+	h = &fakeTravelHost{refuse: true}
+	if r := runHost(t, "travel:5;exit", h, 10); !r.Failed() {
+		t.Error("a refused trip must fail travel")
+	}
+
+	h = &fakeTravelHost{}
+	if r := runHost(t, "refuse:2;exit", h, 10); !r.Failed() {
+		t.Error("an allowed trip must fail refuse")
 	}
 }
 

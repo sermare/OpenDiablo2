@@ -77,6 +77,8 @@ type GameServer struct {
 	hostInfo   d2gsnet.GameInfo // difficulty of the first hero (the host)
 	hostInfoOK bool
 
+	soc *social // party roster, trades, player versus player
+
 	*d2util.Logger
 }
 
@@ -122,6 +124,7 @@ func NewGameServer(asset *d2asset.AssetManager,
 		heroStateFactory:  heroStateFactory,
 		d2gs:              d2gsnet.Enabled(),
 		unitIDs:           d2gsnet.NewIDs(),
+		soc:               newSocial(),
 	}
 
 	if gameServer.d2gs {
@@ -406,6 +409,7 @@ func (g *GameServer) OnClientConnected(client ClientConnection) {
 	g.connections[client.GetUniqueID()] = client
 
 	g.handleClientConnection(client, sx, sy)
+	g.socialAddPlayer(client)
 }
 
 func (g *GameServer) handleClientConnection(client ClientConnection, x, y float64) {
@@ -455,6 +459,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 		d2netpacket.WithMerc(playerState.Merc),
 		d2netpacket.WithSkillBar(playerState.SkillBar),
 		d2netpacket.WithDeath(playerState.Death, playerState.Hardcore),
+		d2netpacket.WithAct(playerState.Act, len(playerState.D2SBase) > 0, playerState.Expansion),
 	)
 	if err != nil {
 		g.Errorf("AddPlayerPacket: %v", err)
@@ -510,6 +515,7 @@ func (g *GameServer) OnClientDisconnected(client ClientConnection) {
 	g.Infof("Client disconnected with an id of %s", client.GetUniqueID())
 	g.Infof("PLAYER LEAVE name=%q id=%s players=%d", playerName(client), client.GetUniqueID(), len(g.connections)-1)
 	delete(g.connections, client.GetUniqueID())
+	g.socialRemovePlayer(client.GetUniqueID())
 
 	if client.GetConnectionType() == d2clientconnectiontype.Local {
 		g.Info("Host disconnected, game server shuting down")
@@ -568,6 +574,7 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		}
 
 		playerState.Stats = savePacket.Player.Stats
+		g.socialLevel(client.GetUniqueID(), heroLevel(playerState))
 		playerState.Act = savePacket.Player.Act
 		playerState.Gold = savePacket.Player.Gold // changed by vendor transactions
 
@@ -617,6 +624,10 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		return g.onSetWaypoint(client, packet)
 	case d2netpackettype.PlayerConnectionRequest:
 		break // prevent log message. these are handled by handleConnection
+	case d2netpackettype.PartyCommand, d2netpackettype.TradeCommand, d2netpackettype.PvPHit, d2netpackettype.PartyXP:
+		_, err := g.socialPacket(client, packet)
+
+		return err
 	case d2netpackettype.PlayerDisconnectionNotification:
 		g.sendPacketToClients(packet)
 		g.OnClientDisconnected(client)
@@ -659,9 +670,29 @@ func (g *GameServer) onChangeLevel(client ClientConnection, packet d2netpacket.N
 
 	state := g.connections[client.GetUniqueID()].GetPlayerState()
 	state.X, state.Y = p.X, p.Y
+	g.socialArea(client.GetUniqueID(), p.Level)
 
-	g.Infof("LEVEL player=%s level=%d act=%d pos=(%.1f,%.1f)", state.HeroName, p.Level,
-		d2level.ActOfLevel(p.Level), p.X, p.Y)
+	act := d2level.ActOfLevel(p.Level)
+	g.Infof("LEVEL player=%s level=%d act=%d pos=(%.1f,%.1f)", state.HeroName, p.Level, act, p.X, p.Y)
+
+	if act >= 1 && act != state.Act {
+		from := state.Act
+		state.Act = act
+
+		if p.ActFinished {
+			if slot := d2level.MarkActFinished(state.EnsureProgress().QuestRecord(int(state.Difficulty)), from); slot >= 0 {
+				g.Infof("ACT finished player=%s act=%d quest slot=%d", state.HeroName, from, slot)
+			}
+		}
+
+		g.Infof("ACT saved player=%s act=%d (d2s difficulty/act byte)", state.HeroName, act)
+
+		if err := g.heroStateFactory.Save(state); err != nil {
+			g.Errorf("GameServer: error saving player: %s", err)
+		}
+
+		g.saveD2S(state)
+	}
 
 	return nil
 }

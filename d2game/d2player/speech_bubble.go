@@ -71,6 +71,9 @@ func (s *SpeechBubble) Notice(text string, seconds float64) {
 	s.noticeLeft = seconds
 }
 
+// Clear removes the speech at once (the hero left the NPC: another level).
+func (s *SpeechBubble) Clear() { s.left = 0 }
+
 // Text returns the speech currently shown ("" when none).
 func (s *SpeechBubble) Text() string {
 	if s.left <= 0 {

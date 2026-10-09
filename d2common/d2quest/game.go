@@ -89,6 +89,7 @@ type Event struct {
 	OldLevel, NewLevel int    // area changes
 	Monster            int    // monster class (killed)
 	Super              string // super unique name ("The Countess") when the monster is one
+	Name               string // display name of the monster that died ("Duriel")
 	Level              int    // level where the monster died / the object was operated
 	Item               string // item code without padding ("hdm")
 	Object             int    // objects.txt row
@@ -259,6 +260,11 @@ func New(rec *d2s.QuestRecord, npc *d2s.NPCBlock, difficulty int) *Game {
 		newSiege, newRescue, newPrison, newBetrayal, newRite, newEve,
 	} {
 		q := init()
+		g.Quests = append(g.Quests, q)
+		g.byID[q.ID] = q
+	}
+
+	for _, q := range newBossQuests() {
 		g.Quests = append(g.Quests, q)
 		g.byID[q.ID] = q
 	}

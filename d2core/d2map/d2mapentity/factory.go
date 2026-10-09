@@ -187,6 +187,12 @@ func (f *MapEntityFactory) NewItem(x, y int, codes ...string) (*Item, error) {
 	return result, nil
 }
 
+// DropLoot rolls a treasure class like DropItems but keeps gold as piles (see
+// diablo2item.ItemFactory.DropLoot).
+func (f *MapEntityFactory) DropLoot(tc string, opts diablo2item.DropOptions, goldFindPercent int) (*diablo2item.Loot, error) {
+	return f.item.DropLoot(tc, opts, goldFindPercent)
+}
+
 // DropItems rolls a treasure class with the Diablo II drop rules (see
 // diablo2item.ItemFactory.DropItems).
 func (f *MapEntityFactory) DropItems(tc string, opts diablo2item.DropOptions) ([]*diablo2item.Item, error) {

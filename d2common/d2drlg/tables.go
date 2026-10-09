@@ -55,6 +55,10 @@ type PrestRec struct {
 	// Populate, Logicals, Outdoors, Animate, KillEdge and FillBlanks are the
 	// LvlPrest columns of the same name.
 	Populate, Logicals, Outdoors, Animate, KillEdge, FillBlanks int
+	// AutoMap, Scan and Pops are the LvlPrest columns of the same name (record
+	// offsets 0x30, 0x34, 0x38). Scan or Pops non-zero makes the preset room
+	// builder load the DS1 (DRLG_GeneratePresetLevel).
+	AutoMap, Scan, Pops int
 }
 
 // LvlTypeRec is a LvlTypes.txt row.
@@ -95,6 +99,9 @@ type LvlMaze interface {
 // LvlPrest gives access to LvlPrest, keyed by the Def column (not the row).
 type LvlPrest interface {
 	PrestByDef(def int) (PrestRec, bool)
+	// PrestByLevel is DRLG_GetLvlPrestRecordByDef for a level: the first
+	// record whose LevelId equals the level id.
+	PrestByLevel(levelID int) (PrestRec, bool)
 }
 
 // LvlTypes gives access to LvlTypes.txt.
@@ -144,6 +151,7 @@ type Tables struct {
 	levels map[int]LevelRec
 	mazes  map[int]MazeRec
 	prest  map[int]PrestRec
+	byLvl  map[int]PrestRec
 	types  map[int]LvlTypeRec
 	subs   map[int][]SubRec
 	warps  map[int]WarpRec
@@ -159,6 +167,9 @@ func (t *Tables) Maze(id int) (MazeRec, bool) { r, ok := t.mazes[id]; return r, 
 
 // PrestByDef implements LvlPrest.
 func (t *Tables) PrestByDef(def int) (PrestRec, bool) { r, ok := t.prest[def]; return r, ok }
+
+// PrestByLevel implements LvlPrest.
+func (t *Tables) PrestByLevel(id int) (PrestRec, bool) { r, ok := t.byLvl[id]; return r, ok }
 
 // LvlType implements LvlTypes.
 func (t *Tables) LvlType(id int) (LvlTypeRec, bool) { r, ok := t.types[id]; return r, ok }
@@ -249,7 +260,8 @@ func ParseLvlPrestBin(data []byte) ([]PrestRec, error) {
 		r := data[4+i*binRecordSize : 4+(i+1)*binRecordSize]
 		u := func(off int) int { return int(int32(binary.LittleEndian.Uint32(r[off:]))) }
 		p := PrestRec{Def: u(0), LevelID: u(4), SizeX: u(40), SizeY: u(44), Files: u(binFilesOff), Dt1Mask: u(binDt1Off), Populate: u(8), Logicals: u(0xc), Outdoors: u(0x10),
-			Animate: u(0x14), KillEdge: u(0x18), FillBlanks: u(0x1c)}
+			Animate: u(0x14), KillEdge: u(0x18), FillBlanks: u(0x1c),
+			AutoMap: u(0x30), Scan: u(0x34), Pops: u(0x38)}
 
 		for k := 0; k < 6; k++ {
 			s := r[binFile1Off+k*binFileLen : binFile1Off+(k+1)*binFileLen]
@@ -284,7 +296,8 @@ func parsePrestTxt(data []byte) ([]PrestRec, error) {
 		p := PrestRec{Name: t.str(r, "Name"), Def: t.num(r, "Def"), LevelID: t.num(r, "LevelId"),
 			SizeX: t.num(r, "SizeX"), SizeY: t.num(r, "SizeY"), Files: t.num(r, "Files"), Dt1Mask: t.num(r, "Dt1Mask"),
 			Populate: t.num(r, "Populate"), Logicals: t.num(r, "Logicals"), Outdoors: t.num(r, "Outdoors"),
-			Animate: t.num(r, "Animate"), KillEdge: t.num(r, "KillEdge"), FillBlanks: t.num(r, "FillBlanks")}
+			Animate: t.num(r, "Animate"), KillEdge: t.num(r, "KillEdge"), FillBlanks: t.num(r, "FillBlanks"),
+			AutoMap: t.num(r, "AutoMap"), Scan: t.num(r, "Scan"), Pops: t.num(r, "Pops")}
 
 		for k := 0; k < 6; k++ {
 			if f := t.str(r, "File"+strconv.Itoa(k+1)); f != "0" {
@@ -302,7 +315,7 @@ func parsePrestTxt(data []byte) ([]PrestRec, error) {
 // numeric and file columns of the txt (it is authoritative); names come from
 // the txt when the record counts agree.
 func Load(raw Raw) (*Tables, error) {
-	t := &Tables{levels: map[int]LevelRec{}, mazes: map[int]MazeRec{}, prest: map[int]PrestRec{},
+	t := &Tables{levels: map[int]LevelRec{}, mazes: map[int]MazeRec{}, prest: map[int]PrestRec{}, byLvl: map[int]PrestRec{},
 		types: map[int]LvlTypeRec{}, subs: map[int][]SubRec{}, warps: map[int]WarpRec{}}
 
 	if raw.Levels != nil {
@@ -377,6 +390,10 @@ func Load(raw Raw) (*Tables, error) {
 	for _, p := range prest {
 		if _, dup := t.prest[p.Def]; !dup { // first record with a Def wins
 			t.prest[p.Def] = p
+		}
+
+		if _, dup := t.byLvl[p.LevelID]; p.LevelID > 0 && !dup {
+			t.byLvl[p.LevelID] = p
 		}
 	}
 

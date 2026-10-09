@@ -195,12 +195,12 @@ func (m *EscapeMenu) newOptionsLayout() *layout {
 func (m *EscapeMenu) newSoundOptionsLayout() *layout {
 	return m.wrapLayout(func(l *layout) {
 		m.addTitle(l, "SOUND OPTIONS")
-		m.addEnumLabel(l, optAudioSoundVolume, "SOUND", []string{"TODO"})
-		m.addEnumLabel(l, optAudioMusicVolume, "MUSIC", []string{"TODO"})
-		m.addEnumLabel(l, optAudio3dSound, "3D BIAS", []string{"TODO"})
-		m.addEnumLabel(l, optAudioHardwareAcceleration, "HARDWARE ACCELERATION", []string{"ON", "OFF"})
-		m.addEnumLabel(l, optAudioEnvEffects, "ENVIRONMENTAL EFFECTS", []string{"ON", "OFF"})
-		m.addEnumLabel(l, optAudioNpcSpeech, "NPC SPEECH", []string{"AUDIO AND TEXT", "AUDIO ONLY", "TEXT ONLY"})
+		m.addEnumLabel(l, optAudioSoundVolume, "SOUND")
+		m.addEnumLabel(l, optAudioMusicVolume, "MUSIC")
+		m.addEnumLabel(l, optAudio3dSound, "3D BIAS")
+		m.addEnumLabel(l, optAudioHardwareAcceleration, "HARDWARE ACCELERATION")
+		m.addEnumLabel(l, optAudioEnvEffects, "ENVIRONMENTAL EFFECTS")
+		m.addEnumLabel(l, optAudioNpcSpeech, "NPC SPEECH")
 		m.addPreviousMenuLabel(l)
 	})
 }
@@ -208,12 +208,12 @@ func (m *EscapeMenu) newSoundOptionsLayout() *layout {
 func (m *EscapeMenu) newVideoOptionsLayout() *layout {
 	return m.wrapLayout(func(l *layout) {
 		m.addTitle(l, "VIDEO OPTIONS")
-		m.addEnumLabel(l, optVideoResolution, "VIDEO RESOLUTION", []string{"800X600", "1024X768"})
-		m.addEnumLabel(l, optVideoLightingQuality, "LIGHTING QUALITY", []string{"LOW", "HIGH"})
-		m.addEnumLabel(l, optVideoBlendedShadows, "BLENDED SHADOWS", []string{"ON", "OFF"})
-		m.addEnumLabel(l, optVideoPerspective, "PERSPECTIVE", []string{"ON", "OFF"})
-		m.addEnumLabel(l, optVideoGamma, "GAMMA", []string{"TODO"})
-		m.addEnumLabel(l, optVideoContrast, "CONTRAST", []string{"TODO"})
+		m.addEnumLabel(l, optVideoResolution, "VIDEO RESOLUTION")
+		m.addEnumLabel(l, optVideoLightingQuality, "LIGHTING QUALITY")
+		m.addEnumLabel(l, optVideoBlendedShadows, "BLENDED SHADOWS")
+		m.addEnumLabel(l, optVideoPerspective, "PERSPECTIVE")
+		m.addEnumLabel(l, optVideoGamma, "GAMMA")
+		m.addEnumLabel(l, optVideoContrast, "CONTRAST")
 		m.addPreviousMenuLabel(l)
 	})
 }
@@ -221,11 +221,11 @@ func (m *EscapeMenu) newVideoOptionsLayout() *layout {
 func (m *EscapeMenu) newAutomapOptionsLayout() *layout {
 	return m.wrapLayout(func(l *layout) {
 		m.addTitle(l, "AUTOMAP OPTIONS")
-		m.addEnumLabel(l, optAutomapSize, "AUTOMAP SIZE", []string{"FULL SCREEN"})
-		m.addEnumLabel(l, optAutomapFade, "FADE", []string{"YES", "NO"})
-		m.addEnumLabel(l, optAutomapCenterWhenCleared, "CENTER WHEN CLEARED", []string{"YES", "NO"})
-		m.addEnumLabel(l, optAutomapShowParty, "SHOW PARTY", []string{"YES", "NO"})
-		m.addEnumLabel(l, optAutomapShowNames, "SHOW NAMES", []string{"YES", "NO"})
+		m.addEnumLabel(l, optAutomapSize, "AUTOMAP SIZE")
+		m.addEnumLabel(l, optAutomapFade, "FADE")
+		m.addEnumLabel(l, optAutomapCenterWhenCleared, "CENTER WHEN CLEARED")
+		m.addEnumLabel(l, optAutomapShowParty, "SHOW PARTY")
+		m.addEnumLabel(l, optAutomapShowNames, "SHOW NAMES")
 		m.addPreviousMenuLabel(l)
 	})
 }
@@ -338,7 +338,8 @@ func (m *EscapeMenu) addPreviousMenuLabel(l *layout) {
 	l.actionableElements = append(l.actionableElements, label)
 }
 
-func (m *EscapeMenu) addEnumLabel(l *layout, optID optionID, text string, values []string) {
+func (m *EscapeMenu) addEnumLabel(l *layout, optID optionID, text string) {
+	values := optionValues(optID)
 	guiLayout := l.AddLayout(d2gui.PositionTypeHorizontal)
 	layout := &layout{Layout: guiLayout}
 	layout.SetSize(menuSize, 0)
@@ -356,7 +357,9 @@ func (m *EscapeMenu) addEnumLabel(l *layout, optID optionID, text string, values
 
 	layout.AddSpacerDynamic()
 
-	guiLabel, err := layout.AddLabel(values[0], d2gui.FontStyle30Units)
+	current := optionIndex(optID)
+
+	guiLabel, err := layout.AddLabel(values[current], d2gui.FontStyle30Units)
 	if err != nil {
 		m.Error(err.Error())
 	}
@@ -366,7 +369,7 @@ func (m *EscapeMenu) addEnumLabel(l *layout, optID optionID, text string, values
 		textChangingLabel: guiLabel,
 		optionID:          optID,
 		values:            values,
-		current:           0,
+		current:           current,
 		playSound:         m.playSound,
 		updateValue:       m.onUpdateValue,
 	}
@@ -423,6 +426,7 @@ func (m *EscapeMenu) close() {
 
 func (m *EscapeMenu) open() {
 	m.isOpen = true
+	m.syncOptionLabels()
 	m.setLayout(mainLayoutID)
 }
 
@@ -464,7 +468,8 @@ func (m *EscapeMenu) onHoverElement(id int) {
 }
 
 func (m *EscapeMenu) onUpdateValue(optID optionID, value string) {
-	m.Infof("updating value %d with %s", optID, value)
+	m.Infof("OPTIONS set %s=%s", optionKeys[optID], value)
+	m.applyOption(optID, value)
 }
 
 func (m *EscapeMenu) setLayout(id layoutID) {
@@ -491,11 +496,17 @@ func (m *EscapeMenu) setLayout(id layoutID) {
 		m.leftPent.SetVisible(false)
 		m.rightPent.SetVisible(false)
 
+		left, right := m.leftPent, m.rightPent
+
 		go func() {
 			time.Sleep(singleFrame)
-			m.onHoverElement(m.layouts[id].currentEl)
-			m.leftPent.SetVisible(true)
-			m.rightPent.SetVisible(true)
+
+			if m.currentLayout == id { // else another page was shown meanwhile
+				m.onHoverElement(m.layouts[id].currentEl)
+			}
+
+			left.SetVisible(true)
+			right.SetVisible(true)
 		}()
 	} else {
 		m.onHoverElement(m.layouts[id].currentEl)

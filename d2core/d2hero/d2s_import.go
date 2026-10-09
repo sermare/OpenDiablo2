@@ -1,12 +1,14 @@
 package d2hero
 
 import (
+	"encoding/binary"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 )
 
 // d2sSkillsPerClass is the number of skill slots a .d2s file stores.
@@ -45,6 +47,7 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	}
 
 	state.MapSeed = header.MapSeed
+	state.Imported = importedInfo(header)
 	state.Expansion, state.Hardcore, state.Ladder = header.IsExpansion(), header.IsHardcore(), header.IsLadder()
 
 	if header.IsDead() {
@@ -54,12 +57,23 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	state.D2SBase = append([]byte(nil), data...)
 	state.Merc = MercFromHeader(header.Mercenary)
 
-	if diff, _, ok := header.ActiveDifficulty(); ok {
+	if diff, act, ok := header.ActiveDifficulty(); ok {
 		state.Difficulty = d2enum.DifficultyType(diff)
+
+		// the act byte (low bits of the active Difficulty byte) is the town
+		// the hero is loaded into
+		if act >= 0 && act < 5 {
+			state.Act = act + 1
+		}
 	}
 
-	// a brand new character has no body: keep the class defaults
+	// a brand new character has no body: keep the class defaults (level 1, Act 1,
+	// the class' starting skill and the left/right skills of a new game)
 	if !header.HasBody() {
+		state.Stats.Level = clampLevel(int(header.Level))
+		state.Stats.NextLevelExp = f.asset.Records.GetExperienceBreakpoint(hero, state.Stats.Level)
+		state.Containers = f.StartingContainers(hero)
+
 		return state, nil
 	}
 
@@ -72,6 +86,7 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	state.Progress = &HeroProgress{Quests: quests(body), Waypoints: body.Waypoints, NPC: *body.NPCFlags()}
 
 	f.importD2SItems(state, data)
+	f.giveStartingItemsToFreshHero(state, hero)
 
 	if err := f.applyD2SSkills(state, hero, body.SkillPoints); err != nil {
 		return nil, err
@@ -83,6 +98,25 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	fmt.Printf("stats: %s %s\n", state.HeroName, StatsSummary(state.Stats))
 
 	return state, nil
+}
+
+func clampLevel(level int) int {
+	if level < 1 {
+		return 1
+	}
+
+	return level
+}
+
+func importedInfo(h *d2s.Header) *ImportedInfo {
+	return &ImportedInfo{
+		Hardcore:  h.IsHardcore(),
+		Expansion: h.IsExpansion(),
+		Ladder:    h.IsLadder(),
+		Dead:      h.IsDead(),
+		// the active weapon set is the u32 at header offset 0x10
+		WeaponSetII: binary.LittleEndian.Uint32(h.Raw[0x10:]) != 0,
+	}
 }
 
 func quests(body *d2s.Body) [3]d2s.QuestRecord {
@@ -104,6 +138,7 @@ func applyD2SAttributes(state *HeroState, a *d2s.Attributes, f *HeroStateFactory
 	s.Vitality = int(a.Vitality)
 	s.StatsPoints = int(a.UnusedStats)
 	s.SkillPoints = int(a.UnusedSkillPoints)
+	// the saved maximums are the item-free base values (RecalcStats adds the equipment)
 	s.Health = int(a.CurrentHP)
 	s.MaxHealth = int(a.MaxHP)
 	s.Mana = int(a.CurrentMana)
@@ -167,11 +202,21 @@ func (f *HeroStateFactory) importD2SItems(state *HeroState, data []byte) {
 		return
 	}
 
-	f.applyD2SEquipment(state, character.Items, tables)
+	// the starter gear of the class is only for new characters; a saved hero wears what it saved
+	state.Equipment = d2inventory.CharacterEquipment{}
+
+	f.applyD2SEquipment(state, character.Items, tables, state.Imported != nil && state.Imported.WeaponSetII)
 	f.applyD2SContainers(state, character.Items)
 
 	if state.Containers != nil {
 		importEquipped(state.Containers, data, character.Items, func(code string) bool { return f.asset.Records.Item.All[code] != nil })
+
+		names := f.loadAffixNames()
+		for i := range state.Containers.Equipped {
+			if st := &state.Containers.Equipped[i]; st.D2S != nil {
+				f.applyNames(st, st.D2S, names)
+			}
+		}
 	}
 }
 
@@ -181,6 +226,7 @@ func (f *HeroStateFactory) importD2SItems(state *HeroState, data []byte) {
 func (f *HeroStateFactory) applyD2SContainers(state *HeroState, items []d2s.Item) {
 	known := func(code string) bool { return f.asset.Records.Item.All[code] != nil }
 	containers := &HeroContainers{Items: []StoredItem{}}
+	names := f.loadAffixNames()
 
 	for i := range items {
 		if it := &items[i]; it.Location == d2s.LocationEquipped && it.Equipped == d2sSlotBelt && known(trimCode(it.Code)) {
@@ -189,6 +235,9 @@ func (f *HeroStateFactory) applyD2SContainers(state *HeroState, items []d2s.Item
 
 		stored, skip := StoredFromD2S(&items[i], known)
 		if skip == "" {
+			// use the unique, set and affix names of the save instead of random affixes
+			f.applyNames(&stored, &items[i], names)
+
 			containers.Items = append(containers.Items, stored)
 			continue
 		}

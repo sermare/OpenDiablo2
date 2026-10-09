@@ -16,6 +16,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2party"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
@@ -58,6 +59,12 @@ type GameClient struct {
 	Progress   *d2hero.HeroProgress
 	Difficulty d2enum.DifficultyType
 	Level      int
+	// Act is the act (1..5) of Level.
+	Act int
+	// SavedAct is the act the hero was saved in (0 = unknown); FromSave and
+	// Expansion tell whether the hero was imported from an expansion .d2s.
+	SavedAct            int
+	FromSave, Expansion bool
 
 	// Multiplayer: packets of a network game arrive on another goroutine; they are
 	// queued and handled on the game loop by Drain. gameInfo is the host's map
@@ -68,6 +75,15 @@ type GameClient struct {
 	hasInfo    bool
 	infoDiffic d2enum.DifficultyType
 	ownCasts   int32 // casts already played locally whose echo from the server is to be skipped
+
+	// Roster is this client's copy of the server's roster (players, parties,
+	// hostility, invitations); the hooks are set by the game screen and run on
+	// the game loop (Drain).
+	Roster    *d2party.Roster
+	OnTrade   func(d2netpacket.TradeUpdatePacket)
+	OnPvPHit  func(d2netpacket.PvPHitPacket)
+	OnPartyXP func(d2netpacket.PartyXPPacket)
+	OnRoster  func(notice string)
 
 	*d2util.Logger
 }
@@ -81,6 +97,7 @@ func Create(connectionType d2clientconnectiontype.ClientConnectionType,
 		asset:          asset,
 		MapEngine:      d2mapengine.CreateMapEngine(l, asset),
 		Players:        make(map[string]*d2mapentity.Player),
+		Roster:         d2party.New(),
 		connectionType: connectionType,
 		scriptEngine:   scriptEngine,
 	}
@@ -306,6 +323,14 @@ func (g *GameClient) handlePacket(packet d2netpacket.NetPacket) error {
 		if err := g.handleChatPacket(packet); err != nil {
 			return err
 		}
+	case d2netpackettype.RosterUpdate:
+		return g.handleRosterPacket(packet)
+	case d2netpackettype.TradeUpdate:
+		return g.handleTradePacket(packet)
+	case d2netpackettype.PvPHit:
+		return g.handlePvPPacket(packet)
+	case d2netpackettype.PartyXP:
+		return g.handlePartyXPPacket(packet)
 	case d2netpackettype.ServerClosed:
 		// https://github.com/OpenDiablo2/OpenDiablo2/issues/802
 		g.Infof("Server has been closed")
@@ -375,6 +400,16 @@ func (g *GameClient) handleUpdateServerInfoPacket(packet d2netpacket.NetPacket) 
 	return nil
 }
 
+// LocalHeroState returns the saved state of the hero a local game was started
+// with, or nil when the connection is remote.
+func (g *GameClient) LocalHeroState() *d2hero.HeroState {
+	if c, ok := g.clientConnection.(interface{ GetPlayerState() *d2hero.HeroState }); ok {
+		return c.GetPlayerState()
+	}
+
+	return nil
+}
+
 func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 	player, err := d2netpacket.UnmarshalAddPlayer(packet.PacketData)
 	if err != nil {
@@ -403,6 +438,12 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 	if player.ID == g.PlayerID {
 		g.Progress, g.Difficulty = player.Progress, player.Difficulty
 		g.Level = d2level.RogueEncampment
+		g.Act = 1
+		g.SavedAct, g.FromSave, g.Expansion = player.Act, player.FromSave, player.Expansion
+
+		if lvl := d2mapgen.RealLevel(); lvl != 0 {
+			g.Level = lvl // OD2_REALMAPS=1 OD2_AUTOLEVEL=<id> starts in that level
+		}
 		newPlayer.Progress, newPlayer.QuestDifficulty = player.Progress, int(player.Difficulty)
 
 		if g.Progress == nil {
@@ -454,7 +495,12 @@ func (g *GameClient) handleMovePlayerPacket(packet d2netpacket.NetPacket) error 
 				return
 			}
 
-			player.SetIsInTown(tile.RegionType == d2enum.RegionAct1Town)
+			switch tile.RegionType {
+			case d2enum.RegionAct1Town, d2enum.RegionAct2Town, d2enum.RegionAct3Town, d2enum.RegionAct4Town, d2enum.RegonAct5Town:
+				player.SetIsInTown(true)
+			default:
+				player.SetIsInTown(false)
+			}
 
 			err := player.SetAnimationMode(player.GetAnimationMode())
 

@@ -13,6 +13,11 @@ const (
 	NPCActionIdentify
 	NPCActionTravelWest // Warriv (act 2 stage): "go west"
 	NPCActionSailWest   // Meshif (act 3 stage): "sail west"
+	// NPCActionTravelEast and NPCActionSailEast are the rows Warriv (Act 1)
+	// and Meshif (Act 2) get once the act's last quest is done; they are not
+	// in the static table (UNVERIFIED how the client adds them).
+	NPCActionTravelEast
+	NPCActionSailEast
 	NPCActionCancel
 	// NPCActionTopic is a quest topic of the Talk submenu (a mode 2 message);
 	// the message id is in NPCMenuRow.StringID and the text in Fallback.
@@ -26,7 +31,7 @@ const (
 // String names the action for logs.
 func (a NPCMenuAction) String() string {
 	names := [...]string{
-		"Talk", "Trade", "TradeRepair", "Gamble", "Hire", "Identify", "TravelWest", "SailWest", "Cancel",
+		"Talk", "Trade", "TradeRepair", "Gamble", "Hire", "Identify", "TravelWest", "SailWest", "TravelEast", "SailEast", "Cancel",
 		"Topic", "HireOffer", "ReviveMerc",
 	}
 
@@ -59,7 +64,11 @@ const (
 	strIDIdentify    = 0xfb4
 	strIDGoWest      = 0xd37
 	strIDSailWest    = 0xd39
-	strIDCancel      = 0xd48
+	// 0xd36 / 0xd38 follow from the string.tbl order WarrivMenu1b, 1c,
+	// MeshifMenuEast, MeshifMenuWest (ids of 1c and West are verified)
+	strIDGoEast   = 0xd36
+	strIDSailEast = 0xd38
+	strIDCancel   = 0xd48
 )
 
 //nolint:gochecknoglobals // static lookup data
@@ -72,6 +81,10 @@ var (
 	rowIdentify    = NPCMenuRow{strIDIdentify, "NPCIdentify1", "Identify Items", NPCActionIdentify}
 	rowGoWest      = NPCMenuRow{strIDGoWest, "WarrivMenu1c", "Go West", NPCActionTravelWest}
 	rowSailWest    = NPCMenuRow{strIDSailWest, "MeshifMenuWest", "Sail West", NPCActionSailWest}
+
+	// RowGoEast and RowSailEast are the dynamic east-bound travel rows.
+	RowGoEast   = NPCMenuRow{strIDGoEast, "WarrivMenu1b", "Go East", NPCActionTravelEast}
+	RowSailEast = NPCMenuRow{strIDSailEast, "MeshifMenuEast", "Sail East", NPCActionSailEast}
 
 	// RowCancel is the implicit last row of every NPC menu.
 	RowCancel = NPCMenuRow{strIDCancel, "Back", "Cancel", NPCActionCancel}

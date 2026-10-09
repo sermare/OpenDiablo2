@@ -148,7 +148,7 @@ func (a *App) startDedicatedServer() error {
 		return srvErr
 	}
 
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // This traps Control-c to safely shut down the server
 
 	go func() {
@@ -369,6 +369,9 @@ func (a *App) Run() (err error) {
 		}
 
 		a.startAutoGame(save, connType, joinAddr)
+	} else if os.Getenv("OD2_AUTOSCREEN") == "charselect" {
+		// OD2_AUTOSCREEN=charselect opens the character select screen directly (for OD2_AUTOSHOT)
+		a.ToCharacterSelect(d2clientconnectiontype.Local, "")
 	} else {
 		a.ToMainMenu()
 	}
@@ -692,6 +695,18 @@ func (a *App) ToSelectHero(connType d2clientconnectiontype.ClientConnectionType,
 
 // ToCreateGame forces the game to transition to the Create Game screen
 func (a *App) ToCreateGame(filePath string, connType d2clientconnectiontype.ClientConnectionType, host string) {
+	if reason := a.playRefusal(filePath); reason != "" {
+		a.Infof("HARDCORE refused: %s", reason)
+
+		if os.Getenv("OD2_AUTOEXIT") != "" {
+			os.Exit(0)
+		}
+
+		a.ToMainMenu(reason)
+
+		return
+	}
+
 	gameClient, err := d2client.Create(connType, a.asset, *a.Options.LogLevel, a.scriptEngine)
 	if err != nil {
 		a.Error(err.Error())
@@ -722,6 +737,8 @@ func (a *App) ToCreateGame(filePath string, connType d2clientconnectiontype.Clie
 // difficulty is picked like on the difficulty screen (only unlocked ones;
 // OD2_AUTODIFFICULTY_FORCE=1 skips the unlock rule) and saved with the hero.
 func (a *App) startAutoGame(save string, connType d2clientconnectiontype.ClientConnectionType, joinAddr string) {
+	a.markAutoDead(save)
+
 	level, ok := d2gamescreen.AutoDifficulty()
 	if !ok {
 		a.ToCreateGame(save, connType, joinAddr)
@@ -820,7 +837,9 @@ func (a *App) importD2SSave(path string) (string, error) {
 		return "", err
 	}
 
-	if err = factory.Save(state); err != nil {
+	state.Imported.Source = path
+
+	if err = factory.SaveImported(state); err != nil {
 		return "", err
 	}
 
@@ -830,6 +849,7 @@ func (a *App) importD2SSave(path string) (string, error) {
 
 	// the hero's map seed drives OD2_REALMAPS and the OD2_AUTOMAP log
 	d2mapgen.HeroMapSeed = state.MapSeed
+	d2mapgen.HeroDifficulty = d2drlg.Difficulty(state.Difficulty)
 
 	if lvl := d2mapgen.AutomapLevel(); lvl != 0 {
 		d2mapgen.LogDRLGSummary(a.asset, state.MapSeed, lvl, d2drlg.Difficulty(state.Difficulty), a.Infof)

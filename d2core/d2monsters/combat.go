@@ -2,6 +2,7 @@ package d2monsters
 
 import (
 	"fmt"
+	"hash/fnv"
 	"regexp"
 	"strings"
 
@@ -339,6 +340,88 @@ func (d *Director) HeroStrike(p *d2mapentity.Player, m *d2mapentity.Monster) boo
 	return true
 }
 
+// PvPStrike is the result of a hero's melee swing at another hero.
+type PvPStrike struct {
+	Hit    bool
+	Chance int
+	Roll   int
+	Crit   bool
+	Raw    int // weapon damage before the player-versus-player scale
+	Scaled int // after it (d2combat.PvPDamage); the defender subtracts its own resistances
+}
+
+// HeroStrikePlayer resolves a hero's melee swing at a hostile hero with the
+// same pipeline as HeroStrike (attack rating, to-hit roll, weapon damage,
+// deadly/critical strike), then applies the player-versus-player damage scale
+// (17 percent, d2combat.PvPDamage). The defender's client applies the result
+// (block, resistances, life); this resolves only the attacker's part.
+func (d *Director) HeroStrikePlayer(att, def *d2mapentity.Player) PvPStrike {
+	d.Counters.HeroSwings++
+
+	st := d.asset.Records.Character.Stats[att.Class]
+	ar := d2combat.PlayerAttackRating(0, att.Stats.Dexterity, st.ToHitFactor)
+
+	if t := att.Stats.Totals; t != nil {
+		ar = t.AttackRating
+	}
+
+	defense := d2combat.Defense(0, def.Stats.Dexterity, 0)
+	if t := def.Stats.Totals; t != nil {
+		defense = t.Defense
+	}
+
+	var out PvPStrike
+
+	r := d.pvpRoller(att)
+
+	out.Hit, out.Chance, out.Roll = d2combat.RollToHit(r, d2combat.ToHitInput{
+		AttackRating: ar, Defense: defense, AttackerLevel: att.Stats.Level, DefenderLevel: def.Stats.Level,
+	})
+
+	if !out.Hit {
+		return out
+	}
+
+	min, max := d.heroDamage(att)
+	out.Raw = min + int(r.Roll(int32(max-min+1)))
+
+	if t := att.Stats.Totals; t != nil {
+		if out.Crit = d2combat.RollStrike(r, d2combat.StrikeInput{
+			SkipWeapon: true, CriticalChance: t.CriticalStrike, DeadlyChance: t.DeadlyStrike,
+		}); out.Crit {
+			out.Raw *= 2
+		}
+	}
+
+	out.Scaled = d2combat.PvPDamage(out.Raw)
+	d.Counters.HeroHits++
+
+	if d.opt.OnHeroStrike != nil {
+		d.opt.OnHeroStrike(att)
+	}
+
+	return out
+}
+
+// pvpRoller is the random sequence of a hero's swings at other heroes. It is
+// seeded with the game seed and the hero's id: two processes of one game share
+// the game seed, and heroRoller alone would give both heroes the same rolls.
+func (d *Director) pvpRoller(att *d2mapentity.Player) *d2rand.Seed {
+	if d.pvp == nil {
+		d.pvp = map[string]*d2rand.Seed{}
+	}
+
+	r := d.pvp[att.ID()]
+	if r == nil {
+		h := fnv.New32a()
+		_, _ = h.Write([]byte(att.ID()))
+		r = d2rand.New(d.opt.Seed ^ 0x70767000 ^ h.Sum32())
+		d.pvp[att.ID()] = r
+	}
+
+	return r
+}
+
 func (d *Director) heroRoller() *d2rand.Seed {
 	if d.hero == nil {
 		d.hero = d2rand.New(d.opt.Seed ^ 0x6865726f)
@@ -447,7 +530,11 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 			xp += xp * d.ExpBonusPct() / 100
 		}
 
-		src.Stats.Experience += xp
+		// in a network party the server splits the experience among the members
+		// that share the level (d2party.ShareXP); the awards come back as packets
+		if d.PartyXP == nil || !d.PartyXP(src, xp, u.m.Label()) {
+			src.Stats.Experience += xp
+		}
 	}
 
 	if k := d.killer; k != nil {
@@ -481,23 +568,42 @@ func (d *Director) dropLoot(u *unit) {
 		upgrade = level
 	}
 
-	items, err := d.engine.DropItems(tc, diablo2item.DropOptions{
+	loot, err := d.engine.DropLoot(tc, diablo2item.DropOptions{
 		Seed: u.b.Seed.Step(), ILvl: level, UpgradeLevel: upgrade, Players: 1,
-	})
+	}, 0)
 	if err != nil {
 		d.emit("drop", "MONSTER drop name=%s tc=%q error=%v", u.m.Label(), tc, err)
 
 		return
 	}
 
-	names := make([]string, 0, len(items))
+	names := make([]string, 0, len(loot.Entries))
 	sx, sy := u.m.SubtilePos()
 
-	for i, it := range items {
+	for i, e := range loot.Entries {
+		x, y := sx+(i%3)-1, sy+(i/3)-1
+
+		if e.Item == nil { // a gold pile, not an item named "gld"
+			names = append(names, fmt.Sprintf("gold %d", e.Gold))
+
+			ent, err := d.engine.NewGoldPile(e.Gold, d.asset.TranslateString("gld"), x, y)
+			if err != nil {
+				d.Debugf("no ground graphic for a gold pile: %v", err)
+
+				continue
+			}
+
+			d.Counters.Drops++
+			d.engine.AddEntity(ent)
+
+			continue
+		}
+
+		it := e.Item
 		names = append(names, fmt.Sprintf("%s(%s)", it.CommonCode, colorToken.ReplaceAllString(it.Label(), "")))
 		d.Counters.Drops++
 
-		ent, err := d.engine.NewDroppedItem(sx+(i%3)-1, sy+(i/3)-1, it)
+		ent, err := d.engine.NewDroppedItem(x, y, it)
 		if err != nil {
 			d.Debugf("no ground graphic for %s: %v", it.CommonCode, err)
 
@@ -507,6 +613,6 @@ func (d *Director) dropLoot(u *unit) {
 		d.engine.AddEntity(ent)
 	}
 
-	d.emit("drop", "MONSTER drop name=%s tc=%q ilvl=%d items=%d [%s]", u.m.Label(), tc, level, len(items),
+	d.emit("drop", "MONSTER drop name=%s tc=%q ilvl=%d items=%d [%s]", u.m.Label(), tc, level, len(loot.Entries),
 		strings.Join(names, ", "))
 }

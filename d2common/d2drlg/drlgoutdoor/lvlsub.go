@@ -75,13 +75,13 @@ func (l *Level) matchGroup(row d2drlg.SubRec, d *Pattern, g Group, base int) boo
 			continue
 		}
 
-		if l.checkGroup(row, d, g, base, p.x, p.y) {
+		if l.subCheck(row, d, g, base, p.x, p.y) {
 			r := 0
 			if g.NVar >= 1 {
 				r = int(l.Seed.Roll(int32(g.NVar)))
 			}
 
-			l.stampGroup(row, d, g, base, p.x, p.y, (g.W+1)*(r+1))
+			l.subStamp(row, d, g, base, p.x, p.y, (g.W+1)*(r+1))
 
 			if row.BordType == 0 || row.BordType == 1 {
 				return true
@@ -149,4 +149,21 @@ func (l *Level) stampGroup(row d2drlg.SubRec, d *Pattern, g Group, base, x, y, v
 			}
 		}
 	}
+}
+
+func (l *Level) subCheck(row d2drlg.SubRec, d *Pattern, g Group, base, x, y int) bool {
+	if l.sub != nil {
+		return l.sub.check(row, d, g, x, y)
+	}
+
+	return l.checkGroup(row, d, g, base, x, y)
+}
+
+func (l *Level) subStamp(row d2drlg.SubRec, d *Pattern, g Group, base, x, y, val int) {
+	if l.sub != nil {
+		l.sub.stamp(row, d, g, x, y, val)
+		return
+	}
+
+	l.stampGroup(row, d, g, base, x, y, val)
 }

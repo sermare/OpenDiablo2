@@ -249,6 +249,7 @@ func NewGameControls(
 	}
 
 	gc.Trade = trade
+	gc.PTrade = newPlayerTradeWindow(asset, ui, l, gc)
 	gc.Identify = NewIdentifyWindow(asset, ui, l, inventory, hero, gc.saveHero, gc.onCloseTrade)
 
 	inventory.savedItems = hero.Containers != nil
@@ -324,6 +325,8 @@ type GameControls struct {
 	Waypoints              *WaypointPanel
 	Trade                  *TradeWindow
 	Identify               *IdentifyWindow
+	PTrade                 *PlayerTradeWindow // trade with another player
+	relation               func(p *d2mapentity.Player) d2enum.PlayersRelationships
 	stash                  *ContainerPanel
 	cube                   *ContainerPanel
 	belt                   *BeltPanel
@@ -419,6 +422,11 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 
 	if event.Key() == d2enum.KeyEscape && g.NPCMenu.IsOpen() {
 		g.NPCMenu.Choose(len(g.NPCMenu.Rows()) - 1)
+		return true
+	}
+
+	if event.Key() == d2enum.KeyEscape && g.PTrade.IsOpen() {
+		g.PTrade.Cancel()
 		return true
 	}
 
@@ -611,6 +619,7 @@ func (g *GameControls) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 	g.NPCMenu.OnMouseMove(event)
 	g.Waypoints.OnMouseMove(event)
 	g.Trade.OnMouseMove(event)
+	g.PTrade.OnMouseMove(event)
 	g.Identify.OnMouseMove(event)
 	g.stash.OnMouseMove(mx, my)
 	g.cube.OnMouseMove(mx, my)
@@ -694,6 +703,10 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	}
 
 	if g.NPCMenu.OnMouseButtonDown(event) {
+		return true
+	}
+
+	if g.PTrade.OnMouseButtonDown(event) {
 		return true
 	}
 
@@ -895,6 +908,12 @@ func (g *GameControls) AutoPanel(name string) error {
 		return nil
 	case "inventory":
 		panel = g.inventory
+	case "party":
+		if g.PartyPanel == nil {
+			return fmt.Errorf("no party panel in a single player game")
+		}
+
+		panel = g.PartyPanel
 	case "stash":
 		g.OpenStash()
 
@@ -917,14 +936,12 @@ func (g *GameControls) AutoPanel(name string) error {
 		return fmt.Errorf("unknown panel %q", name)
 	}
 
-	if panel.IsOpen() {
-		return nil
-	}
-
-	if name == "inventory" || name == "skills" {
-		g.openRightPanel(panel)
-	} else {
-		g.openLeftPanel(panel)
+	if !panel.IsOpen() {
+		if name == "inventory" || name == "skills" {
+			g.openRightPanel(panel)
+		} else {
+			g.openLeftPanel(panel)
+		}
 	}
 
 	if !panel.IsOpen() {
@@ -937,8 +954,35 @@ func (g *GameControls) AutoPanel(name string) error {
 		g.Infof("PANEL character: %s", d2hero.StatsSummary(g.hero.Stats))
 	}
 
+	g.logPanel(name)
+
 	return nil
 }
+
+// logPanel writes the values an open panel shows as a "PANEL <name>: ..." log
+// line, so OD2_AUTOSCRIPT runs can be checked without a screenshot.
+func (g *GameControls) logPanel(name string) {
+	switch name {
+	case "character":
+		g.Infof("PANEL character: %s", g.heroStatsPanel.Summary())
+	case "skills":
+		g.Infof("PANEL skills: %s", g.skilltree.Summary())
+		g.Infof("PANEL skills active: left=%s right=%s", skillLabel(g.hero.LeftSkill), skillLabel(g.hero.RightSkill))
+	case "inventory":
+		g.Infof("PANEL inventory: gold=%d items=%d worn=[%s] equipment=[%s]", g.inventory.Gold(),
+			len(g.inventory.grid.items), g.inventory.EquippedSummary(), g.equipmentSummary())
+	}
+}
+
+func skillLabel(s *d2hero.HeroSkill) string {
+	if s == nil || s.SkillRecord == nil {
+		return "none"
+	}
+
+	return fmt.Sprintf("%s(id=%d,lvl=%d)", s.Skill, s.ID, s.SkillPoints)
+}
+
+func (g *GameControls) equipmentSummary() string { return g.hero.Equipment.Describe() }
 
 func (g *GameControls) toggleInventoryPanel() {
 	g.openRightPanel(g.inventory)
@@ -1108,6 +1152,7 @@ func (g *GameControls) Render(target d2interface.Surface) error {
 	}
 
 	g.Trade.Render(target)
+	g.PTrade.Render(target)
 	g.Identify.Render(target)
 	g.stash.Render(target)
 	g.cube.Render(target)
@@ -1476,4 +1521,15 @@ func (g *GameControls) saveHero() {
 	if err := g.inputListener.OnPlayerSave(); err != nil {
 		g.Errorf("saving the hero: %v", err)
 	}
+}
+
+// SetRelationSource tells the automap and the party panel how the hero sees
+// the other players (the roster of the game client).
+func (g *GameControls) SetRelationSource(rel func(p *d2mapentity.Player) d2enum.PlayersRelationships) {
+	g.relation = rel
+}
+
+// isPartyMember reports whether another player is in the hero's party.
+func (g *GameControls) isPartyMember(p *d2mapentity.Player) bool {
+	return g.relation != nil && g.relation(p) == d2enum.PlayerRelationFriend
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
@@ -25,7 +26,8 @@ import (
 
 const (
 	fadeSeconds       = 0.4  // each way
-	objectUseTimeout  = 12.0 // seconds before a walk to an object is abandoned
+	objectUseTimeout  = 12.0 // seconds without progress before a walk to an object is abandoned
+	walkProgressStep  = 0.5  // tiles the hero must get closer to count as progress
 	doorRange         = 2.5  // tiles; the hero stops next to a closed door
 	portalRange       = 2.0  // tiles
 	warpClickRadius   = 1.5  // a click this close to a warp tile targets it
@@ -46,11 +48,16 @@ type levelTransition struct {
 	target int
 	start  d2level.StartType
 	via    string
+	// actFinished: the server marks the act left as finished (forward NPC trips)
+	actFinished bool
+	// edge crossings: the world position at which the hero left the old level
+	edgeWX, edgeWY float64
 }
 
 type pendingUse struct {
 	ob      *d2mapentity.Object
-	elapsed float64
+	elapsed float64 // seconds since the hero last got closer to the object
+	best    float64 // the smallest distance so far (0: not measured yet)
 }
 
 // levelState is the level-change state of the game screen.
@@ -63,16 +70,25 @@ type levelState struct {
 	wpLevel    int
 	warps      []d2mapengine.WarpTile
 	warpTarget *d2mapengine.WarpTile
-	warpWait   float64 // seconds spent walking to warpTarget
+	warpWait   float64 // seconds since the hero last got closer to warpTarget
+	warpBest   float64 // smallest distance to warpTarget so far
+	warpBestOf *d2mapengine.WarpTile
 	warpSeen   map[[2]int]bool
 	changes    int
+	// edgeArmed is true once the hero stood away from every level border since
+	// the last level change; crossing a border needs it, so a hero who arrives
+	// near the border does not bounce between two levels
+	edgeArmed bool
+	exitWalk  *exitWalk
+	kill      *killState // the scripted fight of a kill: step
+	loot      *lootState // the scripted pickup of a loot: step
 	// portalStateUntil is when the 75-frame state 0x66 after a portal jump ends.
 	portalStateUntil float64
 }
 
 // Busy reports that the hero is walking to an object or a level change runs.
 func (v *Game) levelBusy() bool {
-	return v.levels.trans != nil || v.levels.use != nil || v.levels.warpTarget != nil
+	return v.levels.trans != nil || v.levels.use != nil || v.levels.warpTarget != nil || v.levels.exitWalk != nil
 }
 
 // currentLevel returns the level the hero is in.
@@ -120,6 +136,8 @@ func (v *Game) advanceLevels(elapsed float64) {
 	v.closeWaypointPanelWhenFar()
 	v.advanceObjectUse(elapsed)
 	v.advanceWarpUse(elapsed)
+	v.advanceEdges()
+	v.advanceExitWalk(elapsed)
 	v.advanceFade(elapsed)
 }
 
@@ -216,11 +234,17 @@ func (v *Game) performLevelChange(t *levelTransition) {
 	}
 
 	var prefer d2client.ArrivalFunc
-	if t.via == "waypoint" {
+
+	switch t.via {
+	case "waypoint":
 		prefer = nextToWaypoint // waypoint travel lands you at the destination's waypoint
+	case "edge":
+		prefer = edgeArrival(from, t.target, t.edgeWX, t.edgeWY)
+	case "warp":
+		prefer = nextToWarpBackTo(from, t.target) // the stairs or cave entrance you came through
 	}
 
-	arrival, err := v.gameClient.ChangeLevel(t.target, prefer)
+	arrival, err := v.gameClient.ChangeLevelAct(t.target, prefer, t.actFinished)
 	if err != nil {
 		v.Errorf("LEVEL change to %d failed: %v; going back to level %d", t.target, err, from)
 
@@ -233,21 +257,57 @@ func (v *Game) performLevelChange(t *levelTransition) {
 		return
 	}
 
-	v.resetLevelState()
-
-	v.levels.cooldown.Mark(v.levels.clock)
-	v.levels.changes++
-	v.scanWarps()
+	v.afterLevelBuilt(from, t.target, t.via)
 
 	px, py := v.heroTilePos()
 	v.Infof("LEVEL CHANGE from=%d to=%d (%s) act=%d via=%s start=%#x townTransition=%v actChange=%v arrival=(%.1f,%.1f) hero=(%.1f,%.1f)",
 		from, t.target, v.levelName(t.target), plan.ToAct, t.via, int(plan.StartType), plan.TownTransition,
 		plan.ActChange, arrival.X, arrival.Y, px, py)
 
+	if plan.ActChange {
+		v.Infof("ACT CHANGE %d -> %d LoadAct packet % x", plan.FromAct, plan.ToAct, plan.LoadAct.Encode())
+		v.logActArrival(t.target)
+	}
+
 	if t.via == "portal" {
 		v.levels.portalStateUntil = v.levels.clock + portalStateSecond
 		v.Infof("LEVEL portal state %#x for %d frames (%.1f s)", d2level.PortalStateID, d2level.PortalStateFrames, portalStateSecond)
 	}
+}
+
+// snapCamera puts the camera on the hero at once; the normal follow eases the
+// camera towards him, which after a level change would show the new level
+// from where the old hero stood.
+func (v *Game) snapCamera() {
+	if v.localPlayer == nil {
+		return
+	}
+
+	w := v.localPlayer.Position.World()
+	rx, ry := v.mapRenderer.WorldToOrtho(w.X(), w.Y())
+	pos := d2vector.NewPosition(rx, ry)
+
+	v.mapRenderer.MoveCameraTo(&pos)
+	v.mapRenderer.SetCameraTarget(&pos)
+}
+
+// afterLevelBuilt is the bookkeeping after the map of a new level was built
+// and the hero put into it: the old level's pending things go, the warp tiles
+// of the new map are listed, the quest system learns the new area and the
+// corpse of a hero who died here comes back.
+func (v *Game) afterLevelBuilt(from, to int, via string) {
+	v.resetLevelState()
+	v.gameControls.Speech.Clear() // the NPC who was speaking stayed behind
+	v.snapCamera()
+
+	v.levels.cooldown.Mark(v.levels.clock)
+	v.levels.changes++
+	v.levels.edgeArmed = false
+	v.scanWarps()
+	v.questArea(to) // the quest system follows the hero between areas
+	v.restoreCorpse()
+
+	v.Infof("LEVEL built: level %d (%s) via=%s from=%d", to, v.levelName(to), via, from)
 }
 
 // nextToWaypoint picks the waypoint object of a freshly built level as the
@@ -267,7 +327,7 @@ func nextToWaypoint(m *d2mapengine.MapEngine) (x, y float64, ok bool) {
 func (v *Game) resetLevelState() {
 	v.monsters, v.attackTarget, v.npcTarget = nil, nil, nil
 	v.ground.item, v.ground.chest = nil, nil
-	v.levels.use, v.levels.warpTarget, v.levels.wpObj = nil, nil, nil
+	v.levels.use, v.levels.warpTarget, v.levels.wpObj, v.levels.exitWalk = nil, nil, nil, nil
 	v.lastRegionType = d2enum.RegionNone
 
 	v.gameControls.NPCMenu.Close()
@@ -280,6 +340,9 @@ func (v *Game) scanWarps() {
 	v.levels.warpSeen = map[[2]int]bool{}
 
 	v.Infof("LEVEL %d: %d warp tile(s)", v.currentLevel(), len(v.levels.warps))
+	for _, w := range v.levels.warps {
+		v.Infof("LEVEL warp tile at (%d,%d) style=%d", w.TileX, w.TileY, w.Style)
+	}
 }
 
 // targetWarpAt selects the warp tile near a clicked point, if any.
@@ -303,22 +366,30 @@ func (v *Game) advanceWarpUse(elapsed float64) {
 		return
 	}
 
+	px, py := v.heroTilePos()
+	dist := math.Hypot(float64(w.TileX)+0.5-px, float64(w.TileY)+0.5-py)
+
+	// the walk is only abandoned when the hero stops getting closer: a far
+	// stair takes longer than objectUseTimeout to reach
+	if v.levels.warpBestOf != w || dist < v.levels.warpBest-walkProgressStep {
+		v.levels.warpBestOf, v.levels.warpBest, v.levels.warpWait = w, dist, 0
+	}
+
 	if v.levels.warpWait += elapsed; v.levels.warpWait > objectUseTimeout {
-		v.Warningf("LEVEL gave up walking to the warp tile at (%d,%d)", w.TileX, w.TileY)
+		v.Warningf("LEVEL gave up walking to the warp tile at (%d,%d): the hero is %.1f tiles away", w.TileX, w.TileY, dist)
 		v.levels.warpTarget = nil
 
 		return
 	}
 
-	px, py := v.heroTilePos()
-	if math.Hypot(float64(w.TileX)+0.5-px, float64(w.TileY)+0.5-py) >= d2level.WarpRange {
+	if dist >= d2level.WarpRange {
 		return
 	}
 
 	v.levels.warpTarget = nil
 	cur := v.currentLevel()
 
-	dest, ok := d2level.Destination(cur, w.Style)
+	dest, ok := warpDest(cur, w)
 	if !ok {
 		key := [2]int{w.TileX, w.TileY}
 		if !v.levels.warpSeen[key] {
@@ -366,6 +437,10 @@ func (v *Game) advanceObjectUse(elapsed float64) {
 	u := v.levels.use
 	if u == nil {
 		return
+	}
+
+	if d := v.distanceToObject(u.ob); u.best == 0 || d < u.best-walkProgressStep {
+		u.best, u.elapsed = d, 0 // still getting closer
 	}
 
 	u.elapsed += elapsed
@@ -545,6 +620,11 @@ func (v *Game) operatePortal(ob *d2mapentity.Object) {
 		return
 	}
 
+	if a := d2level.ActOfLevel(ob.PortalDest); a != v.currentAct() && ob.PortalDest == d2level.ActStartLevel(a) {
+		_ = v.travelToAct(a, "portal") // an act change: Mephisto's portal to the Pandemonium Fortress
+		return
+	}
+
 	v.Infof("PORTAL used dest=%d (%s)", ob.PortalDest, v.levelName(ob.PortalDest))
 	v.startLevelChange(ob.PortalDest, d2level.StartPortal, "portal")
 }
@@ -674,4 +754,4 @@ func (h autoScriptHost) Level() (level int, x, y float64) {
 	return h.v.currentLevel(), x, y
 }
 
-func (h autoScriptHost) Busy() bool { return h.v.levelBusy() }
+func (h autoScriptHost) Busy() bool { return h.v.levelBusy() || h.v.playBusy() }

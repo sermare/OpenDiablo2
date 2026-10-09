@@ -19,7 +19,13 @@ type Pattern struct {
 	Floor  [][]uint32
 	Shadow []uint32
 	Groups []Group
+	// Act is the act byte of the file (version >= 8), Objects its object list.
+	Act     int
+	Objects []Object
 }
+
+// Object is one DS1 object record: Type 1 monster, 2 object.
+type Object struct{ Type, ID, X, Y, Flags int }
 
 // ParsePattern decodes a DS1 file. The buffer is read with 64 zero bytes of
 // padding behind it because the game does the same over-read for the version
@@ -50,7 +56,7 @@ func ParsePattern(data []byte) (*Pattern, error) {
 	p.H = i32() + 1
 
 	if ver >= 8 {
-		i32() // act
+		p.Act = i32()
 	}
 
 	subst := 0
@@ -115,7 +121,14 @@ func ParsePattern(data []byte) (*Pattern, error) {
 	}
 
 	if ver >= 2 {
-		o += 20 * i32() // objects
+		no := i32()
+		if no < 0 || no > 65536 {
+			return nil, fmt.Errorf("drlgoutdoor: ds1 object count %d", no)
+		}
+
+		for k := 0; k < no; k++ {
+			p.Objects = append(p.Objects, Object{Type: i32(), ID: i32(), X: i32(), Y: i32(), Flags: i32()})
+		}
 	}
 
 	if ver >= 12 && (subst == 1 || subst == 2) {

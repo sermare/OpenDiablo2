@@ -37,9 +37,60 @@ var Act1 = []Vendor{
 	{Name: "Gheed", NPC: "gheed", ClassID: 147, Gambles: true},
 }
 
+// Act2 .. Act5 list the vendors of the other towns. Stock generation is the
+// same code as Act 1 (TRADE_GenerateVendorStock is one function for every
+// vendor, keyed by the NPC's columns in armor/weapons/misc.txt and its row in
+// npc.txt), so only the identity of each vendor is data here. Repairers and
+// gamblers follow the price-code classes of ui-npc.md (VERIFIED in the notes).
+//
+// Vendors the engine does NOT model (documented, not guessed):
+//   - Nihlathak (514): npc.txt has a row but the item tables have no
+//     Nihlathak columns, so there is no stock to generate (the notes also
+//     flag his menu row as an oddity).
+//   - Greiz (198), Qual-Kehk (515), Jerhyn, Atma, Meshif, Cain, Tyrael:
+//     hire/talk/travel/identify only, no trade window.
+//
+//nolint:gochecknoglobals // static lookup data
+var (
+	Act2 = []Vendor{
+		{Name: "Fara", NPC: "fara", ClassID: 178, Repairs: true},
+		{Name: "Drognan", NPC: "drognan", ClassID: 177},
+		{Name: "Elzix", NPC: "elzix", ClassID: 199, Gambles: true},
+		{Name: "Lysander", NPC: "lysander", ClassID: 202},
+	}
+	Act3 = []Vendor{
+		// the item tables spell Hratli's columns "Hralti"; npc.txt spells it "hratli"
+		{Name: "Hralti", NPC: "hratli", ClassID: 253, Repairs: true},
+		{Name: "Alkor", NPC: "alkor", ClassID: 254, Gambles: true},
+		{Name: "Ormus", NPC: "ormus", ClassID: 255},
+		{Name: "Asheara", NPC: "asheara", ClassID: 252},
+	}
+	Act4 = []Vendor{
+		{Name: "Halbu", NPC: "halbu", ClassID: 257, Repairs: true},
+		{Name: "Jamella", NPC: "jamella", ClassID: 405, Gambles: true},
+	}
+	Act5 = []Vendor{
+		{Name: "Larzuk", NPC: "larzuk", ClassID: 511, Repairs: true},
+		{Name: "Malah", NPC: "malah", ClassID: 513},
+		// Anya was renamed Drehya: columns and npc.txt row use the new name
+		{Name: "Drehya", NPC: "drehya", ClassID: 512, Gambles: true},
+	}
+)
+
+// All returns every modelled vendor of every act.
+func All() []Vendor {
+	var out []Vendor
+
+	for _, l := range [][]Vendor{Act1, Act2, Act3, Act4, Act5} {
+		out = append(out, l...)
+	}
+
+	return out
+}
+
 // ByClassID finds a vendor by monstats class id.
 func ByClassID(id int) (Vendor, bool) {
-	for _, v := range Act1 {
+	for _, v := range All() {
 		if v.ClassID == id {
 			return v, true
 		}
@@ -48,10 +99,10 @@ func ByClassID(id int) (Vendor, bool) {
 	return Vendor{}, false
 }
 
-// ByName finds a vendor by display name (case insensitive).
+// ByName finds a vendor by display name or npc.txt id (case insensitive).
 func ByName(name string) (Vendor, bool) {
-	for _, v := range Act1 {
-		if strings.EqualFold(v.Name, name) {
+	for _, v := range All() {
+		if strings.EqualFold(v.Name, name) || strings.EqualFold(v.NPC, name) {
 			return v, true
 		}
 	}

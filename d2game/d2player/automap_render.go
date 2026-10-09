@@ -166,6 +166,17 @@ func drawAutomapCross(dest d2interface.Surface, x, y int, c color.Color) {
 	}
 }
 
+// playerColor is the marker colour of another player: green for a member of
+// the hero's party, red for everybody else (the colours of the original's
+// party dots, see the constants).
+func (a *Automap) playerColor(p *d2mapentity.Player) color.Color {
+	if a.gc.isPartyMember(p) {
+		return automapColorParty
+	}
+
+	return automapColorOther
+}
+
 func (a *Automap) drawMarkers(dest d2interface.Surface, lay d2automap.Layout, ox, oy int, hcx, hcy float64) {
 	mark := func(tx, ty float64, c color.Color) {
 		cx, cy := d2automap.WorldCell(tx, ty)
@@ -196,7 +207,7 @@ func (a *Automap) drawMarkers(dest d2interface.Surface, lay d2automap.Layout, ox
 		switch v := e.(type) {
 		case *d2mapentity.Player:
 			if v != a.hero {
-				mark(ex, ey, automapColorOther)
+				mark(ex, ey, a.playerColor(v))
 			}
 		case *d2mapentity.NPC:
 			mark(ex, ey, automapColorNPC)
