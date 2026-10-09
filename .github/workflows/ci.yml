@@ -7,6 +7,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same ref supersedes a running or queued run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   # Packages that need neither a display, cgo (ebiten/glfw/oto) nor game data.
   # Linux only builds and tests these; macOS builds and tests everything.
@@ -41,12 +46,46 @@ env:
     ./d2script
     ./d2thread
     ./d2game/d2autoscript
-  # New packages are gofmt-checked; the repo has older unformatted files that
-  # are deliberately left alone. Add new pure packages here.
-  GOFMT_DIRS: >-
-    d2game/d2autoscript
 
 jobs:
+  hygiene:
+    name: Repo hygiene (no game files, no decompiled code)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: check_repo_hygiene.sh
+        run: scripts/check_repo_hygiene.sh
+
+  gofmt:
+    name: gofmt (changed files only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      # Older files in the repo are not gofmt-clean and are deliberately left alone:
+      # only .go files added or modified since the base are checked.
+      - name: gofmt -l on changed .go files
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          base="${PR_BASE:-$PUSH_BEFORE}"
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            base="$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)"
+          fi
+          echo "base: $base"
+          files="$(git diff --name-only --diff-filter=AM "$base" HEAD -- '*.go')"
+          if [ -z "$files" ]; then echo "no changed .go files"; exit 0; fi
+          echo "$files"
+          out="$(echo "$files" | xargs gofmt -l)"
+          if [ -n "$out" ]; then echo "gofmt needed:"; echo "$out"; exit 1; fi
+
   linux-pure:
     name: Linux (pure packages)
     runs-on: ubuntu-latest
@@ -56,10 +95,6 @@ jobs:
         with:
           go-version: stable
           cache: true
-      - name: gofmt (new packages)
-        run: |
-          out="$(gofmt -l $GOFMT_DIRS)"
-          if [ -n "$out" ]; then echo "gofmt needed:"; echo "$out"; exit 1; fi
       - name: build
         run: go build $PURE_PKGS
       - name: vet
@@ -68,24 +103,33 @@ jobs:
         run: go test $PURE_PKGS
 
   macos:
-    name: macOS arm64 (full build)
+    name: macOS arm64 (vet + test)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: stable
-          cache: true
-      - name: gofmt (new packages)
-        run: |
-          out="$(gofmt -l $GOFMT_DIRS)"
-          if [ -n "$out" ]; then echo "gofmt needed:"; echo "$out"; exit 1; fi
+          cache: true # caches the module cache and the Go build cache
       - name: build
         run: go build ./...
-      # go vet on the whole tree reports older findings (e.g. in d2app), so
-      # vet only the pure packages here.
-      - name: vet (pure packages)
-        run: go vet $PURE_PKGS
-      # Tests that need game data skip themselves when D2_TABLES etc. are unset.
+      - name: vet
+        run: go vet ./...
+      # Tests that need D2_TABLES / D2_DS1_ROOT / D2S_SAMPLE_BODY skip themselves
+      # when those are unset (no game data on CI); the skips are listed below.
       - name: test
-        run: go test ./...
+        run: |
+          unset D2_TABLES D2_DS1_ROOT D2S_SAMPLE_BODY D2S_SAMPLE_BODY_JSON
+          set -o pipefail
+          go test -v ./... 2>&1 | tee test.log | grep -E '^(ok|FAIL|---\s*FAIL|panic)' || true
+          if grep -qE '^(FAIL|--- FAIL|panic)' test.log; then echo "tests failed"; grep -E '^(FAIL|--- FAIL|panic)' test.log; exit 1; fi
+      - name: skipped tests (need game data)
+        if: always()
+        run: |
+          {
+            echo "### Skipped tests (game data not available on CI)"
+            echo
+            echo '```'
+            grep -E -- '--- SKIP' test.log || echo "(none)"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"

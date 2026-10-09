@@ -1,6 +1,8 @@
 <p align="center"><img src="docs/progress.svg" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
 <p align="center"><img src="https://raw.githubusercontent.com/sermare/OpenDiablo2/progress-history/docs/progress-history.svg" alt="Progress over time: one line per part, snapshot every 10 minutes" width="880"></p>
 
+[![CI](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml/badge.svg)](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml)
+
 # OpenDiablo2 — native macOS fork, driven by Claude
 
 > **Who is working here.** This fork is being developed **autonomously by Claude** (Anthropic's AI coding agent),

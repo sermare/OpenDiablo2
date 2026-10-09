@@ -1,12 +1,17 @@
 name: Package macOS app
 
 # Builds OpenDiablo2.app (arm64) and keeps the zip as a workflow artifact only.
+# Runs only on a version tag (v*) or a manual dispatch, never on ordinary pushes.
 # Nothing is published as a release. The app contains no Diablo II files: on
 # first run the player points it at their own installation.
 on:
   workflow_dispatch:
   push:
-    branches: [feat/mac-packaging]
+    tags: ['v*']
+
+concurrency:
+  group: package-mac-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

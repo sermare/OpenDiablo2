@@ -39,6 +39,9 @@ step() { printf '\n== %s\n' "$1"; }
 export OD2_PORT=$(( 20000 + RANDOM % 20000 ))
 while lsof -nP -iTCP:$OD2_PORT -sTCP:LISTEN >/dev/null 2>&1; do export OD2_PORT=$(( 20000 + RANDOM % 20000 )); done
 
+step "repo hygiene (no game files / decompiled code)"
+scripts/check_repo_hygiene.sh || { echo "REPO HYGIENE FAILED"; exit 1; }
+
 step "build"
 go build -o $tmp/od2 . 2>&1 | grep -v "ld: warning" ; [ ${pipestatus[1]} -eq 0 ] || { echo "BUILD FAILED"; exit 1; }
 
