@@ -240,9 +240,9 @@ func (t *TradeWindow) open(v d2vendor.Vendor, seed uint32, quests *d2s.QuestReco
 	default:
 		bases := d2vendor.BasesFor(t.asset.Records, v)
 		// Tier is the vendor's act (VERIFIED item level cap index, normal
-		// difficulty only; this window does not know the difficulty yet).
+		// difficulty only; Options ignores it when Difficulty != 0).
 		stock = d2vendor.GenerateSeeded(seed, bases, d2vendor.Options{
-			PlayerLevel: t.playerLevel(), Tier: d2vendor.ActIndex(v), Resolve: d2vendor.Resolver(t.asset.Records),
+			PlayerLevel: t.playerLevel(), Tier: d2vendor.ActIndex(v), Difficulty: t.difficulty, Resolve: d2vendor.Resolver(t.asset.Records),
 		})
 		t.realise(stock, seed)
 	}
