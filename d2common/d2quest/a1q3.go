@@ -16,6 +16,7 @@ const (
 // (the Malus chest, cairn stones, Cain's gibbet, the Inifuss tree, the tower tome).
 func IsQuestObject(id int) bool {
 	return id == ObjectHoradricMalus || id == ObjectCainGibbet || id == ObjectInifussTree || id == ObjectTowerTome ||
+		id == ObjTaintedSunAltar || id == ObjStaffOrifice || id == ObjHorazonJournal ||
 		(id >= ObjectCairnStone1 && id <= ObjectCairnStone5)
 }
 

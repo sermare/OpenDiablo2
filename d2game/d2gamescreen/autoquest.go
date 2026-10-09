@@ -97,12 +97,23 @@ var autoQuestNames = map[string]string{
 	"6": "andariel", "andariel": "andariel", "slaughter": "andariel", "sisterstotheslaughter": "andariel",
 	"8": "radament", "radament": "radament",
 	"act1": "act1", "all": "act1",
+	"9": "staff", "staff": "staff", "horadricstaff": "staff",
+	"10": "sun", "sun": "sun", "taintedsun": "sun",
+	"11": "arcane", "arcane": "arcane", "arcanesanctuary": "arcane",
+	"12": "summoner", "summoner": "summoner",
+	"13": "tombs", "tombs": "tombs", "seventombs": "tombs", "duriel": "tombs",
+	"act2": "act2",
 }
 
 // act1Order is the order the Act 1 quests chain in.
 //
 //nolint:gochecknoglobals // static lookup data
 var act1Order = []string{"den", "burial", "cain", "tools", "tower", "andariel"}
+
+// act2Order is the order the later quests of Act 2 are played in (Radament is "radament").
+//
+//nolint:gochecknoglobals // static lookup data
+var act2Order = []string{"sun", "staff", "arcane", "summoner", "tombs"}
 
 // stagePrereq lists the quests that must be done before a stage can run alone.
 //
@@ -125,9 +136,12 @@ func newAutoQuest(spec string) *autoQuest {
 		return a
 	}
 
-	if name == "act1" {
+	switch name {
+	case "act1":
 		a.stages = act1Order
-	} else {
+	case "act2":
+		a.stages = act2Order
+	default:
 		a.stages = []string{name}
 	}
 
@@ -145,7 +159,7 @@ func newAutoQuest(spec string) *autoQuest {
 func (a *autoQuest) resetRecord(p *d2hero.HeroProgress, diff int) {
 	rec := p.QuestRecord(diff)
 
-	for _, slot := range []int{0, 1, 2, 3, 4, 5, 6, 7, 9, d2s.QuestSlotAkaraRespec} {
+	for _, slot := range []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, d2s.QuestSlotAkaraRespec} {
 		rec.SetSlot(slot, 0)
 	}
 
@@ -359,6 +373,8 @@ func (a *autoQuest) addStage(name string) {
 		a.stageAndariel()
 	case "radament":
 		a.stageRadament()
+	case "sun", "staff", "arcane", "summoner", "tombs":
+		a.stageAct2(name)
 	}
 }
 

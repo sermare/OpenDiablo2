@@ -27,7 +27,8 @@ const (
 //nolint:gochecknoglobals // static lookup data
 var questItemCodes = []string{
 	d2quest.ItemHoradricMalus, d2quest.ItemScrollOfInifuss, d2quest.ItemDecipheredScroll,
-	d2quest.ItemHoradricScroll, d2quest.ItemBookOfSkill,
+	d2quest.ItemHoradricScroll, d2quest.ItemBookOfSkill, d2quest.ItemHoradricCube, d2quest.ItemStaffOfKingsShaft,
+	d2quest.ItemAmuletOfTheViper, d2quest.ItemHoradricStaff,
 }
 
 // questRuntime joins the pure quest system (d2quest) to the running game.
@@ -125,7 +126,7 @@ func (v *Game) quests() *questRuntime {
 	}
 
 	r.g.Start()
-	v.Infof("QUEST system started difficulty=%d class=%d level=%d (Act 1 quests + Radament; other quests untouched)",
+	v.Infof("QUEST system started difficulty=%d class=%d level=%d (Act 1 and Act 2 quests; the Acts 3-5 quests untouched)",
 		diff, r.g.Hero.Class, r.g.Hero.Level)
 	v.Infof("HERO state at start: level=%d exp=%d skillpoints=%d statpoints=%d gold=%d", p.Stats.Level, p.Stats.Experience,
 		p.Stats.SkillPoints, p.Stats.StatsPoints, p.Gold)

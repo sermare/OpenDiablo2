@@ -100,6 +100,12 @@ func newBossQuest(b bossQuest) *Quest {
 func newBossQuests() []*Quest {
 	out := make([]*Quest, 0, len(bossQuests))
 	for _, b := range bossQuests {
+		if b.id == QuestSevenTombs {
+			out = append(out, newSevenTombs())
+
+			continue
+		}
+
 		out = append(out, newBossQuest(b))
 	}
 
