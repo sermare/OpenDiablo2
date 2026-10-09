@@ -255,6 +255,21 @@ const (
 	WarpCaveDown            = 5 // "Act 1 Cave Down"
 )
 
+// CaveEntranceDestination returns the level a wilderness level's cave entrance
+// leads to: the target of its "Wilderness to Cave" slot (LvlWarp ids 0..3).
+// The cave entrance presets (Act1/Caves/DenEnt*.ds1 ...) come in variants whose
+// special tile carries different styles (5 and 6 seen), so the tile is
+// recognised by its preset and resolved here.
+func CaveEntranceDestination(level int) (int, bool) {
+	for _, l := range allLinks {
+		if l.From == level && l.Kind == KindTile && l.Warp >= 0 && l.Warp <= WarpWildernessToCaveMax {
+			return l.To, true
+		}
+	}
+
+	return 0, false
+}
+
 // upWarps are the LvlWarp ids that lead up (towards the town); the other
 // ids of a dungeon level lead down.
 var upWarps = map[int]bool{4: true, 8: true, 11: true, 13: true, 16: true, 17: true}

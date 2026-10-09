@@ -99,3 +99,31 @@ func isPotion(code string) bool {
 
 	return false
 }
+
+// freshHero says whether a hero was never played: level 1, no experience and no
+// item in any container or on the body. The lobby writes a character with a
+// body but without items (the game's own first save, OD2_AUTONEWCHAR's
+// "first-save reparse"), and the starting items are handed out at the first
+// game, so such a hero gets them here.
+func freshHero(state *HeroState) bool {
+	st := state.Stats
+	if st == nil || st.Level != 1 || st.Experience != 0 {
+		return false
+	}
+
+	c := state.Containers
+
+	return c == nil || (len(c.Items) == 0 && len(c.Equipped) == 0 && c.BeltCode == "")
+}
+
+// giveStartingItemsToFreshHero puts the starting potions and scrolls of the
+// class into a hero that has never been played (see freshHero).
+func (f *HeroStateFactory) giveStartingItemsToFreshHero(state *HeroState, hero d2enum.Hero) {
+	if !freshHero(state) {
+		return
+	}
+
+	if c := f.StartingContainers(hero); c != nil && len(c.Items) > 0 {
+		state.Containers = c
+	}
+}

@@ -22,7 +22,7 @@ const (
 	populateBlockTiles = 16
 	// populateSafeTiles is the distance around the hero's arrival that stays
 	// empty, so a level does not open with a fight on top of the hero.
-	populateSafeTiles = 14.0
+	populateSafeTiles = 8.0
 	// populateMinWalkable is the share of walkable sub-tiles a block needs.
 	populateMinWalkableShare = 0.4
 )
@@ -86,13 +86,48 @@ func (v *Game) populateLevel() {
 		}
 	}
 
-	v.Infof("POPULATE level %d (%s): %d blocks, %d groups, %d monsters", level, v.levelName(level), blocks, groups, units)
+	// a monster the hero can never reach (an island of floor behind cliffs and
+	// water) is no use: it could not be killed, and a quest that wants the
+	// level cleared would never finish
+	removed := v.removeUnreachableMonsters()
+
+	v.Infof("POPULATE level %d (%s): %d blocks, %d groups, %d monsters (%d unreachable ones removed)", level,
+		v.levelName(level), blocks, groups, units-removed, removed)
+}
+
+// removeUnreachableMonsters deletes the monsters standing where the hero cannot
+// walk to from where he is (an island of floor behind cliffs and water, a
+// room the generator did not connect), and returns how many it removed.
+func (v *Game) removeUnreachableMonsters() int {
+	m := v.gameClient.MapEngine
+	hero := v.heroSubtile()
+	removed := 0
+
+	for _, mon := range v.monsters.Monsters() {
+		x, y := mon.SubtilePos()
+		if m.CanWalkTo(hero[0], hero[1], x, y) {
+			continue
+		}
+
+		v.Infof("POPULATE removing %q at subtile (%d,%d): the hero cannot walk there", mon.Label(), x, y)
+		m.RemoveEntity(mon)
+
+		removed++
+	}
+
+	return removed
 }
 
 // isRealLevel says whether the map is one of the DRLG levels (OD2_REALMAPS=1);
 // the old generator's wilderness is not a real level and stays empty.
 func (v *Game) isRealLevel() bool {
 	return d2mapgen.RealMapsEnabled()
+}
+
+func (v *Game) heroSubtile() [2]int {
+	x, y := v.heroTilePos()
+
+	return [2]int{int(x * subtiles), int(y * subtiles)}
 }
 
 func (v *Game) walkableShare(x0, y0, w, h int) float64 {

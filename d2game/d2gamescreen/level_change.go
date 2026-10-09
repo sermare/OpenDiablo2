@@ -363,7 +363,7 @@ func (v *Game) advanceWarpUse(elapsed float64) {
 	v.levels.warpTarget = nil
 	cur := v.currentLevel()
 
-	dest, ok := d2level.TileDestination(cur, w.Style)
+	dest, ok := warpDest(cur, w)
 	if !ok {
 		key := [2]int{w.TileX, w.TileY}
 		if !v.levels.warpSeen[key] {

@@ -328,6 +328,7 @@ func (v *Game) Advance(elapsed float64) error {
 		v.gameClient.MapEngine.Advance(elapsed)
 		v.advanceMonsters(elapsed)
 		v.advanceSkills(elapsed)
+		v.advanceHeroLevel()
 		v.advanceDeath(elapsed)
 	}
 

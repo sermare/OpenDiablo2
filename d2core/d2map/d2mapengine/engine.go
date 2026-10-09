@@ -40,6 +40,7 @@ type MapEngine struct {
 	gridPaths     bool        // PathFind uses d2path (see UseCollisionPaths)
 	startOverride *[2]float64 // hero spawn tile set by a level generator (see SetStartPosition)
 	world         World       // where this map sits in the Act 1 world (see SetWorld)
+	warpDest      map[[2]int]int
 
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/789
 	IsLoading bool // (temp) Whether we have processed the GenerateMapPacket(only for remote client)
@@ -111,6 +112,7 @@ func (m *MapEngine) ResetMap(levelType d2enum.RegionIdType, width, height int) {
 	m.dt1Files = make([]string, 0)
 	m.startOverride = nil
 	m.world = World{}
+	m.warpDest = nil
 	m.gridPaths = false
 
 	for idx := range m.levelType.Files {

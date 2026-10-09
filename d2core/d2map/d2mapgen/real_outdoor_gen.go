@@ -3,12 +3,14 @@ package d2mapgen
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgoutdoor"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgworld"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2ds1"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapstamp"
@@ -116,7 +118,7 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 
 			presets++
 
-			g.logSpecialTiles(stamp, path, ox, oy)
+			g.markWarpTiles(stamp, path, ox, oy, levelID)
 
 			roomSeed := d2rand.New(levelSeed.Lo + uint32(def)*0x9E3779B1 + uint32(xc*131+yc))
 			g.placeMonsters(stamp, levelID, diff, ox, oy, pr.SizeX, pr.SizeY, roomSeed, &mon)
@@ -211,16 +213,32 @@ func (g *MapGenerator) outdoorEntry(lv *drlgoutdoor.Level, rect drlgoutdoor.Rect
 	return float64(rect.W) / 2, float64(rect.H) / 2, "(fallback: map centre, nothing walkable found)"
 }
 
-// logSpecialTiles logs the special (exit/start marker) wall tiles of a stamped preset.
-func (g *MapGenerator) logSpecialTiles(stamp *d2mapstamp.Stamp, path string, ox, oy int) {
+// markWarpTiles resolves the special (exit) wall tiles of a stamped preset: the
+// cave entrance presets (Act1/Caves/...) lead to the level's cave. Other
+// special tiles keep the style based lookup of d2level.TileDestination.
+func (g *MapGenerator) markWarpTiles(stamp *d2mapstamp.Stamp, path string, ox, oy, levelID int) {
+	cave, hasCave := d2level.CaveEntranceDestination(levelID)
+	isCave := strings.Contains(strings.ToLower(path), "/caves/")
+
 	sz := stamp.Size()
 	for y := 0; y < sz.Height; y++ {
 		for x := 0; x < sz.Width; x++ {
 			for _, w := range stamp.Tile(x, y).Walls {
-				if w.Type.Special() {
-					g.Infof("real outdoor: special tile style=%d sequence=%d at (%d,%d) in %s", w.Style, w.Sequence, ox+x, oy+y, path)
+				if !w.Type.Special() || w.Style == startMarkerStyle {
+					continue
 				}
+
+				dest := 0
+				if isCave && hasCave {
+					dest = cave
+					g.engine.SetWarpDestination(ox+x, oy+y, dest)
+				}
+
+				g.Infof("real outdoor: exit tile style=%d at (%d,%d) in %s leads to level %d", w.Style, ox+x, oy+y, path, dest)
 			}
 		}
 	}
 }
+
+// startMarkerStyle is the style of the player start special tile (not an exit).
+const startMarkerStyle = 30

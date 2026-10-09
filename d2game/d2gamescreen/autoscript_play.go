@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 )
@@ -25,22 +27,25 @@ const (
 	killPotionLife = 0.4
 	fireBoltName   = "Fire Bolt"
 	defendSeconds  = 40.0
+	// killRetrySeconds is how long a monster the hero could not reach is left alone.
+	killRetrySeconds = 10.0
 )
 
 // killState is a running kill: step of the script.
 type killState struct {
-	radius   float64 // tiles, <= 0: the whole level
-	deadline float64
-	elapsed  float64
-	kills    int
-	start    int // monsters alive at the start
-	target   *d2mapentity.Monster
-	since    float64 // seconds spent on the current target
-	bestDist float64
-	skip     map[*d2mapentity.Monster]bool
-	castAcc  float64
-	potions  int
-	defend   bool // a fight started by a walk that was attacked on the way
+	radius     float64 // tiles, <= 0: the whole level
+	deadline   float64
+	elapsed    float64
+	kills      int
+	start      int // monsters alive at the start
+	target     *d2mapentity.Monster
+	since      float64 // seconds spent on the current target
+	bestDist   float64
+	skip       map[*d2mapentity.Monster]float64 // target -> the kill clock at which it may be tried again
+	castAcc    float64
+	potions    int
+	lastPotion float64 // game clock of the last potion
+	defend     bool    // a fight started by a walk that was attacked on the way
 }
 
 // WalkToExit implements d2autoscript.PlayHost.
@@ -89,13 +94,32 @@ func (h autoScriptHost) Kill(radius, seconds float64) error {
 		return fmt.Errorf("no monster director")
 	}
 
-	k := &killState{radius: radius, deadline: seconds, skip: map[*d2mapentity.Monster]bool{}}
+	k := &killState{radius: radius, deadline: seconds, skip: map[*d2mapentity.Monster]float64{}}
 	k.start = len(v.killCandidates(k))
 	v.levels.kill = k
 
 	v.Infof("KILL start radius=%.0f seconds=%.0f candidates=%d level=%d", radius, seconds, k.start, v.currentLevel())
 
 	return nil
+}
+
+// killAlive counts the living hostile monsters in range, those waiting for a retry included.
+func (v *Game) killAlive(k *killState) int {
+	n := 0
+
+	hx, hy := v.heroTilePos()
+
+	for _, m := range v.monsters.Monsters() {
+		if !m.Alive() || m.Stat == nil || !d2monsters.IsHostile(m.Stat) {
+			continue
+		}
+
+		if x, y := m.GetPositionF(); k.radius <= 0 || math.Hypot(x-hx, y-hy) <= k.radius {
+			n++
+		}
+	}
+
+	return n
 }
 
 // killCandidates lists the living hostile monsters the fight may go after.
@@ -105,8 +129,12 @@ func (v *Game) killCandidates(k *killState) []*d2mapentity.Monster {
 	hx, hy := v.heroTilePos()
 
 	for _, m := range v.monsters.Monsters() {
-		if !m.Alive() || k.skip[m] || m.Stat == nil || !d2monsters.IsHostile(m.Stat) {
+		if !m.Alive() || m.Stat == nil || !d2monsters.IsHostile(m.Stat) {
 			continue
+		}
+
+		if until, ok := k.skip[m]; ok && k.elapsed < until {
+			continue // given up for now; it moves, try again later
 		}
 
 		if k.radius > 0 {
@@ -140,18 +168,24 @@ func (v *Game) advanceKill(elapsed float64) {
 	}
 
 	cands := v.killCandidates(k)
-	if len(cands) == 0 || k.elapsed >= k.deadline {
-		v.Infof("KILL done: kills=%d of %d remaining=%d skipped=%d elapsed=%.1fs potions=%d",
-			k.kills, k.start, len(cands), len(k.skip), k.elapsed, k.potions)
+	alive := v.killAlive(k)
 
-		if len(cands) > 0 {
-			v.Warningf("KILL ran out of time with %d monster(s) left", len(cands))
+	if alive == 0 || k.elapsed >= k.deadline {
+		v.Infof("KILL done: kills=%d of %d remaining=%d skipped=%d elapsed=%.1fs potions=%d",
+			k.kills, k.start, alive, len(k.skip), k.elapsed, k.potions)
+
+		if alive > 0 {
+			v.Warningf("KILL ran out of time with %d monster(s) left", alive)
 		}
 
 		v.levels.kill = nil
 		v.attackTarget = nil
 
 		return
+	}
+
+	if len(cands) == 0 {
+		return // every monster left is waiting out its retry time
 	}
 
 	v.drinkIfHurt(k)
@@ -183,12 +217,18 @@ func (v *Game) advanceKill(elapsed float64) {
 	mx, my := k.target.GetPositionF()
 	dist := math.Hypot(mx-hx, my-hy)
 
-	// give up on a target the hero cannot get closer to
-	if dist < k.bestDist-0.5 {
-		k.bestDist, k.since = dist, 0
+	// give up on a target only when nothing happens: the hero neither gets
+	// closer nor stands in reach and swings
+	hsx, hsy := v.localPlayer.Position.X(), v.localPlayer.Position.Y()
+	msx, msy := k.target.SubtilePos()
+	inReach := d2monster.EdgeDistance(int(hsx)-msx, int(hsy)-msy, 1) <= heroMeleeReach
+
+	if dist < k.bestDist-0.5 || inReach {
+		k.bestDist, k.since = math.Min(dist, k.bestDist), 0
 	} else if k.since += elapsed; k.since > killStuckSeconds {
-		v.Warningf("KILL giving up on %q at (%.1f,%.1f): the hero cannot get closer than %.1f tiles", k.target.Label(), mx, my, k.bestDist)
-		k.skip[k.target] = true
+		v.Warningf("KILL giving up for now on %q at (%.1f,%.1f): hero at (%.1f,%.1f) cannot get closer than %.1f tiles",
+			k.target.Label(), mx, my, hx, hy, k.bestDist)
+		k.skip[k.target] = k.elapsed + killRetrySeconds
 		k.target = nil
 		v.attackTarget = nil
 
@@ -202,7 +242,41 @@ func (v *Game) advanceKill(elapsed float64) {
 	}
 }
 
-// castAtTarget throws Fire Bolt at a target that is in range but not yet
+// attackSpells are the skills a scripted fight casts at a target: the
+// projectile and area attacks of the sorceress (name as in skills.txt).
+var attackSpells = map[string]bool{
+	"Fire Bolt": true, "Ice Bolt": true, "Charged Bolt": true, "Frozen Orb": true, "Blizzard": true,
+	"Meteor": true, "Lightning": true, "Chain Lightning": true, "Fire Ball": true, "Glacial Spike": true,
+	"Nova": true, "Hydra": true, "Fire Wall": true, "Inferno": true,
+}
+
+// attackSpell picks the skill to throw: the hero's right-hand or left-hand
+// skill when it is an attack spell he has points in, else his attack spell with
+// the most points. -1: none.
+func (v *Game) attackSpell() int {
+	p := v.localPlayer
+	usable := func(s *d2hero.HeroSkill) bool {
+		return s != nil && s.SkillRecord != nil && s.SkillPoints > 0 && attackSpells[s.SkillRecord.Skill]
+	}
+
+	for _, sel := range []*d2hero.HeroSkill{p.RightSkill, p.LeftSkill} {
+		if usable(sel) && p.Skills[sel.ID] != nil {
+			return sel.ID
+		}
+	}
+
+	best, bestPoints := -1, 0
+
+	for id, s := range p.Skills {
+		if usable(s) && (s.SkillPoints > bestPoints || (s.SkillPoints == bestPoints && id < best)) {
+			best, bestPoints = id, s.SkillPoints
+		}
+	}
+
+	return best
+}
+
+// castAtTarget throws an attack spell at a target that is in range but not yet
 // in reach, like a sorceress does.
 func (v *Game) castAtTarget(k *killState, dist float64) {
 	eng := v.skillEngine()
@@ -210,16 +284,8 @@ func (v *Game) castAtTarget(k *killState, dist float64) {
 		return
 	}
 
-	id := eng.SkillID(fireBoltName)
-	if id < 0 {
-		return
-	}
-
-	if s := v.localPlayer.Skills[id]; s == nil || s.SkillPoints < 1 {
-		return
-	}
-
-	if v.localPlayer.Stats.Mana < fireBoltManaFloor {
+	id := v.attackSpell()
+	if id < 0 || !eng.Supported(id) || v.localPlayer.Stats.Mana < fireBoltManaFloor {
 		return
 	}
 
@@ -232,17 +298,30 @@ func (v *Game) castAtTarget(k *killState, dist float64) {
 // fireBoltManaFloor is a cheap guard; the skill pipeline checks the exact cost.
 const fireBoltManaFloor = 3
 
-// drinkIfHurt uses a belt potion when life is low (hotkey columns 1..4).
+// potionSeconds is how long the hero waits after a potion before the next one:
+// a minor healing potion works over several seconds.
+const potionSeconds = 8.0
+
+// drinkIfHurt drinks a healing (or rejuvenation) potion of the belt when life
+// is low, like a player pressing the hotkey, and not more often than a potion
+// takes to work. Mana potions stay in the belt.
 func (v *Game) drinkIfHurt(k *killState) {
 	st := v.localPlayer.Stats
-	if st.MaxHealth <= 0 || float64(st.Health) >= killPotionLife*float64(st.MaxHealth) {
+	if st.MaxHealth <= 0 || float64(st.Health) >= killPotionLife*float64(st.MaxHealth) ||
+		v.levels.clock-k.lastPotion < potionSeconds {
 		return
 	}
 
 	for col := 0; col < 4; col++ {
+		code := v.gameControls.BeltFrontCode(col)
+		if !strings.HasPrefix(code, "hp") && !strings.HasPrefix(code, "rv") {
+			continue
+		}
+
 		if v.gameControls.UseBeltColumnNoSave(col) {
 			k.potions++
-			v.Infof("KILL drank the belt potion of column %d at %d/%d life", col+1, st.Health, st.MaxHealth)
+			k.lastPotion = v.levels.clock
+			v.Infof("KILL drank the belt potion %s of column %d at %d/%d life", code, col+1, st.Health, st.MaxHealth)
 
 			return
 		}

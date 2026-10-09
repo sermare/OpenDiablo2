@@ -65,6 +65,11 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 		},
 	}
 
+	// the natural monsters of a real level follow the difficulty the hero plays in
+	if d2mapgen.RealMapsEnabled() && v.gameClient.Difficulty >= 0 && v.gameClient.Difficulty <= 2 {
+		opt.Difficulty = d2monster.Difficulty(v.gameClient.Difficulty)
+	}
+
 	if diff, err := strconv.Atoi(os.Getenv("OD2_AUTOMONSTER_DIFF")); err == nil && diff >= 0 && diff <= 2 {
 		opt.Difficulty = d2monster.Difficulty(diff)
 	}

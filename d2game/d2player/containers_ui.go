@@ -97,6 +97,21 @@ func (g *GameControls) OpenCube() {
 // IsStashOpen reports whether the stash panel is open.
 func (g *GameControls) IsStashOpen() bool { return g.stash.IsOpen() }
 
+// BeltFrontCode returns the item code of the potion a belt column (0 to 3)
+// would drink, or "" when the column is empty.
+func (g *GameControls) BeltFrontCode(col int) string {
+	cell, ok := d2inventory.FrontOfColumn(g.belt.kinds(), g.belt.Boxes(), col)
+	if !ok {
+		return ""
+	}
+
+	if it := g.belt.items[cell]; it != nil {
+		return it.GetItemCode()
+	}
+
+	return ""
+}
+
 // UseBeltColumn drinks the front potion of a belt column (hotkeys 1 to 4).
 func (g *GameControls) UseBeltColumn(col int) {
 	if g.UseBeltColumnNoSave(col) {

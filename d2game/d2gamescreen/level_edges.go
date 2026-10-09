@@ -97,13 +97,23 @@ func edgeArrival(from, to int, wx, wy float64) d2client.ArrivalFunc {
 func nextToWarpBackTo(from, to int) d2client.ArrivalFunc {
 	return func(m *d2mapengine.MapEngine) (x, y float64, ok bool) {
 		for _, t := range m.WarpTiles() {
-			if dest, found := d2level.TileDestination(to, t.Style); found && dest == from {
+			if dest, found := warpDest(to, &t); found && dest == from {
 				return float64(t.TileX) + 0.5, float64(t.TileY) + 0.5, true
 			}
 		}
 
 		return 0, 0, false
 	}
+}
+
+// warpDest resolves where a warp tile of a level leads: the generator's own
+// answer when it gave one, else the style of the tile.
+func warpDest(level int, t *d2mapengine.WarpTile) (int, bool) {
+	if t.Dest != 0 {
+		return t.Dest, true
+	}
+
+	return d2level.TileDestination(level, t.Style)
 }
 
 // exitWalk is a scripted walk to an exit of the level (walkto:exit=<level>).
@@ -129,7 +139,7 @@ func (v *Game) exitCandidates(level int) (out [][2]float64, warp *d2mapengine.Wa
 
 	for i := range v.levels.warps {
 		t := &v.levels.warps[i]
-		if dest, ok := d2level.TileDestination(cur, t.Style); ok && dest == level {
+		if dest, ok := warpDest(cur, t); ok && dest == level {
 			if warp == nil || math.Hypot(float64(t.TileX)-hx, float64(t.TileY)-hy) <
 				math.Hypot(float64(warp.TileX)-hx, float64(warp.TileY)-hy) {
 				warp = t
@@ -233,7 +243,7 @@ const threatRadius = 5.0
 // defendOnTheWay pauses the walk and fights when a monster is close, and
 // resumes the walk when the fight is over. It reports that the walk is paused.
 func (v *Game) defendOnTheWay(e *exitWalk) bool {
-	if v.monsters == nil {
+	if v.monsters == nil || v.localPlayer.IsDead() {
 		return false
 	}
 
@@ -252,7 +262,7 @@ func (v *Game) defendOnTheWay(e *exitWalk) bool {
 		return false
 	}
 
-	k := &killState{radius: threatRadius, deadline: defendSeconds, skip: map[*d2mapentity.Monster]bool{}, defend: true}
+	k := &killState{radius: threatRadius, deadline: defendSeconds, skip: map[*d2mapentity.Monster]float64{}, defend: true}
 	if k.start = len(v.killCandidates(k)); k.start == 0 {
 		return false
 	}
@@ -273,6 +283,13 @@ func (v *Game) advanceExitWalk(elapsed float64) {
 
 	if v.currentLevel() == e.level {
 		v.levels.exitWalk = nil
+		return
+	}
+
+	if v.localPlayer.IsDead() {
+		v.Infof("EXIT walk towards level %d ends: the hero died", e.level)
+		v.levels.exitWalk = nil
+
 		return
 	}
 

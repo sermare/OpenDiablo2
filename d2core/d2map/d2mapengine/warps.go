@@ -8,10 +8,23 @@ package d2mapengine
 type WarpTile struct {
 	TileX, TileY int
 	Style        int
+	// Dest is the level the generator that placed the tile says it leads to
+	// (0: unknown, resolve it from Style).
+	Dest int
 }
 
 // startMarkerStyle is the style of the player start special tile.
 const startMarkerStyle = 30
+
+// SetWarpDestination records where the warp tile at a map tile leads, for tiles
+// whose style does not say (cave entrances of the outdoor levels).
+func (m *MapEngine) SetWarpDestination(tileX, tileY, level int) {
+	if m.warpDest == nil {
+		m.warpDest = map[[2]int]int{}
+	}
+
+	m.warpDest[[2]int{tileX, tileY}] = level
+}
 
 // WarpTiles lists the candidate warp tiles of the current map.
 func (m *MapEngine) WarpTiles() []WarpTile {
@@ -21,7 +34,7 @@ func (m *MapEngine) WarpTiles() []WarpTile {
 		for x := 0; x < m.size.Width; x++ {
 			for _, w := range m.tiles[x+y*m.size.Width].Components.Walls {
 				if w.Type.Special() && w.Style != startMarkerStyle {
-					out = append(out, WarpTile{TileX: x, TileY: y, Style: int(w.Style)})
+					out = append(out, WarpTile{TileX: x, TileY: y, Style: int(w.Style), Dest: m.warpDest[[2]int{x, y}]})
 				}
 			}
 		}

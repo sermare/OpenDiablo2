@@ -11,6 +11,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapgen"
 )
 
 // Hero death, respawn and corpse recovery. The rules and their provenance are
@@ -132,6 +133,10 @@ func (v *Game) difficulty() int {
 		return n
 	}
 
+	if d2mapgen.RealMapsEnabled() && v.gameClient.Difficulty >= 0 && v.gameClient.Difficulty <= 2 {
+		return int(v.gameClient.Difficulty)
+	}
+
 	return int(d2monster.Normal)
 }
 
@@ -236,6 +241,10 @@ func (v *Game) respawnHero() {
 	// the hero stands up in the town of the act the body lies in; a death in
 	// the wilderness or a dungeon builds that town first (the level change
 	// resets the map, so the corpse is placed afterwards)
+	// he stands up first: the level change sets the animation of a living hero
+	// (a dead one has no walking composite to load)
+	p.Revive()
+
 	moved := v.respawnLevel()
 
 	// the dead body stays; the hero walks on without its equipment
@@ -253,7 +262,6 @@ func (v *Game) respawnHero() {
 		p.SetPositionSubtile(st.townX, st.townY)
 	}
 
-	p.Revive()
 	p.ApplyEquipment()
 	p.SetIsInTown(true)
 	p.Stats.Health = d2hero.RespawnLife(p.Stats.MaxHealth)
