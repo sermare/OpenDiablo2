@@ -8,6 +8,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2object"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2ground"
@@ -114,6 +115,11 @@ func (v *Game) walkToObject(ob *d2mapentity.Object) {
 	}
 
 	if _, ok := lootContainers[ob.Record().Index]; !ok {
+		if objectIsOperable(ob) { // shrines, wells, racks, other containers (objects_operate.go)
+			v.useObject(ob)
+			return
+		}
+
 		v.OnPlayerMove(x, y)
 		return
 	}
@@ -223,7 +229,12 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 	}
 
 	id := ob.Record().Index
-	v.playSoundAt(lootContainers[id], ob.GetPosition(), "object")
+	handle := lootContainers[id]
+	if handle == "" {
+		handle = d2object.SoundFor(ob.Record().OperateFn, ob.Record().Name)
+	}
+
+	v.playSoundAt(handle, ob.GetPosition(), "object")
 
 	ilvl := v.areaLevel()
 	tc := d2ground.ChestTreasureClass(v.localPlayer.Act, d2ground.Normal, ilvl, v.itemFactory().TreasureClassLevel)

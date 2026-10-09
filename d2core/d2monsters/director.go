@@ -139,6 +139,10 @@ type Director struct {
 	snd      *rand.Rand
 	packRNG  *d2rand.Seed
 
+	// ExpBonusPct, when set, returns the percent of extra experience per kill
+	// (the experience shrine).
+	ExpBonusPct func() int
+
 	areaLevel int // levels.txt MonLvl of the current area (0 = unknown)
 
 	// Counters are updated as events happen.

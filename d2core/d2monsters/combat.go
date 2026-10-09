@@ -388,6 +388,10 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 
 	if src != nil {
 		by = src.Name()
+		if d.ExpBonusPct != nil { // shrine experience boost (d2object), percent
+			xp += xp * d.ExpBonusPct() / 100
+		}
+
 		src.Stats.Experience += xp
 	}
 

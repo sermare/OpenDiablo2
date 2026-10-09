@@ -393,7 +393,7 @@ func (v *Game) operateObject(ob *d2mapentity.Object) {
 	case d2level.ObjectPortal:
 		v.operatePortal(ob)
 	default:
-		v.Infof("OBJECT %q (id %d) has no operate function yet", ob.Label(), ob.Record().Index)
+		v.operateWorldObject(ob)
 	}
 }
 
