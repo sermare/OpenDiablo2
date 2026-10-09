@@ -140,10 +140,10 @@ const (
 	StateBlind     = 10 // MONAI_State10_Think, ported (also 17, target mode 2)
 	StateFear      = 11 // Pre 5e6fe0 / Think 5e7040, ported
 	StateTaunted   = 12 // MONAI_State12_Think, ported
-	StateLeash     = 13 // MONAI_State13_Think (anchor + bucket), not ported
+	StateLeash     = 13 // MONAI_State13_Think (anchor guard), ported in ai_shaman.go
 	StateCharge    = 14 // MONAI_State14_Think, ported
 	StateSuicide   = 15 // SuicideMinion, ported as an archetype
-	StateImp       = 16 // Pre 5e1bc0 / Think 5e1c60 (imp after teleport), not ported
+	StateImp       = 16 // Pre 5e1bc0 / Think 5e1c60 (imp after teleport), ported in ai_shaman.go
 	StateBlind2    = 17 // = State10_Think with target mode 2
 )
 
