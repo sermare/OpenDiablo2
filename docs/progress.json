@@ -7,7 +7,7 @@
       "label": "Game.exe functions named in Ghidra",
       "done": 4320,
       "total": 10907,
-      "note": "reverse engineering of the original 1.14b binary",
+      "note": "reverse engineering of the original 1.14b binary; +1,003 more are auto-labelled placeholders (module/role/address), not counted",
       "color": "#7c5cff"
     },
     {
