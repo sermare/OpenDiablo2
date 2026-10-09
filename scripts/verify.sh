@@ -5,6 +5,10 @@
 #   D2S_SAMPLE_BODY  a real .d2s save with a body; D2S_SAMPLE_BODY_JSON its expected parse
 #   OD2_VERIFY_SAVE  a .d2s file to start in the game (default: $D2S_SAMPLE_BODY copied to a .d2s)
 set -u
+# multi-process scenarios (96, 9d) put this in their own launch lines: muted unless OD2_VERIFY_SOUND=1
+OD2_VERIFY_MUTE_ENV="OD2_AUTOTEST_MUTE=1"
+[ -n "${OD2_VERIFY_SOUND:-}" ] && OD2_VERIFY_MUTE_ENV=""
+export OD2_VERIFY_MUTE_ENV
 cd "${0:A:h}/.."
 
 fail=0
