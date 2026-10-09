@@ -190,6 +190,12 @@ type Context struct {
 	// NoNoDrop disables the NoDrop column (the roller's "guaranteed" flag:
 	// every pick yields an entry). VERIFIED against the real roller.
 	NoNoDrop bool
+	// QualityLevel, if UseQualityLevel is set, replaces the item level in the
+	// quality roll only (the items keep ILvl). The game hands the roller a
+	// level of its own: the monster level for monsters, but the chest tier
+	// (0..2) for chests. VERIFIED. It is not clamped (ILvl is, to at least 1).
+	QualityLevel    int
+	UseQualityLevel bool
 	// Classic is a game without the expansion (game+0x70 == 0): classic
 	// probabilities (expansion-only entries have no weight), and throwable
 	// items are re-picked up to maxClassicRetries times, then replaced by a
@@ -546,7 +552,12 @@ func (d *Dropper) makeDrop(ctx *Context, e Entry, mods QualityMods, ilvl int) (D
 	case ctx.ForcedQuality != QualityNone:
 		drop.Quality = ctx.ForcedQuality
 	default:
-		q, err := d.quality(ctx, e.Code, ilvl, mods)
+		qlvl := ilvl
+		if ctx.UseQualityLevel {
+			qlvl = ctx.QualityLevel
+		}
+
+		q, err := d.quality(ctx, e.Code, qlvl, mods)
 		if err != nil {
 			return drop, err
 		}

@@ -126,6 +126,12 @@ func fmtDrop(d Drop, rt *realTables) string {
 
 func TestOracleTreasure(t *testing.T) { checkTreasureGolden(t, "treasure.json", false) }
 
+// TestOracleTreasureLowQualityLevel rolls with the quality level 0..2 that
+// chests hand the roller (Context.QualityLevel).
+func TestOracleTreasureLowQualityLevel(t *testing.T) {
+	checkTreasureGolden(t, "treasure_low.json", false)
+}
+
 // TestOracleTreasureClassic is the same comparison for a game without the
 // expansion (game+0x70 == 0).
 func TestOracleTreasureClassic(t *testing.T) { checkTreasureGolden(t, "treasure_classic.json", true) }
@@ -147,6 +153,7 @@ func checkTreasureGolden(t *testing.T, file string, classic bool) {
 		ctx := &Context{
 			RNG: rng, ILvl: c.IL, MagicFind: c.MF, ForcedQuality: c.FQ, MaxDrops: c.MX,
 			Players: NoDropPlayers(c.NP[0], c.NP[1], c.NP[2], true), NoNoDrop: c.F4 != 0, Classic: classic,
+			QualityLevel: c.IL, UseQualityLevel: file == "treasure_low.json",
 		}
 
 		drops, err := d.Roll(ctx, c.TC)
