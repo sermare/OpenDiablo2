@@ -29,6 +29,14 @@ func (t *TradeWindow) RunGambleAutoTest() {
 	first := t.logGambleStock()
 
 	pick := t.cheapestFitting()
+
+	var parked *parkedItem
+
+	if pick == nil {
+		// an imported inventory can be full: take the smallest item out for the test
+		parked, pick = t.parkForRoom()
+	}
+
 	if pick == nil {
 		t.Infof("AUTOGAMBLE buy vendor=%s skipped: no room in the inventory", t.vendor.Name)
 	} else {
@@ -51,6 +59,7 @@ func (t *TradeWindow) RunGambleAutoTest() {
 		}
 	}
 
+	t.unpark(parked)
 	t.autoRestock(first)
 
 	t.hero.Gold = start

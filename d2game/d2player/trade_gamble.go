@@ -34,7 +34,10 @@ func (t *TradeWindow) OpenGamble(v d2vendor.Vendor, seed uint32, quests *d2s.Que
 		return ErrNoGamble
 	}
 
-	if _, _, _, ok := d2vendor.GamblePoolFor(t.asset.Records); !ok {
+	if pool, ring, amulet, ok := d2vendor.GamblePoolFor(t.asset.Records); !ok {
+		t.Infof("gamble tables unusable: gamble.txt rows=%d pool=%d ring=%q amulet=%q",
+			len(t.asset.Records.Gamble), len(pool), ring.Code, amulet.Code)
+
 		return ErrNoGamble
 	}
 
