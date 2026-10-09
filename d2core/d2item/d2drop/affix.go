@@ -72,9 +72,17 @@ func (t *AffixTables) span(prefix bool, auto int) (lo, hi int) {
 }
 
 func (t *AffixTables) apply(st *itemState, id int) {
-	if t.OnApply != nil && id > 0 {
-		t.OnApply(st, id)
+	if id <= 0 {
+		return
 	}
+
+	if t.OnApply != nil {
+		t.OnApply(st, id)
+
+		return
+	}
+
+	st.c.applyAffixProps(st, id)
 }
 
 const (

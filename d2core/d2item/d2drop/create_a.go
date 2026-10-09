@@ -158,7 +158,7 @@ func (st *itemState) setStat(id, v int) { st.write('S', id, v, 0) }
 
 // durable is 629b00: the item has a durability that can be changed.
 func (st *itemState) durable() bool {
-	return !st.base.NoDurability && st.base.Durability > 0 && st.stat(statNoDurab) <= 0
+	return !st.base.NoDurability && st.base.Durability > 0 && st.statTotal(statNoDurab) <= 0
 }
 
 // ---------------------------------------------------------------------------
@@ -1015,10 +1015,6 @@ func (c *Creator) applySuperior(st *itemState) bool {
 	}
 }
 
-// applyQualityProps is the call of ITEMMODS_ApplyPropertyGroup (662420) with
-// the properties of a quality row; it belongs to slice C.
-func (c *Creator) applyQualityProps(st *itemState, kind, row int) {}
-
 // ---------------------------------------------------------------------------
 // low quality (5c0b00 LoD, 5c0890 classic)
 
@@ -1131,7 +1127,7 @@ func (c *Creator) rollEthereal(st *itemState) {
 		max := st.stat(statDurMax)/2 + 1
 
 		st.setStat(statDurMax, max)
-		st.setStat(statDurCur, max)
+		st.setStat(statDurCur, st.maxDurability()) // the stat as read through the item's lists (slice C)
 	}
 }
 

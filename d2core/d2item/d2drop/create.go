@@ -41,6 +41,10 @@ type Request struct {
 	// for its unit generator (base stats) and one for its item generator
 	// (affixes, properties, sockets), exactly as ITEMGEN does.
 	GameSeed d2rand.Seed
+	// Game is the game's shared item state: the ladder flag and the bitmask
+	// of unique items already created (slice C). Nil: not a ladder game, no
+	// one-per-game limit.
+	Game *GameState
 }
 
 // StatWrite is one stat the creation writes on the item, in game order.
@@ -52,6 +56,10 @@ type StatWrite struct {
 	Stat  int
 	Value int
 	Param int
+	// List is the selector of the item stat list the write goes to: 0 for
+	// the item's base list and for unit stats, 0xa5..0xa9 for the set bonus
+	// tiers (slice C).
+	List int
 }
 
 // Rolled is the result of creating an item: the part of the game's item data
