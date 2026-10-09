@@ -161,9 +161,9 @@ func ParsePlayerVitals(b []byte) (PlayerVitals, error) {
 // u16 y @24 (the last two are used to find the room, so they are a position).
 // This is the only 0x59 layout in the engine: the former PlayerInGame put a
 // level and a party id at 22/24, which contradicts the real packet. Level and
-// party now travel in the tunnelled AddPlayer (stats.Level) and the tunnelled
-// party packets; how the REAL client learns another player's level/party is
-// UNVERIFIED (roster handlers 0x5b/0x65/0x8c-0x8e are not decoded in the notes).
+// party travel in the real 0x5b RosterEntry and 0x75 / 0x8d (roster_msgs.go,
+// verified); the tunnelled AddPlayer and roster stay as the OD2 extension for
+// the rest of the hero state, hostility and invitations.
 type AssignPlayer struct {
 	UnitID uint32
 	Class  uint8
