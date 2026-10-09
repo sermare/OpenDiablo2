@@ -139,6 +139,14 @@ func (l *Level) placePresetRooms(def, file, tx, ty int, gB uint32) {
 
 	var ds1 *Pattern
 
+	if file >= 0 && file < len(rec.File) {
+		// DS1 object RNG gate (0x66a230): some Act 3 files cost level-seed steps
+		// when they are loaded, before the chunk rooms are allocated.
+		for i := ds1GateSteps(rec.File[file]); i > 0; i-- {
+			l.Seed.Step()
+		}
+	}
+
 	if file >= 0 && file < len(rec.File) && rec.File[file] != "" {
 		if p, err := l.env.Pattern(NormalizePrestFile(rec.File[file])); err == nil {
 			ds1 = p
@@ -148,6 +156,10 @@ func (l *Level) placePresetRooms(def, file, tx, ty int, gB uint32) {
 	w, h := 0, 0
 	if rec.SizeX != 0 && rec.SizeY != 0 {
 		w, h = rec.SizeX, rec.SizeY
+	}
+
+	if l.presetSize != [2]int{} { // town levels tile their own rectangle
+		w, h = l.presetSize[0], l.presetSize[1]
 	}
 
 	remY := h
@@ -269,6 +281,8 @@ func (b *roomBuilder) build() *RoomGrids {
 			gr.Op(gr.W-1, y, 4, opOr)
 		}
 	}
+
+	b.levelTypeFill()
 
 	return g
 }

@@ -18,6 +18,10 @@ var HeroDifficulty d2drlg.Difficulty
 // worldRects converts the placement of the Act 1 world search into the level
 // rectangles the edge crossing works on.
 func worldRects(lay *drlgworld.Layout) map[int]d2level.Rect {
+	if lay == nil {
+		return nil
+	}
+
 	out := make(map[int]d2level.Rect, len(lay.Levels))
 
 	for id, p := range lay.Levels {

@@ -20,10 +20,12 @@ import (
 // Act 1 wilderness (Blood Moor .. Tamoe Highland, Burial Grounds, Moo Moo
 // Farm), Act 4 (Outer Steppes, Plains of Despair, City of the Damned, Chaos
 // Sanctuary) and Act 5 (Bloody Foothills, Frigid Highlands, Arreat Plateau,
-// Frozen Tundra). Level 134 (Forgotten Sands) needs the Act 2 desert generator,
-// which is not ported.
+// Frozen Tundra), the Act 2 desert (41..46) and the Act 3 jungle and Kurast
+// (76..83). Level 134 (Forgotten Sands) is not covered.
 func isOutdoorLevel(id int) bool {
 	switch {
+	case isAct23Outdoor(id):
+		return true
 	case id >= 2 && id <= 7, id == 0x11, id == 0x27:
 		return true
 	case id >= 104 && id <= 106, id == 108, id >= 110 && id <= 112, id == 117:
@@ -49,6 +51,12 @@ func isPresetLevel(id int) bool {
 // generator inputs (rectangle, od.flags, vis/warp, neighbour list).
 func levelParams(tb *d2drlg.Tables, levelID int, seed uint32, diff d2drlg.Difficulty) (drlgoutdoor.Params, *drlgworld.Layout, error) {
 	rec, _ := tb.Level(levelID)
+
+	if isAct23Outdoor(levelID) { // no drlgworld.Layout: the Act 2/3 placers have their own world
+		p, err := drlgoutdoor.ParamsAct23(tb, seed, diff, levelID)
+
+		return p, nil, err
+	}
 
 	switch rec.Act {
 	case 3, 4:
@@ -81,6 +89,8 @@ func levelParams(tb *d2drlg.Tables, levelID int, seed uint32, diff d2drlg.Diffic
 
 	return p, lay, err
 }
+
+func isAct23Outdoor(id int) bool { return (id >= 41 && id <= 46) || (id >= 76 && id <= 83) }
 
 // outdoorProvider builds Act 1 wilderness levels with the DRLG port. Like the
 // maze provider it is only active with OD2_REALMAPS=1.

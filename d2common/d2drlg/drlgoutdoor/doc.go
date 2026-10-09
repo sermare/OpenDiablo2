@@ -42,4 +42,12 @@
 // ported (LevelType 0x10 is rejected by Generate); the world placement of 134
 // is in drlgworld.GenerateAct5. Level 107 and the Act 4/5 mazes are in
 // drlgmaze.
+//
+// Only levels 2-7, 0x11 and 0x27 of Act 1 are covered by the Act 1 golden.
+//
+// Acts 2 and 3 (levels 41-46 and 76-83, plus the preset towns 40 and 75) are in
+// act2.go, act3.go, world23.go and town.go; their golden is
+// testdata/outdoor_act2.json and outdoor_act3.json. Unverified: the DT1 tile
+// pick (as above), preset-room flags, and DS1 object gates for Act 3 files that
+// the sampled games never drew (rooms23.go). Acts 4 and 5 are not implemented.
 package drlgoutdoor
