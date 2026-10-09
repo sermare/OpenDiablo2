@@ -746,6 +746,17 @@ func (v *Game) advanceAutoSound(elapsed float64) {
 func (v *Game) advanceAutoTest(elapsed float64) {
 	talk, menus, trades := os.Getenv("OD2_AUTOTALK"), os.Getenv("OD2_AUTOMENU"), os.Getenv("OD2_AUTOTRADE")
 	gamble, identify := os.Getenv("OD2_AUTOGAMBLE"), os.Getenv("OD2_AUTOIDENTIFY")
+	if os.Getenv("OD2_AUTOOPTIONS") != "" && v.localPlayer != nil && v.gameControls != nil && !v.autoTestDone {
+		v.autoTestElapsed += elapsed
+		if v.autoTestElapsed >= autoTestDelaySeconds {
+			v.autoTestDone = true
+			v.gameControls.RunOptionsAutoTest()
+			v.autoTestExit()
+		}
+
+		return
+	}
+
 	if (talk == "" && menus == "" && trades == "" && gamble == "" && identify == "") || v.localPlayer == nil || v.gameControls == nil {
 		return
 	}

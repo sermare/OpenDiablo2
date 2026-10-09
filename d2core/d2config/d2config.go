@@ -23,7 +23,10 @@ type Configuration struct {
 	// D2SDir is an optional folder of real Diablo II .d2s characters to import
 	// (read only). When empty, well-known locations are searched.
 	D2SDir string
-	path            string
+	// Options holds the choices of the in-game options menu (see options.go);
+	// sound and music live in SfxVolume and BgmVolume.
+	Options map[string]int `json:",omitempty"`
+	path    string
 }
 
 // Save saves the configuration object to disk

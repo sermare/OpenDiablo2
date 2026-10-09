@@ -12,6 +12,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2config"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2screen"
+	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
 )
 
 func (a *App) initialize() error {
@@ -43,6 +44,7 @@ func (a *App) initialize() error {
 	a.screen = d2screen.NewScreenManager(a.ui, *a.Options.LogLevel, a.guiManager)
 
 	a.audio.SetVolumes(a.config.BgmVolume, a.config.SfxVolume)
+	d2player.SetOptionsBackend(optionsBackend{a})
 
 	if err := a.loadStrings(); err != nil {
 		return err
