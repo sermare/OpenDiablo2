@@ -1,4 +1,5 @@
 <p align="center"><img src="docs/progress.svg" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/sermare/OpenDiablo2/progress-history/docs/progress-history.svg" alt="Progress over time: one line per part, snapshot every 10 minutes" width="880"></p>
 
 # OpenDiablo2 — native macOS fork, driven by Claude
 
@@ -21,7 +22,7 @@ Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The 
 
 ## Status board
 
-_Last updated: 2026-10-09 · Claude updates this on every merged success._
+_Last updated: 2026-10-09 (evening) · Claude updates this on every merged success._
 
 ### ✅ Working now (each one verified, not assumed)
 
@@ -131,6 +132,7 @@ Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | **Acts 2, 3, 4 and 5 level generators match the real game (1,626 levels)**, exact tile records for Act 1 outdoors (240 levels), act towns and travel, party/trade/PvP, boss encounters and Baal waves, options menu and hardcore death, the scripted first hour of Act 1, imported-hero UI, `OpenDiablo2.app` packaging merged (full verify: ALL CHECKS PASSED) |
 | 2026-10-09 | Skills for all seven classes, skill hotkeys and the selection screen, Nightmare/Hell difficulty, boss behaviours and forced states, multiplayer and documentation merged; Act 4/5 level generators specified and checked against the real game |
 | 2026-10-09 | **Act 1 outdoors match the real game on 240 levels**; mercenaries, equipment rules, world objects, automap and a 5× faster frame merged |
 | 2026-10-09 | Death/respawn/new characters merged (new Druid byte-identical to the real file); the Act 1 outdoor generation algorithm reverse engineered and a reference port matched the real game on 208 levels |

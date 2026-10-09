@@ -5,7 +5,7 @@
   "bars": [
     {
       "label": "Game.exe functions named in Ghidra",
-      "done": 2499,
+      "done": 4320,
       "total": 10907,
       "note": "reverse engineering of the original 1.14b binary",
       "color": "#7c5cff"
@@ -26,9 +26,9 @@
     },
     {
       "label": "Level generator proven equal to the real game",
-      "done": 7082,
-      "total": 7142,
-      "note": "all maze levels + Act 1 outdoors proven in Go; Acts 2-5 outdoor/preset generators matched in Python spec (Go ports next)",
+      "done": 8708,
+      "total": 8768,
+      "note": "mazes + Act 1 outdoors + exact Act 1 tiles + Acts 2-5 outdoor/preset generators all proven in Go against the emulator",
       "color": "#22c1c3"
     },
     {
@@ -47,9 +47,9 @@
     },
     {
       "label": "Roadmap deliverables",
-      "done": 34,
-      "total": 38,
-      "note": "saves · stats/equip · NPCs/vendors/mercs/quests · RNG · combat · loot · multiplayer · classes' skills · skill bar · all-AI archetypes (most) · difficulty · dungeons+outdoors · objects · automap · Mac app · perf ✓ | act towns · Act 2-5 maps in Go · tiles · play-through",
+      "done": 38,
+      "total": 44,
+      "note": "… + act towns · Acts 2-5 maps in Go · exact Act 1 tiles · party/trade/PvP · bosses · options/hardcore · Act 1 playthrough · app packaging ✓ | Acts 2-5 quests merge · exact tiles Acts 2-5 · item export to .d2s · Act 2 playthrough · level persistence · AI archetypes",
       "color": "#ff7a45"
     }
   ]

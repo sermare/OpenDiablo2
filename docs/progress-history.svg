@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="520" viewBox="0 0 880 520" role="img" aria-label="Progress over time">
+<rect width="880" height="520" rx="18" fill="#14162a"/>
+<text x="56" y="36" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="22" font-weight="700" fill="#fff">Progress over time</text>
+<text x="856" y="36" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">snapshot every 10 min · latest 2026-10-09 15:43 UTC</text>
+<line x1="56" y1="370.0" x2="856" y2="370.0" stroke="#fff" stroke-opacity="0.22"/>
+<text x="48" y="374.0" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">0%</text>
+<line x1="56" y1="308.8" x2="856" y2="308.8" stroke="#fff" stroke-opacity="0.08"/>
+<text x="48" y="312.8" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">20%</text>
+<line x1="56" y1="247.6" x2="856" y2="247.6" stroke="#fff" stroke-opacity="0.08"/>
+<text x="48" y="251.6" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">40%</text>
+<line x1="56" y1="186.4" x2="856" y2="186.4" stroke="#fff" stroke-opacity="0.08"/>
+<text x="48" y="190.4" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">60%</text>
+<line x1="56" y1="125.2" x2="856" y2="125.2" stroke="#fff" stroke-opacity="0.08"/>
+<text x="48" y="129.2" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">80%</text>
+<line x1="56" y1="64.0" x2="856" y2="64.0" stroke="#fff" stroke-opacity="0.22"/>
+<text x="48" y="68.0" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">100%</text>
+<line x1="56.0" y1="64" x2="56.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
+<text x="56.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 02:19</text>
+<line x1="189.3" y1="64" x2="189.3" y2="370" stroke="#fff" stroke-opacity="0.05"/>
+<text x="189.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 03:23</text>
+<line x1="322.7" y1="64" x2="322.7" y2="370" stroke="#fff" stroke-opacity="0.05"/>
+<text x="322.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 04:27</text>
+<line x1="456.0" y1="64" x2="456.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
+<text x="456.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 05:31</text>
+<line x1="589.3" y1="64" x2="589.3" y2="370" stroke="#fff" stroke-opacity="0.05"/>
+<text x="589.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 06:35</text>
+<line x1="722.7" y1="64" x2="722.7" y2="370" stroke="#fff" stroke-opacity="0.05"/>
+<text x="722.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 07:39</text>
+<line x1="856.0" y1="64" x2="856.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
+<text x="856.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 08:43</text>
+<polyline points="56.0,346.2 62.2,343.1 69.0,343.1 75.4,334.4 106.6,327.0 157.9,315.4 162.6,315.4 172.2,309.0 203.1,304.8 243.4,304.8 301.2,302.2 330.7,302.2 342.1,302.2 418.2,302.2 452.6,302.2 474.8,302.2 523.8,299.9 752.4,299.9 852.2,248.8 856.0,248.8" fill="none" stroke="#7c5cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="248.8" r="4" fill="#7c5cff"/>
+<polyline points="56.0,64.0 62.2,64.0 69.0,64.0 75.4,64.0 106.6,64.0 157.9,64.0 162.6,64.0 172.2,64.0 203.1,64.0 243.4,64.0 301.2,64.0 330.7,64.0 342.1,64.0 418.2,64.0 452.6,64.0 474.8,64.0 523.8,64.0 752.4,64.0 852.2,64.0 856.0,64.0" fill="none" stroke="#2fb67c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="64.0" r="4" fill="#2fb67c"/>
+<polyline points="56.0,320.3 62.2,303.7 69.0,287.1 75.4,265.0 106.6,231.9 157.9,193.3 162.6,193.3 172.2,176.7 203.1,160.1 243.4,138.0 301.2,138.0 330.7,138.0 342.1,138.0 418.2,138.0 452.6,138.0 474.8,138.0 523.8,160.1 752.4,160.1 852.2,160.1 856.0,160.1" fill="none" stroke="#2f9bff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="160.1" r="4" fill="#2f9bff"/>
+<polyline points="243.4,69.8 301.2,76.2 330.7,72.2 342.1,72.2 418.2,67.2 452.6,67.2 474.8,67.2 523.8,66.6 752.4,66.1 852.2,66.1 856.0,66.1" fill="none" stroke="#22c1c3" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="66.1" r="4" fill="#22c1c3"/>
+<polyline points="75.4,94.6 106.6,94.6 157.9,94.6 162.6,94.6 172.2,94.6 203.1,94.6 243.4,94.6 301.2,94.6 330.7,94.6 342.1,94.6 418.2,94.6 452.6,94.6 474.8,94.6 523.8,94.6 752.4,94.6 852.2,94.6 856.0,94.6" fill="none" stroke="#f2a81d" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="94.6" r="4" fill="#f2a81d"/>
+<polyline points="56.0,238.8 62.2,238.8 69.0,238.8 75.4,238.8 106.6,195.2 157.9,151.4 162.6,151.4 172.2,151.4 203.1,151.4 243.4,107.7 301.2,102.2 330.7,102.2 342.1,102.2 418.2,102.2 452.6,64.0 474.8,64.0 523.8,64.0 752.4,64.0 852.2,64.0 856.0,64.0" fill="none" stroke="#ef5da8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="64.0" r="4" fill="#ef5da8"/>
+<polyline points="56.0,268.0 62.2,242.5 69.0,242.5 75.4,205.2 106.6,134.6 157.9,125.2 162.6,104.8 172.2,104.8 203.1,104.8 243.4,133.6 301.2,127.7 330.7,111.1 342.1,99.3 418.2,103.5 452.6,93.6 474.8,83.7 523.8,96.2 752.4,105.7 852.2,105.7 856.0,105.7" fill="none" stroke="#ff7a45" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="105.7" r="4" fill="#ff7a45"/>
+<rect x="56" y="401" width="14" height="4" rx="2" fill="#7c5cff"/>
+<text x="78" y="410" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Game.exe functions named in Ghidra — 40%</text>
+<rect x="456" y="401" width="14" height="4" rx="2" fill="#2fb67c"/>
+<text x="478" y="410" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Original source files indexed — 100%</text>
+<rect x="56" y="421" width="14" height="4" rx="2" fill="#2f9bff"/>
+<text x="78" y="430" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Source files studied in depth — 69%</text>
+<rect x="456" y="421" width="14" height="4" rx="2" fill="#22c1c3"/>
+<text x="478" y="430" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Level generator proven equal to the real game — 99%</text>
+<rect x="56" y="441" width="14" height="4" rx="2" fill="#f2a81d"/>
+<text x="78" y="450" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Real .d2s save: read and write verified — 90%</text>
+<rect x="456" y="441" width="14" height="4" rx="2" fill="#ef5da8"/>
+<text x="478" y="450" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">NPC interaction features — 100%</text>
+<rect x="56" y="461" width="14" height="4" rx="2" fill="#ff7a45"/>
+<text x="78" y="470" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Roadmap deliverables — 86%</text>
+</svg>
