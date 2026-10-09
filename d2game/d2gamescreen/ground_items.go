@@ -229,8 +229,21 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 // for gold, straight into the hero's purse.
 func (v *Game) pickUp(it *d2mapentity.Item) {
 	if it.IsGold() {
+		before := v.localPlayer.Gold
+		over := v.gameControls.PickUpGold(it.Gold)
+
+		if over >= it.Gold {
+			// the purse is full: the pile stays where it is (the original leaves the overflow on the ground)
+			v.Infof("gold pickup refused: carrying the maximum (%d)", before)
+			return
+		}
+
 		v.gameClient.MapEngine.RemoveEntity(it)
-		v.gameControls.AddGold(it.Gold)
+
+		if over > 0 {
+			v.dropGoldOverflow(it, over)
+		}
+
 		v.playSoundAt("item_gold", it.GetPosition(), "pickup")
 		v.Infof("AUTOGROUND pickup gold amount=%d total=%d", it.Gold, v.localPlayer.Gold)
 
@@ -408,6 +421,22 @@ func (v *Game) spawnGroundItem(it *diablo2item.Item, c d2ground.Cell) (*d2mapent
 	v.playSoundAt(ent.DropSound, ent.GetPosition(), "drop")
 
 	return ent, nil
+}
+
+// dropGoldOverflow leaves the gold that did not fit in the purse as a new pile
+// where the picked-up one lay (0x558e40 -> 0x557fe0, VERIFIED).
+func (v *Game) dropGoldOverflow(from *d2mapentity.Item, amount int) {
+	x, y := from.GetPositionF()
+
+	ent, err := v.gameClient.MapEngine.NewGoldPile(amount, v.asset.TranslateString("gld"),
+		int(math.Round(x*subtilesInTile)), int(math.Round(y*subtilesInTile)))
+	if err != nil {
+		v.Warningf("could not leave the gold overflow on the ground: %v", err)
+		return
+	}
+
+	v.gameClient.MapEngine.AddEntity(ent)
+	v.Infof("gold pickup: %d did not fit, left on the ground", amount)
 }
 
 func (v *Game) spawnGoldPile(amount int, c d2ground.Cell) (*d2mapentity.Item, error) {

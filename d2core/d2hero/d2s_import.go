@@ -146,7 +146,20 @@ func applyD2SAttributes(state *HeroState, a *d2s.Attributes, f *HeroStateFactory
 	s.Stamina = float64(a.CurrentStamina)
 	s.MaxStamina = int(a.MaxStamina)
 	s.NextLevelExp = f.asset.Records.GetExperienceBreakpoint(state.HeroType, s.Level)
-	state.Gold = int(a.Gold)
+	state.Gold = loadedGold(a.Gold, s.Level)
+}
+
+// loadedGold is what the save loader does with the stored gold stat (0x531a50,
+// VERIFIED): above the carry cap of the level (level*10000) it becomes 0. The
+// stat is unsigned in a .d2s, so the negative case cannot occur here. The
+// stashed gold is not kept in the HeroState (the exporter leaves the stored
+// value alone), so its 2,500,000 cap is not applied on load.
+func loadedGold(stored uint64, level int) int {
+	if stored > 1<<31 { // beyond any int cap: certainly over it
+		return 0
+	}
+
+	return d2inventory.SanitizeLoadedGold(int(stored), d2inventory.InventoryGoldLimit(level))
 }
 
 // classSkillIDs returns the ids of the hero class' skills in ascending id

@@ -12,6 +12,7 @@ const (
 	ClickAuto     ClickAction = "auto"     // the cursor item was auto-placed (ctrl)
 	ClickRefused  ClickAction = "refused"  // the footprint covers two or more items, or the grid is full
 	ClickNoTarget ClickAction = "notarget" // empty cursor on empty cells
+	ClickMerge    ClickAction = "merge"    // the cursor item was stacked onto the item under it; any surplus stays on the cursor
 )
 
 // ClickWith applies the left-click rules of INV_HandleGridClick (0x48c3c0,
@@ -57,6 +58,10 @@ func (g *ItemGrid) ClickWith(cursor InventoryItem, mx, my int, ctrl bool) (held 
 
 		return nil, ClickPlace, ax, ay
 	case 1:
+		if rest, merged := mergeIntoStack(over[0], cursor); merged {
+			return rest, ClickMerge, ax, ay
+		}
+
 		g.Remove(over[0])
 		g.set(ax, ay, cursor)
 

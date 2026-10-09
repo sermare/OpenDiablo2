@@ -258,6 +258,45 @@ func TestGoldLimits(t *testing.T) {
 	}
 }
 
+// TestVerifiedRulesPinned pins the rules read from Game.exe 1.14b: max stack
+// (0x6297b0), merge surplus (0x55c3c0), the empty unstack handler (0x55c7f0),
+// the gold caps (0x623050, 0x623640) and the gold setter (0x53dc10).
+func TestVerifiedRulesPinned(t *testing.T) {
+	if MaxStack(60, 0) != 60 || MaxStack(250, 400) != 511 || MaxStack(100, 20) != 120 {
+		t.Error("MaxStack = base + stat 0xfe clamped to 511")
+	}
+
+	if s, r := MergeStacks(70, 5, 60); s != 60 || r != 15 {
+		t.Errorf("over-full grid stack is clamped and the rest stays on the cursor: %d %d", s, r)
+	}
+
+	if MergeDurability(20, 12) != 12 || MergeDurability(10, 12) != 10 {
+		t.Error("merge keeps the lower durability")
+	}
+
+	if UnstackSupported {
+		t.Error("packet 0x22 handler is a stub in 1.14b")
+	}
+
+	if StashGoldLimit != 2500000 || InventoryGoldPerLevel != 10000 {
+		t.Error("gold caps")
+	}
+
+	tests := []struct{ have, delta, limit, want int }{
+		{100, 50, 10000, 150}, {100, -101, 10000, 0}, {9990, 11, 10000, 0}, {9990, 10, 10000, 10000},
+	}
+
+	for _, tt := range tests {
+		if got := SetGold(tt.have, tt.delta, tt.limit); got != tt.want {
+			t.Errorf("SetGold(%d,%d,%d)=%d want %d", tt.have, tt.delta, tt.limit, got, tt.want)
+		}
+	}
+
+	if SanitizeLoadedGold(-1, 100) != 0 || SanitizeLoadedGold(101, 100) != 0 || SanitizeLoadedGold(100, 100) != 100 {
+		t.Error("SanitizeLoadedGold")
+	}
+}
+
 // TestBeltableAreOnlyPotions pins the belt rule: only ItemTypes rows with the
 // Beltable flag go on the belt: potion types, elixirs and scrolls.
 func TestBeltableAreOnlyPotions(t *testing.T) {
