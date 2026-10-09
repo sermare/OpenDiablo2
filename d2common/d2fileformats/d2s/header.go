@@ -19,23 +19,25 @@ const (
 	MinVersion uint32 = 0x5C
 	MaxVersion uint32 = 0x60
 
-	nameOffset      = 0x14
-	nameLength      = 16
-	checksumOffset  = 0x0C
-	checksumLength  = 4
-	statusOffset    = 0x24
-	classOffset     = 0x28
-	skillCountPos   = 0x2A
-	levelOffset     = 0x2B
-	mercDeadOffset  = 0xB1
-	mercIDOffset    = 0xB3
-	mercNameOffset  = 0xB7
-	mercTypeOffset  = 0xB9
-	mercExpOffset   = 0xBB
-	appearanceStart = 0x88
-	appearanceLen   = 16
-	colorsStart     = 0x98
-	colorsLen       = 16
+	nameOffset       = 0x14
+	nameLength       = 16
+	checksumOffset   = 0x0C
+	checksumLength   = 4
+	statusOffset     = 0x24
+	classOffset      = 0x28
+	skillCountPos    = 0x2A
+	levelOffset      = 0x2B
+	difficultyOffset = 0xA8 // three bytes: normal, nightmare, hell
+	mapSeedOffset    = 0xAB
+	mercDeadOffset   = 0xB1
+	mercIDOffset     = 0xB3
+	mercNameOffset   = 0xB7
+	mercTypeOffset   = 0xB9
+	mercExpOffset    = 0xBB
+	appearanceStart  = 0x88
+	appearanceLen    = 16
+	colorsStart      = 0x98
+	colorsLen        = 16
 )
 
 // Status flags stored at offset 0x24.
@@ -83,6 +85,12 @@ type Header struct {
 	SkillCount uint8
 	Level      uint8
 	Mercenary  Mercenary
+	// Difficulty has one byte per difficulty; the active one has bit 0x80 set and
+	// its low bits hold the act the character is in (0 = Act I).
+	Difficulty [3]byte
+	// MapSeed is the seed the game's level generator is started from. In single
+	// player the game reads it from the save, so a character's maps are fixed.
+	MapSeed    uint32
 	Appearance [appearanceLen]byte
 	Colors     [colorsLen]byte
 
@@ -163,6 +171,9 @@ func ParseHeader(data []byte) (*Header, error) {
 	h.SkillCount = data[skillCountPos]
 	h.Level = data[levelOffset]
 
+	copy(h.Difficulty[:], data[difficultyOffset:difficultyOffset+3])
+	h.MapSeed = le.Uint32(data[mapSeedOffset:])
+
 	h.Mercenary = Mercenary{
 		Dead:       le.Uint16(data[mercDeadOffset:]) != 0,
 		ID:         le.Uint32(data[mercIDOffset:]),
@@ -215,4 +226,20 @@ func (c Class) String() string {
 	}
 
 	return "Unknown"
+}
+
+// activeFlag marks the active difficulty in Header.Difficulty.
+const activeFlag = 0x80
+
+// ActiveDifficulty returns the active difficulty (0 normal, 1 nightmare,
+// 2 hell) and the act (0 = Act I) the character is in. ok is false for a
+// character that has never entered the game.
+func (h *Header) ActiveDifficulty() (difficulty, act int, ok bool) {
+	for i, b := range h.Difficulty {
+		if b&activeFlag != 0 {
+			return i, int(b &^ activeFlag), true
+		}
+	}
+
+	return 0, 0, false
 }

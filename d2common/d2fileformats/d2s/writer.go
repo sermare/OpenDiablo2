@@ -109,6 +109,9 @@ func (h *Header) marshal() ([]byte, error) {
 		le.PutUint16(out[mercDeadOffset:], dead)
 	}
 
+	copy(out[difficultyOffset:], h.Difficulty[:])
+	le.PutUint32(out[mapSeedOffset:], h.MapSeed)
+
 	le.PutUint32(out[mercIDOffset:], m.ID)
 	le.PutUint16(out[mercNameOffset:], m.NameID)
 	le.PutUint16(out[mercTypeOffset:], m.Type)

@@ -109,3 +109,45 @@ func TestRealSave(t *testing.T) {
 	t.Logf("%s: name=%q class=%v level=%d expansion=%v ladder=%v new=%v version=0x%X checksum=0x%08X",
 		path, h.Name, h.Class, h.Level, h.IsExpansion(), h.IsLadder(), h.IsNewCharacter(), h.Version, h.Checksum)
 }
+
+func TestMapSeedAndDifficulty(t *testing.T) {
+	data := buildSave("Seed", Amazon, 1, 0)
+	copy(data[difficultyOffset:], []byte{0, 0x81, 0})
+	binary.LittleEndian.PutUint32(data[mapSeedOffset:], 0x101D574A)
+	binary.LittleEndian.PutUint32(data[checksumOffset:], 0)
+	binary.LittleEndian.PutUint32(data[checksumOffset:], Checksum(data))
+
+	h, err := ParseHeader(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	diff, act, ok := h.ActiveDifficulty()
+	if h.MapSeed != 0x101D574A || !ok || diff != 1 || act != 1 {
+		t.Fatalf("seed=%#x difficulty=%d act=%d ok=%v", h.MapSeed, diff, act, ok)
+	}
+
+	if _, _, ok = (&Header{}).ActiveDifficulty(); ok {
+		t.Fatal("a header with no active difficulty must report ok=false")
+	}
+}
+
+// TestRealMapSeed checks the real save's map seed when D2S_SAMPLE points at it.
+func TestRealMapSeed(t *testing.T) {
+	path := os.Getenv("D2S_SAMPLE")
+	if path == "" {
+		t.Skip("set D2S_SAMPLE to run")
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h, err := ParseHeader(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("map seed %#x difficulty bytes %v", h.MapSeed, h.Difficulty)
+}
