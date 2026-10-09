@@ -517,8 +517,16 @@ type castOpts struct {
 }
 
 func (p *Pipeline) owner(u Unit) d2missile.Owner {
-	return d2missile.Owner{ID: u.ID(), IsPlayer: u.IsPlayer(), Level: u.Level(), AttackRating: u.AttackRating(),
+	o := d2missile.Owner{ID: u.ID(), IsPlayer: u.IsPlayer(), Level: u.Level(), AttackRating: u.AttackRating(),
 		Roller: u.Roller()}
+
+	// A unit that can die reports it, so missiles that need a living owner
+	// (SrvDoFunc 6 and 7, verified 0x5ac1b0 / 0x5ac2c0) end with it.
+	if g, ok := u.(interface{ Gone() bool }); ok {
+		o.Gone = g.Gone
+	}
+
+	return o
 }
 
 var masteryStat = map[string]string{
@@ -570,7 +578,21 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		switch ms.SrvHitFunc {
 		case 1:
 			areaRadius = env.eval(sk.Calc[1])
-		case 14:
+		case 3, 14, 36:
+			areaRadius = env.eval(sk.AuraRangeCalc)
+		}
+	}
+
+	// SrvDoFunc 27 (Tornado, 0x5ad590, verified): period = Param1 else calc4,
+	// radius = Param2 else aurarangecalc.
+	var pulse int
+
+	if ms.SrvDoFunc == 27 {
+		if ms.Param[0] < 1 {
+			pulse = env.eval(sk.Calc[4])
+		}
+
+		if ms.Param[1] < 1 {
 			areaRadius = env.eval(sk.AuraRangeCalc)
 		}
 	}
@@ -579,9 +601,17 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		hitSubRange = sk.Params[3] + (lvl-1)*sk.Params[4]
 	}
 
+	// Hit function 7 (Holy Bolt, 0x5a7a40, verified) heals allies by calc1 +
+	// rand(calc2 - calc1) of the skill, in 8.8 fixed point.
+	var healMin, healMax int
+
+	if ms.SrvHitFunc == 7 {
+		healMin, healMax = env.eval(sk.Calc[1])<<8, env.eval(sk.Calc[2])<<8
+	}
+
 	m, err := p.Sim.Create(d2missile.CreateParams{
 		Spec: ms, Owner: p.owner(u), SkillID: sk.ID, Level: lvl, Damage: desc,
-		AreaRadius: areaRadius, HitSubRange: hitSubRange,
+		AreaRadius: areaRadius, HitSubRange: hitSubRange, HealMin: healMin, HealMax: healMax, PulseEvery: pulse,
 		X: sx, Y: sy, DestX: dx, DestY: dy, Angle: o.angle, Velocity: o.velocity, ClampToDest: o.clamp || sk.Lob,
 		// the missile rolls its pierce charges (stat 0x148) from skill_pierce +
 		// item_pierce at creation (0x59d4e0, verified)

@@ -51,7 +51,10 @@ func (h *heroUnit) manaString() string {
 
 func (h *heroUnit) ID() string     { return h.p.ID() }
 func (h *heroUnit) IsPlayer() bool { return true }
-func (h *heroUnit) Level() int     { return h.p.Stats.Level }
+
+// Gone reports a dead hero (death animation or corpse); see Owner.Gone.
+func (h *heroUnit) Gone() bool { return h.p.IsDead() }
+func (h *heroUnit) Level() int { return h.p.Stats.Level }
 
 func (h *heroUnit) skill(id int) int {
 	if s := h.p.Skills[id]; s != nil {
@@ -281,6 +284,26 @@ func (t *monsterTarget) Defense(bool) int {
 	return v
 }
 
+// IsUndead and IsDemon implement d2missile.Kinded (monstats lUndead|hUndead
+// and demon).
+func (t *monsterTarget) IsUndead() bool {
+	return t.m.Stat != nil && (t.m.Stat.IsUndeadLow || t.m.Stat.IsUndeadHigh)
+}
+
+func (t *monsterTarget) IsDemon() bool { return t.m.Stat != nil && t.m.Stat.IsDemon }
+
+// Serial implements d2missile.Serial: the unit id Guided Arrow orders by.
+func (t *monsterTarget) Serial() int { return int(t.e.monsters.UnitID(t.m)) }
+
+// Size implements d2missile.Sized (monstats SizeX, subtracted from distances).
+func (t *monsterTarget) Size() int {
+	if t.m.StatEx != nil {
+		return t.m.StatEx.SizeX
+	}
+
+	return 0
+}
+
 // SubPos implements d2missile.Positioned (homing, chain lightning).
 func (t *monsterTarget) SubPos() (float64, float64) {
 	x, y := t.m.SubtilePos()
@@ -324,8 +347,6 @@ func (w *world) Targets(x, y int) []d2missile.Target {
 	return out
 }
 
-var _ d2path.Grid = (*world)(nil)
-
 // AdjustAROperands implements d2skill.AROperandAdjuster for the hero's skill
 // strikes: 0x57b8b0 against a monster target (d2monsters.HeroAROperands).
 func (h *heroUnit) AdjustAROperands(t d2missile.Target, ar, def int) (int, int) {
@@ -336,3 +357,33 @@ func (h *heroUnit) AdjustAROperands(t d2missile.Target, ar, def int) (int, int) 
 
 	return d2monsters.HeroAROperands(h.p.Stats.Totals, mt.m, ar, def)
 }
+
+// EnemiesWithin implements d2missile.Finder (the scan 0x569510 with the filter
+// 0x569100, verified): the living monsters of the owner's enemies whose
+// subtile position is within radius subtiles (euclidean, squared compare) of
+// (x, y), outside a town and in line of sight of the owner (wall bit 4 along
+// the line owner -> candidate). Only hero owners are served: the engine has no
+// monster-fired homing missiles and heroes are not enemy candidates (no PvP
+// missiles). The listing is sorted by unit id; the sim keeps the lowest.
+func (w *world) EnemiesWithin(o d2missile.Owner, x, y float64, radius int) []d2missile.Target {
+	h := w.e.heroes[o.ID]
+	if h == nil || !o.IsPlayer || (h.p.IsInTown() && !w.e.opt.IgnoreTown) {
+		return nil
+	}
+
+	ox, oy := h.Pos()
+
+	var cs []d2missile.Candidate
+
+	for _, m := range w.e.monsters.Monsters() {
+		mx, my := m.SubtilePos()
+		cs = append(cs, d2missile.Candidate{Target: w.e.target(m), X: mx, Y: my})
+	}
+
+	return d2missile.Scan(w.e.monsters.Grid(), d2path.Point{X: ox, Y: oy}, x, y, radius, cs)
+}
+
+var (
+	_ d2path.Grid      = (*world)(nil)
+	_ d2missile.Finder = (*world)(nil)
+)

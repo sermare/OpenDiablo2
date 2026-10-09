@@ -783,3 +783,14 @@ func (d *Director) noteBlockAnim(p *d2mapentity.Player) string {
 
 	return fmt.Sprintf(" block_anim=%v", play)
 }
+
+// UnitID is the monster's numeric unit id (the brain id, assigned in spawn
+// order from 1), the key the game's target picks order by; 0 for an unknown
+// monster.
+func (d *Director) UnitID(m *d2mapentity.Monster) uint32 {
+	if u := d.byEntity[m.ID()]; u != nil {
+		return u.b.ID
+	}
+
+	return 0
+}
