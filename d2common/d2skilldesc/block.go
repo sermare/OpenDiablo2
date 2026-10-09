@@ -125,9 +125,9 @@ const (
 var (
 	// UNVERIFIED (not read in the binary; taken from the shipped table):
 	// texta + "a-b" + textb; kind 38 is the verified one of these.
-	rangeKinds = map[int]bool{43: true, 52: true}
-	// UNVERIFIED: plain texta + n + textb (57 was not read).
-	plainKinds = map[int]bool{57: true}
+	rangeKinds = map[int]bool{43: true}
+	// UNVERIFIED: plain texta + n + textb (none left; 57 is decoded).
+	plainKinds = map[int]bool{}
 )
 
 // Ctx carries the per-skill, per-level values that rows of kinds 1, 8-11 and
@@ -147,6 +147,16 @@ type Ctx struct {
 	ElemLen func() int
 	// Life is the average life of the summoned monster (kind 13).
 	Life func() (avg int, ok bool)
+	// ElemOverTime is the skill's elemental damage over its length for kind
+	// 14: lo and hi are the per-frame range times the element length >> 8,
+	// frames the length (ELen), etype the skills.txt element.
+	ElemOverTime func() (lo, hi, frames, etype int)
+	// MissileDamage is the missile's average damage per second range and
+	// element for kind 22 (UNVERIFIED how the range is computed).
+	MissileDamage func() (lo, hi, etype int)
+	// MissileRange is the missile's lifetime in frames, LevRange*level+Range,
+	// for kind 23.
+	MissileRange func() int
 	// CurseDiv is the divisor of kind 31; values below 1 mean no division.
 	CurseDiv int
 }
@@ -213,6 +223,10 @@ func RowLineCtx(r Row, tr func(string) string, eval func(string) int, ctx *Ctx) 
 	}
 
 	if line, ok, handled := damageRow(r, a, b, va, vb, tr, ctx); handled {
+		return line, ok
+	}
+
+	if line, ok, handled := moreRow(r, a, b, va, vb, tr, ctx, eval); handled {
 		return line, ok
 	}
 
