@@ -8,9 +8,11 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
@@ -540,12 +542,26 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 	d.kill(u, src)
 }
 
+// scaleKillXP applies the VERIFIED level difference scaling and the level cap
+// of the original (0x0057c490 / 0x0057c300, d2herostats.KillXP) to a kill's
+// base experience. A kill at the hero's own level is unchanged. The ExpRatio
+// column and item +% experience are not applied here (data not extracted /
+// stat not wired). Unknown levels (<= 0) leave the experience as is.
+func scaleKillXP(xp, monsterLevel int, st *d2hero.HeroStatsState) int {
+	if st == nil || st.Level <= 0 || monsterLevel <= 0 || xp <= 0 {
+		return xp
+	}
+
+	return d2herostats.KillXP(xp, monsterLevel, st.Level, heroMaxLevel, 0)
+}
+
+// heroMaxLevel is the character level at which kills stop giving experience.
+const heroMaxLevel = 99
+
 // awardKillXP gives the hero the experience of his kill (also the kills of his
 // merc and pets, which are credited to the owner at full value) and returns the
-// amount after the shrine bonus. There is NO level-difference penalty here: the
-// original scales a kill by the character/monster level difference
-// (0x0057c300, table near 0x006e2960, UNVERIFIED, see d2-re-notes xp notes), which
-// is not modelled. Experience is capped later, at row MaxLvl-1 of Experience.txt
+// amount after the shrine bonus. The level-difference scaling happens before, in
+// scaleKillXP. Experience is capped later, at row MaxLvl-1 of Experience.txt
 // (VERIFIED 0x0057c510, hero_levelup.go).
 func (d *Director) awardKillXP(src *d2mapentity.Player, xp int, label string) int {
 	if d.ExpBonusPct != nil { // shrine experience boost (d2object), percent
@@ -573,7 +589,7 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 
 	if src != nil {
 		by = src.Name()
-		xp = d.awardKillXP(src, xp, u.m.Label())
+		xp = d.awardKillXP(src, scaleKillXP(xp, u.m.Vitals.Level, src.Stats), u.m.Label())
 	}
 
 	if k := d.killer; k != nil {
