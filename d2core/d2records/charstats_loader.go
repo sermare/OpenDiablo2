@@ -47,6 +47,7 @@ func charStatsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			InitEne:     d.Number("int"),
 			InitStamina: d.Number("stamina"),
 
+			HpAdd:       d.Number("hpadd"),
 			ManaRegen:   d.Number("ManaRegen"),
 			ToHitFactor: d.Number("ToHitFactor"),
 

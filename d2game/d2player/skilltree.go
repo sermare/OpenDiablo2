@@ -3,7 +3,9 @@ package d2player
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
@@ -172,7 +174,15 @@ func (s *skillTree) load() {
 
 	s.loadForHeroType()
 
+	classToken := strings.ToLower(s.heroClass.GetToken3())
+
 	for _, skill := range s.skills {
+		// only the hero class' own skills have a place in the tree (an imported save may
+		// carry skills of other classes, e.g. from item charges, for the skill hotkeys)
+		if skill.Charclass != classToken {
+			continue
+		}
+
 		si := newSkillIcon(s.uiManager, s.resources.skillSprite, s.l, skill)
 		s.skillIcons = append(s.skillIcons, si)
 		s.iconGroup.AddWidget(si)
@@ -400,6 +410,39 @@ func (s *skillTree) IsOpen() bool {
 // Set the callback run on closing the skilltree
 func (s *skillTree) SetOnCloseCb(cb func()) {
 	s.onCloseCb = cb
+}
+
+// Summary lists the skills with allocated points in id order as Name(id)=level,
+// the unspent points and how many icons each tab has, for the autotest log.
+func (s *skillTree) Summary() string {
+	ids := make([]int, 0, len(s.skills))
+
+	for id, sk := range s.skills {
+		if sk.SkillPoints > 0 && sk.Charclass == strings.ToLower(s.heroClass.GetToken3()) {
+			ids = append(ids, id)
+		}
+	}
+
+	sort.Ints(ids)
+
+	parts := make([]string, 0, len(ids))
+	spent := 0
+
+	for _, id := range ids {
+		parts = append(parts, fmt.Sprintf("%s(%d)=%d", s.skills[id].Skill, id, s.skills[id].SkillPoints))
+		spent += s.skills[id].SkillPoints
+	}
+
+	var tabs [numTabs]int
+
+	for _, si := range s.skillIcons {
+		if p := si.skill.SkillPage; p >= 1 && p <= numTabs {
+			tabs[p-1]++
+		}
+	}
+
+	return fmt.Sprintf("class=%s unspent=%d spent=%d icons=%v learned=[%s]",
+		s.heroClass, s.stats.SkillPoints, spent, tabs, strings.Join(parts, " "))
 }
 
 func (s *skillTree) setTab(tab int) {

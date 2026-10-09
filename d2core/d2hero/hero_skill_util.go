@@ -9,5 +9,11 @@ func HydrateSkills(skills map[int]*HeroSkill, asset *d2asset.AssetManager) {
 	for skillID, skill := range skills {
 		skill.SkillRecord = asset.Records.Skill.Details[skillID]
 		skill.SkillDescriptionRecord = asset.Records.Skill.Descriptions[skill.SkillRecord.Skilldesc]
+
+		// the allocated level travels in the shallow copy; without this every
+		// skill of a hero that came over the network would show level 0
+		if skill.Shallow != nil {
+			skill.SkillPoints = skill.Shallow.SkillPoints
+		}
 	}
 }

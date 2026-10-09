@@ -42,8 +42,11 @@ func (f *HeroStateFactory) CreateHeroStatsState(heroClass d2enum.Hero, classStat
 		StatsPoints:  0,
 		SkillPoints:  0,
 
-		MaxHealth:  classStats.InitVit * classStats.LifePerVit,
-		MaxMana:    classStats.InitEne * classStats.ManaPerEne,
+		// a new character starts with hpadd + vitality life and as much mana as energy
+		// (Amazon 50/15, Sorceress 40/35, Barbarian 55/10 ...); the per-vitality values of
+		// charstats.txt are in fourths and apply to points added later
+		MaxHealth:  classStats.HpAdd + classStats.InitVit,
+		MaxMana:    classStats.InitEne,
 		MaxStamina: classStats.InitStamina,
 		// https://github.com/OpenDiablo2/OpenDiablo2/issues/814
 	}

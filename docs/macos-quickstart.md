@@ -54,6 +54,8 @@ from a non-GUI shell fails with a Cocoa display error):
 | `OD2_AUTOMONSTER=skeleton1,3` | Spawn monsters (id, name or class number, optional count; a pack led by the first) 12 subtiles from the hero, let the hero fight them, log `MONSTER spawn/aggro/attack/hit/death/drop` lines and an `AUTOMONSTER summary`. `OD2_AUTOMONSTER_SECONDS` (default 30), `OD2_AUTOMONSTER_DIFF=0..2`, `OD2_AUTOMONSTER_PASSIVE=1` (hero does not fight back). |
 | `OD2_AUTOTEST_MUTE=1` | Do not play sound during the autotest. |
 | `OD2_AUTOTRADE=Akara,Charsi` | Open each Act 1 vendor's trade window, log the stock with computed buy prices, run one scripted buy and sell (and a repair for Charsi) with the gold before and after, then restore the gold. `OD2_AUTOTRADE_SEED=<n>` fixes the stock, `OD2_AUTOTRADE_LEVEL=<n>` generates it for that hero level (a high level only gets magic items). |
+| `OD2_AUTOSCREEN=charselect` | Without `OD2_AUTOGAME`, open the character select screen instead of the main menu. It logs one `CHARSELECT slot=.. name=.. class=.. level=.. hardcore=.. expansion=.. ladder=.. dead=.. imported=..` line per listed hero. Combine with `OD2_D2S_DIR`. |
+| `OD2_AUTOSHOT=<file>.png` | Save one screenshot of the window after `OD2_AUTOSHOT_DELAY` seconds (default 6) and, with `OD2_AUTOEXIT=1`, quit. Inside a scripted scenario use the `shot:` step instead. Read the PNG to check a layout. |
 | `OD2_AUTOEXIT=1` | Quit when the autotest finishes. |
 
 ### Scripted scenarios (`OD2_AUTOSCRIPT`)
@@ -70,7 +72,13 @@ a semicolon-separated list of steps, run a few seconds after the game starts:
 | `panel:inventory\|character\|skills\|quest\|close` | Open a panel, or close all. |
 | `say:<command>` | Run an in-game console command. |
 | `expect:log=<substring>` | Fail the run unless the game log already contains it. |
+| `shot:<file>.png` | Save a screenshot of the window now (no spaces in the path). |
 | `exit` | Finish; with `OD2_AUTOEXIT=1` the process exits 0 on PASS, 1 on FAIL. |
+
+Opening a panel with `panel:` also logs the values it shows, so an imported hero can be checked without a
+screenshot: `PANEL character: level=94 name=.. str=122 dex=25 vit=368 ene=35 hp=cur/max mana=.. stamina=.. exp=2411280845 next=2492671933 ..`,
+`PANEL skills: class=.. unspent=.. spent=.. learned=[Fire Bolt(36)=1 ..]` plus `PANEL skills active: left=.. right=..` (the saved mouse skills),
+and `PANEL inventory: gold=.. items=<bag items> worn=[head=.. weapon=.. ..]`.
 
 Each step logs `AUTOSCRIPT step N: ...` and the end logs
 `AUTOSCRIPT RESULT PASS` or `AUTOSCRIPT RESULT FAIL`. Example:

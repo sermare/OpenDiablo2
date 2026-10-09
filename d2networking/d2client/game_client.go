@@ -212,6 +212,16 @@ func (g *GameClient) handleUpdateServerInfoPacket(packet d2netpacket.NetPacket) 
 	return nil
 }
 
+// LocalHeroState returns the saved state of the hero a local game was started
+// with, or nil when the connection is remote.
+func (g *GameClient) LocalHeroState() *d2hero.HeroState {
+	if c, ok := g.clientConnection.(interface{ GetPlayerState() *d2hero.HeroState }); ok {
+		return c.GetPlayerState()
+	}
+
+	return nil
+}
+
 func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 	player, err := d2netpacket.UnmarshalAddPlayer(packet.PacketData)
 	if err != nil {

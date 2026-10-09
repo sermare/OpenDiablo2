@@ -57,6 +57,9 @@ func TestParse(t *testing.T) {
 		{"cast:", 0, true},
 		{"say:", 0, true},
 		{"dance", 0, true},
+		{"shot:/tmp/a.png", 1, false},
+		{"shot:", 0, true},
+		{"shot:a b.png", 0, true},
 	}
 	for _, tc := range tests {
 		steps, err := Parse(tc.spec)
@@ -154,5 +157,21 @@ func TestRunnerEndsWithoutExitStep(t *testing.T) {
 
 	if !r.Done() || r.Failed() || len(h.exit) != 1 {
 		t.Errorf("done=%v failed=%v exit=%v", r.Done(), r.Failed(), h.exit)
+	}
+}
+
+func TestRunnerShot(t *testing.T) {
+	steps, err := Parse("shot:/tmp/x.png;exit")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h := &fakeHost{}
+	r := NewRunner(steps, h)
+	r.Advance(0)
+	r.Advance(0)
+
+	if len(h.calls) != 1 || h.calls[0] != "say capframe /tmp/x.png" {
+		t.Fatalf("calls = %v", h.calls)
 	}
 }

@@ -37,7 +37,8 @@ func (t *TradeWindow) RunAutoTest() {
 	t.Infof("AUTOTRADE vendor=%s gold restored to %d", t.vendor.Name, start)
 }
 
-func (t *TradeWindow) autoBuySell() {
+// autoPick returns the cheapest affordable stock item that fits the bag.
+func (t *TradeWindow) autoPick() *diablo2item.Item {
 	var pick *diablo2item.Item
 
 	best := 0
@@ -56,6 +57,34 @@ func (t *TradeWindow) autoBuySell() {
 		if pick == nil || price < best {
 			pick, best = item, price
 		}
+	}
+
+	return pick
+}
+
+func (t *TradeWindow) autoBuySell() {
+	pick := t.autoPick()
+
+	// the bag of a real (imported) hero can be full: lift items out until a
+	// purchase fits, and put them back where they were afterwards
+	var lifted []InventoryItem
+
+	for pick == nil && len(t.inv.grid.items) > 0 {
+		it := t.inv.grid.items[len(t.inv.grid.items)-1]
+		t.inv.grid.Remove(it)
+		lifted = append(lifted, it)
+		pick = t.autoPick()
+	}
+
+	if len(lifted) > 0 {
+		defer func() {
+			for i := len(lifted) - 1; i >= 0; i-- {
+				x, y := lifted[i].InventoryGridSlot()
+				if err := t.inv.grid.Set(x, y, lifted[i]); err != nil {
+					t.Infof("AUTOTRADE could not put %s back: %v", lifted[i].GetItemCode(), err)
+				}
+			}
+		}()
 	}
 
 	if pick == nil {
@@ -80,7 +109,16 @@ func (t *TradeWindow) autoBuySell() {
 }
 
 func (t *TradeWindow) autoRepair() {
-	for _, it := range t.inv.grid.items {
+	// the bag first, then what the hero wears
+	candidates := append([]InventoryItem{}, t.inv.grid.items...)
+
+	for _, slot := range t.inv.grid.equipmentSlots {
+		if slot.item != nil {
+			candidates = append(candidates, slot.item)
+		}
+	}
+
+	for _, it := range candidates {
 		item, ok := it.(*diablo2item.Item)
 		if !ok {
 			continue

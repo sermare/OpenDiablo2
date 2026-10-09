@@ -22,6 +22,7 @@ const (
 	KindPanel  Kind = "panel"
 	KindSay    Kind = "say"
 	KindExpect Kind = "expect"
+	KindShot   Kind = "shot"
 	KindExit   Kind = "exit"
 )
 
@@ -131,6 +132,11 @@ func parseStep(raw string) (Step, error) {
 	case KindSay:
 		if arg == "" {
 			return s, errors.New("say needs a command")
+		}
+	case KindShot:
+		// shot:<file>.png saves a screenshot of the window (the console's capframe)
+		if arg == "" || strings.ContainsAny(arg, " \t") {
+			return s, errors.New("shot needs a file name without spaces")
 		}
 	case KindExpect:
 		if !strings.HasPrefix(arg, "log=") || len(arg) == len("log=") {
@@ -245,6 +251,8 @@ func (r *Runner) run(s Step) error {
 		return r.host.Panel(s.Arg)
 	case KindSay:
 		return r.host.Say(s.Arg)
+	case KindShot:
+		return r.host.Say("capframe " + s.Arg)
 	case KindExpect:
 		if !r.host.LogContains(s.Arg) {
 			return fmt.Errorf("log does not contain %q", s.Arg)

@@ -63,16 +63,43 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
 #!/bin/zsh
 export OD2_PORT=$OD2_PORT
 export OD2_AUTOGAME="$save" OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1
-export OD2_AUTOSCRIPT='wait:1;move:npc=Akara;wait:8;expect:log=NPC menu opened;panel:inventory;wait:1;panel:character;wait:1;panel:close;exit'
+export OD2_AUTOSCRIPT='wait:1;move:npc=Akara;wait:14;expect:log=NPC menu opened;panel:inventory;wait:1;panel:character;wait:1;panel:skills;wait:1;shot:$tmp/panels.png;wait:2;panel:close;exit'
 $tmp/od2 2>&1 | tee $log
 EOT
   chmod +x $cmd; rm -f $log
   open $cmd
   for i in {1..90}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
   sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
-  grep -E "AUTOSCRIPT" $log.txt | cut -c1-200
+  grep -E "AUTOSCRIPT|PANEL" $log.txt | cut -c1-300
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: scripted scenario did not pass"; fail=1; }
+  # the panels log what they show, so the imported hero can be checked without a screenshot
+  grep -qE "PANEL character: level=[0-9]+ name=.* str=[0-9]+ dex=[0-9]+ vit=[0-9]+ ene=[0-9]+ hp=[0-9]+/[0-9]+ .* exp=[0-9]+ next=[0-9]+ " $log.txt || { echo "FAIL: no PANEL character line"; fail=1; }
+  grep -qE "PANEL skills: class=.* unspent=[0-9]+ spent=[0-9]+ icons=" $log.txt || { echo "FAIL: no PANEL skills line"; fail=1; }
+  grep -qE "PANEL skills active: left=.*\(id=[0-9]+,lvl=[0-9]+\) right=.*\(id=[0-9]+,lvl=[0-9]+\)" $log.txt || { echo "FAIL: no PANEL skills active line"; fail=1; }
+  grep -qE "PANEL inventory: gold=[0-9]+ items=[0-9]+ worn=\[" $log.txt || { echo "FAIL: no PANEL inventory line"; fail=1; }
+  [ -s $tmp/panels.png ] || { echo "FAIL: no screenshot from the shot: step"; fail=1; }
   if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in scripted log"; fail=1; fi
+fi
+
+if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
+  step "character select lists the imported .d2s (and takes a screenshot)"
+  mkdir -p $tmp/d2s && cp "$D2S_SAMPLE_BODY" $tmp/d2s/Sample.d2s
+  cmd=$tmp/charsel.command log=$tmp/charsel.log
+  cat > $cmd <<EOT
+#!/bin/zsh
+export OD2_PORT=$OD2_PORT
+export OD2_D2S_DIR="$tmp/d2s" OD2_AUTOSCREEN=charselect OD2_AUTOSHOT="$tmp/charselect.png"
+export OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1
+$tmp/od2 2>&1 | tee $log
+EOT
+  chmod +x $cmd; rm -f $log
+  open $cmd
+  for i in {1..60}; do sleep 1; pgrep -f $tmp/od2 >/dev/null || break; done
+  sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
+  grep -E "CHARSELECT|AUTOSHOT" $log.txt | cut -c1-200
+  grep -qE "CHARSELECT slot=[0-9]+ name=.* class=[A-Za-z]+ level=[0-9]+ hardcore=(true|false) expansion=(true|false) ladder=(true|false) dead=(true|false) imported=true" $log.txt || { echo "FAIL: imported hero not listed"; fail=1; }
+  [ -s $tmp/charselect.png ] || { echo "FAIL: no character select screenshot"; fail=1; }
+  if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in character select log"; fail=1; fi
 fi
 
 echo

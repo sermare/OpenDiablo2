@@ -315,8 +315,6 @@ func (v *CharacterSelect) onScrollUpdate() {
 }
 
 func (v *CharacterSelect) updateCharacterBoxes() {
-	expText := v.asset.TranslateString("#803")
-
 	for i := 0; i < 8; i++ {
 		idx := i + (v.charScrollbar.GetCurrentOffset() * indexPerLine)
 
@@ -329,16 +327,20 @@ func (v *CharacterSelect) updateCharacterBoxes() {
 			continue
 		}
 
-		heroName := v.gameStates[idx].HeroName
-		heroInfo := v.asset.TranslateString("level") + " " + strconv.FormatInt(int64(v.gameStates[idx].Stats.Level), 10) +
-			" " + v.asset.TranslateString(v.gameStates[idx].HeroType.String())
+		state := v.gameStates[idx]
+		line1, line2, line3 := characterListText(v.asset, state)
 
-		v.characterNameLabel[i].SetText(d2ui.ColorTokenize(heroName, d2ui.ColorTokenGold))
-		v.characterStatsLabel[i].SetText(d2ui.ColorTokenize(heroInfo, d2ui.ColorTokenWhite))
-		v.characterExpLabel[i].SetText(d2ui.ColorTokenize(expText, d2ui.ColorTokenGreen))
+		v.characterNameLabel[i].SetText(line1)
+		v.characterStatsLabel[i].SetText(line2)
+		v.characterExpLabel[i].SetText(line3)
 
 		heroType := v.gameStates[idx].HeroType
 		equipment := v.DefaultHeroItems[heroType]
+
+		// an imported real character is shown with what it wears
+		if state.Imported != nil {
+			equipment = state.Equipment
+		}
 
 		// https://github.com/OpenDiablo2/OpenDiablo2/issues/791
 		v.characterImage[i] = v.NewPlayer("", "", 0, 0, 0,
@@ -351,6 +353,50 @@ func (v *CharacterSelect) updateCharacterBoxes() {
 			v.gameStates[idx].Gold,
 		)
 	}
+}
+
+// characterListText builds the three lines of a character select entry like the
+// original list: the name (gold, red for hardcore characters), "Level N Class",
+// and the character kind line (green). Heroes made in this engine have no .d2s
+// flags and are listed as Expansion characters. The original draws dead hardcore
+// characters in red too; the exact wording for hardcore/dead is unverified, only
+// the flag bits (0x04 hardcore, 0x08 died, 0x20 expansion, 0x40 ladder) are.
+func characterListText(asset *d2asset.AssetManager, state *d2hero.HeroState) (name, info, kind string) {
+	hardcore, expansion, dead := false, true, false
+	if state.Imported != nil {
+		hardcore, expansion, dead = state.Imported.Hardcore, state.Imported.Expansion, state.Imported.Dead
+	}
+
+	nameColor := d2ui.ColorTokenGold
+	if hardcore {
+		nameColor = d2ui.ColorTokenRed
+	}
+
+	level := 1
+	if state.Stats != nil {
+		level = state.Stats.Level
+	}
+
+	infoText := asset.TranslateString("level") + " " + strconv.Itoa(level) + " " + asset.TranslateString(state.HeroType.String())
+
+	var kindText string
+
+	if dead {
+		kindText = "Dead "
+	}
+
+	if hardcore {
+		kindText += asset.TranslateString("strChatHardcore") + " "
+	}
+
+	// classic characters have no kind line
+	if expansion {
+		kindText += asset.TranslateString("#803")
+	}
+
+	return d2ui.ColorTokenize(state.HeroName, nameColor),
+		d2ui.ColorTokenize(infoText, d2ui.ColorTokenWhite),
+		d2ui.ColorTokenize(strings.TrimSpace(kindText), d2ui.ColorTokenGreen)
 }
 
 func (v *CharacterSelect) onNewCharButtonClicked() {
@@ -520,6 +566,17 @@ func (v *CharacterSelect) refreshGameStates() {
 
 	v.updateCharacterBoxes()
 
+	// one log line per entry, so the list can be verified without a screenshot
+	for i, st := range v.gameStates {
+		hardcore, expansion, ladder, dead := false, true, false, false
+		if st.Imported != nil {
+			hardcore, expansion, ladder, dead = st.Imported.Hardcore, st.Imported.Expansion, st.Imported.Ladder, st.Imported.Dead
+		}
+
+		v.Infof("CHARSELECT slot=%d name=%q class=%s level=%d hardcore=%t expansion=%t ladder=%t dead=%t imported=%t",
+			i, st.HeroName, st.HeroType, st.Stats.Level, hardcore, expansion, ladder, dead, st.Imported != nil)
+	}
+
 	if len(v.gameStates) > 0 {
 		v.selectedCharacter = 0
 		numStates := selectionBoxNumColumns * selectionBoxNumRows
@@ -536,6 +593,16 @@ func (v *CharacterSelect) refreshGameStates() {
 }
 
 func (v *CharacterSelect) onOkButtonClicked() {
+	if v.selectedCharacter < 0 || v.selectedCharacter >= len(v.gameStates) {
+		return
+	}
+
+	// the original refuses to load a dead hardcore character
+	if im := v.gameStates[v.selectedCharacter].Imported; im != nil && im.Hardcore && im.Dead {
+		v.Infof("CHARSELECT %s is a dead hardcore character and cannot be played", v.gameStates[v.selectedCharacter].HeroName)
+		return
+	}
+
 	v.navigator.ToCreateGame(v.gameStates[v.selectedCharacter].FilePath, v.connectionType, v.connectionHost)
 }
 

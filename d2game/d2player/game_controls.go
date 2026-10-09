@@ -813,21 +813,51 @@ func (g *GameControls) AutoPanel(name string) error {
 		return fmt.Errorf("unknown panel %q", name)
 	}
 
-	if panel.IsOpen() {
-		return nil
-	}
-
-	if name == "inventory" || name == "skills" {
-		g.openRightPanel(panel)
-	} else {
-		g.openLeftPanel(panel)
+	if !panel.IsOpen() {
+		if name == "inventory" || name == "skills" {
+			g.openRightPanel(panel)
+		} else {
+			g.openLeftPanel(panel)
+		}
 	}
 
 	if !panel.IsOpen() {
 		return fmt.Errorf("panel %q did not open", name)
 	}
 
+	g.logPanel(name)
+
 	return nil
+}
+
+// logPanel writes the values an open panel shows as a "PANEL <name>: ..." log
+// line, so OD2_AUTOSCRIPT runs can be checked without a screenshot.
+func (g *GameControls) logPanel(name string) {
+	switch name {
+	case "character":
+		g.Infof("PANEL character: %s", g.heroStatsPanel.Summary())
+	case "skills":
+		g.Infof("PANEL skills: %s", g.skilltree.Summary())
+		g.Infof("PANEL skills active: left=%s right=%s", skillLabel(g.hero.LeftSkill), skillLabel(g.hero.RightSkill))
+	case "inventory":
+		g.Infof("PANEL inventory: gold=%d items=%d worn=[%s] equipment=[%s]", g.inventory.Gold(),
+			len(g.inventory.grid.items), g.inventory.EquippedSummary(), g.equipmentSummary())
+	}
+}
+
+func skillLabel(s *d2hero.HeroSkill) string {
+	if s == nil || s.SkillRecord == nil {
+		return "none"
+	}
+
+	return fmt.Sprintf("%s(id=%d,lvl=%d)", s.Skill, s.ID, s.SkillPoints)
+}
+
+func (g *GameControls) equipmentSummary() string { return g.hero.Equipment.Describe() }
+
+// SetImportedItems gives the inventory the items of an imported .d2s hero; call before Load.
+func (g *GameControls) SetImportedItems(items []d2hero.ImportedItem, weaponSetII bool) {
+	g.inventory.SetImportedItems(items, weaponSetII)
 }
 
 func (g *GameControls) toggleInventoryPanel() {

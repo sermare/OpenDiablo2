@@ -349,6 +349,11 @@ func (v *Game) bindGameControls() error {
 			return err
 		}
 
+		// an imported .d2s hero shows its real equipment and inventory page
+		if st := v.gameClient.LocalHeroState(); st != nil && st.Imported != nil {
+			v.gameControls.SetImportedItems(st.Items, st.Imported.WeaponSetII)
+		}
+
 		v.gameControls.Load()
 
 		if err := v.inputManager.BindHandler(v.gameControls); err != nil {

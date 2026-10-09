@@ -89,14 +89,28 @@ func (f *MapEntityFactory) NewPlayer(id, name string, x, y, direction int, heroT
 
 	heroState, _ := f.CreateHeroState(name, heroType, stats)
 
+	// the hero's own skill levels (e.g. from an imported .d2s) win over the class defaults
+	if len(skills) > 0 {
+		heroState.Skills = skills
+	}
+
+	leftSkillRec, rightSkillRec := heroState.Skills[leftSkill], heroState.Skills[rightSkill]
+	if leftSkillRec == nil {
+		leftSkillRec = heroState.Skills[0]
+	}
+
+	if rightSkillRec == nil {
+		rightSkillRec = heroState.Skills[0]
+	}
+
 	result := &Player{
 		mapEntity:  newMapEntity(x, y),
 		composite:  composite,
 		Equipment:  equipment,
 		Stats:      heroState.Stats,
 		Skills:     heroState.Skills,
-		LeftSkill:  heroState.Skills[leftSkill],
-		RightSkill: heroState.Skills[rightSkill],
+		LeftSkill:  leftSkillRec,
+		RightSkill: rightSkillRec,
 		name:       name,
 		Class:      heroType,
 		//nameLabel:    d2ui.NewLabel(d2resource.FontFormal11, d2resource.PaletteStatic),

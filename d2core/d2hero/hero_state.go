@@ -26,6 +26,32 @@ type HeroState struct {
 	// Progress is the quest/waypoint/NPC state imported from a .d2s; nil for
 	// heroes that have none (older hero files omit it).
 	Progress *HeroProgress `json:"progress,omitempty"`
+	// Imported is set for heroes that came from a real .d2s save; nil for heroes
+	// created in this engine, which are shown as Expansion characters.
+	Imported *ImportedInfo `json:"imported,omitempty"`
+	// Items are the items of an imported .d2s (equipped, inventory page, belt, cube
+	// and stash), for the inventory panel. See ImportedItem.
+	Items []ImportedItem `json:"items,omitempty"`
+}
+
+// ImportedInfo carries what the character select screen shows about a real
+// Diablo II character, and the skill hotkeys of the original save.
+type ImportedInfo struct {
+	Hardcore  bool `json:"hardcore,omitempty"`
+	Expansion bool `json:"expansion"`
+	Ladder    bool `json:"ladder,omitempty"`
+	Dead      bool `json:"dead,omitempty"`
+	// WeaponSetII is set when the second weapon set was active when the game was saved.
+	WeaponSetII bool `json:"weaponSetII,omitempty"`
+	// LastPlayed is the unix time of the original's last save.
+	LastPlayed uint32 `json:"lastPlayed,omitempty"`
+	// Hotkeys are the skill ids on the 16 skill hotkeys, -1 for an empty slot.
+	Hotkeys []int `json:"hotkeys,omitempty"`
+	// SwapLeftSkill and SwapRightSkill are the mouse skills of weapon set II.
+	SwapLeftSkill  int `json:"swapLeftSkill,omitempty"`
+	SwapRightSkill int `json:"swapRightSkill,omitempty"`
+	// Source is the .d2s path the hero was imported from (never written to).
+	Source string `json:"source,omitempty"`
 }
 
 // HeroProgress carries the story progress of a .d2s save: the quest records,

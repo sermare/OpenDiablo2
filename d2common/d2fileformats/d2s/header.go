@@ -34,6 +34,10 @@ const (
 	mercNameOffset   = 0xB7
 	mercTypeOffset   = 0xB9
 	mercExpOffset    = 0xBB
+	activeArmsOffset = 0x10
+	lastPlayedOffset = 0x30
+	hotkeysOffset    = 0x38 // 16 u32 skill ids
+	leftSkillOffset  = 0x78 // then right, left swap, right swap
 	appearanceStart  = 0x88
 	appearanceLen    = 16
 	colorsStart      = 0x98
@@ -94,9 +98,36 @@ type Header struct {
 	Appearance [appearanceLen]byte
 	Colors     [colorsLen]byte
 
+	// ActiveWeaponSet is 0 for weapon set I and 1 for set II (verified: offset 0x10).
+	ActiveWeaponSet uint32
+	// LastPlayed is the unix time of the last save (offset 0x30).
+	LastPlayed uint32
+	// Hotkeys are the skill ids assigned to the 16 skill hotkeys; 0xFFFF means none.
+	// Offsets follow the nokka-d2s reference and match the sample sorceress.
+	Hotkeys [HotkeyCount]uint32
+	// LeftSkill and RightSkill are the skill ids selected for the mouse buttons in
+	// weapon set I; the Swap variants belong to weapon set II.
+	LeftSkill, RightSkill         uint32
+	LeftSwapSkill, RightSwapSkill uint32
+
 	// Raw is the header exactly as read. Write starts from it so bytes this
 	// package does not interpret survive a parse/write round trip.
 	Raw [HeaderSize]byte
+}
+
+// HotkeyCount is the number of skill hotkey slots stored in the header.
+const HotkeyCount = 16
+
+// NoSkill is the value of an empty hotkey slot.
+const NoSkill = 0xFFFF
+
+// ActiveSkills returns the left and right mouse skill ids of the active weapon set.
+func (h *Header) ActiveSkills() (left, right uint32) {
+	if h.ActiveWeaponSet != 0 {
+		return h.LeftSwapSkill, h.RightSwapSkill
+	}
+
+	return h.LeftSkill, h.RightSkill
 }
 
 // Mercenary is the hired mercenary stored in the header. ID is zero when the
@@ -181,6 +212,18 @@ func ParseHeader(data []byte) (*Header, error) {
 		Type:       le.Uint16(data[mercTypeOffset:]),
 		Experience: le.Uint32(data[mercExpOffset:]),
 	}
+
+	h.ActiveWeaponSet = le.Uint32(data[activeArmsOffset:])
+	h.LastPlayed = le.Uint32(data[lastPlayedOffset:])
+
+	for i := range h.Hotkeys {
+		h.Hotkeys[i] = le.Uint32(data[hotkeysOffset+4*i:])
+	}
+
+	h.LeftSkill = le.Uint32(data[leftSkillOffset:])
+	h.RightSkill = le.Uint32(data[leftSkillOffset+4:])
+	h.LeftSwapSkill = le.Uint32(data[leftSkillOffset+8:])
+	h.RightSwapSkill = le.Uint32(data[leftSkillOffset+12:])
 
 	copy(h.Raw[:], data[:HeaderSize])
 	copy(h.Appearance[:], data[appearanceStart:appearanceStart+appearanceLen])

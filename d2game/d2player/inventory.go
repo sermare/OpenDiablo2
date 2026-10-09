@@ -3,6 +3,7 @@ package d2player
 import (
 	"fmt"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -86,6 +87,10 @@ type Inventory struct {
 	gold          int
 	moveGoldPanel *MoveGoldPanel
 	cursor        InventoryItem
+	// imported items of a real .d2s hero replace the placeholder test items (see inventory_imported.go)
+	imported      bool
+	importedItems []d2hero.ImportedItem
+	importedSetII bool
 	// priceHook adds lines (sell value, repair cost) to item tooltips while
 	// a trade window is open.
 	priceHook func(InventoryItem) []string
@@ -161,6 +166,14 @@ func (g *Inventory) Load() {
 	g.goldLabel.SetText(fmt.Sprintln(g.moveGoldPanel.gold))
 	g.goldLabel.SetPosition(invGoldLabelX, invGoldLabelY)
 	g.panelGroup.AddWidget(g.goldLabel)
+
+	if g.imported {
+		g.placeImportedItems()
+		g.moveGoldPanel.Load()
+		g.panelGroup.SetVisible(false)
+
+		return
+	}
 
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/795
 	testInventoryCodes := [][]string{

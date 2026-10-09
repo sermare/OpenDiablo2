@@ -16,6 +16,8 @@ type CharStatRecord struct {
 	InitEne     int // initial energy
 	InitStamina int // initial stamina
 
+	HpAdd int // life added to the initial vitality for the starting life (gives the known starting life 40..55 of the classic classes)
+
 	ManaRegen   int // number of seconds to regen mana completely
 	ToHitFactor int // added to basic AR of character class
 

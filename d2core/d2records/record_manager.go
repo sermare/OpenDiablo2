@@ -330,7 +330,13 @@ func (r *RecordManager) GetMaxLevelByHero(heroType d2enum.Hero) int {
 
 // GetExperienceBreakpoint given a hero type and a level, returns the experience required for the level
 func (r *RecordManager) GetExperienceBreakpoint(heroType d2enum.Hero, level int) int {
-	return r.Character.Experience[level].HeroBreakpoints[heroType]
+	// the table runs to level 99; an out-of-range level (e.g. from a damaged save) has no next level
+	rec := r.Character.Experience[level]
+	if rec == nil {
+		return 0
+	}
+
+	return rec.HeroBreakpoints[heroType]
 }
 
 // GetLevelDetails gets a LevelDetailRecord by the record Id
