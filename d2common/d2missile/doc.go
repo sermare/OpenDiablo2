@@ -12,9 +12,9 @@
 // lifetime in frames (Range + LevRange*level), velocity ((VelLev*lvl)/8 + Vel)
 // << 8 with the 75/100 step scale, Accel/MaxVel (Accel is added to the scaled
 // path velocity every 5th frame), the Activate collision delay (units only,
-// walls stop a missile at once), the CollideType block masks (a wall bit in the
-// mask stops the step and runs the hit function, a wall bit outside it ends
-// the missile silently), unit tests along the cells traversed in a frame,
+// walls stop a missile at once), the CollideType block masks (the cell is read
+// through the mask, 0x6513e0: a wall bit in it stops the step and runs the hit
+// function, a bit outside it is invisible to a moving missile), unit tests along the cells traversed in a frame,
 // CollideFriend, LastCollide, the NextHit state shared on the target, pierce
 // charges rolled at creation (up to 4, from skill_pierce + item_pierce), the
 // ToHit roll, CollideKill and the hit functions 1 (area damage only), 2 and 4
@@ -23,10 +23,12 @@
 // REPLACES the result bits of ProcessHitOrExpire, so hit function 1 deals no
 // direct damage; the hit function also runs on expiry, wall and path end.
 //
-// Not modelled: the other pSrvDoFunc specials (2 and 6 spawn a SubMissile each
-// frame the missile enters a new subtile, 5 is the meteorfire animation), the
-// remaining hit functions, the unit predicates of collide types 1 (state 0x69
-// monsters) and 7 (missile versus missile), the town checks, periodic effects
+// SrvDoFunc 2 and 6 spawn SubMissile1 for each subtile entered; 5 is an
+// animation/footprint wobble without gameplay effect (not modelled).
+// Collide type 1 also takes monsters with state 105 / stat 172 == 2.
+//
+// Not modelled: the remaining hit functions and SrvDoFuncs, the unit predicate
+// of collide type 7 (missile versus CanDestroy missile), the town checks, periodic effects
 // (20), the 64 direction quantisation of the path (the direction is exact
 // here), the Explosion missile is client only (it has no pSrvDoFunc) and is
 // reported as an event.

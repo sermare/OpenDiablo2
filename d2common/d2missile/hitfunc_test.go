@@ -11,15 +11,20 @@ import (
 type finderWorld struct {
 	*fakeWorld
 	found Target
+	more  []Target
 	calls int
 	gotR  int
 }
 
-func (w *finderWorld) NearestEnemy(_ Owner, _, _ float64, r int) Target {
+func (w *finderWorld) EnemiesWithin(_ Owner, _, _ float64, r int) []Target {
 	w.calls++
 	w.gotR = r
 
-	return w.found
+	if w.found == nil {
+		return nil
+	}
+
+	return append([]Target{w.found}, w.more...)
 }
 
 func fireball() *Spec {
@@ -293,10 +298,10 @@ func TestGuidedArrowIgnoresOtherUnits(t *testing.T) {
 // subtiles away; between re-aims the heading is fixed.
 func TestGuidedArrowTurnsEveryParam1Frames(t *testing.T) {
 	w := newWorld()
-	goal := &posTarget{fakeTarget: newTarget("goal", 20, 10), px: 20.5, py: 10.5}
+	goal := &posTarget{fakeTarget: newTarget("goal", 18, 9), px: 18.5, py: 9.5}
 	w.targets = []*fakeTarget{goal.fakeTarget}
 	s := NewSim(w, nil)
-	// aimed along +x; target is 22 subtiles away at (20.5,10.5)
+	// aimed along +x; target is 22 subtiles away (max+min/2) at (18.5,9.5)
 	m, _ := s.Create(CreateParams{Spec: guidedSpec(), Level: 1, DestX: 30, DestY: 0, Home: goal})
 	startLife := m.Life
 

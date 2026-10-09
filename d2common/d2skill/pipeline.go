@@ -495,8 +495,29 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		dx, dy = float64(tgt.UX)+0.5, float64(tgt.UY)+0.5
 	}
 
+	// Area hit functions without a table radius (sHitPar1 < 1) take it from the
+	// casting skill (verified): hit function 1 (0x5a7500) from calc1 (skills
+	// record +0x138), hit function 14 (Meteor, 0x5a8680) from aurarangecalc
+	// (+0x64); Meteor's flames last Param3 + (level-1)*Param4 frames (record
+	// +0x150 / +0x154, lifetime flag 0x8000).
+	var areaRadius, hitSubRange int
+
+	if ms.SHitPar[0] < 1 {
+		switch ms.SrvHitFunc {
+		case 1:
+			areaRadius = env.eval(sk.Calc[1])
+		case 14:
+			areaRadius = env.eval(sk.AuraRangeCalc)
+		}
+	}
+
+	if ms.SrvHitFunc == 14 {
+		hitSubRange = sk.Params[3] + (lvl-1)*sk.Params[4]
+	}
+
 	m, err := p.Sim.Create(d2missile.CreateParams{
 		Spec: ms, Owner: p.owner(u), SkillID: sk.ID, Level: lvl, Damage: desc,
+		AreaRadius: areaRadius, HitSubRange: hitSubRange,
 		X: sx, Y: sy, DestX: dx, DestY: dy, Angle: o.angle, Velocity: o.velocity, ClampToDest: o.clamp || sk.Lob,
 		// the missile rolls its pierce charges (stat 0x148) from skill_pierce +
 		// item_pierce at creation (0x59d4e0, verified)

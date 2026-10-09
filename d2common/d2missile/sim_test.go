@@ -252,11 +252,11 @@ func TestWallStopsMissile(t *testing.T) {
 
 func TestWalkBitOnlyBlocksTypeEight(t *testing.T) {
 	// walk bit 0x1: in the block mask of type 8 only (0x185); the other types
-	// let the missile in and the cached-flags test (&5) ends it silently
+	// never see it (0x6513e0 reads the cell through the mask) and fly on
 	for _, tc := range []struct {
 		ct   int
 		kind EventKind
-	}{{3, EventVanish}, {6, EventVanish}, {1, EventVanish}, {2, EventVanish}, {5, EventVanish}, {7, EventVanish}, {8, EventWall}, {0, ""}} {
+	}{{3, ""}, {6, ""}, {1, ""}, {2, ""}, {5, ""}, {7, ""}, {8, EventWall}, {0, ""}} {
 		w := newWorld()
 		w.grid.Set(5, 0, d2path.FlagWalk) // water/hole style cell
 		sp := fireBolt()
@@ -275,7 +275,7 @@ func TestWallBitBlocksEveryTypeButSevenAndZero(t *testing.T) {
 	for _, tc := range []struct {
 		ct   int
 		kind EventKind
-	}{{1, EventWall}, {2, EventWall}, {3, EventWall}, {5, EventWall}, {6, EventWall}, {8, EventWall}, {7, EventVanish}, {0, ""}} {
+	}{{1, EventWall}, {2, EventWall}, {3, EventWall}, {5, EventWall}, {6, EventWall}, {8, EventWall}, {7, ""}, {0, ""}} {
 		w := newWorld()
 		w.grid.Set(5, 0, d2path.FlagWall)
 		sp := fireBolt()

@@ -86,6 +86,7 @@ type Missile struct {
 	nextHit        map[string]int
 	dead           bool
 	explodes       bool
+	entered        bool // the previous step entered a new subtile (path flag 8)
 }
 
 // Dead reports whether the missile has been destroyed.
@@ -282,8 +283,12 @@ func unitMask(ct int) (players, monsters bool) {
 // + 8*type: 1 0x84, 2 0x104, 3 0x184, 5 0x104, 6 0x4, 7 0x40, 8 0x185,
 // verified bytes). A missile cannot enter such a cell: the step stops at the
 // last free cell and the missile ends through ProcessHitOrExpire(0, 1), i.e.
-// the hit function runs (UNVERIFIED: the cell test 0x6513e0 that applies the
-// mask was not read).
+// the hit function runs (verified 0x6513e0: the per-cell test reads the cell
+// ANDed with the path block mask path+0x50, which CreateServerMissile sets from
+// this table at 0x59d92d; the step is blocked only when the masked flags
+// contain bit 0x1 or 0x4. A blocked step stops at the last free cell, the
+// path finishes, SERVER_AdvanceUnitPathFrame returns 2 and 0x5abd00 calls
+// ProcessHitOrExpire(0, 1). Bits outside the mask are not seen at all.)
 func wallBlock(ct int) uint16 {
 	switch ct {
 	case 1, 2, 3, 5, 6:
@@ -340,6 +345,12 @@ func (s *Sim) stepOne(m *Missile) {
 		m.Velocity = m.pathVel * 100 / 75
 	}
 
+	if sp.SrvDoFunc == 2 || sp.SrvDoFunc == 6 {
+		if !s.trailSub(m) {
+			return
+		}
+	}
+
 	switch {
 	case sp.SrvDoFunc == 7:
 		if !s.guidedTurn(m) {
@@ -371,6 +382,8 @@ func (s *Sim) stepOne(m *Missile) {
 	m.X += m.DX * stepSub
 	m.Y += m.DY * stepSub
 	m.Travel += stepSub
+	// path flag 8 (PATH_TestFlag08): the step entered at least one new subtile
+	m.entered = int(math.Floor(ox)) != int(math.Floor(m.X)) || int(math.Floor(oy)) != int(math.Floor(m.Y))
 
 	if arrived {
 		// the path is finished: the exe returns from the standard move right
@@ -420,6 +433,48 @@ func (s *Sim) stepOne(m *Missile) {
 
 		prev = c
 	}
+}
+
+// trailSub is the part of SrvDoFunc 2 (0x5abf30) and 6 (0x5ac1b0) that runs
+// before the standard move (verified): when the previous step entered a new
+// subtile (path flag 8, cleared at the start of every path advance, so the
+// spawn lags the move by a frame) the missile creates its SubMissile1 at its
+// own subtile, owned by the same owner with the same skill and level.
+//   - 2 (Poison Javelin trail; create flags 5: explicit source and an explicit
+//     velocity of 0, so the cloud stays put). The exe also passes a lifetime
+//     (flag 0x8000) and a sub-loop count (level*2-2, flag 8) whose
+//     conditions were not resolved (UNVERIFIED), the sub missile uses its own
+//     Range here.
+//   - 6 (fire wall maker, molten boulder; create flags 0x21, explicit source
+//     and destination equal to it): needs an owner and a SubMissile1,
+//     otherwise the missile is destroyed at once without a hit function.
+//
+// It reports false when the missile vanished.
+func (s *Sim) trailSub(m *Missile) bool {
+	sp := m.Spec
+
+	if sp.SrvDoFunc == 6 {
+		if (m.Owner.Gone != nil && m.Owner.Gone()) || sp.SubMissile[0] == "" {
+			s.vanish(m)
+			return false
+		}
+	}
+
+	if !m.entered || sp.SubMissile[0] == "" {
+		return true
+	}
+
+	sub := s.lookup(sp.SubMissile[0])
+	if sub == nil {
+		return true
+	}
+
+	x, y := math.Floor(m.X)+0.5, math.Floor(m.Y)+0.5
+
+	_, _ = s.Create(CreateParams{Spec: sub, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level,
+		Damage: m.Damage, X: x, Y: y, DestX: x, DestY: y, Stationary: sp.SrvDoFunc == 2})
+
+	return true
 }
 
 func aim(m *Missile, x, y float64) {
@@ -479,12 +534,11 @@ func (s *Sim) testCell(m *Missile, c, prev cell, units bool) bool {
 		return true
 	}
 
-	if flags&(d2path.FlagWalk|d2path.FlagWall) != 0 {
-		// a wall bit that is not in the block mask lets the missile in, but
-		// the cached cell flags & 5 test then ends it without a hit function
-		s.vanish(m)
-		return true
-	}
+	// a wall or walk bit that is not in the block mask is invisible to the
+	// moving missile: 0x6513e0 reads the cell through the mask (verified), so
+	// the cached flags that the standard move tests with & 5 never contain it
+	// and the missile flies on. (Only a stationary missile re-reads the cell
+	// with the full mask 0x7fff, see stepOne.)
 
 	if units {
 		return s.testUnits(m, c.x, c.y)
@@ -501,7 +555,11 @@ func (s *Sim) testUnits(m *Missile, cx, cy int) bool {
 
 	for _, t := range s.World.Targets(cx, cy) {
 		if (t.IsPlayer() && !players) || (!t.IsPlayer() && !monsters) {
-			continue
+			// CollideType 1 (0x5a6210, verified) also takes a monster whose
+			// alignment state 105 / stat 172 is 2 as if it were a player
+			if pa, ok := t.(PlayerAligned); !(m.Spec.CollideType == 1 && !t.IsPlayer() && ok && pa.PlayerAligned()) {
+				continue
+			}
 		}
 
 		s.process(m, t)
