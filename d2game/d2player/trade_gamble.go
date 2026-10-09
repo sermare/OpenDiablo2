@@ -59,6 +59,7 @@ func (t *TradeWindow) generateGamble(v d2vendor.Vendor, seed uint32) *d2vendor.S
 	}
 
 	params := d2vendor.GambleParamsFor(t.asset.Records, t.difficulty)
+	t.factory.Difficulty = t.difficulty
 	// The expansion check of the original (record version < 100 skips
 	// classic-only rows, upgrades need the expansion) is not modelled: this
 	// engine always runs with the Lord of Destruction tables.

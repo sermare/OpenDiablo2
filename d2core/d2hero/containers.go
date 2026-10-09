@@ -2,6 +2,8 @@ package d2hero
 
 import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 )
 
 // Item pages of a .d2s file (d2s.Item.Page for stored items) plus the belt.
@@ -63,6 +65,14 @@ type StoredItem struct {
 	// D2S is the item exactly as the save held it, kept for writing the item
 	// back to a .d2s (ExportD2SItems). Items made in the game have none.
 	D2S *d2s.Item `json:"d2s,omitempty"`
+
+	// Spec is the whole item as the item creator rolled it (affixes,
+	// properties, sockets, runeword, ear): the item is rebuilt from it exactly.
+	// Stat is what the hero's stat list computes with (see
+	// diablo2item.Item.StatItem), so the worn item's properties and set pieces
+	// count without the item being rebuilt.
+	Spec *diablo2item.Spec `json:"spec,omitempty"`
+	Stat *d2statlist.Item  `json:"stat,omitempty"`
 }
 
 // StoredMod is a property a Horadric Cube recipe attached to an item.

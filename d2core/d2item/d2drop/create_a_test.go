@@ -4,83 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 )
-
-// loadQualityTables reads QualityItems, LowQualityItems, ItemRatio and
-// Skills (the four tables slice A needs) from D2_TABLES. Books.txt is not
-// extracted: its two rows are the ones the game holds in memory (verified
-// with the emulator): town portal first, then identify.
-func loadQualityTables(t *testing.T) *QualityTables {
-	t.Helper()
-
-	q := &QualityTables{
-		Books:     []BookRow{{"tsc", "tbk"}, {"isc", "ibk"}, {}}, // the game's table has a third, empty row
-		SkillType: map[int]string{},
-	}
-
-	qi := readTSV(t, tablePath(t, "QualityItems.txt"))
-	for _, r := range qi.rows {
-		if qi.s(r, "nummods") == "" {
-			continue
-		}
-
-		b := func(c string) bool { return qi.n(r, c) == 1 }
-
-		q.Superior = append(q.Superior, SuperiorRow{
-			Armor: b("armor"), Weapon: b("weapon"), Shield: b("shield"), Scepter: b("scepter"),
-			Wand: b("wand"), Staff: b("staff"), Bow: b("bow"), Boots: b("boots"), Gloves: b("gloves"),
-			Belt: b("belt"),
-		})
-	}
-
-	lq := readTSV(t, tablePath(t, "LowQualityItems.txt"))
-	for _, r := range lq.rows {
-		if lq.s(r, "Name") != "" {
-			q.Low++
-		}
-	}
-
-	ir := readTSV(t, tablePath(t, "ItemRatio.txt"))
-	for _, r := range ir.rows {
-		dr := func(n string) DropRatio {
-			return DropRatio{ir.n(r, n), ir.n(r, n+"Divisor"), ir.n(r, n+"Min")}
-		}
-
-		q.Ratios = append(q.Ratios, RatioRow{
-			Version: ir.n(r, "Version"), Uber: ir.n(r, "Uber") == 1, ClassSpecific: ir.n(r, "Class Specific") == 1,
-			Ratio: Ratio{
-				Unique: dr("Unique"), Rare: dr("Rare"), Set: dr("Set"), Magic: dr("Magic"),
-				HiQuality: DropRatio{ir.n(r, "HiQuality"), ir.n(r, "HiQualityDivisor"), 0},
-				Normal:    DropRatio{ir.n(r, "Normal"), ir.n(r, "NormalDivisor"), 0},
-			},
-		})
-	}
-
-	sk := readTSV(t, filepath.Join(d2Tables(t), "skills", "patch_d2", "skills.txt"))
-	for _, r := range sk.rows {
-		if sk.s(r, "Id") == "" {
-			continue
-		}
-
-		id := sk.n(r, "Id")
-
-		if c := heroClass(sk.s(r, "charclass")); c >= 0 {
-			q.ClassSkills[c] = append(q.ClassSkills[c], id)
-		}
-
-		if it := sk.s(r, "itypea1"); it != "" {
-			q.SkillType[id] = it
-		}
-	}
-
-	return q
-}
 
 type createCase struct {
 	C  string `json:"c"`

@@ -67,21 +67,6 @@ func (f *ItemFactory) rollExtrasFlags(t *dropTables, item *Item, difficulty int,
 	})
 }
 
-// NumSockets is the number of sockets the generator rolled (0 when it did not
-// roll or rolled none).
-func (i *Item) NumSockets() int {
-	if i.attributes == nil {
-		return 0
-	}
-
-	return i.attributes.numSockets
-}
-
-// IsEthereal reports the ethereal attribute.
-func (i *Item) IsEthereal() bool {
-	return i.attributes != nil && i.attributes.ethereal
-}
-
 // ItemFromCodeForVendor is ItemFromCode followed by the socket roll of the
 // generator, as shop stock gets it (see rollExtrasFlags: sockets yes,
 // ethereal never). Everything but the socket count is identical to

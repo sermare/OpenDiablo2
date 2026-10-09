@@ -141,6 +141,14 @@ func inferQuality(it *diablo2item.Item, spec diablo2item.Spec) d2drop.Quality {
 func toCubeItem(it *diablo2item.Item) d2cube.Item {
 	spec := it.Spec()
 
+	// an item made by the item creator keeps its socketed items as items; the
+	// cube sees their codes
+	if len(spec.SocketCodes) == 0 {
+		for _, c := range spec.Socketed {
+			spec.SocketCodes = append(spec.SocketCodes, c.Code)
+		}
+	}
+
 	ci := d2cube.Item{
 		Code: spec.Code, Quality: inferQuality(it, spec), ILvl: it.ItemLevel(), Seed: spec.Seed,
 		Unique: spec.Unique, SetItem: spec.SetItem, Set: spec.Set,
@@ -351,6 +359,9 @@ func (g *GameControls) buildCubeProduct(p *d2cube.Product, src *diablo2item.Item
 	}
 
 	spec.Sockets, spec.SocketCodes, spec.Runeword, spec.Crafted = ci.Sockets, ci.Socketed, ci.Runeword, ci.Crafted
+	// a cube product is rebuilt from the cube's fields (the legacy item model),
+	// not from the creator's roll, which no longer describes it
+	spec.Rolled, spec.Socketed = nil, nil
 	spec.Identified = true // UNVERIFIED: cube results are shown identified
 	spec.CubeMods = spec.CubeMods[:0:0]
 
@@ -416,6 +427,21 @@ func (g *GameControls) SocketItem(target, filler *diablo2item.Item) (*diablo2ite
 	data, err := g.cubeTables()
 	if err != nil {
 		return nil, "", err
+	}
+
+	if target.Rolled() != nil {
+		// an item made by the item creator takes the socket through the
+		// creator's runeword walk (diablo2item.Item.Socket)
+		if err := target.Socket(filler); err != nil {
+			return nil, "", err
+		}
+
+		msg := fmt.Sprintf("socketed %s into %s (%d/%d)", filler.CommonCode, target.CommonCode, len(target.Socketed()), target.NumSockets())
+		if rw := target.RolledRuneword(); rw != "" {
+			msg += " runeword=" + strings.ReplaceAll(rw, " ", "_")
+		}
+
+		return target, msg, nil
 	}
 
 	ci := toCubeItem(target)

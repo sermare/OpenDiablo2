@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
@@ -15,52 +14,6 @@ import (
 // Real-data tests run only with D2_TABLES set to a directory holding the
 // extracted game tables: armor.txt, weapons.txt, misc.txt, ItemTypes.txt and
 // itemgen/patch_d2/{TreasureClassEx,ItemRatio}.txt (1.14b versions).
-
-type tsv struct {
-	cols map[string]int
-	rows [][]string
-}
-
-func readTSV(t *testing.T, path string) *tsv {
-	t.Helper()
-
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Skipf("missing table: %v", err)
-	}
-
-	lines := strings.Split(strings.ReplaceAll(string(raw), "\r", ""), "\n")
-	out := &tsv{cols: map[string]int{}}
-
-	for i, h := range strings.Split(lines[0], "\t") {
-		if _, dup := out.cols[strings.ToLower(h)]; !dup {
-			out.cols[strings.ToLower(h)] = i
-		}
-	}
-
-	for _, l := range lines[1:] {
-		if l != "" {
-			out.rows = append(out.rows, strings.Split(l, "\t"))
-		}
-	}
-
-	return out
-}
-
-func (d *tsv) s(row []string, col string) string {
-	i, ok := d.cols[strings.ToLower(col)]
-	if !ok || i >= len(row) {
-		return ""
-	}
-
-	return strings.TrimSpace(row[i])
-}
-
-func (d *tsv) n(row []string, col string) int {
-	v, _ := strconv.Atoi(d.s(row, col))
-
-	return v
-}
 
 type realTables struct {
 	tcs    *TreasureTable

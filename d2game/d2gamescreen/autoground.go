@@ -169,7 +169,7 @@ func (v *Game) autoGroundDrop(spec string, cx, cy int) {
 	ilvl := v.areaLevel()
 
 	for s := uint32(seed64); len(loot.Entries) < count && s < uint32(seed64)+autoGroundMaxRolls; s++ {
-		l, err := v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: s, ILvl: ilvl, Players: 1}, 0)
+		l, err := v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: s, ILvl: ilvl, Players: 1, Difficulty: v.difficulty(), MagicFind: v.heroMagicFind(), GoldFind: v.heroGoldFind()}, 0)
 		if err != nil {
 			v.Warningf("AUTOGROUND: %v", err)
 			return

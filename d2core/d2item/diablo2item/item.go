@@ -80,6 +80,17 @@ type Item struct {
 	SetItemCode string
 	PrefixCodes []string
 	SuffixCodes []string
+	// AutoCode is the automagic affix of an item made with the creator.
+	AutoCode string
+
+	// rolled is what the item creator rolled; an item made with it keeps its
+	// properties from there instead of regenerating them (see item_create.go).
+	rolled   *d2drop.Rolled
+	rareName string
+	runeword string // Runes.txt name of the runeword the item is
+	socketed []*Item
+	ear      *EarInfo
+	setRow   int // 1 + the Sets.txt row of a set item
 
 	properties      map[PropertyPool][]*Property
 	statContext     d2item.StatContext
@@ -149,6 +160,10 @@ func (i *Item) Label() string {
 
 	if !i.attributes.identitified {
 		str = i.factory.asset.TranslateString(i.CommonRecord().NameString)
+	}
+
+	if i.rolled != nil {
+		return d2ui.ColorTokenize(str, i.rolledColor())
 	}
 
 	token := nameColorToken(nameColorInput{
@@ -267,9 +282,12 @@ func affixRecords(
 
 	result := make([]*d2records.ItemAffixCommonRecord, len(fromCodes))
 
-	for idx, code := range fromCodes {
-		rec := affixes[code]
-		result[idx] = rec
+	result = result[:0]
+
+	for _, code := range fromCodes {
+		if rec := affixes[code]; rec != nil {
+			result = append(result, rec)
+		}
 	}
 
 	return result
@@ -434,6 +452,10 @@ func (i *Item) SetSeed(seed int64) {
 func (i *Item) init() *Item {
 	if i.rand == nil {
 		i.SetSeed(0)
+	}
+
+	if i.rolled != nil {
+		return i
 	}
 
 	if i.Seed != 0 && i.factory != nil {
@@ -669,6 +691,16 @@ func (i *Item) generateItemProperties(properties []*d2records.PropertyDescriptor
 }
 
 func (i *Item) generateName() {
+	if i.ear != nil {
+		i.name = i.ear.Label()
+		return
+	}
+
+	if i.rolled != nil {
+		i.name = i.rolledName()
+		return
+	}
+
 	if i.Runeword != "" {
 		i.name = fmt.Sprintf("%s\n%s", i.Runeword, i.factory.asset.TranslateString(i.CommonRecord().NameString))
 		return

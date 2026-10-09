@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
@@ -14,91 +13,6 @@ import (
 // patch_d2, d2exp, d2data that has them) and the comparison with the golden
 // recorded from the real Game.exe (testdata/create_b.json, written by
 // gen_create_b.py of the oracle).
-
-func typeCols(tab *tsv, row []string, prefix string, n int) []string {
-	out := make([]string, 0, n)
-
-	for i := 1; i <= n; i++ {
-		code := tab.s(row, prefix+string(rune('0'+i)))
-		if len(code) > 4 { // the game keeps type codes in 4 bytes: "staff" is "staf"
-			code = code[:4]
-		}
-
-		out = append(out, code)
-	}
-
-	return out
-}
-
-// loadAffixTables builds the combined table: MagicSuffix, MagicPrefix,
-// AutoMagic rows (the "Expansion" separator row is dropped, blank rows stay)
-// and the rare names, RareSuffix first.
-func loadAffixTables(t *testing.T) *AffixTables {
-	t.Helper()
-
-	// Properties whose first stat is the number of sockets.
-	sockets := map[string]bool{}
-	props := readTSV(t, tablePath(t, "Properties.txt"))
-
-	for _, r := range props.rows {
-		if props.s(r, "stat1") == "item_numsockets" {
-			sockets[props.s(r, "code")] = true
-		}
-	}
-
-	at := &AffixTables{}
-
-	load := func(file string) int {
-		tab := readTSV(t, tablePath(t, file))
-		n := 0
-
-		for _, r := range tab.rows {
-			if tab.s(r, "name") == "Expansion" {
-				continue
-			}
-
-			// The class restriction (the byte at +0x66 of the game's record) is
-			// the classspecific column; the class column is a different
-			// field (it is not used by the pickers).
-			cls := -1
-			if c, ok := heroIndex[strings.ToLower(tab.s(r, "classspecific"))]; ok {
-				cls = c
-			}
-
-			at.Rows = append(at.Rows, AffixRow{
-				Name: tab.s(r, "name"), Version: tab.n(r, "version"), Spawnable: tab.n(r, "spawnable") != 0,
-				Rare: tab.n(r, "rare") != 0, Level: tab.n(r, "level"), MaxLevel: tab.n(r, "maxlevel"),
-				Frequency: tab.n(r, "frequency"), Group: tab.n(r, "group"), Class: cls,
-				IType: typeCols(tab, r, "itype", 7), EType: typeCols(tab, r, "etype", 5),
-				Mod1Sockets: sockets[tab.s(r, "mod1code")],
-			})
-			n++
-		}
-
-		return n
-	}
-
-	at.NSuffix = load("MagicSuffix.txt")
-	at.NPrefix = load("MagicPrefix.txt")
-	load("AutoMagic.txt")
-
-	for i, file := range []string{"RareSuffix.txt", "RarePrefix.txt"} {
-		tab := readTSV(t, tablePath(t, file))
-
-		for _, r := range tab.rows {
-			at.RareNames = append(at.RareNames, RareName{
-				Name: tab.s(r, "name"), Version: tab.n(r, "version"),
-				IType: typeCols(tab, r, "itype", 7), EType: typeCols(tab, r, "etype", 4),
-			})
-		}
-
-		if i == 0 {
-			at.NRareSuffixName = len(at.RareNames)
-		}
-	}
-
-	return at
-}
 
 func TestLoadAffixTables(t *testing.T) {
 	at := loadAffixTables(t)

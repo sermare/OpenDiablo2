@@ -23,6 +23,15 @@ type Spec struct {
 	Prefixes []string
 	Suffixes []string
 
+	// Rolled is what the item creator rolled; with it the item is rebuilt
+	// exactly (affixes, properties, base values, sockets) without rolling.
+	Rolled *d2drop.Rolled `json:"rolled,omitempty"`
+	// Socketed are the items in the sockets of a creator-made item and Ear the
+	// player of an ear. (Runeword below is the Runes.txt name of the runeword
+	// of a creator-made item, and the display name for a cube-made one.)
+	Socketed []Spec   `json:"socketed,omitempty"`
+	Ear      *EarInfo `json:"ear,omitempty"`
+
 	Identified bool
 	Ethereal   bool
 	Quantity   int // 0 = leave the default
@@ -33,7 +42,8 @@ type Spec struct {
 	// record's (ethereal items have base/2+1); 0 = leave the default.
 	MaxDurability int
 
-	// Horadric Cube and socketing state.
+	// Horadric Cube and socketing state (items without Rolled). A product of
+	// the cube never carries Rolled: it is rebuilt from these fields.
 	SocketCodes []string
 	Runeword    string
 	CubeMods    []ExtraMod
@@ -82,6 +92,16 @@ func (i *Item) Spec() Spec {
 		Runeword:    i.Runeword,
 		CubeMods:    append([]ExtraMod(nil), i.CubeMods...),
 		Crafted:     i.Crafted,
+		Rolled:      i.rolled,
+		Ear:         i.ear,
+	}
+
+	if i.rolled != nil {
+		s.Runeword = i.runeword
+	}
+
+	for _, c := range i.socketed {
+		s.Socketed = append(s.Socketed, c.Spec())
 	}
 
 	if i.attributes != nil {
@@ -89,7 +109,9 @@ func (i *Item) Spec() Spec {
 		s.Ethereal = i.attributes.ethereal
 		s.Quantity = i.attributes.currentStackSize
 
-		s.Sockets = i.attributes.numSockets
+		if i.attributes.numSockets > 0 {
+			s.Sockets = i.attributes.numSockets
+		}
 
 		if i.attributes.durable {
 			s.Durability = i.attributes.currentDurability
@@ -110,6 +132,29 @@ func (f *ItemFactory) ItemFromSpec(s Spec) (*Item, error) {
 		return nil, fmt.Errorf("%w: %q", errUnknownItemCode, s.Code)
 	}
 
+	if s.Rolled != nil {
+		if c, err := f.Creator(); err == nil {
+			item := f.itemFromRolled(c, s.Code, rec.Type, s.Rolled)
+			item.itemLevel = s.ILvl
+			item.runeword, item.ear = s.Runeword, s.Ear
+
+			for _, cs := range s.Socketed {
+				if child, err := f.ItemFromSpec(cs); err == nil {
+					item.socketed = append(item.socketed, child)
+				}
+			}
+
+			if item.runeword != "" || item.ear != nil {
+				item.rolledProperties(c)
+				item.name = item.rolledName()
+			}
+
+			f.restoreState(item, s)
+
+			return item, nil
+		}
+	}
+
 	item := &Item{
 		factory:     f,
 		CommonCode:  s.Code,
@@ -128,11 +173,20 @@ func (f *ItemFactory) ItemFromSpec(s Spec) (*Item, error) {
 		Runeword:    s.Runeword,
 		CubeMods:    append([]ExtraMod(nil), s.CubeMods...),
 		Crafted:     s.Crafted,
+		ear:         s.Ear,
 	}
 	// nolint:gosec // not concerned with crypto-strong randomness
 	item.rand = rand.New(rand.NewSource(s.Seed))
 	item.init()
 
+	f.restoreState(item, s)
+
+	return item, nil
+}
+
+// restoreState puts the state the spec keeps (identified, ethereal, stack,
+// durability) on a rebuilt item.
+func (f *ItemFactory) restoreState(item *Item, s Spec) {
 	if s.Identified {
 		item.Identify()
 	}
@@ -159,5 +213,4 @@ func (f *ItemFactory) ItemFromSpec(s Spec) (*Item, error) {
 		item.SetDurability(s.Durability)
 	}
 
-	return item, nil
 }

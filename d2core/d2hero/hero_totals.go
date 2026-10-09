@@ -62,7 +62,7 @@ func (f *HeroStateFactory) equippedStatItems(state *HeroState, hero d2statlist.H
 	if len(state.D2SBase) > 0 {
 		if tables, err := f.loadD2SItemTables(); err == nil {
 			if c, perr := d2s.Parse(state.D2SBase, tables); perr == nil {
-				for _, it := range StatItemsFromD2S(c.Items, bases) {
+				for _, it := range StatItemsFromD2S(c.Items, bases, f.setResolver()) {
 					if !it.Charm {
 						out = append(out, it)
 					}
@@ -139,7 +139,7 @@ func (f *HeroStateFactory) charmStatItems(state *HeroState) []d2statlist.Item {
 		}
 	}
 
-	return StatItemsFromD2S(out, bases)
+	return StatItemsFromD2S(out, bases, f.setResolver())
 }
 
 // RecalcStats recomputes the hero's maxima and derived values from the class
@@ -195,7 +195,16 @@ func (f *HeroStateFactory) RecalcStats(state *HeroState) {
 	items := append(append([]d2statlist.Item{}, f.equippedStatItems(state, hero)...), f.charmStatItems(state)...)
 	items = append(items, resistScrollItem(state.Progress.ResistScrollBonus())...)
 
-	tot := d2statlist.Compute(hero, items, f.skillEnv(st))
+	env := f.skillEnv(st)
+	if set := f.statEnv(); set != nil {
+		if env == nil {
+			env = set
+		} else {
+			env.Gems, env.Sets = set.Gems, set.Sets
+		}
+	}
+
+	tot := d2statlist.Compute(hero, items, env)
 	st.Difficulty = int(state.Difficulty)
 
 	st.Totals = &tot

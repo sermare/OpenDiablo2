@@ -36,6 +36,14 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		spec.CubeMods = append(spec.CubeMods, diablo2item.ExtraMod{Code: m.Code, Param: m.Param, Min: m.Min, Max: m.Max, Value: m.Value})
 	}
 
+	if s.Spec != nil {
+		rolled := *s.Spec
+		rolled.Identified, rolled.Ethereal = spec.Identified, spec.Ethereal
+		rolled.Quantity, rolled.Durability = spec.Quantity, spec.Durability
+
+		return f.ItemFromSpec(rolled)
+	}
+
 	if s.Origin {
 		// imported from a .d2s: roll the base item with the item generator (an
 		// approximation, see StoredItem.Origin), then keep what that rolled
@@ -49,6 +57,7 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		rolled.Quantity, rolled.Durability = spec.Quantity, spec.Durability
 		rolled.Sockets, rolled.MaxDurability = spec.Sockets, spec.MaxDurability
 		rolled.SocketCodes, rolled.Runeword = spec.SocketCodes, spec.Runeword
+		rolled.Rolled, rolled.Socketed = nil, nil // the saved item's sockets and runeword win over the creator's roll
 
 		spec = rolled
 	}
@@ -72,6 +81,12 @@ func storedFromItem(it *diablo2item.Item, page, x, y int, orig *d2s.Item) d2hero
 
 	for _, m := range spec.CubeMods {
 		s.Mods = append(s.Mods, d2hero.StoredMod{Code: m.Code, Param: m.Param, Min: m.Min, Max: m.Max, Value: m.Value})
+	}
+
+	if spec.Rolled != nil {
+		s.Spec = &spec
+		stat := it.StatItem()
+		s.Stat = &stat
 	}
 
 	if spec.Durability >= 0 {

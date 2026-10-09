@@ -93,6 +93,7 @@ type Creator struct {
 	Affixes *AffixTables   // magic / rare / automagic affixes (slice B)
 	Uniques *UniqueTables  // UniqueItems.txt, SetItems.txt, Sets.txt (slice C)
 	Props   *PropTables    // Properties.txt, ItemStatCost.txt (slice C)
+	Runes   *RuneTables    // Runes.txt
 }
 
 // itemState is the item being created.

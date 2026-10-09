@@ -22,14 +22,20 @@ func (f *ItemFactory) ItemFromCode(code string, q d2drop.Quality, ilvl int, seed
 		return nil, fmt.Errorf("%w: %q", errUnknownItemCode, code)
 	}
 
-	rng := d2rand.New(seed)
+	item, err := f.Create(CreateParams{Code: code, ILvl: ilvl, Quality: q, Seed: seed, Difficulty: f.Difficulty, Classic: f.Classic})
+	if err != nil {
+		if !errors.Is(err, errNoCreator) {
+			return nil, err
+		}
 
-	item := f.itemFromDrop(f.dropTables(), rng, &d2drop.Drop{Code: code, Quality: q, ILvl: ilvl})
-	if item == nil {
-		return nil, fmt.Errorf("%w: %q", errUnknownItemCode, code)
+		rng := d2rand.New(seed)
+
+		if item = f.legacyItemFromDrop(rng, &d2drop.Drop{Code: code, Quality: q, ILvl: ilvl}); item == nil {
+			return nil, fmt.Errorf("%w: %q", errUnknownItemCode, code)
+		}
+
+		item.quality = q
 	}
-
-	item.quality = q
 
 	return item, nil
 }
