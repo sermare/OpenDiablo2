@@ -121,7 +121,29 @@ func (v *Game) nearLevelBorder(x, y, margin float64) bool {
 
 	_, near := d2level.EdgeExit(w.Rects, w.Level, float64(w.OriginX)+x, float64(w.OriginY)+y, margin)
 
-	return near
+	return near || v.nearWarpTile(x, y)
+}
+
+// warpChaseRadius is the distance (tiles) around a warp tile of an outdoor level (cave, tomb or
+// temple entrance) inside which a scripted fight or pickup leaves monsters and items alone: the
+// order to walk there lands on the tile, which counts as a click on the entrance (OnPlayerMove,
+// targetWarpAt) and takes the hero down the stairs in the middle of a fight.
+const warpChaseRadius = warpClickRadius + 1.5
+
+// nearWarpTile says whether a position (local tiles) lies near a warp tile of an outdoor level.
+func (v *Game) nearWarpTile(x, y float64) bool {
+	if v.gameClient.MapEngine.World().Level == 0 {
+		return false // dungeons: the warp tiles are stairs the fight may pass
+	}
+
+	for i := range v.levels.warps {
+		w := &v.levels.warps[i]
+		if math.Hypot(float64(w.TileX)+0.5-x, float64(w.TileY)+0.5-y) <= warpChaseRadius {
+			return true
+		}
+	}
+
+	return false
 }
 
 // killAlive counts the living hostile monsters in range, those waiting for a retry included.
@@ -393,7 +415,7 @@ func (v *Game) lootCandidates(l *lootState) []*d2mapentity.Item {
 			continue
 		}
 
-		if x, y := it.GetPositionF(); math.Hypot(x-hx, y-hy) <= l.radius {
+		if x, y := it.GetPositionF(); math.Hypot(x-hx, y-hy) <= l.radius && !v.nearWarpTile(x, y) {
 			out = append(out, it)
 		}
 	}

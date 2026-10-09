@@ -170,7 +170,12 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 	}
 
 	g.engine.ResetMap(region, p.Rect.W, p.Rect.H)
-	g.engine.SetWorld(d2mapengine.World{Level: levelID, OriginX: p.Rect.X, OriginY: p.Rect.Y, Rects: worldRects(lay)})
+	rects := worldRects(lay)
+	if lay == nil && isAct23Outdoor(levelID) {
+		rects = act23Rects(tb, levelID, seed, diff) // the Act 2/3 placers have their own world
+	}
+
+	g.engine.SetWorld(d2mapengine.World{Level: levelID, OriginX: p.Rect.X, OriginY: p.Rect.Y, Rects: rects})
 
 	var (
 		mon     monsterStats
@@ -485,6 +490,14 @@ func (g *MapGenerator) outdoorEntry(lv *drlgoutdoor.Level, rect drlgoutdoor.Rect
 func (g *MapGenerator) markWarpTiles(stamp *d2mapstamp.Stamp, path string, ox, oy, levelID int) {
 	cave, hasCave := d2level.CaveEntranceDestination(levelID)
 	isCave := strings.Contains(strings.ToLower(path), "/caves/")
+
+	// Act 2 desert levels (41..45) have exactly one tomb, lair or temple behind them; the
+	// entrance presets (Act2/Outdoors/TombEnt*.ds1 ...) carry styles (2 seen) that are not the
+	// LvlWarp ids of the Levels.txt slots (33..36), so the preset stands for that one exit
+	if !hasCave {
+		cave, hasCave = d2level.SingleTileDestination(levelID)
+		isCave = hasCave && d2level.ActOfLevel(levelID) == 2
+	}
 
 	sz := stamp.Size()
 	for y := 0; y < sz.Height; y++ {
