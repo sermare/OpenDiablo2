@@ -187,7 +187,7 @@ func Absorb(damage int, hasAbsorb bool, absorbPct, absorbFlat int) (remaining, h
 	}
 
 	if absorbPct > 0 {
-		x := damage * absorbPct / 100
+		x := int(MulDiv(int32(damage), int32(absorbPct), 100))
 		heal += x
 		damage -= x
 	}

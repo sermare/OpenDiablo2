@@ -97,6 +97,41 @@ func TestPoisonRejectsEmptyStreams(t *testing.T) {
 	}
 }
 
+func TestPoisonStreamsReplace(t *testing.T) {
+	// Verified (0x578990): one poison list per unit. A stronger application
+	// replaces the live one, a weaker one is ignored; nothing stacks.
+	s := New()
+	s.AddStream(0, "poison", 256, 10, "a", 1)
+	s.AddStream(0, "poison", 512, 5, "b", 2)
+
+	if res := s.Tick(1); res.Poison != 2 {
+		t.Errorf("stronger stream replaces: %d hp/frame, want 2", res.Poison)
+	}
+
+	s.AddStream(1, "poison", 256, 50, "c", 3) // weaker: ignored, keeps the old end
+
+	if n := len(s.Streams(2)); n != 1 {
+		t.Fatalf("one stream expected, have %d", n)
+	}
+
+	if st := s.Streams(2)[0]; st.PerFrame != 512 || st.Until != 5 {
+		t.Errorf("weaker application must change nothing: %+v", st)
+	}
+
+	s.AddStream(3, "poison", 512, 10, "d", 4) // equal: replaces (end refreshed)
+
+	if st := s.Streams(4)[0]; st.Until != 13 || st.Source != "d" {
+		t.Errorf("equal application refreshes the end: %+v", st)
+	}
+
+	s.AddStream(0, "poison", 0, 10, "x", 1)
+	s.AddStream(0, "poison", 10, 0, "x", 1)
+
+	if n := len(s.Streams(4)); n != 1 {
+		t.Errorf("empty streams must be ignored, have %d", n)
+	}
+}
+
 func TestBurnIsSeparateFromPoison(t *testing.T) {
 	s := New()
 	s.AddStream(0, "burn", 256, 4, "a", 1)
