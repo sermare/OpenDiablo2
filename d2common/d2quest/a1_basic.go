@@ -217,6 +217,15 @@ func (g *Game) SetDenMonsters(total int) {
 	g.denKilled = 0
 }
 
+// SyncDenMonsters is called just before a Den of Evil kill event with the
+// number of monsters still alive in the level (after the kill): the original
+// reads the same figure from the level's spawn and kill counters. It makes the
+// quest independent of how many monsters the level generator spawned.
+func (g *Game) SyncDenMonsters(aliveAfterKill int) {
+	g.denKnown = true
+	g.denSpawned = g.denKilled + 1 + aliveAfterKill
+}
+
 // DenMonstersLeft returns the number of Den monsters still alive (-1 unknown).
 func (g *Game) DenMonstersLeft() int {
 	if !g.denKnown {

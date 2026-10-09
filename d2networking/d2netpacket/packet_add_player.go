@@ -26,6 +26,10 @@ type AddPlayerPacket struct {
 	Gold       int
 	// Containers is the hero's saved inventory, belt, cube and stash (nil if none).
 	Containers *d2hero.HeroContainers `json:"containers,omitempty"`
+	// Progress is the hero's quest records, waypoints and NPC flags (nil if none).
+	Progress *d2hero.HeroProgress `json:"progress,omitempty"`
+	// Difficulty is the difficulty the hero plays (0 normal, 1 nightmare, 2 hell).
+	Difficulty int `json:"difficulty,omitempty"`
 }
 
 // CreateAddPlayerPacket returns a NetPacket which declares an
@@ -80,6 +84,11 @@ func UnmarshalAddPlayer(packet []byte) (AddPlayerPacket, error) {
 
 // AddPlayerOption sets an optional field of an AddPlayerPacket.
 type AddPlayerOption func(*AddPlayerPacket)
+
+// WithProgress sends the hero's quest progress and difficulty along.
+func WithProgress(p *d2hero.HeroProgress, difficulty int) AddPlayerOption {
+	return func(a *AddPlayerPacket) { a.Progress, a.Difficulty = p, difficulty }
+}
 
 // WithContainers sends the hero's saved inventory, belt, cube and stash along.
 func WithContainers(c *d2hero.HeroContainers) AddPlayerOption {

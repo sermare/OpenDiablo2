@@ -127,7 +127,7 @@ func newForgottenTower() *Quest {
 	}
 
 	q.on[EvMonsterKilled] = func(g *Game, q *Quest, e *Event) {
-		if e.Super != "The Countess" || !q.NotIntro {
+		if !superIs(e, "countess") || !q.NotIntro {
 			return
 		}
 

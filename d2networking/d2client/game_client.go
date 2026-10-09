@@ -232,6 +232,8 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 		player.HeroType, player.Stats, player.Skills, &player.Equipment, player.LeftSkill, player.RightSkill, player.Gold)
 
 	newPlayer.Containers = player.Containers
+	newPlayer.Progress = player.Progress
+	newPlayer.QuestDifficulty = player.Difficulty
 
 	g.Players[newPlayer.ID()] = newPlayer
 	g.MapEngine.AddEntity(newPlayer)

@@ -142,8 +142,8 @@ func newSearchForCain() *Quest {
 				g.setState(q, 2)
 			case 112:
 				if g.hasItem(ItemScrollOfInifuss) {
+					// the engine swaps the items; the new scroll is counted when it is picked up
 					g.Items[ItemScrollOfInifuss]--
-					g.Items[ItemDecipheredScroll]++
 					g.emit(Effect{Kind: EffectDeleteItem, Quest: q.ID, Code: ItemScrollOfInifuss})
 					g.emit(Effect{Kind: EffectGiveItem, Quest: q.ID, Code: ItemDecipheredScroll, Quality: 0, Value: 1})
 					d.akaraScroll = true
@@ -269,7 +269,7 @@ func newSearchForCain() *Quest {
 	q.on[EvMonsterKilled] = func(g *Game, q *Quest, e *Event) {
 		// the Cow King: eight stamina potions, once per hero, if the Diablo (classic) /
 		// Baal (expansion) quest was done
-		if e.Super != "The Cow King" || g.get(q, FlagCustom6) {
+		if !superIs(e, "cow king") || g.get(q, FlagCustom6) {
 			return
 		}
 

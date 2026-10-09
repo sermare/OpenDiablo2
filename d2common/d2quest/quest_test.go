@@ -423,14 +423,12 @@ func TestSearchForCain(t *testing.T) {
 		}
 
 		eff = g.Hear(NPCAkara, 112)
-		if !hasEffect(eff, EffectGiveItem) || q.State != 5 || g.hasItem(ItemScrollOfInifuss) || !g.hasItem(ItemDecipheredScroll) {
+		if !hasEffect(eff, EffectGiveItem) || q.State != 5 || g.hasItem(ItemScrollOfInifuss) {
 			t.Fatalf("decipher: %+v %s items=%v", eff, g.Describe(q), g.Items)
 		}
 
 		g.Close(NPCAkara)
-		g.Dispatch(Event{Kind: EvItemPickedUp, Item: ItemDecipheredScroll}) // the engine reports the new item
-
-		g.Items[ItemDecipheredScroll] = 1 // pickup above counted the same scroll twice
+		g.Dispatch(Event{Kind: EvItemPickedUp, Item: ItemDecipheredScroll}) // the hero picks up the new item
 
 		// the stones: wrong stones are ignored, the right order solves it
 		order := g.StoneOrder()

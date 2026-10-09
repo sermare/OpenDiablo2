@@ -14,12 +14,15 @@ const (
 	NPCActionTravelWest // Warriv (act 2 stage): "go west"
 	NPCActionSailWest   // Meshif (act 3 stage): "sail west"
 	NPCActionCancel
+	// NPCActionTopic is a quest topic of the Talk submenu (a mode 2 message);
+	// the message id is in NPCMenuRow.StringID and the text in Fallback.
+	NPCActionTopic
 )
 
 // String names the action for logs.
 func (a NPCMenuAction) String() string {
 	names := [...]string{
-		"Talk", "Trade", "TradeRepair", "Gamble", "Hire", "Identify", "TravelWest", "SailWest", "Cancel",
+		"Talk", "Trade", "TradeRepair", "Gamble", "Hire", "Identify", "TravelWest", "SailWest", "Cancel", "Topic",
 	}
 
 	if int(a) < 0 || int(a) >= len(names) {

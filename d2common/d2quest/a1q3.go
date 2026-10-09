@@ -1,5 +1,7 @@
 package d2quest
 
+import "strings"
+
 // Objects (objects.txt rows) the Act 1 quests react to.
 const (
 	ObjectHoradricMalus = 108 // the chest the Horadric Malus sits in (A1Q3)
@@ -9,6 +11,18 @@ const (
 	ObjectInifussTree   = 30
 	ObjectTowerTome     = 8
 )
+
+// IsQuestObject reports whether an objects.txt row is operated by a quest
+// (the Malus chest, cairn stones, Cain's gibbet, the Inifuss tree, the tower tome).
+func IsQuestObject(id int) bool {
+	return id == ObjectHoradricMalus || id == ObjectCainGibbet || id == ObjectInifussTree || id == ObjectTowerTome ||
+		(id >= ObjectCairnStone1 && id <= ObjectCairnStone5)
+}
+
+// superIs reports whether the killed monster is the named super unique.
+func superIs(e *Event, name string) bool {
+	return strings.Contains(strings.ToLower(e.Super), name)
+}
 
 type toolsData struct {
 	charsiIntro bool

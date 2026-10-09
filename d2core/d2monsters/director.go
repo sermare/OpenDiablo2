@@ -139,6 +139,16 @@ type Director struct {
 	// OnEvent, if set, receives every log line the director emits as a
 	// structured event (kind is spawn, aggro, attack, hit, death, drop...).
 	OnEvent func(kind, line string)
+	// OnKill, if set, is called when a monster dies (the quest system listens).
+	OnKill func(KillEvent)
+}
+
+// KillEvent describes a monster death for OnKill.
+type KillEvent struct {
+	Monster *d2mapentity.Monster
+	Class   int    // monstats id
+	Label   string // the monster's display name (a super unique's own name)
+	ByHero  bool   // the hero (or a hero's pet) dealt the killing blow
 }
 
 // NewDirector creates a director for a map engine. players returns the

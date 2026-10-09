@@ -346,6 +346,10 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 
 	d.emit("death", "MONSTER death name=%s id=%d by=%s xp=%d", u.m.Label(), u.b.ID, by, xp)
 	d.dropLoot(u)
+
+	if d.OnKill != nil {
+		d.OnKill(KillEvent{Monster: u.m, Class: u.b.Class, Label: u.m.Label(), ByHero: src != nil})
+	}
 }
 
 // dropLoot rolls the monster's treasure class with d2drop and puts the items

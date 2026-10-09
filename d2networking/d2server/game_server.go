@@ -399,6 +399,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 		playerState.RightSkill,
 		playerState.Gold,
 		d2netpacket.WithContainers(playerState.Containers),
+		d2netpacket.WithProgress(playerState.Progress, int(playerState.Difficulty)),
 	)
 	if err != nil {
 		g.Errorf("AddPlayerPacket: %v", err)
@@ -503,6 +504,10 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 			playerState.Difficulty = savePacket.Difficulty
 		}
 		playerState.Containers = savePacket.Player.Containers
+
+		if savePacket.Player.Progress != nil {
+			playerState.Progress = savePacket.Player.Progress // the quest system's changes
+		}
 
 		err = g.heroStateFactory.Save(playerState)
 		if err != nil {
