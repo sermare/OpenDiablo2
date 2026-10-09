@@ -212,11 +212,10 @@ func FuzzServerParsers(f *testing.F) {
 		f.Add(tc.raw)
 	}
 	f.Add(ChatMessage{Type: 1, UnitID: 5, Name: "a", Text: "b"}.Marshal())
-	f.Add(PlayerInGame{UnitID: 1, Name: "n"}.Marshal())
+	f.Add(AssignPlayer{UnitID: 1, Name: "n", X: 1, Y: 2}.Marshal())
 	f.Fuzz(func(t *testing.T, b []byte) {
 		_, _ = ParseGameFlags(b)
 		_, _ = ParseLoadAct(b)
-		_, _ = ParsePlayerInGame(b)
 		_, _ = ParseLifeMana(b)
 		_, _ = ParsePlayerVitals(b)
 		_, _ = ParseAssignPlayer(b)

@@ -32,7 +32,6 @@ const (
 	moveTypeWalk     byte = 1
 	moveTypeRun      byte = 2
 	unitTypePlayer   byte = 0
-	playerInGameSize      = 26
 	playerMoveSize        = 16
 	unitSkillOnLocSz      = 17
 	chatStringsOff        = 10
@@ -126,41 +125,6 @@ func ParseLoadAct(b []byte) (LoadAct, error) {
 	r := rbuf(b)
 
 	return LoadAct{Act: b[1], Seed: r.u32(2), StartLevel: r.u16(6), Aux: r.u32(8)}, nil
-}
-
-// PlayerInGame (0x59, 26 bytes) announces a player in the ENGINE's layout:
-// [1..4]=unit id, [5]=class, [6..21]=name, [22..23]=level, [24..25]=party id.
-// The real exe handler (0x459c00, see AssignPlayer) reads a position (x, y) at
-// 22 and 24 instead, so this layout is only valid between our own peers.
-type PlayerInGame struct {
-	UnitID uint32
-	Class  uint8
-	Name   string
-	Level  uint16
-	Party  uint16
-}
-
-// Marshal returns the packet.
-func (m PlayerInGame) Marshal() []byte {
-	b := newW(S2CPlayerInGame, playerInGameSize)
-	b.u32(1, m.UnitID)
-	b[5] = m.Class
-	putName(b[6:], m.Name)
-	b.u16(22, m.Level)
-	b.u16(24, m.Party)
-
-	return b
-}
-
-// ParsePlayerInGame decodes a 0x59 packet.
-func ParsePlayerInGame(b []byte) (PlayerInGame, error) {
-	if len(b) != playerInGameSize || b[0] != S2CPlayerInGame {
-		return PlayerInGame{}, ErrWrongSize
-	}
-
-	r := rbuf(b)
-
-	return PlayerInGame{UnitID: r.u32(1), Class: b[5], Name: getName(b[6:]), Level: r.u16(22), Party: r.u16(24)}, nil
 }
 
 // PlayerLeave (0x5c, 5 bytes): [1..4]=unit id of the player who left.

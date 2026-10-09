@@ -130,7 +130,7 @@ func TestBlobFraming(t *testing.T) {
 func TestServerMessagesRoundTrip(t *testing.T) {
 	flags := GameFlags{Difficulty: 2, Hardcore: true, Expansion: true}
 	load := LoadAct{Act: 0, Seed: 0xdeadbeef, StartLevel: 1, Aux: 7}
-	in := PlayerInGame{UnitID: 9, Class: 1, Name: "Maricon", Level: 31, Party: 3}
+	in := AssignPlayer{UnitID: 9, Class: 1, Name: "Maricon", X: 5100, Y: 5200}
 	mv := PlayerMove{UnitID: 9, Run: true, TargetX: 100, TargetY: 200, CurX: 90, CurY: 80}
 	sk := UnitSkillOnLocation{UnitID: 9, Skill: 36, Level: 1, X: 5, Y: 6}
 	chat := ChatMessage{Type: 1, UnitID: 9, Name: "Maricon", Text: "hi there"}
@@ -150,7 +150,7 @@ func TestServerMessagesRoundTrip(t *testing.T) {
 		t.Errorf("loadact %+v %v", g, err)
 	}
 
-	if g, err := ParsePlayerInGame(in.Marshal()); err != nil || g != in {
+	if g, err := ParseAssignPlayer(in.Marshal()); err != nil || g != in {
 		t.Errorf("ingame %+v %v", g, err)
 	}
 

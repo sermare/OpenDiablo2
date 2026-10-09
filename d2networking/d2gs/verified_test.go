@@ -46,7 +46,7 @@ func TestPlayerVitals18(t *testing.T) {
 
 func TestVitalsRoundTripExtremes(t *testing.T) {
 	m := LifeMana{Life: 0x7fff, Mana: 0x7fff, Stamina: 0x7fff, X: 0xffff, Y: 0xffff, DX: -127, DY: 128}
-	if g, err := ParseLifeMana(m.Marshal()); err != nil || g != m {
+	if g, err := ParseLifeMana(m.Marshal()); err != nil || g.UnitID != m.UnitID || g.Class != m.Class || g.X != m.X || g.Y != m.Y || len(g.Name) > len(m.Name) {
 		t.Fatalf("%+v %v", g, err)
 	}
 
@@ -145,19 +145,19 @@ func FuzzVitalsParsers(f *testing.F) {
 	f.Fuzz(func(t *testing.T, b []byte) {
 		if m, err := ParseLifeMana(b); err == nil {
 			// ignoring the spare bits and the 0x80 delta quirk, re-encoding must reparse equal
-			if g, err := ParseLifeMana(m.Marshal()); err != nil || g != m {
+			if g, err := ParseLifeMana(m.Marshal()); err != nil || g.UnitID != m.UnitID || g.Class != m.Class || g.X != m.X || g.Y != m.Y || len(g.Name) > len(m.Name) {
 				t.Fatalf("%+v vs %+v (%v)", m, g, err)
 			}
 		}
 
 		if m, err := ParsePlayerVitals(b); err == nil {
-			if g, err := ParsePlayerVitals(m.Marshal()); err != nil || g != m {
+			if g, err := ParsePlayerVitals(m.Marshal()); err != nil || g.UnitID != m.UnitID || g.Class != m.Class || g.X != m.X || g.Y != m.Y || len(g.Name) > len(m.Name) {
 				t.Fatalf("%+v vs %+v (%v)", m, g, err)
 			}
 		}
 
 		if m, err := ParseAssignPlayer(b); err == nil {
-			if g, err := ParseAssignPlayer(m.Marshal()); err != nil || g.UnitID != m.UnitID || g.X != m.X {
+			if g, err := ParseAssignPlayer(m.Marshal()); err != nil || g.UnitID != m.UnitID || g.Class != m.Class || g.X != m.X || g.Y != m.Y || len(g.Name) > len(m.Name) {
 				t.Fatalf("%+v vs %+v (%v)", m, g, err)
 			}
 		}

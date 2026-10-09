@@ -159,8 +159,11 @@ func ParsePlayerVitals(b []byte) (PlayerVitals, error) {
 // AssignPlayer is S2C 0x59 (26 bytes), handler 0x459c00 -> UNIT_CreatePlayerUnit
 // (0x4619e0). Verified: u32 unit id @1, u8 class @5, 16 byte name @6, u16 x @22,
 // u16 y @24 (the last two are used to find the room, so they are a position).
-// NOTE: PlayerInGame in server_msgs.go (the engine's own layout) puts level
-// and party id at 22/24 and therefore differs from the real packet.
+// This is the only 0x59 layout in the engine: the former PlayerInGame put a
+// level and a party id at 22/24, which contradicts the real packet. Level and
+// party now travel in the tunnelled AddPlayer (stats.Level) and the tunnelled
+// party packets; how the REAL client learns another player's level/party is
+// UNVERIFIED (roster handlers 0x5b/0x65/0x8c-0x8e are not decoded in the notes).
 type AssignPlayer struct {
 	UnitID uint32
 	Class  uint8
