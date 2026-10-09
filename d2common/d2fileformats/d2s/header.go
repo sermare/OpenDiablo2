@@ -27,6 +27,11 @@ const (
 	classOffset     = 0x28
 	skillCountPos   = 0x2A
 	levelOffset     = 0x2B
+	mercDeadOffset  = 0xB1
+	mercIDOffset    = 0xB3
+	mercNameOffset  = 0xB7
+	mercTypeOffset  = 0xB9
+	mercExpOffset   = 0xBB
 	appearanceStart = 0x88
 	appearanceLen   = 16
 	colorsStart     = 0x98
@@ -77,8 +82,19 @@ type Header struct {
 	Class      Class
 	SkillCount uint8
 	Level      uint8
+	Mercenary  Mercenary
 	Appearance [appearanceLen]byte
 	Colors     [colorsLen]byte
+}
+
+// Mercenary is the hired mercenary stored in the header. ID is zero when the
+// character has none.
+type Mercenary struct {
+	Dead       bool
+	ID         uint32
+	NameID     uint16
+	Type       uint16
+	Experience uint32
 }
 
 // Checksum computes the save checksum: the file is summed byte by byte with
@@ -142,6 +158,14 @@ func ParseHeader(data []byte) (*Header, error) {
 	h.Name = name
 	h.SkillCount = data[skillCountPos]
 	h.Level = data[levelOffset]
+
+	h.Mercenary = Mercenary{
+		Dead:       le.Uint16(data[mercDeadOffset:]) != 0,
+		ID:         le.Uint32(data[mercIDOffset:]),
+		NameID:     le.Uint16(data[mercNameOffset:]),
+		Type:       le.Uint16(data[mercTypeOffset:]),
+		Experience: le.Uint32(data[mercExpOffset:]),
+	}
 
 	copy(h.Appearance[:], data[appearanceStart:appearanceStart+appearanceLen])
 	copy(h.Colors[:], data[colorsStart:colorsStart+colorsLen])

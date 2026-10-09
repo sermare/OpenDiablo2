@@ -510,3 +510,37 @@ func itoa(i int) string {
 	b, _ := json.Marshal(i)
 	return string(b)
 }
+
+// TestParseFullCharacter parses a whole real save (header, body, every item
+// section) and checks it against the reference output when the env vars are set.
+func TestParseFullCharacter(t *testing.T) {
+	dir, path := os.Getenv("D2_TABLES"), os.Getenv("D2S_SAMPLE_BODY")
+	if dir == "" || path == "" {
+		t.Skip("set D2_TABLES and D2S_SAMPLE_BODY to run")
+	}
+
+	tables := loadRealTables(t, false)
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := Parse(data, tables)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if c.Header.Name != "NokkaSorc" || c.Body.Attributes.Level != 94 || len(c.Items) != 60 {
+		t.Fatalf("name=%q level=%d items=%d", c.Header.Name, c.Body.Attributes.Level, len(c.Items))
+	}
+
+	if c.HasCorpse || len(c.Corpse) != 0 || len(c.MercItems) != 0 || c.Golem != nil {
+		t.Fatalf("unexpected corpse/merc/golem: %+v", c)
+	}
+
+	m := c.Header.Mercenary
+	if m.ID != 0xB43B75AF || m.NameID != 7 || m.Type != 11 || m.Experience != 100730580 || m.Dead {
+		t.Fatalf("mercenary: %+v", m)
+	}
+}
