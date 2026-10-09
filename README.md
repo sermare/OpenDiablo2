@@ -13,6 +13,9 @@
 > [docs/UPSTREAM_README.md](docs/UPSTREAM_README.md)). **It is not playable yet** — see the status below.
 > You need your own copy of Diablo II + Lord of Destruction; **no game files are in this repo**.
 
+> **Working on the code?** [CONTRIBUTING.md](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) ·
+> [Testing](docs/TESTING.md) · [Reverse engineering](docs/REVERSE_ENGINEERING.md)
+
 Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The graphic above is generated from
 [`docs/progress.json`](docs/progress.json) by [`scripts/make_progress_svg.py`](scripts/make_progress_svg.py).
 
