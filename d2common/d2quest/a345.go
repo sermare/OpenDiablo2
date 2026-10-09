@@ -1,0 +1,527 @@
+package d2quest
+
+// Quests of Acts 3, 4 and 5. The speech tables (who says which message in
+// which state) are dumped from the binary; the record slots and quest ids are
+// from the quest table (quests.md section 2). The triggers (levels, monsters,
+// items, objects) follow the pointers of quests.md section 5 and the usual
+// shape of the original quests and are UNVERIFIED: no handler of these quests
+// was read from the binary. Every spec says what it assumes.
+
+// Objects of Acts 3 and 4 (objects.txt rows, found by name).
+const (
+	ObjectLamEsenTome   = 193
+	ObjectCompellingOrb = 404
+	ObjectHellforge     = 376
+)
+
+// ---- prologues ----
+
+// newPrologue builds the welcome node of an act: the NPC says its first line
+// once and the slot gets RewardGranted when it was heard.
+func newPrologue(id, slot, act int, label string, npc int, altClass int) *Quest {
+	q := &Quest{ID: id, Slot: slot, Act: act, Name: label + " prologue", Label: label, Active: true,
+		NoSetState: true, SeqID: -1, tables: speechTables(label)}
+
+	q.activate = func(g *Game, q *Quest, n int) []Speech {
+		if n != npc || g.get(q, FlagRewardGranted) {
+			return nil
+		}
+
+		if altClass >= 0 && g.Hero.Class == altClass && len(q.tables) > 1 {
+			return q.pick(n, 1)
+		}
+
+		return q.pick(n, 0)
+	}
+
+	q.on[EvMessageHeard] = func(g *Game, q *Quest, e *Event) {
+		if e.NPC != npc {
+			return
+		}
+
+		for _, t := range q.tables {
+			for _, s := range t {
+				if s.NPC == npc && s.Msg == e.Msg {
+					g.set(q, FlagRewardGranted, "act welcome heard")
+					g.globalDone(q)
+
+					return
+				}
+			}
+		}
+	}
+
+	q.active = func(g *Game, q *Quest, n int) bool { return n == npc && !g.get(q, FlagRewardGranted) }
+
+	q.on[EvGameStarted] = func(g *Game, q *Quest, _ *Event) {
+		if g.get(q, FlagRewardGranted) {
+			g.globalDone(q)
+		}
+	}
+
+	return q
+}
+
+// A3Q0: Hratli's welcome (the second line is the Sorceress variant).
+func newA3Prologue() *Quest {
+	return newPrologue(QuestA3Prologue, 16, 2, "A3Q0", NPCHratli, ClassSorceress)
+}
+
+// A4Q0: Tyrael's welcome.
+func newA4Prologue() *Quest {
+	return newPrologue(QuestA4Prologue, 24, 3, "A4Q0", NPCTyrael2, -1)
+}
+
+// ---- Act 3 ----
+
+// A3Q1 Lam Esen's Tome (Alkor). UNVERIFIED: the tome sits in the Ruined Temple
+// (level 94) and is picked up as item bbb; the reward is 5 stat points.
+func newLamEsen() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestLamEsen, slot: 17, act: 2, logIndex: 1, name: "Lam Esen's Tome", label: "A3Q1",
+		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 2}, rp: 3, done: 4,
+		steps: []step{{from: 1, npc: NPCAlkor, msg: 549, to: 2}},
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelRuinedTemple, max: 3, to: 3},
+			{ev: EvItemPickedUp, item: ItemLamEsenTome, goal: true},
+		},
+		claimFx: func(g *Game, q *Quest) []Effect {
+			g.dropItem(ItemLamEsenTome)
+
+			return []Effect{
+				{Kind: EffectDeleteItem, Quest: q.ID, Code: ItemLamEsenTome, Note: "Alkor keeps the tome"},
+				reward("stat-points", 5, "Lam Esen's Tome: 5 stat points"),
+			}
+		},
+	})
+}
+
+// A3Q2 Khalim's Will (Cain only). The reports follow the table order (eye,
+// heart, brain, flail; the table indexes 1-4 are the "early" lines of each
+// part); the quest is done when the Will smashes the Compelling Orb in
+// Travincal. UNVERIFIED: object 404 and level 83; the part-to-bit mapping.
+func newKhalim() *Quest {
+	q := &Quest{ID: QuestKhalim, Slot: 18, Act: 2, Name: "Khalim's Will", Label: "A3Q2", LogIndex: 2,
+		Active: true, NotIntro: true, NoSetState: true, SeqID: -1, tables: speechTables("A3Q2")}
+
+	type part struct {
+		items []string
+		bit   int
+		msg   int
+		tbl   int
+		topc  int
+	}
+
+	parts := []part{
+		{[]string{ItemKhalimEye}, FlagCustom1, 545, 1, 7},
+		{[]string{ItemKhalimHeart}, FlagCustom1 + 1, 544, 2, 8},
+		{[]string{ItemKhalimBrain}, FlagCustom1 + 2, 546, 3, 9},
+		{[]string{ItemKhalimFlail, ItemKhalimWill}, FlagCustom1 + 3, 547, 4, 10},
+	}
+
+	carries := func(g *Game, p part) bool {
+		for _, c := range p.items {
+			if g.hasItem(c) {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	q.activate = func(g *Game, q *Quest, npc int) []Speech {
+		if npc != NPCCain3 {
+			return nil
+		}
+
+		switch {
+		case g.get(q, FlagRewardGranted):
+			return q.pick(npc, 11)
+		case g.get(q, FlagRewardPending):
+			return q.pick(npc, 5)
+		case !g.get(q, FlagStarted):
+			return q.pick(npc, 0)
+		}
+
+		var out []Speech
+
+		for _, p := range parts {
+			if carries(g, p) && !g.get(q, p.bit) {
+				out = append(out, q.pick(npc, p.tbl)...)
+
+				break
+			}
+		}
+
+		out = append(out, q.pick(npc, 6)...)
+
+		for _, p := range parts {
+			if g.get(q, p.bit) {
+				out = append(out, q.pick(npc, p.topc)...)
+			}
+		}
+
+		return out
+	}
+
+	q.active = func(g *Game, q *Quest, npc int) bool {
+		if npc != NPCCain3 || g.get(q, FlagRewardGranted) {
+			return false
+		}
+
+		if g.get(q, FlagRewardPending) || !g.get(q, FlagStarted) {
+			return true
+		}
+
+		for _, p := range parts {
+			if carries(g, p) && !g.get(q, p.bit) {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	q.on[EvMessageHeard] = func(g *Game, q *Quest, e *Event) {
+		if e.NPC != NPCCain3 {
+			return
+		}
+
+		switch {
+		case e.Msg == 543 && !g.get(q, FlagStarted):
+			g.set(q, FlagStarted, "Cain explained Khalim's Will")
+			g.emit(Effect{Kind: EffectLogUpdate, Quest: q.ID, Value: g.LogPage(q)})
+		case e.Msg == 548 && g.get(q, FlagRewardPending):
+			g.set(q, FlagRewardGranted, "Cain: the orb is broken")
+			g.clear(q, FlagRewardPending, "reward taken")
+			g.globalDone(q)
+			g.emit(Effect{Kind: EffectLogUpdate, Quest: q.ID, Value: 13})
+		default:
+			for _, p := range parts {
+				if e.Msg == p.msg {
+					g.set(q, p.bit, "Cain reported a part of Khalim's Will")
+					g.emit(Effect{Kind: EffectLogUpdate, Quest: q.ID, Value: g.LogPage(q)})
+				}
+			}
+		}
+	}
+
+	q.on[EvObjectOperated] = func(g *Game, q *Quest, e *Event) {
+		if e.Object != ObjectCompellingOrb || g.grantedOrPending(q) || !g.hasItem(ItemKhalimWill) {
+			return
+		}
+
+		g.set(q, FlagPrimaryGoal, "the Compelling Orb is smashed")
+		g.set(q, FlagRewardPending, "the Compelling Orb is smashed")
+		g.globalDone(q)
+		g.after(8, func() { g.cycle(q, 3, true) })
+	}
+
+	q.status = func(g *Game, q *Quest) int {
+		if g.get(q, FlagRewardGranted) || !g.get(q, FlagStarted) {
+			return 0
+		}
+
+		n := 1
+
+		for _, p := range parts {
+			if g.get(q, p.bit) {
+				n++
+			}
+		}
+
+		return n // page numbers are UNVERIFIED
+	}
+
+	q.on[EvGameStarted] = func(g *Game, q *Quest, _ *Event) {
+		if g.get(q, FlagRewardGranted) {
+			g.globalDone(q)
+		}
+	}
+
+	return q
+}
+
+// A3Q3 The Blade of the Old Religion (Hratli): fetch Gidbinn (g33) from the
+// Flayer Dungeon, hand it to Ormus, then Asheara; Ormus's last line pays out.
+// UNVERIFIED: the levels (88, 89, 91) and the reward (Iron Wolf mercenaries).
+func newBlade() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestBlade, slot: 19, act: 2, logIndex: 3, name: "The Blade of the Old Religion", label: "A3Q3",
+		start: 1, goal: 6, tbl: map[int]int{1: 0, 2: 1, 3: 2, 4: 3, 5: 5}, rp: 6, done: 7,
+		steps: []step{
+			{from: 1, npc: NPCHratli, msg: 571, to: 2},
+			{from: 4, npc: NPCOrmus, msg: 587, to: 5, fx: func(g *Game, q *Quest) []Effect {
+				g.dropItem(ItemGidbinn)
+
+				return []Effect{{Kind: EffectDeleteItem, Quest: q.ID, Code: ItemGidbinn, Note: "Ormus takes the blade"}}
+			}},
+			{from: 5, npc: NPCAsheara, msg: 589, to: 6, goal: true},
+		},
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelFlayerDungeon1, max: 3, to: 3},
+			{ev: EvAreaChanged, level: LevelFlayerDungeon2, max: 3, to: 3},
+			{ev: EvAreaChanged, level: LevelFlayerDungeon3, max: 3, to: 3},
+			{ev: EvItemPickedUp, item: ItemGidbinn, max: 3, to: 4},
+		},
+		claimFx: fxs(reward("hire-ironwolves", 0, "Asheara's Iron Wolf mercenaries become hirable")),
+	})
+}
+
+// A3Q4 The Golden Bird (Cain, Meshif, Alkor): the Jade Figurine (j34) starts
+// the quest, Meshif trades it for the Golden Bird (g34), Alkor takes the bird
+// and pays +20 life. UNVERIFIED: the hand-over order and the reward.
+func newGoldenBird() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestGoldenBird, slot: 20, act: 2, logIndex: 4, name: "The Golden Bird", label: "A3Q4",
+		start: 0, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 2}, rp: 5, done: 6,
+		steps: []step{
+			{from: 1, npc: NPCCain3, msg: 527, to: 2},
+			{from: 2, npc: NPCMeshif2, msg: 529, to: 3, fx: func(g *Game, q *Quest) []Effect {
+				g.dropItem(ItemJadeFigurine)
+
+				return []Effect{
+					{Kind: EffectDeleteItem, Quest: q.ID, Code: ItemJadeFigurine, Note: "Meshif takes the figurine"},
+					{Kind: EffectSpawn, Quest: q.ID, Code: ItemGoldenBird, Note: "Meshif gives the Golden Bird"},
+				}
+			}},
+			{from: 3, npc: NPCAlkor, msg: 534, to: 4, goal: true, fx: func(g *Game, q *Quest) []Effect {
+				g.dropItem(ItemGoldenBird)
+
+				return []Effect{{Kind: EffectDeleteItem, Quest: q.ID, Code: ItemGoldenBird, Note: "Alkor takes the bird"}}
+			}},
+		},
+		trigs: []trig{
+			{ev: EvItemPickedUp, item: ItemJadeFigurine, min: -1, max: -1, to: 1, bit: -1},
+		},
+		noLeaveRule: true,
+		claimFx:     fxs(reward("life-boost", 20, "Alkor's Potion of Life: +20 life")),
+	})
+}
+
+// A3Q5 The Blackened Temple (Ormus): kill the three Council members in
+// Travincal. UNVERIFIED: the classes 345-347 and the level 83.
+func newBlackenedTemple() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestBlackenedTemple, slot: 21, act: 2, logIndex: 5, name: "The Blackened Temple", label: "A3Q5",
+		start: 0, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 2}, rp: 5, done: 6,
+		steps: []step{{from: 1, npc: NPCOrmus, msg: 594, to: 2}},
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelTravincal, max: 3, to: 3},
+			{ev: EvMonsterKilled, monsters: []int{NPCCouncilA, NPCCouncilB, NPCCouncilC}, level: LevelTravincal,
+				count: 3, goal: true},
+		},
+	})
+}
+
+// A3Q6 The Guardian (Ormus): through the Durance of Hate and Mephisto's death.
+// UNVERIFIED: levels 100-102 and class 242 (Mephisto).
+func newGuardian() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestGuardian, slot: 22, act: 2, logIndex: 6, name: "The Guardian", label: "A3Q6",
+		start: 0, goal: 5, tbl: map[int]int{1: 0, 2: 1, 3: 2, 4: 3}, rp: 5, done: 6,
+		steps: []step{{from: 1, npc: NPCOrmus, msg: 628, to: 2}},
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelDurance1, max: 3, to: 3},
+			{ev: EvAreaChanged, level: LevelDurance3, max: 3, to: 4},
+			{ev: EvMonsterKilled, monster: NPCMephisto, goal: true},
+		},
+	})
+}
+
+// ---- Act 4 ----
+
+// A4Q1 The Fallen Angel (Tyrael): Izual in the Plains of Despair, +2 skill
+// points. UNVERIFIED: Izual's class (256 or the ghost 406) and the reward.
+func newFallenAngel() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestFallenAngel, slot: 25, act: 3, logIndex: 1, name: "The Fallen Angel", label: "A4Q1",
+		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 2}, rp: 3, done: 4,
+		steps: []step{{from: 1, npc: NPCTyrael2, msg: 670, to: 2}},
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelPlainsDespair, max: 3, to: 3},
+			{ev: EvMonsterKilled, monsters: []int{NPCIzual, NPCIzualGhost}, goal: true},
+		},
+		claimMsgs: []int{676},
+		claimFx:   fxs(Effect{Kind: EffectSkillPoint, Value: 2, Note: "Fallen Angel: 2 skill points"}),
+	})
+}
+
+// A4Q2 Terror's End (Tyrael): Diablo in the Chaos Sanctuary. The expansion
+// uses the SUCCESSEXP lines (tables 4 and 5). UNVERIFIED: level 108, class 243.
+func newTerrorsEnd() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestTerrorsEnd, slot: 26, act: 3, logIndex: 2, name: "Terror's End", label: "A4Q2",
+		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 1}, rp: 2, done: 3, rpExp: 4, doneExp: 5,
+		steps: []step{{from: 1, npc: NPCTyrael2, msg: 681, to: 2}},
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelChaosSanctum, max: 3, to: 3},
+			{ev: EvMonsterKilled, monster: NPCDiablo, goal: true},
+		},
+	})
+}
+
+// A4Q3 The Hellforge (Cain): smash the Mephisto Soulstone on the Hellforge
+// with the Hellforge Hammer. Cain's first line depends on the soulstone.
+// UNVERIFIED: the object (376) and the item codes.
+func newHellforge() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestHellforge, slot: 27, act: 3, logIndex: 3, name: "The Hellforge", label: "A4Q3",
+		start: 1, goal: 3, tbl: map[int]int{1: 0}, rp: 2, done: 3,
+		tableFn: func(g *Game, q *Quest, def int) int {
+			if q.State == 1 && !g.hasItem(ItemMephistoSoulstone) {
+				return 1
+			}
+
+			return def
+		},
+		steps: []step{
+			{from: 1, npc: NPCCain4, msg: 678, to: 2},
+			{from: 1, npc: NPCCain4, msg: 679, to: 2},
+		},
+		trigs: []trig{
+			{ev: EvObjectOperated, object: ObjectHellforge, req: []string{ItemMephistoSoulstone, ItemHellforgeHammer},
+				goal: true, fx: func(g *Game, q *Quest) []Effect {
+					g.dropItem(ItemMephistoSoulstone)
+
+					return []Effect{{Kind: EffectDeleteItem, Quest: q.ID, Code: ItemMephistoSoulstone,
+						Note: "the soulstone is smashed on the Hellforge"}}
+				}},
+		},
+		noLeaveRule: true,
+	})
+}
+
+// A4Q4 Malachai's gossip (slot 33): the angel comments on the Mephisto
+// Soulstone, and on its destruction.
+func newMalachai() *Quest {
+	q := &Quest{ID: QuestMalachai, Slot: 33, Act: 3, Name: "Malachai", Label: "A4Q4", Active: true,
+		NoSetState: true, SeqID: -1, tables: speechTables("A4Q4")}
+
+	q.activate = func(g *Game, q *Quest, npc int) []Speech {
+		hell := g.byID[QuestHellforge]
+
+		switch {
+		case npc != NPCMalachai:
+			return nil
+		case g.get(hell, FlagPrimaryGoal) || g.get(hell, FlagRewardGranted):
+			return q.pick(npc, 1)
+		case g.hasItem(ItemMephistoSoulstone):
+			return q.pick(npc, 0)
+		}
+
+		return nil
+	}
+
+	return q
+}
+
+// ---- Act 5 ----
+
+// A5Q1 Siege on Harrogath (Larzuk): Shenk the Overseer in the Bloody
+// Foothills; Larzuk sockets an item. UNVERIFIED: level 110 and the super name.
+func newSiege() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestSiege, slot: 35, act: 4, logIndex: 1, name: "Siege on Harrogath", label: "A5Q1",
+		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 2}, rp: 3, done: 4,
+		steps: []step{{from: 1, npc: NPCLarzuk, msg: 20077, to: 2}},
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelBloodyFoothills, max: 3, to: 3},
+			{ev: EvMonsterKilled, super: "Shenk the Overseer", goal: true},
+		},
+		claimFx: fxs(reward("socket-quest", 1, "Larzuk adds sockets to one item")),
+	})
+}
+
+// A5Q2 Rescue on Mount Arreat (Qual-Kehk): free the barbarian groups by
+// killing the demons at their prison doors (class 434, three groups).
+// UNVERIFIED: the count and the Frigid Highlands level.
+func newRescue() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestRescue, slot: 36, act: 4, logIndex: 2, name: "Rescue on Mount Arreat", label: "A5Q2",
+		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 2}, rp: 3, done: 4,
+		steps: []step{{from: 1, npc: NPCQualKehk, msg: 20096, to: 2}},
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelFrigidHighlands, max: 3, to: 3},
+			{ev: EvMonsterKilled, monster: NPCPrisonDoor, count: 3, goal: true},
+		},
+		claimFx: fxs(reward("hire-barbarians", 0, "Qual-Kehk's barbarian mercenaries become hirable")),
+	})
+}
+
+// A5Q3 Prison of Ice (Malah): find the frozen Anya, get Malah's scroll, read
+// it. Reading the scroll (it leaves the inventory) completes the goal.
+// UNVERIFIED: level 114 and the scroll flow.
+func newPrison() *Quest {
+	give := func(g *Game, q *Quest) []Effect {
+		return []Effect{{Kind: EffectSpawn, Quest: q.ID, Code: ItemMalahScroll, Note: "Malah's Scroll of Resistance"}}
+	}
+
+	return newSpecQuest(&spec{
+		id: QuestPrison, slot: 37, act: 4, logIndex: 3, name: "Prison of Ice", label: "A5Q3",
+		start: 1, goal: 6, tbl: map[int]int{1: 0, 2: 1, 3: 2, 4: 3, 5: 4}, rp: 5, done: 6,
+		steps: []step{
+			{from: 1, npc: NPCMalah, msg: 20116, to: 2},
+			{from: 4, npc: NPCMalah, msg: 20127, to: 5, fx: give},
+			{from: 4, npc: NPCAnyaFrozen, msg: 20131, to: 5, fx: give},
+		},
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelFrozenRiver, max: 3, to: 4},
+			{ev: EvItemRemoved, item: ItemMalahScroll, min: 5, max: 5, goal: true},
+		},
+		claimFx: fxs(reward("resist-bonus", 10, "Malah's scroll: +10% to all resistances (Normal)")),
+	})
+}
+
+// A5Q4 Betrayal of Harrogath (Anya): Nihlathak in his temple. UNVERIFIED:
+// level 121 and class 526; the reward is Anya personalising an item.
+func newBetrayal() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestBetrayal, slot: 38, act: 4, logIndex: 4, name: "Betrayal of Harrogath", label: "A5Q4",
+		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 2}, rp: 3, done: 4,
+		steps: []step{{from: 1, npc: NPCDrehya, msg: 20137, to: 2}},
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelNihlathakTemple, max: 3, to: 3},
+			{ev: EvMonsterKilled, monster: NPCNihlathakBoss, goal: true},
+		},
+		claimFx: fxs(reward("personalize", 1, "Anya personalises one item")),
+	})
+}
+
+// A5Q5 Rite of Passage (Qual-Kehk): the three Ancients on Mount Arreat; the
+// statues speak when the quest reached the summit. UNVERIFIED: classes 540-542.
+func newRite() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestRite, slot: 39, act: 4, logIndex: 5, name: "Rite of Passage", label: "A5Q5",
+		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 2}, rp: 5, done: 3,
+		steps: []step{{from: 1, npc: NPCQualKehk, msg: 20153, to: 2}},
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelArreatSummit, max: 3, to: 3},
+			{ev: EvMonsterKilled, monsters: []int{NPCAncient1, NPCAncient2, NPCAncient3}, count: 3, goal: true},
+		},
+		extra: func(g *Game, q *Quest, npc int) []Speech {
+			if q.State == 3 && npc >= NPCAncientStatue1 && npc <= NPCAncientStatue3 {
+				return q.pick(npc, 4)
+			}
+
+			return nil
+		},
+	})
+}
+
+// A5Q6 Eve of Destruction (everyone): the Worldstone Keep, the Throne and
+// Baal. Available once Rite of Passage is done. UNVERIFIED: levels 128/131
+// and Baal's class (543).
+func newEve() *Quest {
+	return newSpecQuest(&spec{
+		id: QuestEve, slot: 40, act: 4, logIndex: 6, name: "Eve of Destruction", label: "A5Q6",
+		start: 0, goal: 3, tbl: map[int]int{1: 0, 2: 0}, rp: 1, done: 3, noLeaveRule: true,
+		trigs: []trig{
+			{ev: EvAreaChanged, level: LevelWorldstone1, max: 1, to: 2},
+			{ev: EvAreaChanged, level: LevelThrone, max: 2, to: 2},
+			{ev: EvMonsterKilled, monster: NPCBaal, goal: true},
+		},
+		claimFx: fxs(reward("unlock-difficulty", 0, "Baal is dead: the next difficulty opens"),
+			reward("game-complete", 0, "end of the game")),
+	})
+}
