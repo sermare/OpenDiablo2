@@ -5,6 +5,9 @@ type States map[string]*StateRecord
 
 // StateRecord describes a body location that items can be equipped to
 type StateRecord struct {
+	// ID is the row number in states.txt (the id the game uses)
+	ID int
+
 	// Name of status effect (Line # is used for ID purposes)
 	State string
 

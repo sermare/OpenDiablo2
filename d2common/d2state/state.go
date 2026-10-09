@@ -42,6 +42,7 @@ type Set struct {
 	states  map[string]*Instance
 	streams []Stream
 	frac    map[string]int // 8.8 remainder per stream kind
+	defs    Defs           // states.txt rows; nil = no exclusion or death rules
 }
 
 // New creates an empty set.
@@ -49,13 +50,29 @@ func New() *Set {
 	return &Set{states: map[string]*Instance{}, frac: map[string]int{}}
 }
 
+// SetDefs gives the set the states.txt rows that drive group / curse
+// exclusion, removal on hit and death, and colour. Without them the set only
+// replaces a state of the same name.
+func (s *Set) SetDefs(d Defs) { s.defs = d }
+
 // Apply puts a state on the unit. A state with the same name is replaced (the
 // game frees the old statlist when the skill or level differs and refreshes
-// it otherwise). The previous instance is returned (nil if none was active).
+// it otherwise). With defs, active states of the same nonzero group, and
+// other curses when a curse is applied, end first (states.txt group / curse;
+// U: exe confirmation). The previous instance of the same name is returned
+// (nil if none was active).
 func (s *Set) Apply(frame int, in Instance) *Instance {
 	prev := s.states[in.Name]
 	if !prev.Active(frame) {
 		prev = nil
+	}
+
+	if s.defs != nil {
+		for n := range s.states {
+			if s.defs.exclusive(in.Name, n) {
+				delete(s.states, n)
+			}
+		}
 	}
 
 	cp := in
@@ -243,6 +260,84 @@ func (s *Set) Drain(frame int, stat string, amount int) int {
 	}
 
 	return taken
+}
+
+// Hit ends the states flagged remhit (cloak_of_shadows) and returns their
+// names; call it when the unit takes a hit. Needs defs.
+func (s *Set) Hit(frame int) []string {
+	var out []string
+
+	for n, in := range s.states {
+		if d, ok := s.defs[n]; ok && d.RemHit && in.Active(frame) {
+			out = append(out, n)
+		}
+	}
+
+	sort.Strings(out)
+
+	for _, n := range out {
+		delete(s.states, n)
+	}
+
+	return out
+}
+
+// Death clears what a dying unit of a kind ("player", "monster", "boss")
+// loses: every state without the matching *staydeath flag, and all DoT
+// streams. Without defs everything is cleared (same as Reset).
+func (s *Set) Death(kind string) {
+	for n := range s.states {
+		if !s.defs.stays(n, kind) {
+			delete(s.states, n)
+		}
+	}
+
+	s.streams = nil
+	s.frac = map[string]int{}
+}
+
+// Shatters reports whether the unit would shatter if it died now (an active
+// state with the shatter flag: freeze).
+func (s *Set) Shatters(frame int) bool {
+	for n, in := range s.states {
+		if d, ok := s.defs[n]; ok && d.Shatter && in.Active(frame) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ColorShift returns the PL2 hue variation the unit is drawn with: among
+// the active states with a colour, the blue ones first, then the highest
+// colorpri, then the lowest id. ok is false when no state colours the unit.
+func (s *Set) ColorShift(frame int) (shift int, ok bool) {
+	var best Def
+
+	for n, in := range s.states {
+		d, has := s.defs[n]
+		if !has || d.ColorPri == 0 || !in.Active(frame) {
+			continue
+		}
+
+		if !ok || beats(d, best) {
+			best, ok = d, true
+		}
+	}
+
+	return best.ColorShift, ok
+}
+
+func beats(a, b Def) bool {
+	if a.Blue != b.Blue {
+		return a.Blue
+	}
+
+	if a.ColorPri != b.ColorPri {
+		return a.ColorPri > b.ColorPri
+	}
+
+	return a.ID < b.ID
 }
 
 // Reset clears everything (death, new game).

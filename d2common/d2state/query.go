@@ -4,10 +4,11 @@ package d2state
 // stat modifiers (the skills.txt aurastate / auratargetstate names).
 const (
 	// Stun and Freeze stop the unit acting for their length.
-	Stun   = "stun"
+	// The names are the states.txt rows: stunned (id 21), freeze (1) and
+	// cold (11, the chill of cold length).
+	Stun   = "stunned"
 	Freeze = "freeze"
-	// Chill is the slow cold damage causes (cold length).
-	Chill = "chill"
+	Chill  = "cold"
 	// Terror (Terror, Howl, fear): the unit runs away.
 	Terror = "terror"
 )
@@ -31,13 +32,53 @@ const (
 	StatTaunted = "x_taunted"
 )
 
-// Chill and freeze parameters. U: the original slow of cold damage; 50
-// percent is the commonly documented value, the code that applies it was not
-// read.
+// ChillSpeedPct is the slow of cold damage when the monster's ColdEffect is
+// not known: monstats.txt coldeffect is -50 for almost every monster. The
+// real value is the monster's ColdEffect of the difficulty (Hit.ColdEffect):
+// chill sets velocitypercent (stat 0x43), attackrate (0x44) and
+// other_animrate (0x45) to it (skills-combat.md, COMBAT_ApplyColdSlowState
+// 0x578ca0, mostly verified).
 const (
 	ChillSpeedPct       = -50
-	ChillAttackSpeedPct = -50
+	ChillAttackSpeedPct = ChillSpeedPct
+
+	// MaxStunFrames caps a stun length (verified: 0x578830, 250 frames).
+	MaxStunFrames = 250
 )
+
+// LengthAfterResist is a cold, freeze or poison length after the target's
+// resist for that length row (the row uses the damage type's resist stats;
+// poison length also has item_poisonlengthresist). A resist of 100 or more
+// removes the effect, a negative resist lengthens it (U: the exe's rounding
+// and whether the negative side is clamped).
+func LengthAfterResist(frames, resistPct int) int {
+	if frames <= 0 || resistPct >= 100 {
+		return 0
+	}
+
+	return frames * (100 - resistPct) / 100
+}
+
+// CurseLength scales a curse or other timed skill state by the target's
+// curse_resistance (stat 0x6d): 100 or more rejects the state, otherwise the
+// length shrinks by that percent (SKILL_CreateTimedStateStatList 0x56c740;
+// U: rounding).
+func CurseLength(frames, curseResist int) int {
+	if curseResist <= 0 {
+		return frames
+	}
+
+	return LengthAfterResist(frames, curseResist)
+}
+
+// StunLength clamps a stun length to MaxStunFrames.
+func StunLength(frames int) int {
+	if frames > MaxStunFrames {
+		return MaxStunFrames
+	}
+
+	return frames
+}
 
 // Hit is the part of a damage struct that creates states and streams.
 type Hit struct {
@@ -51,6 +92,12 @@ type Hit struct {
 	// ChillImmune etc. let the engine pass monster immunities (stat 0x6d is
 	// the "cannot be slowed" family for the game); they skip the state.
 	CannotChill, CannotFreeze, CannotStun bool
+	// ColdEffect is the monster's monstats ColdEffect for the difficulty
+	// (negative = slow percent) and HasColdEffect says it was supplied. When
+	// supplied, a 0 skips chill and freeze (skills-combat.md says the exe skips
+	// them; U for stun) and any other value is the chill slow.
+	ColdEffect    int
+	HasColdEffect bool
 }
 
 // ApplyHit turns the lengths of a hit into states and streams on the set and
@@ -58,8 +105,12 @@ type Hit struct {
 func (s *Set) ApplyHit(frame int, h Hit) []string {
 	var out []string
 
+	if h.HasColdEffect && h.ColdEffect == 0 {
+		h.CannotChill, h.CannotFreeze = true, true
+	}
+
 	if h.StunLen > 0 && !h.CannotStun {
-		s.Apply(frame, Instance{Name: Stun, Until: frame + h.StunLen, Source: h.Source, SkillID: h.SkillID})
+		s.Apply(frame, Instance{Name: Stun, Until: frame + StunLength(h.StunLen), Source: h.Source, SkillID: h.SkillID})
 		out = append(out, Stun)
 	}
 
@@ -69,8 +120,13 @@ func (s *Set) ApplyHit(frame int, h Hit) []string {
 	}
 
 	if h.ColdLen > 0 && !h.CannotChill {
+		slow := ChillSpeedPct
+		if h.HasColdEffect {
+			slow = h.ColdEffect
+		}
+
 		s.Apply(frame, Instance{Name: Chill, Until: frame + h.ColdLen, Source: h.Source, SkillID: h.SkillID,
-			Mods: []StatMod{{"velocitypercent", ChillSpeedPct}, {"attackrate_speed", ChillAttackSpeedPct}}})
+			Mods: []StatMod{{"velocitypercent", slow}, {"attackrate", slow}, {"other_animrate", slow}}})
 		out = append(out, Chill)
 	}
 
@@ -105,11 +161,24 @@ func (s *Set) SpeedPct(frame int) int {
 	return v
 }
 
-// AttackSpeedPct is the attack speed change in percent (attackrate_speed from
-// chill; "attackrate" mods of Decrepify / Holy Freeze are the attack speed
-// penalty as well, Frenzy's is a bonus). U: both stats map to attack speed.
+// AttackSpeedPct is the attack speed change in percent: stat attackrate
+// (0x44), which chill, Decrepify and Holy Freeze lower and Frenzy and
+// Fanaticism raise. other_animrate (0x45, the other animations: hit recovery,
+// block...) is OtherAnimPct; they were summed before, which counted a chill
+// three times.
 func (s *Set) AttackSpeedPct(frame int) int {
-	v := s.Stat(frame, "attackrate_speed") + s.Stat(frame, "attackrate") + s.Stat(frame, "other_animrate")
+	v := s.Stat(frame, "attackrate")
+	if v < -100 {
+		v = -100
+	}
+
+	return v
+}
+
+// OtherAnimPct is the speed change of the non-attack animations in percent
+// (stat other_animrate).
+func (s *Set) OtherAnimPct(frame int) int {
+	v := s.Stat(frame, "other_animrate")
 	if v < -100 {
 		v = -100
 	}

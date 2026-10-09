@@ -18,3 +18,23 @@
 // application is an independent stream here), the exact slow percents of
 // chill and freeze, and that a state's stats stop applying exactly at Until.
 package d2state
+
+// Rules pinned by tests (states.txt = patch_d2, ids are row numbers):
+//
+//	verified:   cold slow = monstats ColdEffect of the difficulty (stats
+//	            velocitypercent, attackrate, other_animrate); stun length cap
+//	            250 frames; states are 25 Hz frames, active on [apply, Until);
+//	            curse_resistance >= 100 rejects a timed skill state.
+//	data:       group / curse / remhit / *staydeath / shatter / colorpri /
+//	            colorshift columns (TestReal*; skipped without D2_TABLES).
+//	unverified: exe use of group and curse as mutual exclusion (Defs.exclusive),
+//	            staydeath = "survives death", blue overriding colorpri, rounding
+//	            of length reductions, a shorter stun replacing a longer one,
+//	            ColdEffect 0 skipping stun, poison stacking, area-change removal
+//	            (no column in states.txt; just_portaled and sync_warped only).
+//
+// Exe addresses for Ghidra to confirm: 0x578830 (stun), 0x578990 (poison),
+// 0x578b00 (burn), 0x578ca0 (chill), 0x578f50 (freeze), 0x56c740
+// (SKILL_CreateTimedStateStatList: replacement and curse rules), 0x63af70 and
+// 0x63aef0 (set / clear a state bit), the state removal on death and the
+// states.txt row consumers of colorpri / colorshift (client draw code).
