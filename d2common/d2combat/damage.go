@@ -54,6 +54,7 @@ const (
 	ResultBlocked  uint32 = 0x10
 	ResultDodged   uint32 = 0x80
 	ResultAvoided  uint32 = 0x100
+	ResultHitReact uint32 = 0x4    // landed on a unit without state 0x36 (verified in 0x57cc10)
 	ResultCritical uint32 = 0x2000 // deadly strike / critical strike applied
 	ResultMonBlock uint32 = 0x8000
 )
