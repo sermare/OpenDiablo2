@@ -239,6 +239,7 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 		player.HeroType, player.Stats, player.Skills, &player.Equipment, player.LeftSkill, player.RightSkill, player.Gold)
 
 	newPlayer.Containers = player.Containers
+	newPlayer.Merc = player.Merc
 	newPlayer.Death = player.Death
 	newPlayer.Hardcore = player.Hardcore
 

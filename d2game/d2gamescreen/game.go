@@ -157,6 +157,7 @@ type Game struct {
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	monsterTest          *monsterTest
+	merc                 mercGame
 	skills               *d2skills.Engine
 	castTestState        *castTest
 	attackTarget         *d2mapentity.Monster
@@ -567,6 +568,8 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 		v.Infof("NPC menu: Talk with %q (voice %q)", npc.Label(), path)
 	case d2player.NPCActionTrade, d2player.NPCActionTradeRepair:
 		v.openTrade(npc, uint32(time.Now().UnixNano()))
+	case d2player.NPCActionHire:
+		v.openHire(npc)
 	case d2player.NPCActionGamble:
 		v.openGamble(npc, uint32(time.Now().UnixNano()))
 	case d2player.NPCActionIdentify:

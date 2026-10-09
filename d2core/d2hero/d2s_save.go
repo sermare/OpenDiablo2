@@ -106,10 +106,15 @@ func SummarizeD2S(data []byte, tables *d2s.ItemTables) string {
 		}
 	}
 
+	merc := ""
+	if m := c.Header.Mercenary; m.ID != 0 {
+		merc = fmt.Sprintf("merc=type%d/name%d/exp%d/dead=%v ", m.Type, m.NameID, m.Experience, m.Dead)
+	}
+
 	return fmt.Sprintf("name=%s class=%v level=%d exp=%d gold=%d str=%d dex=%d vit=%d ene=%d hp=%d mana=%d "+
 		"difficulty=%d act=%d seed=%d items=%d equipped=%v status=0x%X hardcore=%v died=%v corpse=%d "+
-		"waypoints=%#x checksum=ok",
+		"waypoints=%#x %schecksum=ok",
 		c.Header.Name, c.Header.Class, a.Level, a.Experience, a.Gold, a.Strength, a.Dexterity, a.Vitality,
 		a.Energy, a.MaxHP, a.MaxMana, diff, act+1, c.Header.MapSeed, len(c.Items), eq, c.Header.Status,
-		c.Header.IsHardcore(), c.Header.IsDead(), len(c.Corpse), c.Body.Waypoints[diff])
+		c.Header.IsHardcore(), c.Header.IsDead(), len(c.Corpse), c.Body.Waypoints[diff], merc)
 }

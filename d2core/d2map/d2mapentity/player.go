@@ -14,16 +14,19 @@ import (
 // Player is the player character entity.
 type Player struct {
 	mapEntity
-	name              string
-	animationMode     string
-	composite         *d2asset.Composite
-	Equipment         *d2inventory.CharacterEquipment
-	Stats             *d2hero.HeroStatsState
-	Skills            map[int]*d2hero.HeroSkill
-	LeftSkill         *d2hero.HeroSkill
-	RightSkill        *d2hero.HeroSkill
-	Class             d2enum.Hero
-	Gold              int
+	name          string
+	animationMode string
+	composite     *d2asset.Composite
+	Equipment     *d2inventory.CharacterEquipment
+	Stats         *d2hero.HeroStatsState
+	Skills        map[int]*d2hero.HeroSkill
+	LeftSkill     *d2hero.HeroSkill
+	RightSkill    *d2hero.HeroSkill
+	Class         d2enum.Hero
+	Gold          int
+	// Merc is the hero's mercenary state (hired, revived, levelled); the
+	// game screen keeps it current and the server copies it on a save.
+	Merc              *d2hero.MercState `json:"merc,omitempty"`
 	lastPathSize      int
 	isInTown          bool
 	isRunToggled      bool

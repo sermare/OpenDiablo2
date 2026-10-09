@@ -339,3 +339,29 @@ func (m *Monster) rotate(direction int) {
 		m.composite.SetDirection(direction)
 	}
 }
+
+// Revive brings a dead monster back to life in neutral mode (used for
+// mercenaries; the original sets mode NU and refills the hit points).
+func (m *Monster) Revive() {
+	m.dead = false
+	m.deadTime = 0
+	m.events = nil
+	m.mapEntity.StopMoving()
+	m.SetMode(d2monster.ModeNeutral)
+	m.Brain.Mode = d2monster.ModeNeutral
+	m.Brain.HasTarget = false
+}
+
+// TeleportTo puts the monster on a subtile without walking there.
+func (m *Monster) TeleportTo(x, y int) {
+	m.mapEntity.StopMoving()
+	m.Position.Set(float64(x), float64(y))
+	m.Target = m.Position
+}
+
+// SetSelectable chooses whether the mouse can pick the monster (mercenaries
+// are not attackable by their owner).
+func (m *Monster) SetSelectable(v bool) { m.selectable = v }
+
+// SetLabel overrides the display name (mercenaries show their own name).
+func (m *Monster) SetLabel(name string) { m.name = name }

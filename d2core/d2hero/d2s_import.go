@@ -52,6 +52,7 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	}
 
 	state.D2SBase = append([]byte(nil), data...)
+	state.Merc = MercFromHeader(header.Mercenary)
 
 	if diff, _, ok := header.ActiveDifficulty(); ok {
 		state.Difficulty = d2enum.DifficultyType(diff)

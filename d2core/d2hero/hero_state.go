@@ -44,6 +44,31 @@ type HeroState struct {
 
 	// statEquipped caches the equipped items as the stat list sees them.
 	statEquipped []d2statlist.Item
+	// Merc is the hired mercenary (the d2s header fields); nil when the hero
+	// has none. The merc level is not stored: it is derived from Experience.
+	Merc *MercState `json:"merc,omitempty"`
+}
+
+// MercState is the persistent part of a mercenary, as the .d2s header keeps it
+// (0xB1 dead, 0xB3 id, 0xB7 name id, 0xB9 type, 0xBB experience).
+type MercState struct {
+	Dead       bool   `json:"dead,omitempty"`
+	ID         uint32 `json:"id"`
+	NameID     uint16 `json:"nameId"`
+	Type       uint16 `json:"type"`
+	Experience uint32 `json:"experience"`
+	// Replaced is set when a new merc was hired over an imported one: the old
+	// merc's items are dropped on export.
+	Replaced bool `json:"replaced,omitempty"`
+}
+
+// MercFromHeader converts the d2s header fields; nil when there is no merc.
+func MercFromHeader(m d2s.Mercenary) *MercState {
+	if m.ID == 0 {
+		return nil
+	}
+
+	return &MercState{Dead: m.Dead, ID: m.ID, NameID: m.NameID, Type: m.Type, Experience: m.Experience}
 }
 
 // HeroProgress carries the story progress of a .d2s save: the quest records,

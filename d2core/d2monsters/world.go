@@ -132,6 +132,24 @@ func (d *Director) Nearest(b *d2monster.Brain) (d2monster.Target, int, bool) {
 		found    bool
 	)
 
+	if u := d.unitOf(b); u != nil && u.merc != nil {
+		return d.nearestEnemy(b)
+	}
+
+	// hostile monsters also hunt living mercenaries
+	for _, mu := range d.sortedUnits() {
+		if mu.merc == nil || !mu.m.Alive() || (!d.opt.IgnoreTown && mu.merc.owner.IsInTown()) {
+			continue
+		}
+
+		x, y := mu.m.SubtilePos()
+		dist := d2monster.EdgeDistance(b.X-x, b.Y-y, b.Size)
+
+		if !found || dist < bestDist {
+			best, bestDist, found = d2monster.Target{ID: mercTargetBase + mu.b.ID, X: x, Y: y, Size: 1}, dist, true
+		}
+	}
+
 	for id := uint32(1); id <= uint32(len(d.targets)); id++ {
 		p := d.targets[id]
 		if p == nil || !d.targetable(p) {
@@ -152,6 +170,10 @@ func (d *Director) Nearest(b *d2monster.Brain) (d2monster.Target, int, bool) {
 // AttackTarget implements d2monster.Senses: the nearest hero inside the
 // monster's aggro radius (the exe's filter is UNVERIFIED).
 func (d *Director) AttackTarget(b *d2monster.Brain) (d2monster.Target, int, bool) {
+	if u := d.unitOf(b); u != nil && u.merc != nil {
+		return d.nearestEnemy(b)
+	}
+
 	t, dist, ok := d.Nearest(b)
 
 	return t, dist, ok && dist <= b.Profile.Aggro()
@@ -164,7 +186,7 @@ func (d *Director) AttackTarget(b *d2monster.Brain) (d2monster.Target, int, bool
 func (d *Director) InRange(b *d2monster.Brain, t d2monster.Target, dist int) bool {
 	u := d.unitOf(b)
 
-	if u == nil || !attackIsRanged(u.m.Stat, d2monster.ModeAttack1) {
+	if u == nil || !d.isRanged(u) {
 		return dist <= meleeInRange
 	}
 
@@ -255,4 +277,32 @@ func (d *Director) Shout(b *d2monster.Brain) {
 	if u := d.unitOf(b); u != nil {
 		d.Debugf("%s shouts", u.m.Label())
 	}
+}
+
+// targetPos resolves a target id to a subtile position for the unit u: a
+// monster chases players or mercs, a merc follows its owner or chases a
+// monster.
+func (d *Director) targetPos(u *unit, id uint32) (x, y int, ok bool) {
+	switch {
+	case id >= mercTargetBase:
+		if t := d.units[id-mercTargetBase]; t != nil && t.merc != nil {
+			x, y = t.m.SubtilePos()
+
+			return x, y, true
+		}
+	case u.merc != nil && id != d.ownerTargetID(u.merc):
+		if t := d.units[id]; t != nil {
+			x, y = t.m.SubtilePos()
+
+			return x, y, true
+		}
+	default:
+		if p := d.playerFor(id); p != nil {
+			x, y = playerSubtile(p)
+
+			return x, y, true
+		}
+	}
+
+	return 0, 0, false
 }
