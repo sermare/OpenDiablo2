@@ -46,6 +46,13 @@ type ResistInput struct {
 	// Ignore is the context flag that disables pierce on immunities, the
 	// difficulty penalty and the cap altogether (ctx[5]).
 	Ignore bool
+	// NoCap leaves the cap off: monsters keep their monstats value, so a
+	// ResFi of 100 is an immunity and a boss can exceed 100. The player cap
+	// (75 + max stat, at most 95) is the only cap in the notes; that it is
+	// player-only is UNVERIFIED in the exe (confirm in 0x579b10 how the cap is
+	// skipped for monster defenders) but follows from monster immunities
+	// existing at all.
+	NoCap bool
 }
 
 // EffectiveResist returns the resist percent actually applied. Verified:
@@ -78,7 +85,7 @@ func EffectiveResist(in ResistInput) int {
 		return res
 	}
 
-	if in.Ignore {
+	if in.Ignore || in.NoCap {
 		return res
 	}
 
