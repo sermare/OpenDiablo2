@@ -81,17 +81,17 @@ func (f *ItemFactory) dropTables() *dropTables {
 		info := &d2drop.ItemInfo{
 			Code: code, Level: icr.Level, Rarity: icr.Rarity, Spawnable: icr.Spawnable,
 			Quest: icr.Quest != 0, Unique: icr.Unique, MagicLevel: icr.MagicLevel,
-			Uber:  icr.NormalCode != "" && icr.NormalCode != code,
 			Types: rec.FindEquivalentTypesByItemCommonRecord(icr),
 		}
+		info.Uber = d2drop.UberTier(code, icr.UberCode, icr.UltraCode, icr.Type, info.Types, icr.Quest != 0)
 
 		if tr := rec.Item.Types[icr.Type]; tr != nil {
 			info.TypeNormal, info.TypeMagic, info.TypeRare = tr.Normal, tr.Magic, tr.Rare
+			info.TypeRarity = tr.Rarity
 		}
 
-		for _, ty := range info.Types {
-			info.ClassSpecific = info.ClassSpecific || classItemTypes[ty]
-		}
+		// The class-specific rows are chosen by the item's own type only.
+		info.ClassSpecific = classItemTypes[icr.Type]
 
 		t.items[code] = info
 	}
@@ -183,9 +183,9 @@ func (t *dropTables) loadTreasure() {
 			switch {
 			case t.items[e.Code] != nil, src[e.Code] != nil:
 			case t.rec.Item.Unique[e.Code] != nil:
-				e.Kind = d2drop.EntryUnique
+				e.Kind, e.Base = d2drop.EntryUnique, t.rec.Item.Unique[e.Code].Code
 			case t.rec.Item.SetItems[e.Code] != nil:
-				e.Kind = d2drop.EntrySet
+				e.Kind, e.Base = d2drop.EntrySet, t.rec.Item.SetItems[e.Code].ItemCode
 			}
 
 			tc.Entries = append(tc.Entries, e)
