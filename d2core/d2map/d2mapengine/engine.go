@@ -247,6 +247,19 @@ func (m *MapEngine) PlaceStampClipped(stamp *d2mapstamp.Stamp, tileOffsetX, tile
 	}
 }
 
+// SetTile puts one tile that a level generator built itself (not copied from a
+// DS1 stamp) on the map and resolves its graphics and sub-tile flags. Tiles
+// outside the map are ignored.
+func (m *MapEngine) SetTile(x, y int, region d2enum.RegionIdType, c d2mapstamp.Tile) {
+	if x < 0 || y < 0 || x >= m.size.Width || y >= m.size.Height {
+		return
+	}
+
+	t := &m.tiles[m.tileCoordinateToIndex(x, y)]
+	*t = MapTile{RegionType: region, Components: c}
+	t.PrepareTile(x, y, m)
+}
+
 // BlockEmptyTiles marks every sub-tile of tiles that have no visible floor
 // as blocked for walking and sight. In the original game void (no floor) is
 // not walkable; without this the hero and monsters could leave a cave level
