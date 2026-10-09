@@ -126,6 +126,7 @@ func (s *SkillRecord) PipelineSkill() *d2skill.Skill {
 			s.Aurastatcalc5, s.Aurastatcalc6},
 		PassiveState: s.Passivestate,
 		PassiveIType: s.Passiveitype,
+		IType1:       s.Itypea1,
 		PassiveStat:  [6]string{"", s.Passivestat1, s.Passivestat2, s.Passivestat3, s.Passivestat4, s.Passivestat5},
 		PassiveCalc: [6]*d2calc.Program{nil, s.Passivecalc1, s.Passivecalc2, s.Passivecalc3, s.Passivecalc4,
 			s.Passivecalc5},

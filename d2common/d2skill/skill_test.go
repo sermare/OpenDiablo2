@@ -35,7 +35,7 @@ func skillFromRow(r row) *Skill {
 		HitClass: r.num("HitClass"), AuraFilter: r.num("aurafilter"), AuraState: r["aurastate"],
 		AuraTargetState: r["auratargetstate"], AuraLenCalc: r.calc("auralencalc"), AuraRangeCalc: r.calc("aurarangecalc"),
 		PassiveState: r["passivestate"],
-		PassiveIType: r["passiveitype"],
+		PassiveIType: r["passiveitype"], Range: r["range"], IType1: r["itypea1"],
 	}
 	s.SrvMissileB, s.SrvMissileC = r["srvmissileb"], r["srvmissilec"]
 	s.CharClass, s.Summon, s.PetType, s.SumMode = r["charclass"], r["summon"], r["pettype"], r["summode"]

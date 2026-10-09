@@ -249,18 +249,6 @@ func exportMercItems(c *d2s.Character, state *HeroState, warn func(string, ...in
 	c.MercItems = out
 }
 
-func clampInt(v, lo, hi int) int {
-	if v < lo {
-		return lo
-	}
-
-	if v > hi {
-		return hi
-	}
-
-	return v
-}
-
 // MercItemsSummary is a log line of the gear.
 func (m *MercState) MercItemsSummary() string {
 	if m == nil || len(m.Items) == 0 {

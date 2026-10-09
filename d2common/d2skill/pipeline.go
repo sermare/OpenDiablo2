@@ -544,7 +544,7 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 	}
 
 	desc := sk.Descriptor(env, lvl, wmin, wmax, u.Stat(masteryStat[sk.EType]))
-	desc.DamagePct = int32(u.Stat("damagepercent"))
+	desc.DamagePct = int32(u.Stat("damagepercent") + missileMastery(u, sk))
 
 	x, y := u.Pos()
 	sx, sy := float64(x)+0.5, float64(y)+0.5

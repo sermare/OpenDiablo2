@@ -210,7 +210,7 @@ func (c *cast) desc() *d2missile.DamageDesc {
 	}
 
 	d := c.sk.Descriptor(c.env, c.lvl, wmin, wmax, c.u.Stat(masteryStat[c.sk.EType]))
-	d.DamagePct = int32(c.u.Stat("damagepercent"))
+	d.DamagePct = int32(c.u.Stat("damagepercent") + missileMastery(c.u, c.sk))
 
 	return &d
 }
@@ -280,8 +280,8 @@ func (p *Pipeline) strike(u Unit, sk *Skill, lvl int, t d2missile.Target, env *E
 		}
 
 		mr.Hit, mr.Chance, mr.Roll = d2combat.RollToHit(u.Roller(), d2combat.ToHitInput{
-			AttackRating: ar + masteryOf(u, MasteryToHit), Defense: def,
-			AttackerLevel: u.Level(), DefenderLevel: t.Level(), AttackRatingPct: o.toHitPct + u.Stat("item_tohit_percent"),
+			AttackRating: ar, Defense: def,
+			AttackerLevel: u.Level(), DefenderLevel: t.Level(), AttackRatingPct: o.toHitPct + u.Stat("item_tohit_percent") + masteryOf(u, MasteryToHit, sk),
 		})
 	}
 
@@ -312,7 +312,7 @@ func (p *Pipeline) strike(u Unit, sk *Skill, lvl int, t d2missile.Target, env *E
 		}
 
 		ph := rollRange(r, lo, hi)
-		ph += int32(mulDiv(int(ph), o.pct+u.Stat("damagepercent")+masteryOf(u, MasteryDamage), 100))
+		ph += int32(mulDiv(int(ph), o.pct+u.Stat("damagepercent")+masteryOf(u, MasteryDamage, sk), 100))
 		ph = d2combat.ScaleBySrcDam(ph, uint8(sk.SrcDam))
 		ph += o.flat
 
@@ -368,7 +368,7 @@ func (p *Pipeline) strike(u Unit, sk *Skill, lvl int, t d2missile.Target, env *E
 
 	if !sk.Kick {
 		dmg.ApplyStrike(r, d2combat.StrikeInput{
-			WeaponChance: masteryOf(u, MasteryCrit), CriticalChance: u.Stat("passive_critical_strike"), DeadlyChance: u.Stat("item_deadlystrike"),
+			WeaponChance: masteryOf(u, MasteryCrit, sk), CriticalChance: u.Stat("passive_critical_strike"), DeadlyChance: u.Stat("item_deadlystrike"),
 		})
 	}
 

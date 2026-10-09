@@ -81,7 +81,10 @@ func (d *Director) mercReduceFor(tu *unit, t MercDamageType, dmg int) int {
 		flat = tu.merc.effectiveGear().DamageReduction
 	}
 
-	return d2combat.ReduceComponent(dmg, flat, d.mercResistInput(tu.merc, t), false)
+	// mercs have no absorb stats in the engine yet
+	out, _ := d2combat.ReduceComponent(dmg, flat, d2combat.EffectiveResist(d.mercResistInput(tu.merc, t)), false, false, 0, 0)
+
+	return out
 }
 
 // MercReduce reduces one damage component aimed at the owner's mercenary and returns what
