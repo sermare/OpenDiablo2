@@ -23,6 +23,7 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		Code: s.Code, Quality: s.Quality, ILvl: s.ILvl, Seed: s.Seed,
 		Unique: s.Unique, SetItem: s.SetItem, Set: s.Set, Prefixes: s.Prefixes, Suffixes: s.Suffixes,
 		Identified: s.Identified, Ethereal: s.Ethereal, Quantity: s.Quantity, Durability: -1,
+		Sockets: s.Sockets, MaxDurability: s.MaxDurability,
 	}
 
 	if s.Durability != nil {
@@ -40,6 +41,7 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		rolled := it.Spec()
 		rolled.Identified, rolled.Ethereal = spec.Identified, spec.Ethereal
 		rolled.Quantity, rolled.Durability = spec.Quantity, spec.Durability
+		rolled.Sockets, rolled.MaxDurability = spec.Sockets, spec.MaxDurability
 
 		spec = rolled
 	}
@@ -55,6 +57,7 @@ func storedFromItem(it *diablo2item.Item, page, x, y int, orig *d2s.Item) d2hero
 		Quality: spec.Quality, ILvl: spec.ILvl, Seed: spec.Seed,
 		Unique: spec.Unique, SetItem: spec.SetItem, Set: spec.Set, Prefixes: spec.Prefixes, Suffixes: spec.Suffixes,
 		Identified: spec.Identified, Ethereal: spec.Ethereal, Quantity: spec.Quantity,
+		Sockets: spec.Sockets, MaxDurability: spec.MaxDurability,
 		D2S: orig,
 	}
 

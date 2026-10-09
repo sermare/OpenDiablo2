@@ -297,7 +297,7 @@ func (t *TradeWindow) realise(stock *d2vendor.Stock, seed uint32) {
 	entries := append([]*d2vendor.Item{}, stock.Items...)
 
 	for idx, e := range entries {
-		item, err := t.factory.ItemFromCode(e.Code, e.Quality, e.ILvl, seed+uint32(idx)+1)
+		item, err := t.factory.ItemFromCodeForVendor(e.Code, e.Quality, e.ILvl, seed+uint32(idx)+1, t.difficulty)
 		if err != nil {
 			t.Errorf("vendor item %q: %v", e.Code, err)
 			stock.Remove(e)

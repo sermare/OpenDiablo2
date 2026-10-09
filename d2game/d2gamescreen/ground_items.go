@@ -312,7 +312,7 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 			return d2ground.ChestTreasureClass(act, diff, lvl, v.itemFactory().TreasureClassLevel)
 		},
 		Drop: func(class string, lvl int, sd uint32) int {
-			loot, derr = v.itemFactory().DropLoot(class, diablo2item.DropOptions{Seed: sd, ILvl: lvl, Players: 1}, 0)
+			loot, derr = v.itemFactory().DropLoot(class, diablo2item.DropOptions{Seed: sd, ILvl: lvl, Players: 1, RollExtras: true, Difficulty: v.difficulty()}, 0)
 			if loot == nil {
 				return 0
 			}
@@ -327,7 +327,7 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 	} else {
 		// unknown object row: keep the original direct path
 		tc = d2ground.ChestTreasureClass(v.localPlayer.Act, diff, ilvl, v.itemFactory().TreasureClassLevel)
-		loot, derr = v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: seed, ILvl: ilvl, Players: 1}, 0)
+		loot, derr = v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: seed, ILvl: ilvl, Players: 1, RollExtras: true, Difficulty: v.difficulty()}, 0)
 	}
 
 	if derr != nil {
