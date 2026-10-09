@@ -75,6 +75,8 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
     unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""
     source "$f"
     step "$scenario_name"
+    # saves are written back to the .d2s they were loaded from: every scenario starts from a fresh copy
+    if [ -z "${OD2_VERIFY_SAVE:-}" ]; then cp -f "$D2S_SAMPLE_BODY" "$save"; rm -f "$save.bak"; fi
     n=${f:t:r}
     cmd=$tmp/$n.command log=$tmp/$n.log
     {
