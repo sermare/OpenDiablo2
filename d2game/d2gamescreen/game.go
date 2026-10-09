@@ -923,7 +923,7 @@ func (v *Game) OnPlayerSave() error {
 		v.gameControls.SyncContainers()
 	}
 
-	sp, err := d2netpacket.CreateSavePlayerPacket(playerState, d2enum.DifficultyNormal)
+	sp, err := d2netpacket.CreateSavePlayerPacket(playerState, v.gameClient.Difficulty)
 	if err != nil {
 		return fmt.Errorf("SavePlayerPacket: %v", err)
 	}

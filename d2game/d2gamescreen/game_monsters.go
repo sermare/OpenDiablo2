@@ -1,6 +1,7 @@
 package d2gamescreen
 
 import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"math"
 	"os"
 	"strconv"
@@ -47,7 +48,8 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 
 	opt := d2monsters.Options{
 		Seed:       uint32(v.gameClient.MapEngine.Seed()),
-		Difficulty: d2monster.Normal,
+		Difficulty: d2monster.Difficulty(v.difficulty()),
+		LogStats:   os.Getenv("OD2_AUTODIFFICULTY") != "",
 		Expansion:  true, // the game data is Lord of Destruction (MonLvl*Ex columns)
 		// the scenario spawns monsters next to a hero who may still be in town
 		IgnoreTown: os.Getenv("OD2_AUTOMONSTER") != "" || os.Getenv("OD2_AUTOMERC") != "" || os.Getenv("OD2_AUTOAI") != "",
@@ -63,10 +65,6 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 				v.gameControls.OnHeroStrike()
 			}
 		},
-	}
-
-	if diff, err := strconv.Atoi(os.Getenv("OD2_AUTOMONSTER_DIFF")); err == nil && diff >= 0 && diff <= 2 {
-		opt.Difficulty = d2monster.Difficulty(diff)
 	}
 
 	v.monsters = d2monsters.NewDirector(v.asset, v.gameClient.MapEngine, v.playerList, v.logLevel, opt)
@@ -247,6 +245,13 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 }
 
 func (v *Game) spawnMonsterTest(t *monsterTest) {
+	if os.Getenv("OD2_AUTODIFFICULTY") != "" {
+		lv := d2difficulty.Level(v.difficulty())
+		v.Infof("DIFFTEST hero name=%s difficulty=%d (%s) resist_penalty=%d death_exp_penalty=%d merc_difficulty=%d "+
+			"client_difficulty=%d", v.localPlayer.Name(), int(lv), lv, d2difficulty.ResistPenalty(false, lv),
+			d2difficulty.DeathExpPenalty(lv), d2difficulty.MercDifficulty(lv), int(v.gameClient.Difficulty))
+	}
+
 	if area, err := strconv.Atoi(os.Getenv("OD2_AUTOMONSTER_AREA")); err == nil && area > 0 {
 		v.monsters.SetAreaLevel(v.monsters.AreaLevelOf(area))
 	}
