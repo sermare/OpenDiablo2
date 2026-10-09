@@ -112,6 +112,7 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 	}
 
 	exportMerc(c, state)
+	exportMercItems(c, state, warn)
 	exportDeath(c, state)
 
 	if !opts.LastPlayed.IsZero() {

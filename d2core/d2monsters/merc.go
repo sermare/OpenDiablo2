@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2hireling"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 )
@@ -39,6 +40,9 @@ type MercSave struct {
 	NameID     uint16
 	Type       uint16
 	Experience uint32
+	// Gear is the merc's equipment as stat list items (see d2hero.HeroStateFactory.MercStatItems).
+	// It is not part of the save header; SpawnMerc applies it.
+	Gear []d2statlist.Item
 }
 
 // MercInfo is a snapshot for the UI and logs.
@@ -49,6 +53,12 @@ type MercInfo struct {
 	Rec        *d2hireling.Record
 	Stats      d2hireling.Stats
 	ReviveCost int
+	// Base is the stats of the hireling table at the current level (no gear) and Gear the
+	// effect of the equipment on them; Stats equals the gear-modified numbers. Gear.Resist
+	// (fire, cold, lightning, poison) is shown only: monster hits on a merc are not
+	// reduced by it yet.
+	Base d2hireling.Stats
+	Gear d2hireling.Gear
 }
 
 // mercUnit is the merc-specific state of a unit.
@@ -57,13 +67,17 @@ type mercUnit struct {
 	rec    *d2hireling.Record
 	save   MercSave
 	level  int
-	stats  d2hireling.Stats
+	stats  d2hireling.Stats // the table stats with the gear applied
+	base   d2hireling.Stats // the table stats of the current level
+	items  []d2statlist.Item
+	gear   d2hireling.Gear
 	ranged bool
 	buffs  map[string]int // skill name -> frame the buff ends
 
 	lastOwnerX, lastOwnerY int
 	ownerMode              d2monster.Mode
 	skill                  string // the skill being cast, for logs
+	regen                  mercRegen
 }
 
 // SetHirelings gives the director the parsed hireling.txt; without it no merc
@@ -156,7 +170,7 @@ func (d *Director) spawnMercAt(owner *d2mapentity.Player, stat *d2records.MonSta
 	}
 
 	mu := &mercUnit{
-		owner: owner, rec: rec, save: save, level: level, stats: st,
+		owner: owner, rec: rec, save: save, level: level, stats: st, base: st, items: save.Gear,
 		ranged: rec.Class == 271 || rec.Class == 359, buffs: map[string]int{},
 		ownerMode: d2monster.ModeNeutral,
 	}
@@ -167,6 +181,10 @@ func (d *Director) spawnMercAt(owner *d2mapentity.Player, stat *d2records.MonSta
 	d.byEntity[m.ID()] = u
 	d.mercs[owner] = u
 	d.engine.AddEntity(m)
+
+	if len(mu.items) > 0 {
+		d.applyMercGear(u, true)
+	}
 
 	d.Counters.MercSpawns++
 	d.emit("merc", "MERC spawn name=%s id=%08x type=%d class=%d level=%d hp=%d/%d defense=%d dmg=%d-%d exp=%d dead=%v pos=(%d,%d)",
@@ -211,21 +229,54 @@ func (d *Director) Merc(owner *d2mapentity.Player) (MercInfo, bool) {
 
 	return MercInfo{
 		Save: mu.currentSave(u), Level: mu.level, HP: u.m.Vitals.HP, MaxHP: u.m.Vitals.MaxHP, Rec: mu.rec,
-		Stats: mu.stats, ReviveCost: d2hireling.ReviveCost(mu.level),
+		Stats: mu.stats, ReviveCost: d2hireling.ReviveCost(mu.level), Base: mu.base, Gear: mu.gear,
 	}, true
 }
 
-// SetMercGear applies the effect of the merc's equipment (d2hireling.ApplyGear on the
-// current level's table stats) to the owner's merc: defense, life, attack rating and
-// damage. Calling it with the stats of no items restores the table values, so a merc
-// without gear behaves exactly as before. Life is kept in proportion. Nothing calls it
-// yet: the d2s 'jf' items are not converted to stat-list items (UNVERIFIED plumbing).
+// SetMercItems sets the merc's equipment (stat list items, see MercStatItems of the hero
+// factory) and applies it with d2hireling.ApplyGear: defense, life, attack rating, damage
+// and the gear's resists on MercInfo. The items are remembered: a level-up and a revive
+// apply them again, so the gear is not lost. Calling it with no items restores the table
+// values, so a merc without gear behaves exactly as before. Life is kept in proportion.
+func (d *Director) SetMercItems(owner *d2mapentity.Player, items []d2statlist.Item) bool {
+	u := d.mercs[owner]
+	if u == nil {
+		return false
+	}
+
+	u.merc.items = append([]d2statlist.Item(nil), items...)
+	d.applyMercGear(u, false)
+
+	d.emit("merc", "MERC gear name=%s items=%d defense=%d hp=%d dmg=%d-%d ar=%d resist=%v", u.m.Label(), len(items),
+		u.merc.stats.Defense, u.merc.stats.MaxHP, u.merc.stats.DmgMin, u.merc.stats.DmgMax, u.merc.stats.AR, u.merc.gear.Resist)
+
+	return true
+}
+
+// applyMercGear computes the gear effect on the table stats of the current level and
+// writes it to the unit. full sets the life to the new maximum (level-up, revive, spawn),
+// otherwise it keeps the proportion.
+func (d *Director) applyMercGear(u *unit, full bool) {
+	mu := u.merc
+	g := d2hireling.ApplyGear(mu.base, mu.items)
+
+	d.setMercGear(u, g, full)
+}
+
+// SetMercGear applies a computed gear effect to the owner's merc (the low-level form of
+// SetMercItems; the effect is not remembered across a level-up).
 func (d *Director) SetMercGear(owner *d2mapentity.Player, g d2hireling.Gear) bool {
 	u := d.mercs[owner]
 	if u == nil {
 		return false
 	}
 
+	d.setMercGear(u, g, false)
+
+	return true
+}
+
+func (d *Director) setMercGear(u *unit, g d2hireling.Gear, full bool) {
 	mu := u.merc
 	frac := float64(1)
 
@@ -233,19 +284,19 @@ func (d *Director) SetMercGear(owner *d2mapentity.Player, g d2hireling.Gear) boo
 		frac = float64(u.m.Vitals.HP) / float64(u.m.Vitals.MaxHP)
 	}
 
-	// a level-up recomputes mu.stats from the table, so the caller must call this
-	// again after MERC levelup (the gear is not remembered here)
+	mu.gear = g
 	mu.stats.Str, mu.stats.Dex, mu.stats.MaxHP, mu.stats.Defense, mu.stats.AR = g.Str, g.Dex, g.MaxHP, g.Defense, g.AR
 	mu.stats.DmgMin, mu.stats.DmgMax = g.DmgMin, g.DmgMax
 
 	u.m.Vitals.MaxHP, u.m.Vitals.Defense = g.MaxHP, g.Defense
 	u.m.Vitals.A1 = MonsterAttackFrom(g.AR, g.DmgMin, g.DmgMax)
 
-	if u.m.Alive() {
+	switch {
+	case full:
+		u.m.Vitals.HP = g.MaxHP
+	case u.m.Alive():
 		u.m.Vitals.HP = int(frac * float64(g.MaxHP))
 	}
-
-	return true
 }
 
 func (mu *mercUnit) currentSave(u *unit) MercSave {
@@ -268,7 +319,7 @@ func (d *Director) ReviveMerc(owner *d2mapentity.Player) error {
 	}
 
 	u.m.Revive()
-	u.m.Vitals.HP = u.m.Vitals.MaxHP
+	d.applyMercGear(u, true) // MERC_ReviveUnit re-applies the effects of the equipped items (FUN_005752a0)
 	u.merc.save.Dead = false
 	u.b.Wake = d.frame
 	d.teleportNextToOwner(u)
@@ -483,6 +534,10 @@ func (d *Director) stepMerc(u *unit) {
 	}
 
 	mu.lastOwnerX, mu.lastOwnerY = x, y
+
+	if u.m.Alive() {
+		mu.stepRegen(&u.m.Vitals)
+	}
 }
 
 // nearestEnemy is the merc's attack target: the nearest living hostile
@@ -580,8 +635,6 @@ func (d *Director) mercStrike(u *unit, mode d2monster.Mode) {
 
 // strikeMerc resolves a monster's attack on a merc.
 func (d *Director) strikeMerc(u *unit, tu *unit, atk d2mapentity.MonsterAttack, mode d2monster.Mode) {
-	mu := tu.merc
-
 	tx, ty := tu.m.SubtilePos()
 	sx, sy := u.m.SubtilePos()
 	dist := d2monster.EdgeDistance(sx-tx, sy-ty, u.b.Size)
@@ -599,31 +652,42 @@ func (d *Director) strikeMerc(u *unit, tu *unit, atk d2mapentity.MonsterAttack, 
 		return
 	}
 
-	in := d2combat.ToHitInput{
-		AttackRating:  d2combat.MonsterAttackRating(atk.ToHit, 0, 0),
-		Defense:       tu.m.Vitals.Defense,
-		AttackerLevel: u.m.Vitals.Level,
-		DefenderLevel: mu.level,
-	}
-
-	hit, chance, roll := d2combat.RollToHit(u.b.Seed, in)
-	dmg := 0
+	hit, chance, roll, dmg := d.rollMercHit(u, tu, atk)
 
 	if hit {
-		dmg = atk.Min + int(u.b.Seed.Roll(int32(atk.Max-atk.Min+1)))
-		if dmg < 1 {
-			dmg = 1
-		}
-
 		d.Counters.AttackHits++
 	}
 
-	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s target=merc hit=%v chance=%d roll=%d dmg=%d merc_hp=%d/%d",
-		u.m.Label(), u.b.ID, mode, hit, chance, roll, dmg, maxInt(tu.m.Vitals.HP-dmg, 0), tu.m.Vitals.MaxHP)
+	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s target=merc hit=%v chance=%d roll=%d dmg=%d merc_hp=%d/%d def=%d",
+		u.m.Label(), u.b.ID, mode, hit, chance, roll, dmg, maxInt(tu.m.Vitals.HP-dmg, 0), tu.m.Vitals.MaxHP, tu.m.Vitals.Defense)
 
 	if hit {
 		d.damageMerc(tu, dmg, u.m.Label())
 	}
+}
+
+// rollMercHit rolls a monster attack against a merc: the to-hit against the merc's total
+// defense (table plus gear, kept in its vitals), then the attack's damage after the merc's
+// gear (flat reduction, physical resist; both are no-ops without gear).
+func (d *Director) rollMercHit(u, tu *unit, atk d2mapentity.MonsterAttack) (hit bool, chance, roll, dmg int) {
+	in := d2combat.ToHitInput{
+		AttackRating:  d2combat.MonsterAttackRating(atk.ToHit, 0, 0),
+		Defense:       tu.m.Vitals.Defense,
+		AttackerLevel: u.m.Vitals.Level,
+		DefenderLevel: tu.merc.level,
+	}
+
+	hit, chance, roll = d2combat.RollToHit(u.b.Seed, in)
+	if !hit {
+		return hit, chance, roll, 0
+	}
+
+	dmg = atk.Min + int(u.b.Seed.Roll(int32(atk.Max-atk.Min+1)))
+	if dmg < 1 {
+		dmg = 1
+	}
+
+	return hit, chance, roll, d.takenByMerc(tu, dmg)
 }
 
 func (d *Director) damageMerc(tu *unit, dmg int, by string) {
@@ -682,10 +746,10 @@ func (d *Director) creditMerc(mu *mercUnit, u *unit, xp int) {
 			return
 		}
 
-		mu.level, mu.stats, mu.rec = nl, st, rec
-		u.m.Vitals.Level, u.m.Vitals.MaxHP, u.m.Vitals.HP = nl, st.MaxHP, st.MaxHP
-		u.m.Vitals.Defense = st.Defense
-		u.m.Vitals.A1 = MonsterAttackFrom(st.AR, st.DmgMin, st.DmgMax)
+		mu.level, mu.stats, mu.base, mu.rec = nl, st, st, rec
+		u.m.Vitals.Level = nl
+		d.applyMercGear(u, true) // the gear stays on: table stats of the new level plus the items
+		st = mu.stats
 		d.Counters.MercLevelUps++
 		d.emit("merc", "MERC levelup name=%s id=%08x level=%d hp=%d defense=%d dmg=%d-%d", u.m.Label(), mu.save.ID, nl, st.MaxHP,
 			st.Defense, st.DmgMin, st.DmgMax)

@@ -13,6 +13,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
@@ -39,6 +40,7 @@ type mercGame struct {
 	table      *d2hireling.Table
 	tried      bool
 	offers     map[int]*sellerOffers
+	geared     bool                 // the give/take path of the controls is wired to the director
 	spawnedFor *d2monsters.Director // the director the merc was spawned into: a new level has a new one, so the merc follows the hero
 	test       *mercTest
 }
@@ -117,10 +119,17 @@ func (v *Game) advanceMerc(elapsed float64) {
 	if v.merc.spawnedFor != d && p.Merc != nil && d.Hirelings() != nil && !soloTest {
 		v.merc.spawnedFor = v.monsters
 
-		if _, err := d.SpawnMerc(p, saveOf(p.Merc)); err != nil {
+		save := saveOf(p.Merc)
+		if v.gameControls != nil {
+			save.Gear = v.gameControls.MercStatItems() // the saved 'jf' items count from the first frame
+		}
+
+		if _, err := d.SpawnMerc(p, save); err != nil {
 			v.Errorf("MERC spawn: %v", err)
 		}
 	}
+
+	v.wireMercGear(p)
 
 	if info, ok := d.Merc(p); ok && p.Merc != nil {
 		p.Merc.Experience = info.Save.Experience
@@ -128,6 +137,38 @@ func (v *Game) advanceMerc(elapsed float64) {
 	}
 
 	v.advanceMercTest(elapsed)
+}
+
+// wireMercGear connects the give/take path of the game controls with the merc unit
+// (once): the rules need the merc's class and table stats, and every change of the
+// gear is applied to the unit. A dead merc takes nothing (UNVERIFIED: the exe's
+// distance and state checks of the packet handler were not traced).
+func (v *Game) wireMercGear(p *d2mapentity.Player) {
+	if v.merc.geared || v.gameControls == nil {
+		return
+	}
+
+	v.merc.geared = true
+
+	v.gameControls.SetMercGearHost(d2player.MercGearHost{
+		Ref: func() (d2hero.MercRef, bool) {
+			info, ok := v.monsters.Merc(p)
+			if !ok || info.Save.Dead || info.Rec == nil {
+				return d2hero.MercRef{}, false
+			}
+
+			return d2hero.MercRef{Class: info.Rec.Class, Base: info.Base}, true
+		},
+		Drink: func(e d2inventory.PotionEffect) { v.monsters.DrinkMerc(p, e) },
+		Changed: func() {
+			if v.monsters.SetMercItems(p, v.gameControls.MercStatItems()) {
+				if info, ok := v.monsters.Merc(p); ok {
+					v.Infof("MERC gear applied defense=%d hp=%d dmg=%d-%d ar=%d resist=%v", info.Stats.Defense, info.Stats.MaxHP,
+						info.Stats.DmgMin, info.Stats.DmgMax, info.Stats.AR, info.Gear.Resist)
+				}
+			}
+		},
+	})
 }
 
 func saveOf(m *d2hero.MercState) d2monsters.MercSave {

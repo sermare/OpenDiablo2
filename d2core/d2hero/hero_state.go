@@ -85,6 +85,12 @@ type MercState struct {
 	// Replaced is set when a new merc was hired over an imported one: the old
 	// merc's items are dropped on export.
 	Replaced bool `json:"replaced,omitempty"`
+	// Items is the merc's equipment (the .d2s 'jf' section): Page PageEquipped, X the
+	// body location (1 head, 3 torso, 4 right hand, 5 left hand).
+	Items []StoredItem `json:"items,omitempty"`
+	// ItemsDirty is set when the gear was changed in the game: only then is the
+	// 'jf' list of the original file replaced on export.
+	ItemsDirty bool `json:"itemsDirty,omitempty"`
 }
 
 // MercFromHeader converts the d2s header fields; nil when there is no merc.

@@ -231,6 +231,16 @@ func (f *HeroStateFactory) importD2SItems(state *HeroState, data []byte) {
 
 	f.applyD2SEquipment(state, character.Items, tables, state.Imported != nil && state.Imported.WeaponSetII)
 	f.applyD2SContainers(state, character.Items)
+	importMercItems(state.Merc, character.MercItems, func(code string) bool { return f.asset.Records.Item.All[code] != nil })
+
+	if state.Merc != nil {
+		names := f.loadAffixNames()
+		for i := range state.Merc.Items {
+			if st := &state.Merc.Items[i]; st.D2S != nil {
+				f.applyNames(st, st.D2S, names)
+			}
+		}
+	}
 
 	if state.Containers != nil {
 		importEquipped(state.Containers, data, character.Items, func(code string) bool { return f.asset.Records.Item.All[code] != nil })
