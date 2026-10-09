@@ -44,7 +44,7 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | Level generation, part 2: maze rooms and outdoor generators (to reproduce real maps) | RE notes: `drlg2` |
 | Missiles, collision and pathfinding | RE notes: `missiles-pathing` |
 | Server session core: game seed, act changes, loading a save on the server side | RE notes: `session-core` |
-| Item generation and affixes | RE notes: `itemgen` |
+| Real loot: drops, quality rolls, affixes ported to Go | branch `feat/itemgen-real` |
 | Monster AI and NPC server logic | RE notes: `monster-ai` |
 | Quests (all acts) | RE notes: `quests` |
 | Inventory, stash and trade (price formulas) | RE notes: `inventory-trade` |
@@ -93,6 +93,9 @@ server session core · D2Common data tables · key bindings from `default.key` �
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | Item generation reverse engineered: treasure classes, quality rolls with magic find, affixes, property stats (12 gaps vs OpenDiablo2 listed) |
+| 2026-10-09 | Monster AI mapped: 148 AI types, aggro rules, spawning and level scaling |
+| 2026-10-09 | Random number generator checked instruction-by-instruction against the real binary: no differences |
 | 2026-10-09 | Equipment imported from a real `.d2s`; Diablo II's random number generator and seed hierarchy implemented (`d2rand`) |
 | 2026-10-09 | Level generation (DRLG) core reverse engineered: seed hierarchy, dispatch, preset/maze/outdoor structure |
 | 2026-10-09 | Skills and combat formulas reverse engineered and verified (mana cost, to-hit, defence, block, critical strike, RNG) |

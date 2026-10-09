@@ -19,7 +19,7 @@
     },
     {
       "label": "Source files studied in depth",
-      "done": 60,
+      "done": 75,
       "total": 277,
       "note": "NPC menu, units, saves, packets, rendering, sound, skills & combat, level generation",
       "color": "#2f9bff"

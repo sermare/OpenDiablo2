@@ -27,10 +27,10 @@
 <text x="844" y="212" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2fb67c">100%</text>
 <text x="36" y="233" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">every assert-string path mapped to modules and functions</text>
 <text x="36" y="264" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Source files studied in depth</text>
-<text x="844" y="264" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">60 / 277</text>
+<text x="844" y="264" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">75 / 277</text>
 <rect x="36" y="276" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="276" width="159.9" height="18" rx="9" fill="url(#g2)" filter="url(#glow)"/>
-<text x="844" y="290" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2f9bff">22%</text>
+<rect x="36" y="276" width="199.8" height="18" rx="9" fill="url(#g2)" filter="url(#glow)"/>
+<text x="844" y="290" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2f9bff">27%</text>
 <text x="36" y="311" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">NPC menu, units, saves, packets, rendering, sound, skills &amp; combat, level generation</text>
 <text x="36" y="342" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real .d2s save sections verified</text>
 <text x="844" y="342" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">9 / 10</text>
