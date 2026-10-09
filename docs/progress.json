@@ -5,9 +5,9 @@
   "bars": [
     {
       "label": "Game.exe functions named in Ghidra",
-      "done": 5323,
+      "done": 6122,
       "total": 10907,
-      "note": "original 1.14b binary; 4,320 named by meaning + 1,003 auto-labelled (module/role/address, to be refined)",
+      "note": "original 1.14b binary; 5,571 named by meaning + 551 still auto-labelled placeholders",
       "color": "#7c5cff"
     },
     {
