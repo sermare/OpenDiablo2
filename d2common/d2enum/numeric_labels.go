@@ -129,5 +129,9 @@ func BaseLabelNumbers(idx int) int {
 		1612,
 	}
 
+	if idx < 0 || idx >= len(baseLabelNumbers) {
+		return -1
+	}
+
 	return baseLabelNumbers[idx]
 }
