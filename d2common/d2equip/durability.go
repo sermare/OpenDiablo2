@@ -7,17 +7,44 @@ package d2equip
 // (head 3, torso 5, right hand 4, left hand 4, belt 2, feet 2, gloves 2; the
 // hand slots count only when they hold armor, i.e. a shield), and that piece
 // then loses one durability point with a chance of 10%. When the hero hits
-// with a weapon, the weapon loses one point with a chance of 4% (10% for the
-// item types whose ItemTypes record has the byte at +0x10 set; what that byte
-// means is UNVERIFIED, Types do not carry it, see ChanceThrown).
+// with a weapon, the weapon loses one point with a chance of 4%.
+//
+// VERIFIED at 0x557d90: the chance is 10 for items of ItemTypes id 0x32 (Any
+// Armor) and 4 for items of id 0x2d (Weapon); a throwable weapon (the Throwable
+// column) uses 10 in an expansion game and in a classic game never loses
+// durability at all. Anything that is neither armor nor weapon never loses
+// durability. This overrides the note in itemgen.md that had armor and weapon
+// the other way round.
 
 // Chances in percent (the game rolls seed % 100 < chance).
 const (
 	ChanceArmor  = 10
 	ChanceWeapon = 4
-	// ChanceThrown is used by weapons of the types flagged at ItemTypes +0x10 (UNVERIFIED which).
+	// ChanceThrown is the chance of throwable weapons in an expansion game (VERIFIED, 0x557d90).
 	ChanceThrown = 10
 )
+
+// RepairNumerator is the part of an item's full repair cost that is charged
+// (VERIFIED, TRADE_CalcItemPrice 0x62f100, repair mode): the price is
+// numerator * fullPrice / maxDur. A normal item is charged maxDur-cur points.
+// An item with the replenish stat (0xfc) is measured against maxDur-1: it is
+// free once cur >= maxDur-1, otherwise the numerator is maxDur-1 (not
+// maxDur-1-cur). Items without durability, or at full durability, are free.
+func RepairNumerator(maxDur, cur int, replenish bool) int {
+	if maxDur <= 0 || maxDur <= cur {
+		return 0
+	}
+
+	if replenish {
+		if maxDur-1 <= cur {
+			return 0
+		}
+
+		return maxDur - 1
+	}
+
+	return maxDur - cur
+}
 
 // ArmorWeight is one row of the table at 0x730148.
 type ArmorWeight struct {
@@ -108,11 +135,11 @@ func RollLoss(it *Item, percent, chance int) (dur int, lost bool) {
 }
 
 // PropertiesOff reports whether a worn item's properties are off because of its
-// condition. VERIFIED for armor: at 0 durability the game sets the broken flag
-// (0x100) and removes the item's stat list (0x55d660), and the activation pass
-// never switches a broken item on again. For weapons the same function takes the
-// other branch (0x557d90 only zeroes the stat and sends the update), so a weapon
-// at 0 durability may keep its properties: UNVERIFIED either way, and the
-// damage code was not read. We treat broken weapons like broken armor (the
+// condition. VERIFIED for armor: when the next point would bring it below 1
+// the game sets the broken flag (0x100) and removes the item's stat list
+// (0x55d660), and the activation pass never switches a broken item on again.
+// For weapons the same function takes the other branch (0x557d90 only zeroes
+// the stat and sends the update, no broken flag), so a weapon at 0 durability
+// may keep its properties: UNVERIFIED, the damage code was not read. We treat broken weapons like broken armor (the
 // conservative choice, matching the community statement that nothing works).
 func PropertiesOff(it *Item) bool { return it.Broken() }

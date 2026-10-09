@@ -5,18 +5,23 @@ import (
 	"strings"
 )
 
-// Socket and gem rules. VERIFIED from the binary (itemgen.md 1.8, ITEMGEN_RollSockets
-// 0x554c60): a roll only happens for quality >= magic, non stackable items whose
-// base has sockets; the count is capped per difficulty (normal 3, nightmare 4,
-// hell 6) and, for LoD items, is itemseed % max + 1 (classic: min(max, 3), helms
-// at most 2). UNVERIFIED (community documentation, exe 0x62bd70 to confirm):
-// max is first the smaller of the base gemsockets and the ItemTypes MaxSock1 /
-// MaxSock25 / MaxSock40 column picked by item level (<=25, 26..39, >=40).
+// Socket and gem rules. VERIFIED from the binary: ITEMGEN_RollSockets
+// (0x554c60) rolls only for quality >= normal (2), non stackable items whose
+// base has an inventory, 33% (rand(100) < 33); the count is capped per
+// difficulty (normal 3, nightmare 4, hell 6) and, for LoD items, is
+// initseed % max + 1 (classic: min(max, 3), helms at most 2), then clamped by
+// ITEM_ClampSocketCountBySize (0x62be00) to the inventory area (invwidth *
+// invheight, at most 6). The max is ITEM_GetMaxSocketsForLevel (0x62bd70): the
+// smaller of the base gemsockets (record +0x138) and the ItemTypes MaxSock1 /
+// MaxSock25 / MaxSock40 column of the item's type row, picked by item level
+// (ilvl <= 25, ilvl <= 40, above). Plate Mail's gemsockets of 2 is plain
+// armor.txt data (base column), not a cap derived from ItemTypes.
 
-// Item level borders of the ItemTypes MaxSock columns (UNVERIFIED, see above).
+// Item level limits of the ItemTypes MaxSock columns (VERIFIED, 0x62bd70:
+// "ilvl <= 25" and "ilvl <= 40"); maxSockMid is the first level of the last column.
 const (
 	maxSockLow = 25
-	maxSockMid = 40
+	maxSockMid = 41
 )
 
 // SocketCapByDifficulty is the hard cap on rolled sockets (VERIFIED, 0x554c60):
@@ -33,7 +38,7 @@ func SocketCapByDifficulty(difficulty int) int {
 }
 
 // MaxSocketsByLevel picks the MaxSock1/25/40 value of an item type for an
-// item level (UNVERIFIED borders).
+// item level (VERIFIED borders, 0x62bd70).
 func (t *Type) MaxSocketsByLevel(ilvl int) int {
 	switch {
 	case ilvl <= maxSockLow:
