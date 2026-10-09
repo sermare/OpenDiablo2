@@ -263,7 +263,11 @@ func (a *autoQuest) stageGuardian() {
 		a.expect(h, "done + primary goal at once (exe kill bits), no reward pending", a.bit(h, id, d2quest.FlagRewardGranted) &&
 			!a.bit(h, id, d2quest.FlagRewardPending) && a.bit(h, id, d2quest.FlagPrimaryGoal))
 		a.move(h, d2quest.LevelKurastDocktown)
-		a.expect(h, "still granted after the town talk", a.bit(h, id, d2quest.FlagRewardGranted))
+		// the kill set bit 11; the NPC talk (not the kill) plays the cheers (exe 0x5b9e20 / 0x5ba140, boss_speech.go)
+		a.expect(h, "cheers pending: bit 11 set by the kill", a.bit(h, id, d2quest.FlagTownCheers))
+		a.says(h, "the town cheers", d2quest.NPCAlkor, 657)
+		a.expect(h, "hearing it clears bit 11, still granted", !a.bit(h, id, d2quest.FlagTownCheers) &&
+			a.bit(h, id, d2quest.FlagRewardGranted))
 		h.Apply(h.Q().TravelToAct4())
 		a.expect(h, "the Act 3 finished word is set", h.Q().Rec.Get(23, d2quest.FlagRewardGranted))
 	})
@@ -303,7 +307,9 @@ func (a *autoQuest) stageTerror() {
 		a.expect(h, "done + primary goal at once (exe kill bits), no reward pending", a.bit(h, id, d2quest.FlagRewardGranted) &&
 			!a.bit(h, id, d2quest.FlagRewardPending) && a.bit(h, id, d2quest.FlagPrimaryGoal))
 		a.move(h, d2quest.LevelPandemonium)
-		a.expect(h, "still granted after the move", a.bit(h, id, d2quest.FlagRewardGranted))
+		// expansion: Tyrael speaks 20000 when talked to, until it is heard (exe 0x5b23b0 / 0x5b2290, boss_speech.go)
+		a.says(h, "Tyrael's expansion line", d2quest.NPCTyrael2, 20000)
+		a.expect(h, "still granted after the talk", a.bit(h, id, d2quest.FlagRewardGranted))
 		h.Apply(h.Q().TravelToAct5())
 		a.expect(h, "the Act 4 finished word (slot 28) is set", h.Q().Rec.Get(28, d2quest.FlagRewardGranted))
 	})
@@ -371,6 +377,7 @@ func (a *autoQuest) stageEve() {
 		a.expect(h, "done + primary goal at once (exe kill bits), no reward pending", a.bit(h, id, d2quest.FlagRewardGranted) &&
 			!a.bit(h, id, d2quest.FlagRewardPending) && a.bit(h, id, d2quest.FlagPrimaryGoal))
 		a.move(h, d2quest.LevelHarrogath)
+		a.says(h, "Tyrael's end line", d2quest.NPCTyrael3, 20175) // exe 0x58b7d0: done + primary goal
 		a.expect(h, "reward granted", a.bit(h, id, d2quest.FlagRewardGranted))
 	})
 }

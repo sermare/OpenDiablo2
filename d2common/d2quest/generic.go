@@ -73,11 +73,13 @@ type spec struct {
 	extra                   func(g *Game, q *Quest, npc int) []Speech
 	setup                   func(q *Quest, s *spec)
 	logPage                 func(g *Game, q *Quest) int
+	kill                    *killSpeech // speech after an end-boss kill (boss_speech.go), unless Game.LegacyBossBits
 }
 
 type genData struct {
 	hits     []int
 	rewarded bool
+	cheered  bool // A3Q6: the hero heard the town cheers (the node's recently-rewarded list)
 }
 
 func (s *spec) rpTable(g *Game) int {
@@ -341,6 +343,10 @@ func newSpecQuest(s *spec) *Quest {
 			return
 		}
 
+		if s.kill != nil && !g.LegacyBossBits {
+			s.kill.heard(g, q, d, e)
+		}
+
 		if g.get(q, FlagRewardPending) && !g.get(q, FlagRewardGranted) && s.isClaim(q, g, e.NPC, e.Msg) {
 			g.claimReward(q, s)
 
@@ -469,6 +475,10 @@ func newSpecQuest(s *spec) *Quest {
 
 		if s.extra != nil {
 			out = append(out, s.extra(g, q, npc)...)
+		}
+
+		if s.kill != nil && !g.LegacyBossBits {
+			out = append(out, s.kill.activate(g, q, d, npc)...)
 		}
 
 		return out
