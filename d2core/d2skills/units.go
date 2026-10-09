@@ -7,6 +7,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2missile"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
 
@@ -58,8 +59,16 @@ func (h *heroUnit) skill(id int) int {
 	return 0
 }
 
-// SkillLevel returns the skill points; +skills from items are not modelled.
-func (h *heroUnit) SkillLevel(id int) int     { return h.skill(id) }
+// SkillLevel is the effective level: the points plus the +skills of the
+// hero's items (d2hero.EffectiveSkillLevel); BaseSkillLevel the points only.
+func (h *heroUnit) SkillLevel(id int) int {
+	if s := h.p.Skills[id]; s != nil {
+		return d2hero.EffectiveSkillLevel(h.p.Stats, h.p.Class, s)
+	}
+
+	return 0
+}
+
 func (h *heroUnit) BaseSkillLevel(id int) int { return h.skill(id) }
 
 // Stat is a base attribute plus what the hero's states (auras, buffs,
