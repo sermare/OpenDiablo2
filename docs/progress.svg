@@ -46,15 +46,15 @@
 <text x="844" y="446" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#f2a81d">90%</text>
 <text x="36" y="467" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">9 sections read; whole file written back byte-for-byte (golem section unverified)</text>
 <text x="36" y="498" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">NPC interaction features</text>
-<text x="844" y="498" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">7 / 8</text>
+<text x="844" y="498" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">8 / 8</text>
 <rect x="36" y="510" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="510" width="645.8" height="18" rx="9" fill="url(#g5)" filter="url(#glow)"/>
-<text x="844" y="524" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ef5da8">88%</text>
-<text x="36" y="545" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">click-walk · greeting · menu · return greeting · vendors · gamble · identify · mercenary hire ✓ | quest dialogue ✗</text>
+<rect x="36" y="510" width="738.0" height="18" rx="9" fill="url(#g5)" filter="url(#glow)"/>
+<text x="844" y="524" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ef5da8">100%</text>
+<text x="36" y="545" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">click-walk · greeting · menu · return greeting · vendors · gamble · identify · mercenary hire · quest dialogue ✓ (Act 1)</text>
 <text x="36" y="576" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Roadmap deliverables</text>
-<text x="844" y="576" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">27 / 31</text>
+<text x="844" y="576" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">28 / 31</text>
 <rect x="36" y="588" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="588" width="642.8" height="18" rx="9" fill="url(#g6)" filter="url(#glow)"/>
-<text x="844" y="602" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">87%</text>
+<rect x="36" y="588" width="666.6" height="18" rx="9" fill="url(#g6)" filter="url(#glow)"/>
+<text x="844" y="602" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">90%</text>
 <text x="36" y="623" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">saves · gear+stats+equip rules · NPCs+vendors+mercs · RNG · combat · loot · packets · keys · sound · monsters · skills · dungeons+outdoors · stash/belt · lighting · waypoints · objects · automap · Mac app · perf ✓ | quests · classes · outdoor tiles · multiplayer</text>
 </svg>
