@@ -5,6 +5,7 @@ import (
 	"hash/fnv"
 	"math"
 	"strconv"
+	"sync"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2object"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2ground"
@@ -35,10 +36,14 @@ type objectState struct {
 	shrines   []d2object.Shrine
 	lootSeq   uint32
 	spawn     *d2objspawn.Tables // adapter view of objects.txt/objgroup.txt, built on first use
+	spawnMu   sync.Mutex         // guards the lazy build of spawn
 }
 
 // spawnTables returns the d2object tables built from the loaded records.
 func (v *Game) spawnTables() *d2objspawn.Tables {
+	v.objects.spawnMu.Lock()
+	defer v.objects.spawnMu.Unlock()
+
 	if v.objects.spawn == nil {
 		t := d2objspawn.FromRecords(v.asset.Records.Object.Details, v.asset.Records.Object.Groups)
 		v.objects.spawn = &t
