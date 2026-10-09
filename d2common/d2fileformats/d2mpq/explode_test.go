@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/JoshVarga/blast"
@@ -78,7 +79,18 @@ func TestExplodeMatchesBlast(t *testing.T) {
 		},
 	}
 
-	for name, g := range gen {
+	// a fixed order: the generators share one random stream, and with a random map order some streams make
+	// the third party blast reader loop forever (a flaky hang of the whole test binary)
+	names := make([]string, 0, len(gen))
+	for name := range gen {
+		names = append(names, name)
+	}
+
+	sort.Strings(names)
+
+	for _, name := range names {
+		g := gen[name]
+
 		for _, typ := range []uint{blast.Binary, blast.ASCII} {
 			for _, dict := range []uint{blast.DictionarySize1024, blast.DictionarySize2048, blast.DictionarySize4096} {
 				for _, n := range []int{1, 2, 3, 100, 4095, 4096, 4097, 20000} {
