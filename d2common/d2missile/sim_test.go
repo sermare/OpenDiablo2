@@ -431,3 +431,62 @@ func TestDamageDescRoll(t *testing.T) {
 		t.Fatalf("cold %d", got.Cold)
 	}
 }
+
+type posTarget struct {
+	*fakeTarget
+	px, py float64
+}
+
+func (p *posTarget) SubPos() (float64, float64) { return p.px, p.py }
+
+func TestHomingStationaryAndHitEvery(t *testing.T) {
+	w := newWorld()
+	s := NewSim(w, nil)
+	hero := Owner{ID: "hero", IsPlayer: true, Roller: fakeRoller{}}
+
+	// homing: aimed away from the target, it still turns onto it
+	tg := &posTarget{fakeTarget: newTarget("z", 20, 8), px: 20.5, py: 8.5}
+	w.targets = append(w.targets, tg.fakeTarget)
+
+	m, err := s.Create(CreateParams{Spec: fireBolt(), Level: 1, X: 0, Y: 0, DestX: 30, DestY: 0, Owner: hero, Home: tg,
+		Damage: DamageDesc{PhysMin: 256, PhysMax: 512}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	evs := run(s, w, 40)
+	if kinds(evs)[EventHit] != 1 || !m.Dead() {
+		t.Errorf("homing missile did not reach its target: %v", kinds(evs))
+	}
+
+	// stationary + HitEvery: a wall that damages every 5 frames, scaled
+	w2 := newWorld()
+	s2 := NewSim(w2, nil)
+	z := newTarget("z", 10, 0)
+	w2.targets = append(w2.targets, z)
+
+	wall := &Spec{ID: 1, Name: "wall", SrvDoFunc: 1, Range: 21, CollideType: 3}
+	m2, _ := s2.Create(CreateParams{Spec: wall, Level: 1, X: 10, Y: 0, DestX: 11, DestY: 0, Owner: hero,
+		Stationary: true, HitEvery: 5, ScalePct: 50, Damage: DamageDesc{PhysMin: 1000, PhysMax: 1001}})
+
+	var phys []int32
+
+	s2.OnEvent = func(e Event) {
+		if e.Kind == EventHit {
+			phys = append(phys, e.Damage.Physical)
+		}
+	}
+
+	for i := 0; i < 20; i++ {
+		w2.frame++
+		s2.Step()
+	}
+
+	if m2.X != 10 || m2.Y != 0 {
+		t.Errorf("stationary missile moved to (%v,%v)", m2.X, m2.Y)
+	}
+
+	if len(phys) != 4 || phys[0] != 500 {
+		t.Errorf("hits every 5 frames over 20 frames at 50%%: %v", phys)
+	}
+}

@@ -129,6 +129,9 @@ func (s *SkillRecord) PipelineSkill() *d2skill.Skill {
 		PassiveCalc: [6]*d2calc.Program{nil, s.Passivecalc1, s.Passivecalc2, s.Passivecalc3, s.Passivecalc4,
 			s.Passivecalc5},
 		PetMax: s.Petmax, Skpoints: s.Skpoints,
+		Summon: s.Summon, PetType: s.Pettype, SumMode: s.Summode,
+		SumSkill:     [6]string{"", s.Sumskill1, s.Sumskill2, s.Sumskill3, s.Sumskill4, s.Sumskill5},
+		TargetCorpse: s.TargetCorpse, Periodic: s.Periodic, PerDelay: s.Perdelay, Range: s.Range,
 	}
 
 	sk.HitShift, sk.SrcDam = s.HitShift, s.SrcDam

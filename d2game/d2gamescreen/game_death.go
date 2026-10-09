@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
-	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapgen"
 )
 
 // Hero death, respawn and corpse recovery. The rules and their provenance are
@@ -129,12 +129,15 @@ func (v *Game) advanceDeath(elapsed float64) {
 // difficulty returns the difficulty the monsters run at (the same switch the
 // monster scenarios use).
 func (v *Game) difficulty() int {
+	// the monster scenarios may force a difficulty (OD2_AUTODIFFICULTY goes
+	// through the difficulty screen and the hero instead)
 	if n, err := strconv.Atoi(os.Getenv("OD2_AUTOMONSTER_DIFF")); err == nil && n >= 0 && n <= 2 {
 		return n
 	}
 
-	if d2mapgen.RealMapsEnabled() && v.gameClient.Difficulty >= 0 && v.gameClient.Difficulty <= 2 {
-		return int(v.gameClient.Difficulty)
+	// otherwise the difficulty the hero chose when the game was created
+	if v.gameClient != nil {
+		return int(d2difficulty.Clamp(int(v.gameClient.Difficulty)))
 	}
 
 	return int(d2monster.Normal)

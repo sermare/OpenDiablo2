@@ -60,6 +60,8 @@ func unimplementedDef(name string) *AIDef {
 // acquisition by target mode, post-target checks, think function.
 // It reports whether the think function ran.
 func Tick(w World, b *Brain) bool {
+	b.expireForced(w.Frame())
+
 	if w.Frame() < b.Wake {
 		return false
 	}
@@ -111,7 +113,7 @@ func acquire(c *Ctx) bool {
 		return true
 	}
 
-	t, nearest, ok := c.W.Nearest(c.B)
+	t, nearest, ok := pickTarget(c)
 
 	thr := c.B.Profile.Aggro()
 	if ok && nearest <= thr { // "<=" vs "<" at the threshold is UNVERIFIED

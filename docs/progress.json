@@ -5,7 +5,7 @@
   "bars": [
     {
       "label": "Game.exe functions named in Ghidra",
-      "done": 2418,
+      "done": 2499,
       "total": 10907,
       "note": "reverse engineering of the original 1.14b binary",
       "color": "#7c5cff"
@@ -19,16 +19,16 @@
     },
     {
       "label": "Source files studied in depth",
-      "done": 210,
+      "done": 190,
       "total": 277,
       "note": "NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
       "color": "#2f9bff"
     },
     {
       "label": "Level generator proven equal to the real game",
-      "done": 5682,
-      "total": 5742,
-      "note": "all 55 maze levels + 240 Act 1 outdoor levels (30 seeds x 8) match the real game + 50 world layouts; tile-exact outdoors and Acts 2-5 outdoors not yet",
+      "done": 7082,
+      "total": 7142,
+      "note": "all maze levels + Act 1 outdoors proven in Go; Acts 2-5 outdoor/preset generators matched in Python spec (Go ports next)",
       "color": "#22c1c3"
     },
     {
@@ -47,9 +47,9 @@
     },
     {
       "label": "Roadmap deliverables",
-      "done": 29,
-      "total": 31,
-      "note": "saves · gear+stats+equip rules · NPCs+vendors+mercs · RNG · combat · loot · packets · keys · sound · monsters · skills · dungeons+outdoors · stash/belt · lighting · waypoints · objects · automap · Mac app · perf ✓ | quests · classes · outdoor tiles · multiplayer",
+      "done": 34,
+      "total": 38,
+      "note": "saves · stats/equip · NPCs/vendors/mercs/quests · RNG · combat · loot · multiplayer · classes' skills · skill bar · all-AI archetypes (most) · difficulty · dungeons+outdoors · objects · automap · Mac app · perf ✓ | act towns · Act 2-5 maps in Go · tiles · play-through",
       "color": "#ff7a45"
     }
   ]

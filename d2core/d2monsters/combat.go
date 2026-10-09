@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
@@ -23,8 +24,8 @@ func (d *Director) handleEvents(u *unit) {
 	for _, ev := range u.m.TakeEvents() {
 		switch ev.Kind {
 		case d2mapentity.MonsterEventHitFrame:
-			if u.merc != nil {
-				d.mercStrike(u, ev.Mode)
+			if u.friendly() { // mercenaries and summoned minions share the dispatch
+				d.friendlyStrike(u, ev.Mode)
 
 				continue
 			}
@@ -85,6 +86,14 @@ func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 		return
 	}
 
+	if u.attackTarget >= unitTargetBase {
+		if tu := d.units[u.attackTarget-unitTargetBase]; tu != nil && tu.m.Alive() {
+			d.strikeUnit(u, tu, atk, mode)
+		}
+
+		return
+	}
+
 	if u.attackTarget >= mercTargetBase {
 		if tu := d.units[u.attackTarget-mercTargetBase]; tu != nil && tu.merc != nil && tu.m.Alive() {
 			d.strikeMerc(u, tu, atk, mode)
@@ -142,7 +151,7 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 	hit, chance, roll := d2combat.RollToHit(u.b.Seed, in)
 	dmg := 0
 
-	blocked := false
+	blocked, note := false, ""
 
 	if hit && blockPct > 0 {
 		// shield block comes after the to-hit roll (COMBAT_RollAttackOutcome); the hero
@@ -165,6 +174,12 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 			dmg = 0
 		}
 
+		// skill defenses run after the to-hit and shield block steps and the
+		// armor reductions: Dodge/Avoid/Evade, Energy Shield, Bone Armor, Thorns
+		if d.HeroDefense != nil {
+			dmg, note = d.HeroDefense(p, u.m, via == "", dmg)
+		}
+
 		d.Counters.AttackHits++
 		p.Stats.Health -= dmg
 
@@ -177,8 +192,8 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 		}
 	}
 
-	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d def=%d blocked=%v",
-		u.m.Label(), u.b.ID, mode, via, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth, defense, blocked)
+	d.emit("attack", "MONSTER attack name=%s id=%d mode=%s%s hit=%v chance=%d roll=%d dmg=%d hero_hp=%d/%d def=%d blocked=%v%s",
+		u.m.Label(), u.b.ID, mode, via, hit, chance, roll, dmg, p.Stats.Health, p.Stats.MaxHealth, defense, blocked, note)
 
 	if hit && p.Stats.Health == 0 {
 		d.Counters.HeroDeaths++
@@ -365,6 +380,24 @@ func (d *Director) Damage(m *d2mapentity.Monster, dmg int, src *d2mapentity.Play
 	}
 }
 
+// DamageOverTime applies poison or burn damage: like Damage but the monster is
+// not interrupted (hit recovery) by the tick.
+func (d *Director) DamageOverTime(m *d2mapentity.Monster, dmg int, src *d2mapentity.Player) {
+	u := d.byEntity[m.ID()]
+	if u == nil || !m.Alive() || dmg <= 0 {
+		return
+	}
+
+	if u.m.Vitals.HP-dmg > 0 {
+		u.m.Vitals.HP -= dmg
+
+		return
+	}
+
+	u.m.Vitals.HP = 0
+	d.kill(u, src)
+}
+
 func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 	if !u.m.Alive() {
 		return
@@ -441,8 +474,15 @@ func (d *Director) dropLoot(u *unit) {
 
 	level := u.m.Vitals.Level
 
+	// the treasure class moves along its level group with the monster level
+	// only in the expansion above Normal (VERIFIED, 0x558d80)
+	upgrade := 0
+	if d2difficulty.UpgradesTreasureClass(d.opt.Expansion, d2difficulty.Level(d.opt.Difficulty), true) {
+		upgrade = level
+	}
+
 	loot, err := d.engine.DropLoot(tc, diablo2item.DropOptions{
-		Seed: u.b.Seed.Step(), ILvl: level, UpgradeLevel: level, Players: 1,
+		Seed: u.b.Seed.Step(), ILvl: level, UpgradeLevel: upgrade, Players: 1,
 	}, 0)
 	if err != nil {
 		d.emit("drop", "MONSTER drop name=%s tc=%q error=%v", u.m.Label(), tc, err)

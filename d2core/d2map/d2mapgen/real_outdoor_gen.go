@@ -38,13 +38,13 @@ func (outdoorProvider) Load(g *MapGenerator, levelID int, req LoadRequest) error
 // real game's), every preset room's DS1 is stamped, and every plain 8x8 room
 // is built from its A/B/C grids.
 //
-// Approximations (not proven): the real game creates the tile records of a
-// plain room per cell with the DT1 library of the room's Dt1Mask (0x680720,
-// only mapped structurally). Here the floor/wall dwords of the grids are
-// resolved through the engine's tile lookup, which picks among every DT1 of the
-// level type, and the random tree markers of sub-theme patterns are not
-// created. The hero's entry is the first road end (the exit towards the town
-// or the first exit marker), not the original warp rule.
+// The tiles are the exact records of the original (drlgoutdoor Level.BuildTiles,
+// proven equal to Game.exe's 0x680720 and 0x6696c0 for every tested level): each
+// record names a DT1 file and tile index of the room's own library, and the tree
+// markers of sub-theme patterns are created. Preset rooms are still stamped from
+// their DS1 first, for the entities and the marker tiles. The hero's entry is
+// the first road end (the exit towards the town or the first exit marker), not
+// the original warp rule.
 func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg.Difficulty) error {
 	tb, err := LoadDRLGTables(g.asset)
 	if err != nil {
@@ -83,7 +83,6 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 	var (
 		mon     monsterStats
 		presets int
-		plain   int
 	)
 
 	levelSeed := d2rand.LevelSeed(p.BaseSeed, uint32(levelID))
@@ -125,26 +124,9 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 		}
 	}
 
-	// plain rooms
-	for _, r := range lv.Rooms {
-		if r.Type != 1 {
-			continue
-		}
-
-		gr, err := lv.BuildRoomGrids(r, nil)
-		if err != nil {
-			return err
-		}
-
-		for ty := 0; ty < 8; ty++ {
-			for tx := 0; tx < 8; tx++ {
-				g.engine.SetTile(r.X-p.Rect.X+tx, r.Y-p.Rect.Y+ty, region,
-					roomTile(gr.A.Get(tx, ty), gr.B.Get(tx, ty), gr.C.Get(tx, ty)))
-			}
-		}
-
-		plain++
-	}
+	// the real tile records of every room (DT1 library of the room, rarity pick with
+	// the room seed), grouped per map cell
+	plain, exact := g.placeExactTiles(lv, p.Rect, region)
 
 	g.engine.BlockEmptyTiles()
 	g.engine.UseCollisionPaths(true)
@@ -152,8 +134,8 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 	sx, sy, how := g.outdoorEntry(lv, p.Rect)
 	g.engine.SetStartPosition(sx, sy)
 
-	g.Infof("real outdoor: level %d seed %#x: %d rooms (%d plain, %d presets stamped), map %dx%d tiles",
-		levelID, seed, len(lv.Rooms), plain, presets, p.Rect.W, p.Rect.H)
+	g.Infof("real outdoor: level %d seed %#x: %d rooms (%d plain%s, %d presets stamped), map %dx%d tiles",
+		levelID, seed, len(lv.Rooms), plain, exact, presets, p.Rect.W, p.Rect.H)
 	g.Infof("real outdoor: hero entry at tile (%.1f,%.1f) %s", sx, sy, how)
 
 	if os.Getenv("OD2_AUTOMAP_ASCII") != "" {
@@ -164,6 +146,101 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 		mon.direct, mon.place, mon.super, mon.groups, mon.skipped)
 
 	return nil
+}
+
+// placeExactTiles sets the map cells of all rooms from the exact tile records
+// (plain rooms and presets alike; the preset DS1 stamps keep providing the
+// entities and the marker tiles). When the exact build fails (a code path of
+// the original that is not ported, or a DT1 that cannot be loaded) the plain
+// rooms fall back to the old dword lookup and the presets keep their stamped
+// tiles. The first result is the number of plain rooms, the second a note for
+// the log.
+func (g *MapGenerator) placeExactTiles(lv *drlgoutdoor.Level, rect drlgoutdoor.Rect, region d2enum.RegionIdType) (int, string) {
+	tiles, err := lv.BuildTiles()
+	if err != nil {
+		g.Warningf("real outdoor: exact tile build failed (%v); plain rooms use the grid lookup, presets keep the stamped tiles", err)
+		return g.placePlainRoomsLookup(lv, rect, region), ", dword lookup"
+	}
+
+	type cell struct{ floors, walls, shadows []d2mapengine.ExactTile }
+
+	cells := map[[2]int]*cell{}
+	get := func(x, y int) *cell {
+		k := [2]int{x, y}
+		if cells[k] == nil {
+			cells[k] = &cell{}
+		}
+
+		return cells[k]
+	}
+
+	exact := func(r *drlgoutdoor.TileRecord) d2mapengine.ExactTile {
+		return d2mapengine.ExactTile{File: r.Tile.File(), Index: r.Tile.Idx}
+	}
+
+	plain, presets := 0, 0
+
+	for _, rt := range tiles {
+		if rt == nil {
+			continue
+		}
+
+		if rt.Room.Type == 1 {
+			plain++
+		} else {
+			presets++
+		}
+
+		for _, r := range rt.Floors {
+			c := get(rt.Room.X+r.X, rt.Room.Y+r.Y)
+			c.floors = append(c.floors, exact(r))
+		}
+
+		for _, r := range rt.Walls {
+			c := get(rt.Room.X+r.X, rt.Room.Y+r.Y)
+			c.walls = append(c.walls, exact(r))
+		}
+
+		for _, r := range rt.Shadows {
+			c := get(rt.Room.X+r.X, rt.Room.Y+r.Y)
+			c.shadows = append(c.shadows, exact(r))
+		}
+	}
+
+	for k, c := range cells {
+		g.engine.SetExactTiles(k[0]-rect.X, k[1]-rect.Y, region, true, c.floors, c.walls, c.shadows)
+	}
+
+	return plain, fmt.Sprintf(", exact tiles incl. %d preset rooms", presets)
+}
+
+// placePlainRoomsLookup is the pre-exact approximation: the floor/wall dwords of
+// the room grids resolved through the engine's tile lookup.
+func (g *MapGenerator) placePlainRoomsLookup(lv *drlgoutdoor.Level, rect drlgoutdoor.Rect, region d2enum.RegionIdType) int {
+	plain := 0
+
+	for _, r := range lv.Rooms {
+		if r.Type != 1 {
+			continue
+		}
+
+		gr, err := lv.BuildRoomGrids(r, nil)
+		if err != nil {
+			g.Warningf("real outdoor: room grids: %v", err)
+			continue
+		}
+
+		for ty := 0; ty < 8; ty++ {
+			for tx := 0; tx < 8; tx++ {
+				g.engine.SetTile(r.X-rect.X+tx, r.Y-rect.Y+ty, region,
+					roomTile(gr.A.Get(tx, ty), gr.B.Get(tx, ty), gr.C.Get(tx, ty)))
+			}
+		}
+
+		plain++
+	}
+
+	return plain
 }
 
 // roomTile turns the A (orientation), B (wall) and C (floor) dwords of one

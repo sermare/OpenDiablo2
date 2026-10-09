@@ -64,6 +64,31 @@ type Brain struct {
 	// sleep issued by a think function pushes it out; the owner calls WakeNow
 	// when the requested mode ends.
 	Wake int
+
+	// Forced-state bookkeeping (forced.go): the active forced state, the frame
+	// it ends, the unit that caused it, and the AI to restore.
+	Forced       ForcedKind
+	ForcedUntil  int
+	ForcedSource uint32
+	baseDef      *AIDef
+	// formationInit is the State 3 Pre-hook having run (reset by SetAI).
+	formationInit bool
+
+	// Allied is true for a converted monster: it fights for the hero
+	// (alignment 1 + the owner's target bucket in the exe). OwnerID is the
+	// owning player's target id.
+	Allied  bool
+	OwnerID uint32
+	// Attracting marks a monster cursed with Attract: other monsters treat it
+	// as a target (target bucket 9 in the exe).
+	Attracting bool
+	// Airborne is the Vulture's flight flag (collision layer 5 in the exe).
+	Airborne bool
+
+	// Aux is a second generator for the coin flips the exe takes from a
+	// global source (not the unit's seed), so that those never disturb the
+	// unit's own roll sequence.
+	Aux *d2rand.Seed
 }
 
 // NewBrain creates a brain for a unit. The unit seed is derived from the game
@@ -79,6 +104,7 @@ func NewBrain(id uint32, class int, diff Difficulty, p *Profile, gameSeed uint32
 		Mode:      ModeNeutral,
 		HPPercent: 100,
 		Size:      1,
+		Aux:       d2rand.New(gameSeed*0x9E3779B1 + id + 0x51ED),
 	}
 
 	if def, ok := Lookup(p.AI); ok {
@@ -96,6 +122,7 @@ func (b *Brain) SetAI(def *AIDef) {
 	b.Def = def
 	b.Scratch = [3]int{}
 	b.queue = nil
+	b.formationInit = false
 }
 
 // Roll advances the unit's own RNG and returns a value in [0, n).

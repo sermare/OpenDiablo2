@@ -52,8 +52,9 @@ type PrestRec struct {
 	Files        int
 	File         [6]string
 	Dt1Mask      int
-	// Populate and Outdoors are the LvlPrest columns of the same name.
-	Populate, Outdoors int
+	// Populate, Logicals, Outdoors, Animate, KillEdge and FillBlanks are the
+	// LvlPrest columns of the same name.
+	Populate, Logicals, Outdoors, Animate, KillEdge, FillBlanks int
 }
 
 // LvlTypeRec is a LvlTypes.txt row.
@@ -61,6 +62,10 @@ type LvlTypeRec struct {
 	Name  string
 	ID    int
 	Files []string
+	// Slots are the 32 File columns by position ("0" and empty cells are
+	// ""); the room tile library addresses them by bit index (File k+1 is
+	// slot k).
+	Slots [32]string
 }
 
 // SubRec is a LvlSub.txt row.
@@ -114,6 +119,24 @@ type Source interface {
 // Raw holds the unparsed bytes of the table files. Any may be nil.
 type Raw struct {
 	Levels, LvlMaze, LvlPrest, LvlPrestBin, LvlTypes, LvlSub []byte
+	// LvlWarp is the expansion LvlWarp.txt (optional; the outdoor tile build
+	// needs it for the cave entrance tiles).
+	LvlWarp []byte
+}
+
+// WarpRec is a LvlWarp.txt row: the tile description of a level exit.
+type WarpRec struct {
+	ID         int
+	LitVersion int
+	Tiles      int
+	// Dir is the Direction column: 'b' both, 'l' or 'r'.
+	Dir byte
+}
+
+// LvlWarps gives access to LvlWarp.txt. Tables implements it; it is a
+// separate interface so other Source implementations need not.
+type LvlWarps interface {
+	WarpRec(id int) (WarpRec, bool)
 }
 
 // Tables is the in-memory implementation of Source.
@@ -123,6 +146,7 @@ type Tables struct {
 	prest  map[int]PrestRec
 	types  map[int]LvlTypeRec
 	subs   map[int][]SubRec
+	warps  map[int]WarpRec
 	// PrestN is the number of LvlPrest records loaded.
 	PrestN int
 }
@@ -138,6 +162,9 @@ func (t *Tables) PrestByDef(def int) (PrestRec, bool) { r, ok := t.prest[def]; r
 
 // LvlType implements LvlTypes.
 func (t *Tables) LvlType(id int) (LvlTypeRec, bool) { r, ok := t.types[id]; return r, ok }
+
+// WarpRec implements LvlWarps.
+func (t *Tables) WarpRec(id int) (WarpRec, bool) { r, ok := t.warps[id]; return r, ok }
 
 // SubRows implements LvlSub.
 func (t *Tables) SubRows(typ int) []SubRec { return t.subs[typ] }
@@ -221,7 +248,8 @@ func ParseLvlPrestBin(data []byte) ([]PrestRec, error) {
 	for i := range out {
 		r := data[4+i*binRecordSize : 4+(i+1)*binRecordSize]
 		u := func(off int) int { return int(int32(binary.LittleEndian.Uint32(r[off:]))) }
-		p := PrestRec{Def: u(0), LevelID: u(4), SizeX: u(40), SizeY: u(44), Files: u(binFilesOff), Dt1Mask: u(binDt1Off), Populate: u(8), Outdoors: u(0x10)}
+		p := PrestRec{Def: u(0), LevelID: u(4), SizeX: u(40), SizeY: u(44), Files: u(binFilesOff), Dt1Mask: u(binDt1Off), Populate: u(8), Logicals: u(0xc), Outdoors: u(0x10),
+			Animate: u(0x14), KillEdge: u(0x18), FillBlanks: u(0x1c)}
 
 		for k := 0; k < 6; k++ {
 			s := r[binFile1Off+k*binFileLen : binFile1Off+(k+1)*binFileLen]
@@ -255,7 +283,8 @@ func parsePrestTxt(data []byte) ([]PrestRec, error) {
 
 		p := PrestRec{Name: t.str(r, "Name"), Def: t.num(r, "Def"), LevelID: t.num(r, "LevelId"),
 			SizeX: t.num(r, "SizeX"), SizeY: t.num(r, "SizeY"), Files: t.num(r, "Files"), Dt1Mask: t.num(r, "Dt1Mask"),
-			Populate: t.num(r, "Populate"), Outdoors: t.num(r, "Outdoors")}
+			Populate: t.num(r, "Populate"), Logicals: t.num(r, "Logicals"), Outdoors: t.num(r, "Outdoors"),
+			Animate: t.num(r, "Animate"), KillEdge: t.num(r, "KillEdge"), FillBlanks: t.num(r, "FillBlanks")}
 
 		for k := 0; k < 6; k++ {
 			if f := t.str(r, "File"+strconv.Itoa(k+1)); f != "0" {
@@ -274,7 +303,7 @@ func parsePrestTxt(data []byte) ([]PrestRec, error) {
 // the txt when the record counts agree.
 func Load(raw Raw) (*Tables, error) {
 	t := &Tables{levels: map[int]LevelRec{}, mazes: map[int]MazeRec{}, prest: map[int]PrestRec{},
-		types: map[int]LvlTypeRec{}, subs: map[int][]SubRec{}}
+		types: map[int]LvlTypeRec{}, subs: map[int][]SubRec{}, warps: map[int]WarpRec{}}
 
 	if raw.Levels != nil {
 		lt, err := parseTxt(raw.Levels)
@@ -365,10 +394,31 @@ func Load(raw Raw) (*Tables, error) {
 			for k := 1; k <= 32; k++ {
 				if f := tt.str(r, "File "+strconv.Itoa(k)); f != "" && f != "0" {
 					lt.Files = append(lt.Files, f)
+					lt.Slots[k-1] = f
 				}
 			}
 
 			t.types[lt.ID] = lt
+		}
+	}
+
+	if raw.LvlWarp != nil {
+		wt, err := parseTxt(raw.LvlWarp)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, r := range wt.rows {
+			if !wt.has(r, "Id") {
+				continue
+			}
+
+			w := WarpRec{ID: wt.num(r, "Id"), LitVersion: wt.num(r, "LitVersion"), Tiles: wt.num(r, "Tiles")}
+			if d := wt.str(r, "Direction"); d != "" {
+				w.Dir = d[0]
+			}
+
+			t.warps[w.ID] = w
 		}
 	}
 
