@@ -39,9 +39,9 @@ var (
 
 // Errors returned while reading the body sections.
 var (
-	ErrTruncated   = errors.New("d2s: file ends inside a section")
-	ErrBadSection  = errors.New("d2s: unexpected section tag")
-	ErrUnknownStat = errors.New("d2s: unknown character stat id")
+	ErrTruncated       = errors.New("d2s: file ends inside a section")
+	ErrBadSection      = errors.New("d2s: unexpected section tag")
+	ErrUnknownCharStat = errors.New("d2s: unknown character stat id")
 )
 
 // Character stat ids stored in the stats section.
@@ -64,18 +64,18 @@ const (
 	StatStashedGold  = 15
 )
 
-// StatInfo describes how one stat id is stored in the stats section.
-type StatInfo struct {
+// StatStorage describes how one stat id is stored in the stats section.
+type StatStorage struct {
 	Bits      int // width of the value
 	ParamBits int // width of the parameter read before the value, 0 for none
 }
 
-// StatInfoFunc looks up the storage of a stat id; ok is false for unknown ids.
-type StatInfoFunc func(id int) (info StatInfo, ok bool)
+// StatStorageFunc looks up the storage of a stat id; ok is false for unknown ids.
+type StatStorageFunc func(id int) (info StatStorage, ok bool)
 
 // defaultCharacterStats are the widths of the sixteen stats a character
 // section normally contains (verified against real 1.14b saves).
-var defaultCharacterStats = [...]StatInfo{
+var defaultCharacterStats = [...]StatStorage{
 	StatStrength: {10, 0}, StatEnergy: {10, 0}, StatDexterity: {10, 0}, StatVitality: {10, 0},
 	StatUnusedStats: {10, 0}, StatUnusedSkills: {8, 0},
 	StatCurrentHP: {21, 0}, StatMaxHP: {21, 0}, StatCurrentMana: {21, 0}, StatMaxMana: {21, 0},
@@ -83,10 +83,10 @@ var defaultCharacterStats = [...]StatInfo{
 	StatLevel: {7, 0}, StatExperience: {32, 0}, StatGold: {25, 0}, StatStashedGold: {25, 0},
 }
 
-// DefaultStatInfo knows the sixteen core character stats.
-func DefaultStatInfo(id int) (StatInfo, bool) {
+// DefaultStatStorage knows the sixteen core character stats.
+func DefaultStatStorage(id int) (StatStorage, bool) {
 	if id < 0 || id >= len(defaultCharacterStats) {
-		return StatInfo{}, false
+		return StatStorage{}, false
 	}
 
 	return defaultCharacterStats[id], true
@@ -134,10 +134,10 @@ type Body struct {
 
 // ParseBody reads the quest, waypoint, NPC, stats and skill sections of a
 // save whose header has already been validated. statInfo may be nil to use
-// DefaultStatInfo.
-func ParseBody(data []byte, statInfo StatInfoFunc) (*Body, error) {
+// DefaultStatStorage.
+func ParseBody(data []byte, statInfo StatStorageFunc) (*Body, error) {
 	if statInfo == nil {
-		statInfo = DefaultStatInfo
+		statInfo = DefaultStatStorage
 	}
 
 	b := &Body{}
@@ -264,7 +264,7 @@ func (s *bitStream) read(n int) (uint64, error) {
 // bytePos returns the next whole byte after the bits read so far.
 func (s *bitStream) bytePos() int { return (s.pos + 7) / 8 }
 
-func (b *Body) readStats(data []byte, pos *int, statInfo StatInfoFunc) error {
+func (b *Body) readStats(data []byte, pos *int, statInfo StatStorageFunc) error {
 	if err := need(data, *pos, statsTagLen); err != nil {
 		return err
 	}
@@ -287,7 +287,7 @@ func (b *Body) readStats(data []byte, pos *int, statInfo StatInfoFunc) error {
 
 		info, ok := statInfo(int(id))
 		if !ok || info.Bits == 0 {
-			return fmt.Errorf("%w: %d", ErrUnknownStat, id)
+			return fmt.Errorf("%w: %d", ErrUnknownCharStat, id)
 		}
 
 		var param uint64

@@ -53,7 +53,7 @@ func buildBody(t *testing.T, stats map[int]uint64, skills [numSkills]byte) []byt
 			continue
 		}
 
-		info, _ := DefaultStatInfo(id)
+		info, _ := DefaultStatStorage(id)
 		put(uint64(id), statIDBits)
 		put(v, info.Bits)
 	}
@@ -140,8 +140,8 @@ func TestParseBodyErrors(t *testing.T) {
 		t.Fatalf("bad tag: %v", err)
 	}
 
-	unknown := func(int) (StatInfo, bool) { return StatInfo{}, false }
-	if _, err := ParseBody(data, unknown); !errors.Is(err, ErrUnknownStat) {
+	unknown := func(int) (StatStorage, bool) { return StatStorage{}, false }
+	if _, err := ParseBody(data, unknown); !errors.Is(err, ErrUnknownCharStat) {
 		t.Fatalf("unknown stat: %v", err)
 	}
 }
