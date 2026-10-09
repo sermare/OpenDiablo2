@@ -22,14 +22,19 @@
 // Ported think functions: Idle, None, Skeleton, Goatman, Swarm, Wraith, Zombie,
 // Brute (with the observed aip3-twice quirk), Mummy, Scarab, Bighead,
 // CorruptRogue, Fallen, SkeletonBow, CorruptArcher, SkeletonMage,
-// PantherJavelin, Andariel, Smith, Griswold and BloodRaven.
+// PantherJavelin, Andariel, Smith, Griswold and BloodRaven (earlier passes);
+// Vulture, Summoner (slot mapping now verified against the decompilation),
+// Duriel, Mephisto, Diablo, Izual, BaalMinion and SuicideMinion (ai_boss2.go).
 //
-// TODO (documented, not ported): The Summoner (monster-ai-2.md 5.4: the notes
-// flag which skill slot is nova / fire wall as UNVERIFIED, and the first-tick
-// teleport pad), Vulture (marked UNVERIFIED in detail), Duriel and the other
-// bosses (not read), FallenShaman (needs corpse scanning), PantherWoman,
-// QuillRat, SandLeaper, SandRaider, Fetish, CorruptLancer, GreaterMummy, and
-// the forced-state AIs (flee / fear / confuse / charm, table at 0x73a548,
-// "not read" in the notes). MONAI_PostTargetChecks (wounded MonTeleport,
-// Summoner wake-up, threat re-targeting) is not ported either.
+// Forced states (forced.go): the alternate AI table at 0x73a548 (states 2, 3,
+// 6, 8, 9, 10, 11, 12, 14, 17) and the Fear / Blind / Taunt / Confuse /
+// Attract / Charm conditions with their durations, their override of the think
+// function and the restore of the class AI.
+//
+// Not ported: FallenShaman (needs corpse scanning), PantherWoman, QuillRat,
+// SandLeaper, SandRaider, Fetish, CorruptLancer, GreaterMummy, the Baal wave
+// AIs other than BaalMinion (BaalThrone, BaalTaunt, BaalToStairs, BaalCrab,
+// BaalTentacle), the forced states 13 and 16 and the monster-side hooks of
+// Cloak of Shadows / Overseer whip, and MONAI_PostTargetChecks (wounded
+// MonTeleport, Summoner wake-up, threat re-targeting).
 package d2monster
