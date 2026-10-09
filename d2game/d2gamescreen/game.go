@@ -392,6 +392,7 @@ func (v *Game) bindGameControls() error {
 		}
 
 		v.gameControls.Load()
+		v.gameControls.Automap().SetLevelSource(v.currentLevel, v.levelName)
 
 		if err := v.inputManager.BindHandler(v.gameControls); err != nil {
 			v.Error(bindControlsErrStr + player.ID())

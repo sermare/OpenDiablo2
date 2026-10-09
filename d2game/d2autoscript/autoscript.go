@@ -25,6 +25,9 @@ const (
 	KindExit   Kind = "exit"
 	// KindUse walks to an object (by name or objects.txt id) and uses it.
 	KindUse Kind = "use"
+	// KindAutomap sets the automap: on, off, full, mini or stats (it runs the
+	// "automap" console command).
+	KindAutomap Kind = "automap"
 	// KindWaypoint travels to a waypoint level through the open waypoint panel.
 	KindWaypoint Kind = "waypoint"
 )
@@ -47,6 +50,9 @@ type Step struct {
 
 // Panels accepted by the panel step.
 var Panels = []string{"inventory", "character", "skills", "quest", "close"}
+
+// AutomapModes are accepted by the automap step.
+var AutomapModes = []string{"on", "off", "toggle", "full", "mini", "stats"}
 
 // LevelHost is implemented by hosts that support the use, waypoint and
 // expect:level steps (it is separate so other hosts need not change).
@@ -154,6 +160,11 @@ func parseStep(raw string) (Step, error) {
 		s.Arg = strings.ToLower(arg)
 		if !contains(Panels, s.Arg) {
 			return s, fmt.Errorf("unknown panel (want %s)", strings.Join(Panels, "|"))
+		}
+	case KindAutomap:
+		s.Arg = strings.ToLower(arg)
+		if !contains(AutomapModes, s.Arg) {
+			return s, fmt.Errorf("unknown automap mode (want %s)", strings.Join(AutomapModes, "|"))
 		}
 	case KindSay:
 		if arg == "" {
@@ -309,6 +320,8 @@ func (r *Runner) run(s Step) error {
 		return r.host.Panel(s.Arg)
 	case KindSay:
 		return r.host.Say(s.Arg)
+	case KindAutomap:
+		return r.host.Say("automap " + s.Arg)
 	case KindUse:
 		lh, ok := r.host.(LevelHost)
 		if !ok {
