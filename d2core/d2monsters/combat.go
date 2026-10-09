@@ -638,7 +638,7 @@ func (d *Director) creditOwnerMerc(src *d2mapentity.Player, victim *unit, baseXP
 		share = d2herostats.KillXP(baseXP, victim.m.Vitals.Level, mu.merc.level, d2hireling.MaxLevel, 0)
 	}
 
-	d.creditMerc(mu.merc, victim, d2herostats.MercKillShare(share, d.killer == mu))
+	d.creditMerc(mu.merc, mu, d2herostats.MercKillShare(share, d.killer == mu))
 }
 
 func (d *Director) kill(u *unit, src *d2mapentity.Player) {
