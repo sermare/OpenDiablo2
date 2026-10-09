@@ -17,4 +17,8 @@ scenario_check() {
   # monsters against monsters (confused or converted monster and the bystanders)
   grep -qE "MONSTER attack name=.* target=[^ ]+\([0-9]+\) " $log.txt || { echo "FAIL: no monster-versus-monster attack"; fail=1; }
   grep -q "AUTOAI summary" $log.txt || { echo "FAIL: no AUTOAI summary"; fail=1; }
+  # archetype coverage (monster-ai-4): the subject runs an implemented AI, every monai.txt name has a Go think
+  # function and the ported ground archetypes act (static tests, no game needed)
+  grep -q "AUTOAI start ref=skeleton1 .*implemented=true" $log.txt || { echo "FAIL: subject AI not implemented"; fail=1; }
+  go test ./d2common/d2monster/ -run 'TestMonaiTableCoverage|TestNoCommonMonsterIdles|TestMonsterAI4' -count=1 2>&1 | grep -v "ignoring duplicate libraries" | tail -5 | grep -q '^ok' || { echo "FAIL: monster AI archetype tests"; fail=1; }
 }

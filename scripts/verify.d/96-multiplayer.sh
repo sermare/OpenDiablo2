@@ -17,7 +17,7 @@ scenario_env() {
     {
       echo '#!/bin/zsh'
       echo "export OD2_PORT=$OD2_PORT OD2_PROTO=d2gs OD2_JOIN=127.0.0.1:$OD2_PORT OD2_JOIN_RETRY=120"
-      echo "export OD2_AUTOGAME=\"$jsave\" OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
+      echo "export OD2_AUTOGAME=\"$jsave\" ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
       echo "export OD2_AUTOSCRIPT='wait:10;say:players;move:126,117;wait:10;say:players;cast:Fire Bolt@128,117;wait:2;say:chat hello_from_joiner;wait:14;say:players;exit'"
       echo "$tmp/od2 2>&1 | tee $mp_join_log"
     } > $jcmd

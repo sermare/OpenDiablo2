@@ -82,6 +82,12 @@ func attackFor(v *d2mapentity.MonsterVitals, mode d2monster.Mode) (d2mapentity.M
 // frame. Melee attacks hit the target if it is within the reach of the mode;
 // attacks with a missile launch a Shot that has to find the hero on its way.
 func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
+	if u.attackTarget >= corpseTargetBase {
+		d.raiseCorpse(u, u.attackTarget-corpseTargetBase)
+
+		return
+	}
+
 	atk, ok := attackFor(&u.m.Vitals, mode)
 	if !ok {
 		return
