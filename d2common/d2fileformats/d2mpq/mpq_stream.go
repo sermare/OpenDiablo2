@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/JoshVarga/blast"
-
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2data/d2compression"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math"
 )
@@ -23,6 +21,11 @@ type Stream struct {
 	Index     uint32
 	Size      uint32
 	Position  uint32
+
+	raw      []byte // prefetched compressed sectors of a small file
+	rawStart uint32 // archive offset of raw[0]
+
+	prefetched bool
 }
 
 // CreateStream creates an MPQ stream
@@ -175,6 +178,38 @@ func (v *Stream) loadSingleUnit() (err error) {
 	return err
 }
 
+// prefetchLimit is the largest compressed file that is read from the archive in one piece instead
+// of sector by sector (a read for every 4 KB sector is slow for the many small DT1/DS1/DCC files).
+const prefetchLimit = 2 << 20
+
+// sectorBytes returns a private copy of the toRead bytes at the archive offset. Small compressed
+// files are read whole on first use and served from memory afterwards; positional reads
+// (ReadAt) do not move the shared file offset.
+func (v *Stream) sectorBytes(offset, toRead uint32) ([]byte, error) {
+	if !v.prefetched && len(v.Positions) > 2 { // Positions is only set for multi-sector compressed files
+		v.prefetched = true
+
+		first, last := v.Positions[0], v.Positions[len(v.Positions)-1]
+		if last > first && last-first <= prefetchLimit {
+			raw := make([]byte, last-first)
+			if _, err := v.MPQ.file.ReadAt(raw, int64(v.Block.FilePosition)+int64(first)); err == nil {
+				v.raw, v.rawStart = raw, v.Block.FilePosition+first
+			}
+		}
+	}
+
+	if v.raw != nil && offset >= v.rawStart && uint64(offset)+uint64(toRead) <= uint64(v.rawStart)+uint64(len(v.raw)) {
+		return append([]byte(nil), v.raw[offset-v.rawStart:offset-v.rawStart+toRead]...), nil
+	}
+
+	data := make([]byte, toRead)
+	if _, err := v.MPQ.file.ReadAt(data, int64(offset)); err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
 func (v *Stream) loadBlock(blockIndex, expectedLength uint32) ([]byte, error) {
 	var (
 		offset uint32
@@ -190,13 +225,9 @@ func (v *Stream) loadBlock(blockIndex, expectedLength uint32) ([]byte, error) {
 	}
 
 	offset += v.Block.FilePosition
-	data := make([]byte, toRead)
 
-	if _, err := v.MPQ.file.Seek(int64(offset), io.SeekStart); err != nil {
-		return []byte{}, err
-	}
-
-	if _, err := v.MPQ.file.Read(data); err != nil {
+	data, err := v.sectorBytes(offset, toRead)
+	if err != nil {
 		return []byte{}, err
 	}
 
@@ -213,18 +244,18 @@ func (v *Stream) loadBlock(blockIndex, expectedLength uint32) ([]byte, error) {
 			return decompressMulti(data, expectedLength)
 		}
 
-		return pkDecompress(data)
+		return pkDecompressHint(data, int(expectedLength))
 	}
 
 	if v.Block.HasFlag(FileImplode) && (toRead != expectedLength) {
-		return pkDecompress(data)
+		return pkDecompressHint(data, int(expectedLength))
 	}
 
 	return data, nil
 }
 
 //nolint:gomnd,funlen,gocyclo // Will fix enum values later, can't help function length
-func decompressMulti(data []byte /*expectedLength*/, _ uint32) ([]byte, error) {
+func decompressMulti(data []byte, expectedLength uint32) ([]byte, error) {
 	compressionType := data[0]
 
 	switch compressionType {
@@ -233,7 +264,7 @@ func decompressMulti(data []byte /*expectedLength*/, _ uint32) ([]byte, error) {
 	case 2: // ZLib/Deflate
 		return deflate(data[1:])
 	case 8: // PKLib/Impode
-		return pkDecompress(data[1:])
+		return pkDecompressHint(data[1:], int(expectedLength))
 	case 0x10: // BZip2
 		return []byte{}, errors.New("bzip2 decompression not supported")
 	case 0x80: // IMA ADPCM Stereo
@@ -307,23 +338,10 @@ func deflate(data []byte) ([]byte, error) {
 }
 
 func pkDecompress(data []byte) ([]byte, error) {
-	b := bytes.NewReader(data)
+	return pkDecompressHint(data, 0)
+}
 
-	r, err := blast.NewReader(b)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	buffer := new(bytes.Buffer)
-
-	if _, err = buffer.ReadFrom(r); err != nil {
-		return []byte{}, err
-	}
-
-	err = r.Close()
-	if err != nil {
-		return []byte{}, err
-	}
-
-	return buffer.Bytes(), nil
+// pkDecompressHint decompresses a PKWare DCL stream whose output size is expected to be sizeHint.
+func pkDecompressHint(data []byte, sizeHint int) ([]byte, error) {
+	return explode(data, sizeHint)
 }

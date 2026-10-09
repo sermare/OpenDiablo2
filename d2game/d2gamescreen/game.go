@@ -316,6 +316,8 @@ func (v *Game) Render(screen d2interface.Surface) {
 // Advance runs the update logic on the Gameplay screen
 // nolint:gocyclo // not need to change
 func (v *Game) Advance(elapsed float64) error {
+	d2util.PerfMark("game-playable")
+
 	elapsed *= autoTimeScale()
 
 	v.gameClient.Drain()

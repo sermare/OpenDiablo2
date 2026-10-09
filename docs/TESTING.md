@@ -225,7 +225,23 @@ of the file that reads the variable. Defaults below are from the code.
 | Variable | Meaning |
 |---|---|
 | `OD2_AUTOPERF=1`, `_SECONDS` (20), `_WARMUP` (6) | Meter update and render time per frame after a warm-up. |
-| `OD2_PPROF_CPU=<file>`, `OD2_PPROF_HEAP=<file>` | CPU and heap profiles of the run. |
+| `OD2_PPROF_CPU=<file>`, `OD2_PPROF_HEAP=<file>` | CPU and heap profiles of the run. With the meter on, the CPU profile starts after the warm-up; without it, at start-up (stop with SIGTERM to get the file written). |
+
+Every run logs `PERF mark <name> t_ms=` lines (renderer-created, assets-ready, first-frame, main-menu-ready, game-playable;
+milliseconds since the process started) and `PERF span generate level=<id> ms=` for every level build (the local game
+builds each level twice, server and client side). Headless benchmarks and a budget test on the real game data
+(`D2_GAME_DIR` = install folder; skipped when unset; `scripts/verify.sh` finds the folder in the game config):
+
+```sh
+export D2_GAME_DIR="$HOME/.wine-d2classic/drive_c/Program Files (x86)/Diablo II"
+go test ./d2core/d2map/d2mapgen -run LevelBudget -v        # every kind of level in every act, cold then warm, with a limit
+go test ./d2core/d2map/d2mapgen -run xxx -bench Level -benchtime 3x   # warm level build, DRLG layout, table parsing
+go test ./d2common/d2fileformats/d2mpq -bench Explode     # PKWare decoder against the old one, on d2data.mpq sectors
+go test ./d2common/d2path -bench LongAStar                # path search against the old implementation
+```
+
+`scripts/verify.d/94-perf-real-levels.sh` checks start-up, the level build and 120 monsters under full-screen lighting on
+Frigid Highlands with limits ten to twenty times the measured values.
 
 Internal: `OD2_WATCH_PID` and `OD2_WATCH_LOG` are used by the macOS app bundle's crash watcher (`bundle_darwin.go`),
 not by tests. `OD2_VERIFY_LAUNCH` and `OD2_VERIFY_SAVE` belong to `scripts/verify.sh` (below).

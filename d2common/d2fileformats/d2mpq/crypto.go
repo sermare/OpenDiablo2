@@ -71,26 +71,33 @@ func decryptBytes(data []byte, seed uint32) {
 
 //nolint:gomnd // Decryption magic
 func decryptTable(r io.Reader, size uint32, name string) ([]uint32, error) {
+	cryptoLookup(0) // make sure the crypto table is built
+
 	seed := hashString(name, 3)
 	seed2 := uint32(0xEEEEEEEE)
 	size *= 4
 
 	table := make([]uint32, size)
-	buf := make([]byte, 4)
 
-	for i := uint32(0); i < size; i++ {
+	// one read for the whole table: this used to read four bytes per call, a system call
+	// for every word of a table of tens of thousands of entries, for every archive at start-up
+	raw := make([]byte, int(size)*4)
+	n, err := io.ReadFull(r, raw)
+	words := uint32(n / 4)
+
+	for i := uint32(0); i < words; i++ {
 		seed2 += cryptoBuffer[0x400+(seed&0xff)]
 
-		if _, err := r.Read(buf); err != nil {
-			return table, err
-		}
-
-		result := binary.LittleEndian.Uint32(buf)
+		result := binary.LittleEndian.Uint32(raw[i*4:])
 		result ^= seed + seed2
 
 		seed = ((^seed << 21) + 0x11111111) | (seed >> 11)
 		seed2 = result + seed2 + (seed2 << 5) + 3
 		table[i] = result
+	}
+
+	if err != nil {
+		return table, err
 	}
 
 	return table, nil

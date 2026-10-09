@@ -529,6 +529,8 @@ func (v *MainMenu) renderLabels(screen d2interface.Surface) {
 
 // Advance runs the update logic on the main menu
 func (v *MainMenu) Advance(tickTime float64) error {
+	d2util.PerfMark("main-menu-ready")
+
 	switch v.screenMode {
 	case ScreenModeMainMenu, ScreenModeTrademark, ScreenModeMultiplayer:
 		if err := v.diabloLogoLeftBack.Advance(tickTime); err != nil {

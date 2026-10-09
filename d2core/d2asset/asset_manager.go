@@ -75,6 +75,7 @@ type AssetManager struct {
 	palettes         d2interface.Cache
 	transforms       d2interface.Cache
 	Records          *d2records.RecordManager
+	handoff          fileHandoff
 	language         string
 	languageModifier int
 }
@@ -489,7 +490,7 @@ func (am *AssetManager) LoadDT1(dt1Path string) (*d2dt1.DT1, error) {
 		return dt1Value.(*d2dt1.DT1), nil
 	}
 
-	fileData, err := am.LoadFile("/data/global/tiles/" + dt1Path)
+	fileData, err := am.LoadFileHandoff("/data/global/tiles/" + dt1Path)
 	if err != nil {
 		return nil, fmt.Errorf("could not load /data/global/tiles/%s", dt1Path)
 	}
@@ -512,7 +513,7 @@ func (am *AssetManager) LoadDS1(ds1Path string) (*d2ds1.DS1, error) {
 		return ds1Value.(*d2ds1.DS1), nil
 	}
 
-	fileData, err := am.LoadFile("/data/global/tiles/" + ds1Path)
+	fileData, err := am.LoadFileHandoff("/data/global/tiles/" + ds1Path)
 	if err != nil {
 		return nil, err
 	}
