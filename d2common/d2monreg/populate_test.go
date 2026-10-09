@@ -43,17 +43,19 @@ type popCell struct {
 }
 
 type popRoom struct {
-	Type   int                  `json:"type"`
-	Flags  uint32               `json:"flags"`
-	Rect   [4]int               `json:"rect"`
-	Cells  []popCell            `json:"cells"`
-	Seed0  [2]uint32            `json:"seed0"`
-	GSeed0 [2]uint32            `json:"gseed0"`
-	Events [][]interface{}      `json:"events"`
-	Seed1  [2]uint32            `json:"seed1"`
-	GSeed1 [2]uint32            `json:"gseed1"`
-	Region *struct{ Total int } `json:"region"`
-	Err    string               `json:"err"`
+	Type   int             `json:"type"`
+	Flags  uint32          `json:"flags"`
+	Rect   [4]int          `json:"rect"`
+	Cells  []popCell       `json:"cells"`
+	Seed0  [2]uint32       `json:"seed0"`
+	GSeed0 [2]uint32       `json:"gseed0"`
+	Events [][]interface{} `json:"events"`
+	Seed1  [2]uint32       `json:"seed1"`
+	GSeed1 [2]uint32       `json:"gseed1"`
+	Region *struct {
+		Seen, Placed, Total, Uniq, Spawned int
+	} `json:"region"`
+	Err string `json:"err"`
 }
 
 type popLevel struct {
@@ -125,10 +127,8 @@ func TestOracleNatural(t *testing.T) {
 					t.Fatalf("%s: game seed %v before the room, want %v (earlier room diverged)", name, [2]uint32{g.Seed.Lo, g.Seed.Hi}, r.GSeed0)
 				}
 
-				room := &Room{Seed: d2rand.Seed{Lo: r.Seed0[0], Hi: r.Seed0[1]}, X: r.Rect[0], Y: r.Rect[1], W: r.Rect[2], H: r.Rect[3]}
-				if r.Flags&0x800000 == 0 {
-					room.Level = lv.Level
-				}
+				room := &Room{Level: lv.Level, NoPopulate: r.Flags&0x800000 != 0, Seed: d2rand.Seed{Lo: r.Seed0[0], Hi: r.Seed0[1]},
+					X: r.Rect[0], Y: r.Rect[1], W: r.Rect[2], H: r.Rect[3]}
 
 				for _, c := range r.Cells {
 					room.Cells = append(room.Cells, Cell{X0: c.Rect[0], Y0: c.Rect[1], X1: c.Rect[2], Y1: c.Rect[3], Skip: c.Skip != 0, Flag: c.Flag})
@@ -181,6 +181,13 @@ func TestOracleNatural(t *testing.T) {
 					t.Errorf("%s: game seed after %v, want %v", name, s, r.GSeed1)
 
 					g.Seed = d2rand.Seed{Lo: r.GSeed1[0], Hi: r.GSeed1[1]} // resync to see further differences
+				}
+
+				if rg := g.region(room); rg != nil && r.Region != nil {
+					if rg.RoomsSeen != r.Region.Seen || rg.Placed != r.Region.Placed || rg.Uniques != r.Region.Uniq {
+						bad++
+						t.Errorf("%s: region counters seen/placed/uniques %d/%d/%d, want %d/%d/%d", name, rg.RoomsSeen, rg.Placed, rg.Uniques, r.Region.Seen, r.Region.Placed, r.Region.Uniq)
+					}
 				}
 
 				if bad > 12 {

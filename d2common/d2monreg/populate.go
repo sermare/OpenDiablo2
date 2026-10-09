@@ -82,7 +82,7 @@ func (g *Game) eligible(room *Room) bool {
 
 	r.RoomsSeen++
 
-	if room.Level == 0 {
+	if room.NoPopulate {
 		return false
 	}
 

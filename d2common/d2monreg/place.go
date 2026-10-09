@@ -32,10 +32,12 @@ type Cell struct {
 
 // Room is a populated server room (Room1).
 type Room struct {
-	// Level is the level id, 0 for rooms the level does not populate (the
-	// LvlPrest Populate=0 flag 0x800000).
-	Level int
-	Seed  d2rand.Seed // Room1 +0x6c
+	// Level is the level id of the room. NoPopulate marks the rooms the level
+	// does not populate (LvlPrest Populate=0, room flag 0x800000): they are
+	// still counted as asking for a population but never get one.
+	Level      int
+	NoPopulate bool
+	Seed       d2rand.Seed // Room1 +0x6c
 	// X, Y, W, H is the room rectangle in subtiles (Room1 +0x4c).
 	X, Y, W, H int
 	Cells      []Cell
