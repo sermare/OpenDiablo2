@@ -255,7 +255,14 @@ func (m *MapEngine) GetTiles(style, sequence int, tileType d2enum.TileType) []d2
 		tiles = append(tiles, m.dt1TileData[idx])
 	}
 
+	// special tiles (type 10: start position, warp and other markers) are logical markers that
+	// have no graphics in the area's dt1 files (they only exist in e.g. warp.dt1), so their
+	// absence is expected and not worth a warning
 	if len(tiles) == 0 {
+		if tileType.Special() {
+			return nil
+		}
+
 		m.Warningf("Unknown tile ID [%d %d %d]", style, sequence, tileType)
 		return nil
 	}

@@ -34,7 +34,8 @@ func (t *MapTile) PrepareTile(x, y int, me *MapEngine) {
 		options := me.GetTiles(int(wall.Style), int(wall.Sequence), wall.Type)
 
 		if options == nil {
-			break
+			// e.g. graphic-less special marker tiles; keep preparing the remaining walls
+			continue
 		}
 
 		wall.RandomIndex = getRandomTile(options, x, y, me.seed)

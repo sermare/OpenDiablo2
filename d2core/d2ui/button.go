@@ -955,7 +955,12 @@ func (v *Button) createTooltip() {
 }
 
 func (v *Button) prerenderStates(btnSprite *Sprite, btnLayout *ButtonLayout, label *Label) {
-	numButtonStates := btnSprite.GetFrameCount() / (btnLayout.XSegments * btnLayout.YSegments)
+	segments := btnLayout.XSegments * btnLayout.YSegments
+
+	// only count the frames available at/after the layout's base frame, otherwise sprites
+	// that share a dc6 (e.g. numberarrows.dc6, whose "down" arrow starts at frame 2 of 4)
+	// would request frames beyond the end of the file
+	numButtonStates := (btnSprite.GetFrameCount() - btnLayout.BaseFrame*segments) / segments
 
 	// buttons always have a base image
 	if v.buttonLayout.HasImage {
