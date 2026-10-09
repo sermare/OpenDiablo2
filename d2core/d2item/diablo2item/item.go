@@ -858,6 +858,12 @@ func (i *Item) GetItemDescription() []string {
 		return lines
 	}
 
+	return i.GeneratedDescription()
+}
+
+// GeneratedDescription is the description of the generated item, ignoring any
+// saved form attached with SetOrigin (the spec round trip test compares it).
+func (i *Item) GeneratedDescription() []string {
 	lines := make([]string, 0)
 
 	common := i.CommonRecord()

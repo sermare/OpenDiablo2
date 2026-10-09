@@ -249,7 +249,7 @@ func (g *GameControls) SpecRoundTripMismatches() (checked, mismatched int) {
 			return
 		}
 
-		if a, b := strings.Join(item.GetItemDescription(), "|"), strings.Join(again.GetItemDescription(), "|"); a != b {
+		if a, b := strings.Join(item.GeneratedDescription(), "|"), strings.Join(again.GeneratedDescription(), "|"); a != b {
 			g.Infof("AUTOPANEL spec mismatch code=%s: %q != %q", item.CommonCode, a, b)
 			mismatched++
 		}
