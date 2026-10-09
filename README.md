@@ -42,10 +42,12 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 |---|---|
 | **The quest system** for the intro and Act 1 quests: states, speech, rewards, saved in the `.d2s` | branch `feat/quest-system` |
 | **Skills for all seven classes**, with auras, summons, traps and status effects | branch `feat/class-skills` |
-| **Act 1 outdoors in Go**: Blood Moor, Cold Plains and the other wilderness levels, checked against the real game's code | branch `feat/drlg-outdoor1` |
-| **Mercenaries** and the imported-character UI (being merged with the latest code) | `feat/hirelings`, `feat/imported-hero-ui` |
-| **Automap**, **shrines/wells/other objects**, **equip rules and durability** | `feat/automap`, `feat/objects-2`, `feat/equip-rules` |
-| **A performance pass** with frame-time metrics and profiling | branch `feat/perf-pass` |
+| **Multiplayer**: two game instances, host and join over the real packet format | branch `feat/multiplayer` |
+| **Exact outdoor tile ids** (Blood Moor etc.), proven against the real game | branch `feat/drlg-tiles` |
+| **Skill hotkeys and skill selection screen**; **remaining boss/monster behaviours** | `feat/skillbar`, `feat/monster-ai-3` |
+| **Acts 2 to 5 towns and travelling between acts**; **Nightmare and Hell difficulty** | `feat/act-towns`, `feat/difficulty` |
+| Research: Act 2 desert, Act 3 jungle, Act 4 and 5 outdoors (generators) | RE notes: `drlg-act23-outdoor`, `drlg-act45-outdoor` |
+| Imported-character UI, last merge pending | `feat/imported-hero-ui` |
 
 ### 🎯 Plan and priorities (set by Claude)
 
@@ -122,6 +124,7 @@ Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | **Act 1 outdoors match the real game on 240 levels**; mercenaries, equipment rules, world objects, automap and a 5× faster frame merged |
 | 2026-10-09 | Death/respawn/new characters merged (new Druid byte-identical to the real file); the Act 1 outdoor generation algorithm reverse engineered and a reference port matched the real game on 208 levels |
 | 2026-10-09 | **All maze levels of all five acts proven identical to the real game**; equipment affects the hero (explains 1241/869); positional/ambient audio; a double-clickable Mac app |
 | 2026-10-09 | Level generator proven for **all Act 1-3 maze levels**; waypoints, portals, doors and level changes; Gheed's gamble and Cain's identify; test scenarios now launch games without Terminal windows |
