@@ -26,6 +26,20 @@ brew install go
 go build -o od2 .
 ```
 
+## 2b. Or build the app bundle
+
+```sh
+ZIP=1 scripts/make-app.sh      # dist/OpenDiablo2.app and dist/OpenDiablo2-<version>-macos-arm64.zip
+```
+
+The bundle is arm64, ad-hoc signed and contains no game files. The
+`Package macOS app` GitHub Actions workflow runs the same command and keeps the
+zip as a workflow artifact only (Actions tab, run, Artifacts; kept 14 days); no
+release is published. Unzip it, right-click the app and choose Open the first
+time (it is not notarised), then point it at your own Diablo II folder when it
+asks (or set `MpqPath` as in step 3). Crash logs go to
+`~/Library/Logs/OpenDiablo2/OpenDiablo2.log`.
+
 ## 3. Configure
 
 Run `./od2` once; it writes

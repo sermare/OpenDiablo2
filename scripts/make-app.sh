@@ -7,6 +7,8 @@
 #                                    engine needs CGO, so cross builds are best effort)
 #   VERSION=1.2.3 scripts/make-app.sh  override the version in Info.plist
 #   INSTALL=1 scripts/make-app.sh    also copy the app to /Applications
+#   ZIP=1 scripts/make-app.sh        also write dist/OpenDiablo2-<version>-macos-arm64.zip
+#                                    (ditto, keeps the signature and bundle metadata)
 #
 # The app is ad-hoc signed (codesign -s -). No game files are included: on first
 # launch it looks for your Diablo II folder or asks you to pick it.
@@ -94,6 +96,18 @@ codesign --force --deep -s - "$APP"
 codesign --verify --deep --strict "$APP"
 
 echo "built $APP ($(lipo -archs "$APP/Contents/MacOS/$EXE"))"
+
+if [ "${ZIP:-0}" = 1 ]; then
+	ARCH=$(lipo -archs "$APP/Contents/MacOS/$EXE" | tr ' ' '-')
+	ZIPFILE="$DIST/OpenDiablo2-$VERSION-macos-$ARCH.zip"
+	# the bundle must contain no game data: refuse to package anything that looks like it
+	if find "$APP" \( -iname '*.mpq' -o -iname '*.d2s' -o -iname '*.dc6' -o -iname '*.dt1' -o -iname '*.ds1' \) | grep -q .; then
+		echo "game files found inside the bundle; refusing to zip" >&2; exit 1
+	fi
+	rm -f "$ZIPFILE"
+	ditto -c -k --keepParent "$APP" "$ZIPFILE"
+	echo "zipped $ZIPFILE"
+fi
 
 if [ "${INSTALL:-0}" = 1 ]; then
 	rm -rf /Applications/OpenDiablo2.app

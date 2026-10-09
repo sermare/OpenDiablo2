@@ -1,13 +1,10 @@
 package d2gamescreen
 
 import (
-	"image/png"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2daynight"
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2lightmap"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2maprenderer"
 )
@@ -17,8 +14,6 @@ const (
 	act5MaxIntensity = 0xaa // ENVIRON_UpdateAmbientIntensity caps Act 5 at 0xaa
 	levelFixedLight  = 0x78 // level 0x78 has a fixed intensity 200
 	levelFixedValue  = 200
-
-	autoShotDefaultDelay = 10.0
 )
 
 // parseAutoTime parses OD2_AUTOTIME: a phase number 0..5 or a name (night,
@@ -148,42 +143,4 @@ func (v *Game) currentDayClock() *dayClock {
 	}
 
 	return v.dayClock
-}
-
-// autoShot saves the screen to the PNG named by OD2_AUTOSHOT once the hero has
-// been in the world for OD2_AUTOSHOT_DELAY seconds (default 10). With
-// OD2_AUTOEXIT it then quits. It reads the ebiten screen image directly, so
-// it needs no window-system screenshot permission.
-func (v *Game) autoShot(screen d2interface.Surface) {
-	path := os.Getenv("OD2_AUTOSHOT")
-	if path == "" || v.autoShotDone || v.localPlayer == nil {
-		return
-	}
-
-	delay := autoShotDefaultDelay
-	if d, err := strconv.ParseFloat(os.Getenv("OD2_AUTOSHOT_DELAY"), 64); err == nil {
-		delay = d
-	}
-
-	if v.autoShotElapsed < delay {
-		return
-	}
-
-	v.autoShotDone = true
-
-	f, err := os.Create(path)
-	if err != nil {
-		v.Errorf("AUTOSHOT cannot create %s: %v", path, err)
-		return
-	}
-
-	defer f.Close()
-
-	if err := png.Encode(f, screen.Screenshot()); err != nil {
-		v.Errorf("AUTOSHOT cannot encode %s: %v", path, err)
-		return
-	}
-
-	v.Infof("AUTOSHOT saved %s", path)
-	v.autoTestExit()
 }
