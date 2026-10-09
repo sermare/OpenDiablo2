@@ -111,7 +111,10 @@ func (v *Game) advanceMerc(elapsed float64) {
 
 	p := v.localPlayer
 
-	if v.merc.spawnedFor != d && p.Merc != nil && d.Hirelings() != nil {
+	// the OD2_AUTOMONSTER scenarios test the hero alone: the save's merc stays home
+	soloTest := os.Getenv("OD2_AUTOMONSTER") != "" && os.Getenv("OD2_AUTOMERC") == ""
+
+	if v.merc.spawnedFor != d && p.Merc != nil && d.Hirelings() != nil && !soloTest {
 		v.merc.spawnedFor = v.monsters
 
 		if _, err := d.SpawnMerc(p, saveOf(p.Merc)); err != nil {
