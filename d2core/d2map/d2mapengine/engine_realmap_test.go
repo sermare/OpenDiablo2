@@ -125,11 +125,17 @@ func TestPathFindAroundWalls(t *testing.T) {
 		t.Fatalf("path ends at (%v,%v), want (%v,%v)", last.X(), last.Y(), dest.X(), dest.Y())
 	}
 
-	// without collision paths the hero just stops at the wall
+	// without collision paths the tile-level planner still walks around the wall
+	// (the hero used to stop at the wall; the town waypoint needs the detour)
 	m.UseCollisionPaths(false)
 
-	if p := m.PathFind(start, dest); len(p) != 1 || p[0].Y() <= 15 {
-		t.Fatalf("straight-line mode should stop at the wall, got %v", p)
+	p := m.PathFind(start, dest)
+	if len(p) < 2 {
+		t.Fatalf("the tile planner should detour through the gap, got %v", p)
+	}
+
+	if end := p[len(p)-1]; end.X() != dest.X() || end.Y() != dest.Y() {
+		t.Fatalf("detour ends at (%v,%v), want (%v,%v)", end.X(), end.Y(), dest.X(), dest.Y())
 	}
 }
 

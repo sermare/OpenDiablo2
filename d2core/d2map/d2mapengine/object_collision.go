@@ -52,6 +52,10 @@ func (c *ObjectCollision) Clear(owner string) {
 
 // Blocked reports whether a sub-tile is covered by any rectangle.
 func (c *ObjectCollision) Blocked(x, y int) bool {
+	if c == nil {
+		return false
+	}
+
 	return c.count[[2]int{x, y}] > 0
 }
 
