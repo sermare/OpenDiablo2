@@ -521,6 +521,27 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 	d.kill(u, src)
 }
 
+// awardKillXP gives the hero the experience of his kill (also the kills of his
+// merc and pets, which are credited to the owner at full value) and returns the
+// amount after the shrine bonus. There is NO level-difference penalty here: the
+// original scales a kill by the character/monster level difference
+// (0x0057c300, table near 0x006e2960, UNVERIFIED, see d2-re-notes xp notes), which
+// is not modelled. Experience is capped later, at row MaxLvl-1 of Experience.txt
+// (VERIFIED 0x0057c510, hero_levelup.go).
+func (d *Director) awardKillXP(src *d2mapentity.Player, xp int, label string) int {
+	if d.ExpBonusPct != nil { // shrine experience boost (d2object), percent
+		xp += xp * d.ExpBonusPct() / 100
+	}
+
+	// in a network party the server splits the experience among the members
+	// that share the level (d2party.ShareXP); the awards come back as packets
+	if d.PartyXP == nil || !d.PartyXP(src, xp, label) {
+		src.Stats.Experience += xp
+	}
+
+	return xp
+}
+
 func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 	u.m.Die()
 	d.fp.Remove(u.b.ID) // a dying monster stops blocking (UNVERIFIED); the corpse flag is set when DT ends
@@ -533,15 +554,7 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 
 	if src != nil {
 		by = src.Name()
-		if d.ExpBonusPct != nil { // shrine experience boost (d2object), percent
-			xp += xp * d.ExpBonusPct() / 100
-		}
-
-		// in a network party the server splits the experience among the members
-		// that share the level (d2party.ShareXP); the awards come back as packets
-		if d.PartyXP == nil || !d.PartyXP(src, xp, u.m.Label()) {
-			src.Stats.Experience += xp
-		}
+		xp = d.awardKillXP(src, xp, u.m.Label())
 	}
 
 	if k := d.killer; k != nil {

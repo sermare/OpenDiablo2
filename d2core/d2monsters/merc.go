@@ -612,10 +612,17 @@ func (d *Director) damageMerc(tu *unit, dmg int, by string) {
 		d2hireling.ReviveCost(tu.merc.level))
 }
 
+// mercGetsKillXP is the gate of MERC_AwardExperience (0x0057c860, hirelings.md,
+// VERIFIED): only a merc below its owner's level and below the table maximum
+// gains experience from a kill.
+func mercGetsKillXP(mercLevel, ownerLevel int) bool {
+	return mercLevel < ownerLevel && mercLevel < d2hireling.MaxLevel
+}
+
 // creditMerc is MERC_AwardExperience: a merc that helped kill a monster and
 // is below its owner's level gains experience and levels up.
 func (d *Director) creditMerc(mu *mercUnit, u *unit, xp int) {
-	if mu.level >= mu.owner.Stats.Level || mu.level >= d2hireling.MaxLevel {
+	if !mercGetsKillXP(mu.level, mu.owner.Stats.Level) {
 		return
 	}
 
