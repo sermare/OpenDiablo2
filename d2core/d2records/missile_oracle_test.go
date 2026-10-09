@@ -72,7 +72,10 @@ func TestRealMissileOracle(t *testing.T) {
 		{name: "frostnova", doFunc: 1, vel: 24, maxVel: 24, accel: -1000, rng: 14, collideType: 3, last: true, nextDelay: 4, wantFrames: 14, wantDist: (4*4608 + 5*3608 + 5*2608) / 4096.0},
 		{name: "lightningbolt", doFunc: 1, vel: 30, maxVel: 30, rng: 25, collideType: 3, last: true, wantFrames: 25, wantDist: dist(30, 25)},
 		{name: "magicarrow", doFunc: 1, vel: 24, maxVel: 24, rng: 40, collideType: 3, kill: true, last: true, pierce: true, toHit: true, explosionChild: "teethexplode", wantFrames: 40, wantDist: dist(24, 40)},
-		{name: "guidedarrow", doFunc: 7, hitFn: 10, vel: 24, maxVel: 24, rng: 128, collideType: 3, kill: true, alwaysExplode: true, wantFrames: 128},
+		// ground aimed (no target, no lob clamp in this harness): hit func 10 lets it
+		// fly on, re-targets once when its 128 frames are up (no enemy: another leg of
+		// the original 90 subtiles at 1.125/frame = 80 frames) and then ends (0x5a8100)
+		{name: "guidedarrow", doFunc: 7, hitFn: 10, vel: 24, maxVel: 24, rng: 128, collideType: 3, kill: true, alwaysExplode: true, wantFrames: 208},
 		{name: "multipleshotarrow", doFunc: 1, vel: 24, maxVel: 24, rng: 50, collideType: 3, kill: true, last: true, pierce: true, toHit: true, nextDelay: 4, wantFrames: 50},
 		{name: "poisonjav", doFunc: 2, vel: 24, maxVel: 24, rng: 25, collideType: 3, kill: true, last: true, pierce: true, toHit: true, wantFrames: 25},
 		{name: "meteorcenter", doFunc: 1, hitFn: 14, rng: 60, last: true, alwaysExplode: true, wantFrames: 60},

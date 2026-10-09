@@ -46,6 +46,10 @@ type fakeWorld struct {
 func (w *fakeWorld) Flags(x, y int) uint16 { return w.grid.Flags(x, y) }
 func (w *fakeWorld) Frame() int            { return w.frame }
 func (w *fakeWorld) IsEnemy(_ Owner, t Target) bool {
+	if p, ok := t.(*posTarget); ok {
+		return !p.friendly
+	}
+
 	return !t.(*fakeTarget).friendly
 }
 
@@ -246,11 +250,13 @@ func TestWallStopsMissile(t *testing.T) {
 	}
 }
 
-func TestWalkBlockOnlyStopsTypeSixAndEight(t *testing.T) {
+func TestWalkBitOnlyBlocksTypeEight(t *testing.T) {
+	// walk bit 0x1: in the block mask of type 8 only (0x185); the other types
+	// let the missile in and the cached-flags test (&5) ends it silently
 	for _, tc := range []struct {
 		ct   int
-		dies bool
-	}{{3, false}, {6, true}, {8, true}} {
+		kind EventKind
+	}{{3, EventVanish}, {6, EventVanish}, {1, EventVanish}, {2, EventVanish}, {5, EventVanish}, {7, EventVanish}, {8, EventWall}, {0, ""}} {
 		w := newWorld()
 		w.grid.Set(5, 0, d2path.FlagWalk) // water/hole style cell
 		sp := fireBolt()
@@ -258,9 +264,58 @@ func TestWalkBlockOnlyStopsTypeSixAndEight(t *testing.T) {
 		s := NewSim(w, nil)
 		_, _ = s.Create(CreateParams{Spec: sp, Level: 1, DestX: 30})
 
-		if got := kinds(run(s, w, 20))[EventWall] == 1; got != tc.dies {
-			t.Errorf("type %d: wall=%v want %v", tc.ct, got, tc.dies)
+		k := kinds(run(s, w, 20))
+		if tc.kind != "" && k[tc.kind] != 1 || tc.kind == "" && (k[EventWall] != 0 || k[EventVanish] != 0) {
+			t.Errorf("type %d: events %v want %q", tc.ct, k, tc.kind)
 		}
+	}
+}
+
+func TestWallBitBlocksEveryTypeButSevenAndZero(t *testing.T) {
+	for _, tc := range []struct {
+		ct   int
+		kind EventKind
+	}{{1, EventWall}, {2, EventWall}, {3, EventWall}, {5, EventWall}, {6, EventWall}, {8, EventWall}, {7, EventVanish}, {0, ""}} {
+		w := newWorld()
+		w.grid.Set(5, 0, d2path.FlagWall)
+		sp := fireBolt()
+		sp.CollideType = tc.ct
+		s := NewSim(w, nil)
+		m, _ := s.Create(CreateParams{Spec: sp, Level: 1, DestX: 30})
+
+		k := kinds(run(s, w, 20))
+		if tc.kind != "" && k[tc.kind] != 1 || tc.kind == "" && (k[EventWall] != 0 || k[EventVanish] != 0) {
+			t.Errorf("type %d: events %v want %q", tc.ct, k, tc.kind)
+		}
+
+		if tc.kind == EventWall && (m.X != 4.5 || m.Y != 0.5) {
+			t.Errorf("type %d stopped at (%v,%v), want the last free cell (4.5,0.5)", tc.ct, m.X, m.Y)
+		}
+	}
+}
+
+func TestWallEndsDuringActivateDelay(t *testing.T) {
+	// the wall test (path blocked) is independent of the Activate delay
+	w := newWorld()
+	w.grid.Set(5, 0, d2path.FlagWall)
+	sp := fireBolt()
+	sp.Activate = 30
+	s := NewSim(w, nil)
+	_, _ = s.Create(CreateParams{Spec: sp, Level: 1, DestX: 30})
+
+	if kinds(run(s, w, 20))[EventWall] != 1 {
+		t.Fatal("wall must stop a missile that is still intangible to units")
+	}
+}
+
+func TestStationaryMissileInAWallVanishes(t *testing.T) {
+	w := newWorld()
+	w.grid.Set(10, 0, d2path.FlagWall)
+	s := NewSim(w, nil)
+	_, _ = s.Create(CreateParams{Spec: &Spec{Name: "fw", Range: 20, CollideType: 3}, Level: 1, X: 10.5, Y: 0.5, DestX: 11, Stationary: true})
+
+	if k := kinds(run(s, w, 3)); k[EventVanish] != 1 || k[EventWall] != 0 {
+		t.Fatalf("events %v", k)
 	}
 }
 

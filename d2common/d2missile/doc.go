@@ -8,17 +8,26 @@
 // small World interface, and the missile data are plain structs a caller
 // builds from missiles.txt.
 //
-// Modelled (verified in the notes unless marked): lifetime in frames
-// (Range + LevRange*level), velocity ((VelLev*lvl)/8 + Vel) << 8 with the
-// 75/100 step scale, Accel/MaxVel (unit of Accel UNVERIFIED), the Activate
-// collision delay, wall tests with the CollideType masks, unit tests along the
-// cells traversed in a frame, CollideFriend, LastCollide, NextHit/NextDelay,
-// Pierce charges, the ToHit roll, CollideKill, AlwaysExplode and the
-// HitSubMissile spawning of hit functions 2 and 4.
+// Modelled (verified against the exe, see verify-missiles.md in the notes):
+// lifetime in frames (Range + LevRange*level), velocity ((VelLev*lvl)/8 + Vel)
+// << 8 with the 75/100 step scale, Accel/MaxVel (Accel is added to the scaled
+// path velocity every 5th frame), the Activate collision delay (units only,
+// walls stop a missile at once), the CollideType block masks (a wall bit in the
+// mask stops the step and runs the hit function, a wall bit outside it ends
+// the missile silently), unit tests along the cells traversed in a frame,
+// CollideFriend, LastCollide, the NextHit state shared on the target, pierce
+// charges rolled at creation (up to 4, from skill_pierce + item_pierce), the
+// ToHit roll, CollideKill and the hit functions 1 (area damage only), 2 and 4
+// (sub missiles, damage and destroy), 10 (Guided Arrow with SrvDoFunc 7) and
+// 14 (Meteor: area damage and 18 meteorfire). A hit function's return value
+// REPLACES the result bits of ProcessHitOrExpire, so hit function 1 deals no
+// direct damage; the hit function also runs on expiry, wall and path end.
 //
-// Not modelled: homing/SpecialSetup, the per-missile pSrvDoFunc specials
-// (only the standard move and SubMissile spawning of do func 2), area hit
-// functions (1, 24), periodic effects (20), the 64 direction quantisation of
-// the path (the direction is exact here), the Explosion missile is client
-// only (it has no pSrvDoFunc) and is reported as an event.
+// Not modelled: the other pSrvDoFunc specials (2 and 6 spawn a SubMissile each
+// frame the missile enters a new subtile, 5 is the meteorfire animation), the
+// remaining hit functions, the unit predicates of collide types 1 (state 0x69
+// monsters) and 7 (missile versus missile), the town checks, periodic effects
+// (20), the 64 direction quantisation of the path (the direction is exact
+// here), the Explosion missile is client only (it has no pSrvDoFunc) and is
+// reported as an event.
 package d2missile

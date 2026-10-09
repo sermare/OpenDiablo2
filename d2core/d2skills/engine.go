@@ -711,6 +711,11 @@ func (e *Engine) onSim(ev d2missile.Event) {
 		e.Counters.Walls++
 		e.emit("missile", "MISSILE end name=%s id=%d reason=wall at=(%.1f,%.1f)", name, m.ID, m.X, m.Y)
 		e.splashAt(m)
+	case d2missile.EventVanish:
+		// destroyed without running the hit function (0x5abd00 return 2)
+		e.emit("missile", "MISSILE end name=%s id=%d reason=vanish at=(%.1f,%.1f)", name, m.ID, m.X, m.Y)
+	case d2missile.EventArea:
+		e.areaDamage(ev)
 	case d2missile.EventExpire:
 		e.Counters.Expired++
 		e.emit("missile", "MISSILE end name=%s id=%d reason=expire at=(%.1f,%.1f)", name, m.ID, m.X, m.Y)

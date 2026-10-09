@@ -498,7 +498,9 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 	m, err := p.Sim.Create(d2missile.CreateParams{
 		Spec: ms, Owner: p.owner(u), SkillID: sk.ID, Level: lvl, Damage: desc,
 		X: sx, Y: sy, DestX: dx, DestY: dy, Angle: o.angle, Velocity: o.velocity, ClampToDest: o.clamp || sk.Lob,
-		Pierce: u.Stat("pierce_idx"), OnHit: o.onHit,
+		// the missile rolls its pierce charges (stat 0x148) from skill_pierce +
+		// item_pierce at creation (0x59d4e0, verified)
+		PierceChance: u.Stat("skill_pierce") + u.Stat("item_pierce"), OnHit: o.onHit,
 		Stationary: o.stationary, HitEvery: o.hitEvery, ScalePct: o.scalePct, Home: o.home, Range: o.rangeLife,
 	})
 	if err != nil {
