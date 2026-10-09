@@ -132,8 +132,10 @@ const warpChaseRadius = warpClickRadius + 1.5
 
 // nearWarpTile says whether a position (local tiles) lies near a warp tile of an outdoor level.
 func (v *Game) nearWarpTile(x, y float64) bool {
-	if v.gameClient.MapEngine.World().Level == 0 {
-		return false // dungeons: the warp tiles are stairs the fight may pass
+	// dungeons: the warp tiles are stairs the fight may pass; the exits of the Act 4 and 5 mazes (the bridge
+	// of the River of Flame, the Worldstone Keep stairs) are areas of floor tiles and are left alone too
+	if v.gameClient.MapEngine.World().Level == 0 && d2level.ActOfLevel(v.currentLevel()) < 4 {
+		return false
 	}
 
 	for i := range v.levels.warps {
@@ -191,6 +193,12 @@ func (v *Game) killCandidates(k *killState) []*d2mapentity.Monster {
 		// a scripted fight does not chase into the border of the level: the hero would
 		// walk into the next level (a player decides that himself)
 		if !k.defend && v.nearLevelBorder(mx, my, edgeMargin+chaseBorderSlack) {
+			continue
+		}
+
+		// not even a defensive fight goes for a monster standing on an exit tile of the River of Flame:
+		// the walk-through exits there made the hero leave for the Chaos Sanctuary on the way to the stairs
+		if k.defend && v.nearWarpTile(mx, my) {
 			continue
 		}
 

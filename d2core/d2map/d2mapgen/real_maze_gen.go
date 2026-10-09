@@ -121,6 +121,10 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 
 		placed++
 
+		if dest := mazeRoomExit(levelID, files[r.File]); dest != 0 {
+			g.setRoomWarps(roomRect{ox, oy, r.W, r.H, files[r.File]}, dest)
+		}
+
 		if entryRoom.MatchString(files[r.File]) {
 			entries = append(entries, roomRect{ox, oy, r.W, r.H, files[r.File]})
 		}
@@ -178,6 +182,37 @@ func (g *MapGenerator) findEntry(res *drlgmaze.Result, entries []roomRect, margi
 	}
 
 	return float64(res.MaxX-res.MinX) / 2, float64(res.MaxY-res.MinY) / 2, "(fallback: map centre, nothing walkable found)"
+}
+
+// mazeRoomExit says where the exit tiles of a special room of a maze lead, when the tile style alone
+// does not say. River of Flame (107): the bridge room at the north end (Act4/Diab/BridgeLava.ds1)
+// carries the walk-through exit to the Chaos Sanctuary (108); its tiles have the styles 8, 12 and
+// 16 (UNVERIFIED which of the six the original uses; all lead to the same level). The south room
+// (WarpMesa.ds1, style 0) goes back to the City of the Damned by the slot rule of d2level.TileDestination.
+func mazeRoomExit(levelID int, file string) int {
+	if levelID == 107 && strings.Contains(strings.ToLower(file), "bridgelava") {
+		return 108
+	}
+
+	return 0
+}
+
+// setRoomWarps makes every exit tile of a room lead to level dest.
+func (g *MapGenerator) setRoomWarps(rr roomRect, dest int) {
+	for y := rr.y; y < rr.y+rr.h; y++ {
+		for x := rr.x; x < rr.x+rr.w; x++ {
+			t := g.engine.TileAt(x, y)
+			if t == nil {
+				continue
+			}
+
+			for i := range t.Components.Walls {
+				if wl := &t.Components.Walls[i]; wl.Type.Special() && wl.Style != startMarkerStyle {
+					g.engine.SetWarpDestination(x, y, dest)
+				}
+			}
+		}
+	}
 }
 
 // markerIn returns the first special marker tile (wall type 10 or 11, the
