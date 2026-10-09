@@ -172,3 +172,26 @@ func (t *ExpTable) AddExperience(p *Progress, gain int64) (levelsGained int) {
 
 	return levelsGained
 }
+
+// NewExpTable builds a table from an already loaded Experience.txt column:
+// breakpoint(l) is the file row l (row 0 = 0). It lets the engine reuse the
+// records it has loaded instead of parsing the file again.
+func NewExpTable(maxLevel int, breakpoint func(row int) int64) *ExpTable {
+	t := &ExpTable{MaxLevel: maxLevel, Threshold: make([]int64, maxLevel+1)}
+
+	for i := 1; i <= maxLevel; i++ {
+		t.Threshold[i] = breakpoint(i)
+	}
+
+	return t
+}
+
+// ApplyExperience clamps the experience to ExpCap and returns the levels it
+// earns a hero at the given level, without touching points (the caller grants
+// them). Same rule as AddExperience.
+func (t *ExpTable) ApplyExperience(level int, exp int64) (newExp int64, levels int) {
+	p := Progress{Level: level, Experience: exp}
+	levels = t.AddExperience(&p, 0)
+
+	return p.Experience, levels
+}
