@@ -421,3 +421,7 @@ func (a *TunnelAssembler) Add(pkt []byte) (typ byte, data []byte, done bool, err
 
 	return typ, data, true, nil
 }
+
+// Pending returns the number of payload bytes buffered for the message that
+// is still being assembled (callers use it to bound uploads).
+func (a *TunnelAssembler) Pending() int { return len(a.buf) }

@@ -1,0 +1,202 @@
+# Network: self-hosted realm for LAN and TCP/IP play
+
+`cmd/od2server` runs a realm/lobby for LAN and TCP/IP play. It contacts no
+Blizzard service and needs no game files. The implementation is
+`d2networking/d2realm`; the packet framing and ids come from
+`d2networking/d2gs`.
+
+Legend used below:
+
+- **d2gs**: a packet that already exists in `d2networking/d2gs` (ids and sizes
+  marked verified/unverified there). The realm reuses them unchanged.
+- **EXTENSION**: OUR design. Nothing like it is known to exist in the original
+  protocol (the original kept these functions on Battle.net), and nothing in
+  it is verified against the original binary.
+
+## Running
+
+    go build -o od2server ./cmd/od2server
+    ./od2server -listen :4000 -saves ./saves -tables ~/git/d2-tables
+
+`-tables` (or `D2_TABLES`) is a folder with `itemstatcost.bin` (or
+`ItemStatCost.txt`), `armor.txt`, `weapons.txt`, `misc.txt`, `ItemTypes.txt`,
+extracted from the player's own install. Without it the server still checks
+headers and core stats, but cannot decode or check items.
+
+## Transport (d2gs framing)
+
+TCP. Each direction is a sequence of blobs: a run of whole packets,
+Huffman-compressed (`d2gs.EncodeBlob` / `d2gs.ReadBlob`), prefixed by the
+compressed length (1 byte if < 0xF0, else 2 bytes with high nibble 0xF).
+
+Client to server packets are split with `d2gs.SplitClient`, server to client
+packets with `d2gs.SplitServer`. Packets used:
+
+| dir | id | meaning | source |
+|-----|----|---------|--------|
+| C2S | 0x15 | chat: type, 0, message NUL, recipient NUL (recipient empty = everybody) | d2gs (recipient field unverified) |
+| C2S | 0x69 | leave the current game (back to the lobby) | d2gs |
+| C2S | 0x6c | tunnel: carries the realm messages below | d2gs `Tunnel` |
+| S2C | 0xAE | tunnel: carries the realm messages below | d2gs `Tunnel` |
+| S2C | 0x26 | chat message | d2gs `ChatMessage` |
+| S2C | 0x01 | game flags (difficulty, hardcore, expansion) | d2gs `GameFlags` |
+| S2C | 0x03 | load act; `Seed` is the game seed | d2gs `LoadAct` |
+| S2C | 0x59 | a player is in the game | d2gs `PlayerInGame` |
+| S2C | 0x5c | a player left the game | d2gs `PlayerLeave` |
+
+Gameplay packets (movement, skills, items) are not relayed by the realm; it is
+a lobby and session service. The game simulation is out of scope here.
+
+### Tunnel
+
+Realm messages are `[type][body]` carried by `d2gs.Tunnel`, which splits them
+into chunks of at most 0x1f0 bytes and reassembles them with
+`d2gs.TunnelAssembler`. Uploads are limited to 64 KiB.
+
+Body encoding (EXTENSION): little endian integers; strings are a length byte
+plus bytes (max 255); byte blobs are a u32 length plus bytes; lists are a u16
+count plus items. A message with missing or trailing bytes is refused with
+`Result{CodeBadRequest}`.
+
+## Session
+
+1. `Hello{version, account}` (type 0x80). The account name (2 to 15 letters,
+   digits, `-`, `_`; unique online, case-insensitive) is the lobby name and
+   owns the saves. There is no password: this is a LAN realm and the account
+   name is not authenticated (EXTENSION; a real login is future work).
+   Reply `HelloAck{code, message, roster}`; `message` is the server name,
+   `roster` the players in the lobby.
+2. Upload or select a character (below).
+3. Create or join a game, play, leave (0x69) or disconnect.
+
+Any request before `Hello` is answered with `Result{CodeNoHello}`.
+
+## Messages (EXTENSION)
+
+Client to server (carried in 0x6c):
+
+| type | name | body |
+|------|------|------|
+| 0x80 | Hello | u8 version (=1), str account |
+| 0x81 | ListGames | empty |
+| 0x82 | CreateGame | str name, str password, str description, u8 difficulty, u8 maxPlayers, u8 minLevel, u8 maxLevel |
+| 0x83 | JoinGame | str name, str password |
+| 0x84 | UploadChar | blob .d2s |
+| 0x85 | ListChars | empty |
+| 0x86 | SelectChar | str name |
+| 0x87 | LevelChange | u8 act, u16 level |
+
+Server to client (carried in 0xAE):
+
+| type | name | body |
+|------|------|------|
+| 0x90 | HelloAck | u8 code, str message, u16 n, n x str |
+| 0x91 | Result | u8 op (request type, or 0x69), u8 code, str message |
+| 0x92 | GameList | u16 n, n x GameInfo |
+| 0x93 | CharList | u16 n, n x (str name, u8 class, u8 level) |
+| 0x94 | CharData | str name, blob .d2s |
+| 0x95 | Presence | u8 joined, str name (lobby arrival/departure) |
+| 0x96 | PlayerLevel | u32 unit id, u8 act, u16 level |
+| 0x97 | GameJoined | GameInfo, u32 unit id, u32 game seed |
+
+`GameInfo`: str name, str description, str creator, u8 difficulty (0 normal,
+1 nightmare, 2 hell), u8 players, u8 maxPlayers, u8 minLevel, u8 maxLevel
+(0 = no limit), u8 hardcore, u8 expansion, u8 hasPassword.
+
+Result codes: 0 ok, 1 bad request, 2 name taken, 3 no hello, 4 no character,
+5 game not found, 6 game exists, 7 game full, 8 bad password, 9 difficulty
+locked, 10 level too low, 11 level too high, 12 character rejected,
+13 already in a game, 14 not in a game, 15 server full, 16 hardcore/expansion
+mismatch, 17 internal error.
+
+## Lobby
+
+Players that said `Hello` and are not in a game are in the lobby. Arrivals and
+departures are pushed as `Presence`; a player who returns from a game gets one
+`Presence{joined}` per lobby member as a fresh roster. Game list changes are
+not pushed: ask with `ListGames`.
+
+Chat (0x15 / 0x26) is scoped by where the sender is: in the lobby it goes to
+the lobby (speaker name = account), in a game it goes to that game (speaker =
+character name, unit id set). Normal chat is echoed to everybody in scope,
+including the sender. A recipient makes it a whisper to that one player in
+the same scope (case-insensitive); an unknown recipient gets a system line.
+Chat types in 0x26: 1 normal (d2gs), 2 whisper and 4 system are EXTENSION
+values. Control characters are stripped; blank messages are dropped.
+
+## Games
+
+Fields follow the original TCP/IP create/join screens:
+
+- name: 1 to 15 printable ASCII characters, unique (case-insensitive).
+- password: up to 15 characters, empty = open.
+- description: up to 31 characters.
+- difficulty: normal, nightmare or hell.
+- maxPlayers: 1 to 8 (0 means 8).
+- minLevel / maxLevel: EXTENSION, 0 = no limit; max must not be below min.
+
+(The limits are what the realm enforces; they are unverified against the
+original screens.)
+
+Creating a game also joins it. The game's hardcore and expansion flags are
+the creator's. Rules checked on create and join, in this order of codes:
+
+1. password (join): `BadPassword`
+2. full (join): `GameFull`
+3. dead hardcore character: `CharInvalid`
+4. hardcore vs softcore, classic vs expansion must match: `ModeMismatch`
+5. difficulty: a character may play every difficulty up to the active one of
+   its save (`Header.ActiveDifficulty`); a never-played character only Normal:
+   `DifficultyLocked` (EXTENSION policy, not the original rule)
+6. level window: `LevelTooLow` / `LevelTooHigh`
+
+A character can be in one game at a time, and one character name can be
+online once. A game ends when its last player leaves. The server holds at most
+`-max-games` games and `-max-clients` clients.
+
+### Seed and level sync
+
+The server picks a game seed (32 bits) when the game is created. A joiner
+receives it in `GameJoined.Seed` and in the d2gs `LoadAct` packet (together
+with `GameFlags`), so every client generates the same world.
+`d2realm.LevelSeed(gameSeed, levelID)` (EXTENSION) derives the per-level seed
+all clients must use. A client that changes level sends `LevelChange`; the
+other members get `PlayerLevel`, and a later joiner gets one for each player
+whose position is known.
+
+### Drop-in and drop-out
+
+Join: the joiner gets `GameJoined`, `GameFlags`, `LoadAct`, then a `PlayerInGame`
+(0x59) for every present player (and `PlayerLevel` where known); present
+players get the joiner's `PlayerInGame` and a system line. Leave (0x69) or a
+disconnect: the others get `PlayerLeave` (0x5c) and a system line. After 0x69
+the player gets `Result{op 0x69, ok}` and is back in the lobby. Unit ids are
+server-wide counters, unique while connected.
+
+## Characters
+
+The server never trusts a client's character. `UploadChar` runs the
+`d2s` parser (checksum, magic, version, size, body and, with `-tables`, the
+item list) and these range checks (open-realm style; the bounds are
+conservative upper limits and unverified against the original):
+
+- header: valid name, class, level 1 to 99, expansion classes only with the
+  expansion flag, a new (body-less) character must be level 1;
+- stats: the stat level equals the header level; strength, energy, dexterity,
+  vitality below 1024; their sum plus unspent points at most 90 + 5 per level
+  above 1; skill points spent plus unspent at most (level - 1) + 12; gold at
+  most 10000 per level; stashed gold at most 2.5 million; experience below
+  2^32;
+- items (with tables): known item code, item level at most 99, quality 1 to 8,
+  at most 6 sockets, quantity at most 511, at most 2000 items.
+
+A valid file is saved to `<saves>/<account>/<character>.d2s` (names lower
+case, atomic write) and becomes the connection's active character. A
+character name belongs to the first account that saved it. Re-uploading a
+stored character may not change its class or hardcore/expansion flags. While
+in a game only the game's own character may be re-uploaded (a save point).
+`ListChars` returns the account's stored characters, `SelectChar` activates one
+and returns its file in `CharData`, so a client can play without a local save.
+
+The tests in `d2networking/d2realm` use the real level-94 save and tables
+when `D2S_SAMPLE_BODY` and `D2_TABLES` are set, and skip otherwise.
