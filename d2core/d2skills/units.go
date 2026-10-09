@@ -7,6 +7,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2missile"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
 
@@ -147,6 +148,67 @@ func (h *heroUnit) WeaponDamage() (min, max int) {
 	}
 
 	return min, max
+}
+
+// Mastery is the weapon mastery lookup (SKILL_Func_646bc0 0x646bc0) for the
+// right hand weapon: the largest mastery value of the hero's true passives
+// whose weapon type the equipped weapon is of (itemtypes equiv chain). 0
+// without a weapon or masteries.
+func (h *heroUnit) Mastery(k d2skill.MasteryKind) int {
+	if h.p.Equipment == nil || h.p.Equipment.RightHand == nil {
+		return 0
+	}
+
+	wt := h.e.weaponType(h.p.Equipment.RightHand.GetItemCode())
+	if wt == "" {
+		return 0
+	}
+
+	return h.e.MasteryFor(h.p.ID(), k, wt)
+}
+
+// weaponType is the itemtypes code of a weapon base item ("" if unknown).
+func (e *Engine) weaponType(code string) string {
+	if e.asset == nil {
+		return ""
+	}
+
+	if rec := e.asset.Records.Item.Weapons[code]; rec != nil {
+		return rec.Type
+	}
+
+	return ""
+}
+
+// MasteryFor is the mastery value of kind k for a hero wielding a weapon of
+// item type wt (a code such as "swor"; ancestors via ItemTypes Equiv1/2).
+func (e *Engine) MasteryFor(unitID string, k d2skill.MasteryKind, wt string) int {
+	h := e.heroes[unitID]
+	if h == nil || h.inPassive {
+		return 0
+	}
+
+	equiv := func(c string) (string, string) {
+		if e.asset != nil {
+			if r := e.asset.Records.Item.Types[c]; r != nil {
+				return r.Equiv1, r.Equiv2
+			}
+		}
+
+		return "", ""
+	}
+
+	var mods []d2skill.TruePassiveMod
+
+	h.inPassive = true
+	for id, s := range h.p.Skills {
+		if s != nil && s.SkillPoints > 0 {
+			mods = append(mods, e.pipe.TruePassiveStats(h, id)...)
+		}
+	}
+	h.inPassive = false
+
+	return d2skill.MasteryValue(mods, k, func(t string) bool { return d2skill.TypeIs(equiv, wt, t) })
 }
 
 // RangedWeaponMissile is not derived from the weapon type yet (UNVERIFIED /
