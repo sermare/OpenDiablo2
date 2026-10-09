@@ -91,10 +91,12 @@ type World interface {
 // Finder is optionally implemented by a World to let hit function 10 (Guided
 // Arrow, 0x5a8100 -> 0x5a8060) look for a new target where the arrow ran out.
 type Finder interface {
-	// NearestEnemy returns the living enemy of the owner closest to (x, y)
-	// within radius subtiles, or nil. Which unit the exe prefers is UNVERIFIED
-	// (callback 0x569a40 not read).
-	NearestEnemy(o Owner, x, y float64, radius int) Target
+	// EnemiesWithin lists the living enemies of the owner that the exe's scan
+	// (0x569510 with filter 0x569100) offers: players and monsters, not in a
+	// town, targetable, in line of sight of the owner, whose subtile position
+	// is within radius subtiles (euclidean) of (x, y). The sim keeps the one
+	// with the lowest Serial (unit id), verified 0x569a40.
+	EnemiesWithin(o Owner, x, y float64, radius int) []Target
 }
 
 // EventKind classifies a simulation event.

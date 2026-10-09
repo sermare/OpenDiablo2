@@ -101,8 +101,9 @@ func (s *Sim) meteorFire(m *Missile) {
 // missile vanished. It destroys the missile when the owner is gone. A homing
 // missile (HomeMode bit 1) re-aims at its target only every Param1 frames
 // (5 when Param1 < 1) at which its remaining life is a multiple of Param1,
-// and only while the distance to the target is 4..24 (verified; the distance
-// unit is assumed to be subtiles, UNVERIFIED); otherwise it flies straight.
+// and only while the distance to the target is 4..24 (verified, 0x5ac2c0 with
+// UNIT_GetDistanceToUnit 0x642b10: subtiles, metric max+min/2 with the unit
+// sizes subtracted, see Distance); otherwise it flies straight.
 // The exe also destroys it inside a town (not modelled).
 func (s *Sim) guidedTurn(m *Missile) bool {
 	if m.Owner.Gone != nil && m.Owner.Gone() {
@@ -127,7 +128,7 @@ func (s *Sim) guidedTurn(m *Missile) bool {
 
 	tx, ty := pt.SubPos()
 
-	if d := int(math.Hypot(tx-m.X, ty-m.Y)); d >= 4 && d <= 24 {
+	if d := Distance(m.X, m.Y, 0, tx, ty, targetSize(t)); d >= 4 && d <= 24 {
 		aim(m, tx, ty)
 	}
 
@@ -178,11 +179,18 @@ func (s *Sim) guidedHit(m *Missile, t Target) int {
 }
 
 // retarget is 0x5a8060 + 0x5a7f10: a ground aimed guided arrow whose life ran
-// out searches for an enemy within Param2 subtiles (radius UNVERIFIED, nearest
-// enemy UNVERIFIED), refills its life to Range + (level-1)*LevRange and
-// either homes on the unit (mode 5) or flies another ground leg of the
-// original length (mode 6). It reports true when the missile may not
-// re-target (already did).
+// out searches for an enemy (verified): the scan 0x569510 visits every unit of
+// the rooms around the missile whose subtile position is within Param2
+// subtiles (euclidean, squared compare) of the MISSILE, the owner excluded,
+// that is a living player or monster, not in a town, flagged targetable, an
+// enemy of the owner and in line of sight of the owner (0x569100, flags
+// 0xa783). Of those the callback 0x569a40 keeps the one with the LOWEST UNIT
+// ID (it compares unit+0xc; the callback's first branch is dead), not the
+// nearest: Finder.EnemiesWithin lists the candidates and a Target that
+// implements Serial is ordered by it (the first listed wins otherwise). The
+// arrow then refills its life to Range + (level-1)*LevRange and either homes
+// on the unit (mode 5) or flies another ground leg of the original length
+// (mode 6). It reports true when the missile may not re-target (already did).
 func (s *Sim) retarget(m *Missile) bool {
 	if m.HomeMode&4 != 0 {
 		return true
@@ -191,7 +199,7 @@ func (s *Sim) retarget(m *Missile) bool {
 	var t Target
 
 	if f, ok := s.World.(Finder); ok {
-		t = f.NearestEnemy(m.Owner, m.X, m.Y, m.Spec.Param[1])
+		t = lowestSerial(f.EnemiesWithin(m.Owner, m.X, m.Y, m.Spec.Param[1]))
 	}
 
 	m.Life = (m.Level-1)*m.Spec.LevRange + m.Spec.Range
@@ -203,7 +211,7 @@ func (s *Sim) retarget(m *Missile) bool {
 
 		if pt, ok := t.(Positioned); ok {
 			tx, ty := pt.SubPos()
-			if d := math.Hypot(tx-m.X, ty-m.Y); d < 25 {
+			if d := Distance(m.X, m.Y, 0, tx, ty, targetSize(t)); d < 25 {
 				aim(m, tx, ty)
 			}
 		}

@@ -1207,7 +1207,8 @@ func doAuraFn(c *cast) {
 // ---- storms and rains ----
 
 // doRainFn is SRVDO_028 (Meteor, Blizzard). Meteor: one strike on the aim
-// point after 12 frames, radius aurarangecalc. Blizzard: calc2 frames apart,
+// point after 12 frames, radius aurarangecalc (hit function 14 reads skills
+// record +0x64 when sHitPar1 is empty, minimum 1; verified 0x5a8680). Blizzard: calc2 frames apart,
 // shards fall at random points within calc1 of the aim for 100 frames (the
 // blizzardcenter lifetime), each hitting a radius of 2. All U: the missiles'
 // own do functions (10 / meteorcenter hit function 14) were not read.
@@ -1217,7 +1218,7 @@ func doRainFn(c *cast) {
 
 	if c.sk.SrvMissileA == "meteorcenter" || c.sk.Name == "Meteor" {
 		c.effect(Effect{Kind: "strikes", Origin: "aim", Desc: d, Strikes: []Strike{
-			{Delay: 12, X: ax, Y: ay, Radius: maxInt(c.env.eval(c.sk.AuraRangeCalc), 3)},
+			{Delay: 12, X: ax, Y: ay, Radius: maxInt(c.env.eval(c.sk.AuraRangeCalc), 1)},
 		}})
 
 		return
