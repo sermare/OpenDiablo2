@@ -250,6 +250,53 @@ func TestExpectLevelWaitsForChange(t *testing.T) {
 	}
 }
 
+type fakeTravelHost struct {
+	fakeLevelHost
+	refuse bool
+}
+
+func (h *fakeTravelHost) Travel(act int) error {
+	if h.refuse {
+		return fmt.Errorf("refused")
+	}
+
+	return h.rec(fmt.Sprintf("travel %d", act))
+}
+
+func TestTravelSteps(t *testing.T) {
+	for _, spec := range []string{"travel:2", "refuse:5"} {
+		if _, err := Parse(spec); err != nil {
+			t.Errorf("Parse(%q): %v", spec, err)
+		}
+	}
+
+	for _, spec := range []string{"travel:", "travel:0", "travel:6", "refuse:x"} {
+		if _, err := Parse(spec); err == nil {
+			t.Errorf("Parse(%q) should fail", spec)
+		}
+	}
+
+	h := &fakeTravelHost{}
+	if r := runHost(t, "travel:3;exit", h, 10); r.Failed() || strings.Join(h.calls, "|") != "travel 3" {
+		t.Errorf("travel: failed=%v calls=%v", r.Failed(), h.calls)
+	}
+
+	h = &fakeTravelHost{refuse: true}
+	if r := runHost(t, "refuse:5;exit", h, 10); r.Failed() {
+		t.Errorf("a refused trip must satisfy refuse: %v", h.log)
+	}
+
+	h = &fakeTravelHost{refuse: true}
+	if r := runHost(t, "travel:5;exit", h, 10); !r.Failed() {
+		t.Error("a refused trip must fail travel")
+	}
+
+	h = &fakeTravelHost{}
+	if r := runHost(t, "refuse:2;exit", h, 10); !r.Failed() {
+		t.Error("an allowed trip must fail refuse")
+	}
+}
+
 func TestLevelStepsNeedLevelHost(t *testing.T) {
 	h := &fakeHost{}
 	r := run(t, "use:x;exit", h, 5)

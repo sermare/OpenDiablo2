@@ -130,6 +130,7 @@ type Game struct {
 	gameControls         *d2player.GameControls
 	localPlayer          *d2mapentity.Player
 	lastRegionType       d2enum.RegionIdType
+	travel               travelState
 	ticksSinceLevelCheck float64
 	escapeMenu           *d2player.EscapeMenu
 	soundEngine          *d2audio.SoundEngine
@@ -202,6 +203,13 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"level"}, v.commandSpawnPortal},
 		{"setwaypoint", "activates (1) or clears (0) the waypoint of a level for the hero",
 			[]string{"level", "0|1"}, v.commandSetWaypoint},
+		{"completequest", "marks quest <act> <quest> done for the hero (debug)",
+			[]string{"act", "quest"}, v.commandCompleteQuest},
+		{"resetquests", "clears the hero's quest record in memory (debug)", nil, v.commandResetQuests},
+		{"travelfree", "1 lets act travel skip the quest and NPC rules (debug), 0 restores them",
+			[]string{"0|1"}, v.commandTravelFree},
+		{"travel", "travels to the town of an act through the act travel rules",
+			[]string{"act"}, v.commandTravel},
 	}
 
 	for _, cmd := range commands {
@@ -309,6 +317,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceObjects(elapsed)
 	v.advanceAutoObject(elapsed)
 	v.advanceLevels(elapsed)
+	v.advanceSavedAct()
 	v.advanceAutoGround(elapsed)
 	v.advanceSound(elapsed)
 	v.advanceAutoAmbient(elapsed)
@@ -465,6 +474,7 @@ func (v *Game) OnPlayerInteract(entity d2interface.MapEntity) {
 	v.npcTarget = entity
 
 	v.OnPlayerMove(targetX, targetY)
+	v.levels.warpTarget = nil // an NPC that wanders near an exit is not a click on the exit
 }
 
 // npcClassID returns the monstats class id (hcIdx) of an NPC entity, or -1.
@@ -542,6 +552,8 @@ func (v *Game) openNPCMenu(menu *d2player.NPCMenu, npc d2interface.MapEntity) []
 	classID := v.npcClassID(npc)
 	rows, known := d2player.NPCMenuFor(classID)
 
+	rows = v.withTravelRows(classID, rows)
+
 	menu.Open(npc.Label(), rows, 0, 0, func(row d2player.NPCMenuRow) {
 		v.onNPCMenuChoice(npc, row)
 	})
@@ -566,6 +578,7 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 	case d2player.NPCActionTalk:
 		path := v.playNPCGreeting(npc.Label())
 		v.Infof("NPC menu: Talk with %q (voice %q)", npc.Label(), path)
+		v.travelOnTalk(npc)
 	case d2player.NPCActionTrade, d2player.NPCActionTradeRepair:
 		v.openTrade(npc, uint32(time.Now().UnixNano()))
 	case d2player.NPCActionHire:
@@ -574,6 +587,8 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 		v.openGamble(npc, uint32(time.Now().UnixNano()))
 	case d2player.NPCActionIdentify:
 		v.openIdentify(npc)
+	case d2player.NPCActionTravelWest, d2player.NPCActionSailWest, d2player.NPCActionTravelEast, d2player.NPCActionSailEast:
+		v.travelFromNPC(npc, row)
 	default:
 		v.Infof("NPC menu: %s (%s) not implemented yet", row.Action, row.Fallback)
 	}

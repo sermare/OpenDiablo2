@@ -34,6 +34,13 @@ const arrivalRadius = 0x32 // sub-tiles searched for a free cell
 // move (cooldown, waypoint rules) and does the fade. It returns the arrival
 // point in tiles.
 func (g *GameClient) ChangeLevel(levelID int, prefer ArrivalFunc) (d2mapgen.Arrival, error) {
+	return g.ChangeLevelAct(levelID, prefer, false)
+}
+
+// ChangeLevelAct is ChangeLevel for act trips: actFinished asks the server to
+// mark the act left as finished (and the local quest copy is updated too).
+func (g *GameClient) ChangeLevelAct(levelID int, prefer ArrivalFunc, actFinished bool) (d2mapgen.Arrival, error) {
+	fromAct := d2level.ActOfLevel(g.Level)
 	arrival, err := g.mapGen.LoadLevel(levelID, d2mapgen.LoadRequest{
 		Seed:       d2mapgen.HeroMapSeed,
 		Difficulty: d2drlg.Difficulty(g.Difficulty),
@@ -66,10 +73,17 @@ func (g *GameClient) ChangeLevel(levelID int, prefer ArrivalFunc) (d2mapgen.Arri
 	}
 
 	g.Level = levelID
+	g.Act = d2level.ActOfLevel(levelID)
 	g.RegenMap = true
+
+	if actFinished && g.Progress != nil {
+		if slot := d2level.MarkActFinished(g.Progress.QuestRecord(int(g.Difficulty)), fromAct); slot >= 0 {
+			g.Infof("ACT finished: quest slot %d marked for act %d", slot, fromAct)
+		}
+	}
 	g.MapEngine.IsLoading = false
 
-	if pkt, err := d2netpacket.CreateChangeLevelPacket(g.PlayerID, levelID, arrival.X, arrival.Y); err == nil {
+	if pkt, err := d2netpacket.CreateChangeLevelPacketAct(g.PlayerID, levelID, arrival.X, arrival.Y, actFinished); err == nil {
 		if err := g.SendPacketToServer(pkt); err != nil {
 			g.Errorf("could not report the level change to the server: %v", err)
 		}

@@ -406,6 +406,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 		d2netpacket.WithContainers(playerState.Containers),
 		d2netpacket.WithMerc(playerState.Merc),
 		d2netpacket.WithDeath(playerState.Death, playerState.Hardcore),
+		d2netpacket.WithAct(playerState.Act, len(playerState.D2SBase) > 0, playerState.Expansion),
 	)
 	if err != nil {
 		g.Errorf("AddPlayerPacket: %v", err)
@@ -590,8 +591,27 @@ func (g *GameServer) onChangeLevel(client ClientConnection, packet d2netpacket.N
 	state := g.connections[client.GetUniqueID()].GetPlayerState()
 	state.X, state.Y = p.X, p.Y
 
-	g.Infof("LEVEL player=%s level=%d act=%d pos=(%.1f,%.1f)", state.HeroName, p.Level,
-		d2level.ActOfLevel(p.Level), p.X, p.Y)
+	act := d2level.ActOfLevel(p.Level)
+	g.Infof("LEVEL player=%s level=%d act=%d pos=(%.1f,%.1f)", state.HeroName, p.Level, act, p.X, p.Y)
+
+	if act >= 1 && act != state.Act {
+		from := state.Act
+		state.Act = act
+
+		if p.ActFinished {
+			if slot := d2level.MarkActFinished(state.EnsureProgress().QuestRecord(int(state.Difficulty)), from); slot >= 0 {
+				g.Infof("ACT finished player=%s act=%d quest slot=%d", state.HeroName, from, slot)
+			}
+		}
+
+		g.Infof("ACT saved player=%s act=%d (d2s difficulty/act byte)", state.HeroName, act)
+
+		if err := g.heroStateFactory.Save(state); err != nil {
+			g.Errorf("GameServer: error saving player: %s", err)
+		}
+
+		g.saveD2S(state)
+	}
 
 	return nil
 }

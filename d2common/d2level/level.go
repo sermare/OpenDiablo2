@@ -83,6 +83,8 @@ const (
 	StartDefault StartType = 0
 	// StartPortal is used when arriving through a portal (startType 3).
 	StartPortal StartType = 3
+	// StartActChange (5) is the arrival type of an act change (session-core.md).
+	StartActChange StartType = 5
 	// StartSpecial (0xD) is used for waypoint travel to town levels and to
 	// levels 0x2e, 0x4a and 0x85-0x88 (special arrival spots).
 	StartSpecial StartType = 0xD

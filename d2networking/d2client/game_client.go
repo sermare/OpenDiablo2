@@ -53,6 +53,12 @@ type GameClient struct {
 	Progress   *d2hero.HeroProgress
 	Difficulty d2enum.DifficultyType
 	Level      int
+	// Act is the act (1..5) of Level.
+	Act int
+	// SavedAct is the act the hero was saved in (0 = unknown); FromSave and
+	// Expansion tell whether the hero was imported from an expansion .d2s.
+	SavedAct            int
+	FromSave, Expansion bool
 
 	*d2util.Logger
 }
@@ -249,6 +255,8 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 	if player.ID == g.PlayerID {
 		g.Progress, g.Difficulty = player.Progress, player.Difficulty
 		g.Level = d2level.RogueEncampment
+		g.Act = 1
+		g.SavedAct, g.FromSave, g.Expansion = player.Act, player.FromSave, player.Expansion
 
 		if g.Progress == nil {
 			g.Progress = (&d2hero.HeroState{}).EnsureProgress()
@@ -293,7 +301,12 @@ func (g *GameClient) handleMovePlayerPacket(packet d2netpacket.NetPacket) error 
 				return
 			}
 
-			player.SetIsInTown(tile.RegionType == d2enum.RegionAct1Town)
+			switch tile.RegionType {
+			case d2enum.RegionAct1Town, d2enum.RegionAct2Town, d2enum.RegionAct3Town, d2enum.RegionAct4Town, d2enum.RegonAct5Town:
+				player.SetIsInTown(true)
+			default:
+				player.SetIsInTown(false)
+			}
 
 			err := player.SetAnimationMode(player.GetAnimationMode())
 

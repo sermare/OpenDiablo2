@@ -54,8 +54,14 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	state.D2SBase = append([]byte(nil), data...)
 	state.Merc = MercFromHeader(header.Mercenary)
 
-	if diff, _, ok := header.ActiveDifficulty(); ok {
+	if diff, act, ok := header.ActiveDifficulty(); ok {
 		state.Difficulty = d2enum.DifficultyType(diff)
+
+		// the act byte (low bits of the active Difficulty byte) is the town
+		// the hero is loaded into
+		if act >= 0 && act < 5 {
+			state.Act = act + 1
+		}
 	}
 
 	// a brand new character has no body: keep the class defaults

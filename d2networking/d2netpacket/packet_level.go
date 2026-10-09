@@ -15,11 +15,20 @@ type ChangeLevelPacket struct {
 	Level    int     `json:"level"`
 	X        float64 `json:"x"` // arrival position in tiles
 	Y        float64 `json:"y"`
+	// ActFinished is set for a forward act trip made through the travel NPC
+	// or talk: the server then marks the act it leaves as finished
+	// (QUESTS_OnActChangeNpcTravel, quest slots 7/15/28).
+	ActFinished bool `json:"actFinished,omitempty"`
 }
 
 // CreateChangeLevelPacket returns a NetPacket for the server.
 func CreateChangeLevelPacket(playerID string, level int, x, y float64) (NetPacket, error) {
-	b, err := json.Marshal(ChangeLevelPacket{PlayerID: playerID, Level: level, X: x, Y: y})
+	return CreateChangeLevelPacketAct(playerID, level, x, y, false)
+}
+
+// CreateChangeLevelPacketAct is CreateChangeLevelPacket with the act-finished flag.
+func CreateChangeLevelPacketAct(playerID string, level int, x, y float64, actFinished bool) (NetPacket, error) {
+	b, err := json.Marshal(ChangeLevelPacket{PlayerID: playerID, Level: level, X: x, Y: y, ActFinished: actFinished})
 
 	return NetPacket{PacketType: d2netpackettype.ChangeLevel, PacketData: b}, err
 }
