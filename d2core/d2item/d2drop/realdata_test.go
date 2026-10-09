@@ -69,6 +69,7 @@ type realTables struct {
 	uniq   map[string]int // UniqueItems name -> row index
 	sets   map[string]int // SetItems name -> row index
 	base   map[string]string
+	ver    map[string]int // unique/set row version
 }
 
 // rowIndex is the row index of a unique or set item (-1 if unknown).
@@ -103,6 +104,7 @@ func loadReal(t *testing.T) *realTables {
 		uniq: map[string]int{}, sets: map[string]int{}}
 
 	rt.base = map[string]string{}
+	rt.ver = map[string]int{}
 
 	for _, tab := range []struct {
 		file, base string
@@ -120,6 +122,7 @@ func loadReal(t *testing.T) *realTables {
 			if _, dup := tab.dst[name]; !dup {
 				tab.dst[name] = n
 				rt.base[name] = tt.s(r, tab.base)
+				rt.ver[name] = tt.n(r, "version")
 			}
 
 			n++
@@ -131,6 +134,7 @@ func loadReal(t *testing.T) *realTables {
 	parents := map[string][]string{}
 	flags := map[string][3]bool{} // normal, magic, rare
 	rarity := map[string]int{}
+	throw := map[string]bool{}
 	cls := map[string]bool{}
 
 	var typeCodes []string
@@ -145,6 +149,7 @@ func loadReal(t *testing.T) *realTables {
 		flags[c] = [3]bool{types.n(r, "Normal") == 1, types.n(r, "Magic") == 1, types.n(r, "Rare") == 1}
 		cls[c] = types.s(r, "Class") != ""
 		rarity[c] = types.n(r, "Rarity")
+		throw[c] = types.n(r, "Throwable") > 0
 
 		if types.n(r, "TreasureClass") == 1 {
 			typeCodes = append(typeCodes, c)
@@ -184,6 +189,7 @@ func loadReal(t *testing.T) *realTables {
 				Code: code, Level: tab.n(r, "level"), Rarity: tab.n(r, "rarity"),
 				Spawnable: tab.n(r, "spawnable") == 1, Quest: tab.n(r, "quest") != 0,
 				Unique: tab.n(r, "unique") == 1, MagicLevel: tab.n(r, "magic lvl"),
+				Version: tab.n(r, "version"), Throwable: throw[tab.s(r, "type")],
 			}
 
 			for c := range seen {
@@ -232,9 +238,9 @@ func loadReal(t *testing.T) *realTables {
 			}
 
 			if _, isUnique := rt.uniq[e.Code]; isUnique {
-				e.Kind, e.Base = EntryUnique, rt.base[e.Code]
+				e.Kind, e.Base, e.Version = EntryUnique, rt.base[e.Code], rt.ver[e.Code]
 			} else if _, isSet := rt.sets[e.Code]; isSet {
-				e.Kind, e.Base = EntrySet, rt.base[e.Code]
+				e.Kind, e.Base, e.Version = EntrySet, rt.base[e.Code], rt.ver[e.Code]
 			}
 		}
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const (
@@ -189,6 +190,11 @@ type Context struct {
 	// NoNoDrop disables the NoDrop column (the roller's "guaranteed" flag:
 	// every pick yields an entry). VERIFIED against the real roller.
 	NoNoDrop bool
+	// Classic is a game without the expansion (game+0x70 == 0): classic
+	// probabilities (expansion-only entries have no weight), and throwable
+	// items are re-picked up to maxClassicRetries times, then replaced by a
+	// long sword. VERIFIED against the real roller.
+	Classic bool
 }
 
 // Dropper rolls treasure classes.
@@ -196,16 +202,20 @@ type Dropper struct {
 	TCs    TreasureSource
 	Items  ItemSource
 	Ratios RatioSource
+
+	mu      sync.Mutex
+	classic map[*TreasureClass][]int
 }
 
 type frame struct {
 	tc        *TreasureClass
 	remaining int
 	mods      QualityMods
-	det       []int // deterministic mode: entry index per pick
+	w         []int // entry weights in effect (Prob, or the classic weights)
+	total     int
 }
 
-func newFrame(tc *TreasureClass, parent *QualityMods) frame {
+func (d *Dropper) newFrame(ctx *Context, tc *TreasureClass, parent *QualityMods) frame {
 	f := frame{tc: tc, mods: tc.Mods, remaining: 1}
 
 	if parent != nil {
@@ -216,16 +226,99 @@ func newFrame(tc *TreasureClass, parent *QualityMods) frame {
 		f.remaining = absInt(tc.Picks)
 	}
 
-	if tc.Picks < 0 {
-		for i, e := range tc.Entries {
-			for c := 0; c < e.Prob && len(f.det) < f.remaining; c++ {
-				f.det = append(f.det, i)
-			}
+	if ctx.Classic {
+		f.w = d.classicWeights(tc, nil)
+	} else {
+		f.w = make([]int, len(tc.Entries))
+		for i := range tc.Entries {
+			f.w[i] = tc.Entries[i].Prob
 		}
+	}
+
+	for _, w := range f.w {
+		f.total += w
 	}
 
 	return f
 }
+
+// classicWeights are the entry weights of a classic (non-expansion) game
+// (VERIFIED against the real roller, all classes of TreasureClassEx): an
+// entry that exists only in the expansion has weight 0. That is an item or
+// a unique/set row of version >= 100, or a reference to a treasure class
+// whose own classic total is 0 (derived recursively).
+func (d *Dropper) classicWeights(tc *TreasureClass, busy map[*TreasureClass]bool) []int {
+	d.mu.Lock()
+	cached, ok := d.classic[tc]
+	d.mu.Unlock()
+
+	if ok {
+		return cached
+	}
+
+	if busy == nil {
+		busy = map[*TreasureClass]bool{}
+	}
+
+	busy[tc] = true
+	w := make([]int, len(tc.Entries))
+
+	for i := range tc.Entries {
+		e := &tc.Entries[i]
+		w[i] = e.Prob
+
+		if d.expansionOnly(e, busy) {
+			w[i] = 0
+		}
+	}
+
+	delete(busy, tc)
+
+	d.mu.Lock()
+	if d.classic == nil {
+		d.classic = map[*TreasureClass][]int{}
+	}
+
+	d.classic[tc] = w
+	d.mu.Unlock()
+
+	return w
+}
+
+func (d *Dropper) expansionOnly(e *Entry, busy map[*TreasureClass]bool) bool {
+	if e.Kind == EntryAuto {
+		if sub, isTC := d.TCs.TreasureClass(e.Code); isTC {
+			if busy[sub] {
+				return false
+			}
+
+			total := 0
+			for _, w := range d.classicWeights(sub, busy) {
+				total += w
+			}
+
+			return total == 0
+		}
+
+		if d.Items != nil {
+			if info, found := d.Items.Item(e.Code); found && info.Version >= expansionVersion {
+				return true
+			}
+		}
+	}
+
+	return e.Version >= expansionVersion
+}
+
+// expansionVersion is the version column value of expansion-only content.
+const expansionVersion = 100
+
+// maxClassicRetries is how many times a classic game re-picks after rolling a
+// throwable item before it hands out a long sword instead (VERIFIED).
+const maxClassicRetries = 10
+
+// classicReplacement is the item a classic game drops once the retries ran out.
+const classicReplacement = "lsd"
 
 func absInt(a int) int {
 	if a < 0 {
@@ -308,13 +401,16 @@ func (d *Dropper) Roll(ctx *Context, tcName string) ([]Drop, error) {
 	}
 
 	ilvl := maxInt(ctx.ILvl, 1)
-	stack := []frame{newFrame(start, nil)}
+	stack := []frame{d.newFrame(ctx, start, nil)}
+	retries := 0
 
 	var out []Drop
 
 	for len(stack) > 0 && len(out) < limit {
 		f := &stack[len(stack)-1]
-		if f.remaining <= 0 {
+		// A class without weight is abandoned before any roll, whatever its
+		// NoDrop (VERIFIED, classic games: expansion-only classes).
+		if f.remaining <= 0 || f.total == 0 {
 			stack = stack[:len(stack)-1]
 			continue
 		}
@@ -334,10 +430,14 @@ func (d *Dropper) Roll(ctx *Context, tcName string) ([]Drop, error) {
 					return out, fmt.Errorf("treasure class %q nested too deep", tcName)
 				}
 
-				stack = append(stack, newFrame(sub, &f.mods))
+				stack = append(stack, d.newFrame(ctx, sub, &f.mods))
 
 				continue
 			}
+		}
+
+		if ctx.Classic && d.expansionOnly(&e, nil) {
+			continue // the game skips such an item without rolling anything
 		}
 
 		// The entry's own modifiers are merged into the frame, so they also
@@ -347,6 +447,20 @@ func (d *Dropper) Roll(ctx *Context, tcName string) ([]Drop, error) {
 		drop, err := d.makeDrop(ctx, e, f.mods, ilvl)
 		if err != nil {
 			return out, err
+		}
+
+		// A classic game has no throwing weapons: it picks again (the rolls
+		// above are spent) and, after maxClassicRetries, drops a long sword.
+		if ctx.Classic && d.throwable(drop.Code) {
+			retries++
+
+			if retries <= maxClassicRetries {
+				f.remaining++
+
+				continue
+			}
+
+			drop.Code = classicReplacement
 		}
 
 		out = append(out, drop)
@@ -360,15 +474,17 @@ func (d *Dropper) pick(ctx *Context, f *frame) int {
 	tc := f.tc
 
 	if tc.Picks < 0 {
+		// Deterministic mode: the n-th pick is the entry whose weight range
+		// holds n (VERIFIED: the real code uses n as the roll).
 		n := absInt(tc.Picks) - f.remaining
-		if n < len(f.det) {
-			return f.det[n]
+		if n >= f.total {
+			return -1
 		}
 
-		return -1
+		return entryAt(f.w, n)
 	}
 
-	total := tc.TotalProb()
+	total := f.total
 	noDrop := EffectiveNoDrop(tc.NoDrop, total, ctx.Players)
 
 	if ctx.NoNoDrop {
@@ -388,15 +504,31 @@ func (d *Dropper) pick(ctx *Context, f *frame) int {
 
 	roll -= noDrop
 
-	for i, e := range tc.Entries {
-		if roll < e.Prob {
+	return entryAt(f.w, roll)
+}
+
+// entryAt is the entry whose weight range contains roll, or -1.
+func entryAt(w []int, roll int) int {
+	for i, x := range w {
+		if roll < x {
 			return i
 		}
 
-		roll -= e.Prob
+		roll -= x
 	}
 
 	return -1
+}
+
+// throwable reports whether the base item is of a throwable primary type.
+func (d *Dropper) throwable(code string) bool {
+	if d.Items == nil {
+		return false
+	}
+
+	info, ok := d.Items.Item(code)
+
+	return ok && info.Throwable
 }
 
 func (d *Dropper) makeDrop(ctx *Context, e Entry, mods QualityMods, ilvl int) (Drop, error) {

@@ -124,10 +124,18 @@ func fmtDrop(d Drop, rt *realTables) string {
 	return fmt.Sprintf("%s,%d,%d,%d", d.Code, d.Quality, fid, flags)
 }
 
-func TestOracleTreasure(t *testing.T) {
+func TestOracleTreasure(t *testing.T) { checkTreasureGolden(t, "treasure.json", false) }
+
+// TestOracleTreasureClassic is the same comparison for a game without the
+// expansion (game+0x70 == 0).
+func TestOracleTreasureClassic(t *testing.T) { checkTreasureGolden(t, "treasure_classic.json", true) }
+
+func checkTreasureGolden(t *testing.T, file string, classic bool) {
+	t.Helper()
+
 	var g tcGolden
 
-	readGolden(t, "treasure.json", &g)
+	readGolden(t, file, &g)
 
 	rt := loadReal(t)
 	d := &Dropper{TCs: rt.tcs, Items: rt.items, Ratios: rt}
@@ -138,7 +146,7 @@ func TestOracleTreasure(t *testing.T) {
 		rng := &d2rand.Seed{Lo: c.S, Hi: 0x29a}
 		ctx := &Context{
 			RNG: rng, ILvl: c.IL, MagicFind: c.MF, ForcedQuality: c.FQ, MaxDrops: c.MX,
-			Players: NoDropPlayers(c.NP[0], c.NP[1], c.NP[2], true), NoNoDrop: c.F4 != 0,
+			Players: NoDropPlayers(c.NP[0], c.NP[1], c.NP[2], true), NoNoDrop: c.F4 != 0, Classic: classic,
 		}
 
 		drops, err := d.Roll(ctx, c.TC)
