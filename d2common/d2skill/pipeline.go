@@ -514,7 +514,7 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		switch ms.SrvHitFunc {
 		case 1:
 			areaRadius = env.eval(sk.Calc[1])
-		case 14:
+		case 3, 14, 36:
 			areaRadius = env.eval(sk.AuraRangeCalc)
 		}
 	}

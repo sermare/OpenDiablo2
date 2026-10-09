@@ -28,6 +28,32 @@ func (s *Sim) hitFunc(m *Missile, t Target) (ret int, ok bool) {
 	case 2:
 		s.spawnHitSub(m, 1)
 		return resKill | resDamage, true
+	case 3:
+		// Fire Blast ("bomb on ground", 0x5a7a20 -> 0x5a7890, verified): with a
+		// target it returns 0 (nothing); with none (expiry, wall, path end)
+		// it is the area damage of hit function 1 with the radius sHitPar1,
+		// else the skill's aurarangecalc, and returns 1 (or 3 when nothing
+		// was hit): the missile ends.
+		if t != nil {
+			return 0, true
+		}
+
+		s.areaDamage(m)
+
+		return resKill, true
+	case 36:
+		// Fire Blast ("bomb in air", 0x5a9ab0, verified): with a target it
+		// returns 0; without one it spawns HitSubMissile1 at the missile
+		// (owner, skill and level of the parent; the exe also copies one
+		// value from the parent through 0x64b970 -> 0x64b950, not modelled)
+		// and returns 1.
+		if t != nil {
+			return 0, true
+		}
+
+		s.spawnHitSub(m, 1)
+
+		return resKill, true
 	case 4:
 		s.spawnHitSub(m, 4)
 		return resKill | resDamage, true
@@ -73,7 +99,7 @@ func (s *Sim) spawnHitSub(m *Missile, n int) {
 		}
 
 		_, _ = s.Create(CreateParams{Spec: sub, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level,
-			Damage: m.Damage, X: m.X, Y: m.Y, DestX: m.X, DestY: m.Y})
+			Damage: m.Damage, AreaRadius: m.AreaRadius, X: m.X, Y: m.Y, DestX: m.X, DestY: m.Y})
 	}
 }
 
