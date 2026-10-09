@@ -23,7 +23,9 @@ func TestEligibleBoundaries(t *testing.T) {
 		{"rare flag irrelevant on magic", func(a *Affix, it *AffixItem) { a.Rare = false; it.Quality = QualityMagic }, true},
 		{"class restriction mismatch", func(a *Affix, it *AffixItem) { a.Class = "ama"; it.Class = "sor" }, false},
 		{"class restriction match", func(a *Affix, it *AffixItem) { a.Class = "ama"; it.Class = "ama" }, true},
-		{"class restriction on classless item", func(a *Affix, it *AffixItem) { a.Class = "ama" }, false},
+		{"class restriction on classless item", func(a *Affix, it *AffixItem) { a.Class = "ama" }, true}, // 5bf42b: class 7 passes
+		{"rare-only flag blocks tempered", func(a *Affix, it *AffixItem) { a.Rare = false; it.Quality = qualityTempered }, false},
+		{"zero frequency skipped", func(a *Affix, it *AffixItem) { a.Frequency = 0 }, false},
 		{"excluded ancestor", func(a *Affix, it *AffixItem) { a.EType = []string{"armo"} }, false},
 	}
 
@@ -125,5 +127,14 @@ func TestAutoMagicQuality(t *testing.T) {
 		if AutoMagicQuality(q) {
 			t.Errorf("quality %d should not", q)
 		}
+	}
+}
+
+func TestGroupZeroNotExempt(t *testing.T) {
+	pool := []Affix{{ID: "z", Spawnable: true, Level: 1, Frequency: 1, Group: 0, IType: []string{"armo"}}}
+	it := &AffixItem{ILvl: 30, Types: []string{"armo"}, Version: 100, Quality: QualityMagic}
+
+	if PickAffix(nil, pool, it, map[int]bool{0: true}, true) != nil {
+		t.Error("group 0 already on the item must clash (5bf160 has no zero exemption)")
 	}
 }

@@ -178,7 +178,8 @@ func TestAffixLevel(t *testing.T) {
 	cases := []struct{ ilvl, qlvl, ml, want int }{
 		{50, 20, 0, 40},
 		{90, 40, 0, 81}, // 90 >= 99-20: 2*90-99
-		{1, 60, 0, 1},   // clamped up
+		{1, 60, 0, 30},  // ilvl raised to qlvl 60: 60-30
+		{40, 60, 0, 30}, // max(ilvl, qlvl) term (5bf2ed)
 		{99, 0, 0, 99},
 		{50, 20, 3, 53},
 		{99, 0, 10, 99}, // clamped down

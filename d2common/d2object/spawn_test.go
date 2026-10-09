@@ -58,53 +58,89 @@ func TestParseAndAllowed(t *testing.T) {
 func TestRollRoom(t *testing.T) {
 	defs := testDefs(t)
 	g := Group{Name: "g", Offset: 1}
-	g.Members[0] = GroupMember{1, 5000, 100} // chest, capped by SpawnMax 2
-	g.Members[1] = GroupMember{3, 100, 100}  // act 5 chest: filtered in act 1
-	g.Members[2] = GroupMember{1, 1, 0}      // prob 0 never spawns
+	g.Members[0] = GroupMember{1, 128, 100} // chest, PopulateFn 3: count from density
+	g.Members[1] = GroupMember{3, 100, 100}
 
-	got := RollRoom(g, defs, 1, true, 100, NewRoller(1))
-	if len(got) != 2 {
-		t.Fatalf("placements %v want 2 chests", got)
+	// 100% first member: always the chest, count = ((4096>>7)*128)>>8 = 16
+	for seed := uint32(1); seed < 20; seed++ {
+		got := RollRoom(g, defs, 1, true, 4096, NewRoller(seed))
+		if len(got) != 16 || got[0].ObjectID != 1 {
+			t.Fatalf("seed %d placements %d want 16 chests", seed, len(got))
+		}
 	}
 
-	// deterministic
-	a := RollRoom(g, defs, 1, true, 100, NewRoller(7))
-	b := RollRoom(g, defs, 1, true, 100, NewRoller(7))
+	// a member not allowed in the act is skipped, the walk continues
+	g2 := Group{}
+	g2.Members[0] = GroupMember{3, 128, 50} // act 5 chest, filtered in act 1
+	g2.Members[1] = GroupMember{1, 128, 50}
 
-	if len(a) != len(b) {
-		t.Error("not deterministic")
+	hits := map[int]int{}
+
+	for seed := uint32(1); seed < 400; seed++ {
+		for _, p := range RollRoom(g2, defs, 1, false, 256, NewRoller(seed)) {
+			hits[p.ObjectID]++
+		}
 	}
 
-	// well group: exactly one member
+	if hits[3] != 0 || hits[1] == 0 {
+		t.Errorf("act filter %v", hits)
+	}
+
+	// prob sum below 100: some rolls spawn nothing
+	g3 := Group{}
+	g3.Members[0] = GroupMember{1, 128, 30}
+
+	empty := 0
+
+	for seed := uint32(1); seed < 400; seed++ {
+		if len(RollRoom(g3, defs, 1, false, 256, NewRoller(seed))) == 0 {
+			empty++
+		}
+	}
+
+	if empty < 200 || empty > 330 {
+		t.Errorf("empty rolls %d of 399, want about 70%%", empty)
+	}
+
+	// well group (PopulateFn 8): exactly one object
 	w := Group{Wells: true}
-	w.Members[0] = GroupMember{4, 0, 50}
-	w.Members[1] = GroupMember{4, 0, 50}
+	w.Members[0] = GroupMember{4, 0, 100}
 
 	if got := RollRoom(w, defs, 2, false, 50, NewRoller(3)); len(got) != 1 || got[0].ObjectID != 4 {
 		t.Errorf("well room %v", got)
 	}
 
-	if SpawnCount(1, 10, 0) != 1 || SpawnCount(0, 10, 0) != 0 || SpawnCount(500, 100, 3) != 3 {
-		t.Error("SpawnCount")
+	cases := []struct{ density, tiles, want int }{
+		{128, 4096, 16}, {64, 4096, 8}, {1, 4096, 0}, {0, 4096, 0}, {128, 127, 0},
+		{200, 4096, 16}, {255, 128, 0},
+	}
+	for _, c := range cases {
+		if got := SpawnCount(c.density, c.tiles); got != c.want {
+			t.Errorf("SpawnCount(%d,%d) = %d, want %d", c.density, c.tiles, got, c.want)
+		}
 	}
 }
 
-func TestPickGroup(t *testing.T) {
-	groups := [8]int{1, 2, 3}
-	probs := [8]int{50, 50}
+func TestPickGroups(t *testing.T) {
+	groups := [8]int{1, 2, 3, 0, 4}
+	probs := [8]int{100, 50, 0, 100, 99}
 	seen := map[int]int{}
 
 	r := NewRoller(9)
-	for i := 0; i < 1000; i++ {
-		seen[PickGroup(groups, probs, r)]++
+	for i := 0; i < 2000; i++ {
+		for _, g := range PickGroups(groups, probs, r) {
+			seen[g]++
+		}
 	}
 
-	if seen[1] < 400 || seen[2] < 400 || seen[0]+seen[3] != 0 {
+	// slot 0 and 4 always fire (r <= 99 and r <= 100); slot 1 about half;
+	// slot 2 (ObjPrb 0) fires on r == 0 only; slot 3 has no group.
+	if seen[1] != 2000 || seen[4] != 2000 || seen[0] != 0 {
+		t.Errorf("always-fire slots %v", seen)
+	}
+
+	if seen[2] < 800 || seen[2] > 1200 || seen[3] > 80 {
 		t.Errorf("distribution %v", seen)
-	}
-
-	if PickGroup(groups, [8]int{}, r) != 0 {
-		t.Error("no probability must give none")
 	}
 }
 

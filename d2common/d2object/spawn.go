@@ -61,113 +61,97 @@ func ParseGroups(data []byte) ([]Group, error) {
 	return out, nil
 }
 
-// PickGroup chooses one of the 8 ObjGrp slots of a level: the slot probabilities
-// (ObjPrb, percent) are walked cumulatively against a roll in [0,100).
-// Returns the group id (0 = none). UNVERIFIED against objrgn.cpp
-// (0x544b50..0x5451b8, Ghidra was busy): the cumulative walk is the documented
-// modding behaviour.
-func PickGroup(groups, probs [8]int, r *Roller) int {
-	total := 0
-	for _, p := range probs {
-		total += p
-	}
+// PickGroups chooses the object groups of one room. VERIFIED against the
+// per-room object scatter at 550680 (Game.exe): each of the 8 ObjGrp slots of
+// the level (bytes at level record +0xe5..) is tried independently, with
+// ObjPrb (bytes at +0xed..) as the threshold: r = rand(100) and the slot
+// fires when group != 0 and r <= ObjPrb (so ObjPrb 0 still fires 1% of the
+// time, and 99 or more always). It returns the fired group ids in slot order.
+// (The 550680 path additionally forces r = 100 in rooms that are over 75% (96
+// of 128) covered; that needs the room coverage and is not modelled.)
+func PickGroups(groups, probs [8]int, r *Roller) []int {
+	var out []int
 
-	if total <= 0 {
-		return 0
-	}
-
-	roll := r.Roll(100)
-	acc := 0
-
-	for i, p := range probs {
-		acc += p
-		if roll < acc {
-			return groups[i]
+	for i := range groups {
+		roll := r.Roll(100)
+		if groups[i] != 0 && roll <= probs[i] {
+			out = append(out, groups[i])
 		}
 	}
 
-	return 0
+	return out
 }
 
 // Placement is one object to put into a room.
 type Placement struct{ ObjectID int }
 
-// SpawnCount is how many copies of a member fit a room. UNVERIFIED model:
-// density is per thousand tiles of room area, at least 1 when density > 0,
-// capped by the object's SpawnMax per room when that is above 0.
-func SpawnCount(density, roomTiles, spawnMax int) int {
+// MaxDensity is the largest objgroup density the exe accepts (the populate
+// handlers abort for a density byte above 0x80).
+const MaxDensity = 0x80
+
+// SpawnCount is how many objects a populate handler tries to place in a room
+// of roomTiles = width*height subtiles. VERIFIED (54f3e0, 54f500, 54eae0 and
+// others): n = ((w*h >> 7) * density) >> 8, no minimum of one and no use of
+// objects.txt SpawnMax. density is the objgroup byte (0..128).
+func SpawnCount(density, roomTiles int) int {
 	if density <= 0 || roomTiles <= 0 {
 		return 0
 	}
 
-	n := density * roomTiles / 1000
-	if n < 1 {
-		n = 1
+	if density > MaxDensity {
+		density = MaxDensity
 	}
 
-	if spawnMax > 0 && n > spawnMax {
-		n = spawnMax
-	}
-
-	return n
+	return ((roomTiles >> 7) * density) >> 8
 }
 
-// RollRoom fills one room from a group: every member passes its probability
-// roll, must be allowed in the act, and yields SpawnCount placements. Shrine
-// and well groups (density 0 by definition) yield one placement for a single
-// member chosen by weight; the shrine type is then rolled with RollShrine.
-// defs is the objects.txt slice from ParseObjects.
+// singlePopulateFns are the objects.txt PopulateFn values whose handler
+// places a single object instead of a density-derived count: 2 (550bc0, a
+// few placement tries), 7 (54f140, a fixed cluster) and 8 (54f650, one
+// object). The other handlers (1, 3, 4, 5, 9) compute SpawnCount. Handler
+// table: VERIFIED at 72f6b8, entry 0 empty, 1..9 as listed; the clusters and
+// retry loops inside 1, 4 and 5 are not modelled.
+var singlePopulateFns = map[int]bool{2: true, 7: true, 8: true}
+
+// RollRoom fills one room from a group. VERIFIED against 550680/550960: a
+// single roll = rand(100) walks the members in order (stopping at the first
+// empty id), adding each member's probability byte; the first member whose
+// running total exceeds the roll (and that is allowed, see below) is the one
+// member spawned for the group, through the handler its PopulateFn selects. A
+// member that fails the allowed test is skipped and the walk goes on; a roll
+// past the total spawns nothing. The exe's allowed test is an objects.txt
+// byte at +0x172 compared with a global; here it is approximated by the Act
+// mask (UNVERIFIED). Shrine and well groups take the same path. defs is the
+// objects.txt slice from ParseObjects.
 func RollRoom(g Group, defs []Def, act int, expansion bool, roomTiles int, r *Roller) []Placement {
-	var out []Placement
+	roll := r.Roll(100)
+	cum := 0
 
-	if g.Shrines || g.Wells {
-		total := 0
-
-		for _, m := range g.Members {
-			if m.ID > 0 {
-				total += atLeast1(m.Prob)
-			}
+	for _, m := range g.Members {
+		if m.ID <= 0 {
+			break
 		}
 
-		if total == 0 {
-			return nil
+		cum += m.Prob
+
+		if roll >= cum || m.ID >= len(defs) || !defs[m.ID].AllowedIn(act, expansion) {
+			continue
 		}
 
-		roll := r.Roll(total)
+		n := SpawnCount(m.Density, roomTiles)
+		if singlePopulateFns[defs[m.ID].PopulateFn] {
+			n = 1
+		}
 
-		for _, m := range g.Members {
-			if m.ID <= 0 {
-				continue
-			}
-
-			roll -= atLeast1(m.Prob)
-			if roll < 0 {
-				if m.ID < len(defs) && defs[m.ID].AllowedIn(act, expansion) {
-					out = append(out, Placement{m.ID})
-				}
-
-				break
-			}
+		out := make([]Placement, 0, n)
+		for ; n > 0; n-- {
+			out = append(out, Placement{m.ID})
 		}
 
 		return out
 	}
 
-	for _, m := range g.Members {
-		if m.ID <= 0 || m.ID >= len(defs) || !defs[m.ID].AllowedIn(act, expansion) {
-			continue
-		}
-
-		if m.Prob < 100 && r.Roll(100) >= m.Prob {
-			continue
-		}
-
-		for i := SpawnCount(m.Density, roomTiles, defs[m.ID].SpawnMax); i > 0; i-- {
-			out = append(out, Placement{m.ID})
-		}
-	}
-
-	return out
+	return nil
 }
 
 func atLeast1(n int) int {

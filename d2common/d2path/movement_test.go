@@ -39,10 +39,20 @@ func TestSpeeds(t *testing.T) {
 }
 
 func TestSpeedPercentFloor(t *testing.T) {
-	for stat, want := range map[int]int{0: 100, 30: 130, -50: 50, -75: 25, -200: 25} {
-		if got := SpeedPercent(stat); got != want {
-			t.Errorf("stat %d: %d want %d", stat, got, want)
+	// stat 0x43 carries the 100% base; frw is diminished with k=150.
+	for _, c := range []struct{ stat, frw, want int }{
+		{100, 0, 100}, {130, 0, 130}, {50, 0, 50}, {25, 0, 25}, {-100, 0, 25},
+		{100, 150, 175}, // 150*150/300 = 75
+		{100, 30, 125},  // 150*30/180 = 25
+		{50, 30, 75},    // cold slow offsets FRW
+	} {
+		if got := SpeedPercent(c.stat, c.frw); got != c.want {
+			t.Errorf("stat %d frw %d: %d want %d", c.stat, c.frw, got, c.want)
 		}
+	}
+
+	if Step(100, 0, 1<<12) != Step(100, StepScale, 1<<12) || Step(100, -5, 1<<12) != Step(100, StepScale, 1<<12) {
+		t.Error("scale below 1 must default to 0x400")
 	}
 }
 
@@ -71,21 +81,36 @@ func TestAdvanceDiagonal(t *testing.T) {
 }
 
 func TestAccelerate(t *testing.T) {
-	vel, c := 0, 0
+	vel, acc, c := 0, 100, 0
 	for i := 0; i < 5; i++ {
-		vel, c = Accelerate(vel, 300, 100, c)
+		vel, acc, c = Accelerate(vel, 300, acc, c)
 	}
 
-	if vel != 100 || c != 0 {
-		t.Fatalf("after 5 frames vel=%d c=%d", vel, c)
+	if vel != 100 || c != 0 || acc != 100 {
+		t.Fatalf("after 5 frames vel=%d acc=%d c=%d", vel, acc, c)
 	}
 
 	for i := 0; i < 20; i++ {
-		vel, c = Accelerate(vel, 300, 100, c)
+		vel, acc, c = Accelerate(vel, 300, acc, c)
 	}
 
-	if vel != 300 {
-		t.Errorf("cap: %d", vel)
+	if vel != 300 || acc != 0 {
+		t.Errorf("cap: vel %d acc %d (accel is zeroed at the cap)", vel, acc)
+	}
+
+	// zero accel: counter untouched
+	if v, a, cc := Accelerate(50, 300, 0, 3); v != 50 || a != 0 || cc != 3 {
+		t.Errorf("zero accel: %d %d %d", v, a, cc)
+	}
+
+	// deceleration clamps at zero and keeps its accel
+	vel, acc, c = 20, -50, 0
+	for i := 0; i < 5; i++ {
+		vel, acc, c = Accelerate(vel, 300, acc, c)
+	}
+
+	if vel != 0 || acc != -50 || c != 0 {
+		t.Errorf("decel clamp: %d %d %d", vel, acc, c)
 	}
 }
 

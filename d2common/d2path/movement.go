@@ -2,9 +2,9 @@ package d2path
 
 // Movement speeds, ported from missiles-pathing.md section (c)
 // (PATH_AdvanceUnitOneFrame / PATH_ApplyAccelAndScaleStep / PATH_SetVelocity /
-// PATH_UpdateUnitVelocityAndAnimRate). The Ghidra re-check of 0x651750 timed
-// out (shared window busy), so everything is as VERIFIED in the notes, not
-// re-verified here.
+// PATH_UpdateUnitVelocityAndAnimRate). Re-checked against Game.exe:
+// 0x651750 (step and acceleration) and 0x624150 (velocity from stats) are
+// VERIFIED below; what is still open is marked UNVERIFIED.
 
 // Class ids in charstats.txt order.
 const (
@@ -50,9 +50,13 @@ const (
 type BaseVelocity struct{ Walk, Run int }
 
 // PlayerBase returns charstats.txt WalkVelocity/RunVelocity. All seven
-// shipped classes use 6/9 (checked against CharStats.txt); the run offset in
-// the exe record is UNVERIFIED, so callers with real data should prefer
-// values read from the table.
+// shipped classes use 6/9 (checked against CharStats.txt). Re-check of
+// 624150 (via 621550): for players it reads only the byte at charstats
+// record +0x40 (stride 0xc4), shifted left 8, for both the walk (2) and run
+// (3) modes (FUN_00621690 accepts both); a separate RunVelocity offset was not
+// found there, so which of the two columns +0x40 holds and where the other
+// is applied stay UNVERIFIED. Monsters read the short at monstats +0x32
+// (stride 0x1a8). Callers with real data should prefer the table values.
 func PlayerBase(class int) BaseVelocity {
 	if class < ClassAmazon || class > ClassAssassin {
 		return BaseVelocity{}
@@ -73,12 +77,29 @@ func (b BaseVelocity) Base(m MoveMode) int {
 	return 0
 }
 
-// SpeedPercent converts the movement-speed stat (0x43) to the percentage
-// applied to velocity and animation rate, floored at 25%. The notes say
-// `max(25, stat0x43 + diminishing-returns term)`; that stat 0x43 is an offset
-// from a 100% base (so cold slow is negative) is UNVERIFIED.
-func SpeedPercent(stat43 int) int {
-	if p := 100 + stat43; p > MinSpeedPercent {
+// FRWDiminishK is the constant of the diminishing-returns row for faster
+// run/walk (stat 0x60) in the stat table at 6ea3d4 (entry 4: flag 1, k=150,
+// stat 96; VERIFIED by reading the table).
+const FRWDiminishK = 150
+
+// Diminish is the table's diminishing-returns formula k*v/(k+v) (621930), in
+// C integer division; zero and sums that would divide by zero return v.
+func Diminish(k, v int) int {
+	if v == 0 || k+v == 0 {
+		return v
+	}
+
+	return k * v / (k + v)
+}
+
+// SpeedPercent is the movement percentage of PATH_UpdateUnitVelocityAndAnimRate
+// for walk and run (VERIFIED, 624150): max(25, stat 0x43 + Diminish(150, FRW
+// stat 0x60)). stat43 is the raw movement-velocity stat, which therefore must
+// carry the 100% base itself (no +100 appears in the formula, so a unit with
+// no bonuses has 100; cold slow lowers it). That the base is 100 is inferred
+// (the stat's initialiser was not located); frw is the item FRW stat total.
+func SpeedPercent(stat43, frw int) int {
+	if p := stat43 + Diminish(FRWDiminishK, frw); p > MinSpeedPercent {
 		return p
 	}
 
@@ -86,7 +107,9 @@ func SpeedPercent(stat43 int) int {
 }
 
 // Velocity returns the 8.8 path velocity of a unit: base<<8 scaled by the
-// percentage (integer division; the order of shift and scale is UNVERIFIED).
+// percentage. VERIFIED (624150): the base is shifted first (621550 returns
+// base<<8) and then multiplied by the percentage and divided by 100
+// (truncating), before PATH_SetVelocity.
 // Leap ignores table velocity and percentage; teleport has no velocity.
 func Velocity(b BaseVelocity, m MoveMode, percent int) int {
 	switch m {
@@ -100,8 +123,14 @@ func Velocity(b BaseVelocity, m MoveMode, percent int) int {
 }
 
 // Step is one tick of displacement in 16.16 fixed point for an 8.8 velocity
-// and a 4.12 direction component (VERIFIED: ((vel*scale)>>6)*dir>>12).
+// and a 4.12 direction component (VERIFIED, 651750: the product vel*scale is
+// shifted right 6 first, then multiplied by dir and shifted right 12; a scale
+// below 1 is replaced by 0x400).
 func Step(vel, scale, dir int) int {
+	if scale < 1 {
+		scale = StepScale
+	}
+
 	return ((vel * scale) >> 6) * dir >> 12
 }
 
@@ -115,21 +144,33 @@ func SubtilesPerTick(vel int) float64 {
 // gives 14.0625.
 func SubtilesPerSecond(vel int) float64 { return SubtilesPerTick(vel) * TickRate }
 
-// Accelerate applies path acceleration: every AccelEvery-th frame vel grows by
-// accel up to maxVel (VERIFIED shape; deceleration is UNVERIFIED). counter is
-// the +0x8c tick counter; the updated one is returned.
-func Accelerate(vel, maxVel, accel, counter int) (newVel, newCounter int) {
+// Accelerate applies path acceleration exactly as PATH_ApplyAccelAndScaleStep
+// does (VERIFIED, 651750): nothing happens while accel (+0x88) is zero;
+// otherwise the counter (+0x8c) is incremented and, once it exceeds 4 (every
+// 5th frame), vel (+0x7c) += accel. If vel then exceeds maxVel (+0x84) it is
+// capped and accel is zeroed; otherwise a negative vel is clamped to 0 (accel
+// kept, so deceleration stops at rest). The counter resets only in that
+// branch. It returns the updated vel, accel and counter.
+func Accelerate(vel, maxVel, accel, counter int) (newVel, newAccel, newCounter int) {
+	if accel == 0 {
+		return vel, accel, counter
+	}
+
 	counter++
-	if counter < AccelEvery {
-		return vel, counter
+	if counter <= AccelEvery-1 {
+		return vel, accel, counter
 	}
 
 	vel += accel
-	if vel > maxVel {
-		vel = maxVel
+
+	switch {
+	case vel > maxVel:
+		vel, accel = maxVel, 0
+	case vel < 0:
+		vel = 0
 	}
 
-	return vel, 0
+	return vel, accel, 0
 }
 
 // Advance moves a 16.16 position one tick along a 4.12 direction vector.
