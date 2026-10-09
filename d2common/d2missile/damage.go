@@ -31,6 +31,11 @@ type DamageDesc struct {
 	// Flags are d2combat.DamageFlag bits copied into the damage struct.
 	Flags    uint32
 	HitClass int
+	// Crit is descriptor flag 0x2 (verified): the critical / deadly / mastery
+	// roll succeeded when the descriptor was built (0x64cce0). 0x64be80 turns
+	// it into missile stat 0x8d = 1 and the physical damage struct builder
+	// (0x5a673b) doubles the physical damage after the percent bonus.
+	Crit bool
 }
 
 // Empty reports whether the descriptor deals no damage at all.
@@ -62,6 +67,11 @@ func (d *DamageDesc) Roll(r d2combat.Roller) d2combat.Damage {
 
 		if p < 0 {
 			p = 0
+		}
+
+		if d.Crit && p > 0 {
+			p *= 2
+			dmg.Result |= d2combat.ResultCritical
 		}
 
 		dmg.Physical = p

@@ -1,5 +1,10 @@
 package d2skill
 
+import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2missile"
+)
+
 // Weapon masteries: the stats of a true passive with a passiveitype are stored
 // by the exe with the item type as the stat param (0x648130, verified), and the
 // combat code reads them keyed by the equipped weapon.
@@ -35,8 +40,16 @@ package d2skill
 //     missile order: critical, deadly, mastery. Skipped when the caller's gate
 //     argument is non-zero (0 at COMBAT_FinalizeDamageStruct).
 //
-// NOT wired: the missile-side crit flag (descriptor flag 0x2; its consumer is
-// not traced), so only the melee crit is modelled.
+// Missile crit (VERIFIED, notes missile-crit.md): MISSILE_BuildDamageDescriptor
+// rolls it ONCE when the missile is created, in the branch where the effective
+// SrcDam byte is non-zero (the skill's SrcDam, forced to 0 when the missile's
+// own SrcDamage is -1/0xff; so ALL weapon-based physical missiles can crit,
+// not only ranged ones: arrows, bolts, javelins and any skill with SrcDam, but
+// not poisonjavcloud / plaguejavcloud / furylightning, nor pure spells). A
+// success sets descriptor flag 0x2, which 0x64be80 stores as missile stat 0x8d
+// = 1; the damage struct builder (0x5a673b) then doubles the physical damage
+// after the percent bonus. The same crit applies to every hit of that missile
+// (pierce, repeated hits).
 
 // MasteryKind selects which mastery value is read.
 type MasteryKind int
@@ -148,4 +161,19 @@ func missileMastery(u Unit, sk *Skill) int {
 	}
 
 	return masteryOf(u, MasteryDamage, sk)
+}
+
+// missileCrit rolls the missile critical strike for a missile of skill sk
+// built by u (descriptor flag 0x2, 0x64ba70 order critical, deadly, mastery).
+// ms is the missile record: SrcDam -1 disables the roll. Units without a
+// roller or without any chance consume no random step.
+func missileCrit(u Unit, sk *Skill, ms *d2missile.Spec) bool {
+	if sk == nil || sk.SrcDam <= 0 || (ms != nil && ms.SrcDam < 0) {
+		return false
+	}
+
+	return d2combat.RollMissileStrike(u.Roller(), d2combat.StrikeInput{
+		CriticalChance: u.Stat("passive_critical_strike"), DeadlyChance: u.Stat("item_deadlystrike"),
+		WeaponChance: masteryOf(u, MasteryCrit, sk),
+	})
 }
