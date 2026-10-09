@@ -138,42 +138,17 @@ func (g *Inventory) HandleClick(mx, my int, ctrl bool) bool {
 		return false
 	}
 
-	if g.cursor == nil {
-		cx, cy := g.grid.ScreenToSlot(mx, my)
-		if it := g.grid.GetSlot(cx, cy); it != nil {
-			g.grid.Remove(it)
-			g.SetCursorItem(it)
-			g.Infof("picked up %s from the inventory", it.GetItemCode())
-		}
+	held, act, x, y := g.grid.ClickWith(g.cursor, mx, my, ctrl)
+	g.lastClick = act
 
-		return true
+	switch act {
+	case ClickPickup:
+		g.Infof("picked up %s from the inventory", held.GetItemCode())
+	case ClickAuto:
+		g.Infof("auto-placed cursor item at (%d,%d)", x, y)
 	}
 
-	if ctrl {
-		if x, y, ok := g.AutoPlaceCursor(); ok {
-			g.Infof("auto-placed cursor item at (%d,%d)", x, y)
-		}
-
-		return true
-	}
-
-	w, h := g.cursor.InventoryGridSize()
-	ax, ay := CursorAnchor(mx, my, g.grid.originX, g.grid.originY, g.grid.slotSize, w, h, g.grid.width, g.grid.height)
-
-	switch over := g.grid.Overlapping(ax, ay, w, h); len(over) {
-	case 0:
-		held := g.cursor
-		g.cursor = nil
-		g.grid.set(ax, ay, held)
-	case 1:
-		held := g.cursor
-		g.grid.Remove(over[0])
-		g.cursor = nil
-		g.grid.set(ax, ay, held)
-		g.SetCursorItem(over[0])
-	default:
-		// more than one item under the footprint: refused, like the original
-	}
+	g.SetCursorItem(held)
 
 	return true
 }

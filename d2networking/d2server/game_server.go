@@ -124,8 +124,8 @@ func NewGameServer(asset *d2asset.AssetManager,
 		return nil, err
 	}
 
-	if lvl := d2mapgen.AutomapLevel(); d2mapgen.RealMapsEnabled() && lvl != 0 {
-		// OD2_REALMAPS=1 + OD2_AUTOMAP=<maze level id>: DRLG port for that level
+	if lvl := d2mapgen.RealLevel(); lvl != 0 {
+		// OD2_REALMAPS=1 + OD2_AUTOLEVEL / OD2_AUTOMAP=<maze level id>: DRLG port for that level
 		if err := mapGen.GenerateRealMaze(lvl, d2mapgen.HeroMapSeed, 0); err != nil {
 			gameServer.Errorf("real maps: %v; falling back to the Act 1 overworld", err)
 			mapGen.GenerateAct1Overworld()
@@ -398,6 +398,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 		playerState.LeftSkill,
 		playerState.RightSkill,
 		playerState.Gold,
+		d2netpacket.WithContainers(playerState.Containers),
 	)
 	if err != nil {
 		g.Errorf("AddPlayerPacket: %v", err)
@@ -497,12 +498,18 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		playerState.Stats = savePacket.Player.Stats
 		playerState.Act = savePacket.Player.Act
 		playerState.Gold = savePacket.Player.Gold // changed by vendor transactions
-		playerState.Difficulty = savePacket.Difficulty
+		// the client always sends Normal; do not demote an imported Nightmare/Hell hero
+		if savePacket.Difficulty != d2enum.DifficultyNormal {
+			playerState.Difficulty = savePacket.Difficulty
+		}
+		playerState.Containers = savePacket.Player.Containers
 
 		err = g.heroStateFactory.Save(playerState)
 		if err != nil {
 			g.Errorf("GameServer: error saving saving Player: %s", err)
 		}
+
+		g.saveD2S(playerState)
 	case d2netpackettype.PlayerConnectionRequest:
 		break // prevent log message. these are handled by handleConnection
 	case d2netpackettype.PlayerDisconnectionNotification:
@@ -513,4 +520,27 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 	}
 
 	return nil
+}
+
+// saveD2S writes a hero that was imported from a real .d2s back to a .d2s file
+// (next to its .od2 save, or in OD2_D2S_WRITEBACK).
+func (g *GameServer) saveD2S(state *d2hero.HeroState) {
+	if len(state.D2SBase) == 0 {
+		return
+	}
+
+	res, err := g.heroStateFactory.SaveD2S(state)
+	if res != nil {
+		for _, w := range res.Warnings {
+			g.Warningf("D2S export: %s", w)
+		}
+	}
+
+	if err != nil {
+		g.Errorf("D2S export of %s failed: %v", state.HeroName, err)
+		return
+	}
+
+	g.Infof("D2S EXPORT path=%s", res.Path)
+	g.Infof("D2S EXPORT reparse: %s", res.Summary)
 }

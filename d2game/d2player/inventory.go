@@ -87,10 +87,15 @@ type Inventory struct {
 	gold          int
 	moveGoldPanel *MoveGoldPanel
 	cursor        InventoryItem
-	// imported items of a real .d2s hero replace the placeholder test items (see inventory_imported.go)
+	// imported marks a real .d2s hero: its worn items replace the placeholder equipment (see inventory_imported.go)
 	imported      bool
 	importedItems []d2hero.ImportedItem
 	importedSetII bool
+	// savedItems is set when the hero's saved containers fill the grid, which
+	// then starts without the placeholder items.
+	savedItems bool
+	// lastClick is what the latest HandleClick did.
+	lastClick ClickAction
 	// priceHook adds lines (sell value, repair cost) to item tooltips while
 	// a trade window is open.
 	priceHook func(InventoryItem) []string
@@ -181,6 +186,12 @@ func (g *Inventory) Load() {
 		{"rin", "Steel", "of Shock"},
 		{"jav"},
 		{"buc"},
+	}
+
+	if g.savedItems {
+		// the hero has saved containers: the grid is filled from them
+		// (GameControls.loadContainers), not with placeholder items
+		testInventoryCodes = nil
 	}
 
 	inventoryItems := make([]InventoryItem, 0)

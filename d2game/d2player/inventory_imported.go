@@ -4,7 +4,6 @@ import (
 	"regexp"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 )
 
@@ -27,16 +26,16 @@ var d2sEquipSlots = map[uint8]d2enum.EquippedSlot{
 // colorTokens matches the [gold]-style color markers of tooltip lines.
 var colorTokens = regexp.MustCompile(`\[[a-z]+\]`)
 
-// SetImportedItems makes the panel show the equipment and the inventory page of an
-// imported .d2s hero instead of the placeholder test items. It must be called
-// before Load. Items of the other pages (belt, cube, stash) are not placed here.
+// SetImportedItems makes the panel show the worn items of an imported
+// .d2s hero instead of the placeholder equipment. It must be called before Load.
+// The inventory, belt, cube and stash come from the hero's Containers.
 func (g *Inventory) SetImportedItems(items []d2hero.ImportedItem, weaponSetII bool) {
 	g.imported = true
 	g.importedItems = items
 	g.importedSetII = weaponSetII
 }
 
-// placeImportedItems puts the imported equipped items and page 1 items in place.
+// placeImportedItems puts the imported equipped items in place.
 func (g *Inventory) placeImportedItems() {
 	for i := range g.importedItems {
 		src := &g.importedItems[i]
@@ -51,20 +50,9 @@ func (g *Inventory) placeImportedItems() {
 			item.Identify()
 		}
 
-		switch {
-		case src.Location == d2s.LocationEquipped:
-			slot := d2hero.ActiveWeaponSetSlot(src.Equipped, g.importedSetII)
-			if enumSlot, ok := d2sEquipSlots[slot]; ok {
-				g.grid.ChangeEquippedSlot(enumSlot, item)
-			}
-		case src.Location == d2s.LocationStored && src.Page == 1 && src.AutoPlace:
-			if _, err := g.grid.Add(item); err != nil {
-				g.Errorf("imported item %v: %v", src.Codes, err)
-			}
-		case src.Location == d2s.LocationStored && src.Page == 1:
-			if err := g.grid.Set(int(src.X), int(src.Y), item); err != nil {
-				g.Errorf("imported item %v: %v", src.Codes, err)
-			}
+		slot := d2hero.ActiveWeaponSetSlot(src.Equipped, g.importedSetII)
+		if enumSlot, ok := d2sEquipSlots[slot]; ok {
+			g.grid.ChangeEquippedSlot(enumSlot, item)
 		}
 	}
 

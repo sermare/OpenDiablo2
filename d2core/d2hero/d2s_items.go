@@ -15,32 +15,21 @@ const (
 	d2sSlotNeck      = 2
 	d2sSlotRightRing = 6
 	d2sSlotLeftRing  = 7
-	d2sSlotBelt      = 8
 	d2sSlotAltRight  = 11 // weapon set II
 	d2sSlotAltLeft   = 12
 )
 
-// ImportedItem is an item of a .d2s save in the form the inventory UI needs: the
-// arguments for diablo2item.ItemFactory.NewItem (base code first, then the unique,
-// set or magic affix names) and where the save keeps it. The values of an affix
-// are not copied from the save: the UI rolls them from the affix ranges, so tooltips
+// ImportedItem is an equipped item of a .d2s in the form the inventory panel needs:
+// the arguments for diablo2item.ItemFactory.NewItem (base code first, then the unique,
+// set or magic affix names) and the equipment slot. Inventory, belt, cube and stash
+// items are not here: they live in HeroState.Containers. The values of an affix are
+// not copied from the save: the UI rolls them from the affix ranges, so tooltips
 // show the right item names and base stats but only approximate magic values.
 type ImportedItem struct {
 	Codes      []string `json:"codes"`
-	Location   uint8    `json:"location"`           // d2s.LocationStored, LocationEquipped, LocationBelt...
-	Equipped   uint8    `json:"equipped,omitempty"` // d2s equipment slot (1 head ... 12 weapon set II left)
-	Page       uint8    `json:"page,omitempty"`     // 1 inventory, 4 cube, 5 stash
-	X          uint8    `json:"x"`
-	Y          uint8    `json:"y"`
+	Equipped   uint8    `json:"equipped"` // d2s equipment slot (1 head ... 12 weapon set II left)
 	Quality    uint8    `json:"quality"`
 	Identified bool     `json:"identified,omitempty"`
-	Ethereal   bool     `json:"ethereal,omitempty"`
-	Sockets    uint8    `json:"sockets,omitempty"`
-	Durability uint16   `json:"durability,omitempty"`
-	MaxDur     uint16   `json:"maxDurability,omitempty"`
-	Quantity   uint16   `json:"quantity,omitempty"`
-	// AutoPlace asks the inventory to put the item in the first free cell (X and Y are unset).
-	AutoPlace bool `json:"autoPlace,omitempty"`
 }
 
 // affixNames maps the ids a .d2s stores to the names in the game tables.
@@ -86,6 +75,31 @@ func nameAt(list []string, id int) string {
 	return list[id]
 }
 
+// resolveNames maps the affix ids of a save to the names in the game tables:
+// the unique or set item name, or the magic prefix and suffix names.
+func (f *HeroStateFactory) resolveNames(it *d2s.Item, names *affixNames) (unique, setItem string, prefixes, suffixes []string) {
+	switch it.Quality {
+	case d2s.QualityMagic:
+		if n := nameAt(names.prefix, int(it.MagicPrefix)); n != "" {
+			prefixes = append(prefixes, n)
+		}
+
+		if n := nameAt(names.suffix, int(it.MagicSuffix)); n != "" {
+			suffixes = append(suffixes, n)
+		}
+	case d2s.QualityUnique:
+		if n := nameAt(names.unique, int(it.UniqueID)); n != "" && f.asset.Records.Item.Unique[n] != nil {
+			unique = n
+		}
+	case d2s.QualitySet:
+		if n := nameAt(names.set, int(it.SetID)); n != "" && f.asset.Records.Item.SetItems[n] != nil {
+			setItem = n
+		}
+	}
+
+	return unique, setItem, prefixes, suffixes
+}
+
 // itemCodes returns the NewItem arguments for an item, or nil when its base
 // code is unknown to the game tables (ears, modded items).
 func (f *HeroStateFactory) itemCodes(it *d2s.Item, names *affixNames) []string {
@@ -94,23 +108,11 @@ func (f *HeroStateFactory) itemCodes(it *d2s.Item, names *affixNames) []string {
 		return nil
 	}
 
+	unique, setItem, prefixes, suffixes := f.resolveNames(it, names)
 	codes := []string{code}
 
-	switch it.Quality {
-	case d2s.QualityMagic:
-		if n := nameAt(names.prefix, int(it.MagicPrefix)); n != "" {
-			codes = append(codes, n)
-		}
-
-		if n := nameAt(names.suffix, int(it.MagicSuffix)); n != "" {
-			codes = append(codes, n)
-		}
-	case d2s.QualityUnique:
-		if n := nameAt(names.unique, int(it.UniqueID)); n != "" && f.asset.Records.Item.Unique[n] != nil {
-			codes = append(codes, n)
-		}
-	case d2s.QualitySet:
-		if n := nameAt(names.set, int(it.SetID)); n != "" && f.asset.Records.Item.SetItems[n] != nil {
+	for _, n := range append(append([]string{unique, setItem}, prefixes...), suffixes...) {
+		if n != "" {
 			codes = append(codes, n)
 		}
 	}
@@ -118,34 +120,21 @@ func (f *HeroStateFactory) itemCodes(it *d2s.Item, names *affixNames) []string {
 	return codes
 }
 
-// importedItems converts every top-level item of a save.
-func (f *HeroStateFactory) importedItems(items []d2s.Item) []ImportedItem {
+// wornItems converts the equipped items of a save.
+func (f *HeroStateFactory) wornItems(items []d2s.Item) []ImportedItem {
 	names := f.loadAffixNames()
-	out := make([]ImportedItem, 0, len(items))
+
+	var out []ImportedItem
 
 	for i := range items {
 		it := &items[i]
-
-		codes := f.itemCodes(it, names)
-		if codes == nil {
+		if it.Location != d2s.LocationEquipped {
 			continue
 		}
 
-		out = append(out, ImportedItem{
-			Codes:      codes,
-			Location:   it.Location,
-			Equipped:   it.Equipped,
-			Page:       it.Page,
-			X:          it.X,
-			Y:          it.Y,
-			Quality:    it.Quality,
-			Identified: it.Identified,
-			Ethereal:   it.Ethereal,
-			Sockets:    it.TotalSockets,
-			Durability: it.Durability,
-			MaxDur:     it.MaxDurability,
-			Quantity:   it.Quantity,
-		})
+		if codes := f.itemCodes(it, names); codes != nil {
+			out = append(out, ImportedItem{Codes: codes, Equipped: it.Equipped, Quality: it.Quality, Identified: it.Identified})
+		}
 	}
 
 	return out
@@ -172,20 +161,56 @@ func starterSlot(loc string) int {
 	return n
 }
 
-// starterItems lists the items a new character of the class starts with, from the
-// item1..item10 columns of charstats.txt: a location naming a d2s equipment slot
-// (1..12) puts the item on the body, anything else in the inventory; count repeats a non-stacking item (the starting potions).
-func (f *HeroStateFactory) starterItems(hero d2enum.Hero) []ImportedItem {
+// applyStarterItems gives a new character the items of the item1..item10 columns
+// of charstats.txt: a location naming a d2s equipment slot (1..12) puts the item
+// on the body, anything else in the inventory (placed first-fit in the 10x4 grid);
+// count repeats a non-stacking item (the starting potions).
+func (f *HeroStateFactory) applyStarterItems(state *HeroState, hero d2enum.Hero) {
 	rec := f.asset.Records.Character.Stats[hero]
 	if rec == nil {
-		return nil
+		return
 	}
 
-	var out []ImportedItem
+	const cols, rows = 10, 4
+
+	var used [rows][cols]bool
+
+	place := func(w, h int) (int, int, bool) {
+		for y := 0; y+h <= rows; y++ {
+			for x := 0; x+w <= cols; x++ {
+				free := true
+
+				for dy := 0; dy < h && free; dy++ {
+					for dx := 0; dx < w; dx++ {
+						if used[y+dy][x+dx] {
+							free = false
+							break
+						}
+					}
+				}
+
+				if free {
+					for dy := 0; dy < h; dy++ {
+						for dx := 0; dx < w; dx++ {
+							used[y+dy][x+dx] = true
+						}
+					}
+
+					return x, y, true
+				}
+			}
+		}
+
+		return 0, 0, false
+	}
+
+	containers := &HeroContainers{Items: []StoredItem{}}
 
 	for i, code := range rec.StartItem {
 		code = strings.TrimSpace(code)
-		if code == "" || f.asset.Records.Item.All[code] == nil {
+
+		common := f.asset.Records.Item.All[code]
+		if code == "" || common == nil {
 			continue
 		}
 
@@ -193,23 +218,23 @@ func (f *HeroStateFactory) starterItems(hero d2enum.Hero) []ImportedItem {
 		count := rec.StartItemCount[i]
 
 		if slot > 0 {
-			count = 1
+			state.Worn = append(state.Worn, ImportedItem{Codes: []string{code}, Equipped: uint8(slot), Quality: d2s.QualityNormal, Identified: true})
+			continue
 		}
 
 		for n := 0; n < count; n++ {
-			it := ImportedItem{Codes: []string{code}, Quality: d2s.QualityNormal, Identified: true}
-
-			if slot > 0 {
-				it.Location, it.Equipped = d2s.LocationEquipped, uint8(slot)
-			} else {
-				it.Location, it.Page, it.AutoPlace = d2s.LocationStored, 1, true
+			x, y, ok := place(common.InventoryWidth, common.InventoryHeight)
+			if !ok {
+				break
 			}
 
-			out = append(out, it)
+			containers.Items = append(containers.Items, StoredItem{
+				Code: code, Page: PageInventory, X: x, Y: y, Quality: int(d2s.QualityNormal), Identified: true, Origin: true,
+			})
 		}
 	}
 
-	return out
+	state.Containers = containers
 }
 
 // ActiveWeaponSetSlot maps a weapon slot of a save to the slot shown in the

@@ -99,6 +99,8 @@ type Result struct {
 	MaxX, MaxY int
 	// Notes lists things that are not exact (TODOs, unverified steps).
 	Notes []string
+	// Seed is the level seed after generation (used to compare against the oracle).
+	Seed d2rand.Seed
 }
 
 type link struct {
@@ -669,6 +671,7 @@ func Generate(t Tables, p Params) (*Result, error) {
 	l.normalize(ox, oy) // NormalizeMazeRooms (verified as a bbox translate)
 	l.themeRooms()
 	l.commit(p, res)
+	res.Seed = l.seed
 
 	return res, nil
 }

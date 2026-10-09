@@ -25,6 +25,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2maprenderer"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2screen"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2skills"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2vendor"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client"
@@ -97,6 +98,7 @@ func CreateGame(
 	game.Logger.SetLevel(l)
 	game.Logger.SetPrefix(logPrefix)
 	game.initAutoScript()
+	activeGame = game
 
 	game.soundEnv = d2audio.NewSoundEnvironment(game.soundEngine)
 
@@ -138,8 +140,11 @@ type Game struct {
 	tradeActive          bool // a vendor window opened from the NPC menu is open
 	greetingLast         map[string]string
 	dayClock             *dayClock
+	autoShotElapsed      float64
+	autoShotDone         bool
 	greetingRecent       map[string]string
 	returnGreet          returnGreetings
+	autosaveElapsed      float64
 	autoTestElapsed      float64
 	autoTestDone         bool
 	autoScript           *autoScriptState
@@ -149,8 +154,12 @@ type Game struct {
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	monsterTest          *monsterTest
+	skills               *d2skills.Engine
+	castTestState        *castTest
 	attackTarget         *d2mapentity.Monster
 	attackRepathAcc      float64
+	autoPanel            autoPanelState
+	levelStatusAcc       float64
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -176,6 +185,7 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"spawnitemat", "spawns an item at the x,y coordinates",
 			[]string{"x", "y", "code1", "code2", "code3", "code4", "code5"}, v.commandSpawnItemAt},
 		{"spawnmon", "spawn monster at the local player position", []string{"name"}, v.commandSpawnMon},
+		{"setgold", "sets the hero's gold (saved to the .d2s on the next save)", []string{"amount"}, v.commandSetGold},
 		{"spawnchest", "spawns chests/barrels (objects.txt ids, default 7 1 5) next to the hero",
 			[]string{"id1", "id2", "id3"}, v.commandSpawnChest},
 	}
@@ -207,12 +217,16 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest"); err != nil {
+	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold"); err != nil {
 		return err
 	}
 
 	if err := v.OnPlayerSave(); err != nil {
 		return err
+	}
+
+	if activeGame == v {
+		activeGame = nil
 	}
 
 	if err := v.gameClient.Close(); err != nil {
@@ -256,6 +270,8 @@ func (v *Game) Render(screen d2interface.Surface) {
 			return
 		}
 	}
+
+	v.autoShot(screen)
 }
 
 // Advance runs the update logic on the Gameplay screen
@@ -263,16 +279,25 @@ func (v *Game) Render(screen d2interface.Surface) {
 func (v *Game) Advance(elapsed float64) error {
 	v.soundEngine.Advance(elapsed)
 	v.advanceDayClock(elapsed)
+	v.advanceLighting()
+
+	if v.localPlayer != nil {
+		v.autoShotElapsed += elapsed
+	}
+
 	v.advanceNPCInteraction(elapsed)
 	v.advanceAutoSound(elapsed)
 	v.advanceAutoTest(elapsed)
 	v.advanceAutoScript(elapsed)
+	v.advanceAutosave(elapsed)
 	v.advanceGroundInteraction(elapsed)
 	v.advanceAutoGround(elapsed)
+	v.advanceAutoPanel(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
 		v.advanceMonsters(elapsed)
+		v.advanceSkills(elapsed)
 	}
 
 	if v.gameControls != nil {
@@ -351,7 +376,7 @@ func (v *Game) bindGameControls() error {
 
 		// an imported .d2s hero shows its real equipment and inventory page
 		if st := v.gameClient.LocalHeroState(); st != nil && st.Imported != nil {
-			v.gameControls.SetImportedItems(st.Items, st.Imported.WeaponSetII)
+			v.gameControls.SetImportedItems(st.Worn, st.Imported.WeaponSetII)
 		}
 
 		v.gameControls.Load()
@@ -731,6 +756,7 @@ func (v *Game) autoTestHold(_ float64) {
 
 func (v *Game) autoTestExit() {
 	if os.Getenv("OD2_AUTOEXIT") != "" {
+		v.saveBeforeExit()
 		os.Exit(0)
 	}
 }
@@ -738,6 +764,10 @@ func (v *Game) autoTestExit() {
 // OnPlayerSave instructs the server to save our player data
 func (v *Game) OnPlayerSave() error {
 	playerState := v.gameClient.Players[v.gameClient.PlayerID]
+
+	if v.gameControls != nil {
+		v.gameControls.SyncContainers()
+	}
 
 	sp, err := d2netpacket.CreateSavePlayerPacket(playerState, d2enum.DifficultyNormal)
 	if err != nil {
@@ -755,6 +785,12 @@ func (v *Game) OnPlayerSave() error {
 
 // OnPlayerCast sends the casting skill action to the server
 func (v *Game) OnPlayerCast(skillID int, targetX, targetY float64) {
+	// skills the skill pipeline implements run locally with real missiles; the
+	// rest keep the old path (a CastSkill packet that plays the client effects)
+	if v.localPlayer != nil && v.castWithPipeline(skillID, targetX, targetY) {
+		return
+	}
+
 	cp, err := d2netpacket.CreateCastPacket(v.gameClient.PlayerID, skillID, targetX, targetY)
 	if err != nil {
 		v.Errorf("CastPacket: %v", err)

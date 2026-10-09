@@ -23,15 +23,20 @@ type HeroState struct {
 	Difficulty d2enum.DifficultyType          `json:"difficulty"`
 	// MapSeed is the level generator seed of an imported .d2s (header 0xAB).
 	MapSeed uint32 `json:"mapSeed,omitempty"`
+	// D2SBase is the .d2s the hero was imported from. ExportD2S starts from it
+	// so everything the engine does not model survives a save back.
+	D2SBase []byte `json:"d2sBase,omitempty"`
 	// Progress is the quest/waypoint/NPC state imported from a .d2s; nil for
 	// heroes that have none (older hero files omit it).
 	Progress *HeroProgress `json:"progress,omitempty"`
+	// Containers is the inventory, belt, cube and stash content; nil for
+	// heroes that never saved any (older hero files omit it).
+	Containers *HeroContainers `json:"containers,omitempty"`
 	// Imported is set for heroes that came from a real .d2s save; nil for heroes
 	// created in this engine, which are shown as Expansion characters.
 	Imported *ImportedInfo `json:"imported,omitempty"`
-	// Items are the items of an imported .d2s (equipped, inventory page, belt, cube
-	// and stash), for the inventory panel. See ImportedItem.
-	Items []ImportedItem `json:"items,omitempty"`
+	// Worn are the equipped items of an imported hero for the inventory panel (see ImportedItem).
+	Worn []ImportedItem `json:"worn,omitempty"`
 }
 
 // ImportedInfo carries what the character select screen shows about a real

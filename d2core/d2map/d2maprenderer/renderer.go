@@ -63,6 +63,7 @@ type MapRenderer struct {
 	entityDebugVisLevel int     // Entity Debug visibility index (0=none, 1=vectors)
 	lastFrameTime       float64 // The last time the map was rendered
 	currentFrame        int     // Current render frame (for animations)
+	light               *lighting
 
 	*d2util.Logger
 }
@@ -76,6 +77,7 @@ func CreateMapRenderer(asset *d2asset.AssetManager, renderer d2interface.Rendere
 		renderer:  renderer,
 		mapEngine: mapEngine,
 		viewport:  NewViewport(0, 0, 800, 600),
+		light:     newLighting(),
 	}
 
 	result.Logger = d2util.NewLogger()
@@ -152,12 +154,12 @@ func (mr *MapRenderer) SetMapEngine(mapEngine *d2mapengine.MapEngine) {
 	mr.generateTileCache()
 }
 
-// Render determines the width and height of map tiles that should be rendered. The following four render passes are
-// made in succession:
+// Render determines the width and height of map tiles that should be rendered. The following render passes are
+// made in succession (the real game's order, renderer.md b1: all floors before any wall):
 //
-// Pass 1: Lower wall tiles, tile shadows and floor tiles.
+// Pass 1: Floor tiles of the whole view, then lower wall tiles of the whole view.
 //
-// Pass 2: Entities below walls.
+// Pass 2: Per tile: shadows, then entities below walls.
 //
 // Pass 3: Upper wall tiles and entities above walls.
 //
@@ -227,13 +229,35 @@ func (mr *MapRenderer) WorldToOrtho(x, y float64) (orthoX, orthoY float64) {
 	return mr.viewport.WorldToOrtho(x, y)
 }
 
-// Lower wall tiles, tile shadows and floor tiles.
+// Floors of the whole view first, then lower walls (a wall must never be
+// overpainted by the floor of a later tile).
 func (mr *MapRenderer) renderPass1(target d2interface.Surface, startX, startY, endX, endY int) {
 	for tileY := startY; tileY < endY; tileY++ {
 		for tileX := startX; tileX < endX; tileX++ {
 			tile := mr.mapEngine.TileAt(tileX, tileY)
 			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
-			mr.renderTilePass1(tile, target)
+
+			for _, floor := range tile.Components.Floors {
+				if !floor.Hidden() && floor.Prop1 != 0 {
+					mr.renderFloor(floor, target, tileX, tileY)
+				}
+			}
+
+			mr.viewport.PopTranslation()
+		}
+	}
+
+	for tileY := startY; tileY < endY; tileY++ {
+		for tileX := startX; tileX < endX; tileX++ {
+			tile := mr.mapEngine.TileAt(tileX, tileY)
+			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
+
+			for idx, wall := range tile.Components.Walls {
+				if !wall.Hidden() && wall.Prop1 != 0 && wall.Type.LowerWall() {
+					mr.renderWall(wall, mr.viewport, target, tileX, tileY, idx, false)
+				}
+			}
+
 			mr.viewport.PopTranslation()
 		}
 	}
@@ -244,6 +268,13 @@ func (mr *MapRenderer) renderPass2(target d2interface.Surface, startX, startY, e
 	for tileY := startY; tileY < endY; tileY++ {
 		for tileX := startX; tileX < endX; tileX++ {
 			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
+
+			tile := mr.mapEngine.TileAt(tileX, tileY)
+			for _, shadow := range tile.Components.Shadows {
+				if !shadow.Hidden() && shadow.Prop1 != 0 {
+					mr.renderShadow(shadow, target)
+				}
+			}
 
 			tileEnt := mr.getEntitiesBelowWalls(tileX, tileY)
 
@@ -256,7 +287,7 @@ func (mr *MapRenderer) renderPass2(target d2interface.Surface, startX, startY, e
 						}
 
 						target.PushTranslation(mr.viewport.GetTranslationScreen())
-						mapEntity.Render(target)
+						mr.renderLitEntity(target, mapEntity)
 						target.Pop()
 					}
 				}
@@ -297,7 +328,7 @@ func (mr *MapRenderer) renderPass3(target d2interface.Surface, startX, startY, e
 		for tileX := startX; tileX < endX; tileX++ {
 			tile := mr.mapEngine.TileAt(tileX, tileY)
 			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
-			mr.renderTilePass2(tile, target)
+			mr.renderTilePass2(tile, target, tileX, tileY)
 
 			entities := mr.getEntitiesAboveWalls(tileX, tileY)
 
@@ -310,7 +341,7 @@ func (mr *MapRenderer) renderPass3(target d2interface.Surface, startX, startY, e
 						}
 
 						target.PushTranslation(mr.viewport.GetTranslationScreen())
-						entity.Render(target)
+						mr.renderLitEntity(target, entity)
 						target.Pop()
 					}
 				}
@@ -351,49 +382,29 @@ func (mr *MapRenderer) renderPass4(target d2interface.Surface, startX, startY, e
 		for tileX := startX; tileX < endX; tileX++ {
 			tile := mr.mapEngine.TileAt(tileX, tileY)
 			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
-			mr.renderTilePass3(tile, target)
+			mr.renderTilePass3(tile, target, tileX, tileY)
 			mr.viewport.PopTranslation()
 		}
 	}
 }
 
-func (mr *MapRenderer) renderTilePass1(tile *d2mapengine.MapTile, target d2interface.Surface) {
-	for _, wall := range tile.Components.Walls {
-		if !wall.Hidden() && wall.Prop1 != 0 && wall.Type.LowerWall() {
-			mr.renderWall(wall, mr.viewport, target)
-		}
-	}
-
-	for _, floor := range tile.Components.Floors {
-		if !floor.Hidden() && floor.Prop1 != 0 {
-			mr.renderFloor(floor, target)
-		}
-	}
-
-	for _, shadow := range tile.Components.Shadows {
-		if !shadow.Hidden() && shadow.Prop1 != 0 {
-			mr.renderShadow(shadow, target)
-		}
-	}
-}
-
-func (mr *MapRenderer) renderTilePass2(tile *d2mapengine.MapTile, target d2interface.Surface) {
-	for _, wall := range tile.Components.Walls {
+func (mr *MapRenderer) renderTilePass2(tile *d2mapengine.MapTile, target d2interface.Surface, tileX, tileY int) {
+	for idx, wall := range tile.Components.Walls {
 		if !wall.Hidden() && wall.Type.UpperWall() {
-			mr.renderWall(wall, mr.viewport, target)
+			mr.renderWall(wall, mr.viewport, target, tileX, tileY, idx, true)
 		}
 	}
 }
 
-func (mr *MapRenderer) renderTilePass3(tile *d2mapengine.MapTile, target d2interface.Surface) {
-	for _, wall := range tile.Components.Walls {
+func (mr *MapRenderer) renderTilePass3(tile *d2mapengine.MapTile, target d2interface.Surface, tileX, tileY int) {
+	for idx, wall := range tile.Components.Walls {
 		if wall.Type == d2enum.TileRoof {
-			mr.renderWall(wall, mr.viewport, target)
+			mr.renderRoof(wall, mr.viewport, target, tileX, tileY, idx)
 		}
 	}
 }
 
-func (mr *MapRenderer) renderFloor(tile d2ds1.Tile, target d2interface.Surface) {
+func (mr *MapRenderer) renderFloor(tile d2ds1.Tile, target d2interface.Surface, tileX, tileY int) {
 	var img d2interface.Surface
 	if !tile.Animated {
 		img = mr.getImageCacheRecord(tile.Style, tile.Sequence, 0, tile.RandomIndex)
@@ -412,10 +423,20 @@ func (mr *MapRenderer) renderFloor(tile d2ds1.Tile, target d2interface.Surface) 
 	target.PushTranslation(mr.viewport.GetTranslationScreen())
 	defer target.Pop()
 
+	if mr.light.active() {
+		mr.renderShadedImage(target, img, floorShadeCols, floorShadeRows, 1, func(x, y float64) color.RGBA {
+			u, v := floorSubtile(x, y)
+			return mr.light.tintAt(float64(tileX*subtilesPerTile)+u, float64(tileY*subtilesPerTile)+v)
+		})
+
+		return
+	}
+
 	target.Render(img)
 }
 
-func (mr *MapRenderer) renderWall(tile d2ds1.Tile, viewport *Viewport, target d2interface.Surface) {
+func (mr *MapRenderer) renderWall(tile d2ds1.Tile, viewport *Viewport, target d2interface.Surface,
+	tileX, tileY, idx int, upper bool) {
 	img := mr.getImageCacheRecord(tile.Style, tile.Sequence, tile.Type, tile.RandomIndex)
 	if img == nil {
 		mr.Warningf("Render called on uncached wall {%v,%v,%v}", tile.Style, tile.Sequence, tile.Type)
@@ -428,7 +449,76 @@ func (mr *MapRenderer) renderWall(tile d2ds1.Tile, viewport *Viewport, target d2
 	target.PushTranslation(viewport.GetTranslationScreen())
 	defer target.Pop()
 
+	if !mr.light.active() {
+		target.Render(img)
+		return
+	}
+
+	alpha := 1.0
+	if upper {
+		sx, sy := viewport.GetTranslationScreen()
+		alpha = mr.light.fadeFor(wallKey{tileX, tileY, idx}, mr.heroBehind(tileX, tileY, sx, sy, img))
+	}
+
+	mr.renderShadedImage(target, img, wallShadeCols, wallShadeRows, alpha, func(x, _ float64) color.RGBA {
+		u, v := wallBaseSubtile(x)
+		return mr.light.tintAt(float64(tileX*subtilesPerTile)+u, float64(tileY*subtilesPerTile)+v)
+	})
+}
+
+// renderRoof draws a roof tile with the flat frame ambient (roofs sample no
+// light map in the real game).
+func (mr *MapRenderer) renderRoof(tile d2ds1.Tile, viewport *Viewport, target d2interface.Surface,
+	tileX, tileY, idx int) {
+	img := mr.getImageCacheRecord(tile.Style, tile.Sequence, tile.Type, tile.RandomIndex)
+	if img == nil {
+		mr.Warningf("Render called on uncached wall {%v,%v,%v}", tile.Style, tile.Sequence, tile.Type)
+		return
+	}
+
+	viewport.PushTranslationOrtho(-80, float64(tile.YAdjust))
+	defer viewport.PopTranslation()
+
+	target.PushTranslation(viewport.GetTranslationScreen())
+	defer target.Pop()
+
+	if mr.light.active() {
+		target.PushColor(mr.light.ambientTint())
+		defer target.Pop()
+	}
+
 	target.Render(img)
+}
+
+// heroBehind reports whether the hero is hidden by the wall tile whose image is
+// drawn at screen position (sx, sy): the wall is nearer to the camera than the
+// hero and the hero's screen position lies inside the wall image. This is a
+// heuristic; the real game flags the covering tiles in the room code, which
+// the notes did not locate (U).
+func (mr *MapRenderer) heroBehind(tileX, tileY, sx, sy int, img d2interface.Surface) bool {
+	in := mr.light.input
+	if float64(tileX+tileY) <= in.HeroX+in.HeroY-0.5 {
+		return false
+	}
+
+	hx, hy := mr.viewport.WorldToScreenF(in.HeroX, in.HeroY)
+	w, h := img.GetSize()
+
+	// a wall only hides what is behind it: hero feet and body inside the image
+	return hx > float64(sx)+8 && hx < float64(sx+w)-8 && hy-30 > float64(sy) && hy < float64(sy+h)
+}
+
+// renderLitEntity draws an entity tinted by one light map sample at its feet.
+func (mr *MapRenderer) renderLitEntity(target d2interface.Surface, e d2interface.MapEntity) {
+	if !mr.light.active() {
+		e.Render(target)
+		return
+	}
+
+	x, y := e.GetPositionF()
+	target.PushColor(mr.light.tintAt(x*subtilesPerTile, y*subtilesPerTile))
+	e.Render(target)
+	target.Pop()
 }
 
 func (mr *MapRenderer) renderShadow(tile d2ds1.Tile, target d2interface.Surface) {
@@ -622,6 +712,7 @@ func (mr *MapRenderer) Advance(elapsed float64) {
 	}
 
 	mr.Camera.Advance(elapsed)
+	mr.advanceLighting(elapsed)
 }
 
 func (mr *MapRenderer) loadPaletteForAct(levelType d2enum.RegionIdType) (d2interface.Palette,
@@ -647,6 +738,8 @@ func (mr *MapRenderer) loadPaletteForAct(levelType d2enum.RegionIdType) (d2inter
 	default:
 		return nil, errors.New("failed to find palette for region")
 	}
+
+	mr.loadShadeTable(palettePath)
 
 	return mr.asset.LoadPalette(palettePath)
 }

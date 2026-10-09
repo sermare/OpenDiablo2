@@ -47,13 +47,18 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 
 	state.MapSeed = header.MapSeed
 	state.Imported = importedInfo(header)
+	state.D2SBase = append([]byte(nil), data...)
+
+	if diff, _, ok := header.ActiveDifficulty(); ok {
+		state.Difficulty = d2enum.DifficultyType(diff)
+	}
 
 	// a brand new character has no body: keep the class defaults (level 1, Act 1,
 	// the class' starting skill and the left/right skills of a new game)
 	if !header.HasBody() {
 		state.Stats.Level = clampLevel(int(header.Level))
 		state.Stats.NextLevelExp = f.asset.Records.GetExperienceBreakpoint(hero, state.Stats.Level)
-		state.Items = f.starterItems(hero)
+		f.applyStarterItems(state, hero)
 
 		return state, nil
 	}
@@ -245,5 +250,43 @@ func (f *HeroStateFactory) importD2SItems(state *HeroState, data []byte) {
 	state.Equipment = d2inventory.CharacterEquipment{}
 
 	f.applyD2SEquipment(state, character.Items, tables, state.Imported != nil && state.Imported.WeaponSetII)
-	state.Items = f.importedItems(character.Items)
+	state.Worn = f.wornItems(character.Items)
+	f.applyD2SContainers(state, character.Items)
+}
+
+// applyD2SContainers puts the inventory (page 1), cube (4), stash (5) and belt
+// items of a save into the hero's containers. Items without an OpenDiablo2
+// record are skipped with a warning.
+func (f *HeroStateFactory) applyD2SContainers(state *HeroState, items []d2s.Item) {
+	known := func(code string) bool { return f.asset.Records.Item.All[code] != nil }
+	containers := &HeroContainers{Items: []StoredItem{}}
+	names := f.loadAffixNames()
+
+	for i := range items {
+		if it := &items[i]; it.Location == d2s.LocationEquipped && it.Equipped == d2sSlotBelt && known(trimCode(it.Code)) {
+			containers.BeltCode = trimCode(it.Code)
+		}
+
+		stored, skip := StoredFromD2S(&items[i], known)
+		if skip == "" {
+			// use the unique, set and affix names of the save instead of random affixes
+			if u, si, pre, suf := f.resolveNames(&items[i], names); u != "" || si != "" || len(pre)+len(suf) > 0 {
+				stored.Unique, stored.SetItem, stored.Prefixes, stored.Suffixes = u, si, pre, suf
+				stored.Origin = false
+			}
+
+			containers.Items = append(containers.Items, stored)
+			continue
+		}
+
+		// equipped items and the like are not a container's business
+		if items[i].Location == d2s.LocationStored || items[i].Location == d2s.LocationBelt {
+			fmt.Printf("d2s: skipping item %q of %s: %s\n", items[i].Code, state.HeroName, skip)
+		}
+	}
+
+	state.Containers = containers
+	fmt.Printf("d2s: %s containers: inventory=%d belt=%d cube=%d stash=%d\n", state.HeroName,
+		len(containers.Page(PageInventory)), len(containers.Page(PageBelt)),
+		len(containers.Page(PageCube)), len(containers.Page(PageStash)))
 }

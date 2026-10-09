@@ -51,27 +51,24 @@ func profileFromRecord(r *d2records.MonStatRecord, diff d2monster.Difficulty) *d
 // and experience. For classes without noRatio the numbers are the monlvl.txt
 // row of the monster level times the monstats ratio columns in percent
 // (VERIFIED, MONTBL_GetLevelScaledStats); noRatio classes use the monstats
-// values as they are. Which monlvl column set the game uses (L-* here) is
-// UNVERIFIED.
+// values as they are. Which monlvl column set the game uses (L-* here, the
+// plain ones with Options.Classic) is UNVERIFIED.
+//
+// The monster level follows d2monster.ResolveLevel (VERIFIED): noRatio and
+// boss classes use the monstats Level of the difficulty, all others the
+// levels.txt MonLvl of the area set with SetAreaLevel (monstats Level when no
+// area is set).
 func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain) d2mapentity.MonsterVitals {
 	diff := d.opt.Difficulty
 	pick := func(n, nm, h int) int { return [3]int{n, nm, h}[diff] }
 
-	level := pick(r.LevelNormal, r.LevelNightmare, r.LevelHell)
+	level := d2monster.ResolveLevel(d.classInfo(r), pick(r.LevelNormal, r.LevelNightmare, r.LevelHell), d.areaLevel)
 	v := d2mapentity.MonsterVitals{Level: level, Difficulty: diff}
 
-	var lv struct{ hp, ac, th, dm, xp int }
+	var lv lvlNums
 
 	if rec := d.asset.Records.Monster.Levels[level]; rec != nil && !r.IgnoreMonLevelTxt {
-		vals := [3]struct{ hp, ac, th, dm, xp int }{
-			{rec.Ladder.Normal.Hitpoints, rec.Ladder.Normal.DefenseRating, rec.Ladder.Normal.AttackRating,
-				rec.Ladder.Normal.Damage, rec.Ladder.Normal.Experience},
-			{rec.Ladder.Nightmare.Hitpoints, rec.Ladder.Nightmare.DefenseRating, rec.Ladder.Nightmare.AttackRating,
-				rec.Ladder.Nightmare.Damage, rec.Ladder.Nightmare.Experience},
-			{rec.Ladder.Hell.Hitpoints, rec.Ladder.Hell.DefenseRating, rec.Ladder.Hell.AttackRating,
-				rec.Ladder.Hell.Damage, rec.Ladder.Hell.Experience},
-		}
-		lv = vals[diff]
+		lv = monlvlRow(rec, d.opt.Classic)[diff]
 	} else {
 		lv.hp, lv.ac, lv.th, lv.dm, lv.xp = 100, 100, 100, 100, 100 // raw values: ratio of 100%
 	}
@@ -130,4 +127,30 @@ func MonsterAttackFrom(toHit, min, max int) d2mapentity.MonsterAttack {
 	}
 
 	return d2mapentity.MonsterAttack{ToHit: toHit, Min: min, Max: max}
+}
+
+type lvlNums struct{ hp, ac, th, dm, xp int }
+
+// monlvlRow flattens a monlvl.txt row to the numbers vitals use, by
+// difficulty, from the LoD (L-*) or the plain columns.
+func monlvlRow(rec *d2records.MonsterLevelRecord, classic bool) [3]lvlNums {
+	if classic {
+		b := rec.BattleNet
+
+		return [3]lvlNums{
+			{b.Normal.Hitpoints, b.Normal.DefenseRating, b.Normal.AttackRating, b.Normal.Damage, b.Normal.Experience},
+			{b.Nightmare.Hitpoints, b.Nightmare.DefenseRating, b.Nightmare.AttackRating, b.Nightmare.Damage,
+				b.Nightmare.Experience},
+			{b.Hell.Hitpoints, b.Hell.DefenseRating, b.Hell.AttackRating, b.Hell.Damage, b.Hell.Experience},
+		}
+	}
+
+	l := rec.Ladder
+
+	return [3]lvlNums{
+		{l.Normal.Hitpoints, l.Normal.DefenseRating, l.Normal.AttackRating, l.Normal.Damage, l.Normal.Experience},
+		{l.Nightmare.Hitpoints, l.Nightmare.DefenseRating, l.Nightmare.AttackRating, l.Nightmare.Damage,
+			l.Nightmare.Experience},
+		{l.Hell.Hitpoints, l.Hell.DefenseRating, l.Hell.AttackRating, l.Hell.Damage, l.Hell.Experience},
+	}
 }

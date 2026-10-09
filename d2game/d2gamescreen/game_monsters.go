@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapgen"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 )
 
@@ -25,6 +27,7 @@ const (
 type monsterTest struct {
 	ref      string
 	count    int
+	pack     bool // spawn a natural group (MinGrp/MaxGrp, minions) instead of count copies
 	duration float64
 	elapsed  float64
 	spawned  bool
@@ -45,6 +48,7 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 	opt := d2monsters.Options{
 		Seed:       uint32(v.gameClient.MapEngine.Seed()),
 		Difficulty: d2monster.Normal,
+		Expansion:  true, // the game data is Lord of Destruction (MonLvl*Ex columns)
 		// the scenario spawns monsters next to a hero who may still be in town
 		IgnoreTown: os.Getenv("OD2_AUTOMONSTER") != "",
 	}
@@ -76,6 +80,7 @@ func (v *Game) advanceMonsters(elapsed float64) {
 	}
 
 	d.Advance(elapsed)
+	v.logLevelStatus(elapsed)
 	v.advanceHeroAttack(elapsed)
 	v.advanceMonsterTest(elapsed)
 }
@@ -110,7 +115,9 @@ func (v *Game) advanceHeroAttack(elapsed float64) {
 	hx, hy := int(v.localPlayer.Position.X()), int(v.localPlayer.Position.Y())
 	mx, my := m.SubtilePos()
 
-	if d2monster.Distance(hx-mx, hy-my) <= heroMeleeReach {
+	// the same edge distance the monsters use, so a monster that can hit the
+	// hero can also be hit back
+	if d2monster.EdgeDistance(hx-mx, hy-my, 1) <= heroMeleeReach {
 		if v.localPlayer.IsCasting() {
 			return
 		}
@@ -151,7 +158,9 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 		if parts := strings.SplitN(ref, ",", 2); len(parts) == 2 {
 			t.ref = parts[0]
 
-			if n, err := strconv.Atoi(parts[1]); err == nil && n > 0 {
+			if strings.EqualFold(strings.TrimSpace(parts[1]), "pack") {
+				t.pack = true
+			} else if n, err := strconv.Atoi(parts[1]); err == nil && n > 0 {
 				t.count = n
 			}
 		}
@@ -175,7 +184,10 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 		return
 	}
 
-	if os.Getenv("OD2_AUTOMONSTER_PASSIVE") == "" {
+	switch {
+	case os.Getenv("OD2_AUTOCAST") != "":
+		v.autoCast(elapsed) // the hero casts a skill instead of swinging
+	case os.Getenv("OD2_AUTOMONSTER_PASSIVE") == "":
 		v.autoFight() // OD2_AUTOMONSTER_PASSIVE=1 leaves the hero idle to watch monsters attack
 	}
 
@@ -200,6 +212,10 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 		"deaths=%d drops=%d hero_deaths=%d hero_hp=%d/%d", c.Spawned, c.Aggro, c.Attacks, c.AttackHits,
 		c.HeroSwings, c.HeroHits, c.Deaths, c.Drops, c.HeroDeaths,
 		v.localPlayer.Stats.Health, v.localPlayer.Stats.MaxHealth)
+	v.Infof("AUTOMONSTER world packs=%d shots=%d shot_hits=%d blocked_steps=%d max_stack=%d hit_recoveries=%d",
+		c.Packs, c.Shots, c.ShotHits, c.BlockedSteps, c.MaxStack, c.HitRecoveries)
+
+	v.logCastSummary()
 
 	t.elapsed = math.Inf(-1) // print once
 	t.allDead = 0
@@ -209,6 +225,16 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 }
 
 func (v *Game) spawnMonsterTest(t *monsterTest) {
+	if area, err := strconv.Atoi(os.Getenv("OD2_AUTOMONSTER_AREA")); err == nil && area > 0 {
+		v.monsters.SetAreaLevel(v.monsters.AreaLevelOf(area))
+	}
+
+	if t.pack {
+		v.spawnPackTest(t)
+
+		return
+	}
+
 	stat := v.monsters.FindStat(t.ref)
 	if stat == nil {
 		v.Errorf("AUTOMONSTER: unknown monster %q", t.ref)
@@ -271,4 +297,78 @@ func (v *Game) autoFight() {
 	if best != nil {
 		v.OnPlayerAttack(best)
 	}
+}
+
+// spawnPackTest implements OD2_AUTOMONSTER=<monster>,pack: one natural group
+// (or the super unique of that name) is planned from the monstats / superuniques
+// columns and placed in a cluster; the director logs "MONSTER pack ..." with the
+// composition and the scenario prints the per-class counts.
+func (v *Game) spawnPackTest(t *monsterTest) {
+	hx, hy := int(v.localPlayer.Position.X()), int(v.localPlayer.Position.Y())
+	centre := d2path.Point{X: hx + monsterTestRing, Y: hy}
+
+	var (
+		res *d2monsters.PackResult
+		err error
+	)
+
+	if stat := v.monsters.FindStat(t.ref); stat != nil {
+		res, err = v.monsters.SpawnGroup(stat, centre)
+	} else {
+		res, err = v.monsters.SpawnSuperUnique(t.ref, centre)
+	}
+
+	if err != nil {
+		v.Errorf("AUTOMONSTER: pack failed: %v", err)
+		v.autoTestExit()
+
+		return
+	}
+
+	counts := map[string]int{}
+	for _, m := range res.Monsters {
+		counts[m.Stat.Key]++
+	}
+
+	v.Infof("AUTOMONSTER pack start ref=%s leader=%s planned=%d spawned=%d followers=%d hero=(%d,%d) classes=%v",
+		t.ref, res.Leader.Label(), len(res.Plan.Members), len(res.Monsters), len(res.Leader.Brain.Minions),
+		hx, hy, counts)
+}
+
+// levelStatusSeconds is how often OD2_REALMAPS levels log the hero / monster
+// status (LEVELSTATUS lines) for the autotests.
+const levelStatusSeconds = 2.0
+
+func (v *Game) logLevelStatus(elapsed float64) {
+	if d2mapgen.RealLevel() == 0 || v.localPlayer == nil {
+		return
+	}
+
+	v.levelStatusAcc += elapsed
+	if v.levelStatusAcc < levelStatusSeconds {
+		return
+	}
+
+	v.levelStatusAcc = 0
+
+	hx, hy := int(v.localPlayer.Position.X()), int(v.localPlayer.Position.Y())
+	alive, nearest := 0, -1
+
+	for _, m := range v.monsters.Monsters() {
+		if !m.Alive() {
+			continue
+		}
+
+		alive++
+
+		mx, my := m.SubtilePos()
+		if d := d2monster.Distance(hx-mx, hy-my); nearest < 0 || d < nearest {
+			nearest = d
+		}
+	}
+
+	c := v.monsters.Counters
+	v.Infof("LEVELSTATUS hero=(%d,%d) tile=(%d,%d) hp=%d/%d monsters_alive=%d nearest=%d spawned=%d aggro=%d attacks=%d",
+		hx, hy, hx/5, hy/5, v.localPlayer.Stats.Health, v.localPlayer.Stats.MaxHealth, alive, nearest,
+		c.Spawned, c.Aggro, c.Attacks)
 }

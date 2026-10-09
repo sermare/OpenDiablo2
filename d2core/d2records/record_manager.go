@@ -128,6 +128,7 @@ type RecordManager struct {
 	}
 	Missiles
 	missilesByName
+	pipeline pipelineTables // built lazily by SkillTable / MissileTable
 	Monster struct {
 		AI        MonsterAI
 		Equipment MonsterEquipment

@@ -7,6 +7,8 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2dt1"
 )
 
+const blankFloorStyle = 30
+
 // MapTile is a tile placed on the map
 type MapTile struct {
 	Components d2mapstamp.Tile
@@ -31,6 +33,11 @@ func (t *MapTile) GetSubTileFlags(x, y int) *d2dt1.SubTileFlags {
 func (t *MapTile) PrepareTile(x, y int, me *MapEngine) {
 	for wIdx := range t.Components.Walls {
 		wall := &t.Components.Walls[wIdx]
+		// empty cells (prop1 == 0) and hidden cells have no graphic; looking them up only logs warnings
+		if wall.Hidden() || wall.Prop1 == 0 {
+			continue
+		}
+
 		options := me.GetTiles(int(wall.Style), int(wall.Sequence), wall.Type)
 
 		if options == nil {
@@ -47,10 +54,23 @@ func (t *MapTile) PrepareTile(x, y int, me *MapEngine) {
 
 	for fIdx := range t.Components.Floors {
 		floor := &t.Components.Floors[fIdx]
+		if floor.Hidden() || floor.Prop1 == 0 {
+			continue
+		}
+
+		// floor style 30 / sequence 0 is the DS1 convention for "no floor" (blank filler
+		// cells next to rooms); no DT1 has a graphic for it. Hide it so that it is neither
+		// rendered nor counted as ground by BlockEmptyTiles (observed in the Act 1 cave
+		// and town DS1 files; whether the original treats it exactly so is unverified).
+		if floor.Style == blankFloorStyle && floor.Sequence == 0 {
+			floor.HiddenBytes = 1
+			continue
+		}
+
 		options := me.GetTiles(int(floor.Style), int(floor.Sequence), 0)
 
 		if options == nil {
-			break
+			continue
 		}
 
 		if options[0].MaterialFlags.Lava {
@@ -67,10 +87,14 @@ func (t *MapTile) PrepareTile(x, y int, me *MapEngine) {
 
 	for sIdx := range t.Components.Shadows {
 		shadow := &t.Components.Shadows[sIdx]
+		if shadow.Hidden() || shadow.Prop1 == 0 {
+			continue
+		}
+
 		options := me.GetTiles(int(shadow.Style), int(shadow.Sequence), 13)
 
 		if options == nil {
-			break
+			continue
 		}
 
 		shadow.RandomIndex = getRandomTile(options, x, y, me.seed)

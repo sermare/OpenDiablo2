@@ -194,7 +194,10 @@ func ShortAStar(g Grid, mask uint16, from, to Point) (Route, bool) {
 }
 
 // finish rebuilds the node list from goal back to start and keeps corners.
-func finish(end *node, partial bool) (Route, bool) {
+func finish(end *node, partial bool) (Route, bool) { return finishLimit(end, partial, MaxNodes) }
+
+// finishLimit is finish with a configurable corner-node limit.
+func finishLimit(end *node, partial bool, maxNodes int) (Route, bool) {
 	var cells []Point
 
 	for n := end; n.parent != nil; n = n.parent {
@@ -233,7 +236,7 @@ func finish(end *node, partial bool) (Route, bool) {
 		nodes = append(nodes, cells[len(cells)-1])
 	}
 
-	if len(nodes) > MaxNodes {
+	if len(nodes) > maxNodes {
 		return Route{}, false
 	}
 

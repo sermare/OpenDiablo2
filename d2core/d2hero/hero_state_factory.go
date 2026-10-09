@@ -13,6 +13,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 )
 
@@ -40,6 +41,7 @@ func NewHeroStateFactory(asset *d2asset.AssetManager) (*HeroStateFactory, error)
 type HeroStateFactory struct {
 	asset *d2asset.AssetManager
 	*d2inventory.InventoryItemFactory
+	d2sTables *d2s.ItemTables // loaded on first use by SaveD2S
 }
 
 // CreateHeroState creates a HeroState instance and returns a pointer to it

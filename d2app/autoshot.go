@@ -5,61 +5,71 @@ import (
 	"strconv"
 )
 
-// OD2_AUTOSHOT=<file>.png saves one screenshot of the window a few seconds after
-// the game starts and, with OD2_AUTOEXIT=1, quits afterwards. OD2_AUTOSHOT_DELAY
-// sets the wait in seconds (default 6). It is for checking a layout without a
-// person at the keyboard. A scenario that needs panels open first should use the
-// `shot:<file>` step of OD2_AUTOSCRIPT instead, which takes the shot at that point.
-const autoShotDefaultDelay = 6.0
+const autoShotDefaultSeconds = 10.0
 
+// autoShotState implements OD2_AUTOSHOT=<path.png>: after
+// OD2_AUTOSHOT_SECONDS (default 10) of run time it saves the rendered frame
+// (what the player sees, UI included) through the same capture facility as
+// the console command "capframe", so a headless-ish autotest can look at the
+// result. With OD2_AUTOEXIT=1 and no OD2_AUTOSCRIPT / OD2_AUTOMONSTER running
+// the process quits after the shot. More shots during a scripted scenario can
+// be taken with the script step say:capframe <path.png>.
 type autoShotState struct {
+	path      string
+	at        float64
 	elapsed   float64
 	requested bool
-	done      bool
 }
 
-var autoShot autoShotState
-
-// advanceAutoShot runs the OD2_AUTOSHOT timer; it is called every frame.
-func (a *App) advanceAutoShot(elapsed float64) {
+func newAutoShot() *autoShotState {
 	path := os.Getenv("OD2_AUTOSHOT")
-	if path == "" || autoShot.done {
+	if path == "" {
+		return nil
+	}
+
+	s := &autoShotState{path: path, at: autoShotDefaultSeconds}
+	if v, err := strconv.ParseFloat(os.Getenv("OD2_AUTOSHOT_SECONDS"), 64); err == nil && v >= 0 {
+		s.at = v
+	}
+
+	return s
+}
+
+// advanceAutoShot is called once per frame with the unscaled elapsed seconds.
+func (a *App) advanceAutoShot(elapsed float64) {
+	s := a.autoShot
+	if s == nil {
 		return
 	}
 
-	// OD2_AUTOSCRIPT scenarios take their own shots with the shot: step
-	if os.Getenv("OD2_AUTOSCRIPT") != "" {
-		autoShot.done = true
-		return
-	}
+	if s.requested {
+		// the capture happens in the render pass and resets the state when done
+		if a.captureState != captureStateNone {
+			return
+		}
 
-	if autoShot.requested {
-		// renderCapture clears the state once the frame has been written
-		if a.captureState == captureStateNone {
-			autoShot.done = true
+		if fi, err := os.Stat(s.path); err == nil {
+			a.Infof("AUTOSHOT saved %s (%d bytes)", s.path, fi.Size())
+		} else {
+			a.Errorf("AUTOSHOT failed: %v", err)
+		}
 
-			a.Infof("AUTOSHOT saved %s", path)
+		a.autoShot = nil
 
-			if os.Getenv("OD2_AUTOEXIT") != "" {
-				os.Exit(0)
-			}
+		if os.Getenv("OD2_AUTOEXIT") != "" && os.Getenv("OD2_AUTOSCRIPT") == "" && os.Getenv("OD2_AUTOMONSTER") == "" {
+			os.Exit(0)
 		}
 
 		return
 	}
 
-	autoShot.elapsed += elapsed
-
-	delay := autoShotDefaultDelay
-
-	if d, err := strconv.ParseFloat(os.Getenv("OD2_AUTOSHOT_DELAY"), 64); err == nil && d >= 0 {
-		delay = d
+	s.elapsed += elapsed
+	if s.elapsed < s.at {
+		return
 	}
 
-	if autoShot.elapsed >= delay {
-		autoShot.requested = true
-		a.captureState = captureStateFrame
-		a.capturePath = path
-		a.captureFrames = nil
-	}
+	s.requested = true
+	a.captureState = captureStateFrame
+	a.capturePath = s.path
+	a.captureFrames = nil
 }
