@@ -39,6 +39,10 @@ type StoredItem struct {
 	Quantity   int  `json:"quantity,omitempty"`
 	// Durability is the current durability; nil leaves the item's default.
 	Durability *int `json:"durability,omitempty"`
+	// Sockets is the rolled socket count and MaxDurability the maximum when it
+	// differs from the base item's (ethereal); both 0 when not applicable.
+	Sockets       int `json:"sockets,omitempty"`
+	MaxDurability int `json:"maxDurability,omitempty"`
 
 	// Origin is set for an item imported from a .d2s: the item is created
 	// from Code, Quality, ILvl and Seed with the item generator, which is an
