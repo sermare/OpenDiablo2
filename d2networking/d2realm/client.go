@@ -28,7 +28,7 @@ type (
 		Text   string
 	}
 	// PlayerInGame is a 0x59 packet: a player is in the game.
-	PlayerInGame = d2gs.PlayerInGame
+	PlayerInGame = d2gs.AssignPlayer
 	// PlayerLeave is a 0x5c packet: a player left the game.
 	PlayerLeave = d2gs.PlayerLeave
 	// GameFlags is a 0x01 packet.
@@ -116,7 +116,7 @@ func (c *Client) dispatch(asm *d2gs.TunnelAssembler, p []byte) {
 			c.push(Chat{Type: m.Type, UnitID: m.UnitID, Name: m.Name, Text: m.Text})
 		}
 	case d2gs.S2CPlayerInGame:
-		if m, err := d2gs.ParsePlayerInGame(p); err == nil {
+		if m, err := d2gs.ParseAssignPlayer(p); err == nil {
 			c.push(m)
 		}
 	case d2gs.S2CPlayerLeave:

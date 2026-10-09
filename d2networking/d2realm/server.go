@@ -825,12 +825,12 @@ func (s *Server) enter(ss *session, g *game) {
 		d2gs.LoadAct{Act: ss.act, Seed: g.seed}.Marshal(),
 	)
 
-	self := d2gs.PlayerInGame{UnitID: ss.unitID, Class: byte(ss.char.Header.Class),
-		Name: ss.charName, Level: uint16(ss.char.Header.Level)}.Marshal()
+	self := d2gs.AssignPlayer{UnitID: ss.unitID, Class: byte(ss.char.Header.Class),
+		Name: ss.charName}.Marshal()
 
 	for _, m := range g.members {
-		ss.send(d2gs.PlayerInGame{UnitID: m.unitID, Class: byte(m.char.Header.Class),
-			Name: m.charName, Level: uint16(m.char.Header.Level)}.Marshal())
+		ss.send(d2gs.AssignPlayer{UnitID: m.unitID, Class: byte(m.char.Header.Class),
+			Name: m.charName}.Marshal())
 
 		if m.hasLevel {
 			ss.sendMsg(PlayerLevel{UnitID: m.unitID, Act: m.act, Level: m.level})

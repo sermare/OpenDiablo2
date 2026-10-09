@@ -44,6 +44,14 @@ type StoredItem struct {
 	Sockets       int `json:"sockets,omitempty"`
 	MaxDurability int `json:"maxDurability,omitempty"`
 
+	// Horadric Cube and socketing state: the number of sockets, the codes of the
+	// gems, runes and jewels in them, the runeword the runes spell, the crafted
+	// flag, and the properties a cube recipe attached.
+	Socketed []string    `json:"socketed,omitempty"`
+	Runeword string      `json:"runeword,omitempty"`
+	Crafted  bool        `json:"crafted,omitempty"`
+	Mods     []StoredMod `json:"mods,omitempty"`
+
 	// Origin is set for an item imported from a .d2s: the item is created
 	// from Code, Quality, ILvl and Seed with the item generator, which is an
 	// APPROXIMATION of the real item (the save's affix ids are not mapped to
@@ -55,6 +63,15 @@ type StoredItem struct {
 	// D2S is the item exactly as the save held it, kept for writing the item
 	// back to a .d2s (ExportD2SItems). Items made in the game have none.
 	D2S *d2s.Item `json:"d2s,omitempty"`
+}
+
+// StoredMod is a property a Horadric Cube recipe attached to an item.
+type StoredMod struct {
+	Code  string `json:"code"`
+	Param string `json:"param,omitempty"`
+	Min   int    `json:"min,omitempty"`
+	Max   int    `json:"max,omitempty"`
+	Value int    `json:"value"`
 }
 
 // HeroContainers is the hero's item storage besides the equipment. A hero file
@@ -172,6 +189,14 @@ func finishStored(it *d2s.Item, page int, known func(code string) bool) (s Store
 
 	if it.Quantity > 0 {
 		s.Quantity = int(it.Quantity)
+	}
+
+	if it.Socketed {
+		s.Sockets = int(it.TotalSockets)
+
+		for i := range it.Children {
+			s.Socketed = append(s.Socketed, trimCode(it.Children[i].Code))
+		}
 	}
 
 	if it.MaxDurability > 0 {

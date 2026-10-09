@@ -485,7 +485,7 @@ func TestGameLifecycle(t *testing.T) {
 	}
 
 	pa := waitFor(t, b, "Amy in game", func(e interface{}) bool { p, ok := e.(PlayerInGame); return ok && p.Name == "Amy" }).(PlayerInGame)
-	if pa.UnitID != joined.UnitID || pa.Level != 1 || pa.Class != byte(d2s.Sorceress) {
+	if pa.UnitID != joined.UnitID || pa.Class != byte(d2s.Sorceress) {
 		t.Fatalf("player info %+v", pa)
 	}
 

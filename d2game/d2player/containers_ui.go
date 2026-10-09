@@ -10,6 +10,10 @@ import (
 // handleContainerClick gives a left click to the belt, the stash, the cube and
 // the inventory, in that order, and reports whether one of them took it.
 func (g *GameControls) handleContainerClick(mx, my int, ctrl bool) bool {
+	if g.trySocketClick(mx, my) {
+		return true
+	}
+
 	if g.belt.HandleClick(mx, my) {
 		return true
 	}

@@ -26,6 +26,13 @@ const (
 	PropertyPoolUnique
 	PropertyPoolSetItem
 	PropertyPoolSet
+	// PropertyPoolCube holds the properties a Horadric Cube recipe attached
+	// (crafted mods, upgrade level requirements); PropertyPoolSocketed those of
+	// the gems, runes and jewels in the sockets; PropertyPoolRuneword those of
+	// the runeword the runes spell.
+	PropertyPoolCube
+	PropertyPoolSocketed
+	PropertyPoolRuneword
 )
 
 // for handling special cases
@@ -88,6 +95,13 @@ type Item struct {
 	genQuality d2drop.Quality // quality the generator ended with (0 if not generated)
 
 	sockets []*d2item.Item // there will be checks for handling the craziness this might entail
+
+	// Horadric Cube and socketing state (see item_cube.go).
+	Sockets     int        // number of sockets
+	SocketCodes []string   // item codes of the gems, runes and jewels in them
+	Runeword    string     // display name of the runeword the item became
+	CubeMods    []ExtraMod // properties a cube recipe attached
+	Crafted     bool       // quality "crafted" (cube recipes)
 }
 
 // nolint:structcheck,unused // WIP
@@ -449,6 +463,9 @@ func (i *Item) generateAllProperties() {
 		PropertyPoolUnique,
 		PropertyPoolSetItem,
 		PropertyPoolSet,
+		PropertyPoolCube,
+		PropertyPoolSocketed,
+		PropertyPoolRuneword,
 	}
 
 	for _, pool := range pools {
@@ -473,6 +490,12 @@ func (i *Item) generateProperties(pool PropertyPool) {
 			props = generated
 		}
 	case PropertyPoolSet: // https://github.com/OpenDiablo2/OpenDiablo2/issues/817
+	case PropertyPoolCube:
+		props = i.generateCubeProperties()
+	case PropertyPoolSocketed:
+		props = i.generateSocketedProperties()
+	case PropertyPoolRuneword:
+		props = i.generateRunewordProperties()
 	}
 
 	if props == nil {
@@ -540,6 +563,8 @@ func (i *Item) updateItemAttributes() {
 		requiredDexterity: r.RequiredDexterity,
 		durable:           !r.NoDurability,
 		throwable:         r.Throwable,
+		numSockets:        i.Sockets,
+		crafted:           i.Crafted,
 	}
 
 	def, minDef, maxDef := 0, r.MinAC, r.MaxAC
@@ -644,6 +669,11 @@ func (i *Item) generateItemProperties(properties []*d2records.PropertyDescriptor
 }
 
 func (i *Item) generateName() {
+	if i.Runeword != "" {
+		i.name = fmt.Sprintf("%s\n%s", i.Runeword, i.factory.asset.TranslateString(i.CommonRecord().NameString))
+		return
+	}
+
 	if i.SetItemRecord() != nil {
 		i.name = i.factory.asset.TranslateString(i.SetItemRecord().SetItemKey)
 		return
@@ -936,6 +966,10 @@ func (i *Item) GetItemDescription() []string {
 	for _, statStr := range statStrings {
 		str = d2ui.ColorTokenize(statStr, d2ui.ColorTokenBlue)
 		lines = append(lines, str)
+	}
+
+	if i.Sockets > 0 {
+		lines = append(lines, d2ui.ColorTokenize(fmt.Sprintf("Socketed (%d)", i.Sockets), d2ui.ColorTokenBlue))
 	}
 
 	return lines
