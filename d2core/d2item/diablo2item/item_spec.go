@@ -27,6 +27,13 @@ type Spec struct {
 	Ethereal   bool
 	Quantity   int // 0 = leave the default
 	Durability int // current durability, -1 = leave the default
+
+	// Horadric Cube and socketing state.
+	Sockets     int
+	SocketCodes []string
+	Runeword    string
+	CubeMods    []ExtraMod
+	Crafted     bool
 }
 
 // intn rolls a property value. While an item with a seed is being built the
@@ -65,6 +72,12 @@ func (i *Item) Spec() Spec {
 		Prefixes:   append([]string(nil), i.PrefixCodes...),
 		Suffixes:   append([]string(nil), i.SuffixCodes...),
 		Durability: -1,
+
+		Sockets:     i.Sockets,
+		SocketCodes: append([]string(nil), i.SocketCodes...),
+		Runeword:    i.Runeword,
+		CubeMods:    append([]ExtraMod(nil), i.CubeMods...),
+		Crafted:     i.Crafted,
 	}
 
 	if i.attributes != nil {
@@ -99,6 +112,12 @@ func (f *ItemFactory) ItemFromSpec(s Spec) (*Item, error) {
 		PrefixCodes: append([]string(nil), s.Prefixes...),
 		SuffixCodes: append([]string(nil), s.Suffixes...),
 		quality:     d2drop.Quality(s.Quality),
+
+		Sockets:     s.Sockets,
+		SocketCodes: append([]string(nil), s.SocketCodes...),
+		Runeword:    s.Runeword,
+		CubeMods:    append([]ExtraMod(nil), s.CubeMods...),
+		Crafted:     s.Crafted,
 	}
 	// nolint:gosec // not concerned with crypto-strong randomness
 	item.rand = rand.New(rand.NewSource(s.Seed))

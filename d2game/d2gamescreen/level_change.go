@@ -633,7 +633,7 @@ func (v *Game) operatePortal(ob *d2mapentity.Object) {
 // portal object leading to that level, next to the hero.
 func (v *Game) commandSpawnPortal(args []string) error {
 	level, err := strconv.Atoi(args[0])
-	if err != nil || level < 1 || level > 132 {
+	if err != nil || level < 1 || level > 136 { // 133 to 136: the Pandemonium areas the cube opens
 		return fmt.Errorf("invalid level %q", args[0])
 	}
 

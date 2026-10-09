@@ -170,6 +170,7 @@ type Game struct {
 	ambientTest          *ambientTest
 	regionEnvs           map[int]int
 	autoPanel            autoPanelState
+	autoCube             autoCubeState
 	autoEquip            autoEquipState
 	levelStatusAcc       float64
 	questRT              *questRuntime
@@ -339,6 +340,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceSound(elapsed)
 	v.advanceAutoAmbient(elapsed)
 	v.advanceAutoPanel(elapsed)
+	v.advanceAutoCube(elapsed)
 	v.advanceAutoEquip(elapsed)
 	v.advanceSocial(elapsed)
 
@@ -427,6 +429,7 @@ func (v *Game) bindGameControls() error {
 		}
 
 		v.gameControls.Load()
+		v.gameControls.SetCubePortalHandler(v.cubePortal)
 		v.gameControls.Automap().SetLevelSource(v.currentLevel, v.levelName)
 		v.gameControls.SetEquipSound(v.playHeroUISound)
 

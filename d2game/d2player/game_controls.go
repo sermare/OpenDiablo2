@@ -14,6 +14,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2equip"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
@@ -256,6 +257,7 @@ func NewGameControls(
 	inventory.itemHook = gc.itemTooltipLines
 	gc.stash = NewContainerPanel(asset, ui, l, inventory, stashKind, gc.saveHero)
 	gc.cube = NewContainerPanel(asset, ui, l, inventory, cubeKind, gc.saveHero)
+	gc.cube.SetOnTransmute(gc.onTransmuteButton)
 	gc.belt = NewBeltPanel(asset, ui, l, inventory, gc.beltBoxes, gc.saveHero)
 
 	if !isSinglePlayer {
@@ -329,6 +331,12 @@ type GameControls struct {
 	relation               func(p *d2mapentity.Player) d2enum.PlayersRelationships
 	stash                  *ContainerPanel
 	cube                   *ContainerPanel
+	cubeData               *cubeData
+	cubePortal             func(kind string) error
+	cubeRNG                *d2rand.Seed
+	cubeClassic            bool
+	cubeLadder             bool
+	cubeLast               *TransmuteResult
 	belt                   *BeltPanel
 	itemOrigin             map[InventoryItem]*d2s.Item
 	equipSound             func(handle string)
