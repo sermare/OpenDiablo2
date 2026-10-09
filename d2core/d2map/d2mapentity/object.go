@@ -23,6 +23,41 @@ type Object struct {
 	objectRecord *d2records.ObjectDetailRecord
 	drawLayer    int
 	name         string
+	opening      bool
+	opened       bool
+}
+
+// Record returns the objects.txt row of the object.
+func (ob *Object) Record() *d2records.ObjectDetailRecord { return ob.objectRecord }
+
+// IsOpened reports whether Open was called on the object.
+func (ob *Object) IsOpened() bool { return ob.opened }
+
+// Open plays the object's operating animation (chest lid, barrel breaking) and
+// leaves it in its opened mode afterwards. It returns false if the object was
+// already opened.
+func (ob *Object) Open() (bool, error) {
+	if ob.opened {
+		return false, nil
+	}
+
+	ob.opened = true
+
+	if !ob.objectRecord.HasAnimationMode[d2enum.ObjectAnimationModeOperating] {
+		return true, ob.setOpenedMode()
+	}
+
+	ob.opening = true
+
+	return true, ob.setMode(d2enum.ObjectAnimationModeOperating, 0, false)
+}
+
+func (ob *Object) setOpenedMode() error {
+	if ob.objectRecord.HasAnimationMode[d2enum.ObjectAnimationModeOpened] {
+		return ob.setMode(d2enum.ObjectAnimationModeOpened, 0, false)
+	}
+
+	return nil
 }
 
 // setMode changes the graphical mode of this animated entity
@@ -73,7 +108,12 @@ func (ob *Object) Highlight() {
 
 // Selectable returns if the object is selectable or not
 func (ob *Object) Selectable() bool {
+	if ob.opened {
+		return false
+	}
+
 	mode := ob.composite.ObjectAnimationMode()
+
 	return ob.objectRecord.Selectable[mode]
 }
 
@@ -103,6 +143,14 @@ func (ob *Object) Render(target d2interface.Surface) {
 func (ob *Object) Advance(elapsed float64) {
 	if err := ob.composite.Advance(elapsed); err != nil {
 		fmt.Printf("failed to advance composiste animation, err: %v\n", err)
+	}
+
+	if ob.opening && ob.composite.GetPlayedCount() > 0 {
+		ob.opening = false
+
+		if err := ob.setOpenedMode(); err != nil {
+			fmt.Printf("failed to set the opened mode, err: %v\n", err)
+		}
 	}
 }
 

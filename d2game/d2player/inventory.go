@@ -85,6 +85,7 @@ type Inventory struct {
 	onCloseCb     func()
 	gold          int
 	moveGoldPanel *MoveGoldPanel
+	cursor        InventoryItem
 
 	*d2util.Logger
 }

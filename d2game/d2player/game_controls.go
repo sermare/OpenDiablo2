@@ -457,7 +457,11 @@ func (g *GameControls) OnMouseButtonRepeat(event d2interface.MouseEvent) bool {
 	shouldDoLeft := lastLeft >= mouseBtnActionsThreshold
 	shouldDoRight := lastRight >= mouseBtnActionsThreshold
 
-	if isLeft && g.hoveredNPC() != nil && event.KeyMod() != d2enum.KeyModShift {
+	if isLeft && (g.hoveredNPC() != nil || g.hoveredWorldThing() != nil) && event.KeyMod() != d2enum.KeyModShift {
+		return true
+	}
+
+	if isLeft && g.inventory.CursorItem() != nil {
 		return true
 	}
 
@@ -543,6 +547,39 @@ func (g *GameControls) hoveredNPC() d2interface.MapEntity {
 	return g.hud.hoveredEntity
 }
 
+// hoveredWorldThing returns the ground item or object under the cursor, if any.
+func (g *GameControls) hoveredWorldThing() d2interface.MapEntity {
+	if g.hud == nil || g.hud.hoveredEntity == nil {
+		return nil
+	}
+
+	switch g.hud.hoveredEntity.(type) {
+	case *d2mapentity.Item, *d2mapentity.Object:
+		return g.hud.hoveredEntity
+	}
+
+	return nil
+}
+
+// CursorItem returns the item the hero holds on the cursor, or nil.
+func (g *GameControls) CursorItem() InventoryItem { return g.inventory.CursorItem() }
+
+// SetCursorItem puts an item on the cursor.
+func (g *GameControls) SetCursorItem(item InventoryItem) { g.inventory.SetCursorItem(item) }
+
+// AutoPlaceCursor moves the cursor item into the inventory with the original's
+// auto-placement search and returns its slot.
+func (g *GameControls) AutoPlaceCursor() (x, y int, ok bool) { return g.inventory.AutoPlaceCursor() }
+
+// AddGold adds gold to the hero.
+func (g *GameControls) AddGold(amount int) {
+	g.hero.Gold += amount
+	g.inventory.AddGold(amount)
+}
+
+// InventoryItemCount returns how many items are in the inventory grid.
+func (g *GameControls) InventoryItemCount() int { return len(g.inventory.grid.items) }
+
 // OnMouseButtonDown handles mouse button presses
 func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	mx, my := event.X(), event.Y()
@@ -571,11 +608,32 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	px = truncateFloat64(px)
 	py = truncateFloat64(py)
 
+	if event.Button() == d2enum.MouseButtonLeft && g.inventory.HandleClick(mx, my, event.KeyMod() == d2enum.KeyModControl) {
+		g.lastLeftBtnActionTime = d2util.Now()
+
+		return true
+	}
+
+	if event.Button() == d2enum.MouseButtonLeft && !g.isInActiveMenusRect(mx, my) && g.inventory.CursorItem() != nil {
+		// clicking the world with an item on the cursor drops it (packet 0x17)
+		g.lastLeftBtnActionTime = d2util.Now()
+		item := g.inventory.CursorItem()
+		g.inventory.SetCursorItem(nil)
+		g.inputListener.OnPlayerDropItem(item)
+
+		return true
+	}
+
 	if event.Button() == d2enum.MouseButtonLeft && !g.isInActiveMenusRect(mx, my) && !g.hero.IsCasting() {
 		g.lastLeftBtnActionTime = d2util.Now()
 
 		if npc := g.hoveredNPC(); npc != nil && event.KeyMod() != d2enum.KeyModShift {
 			g.inputListener.OnPlayerInteract(npc)
+			return true
+		}
+
+		if thing := g.hoveredWorldThing(); thing != nil && event.KeyMod() != d2enum.KeyModShift {
+			g.inputListener.OnPlayerInteract(thing)
 			return true
 		}
 
@@ -892,6 +950,8 @@ func (g *GameControls) Render(target d2interface.Surface) error {
 	if err := g.escapeMenu.Render(target); err != nil {
 		return err
 	}
+
+	g.inventory.RenderCursorItem(target, g.lastMouseX, g.lastMouseY)
 
 	return nil
 }

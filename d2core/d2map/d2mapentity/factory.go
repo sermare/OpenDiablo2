@@ -14,6 +14,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
 )
 
 const (
@@ -292,4 +293,60 @@ func (f *MapEntityFactory) NewObject(x, y int, objectRec *d2records.ObjectDetail
 	}
 
 	return entity, nil
+}
+
+// ItemFactory returns the item factory the entities are made with, so callers
+// can roll drops (DropLoot) and hand the result to NewGroundItem.
+func (f *MapEntityFactory) ItemFactory() *diablo2item.ItemFactory {
+	return f.item
+}
+
+// NewGroundItem creates the map entity of an item lying on the ground at the
+// given sub-tile position. It plays the item's flippy animation (the DC6 of the
+// item falling and bouncing) once and rests on its last frame; the drop sound
+// handle is exposed in Item.DropSound for the caller to play.
+func (f *MapEntityFactory) NewGroundItem(item *diablo2item.Item, subX, subY int) (*Item, error) {
+	filepath := fmt.Sprintf("%s/%s.DC6", d2resource.ItemGraphics, item.WorldFlippyFile())
+
+	entity, err := f.newFlippyEntity(filepath, subX, subY)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Item{AnimatedEntity: entity, Item: item, DropSound: item.DropSoundHandle()}, nil
+}
+
+// goldFlippy is the flippyfile of the gold item (misc.txt, code gld).
+const goldFlippy = "flpgld"
+
+// goldDropSound is the Sounds.txt handle of a gold pile hitting the ground
+// (taken from the Sounds table; which handle the original uses for the drop
+// is not in the notes).
+const goldDropSound = "item_gold"
+
+// NewGoldPile creates the map entity of a pile of gold. name is the translated
+// item name ("Gold").
+func (f *MapEntityFactory) NewGoldPile(amount int, name string, subX, subY int) (*Item, error) {
+	filepath := fmt.Sprintf("%s/%s.DC6", d2resource.ItemGraphics, goldFlippy)
+
+	entity, err := f.newFlippyEntity(filepath, subX, subY)
+	if err != nil {
+		return nil, err
+	}
+
+	label := d2ui.ColorTokenize(fmt.Sprintf("%d %s", amount, name), d2ui.ColorTokenGold)
+
+	return &Item{AnimatedEntity: entity, Gold: amount, goldLabel: label, DropSound: goldDropSound}, nil
+}
+
+func (f *MapEntityFactory) newFlippyEntity(filepath string, subX, subY int) (*AnimatedEntity, error) {
+	animation, err := f.asset.LoadAnimation(filepath, d2resource.PaletteUnits)
+	if err != nil {
+		return nil, err
+	}
+
+	animation.SetPlayLoop(false)
+	animation.PlayForward()
+
+	return NewAnimatedEntity(subX, subY, animation), nil
 }

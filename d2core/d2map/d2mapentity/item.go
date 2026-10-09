@@ -12,8 +12,17 @@ var _ d2interface.MapEntity = &Item{}
 // Item is a map entity for an item
 type Item struct {
 	*AnimatedEntity
+	// Item is nil for a gold pile.
 	Item *diablo2item.Item
+	// Gold is the amount of a gold pile (0 for real items).
+	Gold      int
+	goldLabel string
+	// DropSound is the Sounds.txt handle played when the item lands.
+	DropSound string
 }
+
+// IsGold reports whether the entity is a gold pile.
+func (i *Item) IsGold() bool { return i.Item == nil && i.Gold > 0 }
 
 // ID returns the item uuid
 func (i *Item) ID() string {
@@ -42,6 +51,10 @@ func (i *Item) Highlight() {
 
 // Label returns the item label
 func (i *Item) Label() string {
+	if i.IsGold() {
+		return i.goldLabel
+	}
+
 	return i.Item.Label()
 }
 
