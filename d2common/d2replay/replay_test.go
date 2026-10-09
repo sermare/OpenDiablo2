@@ -126,7 +126,7 @@ func (c *clockSim) Step(int, []Input) {
 
 	c.n += time.Now().UnixNano()
 }
-func (c *clockSim) Hash(h *Hasher)    { h.U64(uint64(c.n)) }
+func (c *clockSim) Hash(h *Hasher) { h.U64(uint64(c.n)) }
 
 func TestHarnessCatchesTimeDependence(t *testing.T) {
 	if err := Verify(func(uint32) Sim { return &clockSim{} }, Log{Frames: 3}); err == nil {
