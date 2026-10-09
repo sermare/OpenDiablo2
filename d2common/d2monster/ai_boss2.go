@@ -67,12 +67,6 @@ type StateClearer interface {
 	ClearState(b *Brain, state int)
 }
 
-// LineOfSighter answers FUN_00622e40, "can the monster act on the target from
-// here" (a straight line without a wall). Default: true.
-type LineOfSighter interface {
-	LineOfSight(b *Brain, t Target) bool
-}
-
 func sqDist(ax, ay, bx, by int) int {
 	dx, dy := ax-bx, ay-by
 
@@ -636,6 +630,9 @@ func pickWeighted(b *Brain, w []int) int {
 // Skill4 DiabWall, Skill5 DiabRun, Skill6 PrimeFirewall, Skill7 DiabPrison,
 // Skill8 Diablogeddon (clone only: kept up as a buff, not ported).
 //
+// "In sight" of the decision (FUN_00622e40) is read as "in reach" (the same
+// test State12 uses before a melee blow).
+//
 // UNVERIFIED simplifications: the decision's target is the tick's target (the
 // exe scores every hero in range with FUN_005e7420); "engaged" (FUN_005dbfd0)
 // is Brain.Aggressive; the flags derived from the target's current skill
@@ -667,10 +664,10 @@ func thinkDiablo(c *Ctx) {
 			fire, _, light = rf.Resists(*t)
 		}
 
-		sight := true
-		if ls, ok := c.W.(LineOfSighter); ok {
-			sight = ls.LineOfSight(b, *t)
-		}
+		// FUN_00622e40 is the "can strike the target from here" test (State12
+		// uses it to decide on a melee blow): in reach, Diablo picks from the
+		// melee-and-spell table, out of reach from the spell-only ones.
+		sight := c.InRange
 
 		home := b.DistanceTo(anchor.X, anchor.Y)
 		w := DiabloWeights(sight, b.Aggressive, home > diabloAway, home > diabloVeryFar,

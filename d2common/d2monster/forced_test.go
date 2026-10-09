@@ -25,7 +25,6 @@ type fake2 struct {
 	light     int
 	auras     int
 	prey      bool
-	sight     *bool
 	flights   []string
 }
 
@@ -45,14 +44,6 @@ func (f *fake2) TakeOff(*Brain)                                { f.flights = app
 func (f *fake2) Land(*Brain)                                   { f.flights = append(f.flights, "land") }
 
 func (f *fake2) ClearState(_ *Brain, s int) { delete(f.states, s) }
-
-func (f *fake2) LineOfSight(*Brain, Target) bool {
-	if f.sight == nil {
-		return true
-	}
-
-	return *f.sight
-}
 
 // findBrain returns a brain whose own generator satisfies pred (the sequence
 // of rolls it will make is predicted from a copy of the seed).

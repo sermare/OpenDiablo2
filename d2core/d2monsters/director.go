@@ -96,6 +96,9 @@ type Counters struct {
 	// interrupted by damage; MaxStack is the most live monsters ever seen in
 	// one subtile (1 when nobody stacks).
 	Packs, BlockedSteps, HitRecoveries, MaxStack int
+	// UnitFights counts monster-against-monster attacks (converted, confused or
+	// attracted monsters).
+	UnitFights int
 }
 
 // unit is a monster plus its engine-side state.
@@ -112,6 +115,7 @@ type unit struct {
 	aimX, aimY   int // ground point of the last attack request (Target ID 0)
 	blocked      int // consecutive refused steps
 	removeAt     float64
+	lastLabel    string // the AI state last traced (forced.go)
 }
 
 type moveIntent struct {
@@ -216,7 +220,7 @@ func (d *Director) emit(kind, format string, args ...interface{}) {
 func (d *Director) Monsters() []*d2mapentity.Monster {
 	out := make([]*d2mapentity.Monster, 0, len(d.units))
 	for _, u := range d.units {
-		if u.merc == nil {
+		if u.merc == nil && !u.b.Allied { // converted monsters are the hero's friends
 			out = append(out, u.m)
 		}
 	}
@@ -359,6 +363,8 @@ func (d *Director) step() {
 			if d2monster.Tick(d, u.b) {
 				d.noteAggro(u)
 			}
+
+			d.traceState(u)
 		} else if u.merc == nil && u.m.CorpseAge() > corpseSeconds { // merc corpses stay for a revive
 			d.engine.RemoveEntity(u.m)
 			d.forget(u)
@@ -407,6 +413,8 @@ func (d *Director) noteAggro(u *unit) {
 		name := "hero"
 		if p := d.targets[u.b.TargetID]; p != nil {
 			name = p.Name()
+		} else if u.b.TargetID >= mercTargetBase {
+			name = "unit"
 		}
 
 		d.emit("aggro", "MONSTER aggro name=%s id=%d target=%s", u.m.Label(), u.b.ID, name)

@@ -85,6 +85,14 @@ func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 		return
 	}
 
+	if u.attackTarget >= unitTargetBase {
+		if tu := d.units[u.attackTarget-unitTargetBase]; tu != nil && tu.m.Alive() {
+			d.strikeUnit(u, tu, atk, mode)
+		}
+
+		return
+	}
+
 	if u.attackTarget >= mercTargetBase {
 		if tu := d.units[u.attackTarget-mercTargetBase]; tu != nil && tu.merc != nil && tu.m.Alive() {
 			d.strikeMerc(u, tu, atk, mode)

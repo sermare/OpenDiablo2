@@ -124,7 +124,10 @@ func (d *Director) targetable(p *d2mapentity.Player) bool {
 	return d.opt.IgnoreTown || !p.IsInTown()
 }
 
-// Nearest implements d2monster.Senses: the nearest living hero.
+// Nearest implements d2monster.Senses: the nearest living hero. A converted
+// monster (Conversion) hunts the nearest hostile monster instead; hostile
+// monsters also hunt living mercenaries and converted monsters (the exe scans
+// the owner's party list for the monster's act, MONAI_FindNearestPlayerTarget).
 func (d *Director) Nearest(b *d2monster.Brain) (d2monster.Target, int, bool) {
 	var (
 		best     d2monster.Target
@@ -136,9 +139,24 @@ func (d *Director) Nearest(b *d2monster.Brain) (d2monster.Target, int, bool) {
 		return d.nearestEnemy(b)
 	}
 
-	// hostile monsters also hunt living mercenaries
+	if b.Allied {
+		return d.nearestEnemy(b)
+	}
+
+	// hostile monsters also hunt living mercenaries and converted monsters
 	for _, mu := range d.sortedUnits() {
-		if mu.merc == nil || !mu.m.Alive() || (!d.opt.IgnoreTown && mu.merc.owner.IsInTown()) {
+		if !mu.m.Alive() || mu.b == b {
+			continue
+		}
+
+		var id uint32
+
+		switch {
+		case mu.merc != nil && (d.opt.IgnoreTown || !mu.merc.owner.IsInTown()):
+			id = mercTargetBase + mu.b.ID
+		case mu.merc == nil && mu.b.Allied:
+			id = unitTargetBase + mu.b.ID
+		default:
 			continue
 		}
 
@@ -146,7 +164,7 @@ func (d *Director) Nearest(b *d2monster.Brain) (d2monster.Target, int, bool) {
 		dist := d2monster.EdgeDistance(b.X-x, b.Y-y, b.Size)
 
 		if !found || dist < bestDist {
-			best, bestDist, found = d2monster.Target{ID: mercTargetBase + mu.b.ID, X: x, Y: y, Size: 1}, dist, true
+			best, bestDist, found = d2monster.Target{ID: id, X: x, Y: y, Size: 1}, dist, true
 		}
 	}
 
@@ -215,8 +233,12 @@ func (d *Director) DyingNear(b *d2monster.Brain, radius int) bool {
 	return false
 }
 
-// HasState implements d2monster.Senses: no unit states are modelled yet.
-func (d *Director) HasState(*d2monster.Brain, int) bool { return false }
+// HasState implements d2monster.Senses. Unit states are not modelled in
+// general; the forced conditions answer for the unit state their skill applies
+// (terror 56, dim vision 23, taunt 27, confuse 59, attract 57, conversion 53).
+func (d *Director) HasState(b *d2monster.Brain, state int) bool {
+	return b.Forced != d2monster.ForcedNone && b.Forced.UnitStateID() == state
+}
 
 // ---- d2monster.Actor ----
 
@@ -284,6 +306,12 @@ func (d *Director) Shout(b *d2monster.Brain) {
 // monster.
 func (d *Director) targetPos(u *unit, id uint32) (x, y int, ok bool) {
 	switch {
+	case id >= unitTargetBase:
+		if t := d.units[id-unitTargetBase]; t != nil && t.m.Alive() {
+			x, y = t.m.SubtilePos()
+
+			return x, y, true
+		}
 	case id >= mercTargetBase:
 		if t := d.units[id-mercTargetBase]; t != nil && t.merc != nil {
 			x, y = t.m.SubtilePos()
