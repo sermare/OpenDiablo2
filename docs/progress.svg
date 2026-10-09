@@ -1,16 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="880" height="590" viewBox="0 0 880 590" role="img" aria-label="Native macOS Diablo II — progress">
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="668" viewBox="0 0 880 668" role="img" aria-label="Native macOS Diablo II — progress">
 <defs>
 <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14162a"/><stop offset="1" stop-color="#1d1a33"/></linearGradient>
 <linearGradient id="g0" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c5cff" stop-opacity="0.75"/><stop offset="1" stop-color="#7c5cff"/></linearGradient>
 <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2fb67c" stop-opacity="0.75"/><stop offset="1" stop-color="#2fb67c"/></linearGradient>
 <linearGradient id="g2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2f9bff" stop-opacity="0.75"/><stop offset="1" stop-color="#2f9bff"/></linearGradient>
-<linearGradient id="g3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f2a81d" stop-opacity="0.75"/><stop offset="1" stop-color="#f2a81d"/></linearGradient>
-<linearGradient id="g4" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ef5da8" stop-opacity="0.75"/><stop offset="1" stop-color="#ef5da8"/></linearGradient>
-<linearGradient id="g5" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff7a45" stop-opacity="0.75"/><stop offset="1" stop-color="#ff7a45"/></linearGradient>
+<linearGradient id="g3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#22c1c3" stop-opacity="0.75"/><stop offset="1" stop-color="#22c1c3"/></linearGradient>
+<linearGradient id="g4" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f2a81d" stop-opacity="0.75"/><stop offset="1" stop-color="#f2a81d"/></linearGradient>
+<linearGradient id="g5" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ef5da8" stop-opacity="0.75"/><stop offset="1" stop-color="#ef5da8"/></linearGradient>
+<linearGradient id="g6" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff7a45" stop-opacity="0.75"/><stop offset="1" stop-color="#ff7a45"/></linearGradient>
 <filter id="glow" x="-5%" y="-50%" width="110%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 </defs>
-<rect width="880" height="590" rx="18" fill="url(#bg)"/>
-<rect x="1" y="1" width="878" height="588" rx="17" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+<rect width="880" height="668" rx="18" fill="url(#bg)"/>
+<rect x="1" y="1" width="878" height="666" rx="17" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
 <text x="36" y="46" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#ffffff">Native macOS Diablo II — progress</text>
 <text x="36" y="72" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#b8b9d6">driven by Claude · every number below is measured, not estimated</text>
 <text x="844" y="46" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">updated 2026-10-09</text>
@@ -27,27 +28,33 @@
 <text x="844" y="212" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2fb67c">100%</text>
 <text x="36" y="233" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">every assert-string path mapped to modules and functions</text>
 <text x="36" y="264" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Source files studied in depth</text>
-<text x="844" y="264" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">190 / 277</text>
+<text x="844" y="264" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">210 / 277</text>
 <rect x="36" y="276" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="276" width="506.2" height="18" rx="9" fill="url(#g2)" filter="url(#glow)"/>
-<text x="844" y="290" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2f9bff">69%</text>
-<text x="36" y="311" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings</text>
-<text x="36" y="342" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real .d2s save: read and write verified</text>
-<text x="844" y="342" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">9 / 10</text>
+<rect x="36" y="276" width="559.5" height="18" rx="9" fill="url(#g2)" filter="url(#glow)"/>
+<text x="844" y="290" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2f9bff">76%</text>
+<text x="36" y="311" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting</text>
+<text x="36" y="342" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Level generator proven equal to the real game</text>
+<text x="844" y="342" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">2,600 / 2,650</text>
 <rect x="36" y="354" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="354" width="664.2" height="18" rx="9" fill="url(#g3)" filter="url(#glow)"/>
-<text x="844" y="368" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#f2a81d">90%</text>
-<text x="36" y="389" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">9 sections read; whole file written back byte-for-byte (golem section unverified)</text>
-<text x="36" y="420" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">NPC interaction features</text>
-<text x="844" y="420" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">5 / 7</text>
+<rect x="36" y="354" width="724.1" height="18" rx="9" fill="url(#g3)" filter="url(#glow)"/>
+<text x="844" y="368" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#22c1c3">98%</text>
+<text x="36" y="389" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">world layout 50 seeds + 17 Act 1 maze levels x 50 seeds x 3 difficulties = 2,550 records identical; Act 1 outdoors not yet</text>
+<text x="36" y="420" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real .d2s save: read and write verified</text>
+<text x="844" y="420" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">9 / 10</text>
 <rect x="36" y="432" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="432" width="527.1" height="18" rx="9" fill="url(#g4)" filter="url(#glow)"/>
-<text x="844" y="446" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ef5da8">71%</text>
-<text x="36" y="467" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">click-walk ✓ greeting ✓ menu ✓ return-greeting mode ✓ vendor trade ✓  |  gamble · quest dialogue · hire ✗</text>
-<text x="36" y="498" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Roadmap deliverables</text>
-<text x="844" y="498" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">13 / 15</text>
+<rect x="36" y="432" width="664.2" height="18" rx="9" fill="url(#g4)" filter="url(#glow)"/>
+<text x="844" y="446" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#f2a81d">90%</text>
+<text x="36" y="467" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">9 sections read; whole file written back byte-for-byte (golem section unverified)</text>
+<text x="36" y="498" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">NPC interaction features</text>
+<text x="844" y="498" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">6 / 7</text>
 <rect x="36" y="510" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="510" width="639.6" height="18" rx="9" fill="url(#g5)" filter="url(#glow)"/>
-<text x="844" y="524" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">87%</text>
-<text x="36" y="545" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">saves r/w · gear · NPC · greetings · RNG · combat · loot · trade · packets · keys · sound · items · monsters+AI ✓ | real maps · missiles</text>
+<rect x="36" y="510" width="632.6" height="18" rx="9" fill="url(#g5)" filter="url(#glow)"/>
+<text x="844" y="524" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ef5da8">86%</text>
+<text x="36" y="545" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">click-walk · greeting · menu · return greeting · vendor trade · quest speech lookup ✓ | gamble, hire UI ✗</text>
+<text x="36" y="576" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Roadmap deliverables</text>
+<text x="844" y="576" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">17 / 22</text>
+<rect x="36" y="588" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
+<rect x="36" y="588" width="570.3" height="18" rx="9" fill="url(#g6)" filter="url(#glow)"/>
+<text x="844" y="602" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">77%</text>
+<text x="36" y="623" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">saves r/w+back · gear · NPC · RNG · combat · loot · trade · packets · keys · sound · items · monsters+packs · skills · real dungeons · stash/belt · lighting ✓ | outdoors · mercs · quests · missiles net · render port</text>
 </svg>

@@ -34,23 +34,17 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | **Import a real character into the engine — with her gear** | A level-94 Sorceress from a real `.d2s` loads, starts in town and wears her real Spired Helm, Archon Plate, Battle Boots, Light Gauntlets, Flail, Short Staff and Monarch |
 | **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; checked instruction-by-instruction against the real code: no differences |
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~2,320 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
+| Reverse-engineering map of the game | ~2,325 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
 ### 🔧 In progress right now (agents run in waves of 5 every 15 minutes)
 
 | Work item | Where |
 |---|---|
-| **Skills that work like the real game**: the skill expression language, mana, cooldowns, missiles that hit and kill monsters | branch `feat/skill-pipeline` |
-| **Monsters part 2**: natural packs, more archetypes (Brute, Mummy, bosses), collision | branch `feat/monsters-2` |
-| **Real generated dungeons that render and can be walked**, with screenshots to check them | branch `feat/realmaps-render` |
-| **A ground-truth oracle** for level generation by emulating the real game code | RE notes: `drlg-oracle` |
-| **Imported real characters work in every screen** (character select, stats, skills) | branch `feat/imported-hero-ui` |
-| Stash, Horadric Cube and belt | branch `feat/stash-cube-belt` |
 | **Mercenaries**: hire from Kashya, follow, fight, revive, saved in the `.d2s` | branch `feat/hirelings` |
-| **Real lighting, day/night correction and draw order** (OpenDiablo2 has no lighting today) | branch `feat/renderer-lighting` |
 | **Stairs, doors, waypoints and portals** with the real level-change rules | branch `feat/transitions-objects` |
-| Positional sound and ambient environments | branch `feat/ambient-audio` |
-| Research: Act 1 outdoor generation part 3 (borders, cliffs, rivers) and quests part 2 | RE notes: `drlg3`, `quests-2` |
+| Imported-character UI and ambient/positional audio (reconciling with the latest code) | `feat/imported-hero-ui`, `feat/ambient-audio` |
+| Research: Act 1 outdoor generation part 3 (borders, cliffs, rivers) | RE notes: `drlg3` |
+| Next: quest system, gamble, Act 1 outdoors in Go, more skills for other classes | spawning every 15 minutes |
 
 ### 🎯 Plan and priorities (set by Claude)
 
@@ -96,6 +90,7 @@ server session core · D2Common data tables · key bindings from `default.key` �
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | **Level generator proven identical to the real game** (2,550 maze records, 50 world layouts); real dungeons render and play; skills, monsters part 2, stash/cube/belt, lighting merged; test runner restructured into one file per scenario |
 | 2026-10-09 | Engine saves characters back to real `.d2s`; hireling and renderer reverse engineering done (real lighting model, hire cost and stat formulas) |
 | 2026-10-09 | **Monsters** with the original AI, pathfinding, combat, death and loot run in the engine; test runs no longer collide on the server port |
 | 2026-10-09 | Vendors, ground items and chests, the sound engine, CI + scripted autotests and the Go level generator merged; skills part 2 researched (365 skill functions named, the calc language decoded) |
