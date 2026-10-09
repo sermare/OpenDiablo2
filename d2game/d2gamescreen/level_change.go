@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
@@ -332,7 +331,7 @@ func (v *Game) resetLevelState() {
 	v.monsters, v.attackTarget, v.npcTarget = nil, nil, nil
 	v.ground.item, v.ground.chest = nil, nil
 	v.levels.use, v.levels.warpTarget, v.levels.wpObj, v.levels.exitWalk = nil, nil, nil, nil
-	v.lastRegionType = d2enum.RegionNone
+	v.lastZoneLevel = 0
 
 	v.gameControls.NPCMenu.Close()
 	v.gameControls.Waypoints.Close()

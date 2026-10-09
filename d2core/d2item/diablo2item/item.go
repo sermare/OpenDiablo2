@@ -486,13 +486,19 @@ func (i *Item) generateProperties(pool PropertyPool) {
 	// in the case one of the properties is a stat-less prop for indestructable/ethereal
 	// we need to set the item attributes to the rolled values. we use `||` here just in
 	// case another property has already set the flag
-	for propIdx := range props {
-		prop := props[propIdx]
+	applyFlagProperties(i.attributes, props)
+}
+
+// applyFlagProperties sets the ethereal and indestructible attributes from
+// stat-less properties. The two flags are independent: an ethereal item is
+// not indestructible (it only has reduced durability and cannot be repaired).
+func applyFlagProperties(attrs *itemAttributes, props []*Property) {
+	for _, prop := range props {
 		switch prop.record.Code {
 		case propertyEthereal:
-			i.attributes.ethereal = i.attributes.ethereal || prop.computedBool
+			attrs.ethereal = attrs.ethereal || prop.computedBool
 		case propertyIndestructable:
-			i.attributes.indestructable = i.attributes.ethereal || prop.computedBool
+			attrs.indestructable = attrs.indestructable || prop.computedBool
 		}
 	}
 }

@@ -17,7 +17,7 @@ func objectGroupsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			continue
 		}
 
-		shrines, wells := d.Bool("Shrines"), d.Bool("Wells")
+		shrines, wells := d.Bool("SHRINES"), d.Bool("WELLS")
 		record := &ObjectGroupRecord{
 			GroupName: groupName,
 			Offset:    d.Number("Offset"),
