@@ -224,10 +224,10 @@ func exportWorld(h *d2s.Header, state *HeroState) {
 		return
 	}
 
-	// The engine only has Act I maps and starts every hero there, so its Act
-	// is Act I unless something moved the hero on. Act I therefore keeps the
-	// act the character was saved in; any other act is written.
-	if state.Act >= 2 && state.Act <= 5 {
+	// HeroState.Act is the act the hero is in (set from the header on import
+	// and by act travel), so it is written back as is; a state without an act
+	// (older hero files) keeps the act of the header.
+	if state.Act >= 1 && state.Act <= 5 {
 		act = state.Act - 1
 	}
 

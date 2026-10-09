@@ -46,6 +46,8 @@ type levelTransition struct {
 	target int
 	start  d2level.StartType
 	via    string
+	// actFinished: the server marks the act left as finished (forward NPC trips)
+	actFinished bool
 }
 
 type pendingUse struct {
@@ -220,7 +222,7 @@ func (v *Game) performLevelChange(t *levelTransition) {
 		prefer = nextToWaypoint // waypoint travel lands you at the destination's waypoint
 	}
 
-	arrival, err := v.gameClient.ChangeLevel(t.target, prefer)
+	arrival, err := v.gameClient.ChangeLevelAct(t.target, prefer, t.actFinished)
 	if err != nil {
 		v.Errorf("LEVEL change to %d failed: %v; going back to level %d", t.target, err, from)
 
@@ -243,6 +245,11 @@ func (v *Game) performLevelChange(t *levelTransition) {
 	v.Infof("LEVEL CHANGE from=%d to=%d (%s) act=%d via=%s start=%#x townTransition=%v actChange=%v arrival=(%.1f,%.1f) hero=(%.1f,%.1f)",
 		from, t.target, v.levelName(t.target), plan.ToAct, t.via, int(plan.StartType), plan.TownTransition,
 		plan.ActChange, arrival.X, arrival.Y, px, py)
+
+	if plan.ActChange {
+		v.Infof("ACT CHANGE %d -> %d LoadAct packet % x", plan.FromAct, plan.ToAct, plan.LoadAct.Encode())
+		v.logActArrival(t.target)
+	}
 
 	if t.via == "portal" {
 		v.levels.portalStateUntil = v.levels.clock + portalStateSecond
@@ -542,6 +549,11 @@ func (v *Game) operatePortal(ob *d2mapentity.Object) {
 	}
 	if err := d2level.ValidatePortal(req); err != nil {
 		v.Infof("PORTAL refused: %v", err)
+		return
+	}
+
+	if a := d2level.ActOfLevel(ob.PortalDest); a != v.currentAct() && ob.PortalDest == d2level.ActStartLevel(a) {
+		_ = v.travelToAct(a, "portal") // an act change: Mephisto's portal to the Pandemonium Fortress
 		return
 	}
 

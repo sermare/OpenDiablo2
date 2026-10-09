@@ -143,7 +143,7 @@ func (*mazeProvider) Load(g *MapGenerator, levelID int, req LoadRequest) error {
 // needs the DRLG tables, which come from the archives; if they cannot be read
 // it stays inactive.
 func (g *MapGenerator) installDefaultProviders() {
-	g.providers = []LevelProvider{townProvider{}}
+	g.providers = []LevelProvider{actTownProvider{}, townProvider{}}
 
 	if !RealMapsEnabled() {
 		return

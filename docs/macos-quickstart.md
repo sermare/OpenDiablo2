@@ -93,6 +93,10 @@ a semicolon-separated list of steps, run a few seconds after the game starts:
 | `expect:log=<substring>` | Fail the run unless the game log already contains it. |
 | `use:<object name or id>` | Walk to the nearest matching object (objects.txt name or id: `Waypoint`, `Door`, `Portal`, `119`) and operate it. Doors open/close and change collision, the waypoint opens its panel, portals change level. The next step waits until the walk or level change is over. |
 | `waypoint:<level id>` | Choose that level in the open waypoint panel (greyed entries fail the step). Logs `WAYPOINT travel` and `LEVEL CHANGE`. |
+| `travel:<act 1-5>` | Travel to the town of that act as the act's travel NPC/portal would (Warriv, Meshif, the Mephisto portal, Tyrael), with the quest and expansion rules of `d2level/acttravel.go`; a refused trip fails the step. Logs `TRAVEL`, `ACT CHANGE` (LoadAct packet), `ACT arrival`, `TOWN NPC`. |
+| `refuse:<act 1-5>` | Passes only if the travel rules refuse that trip (`TRAVEL refused`). |
+
+Debug console commands for act travel (use with `say:`): `completequest <act> <quest>`, `resetquests`, `travelfree 0|1` (skip the rules; needed for the trips back from acts 4 and 5, which have no NPC in the original), `travel <act>`.
 | `expect:level=<id>` | Wait up to 4 s, then fail unless the hero is in that level; logs `AUTOSCRIPT level=<id> hero=(x,y)`. |
 | `automap:on\|off\|toggle\|full\|mini\|stats` | Set the automap (Tab); `stats` logs `AUTOMAP state ... cells=N floor= wall= object=` and the markers. See `docs/automap.md`. |
 | `skill:left=<name>` / `skill:right=<name>` | Select a skill on the left/right button (same checks as the popup: learned, not passive, left-capable on the left); logs `SKILLBAR select ...` and a `SKILLBAR state` line with the hotkeys. |

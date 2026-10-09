@@ -39,6 +39,10 @@ const (
 	KindPress Kind = "press"
 	// KindWaypoint travels to a waypoint level through the open waypoint panel.
 	KindWaypoint Kind = "waypoint"
+	// KindTravel travels to the town of an act through the act travel rules;
+	// KindRefuse expects the rules to refuse that trip.
+	KindTravel Kind = "travel"
+	KindRefuse Kind = "refuse"
 )
 
 // ExpectLevelTimeout is how long (game seconds) an expect:level step waits for
@@ -79,6 +83,13 @@ type LevelHost interface {
 	// Busy reports that the hero is walking to an object or a level change is
 	// running; the runner holds the next step until it is over.
 	Busy() bool
+}
+
+// TravelHost is implemented by hosts that support the travel and refuse steps.
+type TravelHost interface {
+	// Travel starts the trip to the town of the act (1..5) as the travel NPC or
+	// portal of the hero's act would; it returns the rule's refusal as an error.
+	Travel(act int) error
 }
 
 // SkillHost is implemented by hosts that support the skill, hotkey and press
@@ -225,6 +236,11 @@ func parseStep(raw string) (Step, error) {
 		s.Level, err = strconv.Atoi(arg)
 		if err != nil || s.Level <= 0 {
 			return s, errors.New("waypoint needs a level id")
+		}
+	case KindTravel, KindRefuse:
+		s.Level, err = strconv.Atoi(arg)
+		if err != nil || s.Level < 1 || s.Level > 5 {
+			return s, errors.New(string(s.Kind) + " needs an act 1..5")
 		}
 	case KindExpect:
 		if strings.HasPrefix(arg, "level=") {
@@ -397,6 +413,22 @@ func (r *Runner) run(s Step) error {
 		}
 
 		return lh.Waypoint(s.Level)
+	case KindTravel, KindRefuse:
+		th, ok := r.host.(TravelHost)
+		if !ok {
+			return errors.New("host does not support travel")
+		}
+
+		err := th.Travel(s.Level)
+		if s.Kind == KindRefuse {
+			if err == nil {
+				return fmt.Errorf("travel to act %d was allowed, expected a refusal", s.Level)
+			}
+
+			return nil
+		}
+
+		return err
 	case KindExpect:
 		if s.HasLevel {
 			return r.expectLevel(s.Level)

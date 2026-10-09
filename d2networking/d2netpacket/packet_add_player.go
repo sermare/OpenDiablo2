@@ -37,6 +37,12 @@ type AddPlayerPacket struct {
 	// Progress and Difficulty carry the waypoints (and quests) of the hero.
 	Progress   *d2hero.HeroProgress  `json:"progress,omitempty"`
 	Difficulty d2enum.DifficultyType `json:"difficulty,omitempty"`
+	// Act is the act (1..5) the hero is saved in (0: unknown, Act I).
+	// FromSave and Expansion describe a hero imported from a .d2s: only such
+	// heroes are held to the Lord of Destruction rule of the Act V trip.
+	Act       int  `json:"act,omitempty"`
+	FromSave  bool `json:"fromSave,omitempty"`
+	Expansion bool `json:"expansion,omitempty"`
 }
 
 // CreateAddPlayerPacket returns a NetPacket which declares an
@@ -114,5 +120,13 @@ func WithDeath(d *d2hero.DeathState, hardcore bool) AddPlayerOption {
 	return func(p *AddPlayerPacket) {
 		p.Death = d
 		p.Hardcore = hardcore
+	}
+}
+
+// WithAct sends the act the hero is saved in and whether it is an imported
+// expansion hero.
+func WithAct(act int, fromSave, expansion bool) AddPlayerOption {
+	return func(p *AddPlayerPacket) {
+		p.Act, p.FromSave, p.Expansion = act, fromSave, expansion
 	}
 }
