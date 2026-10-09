@@ -59,11 +59,12 @@ func TestPopulateRoom(t *testing.T) {
 	tb := tables(t)
 	lv := Level{Act: 1, Groups: [8]int{1}, Probs: [8]int{100}}
 
-	room := &fakeRoom{tiles: 200}
+	// ((1280>>7)*100)>>8 = 3, no minimum, SpawnMax (5) not used
+	room := &fakeRoom{tiles: 1280}
 	n := PopulateRoom(tb, lv, false, room, 7)
 
-	if n == 0 || n != len(room.placed) || n > 5 {
-		t.Fatalf("placed %d %v (SpawnMax 5)", n, room.placed)
+	if n != 3 || n != len(room.placed) {
+		t.Fatalf("placed %d %v, want 3", n, room.placed)
 	}
 
 	for _, id := range room.placed {
@@ -72,25 +73,36 @@ func TestPopulateRoom(t *testing.T) {
 		}
 	}
 
-	again := &fakeRoom{tiles: 200}
+	again := &fakeRoom{tiles: 1280}
 	PopulateRoom(tb, lv, false, again, 7)
 
 	if len(again.placed) != len(room.placed) {
 		t.Error("not deterministic")
 	}
 
+	// every slot rolls independently: two slots with the same group give two batches
+	two := Level{Act: 1, Groups: [8]int{1, 1}, Probs: [8]int{100, 100}}
+	if got := PopulateRoom(tb, two, false, &fakeRoom{tiles: 1280}, 7); got != 6 {
+		t.Errorf("two fired slots placed %d, want 6", got)
+	}
+
+	// small room: count rounds down to zero, no minimum of 1
+	if got := PopulateRoom(tb, lv, false, &fakeRoom{tiles: 200}, 7); got != 0 {
+		t.Errorf("small room placed %d, want 0", got)
+	}
+
 	// act 4 level cannot place the act 1 chest
-	if PopulateRoom(tb, Level{Act: 4, Groups: [8]int{1}, Probs: [8]int{100}}, false, &fakeRoom{tiles: 200}, 7) != 0 {
+	if PopulateRoom(tb, Level{Act: 4, Groups: [8]int{1}, Probs: [8]int{100}}, false, &fakeRoom{tiles: 1280}, 7) != 0 {
 		t.Error("act mask ignored")
 	}
 
 	// no group chosen
-	if PopulateRoom(tb, Level{Act: 1}, false, &fakeRoom{tiles: 200}, 7) != 0 {
+	if PopulateRoom(tb, Level{Act: 1}, false, &fakeRoom{tiles: 1280}, 7) != 0 {
 		t.Error("empty level placed objects")
 	}
 
 	// unknown group id
-	if PopulateRoom(tb, Level{Act: 1, Groups: [8]int{9}, Probs: [8]int{100}}, false, &fakeRoom{tiles: 200}, 7) != 0 {
+	if PopulateRoom(tb, Level{Act: 1, Groups: [8]int{9}, Probs: [8]int{100}}, false, &fakeRoom{tiles: 1280}, 7) != 0 {
 		t.Error("unknown group placed objects")
 	}
 }

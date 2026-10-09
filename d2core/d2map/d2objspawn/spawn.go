@@ -24,7 +24,8 @@ type Tables struct {
 
 // Room is what the engine offers for one room being populated.
 type Room interface {
-	// Tiles is the walkable area of the room in tiles.
+	// Tiles is the room rectangle area w*h in subtiles (the exe's density
+	// rule uses ((w*h>>7)*density)>>8).
 	Tiles() int
 	// Place puts an object of the given objects.txt row into the room.
 	Place(objectID int)
@@ -90,27 +91,27 @@ func LevelOf(l *d2records.LevelDetailRecord, act int) Level {
 	}
 }
 
-// PopulateRoom picks a group for the level and places the rolled objects into
-// the room. It returns the number placed. Deterministic for a given seed.
+// PopulateRoom rolls every ObjGrp slot of the level independently
+// (d2object.PickGroups) and, for each fired group, places the one member
+// RollRoom picks. It returns the number placed. Deterministic for a given seed.
 func PopulateRoom(t Tables, lv Level, expansion bool, room Room, seed uint32) int {
 	r := d2object.NewRoller(seed)
+	total := 0
 
-	id := d2object.PickGroup(lv.Groups, lv.Probs, r)
-	if id == 0 {
-		return 0
+	for _, id := range d2object.PickGroups(lv.Groups, lv.Probs, r) {
+		g, ok := t.Groups[id]
+		if !ok {
+			continue
+		}
+
+		for _, p := range d2object.RollRoom(g, t.Defs, lv.Act, expansion, room.Tiles(), r) {
+			room.Place(p.ObjectID)
+
+			total++
+		}
 	}
 
-	g, ok := t.Groups[id]
-	if !ok {
-		return 0
-	}
-
-	placed := d2object.RollRoom(g, t.Defs, lv.Act, expansion, room.Tiles(), r)
-	for _, p := range placed {
-		room.Place(p.ObjectID)
-	}
-
-	return len(placed)
+	return total
 }
 
 // Def returns the object row, or false for an unknown id.
