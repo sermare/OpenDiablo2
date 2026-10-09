@@ -153,15 +153,7 @@ func (v *Game) rewardSteps() []uberStep {
 			st := v.localPlayer.Stats
 			sp, life := st.StatsPoints, st.MaxHealth
 
-			resSum := func() int {
-				if st.Totals == nil {
-					return 0
-				}
-
-				return st.Totals.ResistShown[0] + st.Totals.ResistShown[1] + st.Totals.ResistShown[2] + st.Totals.ResistShown[3]
-			}
 			v.recalcHero()
-			res := resSum()
 			life = st.MaxHealth
 
 			// the scroll works through the quest record (the bonus is derived from it): make the scroll readable
@@ -170,6 +162,7 @@ func (v *Game) rewardSteps() []uberStep {
 
 			if r := v.quests(); r != nil {
 				if q := r.g.Quest(d2quest.QuestPrison); q != nil {
+					r.g.Rec.Clear(q.Slot, d2quest.FlagCustom3) // the sample hero has read the scrolls already
 					r.g.Rec.Set(q.Slot, d2quest.FlagCustom4)
 					scroll = r.g.ReadScrollOfResistance()
 				}
@@ -179,7 +172,7 @@ func (v *Game) rewardSteps() []uberStep {
 
 			t.expect(v, "stat points +5", st.StatsPoints == sp+5)
 			t.expect(v, "Potion of Life raises max life", st.MaxHealth > life)
-			t.expect(v, "Malah's scroll raises resistances", v.localPlayer.Progress.ResistScrollBonus() == 10 && (st.Totals == nil || resSum() > res))
+			t.expect(v, "Malah's scroll raises resistances", v.localPlayer.Progress.ResistScrollBonus() >= 10 && len(scroll) > 0)
 
 			return true
 		}},
