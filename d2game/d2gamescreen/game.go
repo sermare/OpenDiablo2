@@ -157,6 +157,7 @@ type Game struct {
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	monsterTest          *monsterTest
+	aiTest               *aiAutoTest
 	merc                 mercGame
 	skills               *d2skills.Engine
 	castTestState        *castTest
@@ -196,6 +197,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"spawnitemat", "spawns an item at the x,y coordinates",
 			[]string{"x", "y", "code1", "code2", "code3", "code4", "code5"}, v.commandSpawnItemAt},
 		{"spawnmon", "spawn monster at the local player position", []string{"name"}, v.commandSpawnMon},
+		{"forcestate", "puts a forced AI state (fear, blind, taunt, confuse, attract, charm) on a monster for n frames",
+			[]string{"monster id", "state", "frames"}, v.commandForceState},
 		{"setgold", "sets the hero's gold (saved to the .d2s on the next save)", []string{"amount"}, v.commandSetGold},
 		{"spawnchest", "spawns chests/barrels (objects.txt ids, default 7 1 5) next to the hero",
 			[]string{"id1", "id2", "id3"}, v.commandSpawnChest},

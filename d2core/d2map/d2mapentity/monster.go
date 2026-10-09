@@ -147,19 +147,20 @@ func (m *Monster) Render(target d2interface.Surface) {
 // animation mode used for each monster mode, with fallbacks for classes that
 // lack a mode (monstats2 m* columns): run -> walk, A2/skills -> A1.
 var modeFallback = map[d2monster.Mode][]d2enum.MonsterAnimationMode{
-	d2monster.ModeDying:   {d2enum.MonsterAnimationModeDeath},
-	d2monster.ModeDead:    {d2enum.MonsterAnimationModeDead, d2enum.MonsterAnimationModeDeath},
-	d2monster.ModeNeutral: {d2enum.MonsterAnimationModeNeutral},
-	d2monster.ModeWalk:    {d2enum.MonsterAnimationModeWalk},
-	d2monster.ModeRun:     {d2enum.MonsterAnimationModeRun, d2enum.MonsterAnimationModeWalk},
-	d2monster.ModeGetHit:  {d2enum.MonsterAnimationModeGetHit},
-	d2monster.ModeAttack1: {d2enum.MonsterAnimationModeAttack1},
-	d2monster.ModeAttack2: {d2enum.MonsterAnimationModeAttack2, d2enum.MonsterAnimationModeAttack1},
-	d2monster.ModeSkill1:  {d2enum.MonsterAnimationModeSkill1, d2enum.MonsterAnimationModeAttack1},
-	d2monster.ModeSkill2:  {d2enum.MonsterAnimationModeSkill2, d2enum.MonsterAnimationModeSkill1, d2enum.MonsterAnimationModeAttack1},
-	d2monster.ModeSkill3:  {d2enum.MonsterAnimationModeSkill3, d2enum.MonsterAnimationModeAttack1},
-	d2monster.ModeSkill4:  {d2enum.MonsterAnimationModeSkill4, d2enum.MonsterAnimationModeAttack1},
-	d2monster.ModeCast:    {d2enum.MonsterAnimationModeCast, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeDying:       {d2enum.MonsterAnimationModeDeath},
+	d2monster.ModeDead:        {d2enum.MonsterAnimationModeDead, d2enum.MonsterAnimationModeDeath},
+	d2monster.ModeNeutral:     {d2enum.MonsterAnimationModeNeutral},
+	d2monster.ModeWalk:        {d2enum.MonsterAnimationModeWalk},
+	d2monster.ModeRun:         {d2enum.MonsterAnimationModeRun, d2enum.MonsterAnimationModeWalk},
+	d2monster.ModeGetHit:      {d2enum.MonsterAnimationModeGetHit},
+	d2monster.ModeAttack1:     {d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeAttack2:     {d2enum.MonsterAnimationModeAttack2, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeSkill1:      {d2enum.MonsterAnimationModeSkill1, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeSkill2:      {d2enum.MonsterAnimationModeSkill2, d2enum.MonsterAnimationModeSkill1, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeSkill3:      {d2enum.MonsterAnimationModeSkill3, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeSkill4:      {d2enum.MonsterAnimationModeSkill4, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeCast:        {d2enum.MonsterAnimationModeCast, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeSpecialCast: {d2enum.MonsterAnimationModeCast, d2enum.MonsterAnimationModeSkill1, d2enum.MonsterAnimationModeAttack1},
 }
 
 // SetMode switches the unit to a mode and starts its animation. It returns
@@ -331,7 +332,7 @@ func (m *Monster) checkEvents(tickTime float64) {
 			m.events = append(m.events, MonsterEvent{MonsterEventModeDone, d2monster.ModeWalk})
 		}
 	case d2monster.ModeAttack1, d2monster.ModeAttack2, d2monster.ModeSkill1, d2monster.ModeSkill2,
-		d2monster.ModeSkill3, d2monster.ModeSkill4, d2monster.ModeCast:
+		d2monster.ModeSkill3, d2monster.ModeSkill4, d2monster.ModeCast, d2monster.ModeSpecialCast:
 		if half && !m.hitFired {
 			m.hitFired = true
 			m.events = append(m.events, MonsterEvent{MonsterEventHitFrame, m.mode})
