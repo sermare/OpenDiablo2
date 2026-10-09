@@ -153,13 +153,14 @@ func TestGenerateRegularPassUnderLevel25(t *testing.T) {
 		counts[it.Code]++
 	}
 
-	// cap: regular count = 99 % (Max+1=3) = 0; magic: 99 % (MagicMax 2 + 1) = 0.
-	// plt (needs level 40): no regular pass; magic 99 % (1+1) = 1.
-	if counts["cap"] != 0 || counts["plt"] != 1 {
+	// cap: regular count = Min 1 + 99 % (Max+1-Min = 2) = 2; magic: MagicMin 1 +
+	// 99 % (MagicMax 2 + 1 - 1 = 2) = 2; that is 4 copies (Min is read, VERIFIED).
+	// plt (needs level 40 > ilvl 6): neither pass runs (VERIFIED: the
+	// reqlevel gate of 0x574814 wraps the magic pass too).
+	if counts["cap"] != 4 || counts["plt"] != 0 {
 		t.Errorf("counts %v", counts)
 	}
 
-	// plt has MagicLvl 1 <= 6 so the magic pass runs even though reqlevel 40 > 6.
 	r = &seqRNG{vals: []uint32{1}}
 	s = Generate(r, testBases(), Options{PlayerLevel: 1, Tier: -1})
 	counts = map[string]int{}
