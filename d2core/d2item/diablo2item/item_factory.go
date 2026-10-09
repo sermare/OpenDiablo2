@@ -5,9 +5,11 @@ import (
 	"math/rand"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2stats/diablo2stats"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
@@ -63,12 +65,24 @@ func NewItemFactory(asset *d2asset.AssetManager) (*ItemFactory, error) {
 
 // ItemFactory is a diablo 2 implementation of an item generator
 type ItemFactory struct {
-	asset  *d2asset.AssetManager
-	stat   *diablo2stats.StatFactory
-	rand   *rand.Rand
-	drop   *dropTables
-	source rand.Source
-	Seed   int64
+	asset *d2asset.AssetManager
+	stat  *diablo2stats.StatFactory
+	rand  *rand.Rand
+	drop  *dropTables
+
+	// creator creates items (see item_create.go); game is the item state of
+	// the game it reads and writes (unique items created, ladder).
+	creator *d2drop.Creator
+
+	// Difficulty (0 normal, 1 nightmare, 2 hell) and Classic describe the
+	// game the factory makes items for; the vendors, the cube, quest rewards
+	// and the giveitem command create items in this game.
+	Difficulty int
+	Classic    bool
+	rowByName  map[string]int
+	statNames  map[int]string
+	source     rand.Source
+	Seed       int64
 	// propRand rolls property values while a seeded item is built (see intn).
 	propRand *rand.Rand
 }
@@ -89,7 +103,13 @@ func (f *ItemFactory) NewItem(codes ...string) (*Item, error) {
 
 	prefixes, suffixes := make([]string, 0), make([]string, 0)
 
+	var mods newItemMods
+
 	for _, code := range codes {
+		if mods.parse(code) {
+			continue
+		}
+
 		if found := f.asset.Records.Item.All[code]; found != nil {
 			common = code
 			continue
@@ -118,6 +138,12 @@ func (f *ItemFactory) NewItem(codes ...string) (*Item, error) {
 
 	if common == "" {
 		return nil, errors.New("cannot create item")
+	}
+
+	if len(prefixes) == 0 && len(suffixes) == 0 {
+		if item := f.newItemWithCreator(common, set, unique, mods); item != nil {
+			return item, nil
+		}
 	}
 
 	item := &Item{
@@ -414,4 +440,97 @@ func getNumericComponent(code string) int {
 	}
 
 	return result
+}
+
+// newItemMods are the options NewItem takes besides item, unique, set and
+// affix codes (quest rewards and the spawn commands carry them in the code
+// list): "q=<quality>" (normal, superior, magic, rare, crafted, low),
+// "ilvl=<n>" and "qty=<n>".
+type newItemMods struct {
+	quality d2drop.Quality
+	ilvl    int
+	qty     int
+}
+
+var modQualities = map[string]d2drop.Quality{
+	"low": d2drop.QualityLow, "normal": d2drop.QualityNormal, "superior": d2drop.QualitySuperior,
+	"magic": d2drop.QualityMagic, "rare": d2drop.QualityRare, "crafted": d2drop.QualityCrafted,
+}
+
+// parse reads one option token; false if the token is not an option.
+func (m *newItemMods) parse(tok string) bool {
+	key, val, ok := strings.Cut(tok, "=")
+	if !ok {
+		return false
+	}
+
+	switch key {
+	case "q":
+		q, found := modQualities[val]
+		if found {
+			m.quality = q
+		}
+
+		return found
+	case "ilvl", "qty":
+		n, err := strconv.Atoi(val)
+		if err != nil {
+			return false
+		}
+
+		if key == "ilvl" {
+			m.ilvl = n
+		} else {
+			m.qty = n
+		}
+
+		return true
+	}
+
+	return false
+}
+
+// newItemWithCreator makes the item of NewItem with the item creator: a base
+// item of normal quality, or the named unique / set item. It returns nil when
+// the creator is not available or cannot make it, and the caller falls back
+// to the old item model.
+func (f *ItemFactory) newItemWithCreator(common, set, unique string, mods newItemMods) *Item {
+	rec := f.asset.Records.Item.All[common]
+	ilvl := rec.Level
+
+	if mods.ilvl > 0 {
+		ilvl = mods.ilvl
+	}
+
+	if ilvl < 1 {
+		ilvl = 1
+	}
+
+	quality := d2drop.QualityNormal
+	if mods.quality != d2drop.QualityNone {
+		quality = mods.quality
+	}
+
+	p := CreateParams{
+		Code: common, ILvl: ilvl, Quality: quality, Classic: f.Classic, Difficulty: f.Difficulty,
+		Seed: f.nextSeed(),
+	}
+
+	switch {
+	case set != "":
+		p.Quality, p.Name, p.ILvl, p.FreshGame = d2drop.QualitySet, set, maxItemLevel, true
+	case unique != "":
+		p.Quality, p.Name, p.ILvl, p.FreshGame = d2drop.QualityUnique, unique, maxItemLevel, true
+	}
+
+	item, err := f.Create(p)
+	if err != nil {
+		return nil
+	}
+
+	if mods.qty > 0 && item.attributes != nil && rec.Stackable {
+		item.SetQuantity(mods.qty)
+	}
+
+	return item
 }

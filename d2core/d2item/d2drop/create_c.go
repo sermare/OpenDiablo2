@@ -51,6 +51,10 @@ type SetDef struct {
 	Version int
 	// Items are the SetItems rows belonging to the set, in table order.
 	Items []int
+	// Partial are PCode2a, PCode2b, PCode3a ... PCode5b (the bonus from 2, 3,
+	// 4 and 5 pieces, two properties each); Full are FCode1..8.
+	Partial [8]PropInst
+	Full    [8]PropInst
 }
 
 // cowKingSet is the index of "Cow King's Leathers" in Sets.txt: its items

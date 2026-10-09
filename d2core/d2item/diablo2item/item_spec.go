@@ -23,6 +23,15 @@ type Spec struct {
 	Prefixes []string
 	Suffixes []string
 
+	// Rolled is what the item creator rolled; with it the item is rebuilt
+	// exactly (affixes, properties, base values, sockets) without rolling.
+	Rolled *d2drop.Rolled `json:"rolled,omitempty"`
+	// Runeword is the Runes.txt name of a runeword, Sockets the items in the
+	// sockets and Ear the player of an ear.
+	Runeword string   `json:"runeword,omitempty"`
+	Sockets  []Spec   `json:"sockets,omitempty"`
+	Ear      *EarInfo `json:"ear,omitempty"`
+
 	Identified bool
 	Ethereal   bool
 	Quantity   int // 0 = leave the default
@@ -65,6 +74,13 @@ func (i *Item) Spec() Spec {
 		Prefixes:   append([]string(nil), i.PrefixCodes...),
 		Suffixes:   append([]string(nil), i.SuffixCodes...),
 		Durability: -1,
+		Rolled:     i.rolled,
+		Runeword:   i.runeword,
+		Ear:        i.ear,
+	}
+
+	for _, c := range i.socketed {
+		s.Sockets = append(s.Sockets, c.Spec())
 	}
 
 	if i.attributes != nil {
@@ -87,6 +103,29 @@ func (f *ItemFactory) ItemFromSpec(s Spec) (*Item, error) {
 		return nil, fmt.Errorf("%w: %q", errUnknownItemCode, s.Code)
 	}
 
+	if s.Rolled != nil {
+		if c, err := f.Creator(); err == nil {
+			item := f.itemFromRolled(c, s.Code, rec.Type, s.Rolled)
+			item.itemLevel = s.ILvl
+			item.runeword, item.ear = s.Runeword, s.Ear
+
+			for _, cs := range s.Sockets {
+				if child, err := f.ItemFromSpec(cs); err == nil {
+					item.socketed = append(item.socketed, child)
+				}
+			}
+
+			if item.runeword != "" || item.ear != nil {
+				item.rolledProperties(c)
+				item.name = item.rolledName()
+			}
+
+			f.restoreState(item, s)
+
+			return item, nil
+		}
+	}
+
 	item := &Item{
 		factory:     f,
 		CommonCode:  s.Code,
@@ -99,11 +138,20 @@ func (f *ItemFactory) ItemFromSpec(s Spec) (*Item, error) {
 		PrefixCodes: append([]string(nil), s.Prefixes...),
 		SuffixCodes: append([]string(nil), s.Suffixes...),
 		quality:     d2drop.Quality(s.Quality),
+		ear:         s.Ear,
 	}
 	// nolint:gosec // not concerned with crypto-strong randomness
 	item.rand = rand.New(rand.NewSource(s.Seed))
 	item.init()
 
+	f.restoreState(item, s)
+
+	return item, nil
+}
+
+// restoreState puts the state the spec keeps (identified, ethereal, stack,
+// durability) on a rebuilt item.
+func (f *ItemFactory) restoreState(item *Item, s Spec) {
 	if s.Identified {
 		item.Identify()
 	}
@@ -118,5 +166,4 @@ func (f *ItemFactory) ItemFromSpec(s Spec) (*Item, error) {
 		item.SetDurability(s.Durability)
 	}
 
-	return item, nil
 }

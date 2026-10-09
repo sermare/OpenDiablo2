@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
@@ -569,13 +569,16 @@ func (d *Director) dropLoot(u *unit) {
 
 	// the treasure class moves along its level group with the monster level
 	// only in the expansion above Normal (VERIFIED, 0x558d80)
-	upgrade := 0
-	if d2difficulty.UpgradesTreasureClass(d.opt.Expansion, d2difficulty.Level(d.opt.Difficulty), true) {
-		upgrade = level
+	flags := 0
+	if u.m.Stat != nil && u.m.Stat.IgnoreMonLevelTxt {
+		flags |= d2drop.MonStatsNoRatio
 	}
+
+	upgrade := d2drop.MonsterUpgradeLevel(d.opt.Expansion, int(d.opt.Difficulty), true, flags, level)
 
 	loot, err := d.engine.DropLoot(tc, diablo2item.DropOptions{
 		Seed: u.b.Seed.Step(), ILvl: level, UpgradeLevel: upgrade, Players: 1,
+		Difficulty: int(d.opt.Difficulty), Classic: !d.opt.Expansion,
 	}, 0)
 	if err != nil {
 		d.emit("drop", "MONSTER drop name=%s tc=%q error=%v", u.m.Label(), tc, err)
@@ -607,6 +610,7 @@ func (d *Director) dropLoot(u *unit) {
 
 		it := e.Item
 		names = append(names, fmt.Sprintf("%s(%s)", it.CommonCode, colorToken.ReplaceAllString(it.Label(), "")))
+		d.emit("drop", "ITEMGEN created source=monster monster=%s %s", u.m.Label(), it.CreationLine())
 		d.Counters.Drops++
 
 		ent, err := d.engine.NewDroppedItem(x, y, it)

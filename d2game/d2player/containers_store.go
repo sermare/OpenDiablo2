@@ -29,6 +29,14 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		spec.Durability = *s.Durability
 	}
 
+	if s.Spec != nil {
+		rolled := *s.Spec
+		rolled.Identified, rolled.Ethereal = spec.Identified, spec.Ethereal
+		rolled.Quantity, rolled.Durability = spec.Quantity, spec.Durability
+
+		return f.ItemFromSpec(rolled)
+	}
+
 	if s.Origin {
 		// imported from a .d2s: roll the base item with the item generator (an
 		// approximation, see StoredItem.Origin), then keep what that rolled
@@ -56,6 +64,12 @@ func storedFromItem(it *diablo2item.Item, page, x, y int, orig *d2s.Item) d2hero
 		Unique: spec.Unique, SetItem: spec.SetItem, Set: spec.Set, Prefixes: spec.Prefixes, Suffixes: spec.Suffixes,
 		Identified: spec.Identified, Ethereal: spec.Ethereal, Quantity: spec.Quantity,
 		D2S: orig,
+	}
+
+	if spec.Rolled != nil {
+		s.Spec = &spec
+		stat := it.StatItem()
+		s.Stat = &stat
 	}
 
 	if spec.Durability >= 0 {

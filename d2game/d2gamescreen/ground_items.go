@@ -278,21 +278,23 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 
 	v.playSoundAt(handle, ob.GetPosition(), "object")
 
-	ilvl := v.areaLevel()
-	tc := d2ground.ChestTreasureClass(v.localPlayer.Act, d2ground.Difficulty(v.difficulty()), ilvl, v.itemFactory().TreasureClassLevel)
-
 	v.ground.chestSeq++
 	seed := v.chestSeed() + v.ground.chestSeq
 
-	cx, cy := ob.GetPositionF()
-	loot, err := v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: seed, ILvl: ilvl, Players: 1}, 0)
-
+	// the class and the item level follow from the monster level of the area
+	// the chest stands in (VERIFIED, see diablo2item.ChestLoot)
+	loot, tc, err := v.itemFactory().ChestLoot(diablo2item.ChestDropOptions{
+		DropOptions: diablo2item.DropOptions{Seed: seed, Players: 1, MagicFind: v.heroMagicFind(), GoldFind: v.heroGoldFind()},
+		LevelID:     v.currentLevel(), Difficulty: v.difficulty(), Expansion: true,
+	})
 	if err != nil {
 		v.Errorf("chest %d: %v", id, err)
 		return
 	}
 
-	v.Infof("AUTOGROUND chest id=%d name=%q tc=%q ilvl=%d seed=%d drops=%d", id, ob.Label(), tc, ilvl, seed, len(loot.Entries))
+	cx, cy := ob.GetPositionF()
+	v.Infof("AUTOGROUND chest id=%d name=%q tc=%q level=%d seed=%d drops=%d", id, ob.Label(), tc, v.currentLevel(),
+		seed, len(loot.Entries))
 	v.spawnLoot(loot, int(math.Floor(cx)), int(math.Floor(cy)), "chest")
 }
 
@@ -304,6 +306,23 @@ func (v *Game) chestSeed() uint32 {
 	}
 
 	return uint32(v.gameClient.MapEngine.Seed())
+}
+
+// heroMagicFind and heroGoldFind are the hero's totals from its equipment.
+func (v *Game) heroMagicFind() int {
+	if v.localPlayer != nil && v.localPlayer.Stats != nil && v.localPlayer.Stats.Totals != nil {
+		return v.localPlayer.Stats.Totals.MagicFind
+	}
+
+	return 0
+}
+
+func (v *Game) heroGoldFind() int {
+	if v.localPlayer != nil && v.localPlayer.Stats != nil && v.localPlayer.Stats.Totals != nil {
+		return v.localPlayer.Stats.Totals.GoldFind
+	}
+
+	return 0
 }
 
 // areaLevel is the item level of object drops: OD2_AUTOGROUND_ILVL if set,
@@ -323,7 +342,10 @@ func (v *Game) areaLevel() int {
 
 // itemFactory returns the item factory of the map engine.
 func (v *Game) itemFactory() *diablo2item.ItemFactory {
-	return v.gameClient.MapEngine.ItemFactory()
+	f := v.gameClient.MapEngine.ItemFactory()
+	f.Difficulty = v.difficulty()
+
+	return f
 }
 
 // spawnLoot puts a roll's items and gold on free ground cells around (cx, cy),
@@ -357,6 +379,7 @@ func (v *Game) spawnLoot(loot *diablo2item.Loot, cx, cy int, source string) []*d
 		quality := "gold"
 		if e.Item != nil {
 			quality = e.Item.QualityName()
+			v.Infof("ITEMGEN created source=%s %s", source, e.Item.CreationLine())
 		}
 
 		v.Infof("AUTOGROUND spawn source=%s name=%q quality=%s pos=(%d,%d)",

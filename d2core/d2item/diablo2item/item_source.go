@@ -81,6 +81,7 @@ func (f *ItemFactory) MonsterDrops(o MonsterDropOptions) (*DropResult, error) {
 	opts := o.DropOptions
 	opts.ILvl = o.Level
 	opts.Classic = !o.Expansion
+	opts.Difficulty = o.Difficulty
 	opts.UpgradeLevel = d2drop.MonsterUpgradeLevel(o.Expansion, o.Difficulty, true, flags, o.Level)
 
 	return f.DropAll(name, opts)
@@ -99,11 +100,33 @@ type ChestDropOptions struct {
 // monster level as item level, and the quality roll uses the tier (0..2) as
 // its level (VERIFIED, see d2drop.ChestTreasureClass).
 func (f *ItemFactory) ChestDrops(o ChestDropOptions) (*DropResult, error) {
+	class, opts, err := f.chestSetup(o)
+	if err != nil {
+		return nil, err
+	}
+
+	return f.DropAll(class, opts)
+}
+
+// ChestLoot is ChestDrops keeping the drop order of items and gold. It also
+// returns the treasure class that was rolled.
+func (f *ItemFactory) ChestLoot(o ChestDropOptions) (*Loot, string, error) {
+	class, opts, err := f.chestSetup(o)
+	if err != nil {
+		return nil, "", err
+	}
+
+	loot, err := f.DropLoot(class, opts, 0)
+
+	return loot, class, err
+}
+
+func (f *ItemFactory) chestSetup(o ChestDropOptions) (class string, opts DropOptions, err error) {
 	levels := f.asset.Records.Level.Details
 
 	area := levels[o.LevelID]
 	if area == nil {
-		return nil, fmt.Errorf("%w: %d", errUnknownLevel, o.LevelID)
+		return "", opts, fmt.Errorf("%w: %d", errUnknownLevel, o.LevelID)
 	}
 
 	monLevel := func(id int) int {
@@ -116,16 +139,17 @@ func (f *ItemFactory) ChestDrops(o ChestDropOptions) (*DropResult, error) {
 
 	chest := d2drop.ChestTreasureClass(o.Difficulty, area.Act, monLevel(o.LevelID), monLevel)
 
-	opts := o.DropOptions
+	opts = o.DropOptions
 	opts.ILvl = monLevel(o.LevelID)
 	opts.Classic = !o.Expansion
+	opts.Difficulty = o.Difficulty
 	opts.QualityLevel, opts.UseQualityLevel = chest.Tier, true
 
 	if opts.MaxDrops == 0 {
 		opts.MaxDrops = d2drop.DefaultMaxDrops
 	}
 
-	return f.DropAll(chest.Class, opts)
+	return chest.Class, opts, nil
 }
 
 // monsterLevelOf is the monster level of an area (Levels.txt MonLvl1..3, or the

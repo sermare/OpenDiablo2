@@ -47,6 +47,7 @@ type HeroStateFactory struct {
 	*d2inventory.InventoryItemFactory
 	d2sTables *d2s.ItemTables  // loaded on first use by SaveD2S
 	statBases d2statlist.Bases // armor/weapon base data for the stat list, loaded on first use
+	sets      *setEnv          // set bonus table of the stat list, loaded on first use
 
 	// lastEquipStatus is the verdict of the last activation pass (for logs).
 	lastEquipStatus []EquipStatus

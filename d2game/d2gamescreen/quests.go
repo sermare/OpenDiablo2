@@ -12,6 +12,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapgen"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
 )
 
@@ -304,7 +305,7 @@ func (v *Game) applyQuestEffects(effects []d2quest.Effect) {
 			v.Infof("QUEST EFFECT imbue-available (%s)", e.Note)
 		case d2quest.EffectGiveItem:
 			v.Infof("QUEST EFFECT give-item code=%s quality=%d ilvl/count=%d (%s)", e.Code, e.Quality, e.Value, e.Note)
-			v.spawnQuestItem(e.Code)
+			v.spawnQuestItem(e.Code, questItemOptions(v.asset.Records.Item.All[e.Code], e.Quality, e.Value)...)
 		case d2quest.EffectDeleteItem:
 			ok := v.gameControls.RemoveItemByCode(e.Code)
 			v.Infof("QUEST EFFECT delete-item code=%s removed=%v", e.Code, ok)
@@ -349,13 +350,37 @@ func (v *Game) applyQuestReward(e d2quest.Effect) {
 // spawnQuestItem drops a quest reward at the hero's feet (the engine's reward
 // items are ground items the hero picks up; an approximation of the original,
 // which puts them in the inventory). Unknown item codes are logged, not sent.
-func (v *Game) spawnQuestItem(code string) {
+func (v *Game) spawnQuestItem(code string, options ...string) {
 	if v.asset.Records.Item.All[code] == nil {
 		v.Infof("QUEST EFFECT item code %q is not in the item tables; nothing dropped", code)
 		return
 	}
 
-	v.debugSpawnItemAtPlayer(code)
+	v.debugSpawnItemAtPlayer(append([]string{code}, options...)...)
+}
+
+// questItemOptions are the NewItem options of a quest reward: the quality
+// (0 normal, 1 magic, 2 rare) and the item level; for stackable items the value
+// is a count (eight stamina potions).
+func questItemOptions(rec *d2records.ItemCommonRecord, quality, value int) []string {
+	var out []string
+
+	switch quality {
+	case 1:
+		out = append(out, "q=magic")
+	case 2:
+		out = append(out, "q=rare")
+	}
+
+	switch {
+	case value <= 0:
+	case rec != nil && rec.Stackable:
+		out = append(out, "qty="+strconv.Itoa(value))
+	default:
+		out = append(out, "ilvl="+strconv.Itoa(value))
+	}
+
+	return out
 }
 
 // syncQuestLog pushes the quest states to the quest log panel.

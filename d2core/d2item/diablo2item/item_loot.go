@@ -1,11 +1,7 @@
 package diablo2item
 
 import (
-	"fmt"
-
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
-	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2ground"
 )
 
 // Loot is everything one treasure class roll puts on the ground: items and
@@ -33,40 +29,20 @@ func (l *Loot) Items() []*Item {
 	return out
 }
 
-// DropLoot rolls a treasure class like DropItems but keeps the gold entries,
-// turning them into gold piles (see d2ground.GoldAmount). The item rolls are
-// identical to DropItems for the same seed up to the first gold entry; gold
-// consumes one extra generator step each, so later items differ from DropItems.
+// DropLoot rolls a treasure class like DropAll and returns items and gold in
+// drop order (gold amounts: see DropAll). goldFindPercent is used when the
+// options carry no gold find.
 func (f *ItemFactory) DropLoot(tcName string, opts DropOptions, goldFindPercent int) (*Loot, error) {
-	t := f.dropTables()
-	rng := d2rand.New(opts.Seed)
+	if opts.GoldFind == 0 {
+		opts.GoldFind = goldFindPercent
+	}
 
-	drops, err := t.dropper.Roll(&d2drop.Context{
-		RNG: rng, ILvl: opts.ILvl, UpgradeLevel: opts.UpgradeLevel, Players: opts.Players,
-		MagicFind: opts.MagicFind, MaxDrops: opts.MaxDrops,
-	}, tcName)
+	entries, err := f.rollEntries(tcName, opts)
 	if err != nil {
-		return nil, fmt.Errorf("rolling %q: %w", tcName, err)
+		return nil, err
 	}
 
-	loot := &Loot{}
-
-	for i := range drops {
-		d := &drops[i]
-
-		if d.Code == goldItemCode {
-			base := d2ground.BaseGold(d.ILvl, rng.Roll)
-			loot.Entries = append(loot.Entries, LootEntry{Gold: d2ground.GoldAmount(base, d.Mul, goldFindPercent)})
-
-			continue
-		}
-
-		if item := f.itemFromDrop(t, rng, d); item != nil {
-			loot.Entries = append(loot.Entries, LootEntry{Item: item})
-		}
-	}
-
-	return loot, nil
+	return &Loot{Entries: entries}, nil
 }
 
 // TreasureClassLevel returns the Level column of a treasure class (used to
@@ -84,6 +60,10 @@ func (f *ItemFactory) TreasureClassLevel(name string) (int, bool) {
 // item model records it (unique and set rows, affix counts; low/superior are
 // not modelled by Item yet and read as "normal").
 func (i *Item) QualityName() string {
+	if i.rolled != nil {
+		return qualityNames[i.quality]
+	}
+
 	switch {
 	case i.attributes != nil && i.attributes.crafted:
 		return "crafted"
@@ -101,6 +81,12 @@ func (i *Item) QualityName() string {
 	}
 
 	return "normal"
+}
+
+var qualityNames = map[d2drop.Quality]string{
+	d2drop.QualityNone: "normal", d2drop.QualityLow: "low", d2drop.QualityNormal: "normal",
+	d2drop.QualitySuperior: "superior", d2drop.QualityMagic: "magic", d2drop.QualitySet: "set",
+	d2drop.QualityRare: "rare", d2drop.QualityUnique: "unique", d2drop.QualityCrafted: "crafted",
 }
 
 // WorldFlippyFile returns the DC6 (without extension) that animates the item

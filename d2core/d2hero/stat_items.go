@@ -11,7 +11,16 @@ import (
 // stat list items: everything equipped (the weapon switch slots are turned
 // off by the stat list) and the charms in the inventory page. Socketed
 // children are attached to their item.
-func StatItemsFromD2S(items []d2s.Item, bases d2statlist.Bases) []d2statlist.Item {
+//
+// setOf, if given, maps the SetItems row a save keeps for a set item to the
+// 1-based Sets.txt row of its set, which is what groups the pieces of a set
+// for the set bonuses (see SetResolver).
+func StatItemsFromD2S(items []d2s.Item, bases d2statlist.Bases, setOf ...SetResolver) []d2statlist.Item {
+	var resolve SetResolver
+	if len(setOf) > 0 {
+		resolve = setOf[0]
+	}
+
 	var out []d2statlist.Item
 
 	for i := range items {
@@ -27,7 +36,7 @@ func StatItemsFromD2S(items []d2s.Item, bases d2statlist.Bases) []d2statlist.Ite
 			continue
 		}
 
-		out = append(out, statItem(it, bases, charm))
+		out = append(out, statItem(it, bases, charm, resolve))
 	}
 
 	return out
@@ -39,7 +48,11 @@ func isCharm(code string) bool {
 	return len(code) == 3 && strings.HasPrefix(code, "cm")
 }
 
-func statItem(it *d2s.Item, bases d2statlist.Bases, charm bool) d2statlist.Item {
+// SetResolver maps a SetItems.txt row to the 1-based Sets.txt row of its set,
+// 0 if unknown.
+type SetResolver func(setItemRow int) int
+
+func statItem(it *d2s.Item, bases d2statlist.Bases, charm bool, resolve SetResolver) d2statlist.Item {
 	code := strings.TrimSpace(it.Code)
 	si := d2statlist.Item{
 		Code: code, Charm: charm, Ethereal: it.Ethereal, Defense: it.Defense,
@@ -47,6 +60,13 @@ func statItem(it *d2s.Item, bases d2statlist.Bases, charm bool) d2statlist.Item 
 		Props:         props(it.Properties),
 		RunewordProps: props(it.RunewordProperties),
 		Broken:        it.MaxDurability > 0 && it.Durability == 0,
+	}
+
+	if resolve != nil {
+		si.SetID = 0
+		if it.Quality == d2s.QualitySet {
+			si.SetID = resolve(int(it.SetID))
+		}
 	}
 
 	if !charm {

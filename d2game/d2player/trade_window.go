@@ -293,6 +293,7 @@ func (t *TradeWindow) playerLevel() int {
 // realise creates the item objects of a freshly generated stock.
 func (t *TradeWindow) realise(stock *d2vendor.Stock, seed uint32) {
 	entries := append([]*d2vendor.Item{}, stock.Items...)
+	t.factory.Difficulty = t.difficulty
 
 	for idx, e := range entries {
 		item, err := t.factory.ItemFromCode(e.Code, e.Quality, e.ILvl, seed+uint32(idx)+1)

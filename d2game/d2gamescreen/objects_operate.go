@@ -196,7 +196,7 @@ func (v *Game) operateRack(ob *d2mapentity.Object) {
 	v.objects.lootSeq++
 	seed := v.chestSeed() + 1000 + v.objects.lootSeq
 
-	loot, err := v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: seed, ILvl: ilvl, Players: 1}, 0)
+	loot, err := v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: seed, ILvl: ilvl, Players: 1, Difficulty: v.difficulty(), MagicFind: v.heroMagicFind(), GoldFind: v.heroGoldFind()}, 0)
 	if err != nil {
 		v.Warningf("OBJECT rack %d: tc %q: %v", rec.Index, tc, err)
 		return
