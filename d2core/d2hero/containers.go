@@ -39,6 +39,8 @@ type StoredItem struct {
 	Identified bool `json:"identified,omitempty"`
 	Ethereal   bool `json:"ethereal,omitempty"`
 	Quantity   int  `json:"quantity,omitempty"`
+	// Personal is the name Anya's quest reward personalized the item with.
+	Personal string `json:"personal,omitempty"`
 	// Durability is the current durability; nil leaves the item's default.
 	Durability *int `json:"durability,omitempty"`
 	// Sockets is the rolled socket count and MaxDurability the maximum when it

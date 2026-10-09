@@ -10,6 +10,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2reward"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2stats"
@@ -160,6 +161,10 @@ func (i *Item) Label() string {
 
 	if !i.attributes.identitified {
 		str = i.factory.asset.TranslateString(i.CommonRecord().NameString)
+	}
+
+	if p := i.attributes.personalization; p != "" { // Anya's reward
+		str = d2reward.PersonalName(p, str)
 	}
 
 	if i.rolled != nil {
@@ -1000,8 +1005,8 @@ func (i *Item) GetItemDescription() []string {
 		lines = append(lines, str)
 	}
 
-	if i.Sockets > 0 {
-		lines = append(lines, d2ui.ColorTokenize(fmt.Sprintf("Socketed (%d)", i.Sockets), d2ui.ColorTokenBlue))
+	if n := i.NumSockets(); n > 0 { // Larzuk's reward
+		lines = append(lines, d2ui.ColorTokenize(fmt.Sprintf("Socketed (%d)", n), d2ui.ColorTokenBlue))
 	}
 
 	return lines

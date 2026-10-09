@@ -161,6 +161,8 @@ type Game struct {
 	monsterTest          *monsterTest
 	aiTest               *aiAutoTest
 	bossTest             *bossAutoTest
+	uber                 *uberRuntime
+	uberTest             *uberAutoTest
 	merc                 mercGame
 	skills               *d2skills.Engine
 	skillStatSig         string // last sum of the hero's skill stats, to know when to recalculate
@@ -232,6 +234,10 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"autobuy", "opens a vendor's trade window and buys the cheapest affordable item (OD2_AUTOTRADE_KEEP=1 keeps it)",
 			[]string{"vendor"}, v.commandAutoBuy},
 		{"killnear", "kills the nearest monster as the hero (party experience tests)", []string{}, v.commandKillNear},
+		{"rewarditem", "spends a pending Larzuk (socket) or Anya (personalize) quest reward on an item",
+			[]string{"socket|personalize"}, v.commandRewardItem},
+		{"transmute", "transmutes the quest recipes in the Horadric Cube (Staff, Khalim's Will, Pandemonium portals)",
+			nil, v.commandTransmute},
 	}
 
 	for _, cmd := range commands {
@@ -262,7 +268,7 @@ func (v *Game) OnUnload() error {
 	}
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
-		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "killnear"); err != nil {
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "killnear", "rewarditem", "transmute"); err != nil {
 		return err
 	}
 

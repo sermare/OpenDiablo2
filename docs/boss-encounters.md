@@ -50,6 +50,18 @@ De Seis 394, Infector 395+396).
 - Baal (0x58bce0): slot 0x28; spawns a class 0x271 unit at his corpse (U purpose).
 - Bits beyond those listed (primary goal + reward pending for Diablo/Baal, the Andariel convention) are U.
 
+## Pandemonium event and quest rewards (code: `d2common/d2uber`, `d2cube`, `d2reward`; scenario `9g-quest-rewards-uber.sh`)
+VERIFIED from the 1.14b patch_d2 tables: monstats rows ubermephisto/uberdiablo/uberizual/uberandariel (display name Lilith)/uberduriel/
+uberbaal = exe classes 704..709, level 110, AI names UberMephisto, UberDiablo, UberIzual, Andariel, Duriel, UberBaal (the last one reuses
+the BaalCrab think function, U); treasure classes "Uber Andariel/Duriel/Izual" drop dhn/bey/mbr; CubeMain rows pk1+pk2+pk3 ("Pandemonium
+Portal") and dhn+bey+mbr ("Pandemonium Finale Portal"); levels 133..135 (Pandemonium 1..3) and 136 (Finale). UNVERIFIED (community
+knowledge, nothing in the data): which area a key set opens (the engine walks them in order, the live game picks at random), the Hell
+bosses that drop the keys (Andariel pk1, Duriel pk2, Mephisto pk3), the arrival order/delays of the Tristram bosses, the Standard of
+Heroes (`std`, not in the tables), the red portal object. Quest rewards: Potion of Life and Malah's scroll change the hero (LifeBonus,
+ResistBonus); Larzuk's sockets and Anya's personalisation wait for an item (`rewarditem socket|personalize`); socket count and
+eligibility rules are U. The quest system now follows act changes (`TravelToAct2..5` on the NPC, portal and talk trips) and the portal to
+Act 4 / Act 5 opens in the Durance of Hate 3 / the Pandemonium Fortress once the quest is done.
+
 ## Other AIs
 - FallenShaman 0x5f04d0 (V, re-read): melee first (aip3), corpse scan for classes 19/58 within aip4, alert broadcast aip1, resurrect
   aip1, Skill2 fire aip2 within aip5, circle. The engine's Director has no corpse finder yet, so it does not resurrect in game.

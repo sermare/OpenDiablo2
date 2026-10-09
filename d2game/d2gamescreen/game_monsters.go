@@ -104,6 +104,7 @@ func (v *Game) advanceMonsters(elapsed float64) {
 	v.advanceMonsterTest(elapsed)
 	v.advanceAITest(elapsed)
 	v.advanceBossTest(elapsed)
+	v.advanceUberTest(elapsed)
 }
 
 // OnPlayerAttack makes the hero walk up to a monster and fight it.

@@ -267,6 +267,7 @@ func (v *Game) performLevelChange(t *levelTransition) {
 		plan.ActChange, arrival.X, arrival.Y, px, py)
 
 	if plan.ActChange {
+		v.questActChange(plan.FromAct, plan.ToAct, t.via)
 		v.Infof("ACT CHANGE %d -> %d LoadAct packet % x", plan.FromAct, plan.ToAct, plan.LoadAct.Encode())
 		v.logActArrival(t.target)
 	}
@@ -307,6 +308,7 @@ func (v *Game) afterLevelBuilt(from, to int, via string) {
 	v.levels.edgeArmed = false
 	v.scanWarps()
 	v.questArea(to) // the quest system follows the hero between areas
+	v.uberEnter(to)
 	v.restoreCorpse()
 	v.restoreLevel(to)
 

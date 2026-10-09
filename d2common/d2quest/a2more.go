@@ -164,7 +164,7 @@ func newHoradricStaff() *Quest {
 		if e.Object == ObjectOrifice && g.hasItem(ItemHoradricStaff) && e.Level >= LevelTalRashaFirst &&
 			e.Level <= LevelTalRashaLast {
 			g.completeStaff(q)
-			g.emit(Effect{Kind: EffectPortal, Quest: q.ID, Note: "the portal to Duriel's Lair opens (delay from missile 338, unverified)"})
+			g.emit(Effect{Kind: EffectPortal, Quest: q.ID, Value: LevelDurielLair, Note: "the portal to Duriel's Lair opens (delay from missile 338, unverified)"})
 		}
 	}
 
@@ -325,7 +325,7 @@ func newSevenTombs() *Quest {
 				g.set(q, FlagLeaveTown, "Tyrael's message")
 				g.globalDone(q)
 
-				return []Effect{{Kind: EffectPortal, Quest: q.ID, Note: "Tyrael opens the portal to Lut Gholein"}}
+				return []Effect{{Kind: EffectPortal, Quest: q.ID, Value: LevelLutGholein, Note: "Tyrael opens the portal to Lut Gholein"}}
 			}},
 			{from: 4, npc: NPCJerhyn, msg: 442, to: 5, nomark: true, fx: func(g *Game, q *Quest) []Effect {
 				g.clear(q, FlagLeaveTown, "Jerhyn's thanks")

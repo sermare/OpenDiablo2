@@ -83,10 +83,13 @@ const (
 	// ActPurge: every other living, non-pet monster of Level goes into death
 	// mode (the record FUN_005b2e60 sends, mode 0; see Seals.PurgeOnArrival).
 	ActPurge
+	// ActDropItem: the item with the code Key drops at the encounter (Name
+	// says why).
+	ActDropItem
 )
 
 func (k ActionKind) String() string {
-	return [...]string{"spawn-monster", "spawn-npc", "spawn-object", "object-mode", "message", "wake", "portal", "purge"}[k]
+	return [...]string{"spawn-monster", "spawn-npc", "spawn-object", "object-mode", "message", "wake", "portal", "purge", "drop-item"}[k]
 }
 
 // Action is one request to the engine.
@@ -365,4 +368,21 @@ func (m *Manager) WaveSpawned(n int) {
 			m.logf("baal wave %d: %d monsters created", t.Wave, n)
 		}
 	}
+}
+
+// Emit queues an action for the engine on behalf of an encounter that lives
+// in another package (the Pandemonium event, d2common/d2uber).
+func (m *Manager) Emit(enc string, a Action) { m.emit(enc, a) }
+
+// After runs fn after the given number of frames.
+func (m *Manager) After(frames int, fn func()) { m.after(frames, fn) }
+
+// Logf writes a "BOSS ..." line.
+func (m *Manager) Logf(format string, args ...interface{}) { m.logf(format, args...) }
+
+// Do runs fn (which may Emit actions) and returns the actions it queued.
+func (m *Manager) Do(fn func()) []Action {
+	fn()
+
+	return m.take()
 }

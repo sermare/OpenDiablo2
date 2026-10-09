@@ -48,6 +48,9 @@ type Spec struct {
 	Runeword    string
 	CubeMods    []ExtraMod
 	Crafted     bool
+
+	// Personal is the name Anya's reward personalized the item with.
+	Personal string
 }
 
 // intn rolls a property value. While an item with a seed is being built the
@@ -108,6 +111,8 @@ func (i *Item) Spec() Spec {
 		s.Identified = i.attributes.identitified
 		s.Ethereal = i.attributes.ethereal
 		s.Quantity = i.attributes.currentStackSize
+		s.Sockets = i.attributes.numSockets
+		s.Personal = i.attributes.personalization
 
 		if i.attributes.numSockets > 0 {
 			s.Sockets = i.attributes.numSockets
@@ -192,6 +197,7 @@ func (f *ItemFactory) restoreState(item *Item, s Spec) {
 	}
 
 	item.attributes.ethereal = s.Ethereal
+	item.attributes.personalization = s.Personal
 
 	if s.Ethereal {
 		item.attributes.applyEtherialBonus() // the bonus is not stored: re-apply on the fresh base values

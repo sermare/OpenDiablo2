@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2uber"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
 )
 
@@ -41,6 +42,14 @@ const (
 // three Pandemonium areas the keys open is random here.
 func (v *Game) cubePortal(kind string) error {
 	level := 0
+
+	// the Pandemonium recipes belong to the uber event (d2uber): it opens the
+	// portal to the area, and runs the bosses
+	if kind == d2uber.PortalPandemonium || kind == d2uber.PortalFinale {
+		if _, mine := v.uberCube(kind); mine {
+			return nil
+		}
+	}
 
 	switch kind {
 	case "Cow Portal":

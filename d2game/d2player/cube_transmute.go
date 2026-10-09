@@ -196,7 +196,9 @@ type TransmuteResult struct {
 	Row      int
 	Consumed []string
 	Products []string
-	Portals  []string
+	// ProductCodes are the base codes of the items made, in the order of Products.
+	ProductCodes []string
+	Portals      []string
 }
 
 // SetCubePortalHandler sets the function that opens the portal of a portal
@@ -292,6 +294,7 @@ func (g *GameControls) Transmute() (*TransmuteResult, error) {
 		}
 
 		out.Products = append(out.Products, oneLine(itemName(item)))
+		out.ProductCodes = append(out.ProductCodes, strings.TrimSpace(item.CommonCode))
 
 		if !g.cube.grid.AutoPlace(item, true) && !g.inventory.grid.AutoPlace(item, true) {
 			g.Warningf("CUBE no room for %s; it is lost", item.CommonCode)
