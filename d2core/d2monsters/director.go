@@ -94,6 +94,9 @@ type Counters struct {
 	MercSpawns, MercAttacks, MercHits, MercSkills, MercDeaths, MercRevives, MercTeleports, MercLevelUps int
 	// Shots is projectiles launched, ShotHits those that reached a hero.
 	Shots, ShotHits int
+
+	// Raised counts corpses revived by Fallen Shaman / Greater Mummy casts.
+	Raised int
 	// Packs is natural groups spawned; BlockedSteps counts steps refused
 	// because another unit stood in the way; HitRecoveries counts monsters
 	// interrupted by damage; MaxStack is the most live monsters ever seen in
@@ -129,6 +132,7 @@ type unit struct {
 	slowPct             int
 	lastFlee, lastThink int
 	lastLabel           string // the AI state last traced (forced.go)
+	raising             bool   // a corpse a shaman is raising (corpses.go)
 }
 
 type moveIntent struct {

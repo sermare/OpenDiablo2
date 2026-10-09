@@ -35,8 +35,8 @@
 // wave AIs BaalThrone, BaalTaunt, BaalToStairs, BaalCrab(+Clone), BaalTentacle
 // and the forced states 13 and 16.
 //
-// Not ported: PantherWoman, QuillRat,
-// SandLeaper, SandRaider, Fetish, CorruptLancer, GreaterMummy, the monster-side hooks of
+// monster-ai-4 pass (ai_ground.go, ai_rest.go): see those files. Not ported (stand-ins in ai_rest.go): the
+// remaining monai names, Tentacle, FrogDemon, the monster-side hooks of
 // Cloak of Shadows / Overseer whip, and MONAI_PostTargetChecks (wounded
 // MonTeleport, Summoner wake-up, threat re-targeting).
 package d2monster
