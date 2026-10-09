@@ -69,6 +69,11 @@ func (g *GameControls) handleContainerRightClick(mx, my int) bool {
 		return true
 	}
 
+	if from == g.inventory.grid && g.useQuestItem(from, item) {
+		g.saveHero()
+		return true
+	}
+
 	if it, ok := item.(*diablo2item.Item); ok && !d2inventory.PotionEffectOf(it.CommonRecord()).IsEmpty() {
 		from.Remove(item)
 		g.drink(it)

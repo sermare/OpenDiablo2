@@ -295,8 +295,57 @@ func newGoldenBird() *Quest {
 			{ev: EvItemPickedUp, item: ItemJadeFigurine, min: -1, max: -1, to: 1, bit: -1},
 		},
 		noLeaveRule: true,
-		claimFx:     fxs(reward("life-boost", 20, "Alkor's Potion of Life: +20 life")),
+		// VERIFIED (Game.exe 0x5b7f40, msg 538 = 0x21a): the claim hands out the Potion of Life ("xyz") and
+		// sets CUSTOM1 (bit 5); the +20 life is paid when the potion is drunk (DrinkPotionOfLife).
+		claimFx: func(g *Game, q *Quest) []Effect {
+			g.set(q, FlagCustom1, "Potion of Life earned")
+
+			return []Effect{{Kind: EffectSpawn, Quest: q.ID, Code: ItemPotionOfLife, Note: "Alkor gives the Potion of Life"}}
+		},
 	})
+}
+
+// DrinkPotionOfLife is the hero drinking Alkor's Potion of Life. VERIFIED (ITEMACT_ServerUseItem 0x55bfd0):
+// only while A3Q4 bit 5 is set; the bit is cleared and the base max-life stat (7) rises by 20 (0x1400 in
+// 8.8 fixed point).
+func (g *Game) DrinkPotionOfLife() []Effect {
+	q := g.byID[QuestGoldenBird]
+	if !g.get(q, FlagCustom1) {
+		return nil
+	}
+
+	g.clear(q, FlagCustom1, "Potion of Life drunk")
+	g.emit(reward("life-boost", 20, "Potion of Life: +20 max life"))
+
+	return g.TakeEffects()
+}
+
+// ReadScrollOfResistance is the hero reading Malah's Scroll of Resistance ("tr2"). VERIFIED (0x55bfd0,
+// FUN_00587f90 0x587f90, FUN_00587ee0 0x587ee0): allowed while A5Q3 bit 8 (scroll given) is set and bit 7
+// (scroll read) is clear; it sets bit 7 and adds a stat list with base stats 39/41/43/45 (fire, lightning,
+// cold, poison resist). The value is 10 for every difficulty record whose bit 7 is set (the exe sums the
+// three records, so the bonus accumulates across difficulties), and the exe re-applies it when a player
+// joins a game (SERVER_ClientAddPlayerToGame 0x537455). The Value of the effect is the whole bonus of
+// this record only; callers combine the records.
+func (g *Game) ReadScrollOfResistance() []Effect {
+	q := g.byID[QuestPrison]
+	if !g.get(q, FlagCustom4) || g.get(q, FlagCustom3) {
+		return nil
+	}
+
+	g.set(q, FlagCustom3, "Scroll of Resistance read")
+	g.emit(reward("resist-bonus", 10, "Scroll of Resistance: +10 fire/lightning/cold/poison resist"))
+
+	return g.TakeEffects()
+}
+
+// ResistBonus is the permanent resistance bonus this record has earned (10 once the scroll was read).
+func (g *Game) ResistBonus() int {
+	if g.get(g.byID[QuestPrison], FlagCustom3) {
+		return 10
+	}
+
+	return 0
 }
 
 // A3Q5 The Blackened Temple (Ormus): kill the three Council members in
@@ -429,6 +478,8 @@ func newSiege() *Quest {
 			{ev: EvAreaChanged, level: LevelBloodyFoothills, max: 3, to: 3},
 			{ev: EvMonsterKilled, super: "Shenk the Overseer", goal: true},
 		},
+		// VERIFIED (Game.exe 0x584d60, msg 20090 = 0x4e7a): the ack clears the progress bits and sets bit 5; it
+		// does not set RG or clear RP itself (UNRESOLVED: where the socketing action sets RG; kept at the claim).
 		claimFx: fxs(reward("socket-quest", 1, "Larzuk adds sockets to one item")),
 	})
 }
@@ -469,7 +520,15 @@ func newPrison() *Quest {
 			{ev: EvAreaChanged, level: LevelFrozenRiver, max: 3, to: 4},
 			{ev: EvItemRemoved, item: ItemMalahScroll, min: 5, max: 5, goal: true},
 		},
-		claimFx: fxs(reward("resist-bonus", 10, "Malah's scroll: +10% to all resistances (Normal)")),
+		// VERIFIED (Game.exe 0x587460): the claim pays no resistance; Malah's line gives the Scroll of Resistance
+		// (tr2) and sets bit 8; the +10 comes from reading it (ReadScrollOfResistance). UNRESOLVED: the original
+		// needs both Malah's scroll and Anya's item (msg 20136) before RG is set, and Malah's "ice" potion
+		// (msg 20127) thaws Anya; this flow still follows the earlier approximation.
+		claimFx: func(g *Game, q *Quest) []Effect {
+			g.set(q, FlagCustom4, "Malah's scroll given")
+
+			return []Effect{{Kind: EffectSpawn, Quest: q.ID, Code: ItemMalahScroll, Note: "Malah gives the Scroll of Resistance"}}
+		},
 	})
 }
 
