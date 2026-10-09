@@ -235,3 +235,17 @@ func (ob *Object) GetVelocity() d2vector.Vector {
 func (ob *Object) GetSize() (width, height int) {
 	return ob.composite.GetSize()
 }
+
+// RestoreOpened puts the object into the state it has after Open finished,
+// without the operating animation: a level that is rebuilt shows the chests
+// the hero opened (and the doors he left open) as they were. It returns false
+// if the object was already opened.
+func (ob *Object) RestoreOpened() (bool, error) {
+	if ob.opened {
+		return false, nil
+	}
+
+	ob.opened, ob.opening = true, false
+
+	return true, ob.setOpenedMode()
+}

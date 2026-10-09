@@ -106,19 +106,30 @@ func digestRoom(rt *RoomTiles) string {
 func TestOracleTiles(t *testing.T) {
 	env := testEnv(t)
 
-	gp := os.Getenv("ORACLE_TILES")
-	if gp == "" {
-		gp = filepath.Join("..", "testdata", "tiles_act1.json")
-	}
-
-	b, err := os.ReadFile(gp)
-	if err != nil {
-		t.Skip(err)
+	files := []string{"tiles_act1.json", "tiles_act23.json", "tiles_act45.json"}
+	if gp := os.Getenv("ORACLE_TILES"); gp != "" {
+		files = strings.Split(gp, ",")
 	}
 
 	var gold []goldTileLevel
-	if err := json.Unmarshal(b, &gold); err != nil {
-		t.Fatal(err)
+
+	for _, f := range files {
+		gp := f
+		if !strings.Contains(f, "/") {
+			gp = filepath.Join("..", "testdata", f)
+		}
+
+		b, err := os.ReadFile(gp)
+		if err != nil {
+			t.Skip(err)
+		}
+
+		var g []goldTileLevel
+		if err := json.Unmarshal(b, &g); err != nil {
+			t.Fatal(err)
+		}
+
+		gold = append(gold, g...)
 	}
 
 	cache := map[uint32]*drlgworld.Layout{}
@@ -128,27 +139,7 @@ func TestOracleTiles(t *testing.T) {
 	for _, gl := range gold {
 		name := fmt.Sprintf("seed %#x level %d", gl.Seed, gl.Level)
 
-		lay := cache[gl.Seed]
-		if lay == nil {
-			lay, err = drlgworld.Generate(env.Tables, gl.Seed, d2drlg.Normal)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			cache[gl.Seed] = lay
-		}
-
-		p, err := ParamsFromLayout(env.Tables, lay, gl.Level, gl.Seed)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		lv, err := Generate(env, p)
-		if err != nil {
-			t.Fatalf("%s: %v", name, err)
-		}
-
-		res, err := lv.BuildTiles()
+		res, err := tilesOfLevel(t, env, cache, gl.Seed, gl.Level)
 		if err != nil {
 			t.Errorf("%s: %v", name, err)
 			bad++
@@ -252,4 +243,65 @@ func explain(t *testing.T, rt *RoomTiles, g goldTileRoom) {
 			}
 		}
 	}
+}
+
+// tilesOfLevel generates a level of any act (Normal difficulty) the way the
+// golden was made and builds its tiles.
+func tilesOfLevel(t *testing.T, env *Env, cache map[uint32]*drlgworld.Layout, seed uint32, id int) ([]*RoomTiles, error) {
+	t.Helper()
+
+	var (
+		p   Params
+		err error
+	)
+
+	switch {
+	case id < 40:
+		lay := cache[seed]
+		if lay == nil {
+			if lay, err = drlgworld.Generate(env.Tables, seed, d2drlg.Normal); err != nil {
+				t.Fatal(err)
+			}
+
+			cache[seed] = lay
+		}
+
+		p, err = ParamsFromLayout(env.Tables, lay, id, seed)
+	case id < 103:
+		p, err = ParamsAct23(env.Tables, seed, d2drlg.Normal, id)
+	default:
+		act := 3
+		gen := drlgworld.GenerateAct4
+
+		if id >= 109 {
+			act, gen = 4, drlgworld.GenerateAct5
+		}
+
+		lay, e := gen(env.Tables, seed, d2drlg.Normal)
+		if e != nil {
+			t.Fatal(e)
+		}
+
+		p, err = ParamsFromLayout45(env.Tables, lay, act, id, seed, d2drlg.Normal)
+	}
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if rec, ok := env.Tables.Level(id); ok && rec.DrlgType == 2 {
+		pl, err := GeneratePreset(env, p, -1)
+		if err != nil {
+			return nil, err
+		}
+
+		return pl.BuildTiles()
+	}
+
+	lv, err := Generate(env, p)
+	if err != nil {
+		return nil, err
+	}
+
+	return lv.BuildTiles()
 }

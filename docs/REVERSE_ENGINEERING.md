@@ -22,6 +22,39 @@ only. Code comments in this repo carry the conclusions and their evidence level.
   verb-first PascalCase name (for example `UI_BuildNpcMenu`, `TRADE_CalcItemPrice`). About 2,400 functions are named at the
   time of writing (the README status board has the current count).
 
+### 1.1a The Ghidra workflow, step by step
+
+1. Start the Ghidra GUI with the project that holds `Game.exe` (image base 0x400000, x86 32-bit). The MCP server is a
+   plugin inside that window; it also listens on **HTTP port 8089** on the loopback address.
+2. Agents normally use the MCP tools (`search_strings`, `get_xrefs_to`, `get_functions`, `find_functions`,
+   `rename_function`, `save_program`). The tools are deferred in Claude Code: load their schemas first, and use bulk
+   modes (`functions=`, `fields=`) so a request returns one small payload.
+3. **If the MCP tools show as disconnected** (the session keeps its old connection after Ghidra restarts), the same
+   server can be reached directly over HTTP on `127.0.0.1:8089`. Two calls known to work: a GET on `/find_functions`
+   with `has_custom_name=true&limit=1` returns a JSON object whose `total` is the number of functions that carry a
+   human-given name (the progress counter; the README status board and `docs/progress.json` quote it), and a POST to
+   `/save_program` saves the Ghidra project. Other endpoints mirror the MCP tool names; check the plugin before relying on one.
+4. Start from assert strings (section 2.1), take cross references, decompile the callers and callees, write the
+   conclusion in the notes file of your slice, name the function, and call save at the end.
+5. If Ghidra itself has died, restart it from a GUI session (a background shell cannot start it); do not try to work around
+   a dead window by running scripts.
+6. Never leave a Ghidra window to other agents in a changed state: one request at a time, no scripts, no close.
+
+#### Naming conventions
+
+* **Ghidra names**: `<MODULE>_<VerbFirstPascalCase>`, for example `UI_BuildNpcMenu`, `TRADE_CalcItemPrice`,
+  `SKILL_ServerRunStartFunc`, `INV_CheckItemRequirements`, `MISSILE_ProcessHitOrExpire`, `DRLG_GenerateAct1Outdoors`.
+  The module prefix comes from the original source file (`UI\npcmenu.cpp` gives `UI`, `Trade` code gives `TRADE`) or from the
+  named callers. Prefixes seen in the notes: `UI`, `TRADE`, `INV`, `SKILL`, `SRVDO`/`SRVST`/`CLTDO`/`CLTST` (skill function
+  tables), `MISSILE`, `MONAI`, `DRLG`, `STATS`, `QUEST`, `SERVER`/`SRV`/`SCMD`/`CCMD` (server and packets), `ENVIRON`,
+  `AUTOMAP`, `FOG`, `D2WIN`, `CRT`, `MATH`.
+* **Auto-labelled functions** from the bulk naming pushes have the shape `<MODULE>_<Kind>_<address>` where `<Kind>` is
+  `Helper`, `Func`, `Fwd` (thin wrapper), `Leaf` (no calls), `Thunk`, `Proc`, or a getter such as `GetField2` (see the notes
+  `naming-push-1` and `naming-push-2`). They say where a function lives, not what it does, and the README counts them
+  separately from hand-named functions.
+* **In Go code**: cite the original function by its Ghidra name and address in a comment (`SKILL_ServerRunStartFunc
+  (0x56d4e0)`), and the notes file by name (`skills-2.md`). Never paste the decompiled body.
+
 ### 1.2 The decompiler on macOS
 
 Ghidra's release does not ship a native decompiler for Apple Silicon. It was built from the source bundled with Ghidra:
@@ -152,3 +185,37 @@ This is a technical description, not legal advice.
    board and `docs/progress.json` only for things that were verified, not assumed.
 9. **Be honest in reports**: what is implemented, what evidence exists (test names, log lines), what is unverified or
    skipped and why.
+
+## 7. Notes index
+
+The notes live in a separate repository directory next to the author's working copy (`~/git/d2-re-notes`); they are not
+part of this repository. Code comments refer to them by file name. Every file records addresses, names, structure offsets
+and evidence levels in the author's words, never decompiled code. Read the two briefs first.
+
+| Notes file | Covers | Main consumers in this repo |
+|---|---|---|
+| `AGENT_BRIEF.md` | Rules and method for reverse-engineering agents (read-only Ghidra, what to write) | everything |
+| `CODE_AGENT_BRIEF.md` | Rules for agents writing Go: branches, quality bar, GUI launch, reporting | everything |
+| `cartographer.md` | Index of the 277 original source files and the slices they form | all |
+| `units.md` | Unit structures: player, monster, object, item | `d2core/d2map/d2mapentity`, `d2hero` |
+| `session-core.md` | Server game state, seeds, join and leave, act and level transitions, player load and save | `d2level`, `d2server` |
+| `game-net.md` | Start-up, main loop, client/server packet system, size tables, Huffman | `d2networking/d2gs`, `d2gsnet` |
+| `menus-libs.md` | Character select, the `.d2s` format, Storm/Fog helpers | `d2fileformats/d2s`, `d2hero` |
+| `drlg.md` | Level generator: random generator, seed hierarchy, structure offsets, dispatch | `d2rand`, `d2drlg` |
+| `drlg2.md` | Maze placers and finishers, Act 1 world search, outdoor skeleton | `drlgmaze`, `drlgworld` |
+| `drlg3.md`, `drlg3-ref/` | Act 1 outdoor generation stage by stage and the reference implementation | `drlgoutdoor` |
+| `drlg-oracle.md` | The emulator oracle: how the real generator is run and compared | goldens in `d2common/d2drlg/testdata` |
+| `drlg-outdoor1.md`, `drlg-tiles.md` | Go port of Act 1 outdoors; exact tile choice | `drlgoutdoor` |
+| `drlg-act23.md`, `drlg-act23-outdoor.md`, `drlg-act23-outdoor-ref/` | Act 2 and 3 mazes and outdoors | `drlgmaze`, `drlgoutdoor` |
+| `drlg-act45.md`, `drlg-act45-outdoor.md`, `drlg-act45-go.md`, `drlg-act45-outdoor-ref/` | Act 4 and 5 mazes, outdoors, world placement, the Go port | `drlgmaze`, `drlgoutdoor`, `drlgworld` |
+| `monster-ai.md`, `monster-ai-2.md` | AI framework, tables, the Act 1-2 archetypes | `d2monster` |
+| `skills-combat.md`, `skills-2.md` | Skill function tables, calc language, combat formulas, state handling | `d2combat`, `d2calc`, `d2skill`, `d2state` |
+| `missiles-pathing.md` | Missile server simulation, collision, click-to-move path | `d2missile`, `d2path` |
+| `itemgen.md` | Item generation, quality and affix selection, properties to stats | `d2drop`, `d2statlist` |
+| `inventory-trade.md` | Inventory rules, equip requirements, vendor stock and prices | `d2equip`, `d2trade`, `d2vendor`, `d2playertrade` |
+| `hirelings.md` | Mercenaries | `d2hireling` |
+| `quests.md`, `quests-2.md`, `quests-2-msg-sound.csv` | Quest callbacks and state machines, message to sound mapping | `d2quest`, `d2boss` |
+| `ui-npc.md` | NPC menu, dialog, quest log, party panel | `d2game/d2player`, `d2party` |
+| `render-sound.md`, `renderer.md` | Renderer, light map, palettes, automap, sound system | `d2lightmap`, `d2daynight`, `d2automap`, `d2sfx` |
+| `naming-push-1.md`, `naming-push-2.md` | Bulk function renames (address, new name, purpose) | none; reference when reading Ghidra |
+| `close-terminals.applescript` | Closes leftover Terminal windows after test runs | tooling |

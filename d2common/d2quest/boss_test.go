@@ -9,12 +9,13 @@ func TestBossKillsSetQuestBits(t *testing.T) {
 		id    int
 		slot  int
 		extra uint16 // bits beyond primary goal + reward pending
+		noRP  bool   // the quest keeps its reward for the talks (Seven Tombs)
 	}{
-		{"duriel", Event{Kind: EvMonsterKilled, Monster: NPCDuriel, Name: "Duriel"}, QuestSevenTombs, SlotSevenTombs, 1 << FlagCustom1},
-		{"mephisto", Event{Kind: EvMonsterKilled, Monster: NPCMephisto, Name: "Mephisto"}, QuestGuardian, SlotGuardian, 0},
-		{"diablo", Event{Kind: EvMonsterKilled, Monster: NPCDiablo, Name: "Diablo"}, QuestTerrorsEnd, SlotTerrorsEnd, 0},
-		{"baal by name", Event{Kind: EvMonsterKilled, Monster: 12345, Name: "Baal"}, QuestEveOfDestruction, SlotEveOfDestruction, 0},
-		{"baal by class", Event{Kind: EvMonsterKilled, Monster: NPCBaalCrab}, QuestEveOfDestruction, SlotEveOfDestruction, 0},
+		{"duriel", Event{Kind: EvMonsterKilled, Monster: NPCDuriel, Name: "Duriel"}, QuestSevenTombs, SlotSevenTombs, 1 << FlagCustom1, true},
+		{"mephisto", Event{Kind: EvMonsterKilled, Monster: NPCMephisto, Name: "Mephisto"}, QuestGuardian, SlotGuardian, 0, false},
+		{"diablo", Event{Kind: EvMonsterKilled, Monster: NPCDiablo, Name: "Diablo"}, QuestTerrorsEnd, SlotTerrorsEnd, 0, false},
+		{"baal by name", Event{Kind: EvMonsterKilled, Monster: 12345, Name: "Baal"}, QuestEveOfDestruction, SlotEveOfDestruction, 0, false},
+		{"baal by class", Event{Kind: EvMonsterKilled, Monster: NPCBaalCrab}, QuestEveOfDestruction, SlotEveOfDestruction, 0, false},
 	} {
 		g, _ := newGame(t)
 
@@ -29,6 +30,9 @@ func TestBossKillsSetQuestBits(t *testing.T) {
 		g.Dispatch(c.ev)
 
 		want := uint16(1<<FlagPrimaryGoal|1<<FlagRewardPending) | c.extra
+		if c.noRP {
+			want &^= 1 << FlagRewardPending
+		}
 		if got := g.Rec.Slot(c.slot); got != want {
 			t.Errorf("%s: slot %d = 0x%04x want 0x%04x", c.name, c.slot, got, want)
 		}
