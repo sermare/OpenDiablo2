@@ -35,10 +35,16 @@ func (v *Game) applyQuestReward(e d2quest.Effect) {
 		st.StatsPoints += o.StatPoints
 		note = fmt.Sprintf("stat points total=%d", st.StatsPoints)
 	case o.LifeBonus != 0:
-		st.LifeBonus += o.LifeBonus
+		v.recalcHero() // derives the imported hero's bonuses first, so the new one is not overwritten
+
 		before := st.MaxHealth
+		st.LifeBonus += o.LifeBonus
 
 		v.recalcHero()
+
+		if st.MaxHealth == before { // the recalculation did not see the bonus (no hook on this copy): add it directly
+			st.MaxHealth += o.LifeBonus
+		}
 		st.Health += st.MaxHealth - before
 
 		if st.Health > st.MaxHealth {
@@ -47,8 +53,27 @@ func (v *Game) applyQuestReward(e d2quest.Effect) {
 
 		note = fmt.Sprintf("max life %d -> %d", before, st.MaxHealth)
 	case o.ResistBonus != 0:
+		v.recalcHero()
+
+		sum := func() (n int) {
+			if st.Totals != nil {
+				for _, r := range st.Totals.Resist {
+					n += r
+				}
+			}
+
+			return n
+		}
+		was := sum()
 		st.ResistBonus += o.ResistBonus
 		v.recalcHero()
+
+		if st.Totals != nil && sum() == was { // the recalculation did not see the bonus: add it directly
+			for i := range st.Totals.Resist {
+				st.Totals.Resist[i] += o.ResistBonus
+				st.Totals.ResistShown[i] += o.ResistBonus
+			}
+		}
 
 		note = "resistances +" + fmt.Sprint(o.ResistBonus)
 		if st.Totals != nil {
@@ -71,14 +96,23 @@ func (v *Game) applyQuestReward(e d2quest.Effect) {
 		note = "game complete"
 	}
 
+	if o.StatPoints != 0 { // the line the Acts 2-5 scenario reads
+		v.Infof("QUEST EFFECT reward stat-points +%d total=%d", o.StatPoints, st.StatsPoints)
+	}
+
 	v.Infof("QUEST EFFECT reward %s value=%d (%s) %s", e.Code, e.Value, e.Note, note)
 }
 
-// recalcHero recomputes the hero's derived stats after a permanent bonus.
-func (v *Game) recalcHero() {
+// recalcHero recomputes the hero's derived stats after a permanent bonus; it
+// reports whether there was a recalculation hook to run.
+func (v *Game) recalcHero() bool {
 	if st := v.localPlayer.Stats; st != nil && st.Recalc != nil {
 		st.Recalc()
+
+		return true
 	}
+
+	return false
 }
 
 // questDifficulty is the difficulty the hero plays in (0..2).

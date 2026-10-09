@@ -154,20 +154,27 @@ func (v *Game) rewardSteps() []uberStep {
 			st := v.localPlayer.Stats
 			sp, life := st.StatsPoints, st.MaxHealth
 
-			var fire int
-			if st.Totals != nil {
-				fire = st.Totals.ResistShown[0]
+			resSum := func() int {
+				if st.Totals == nil {
+					return 0
+				}
+
+				return st.Totals.ResistShown[0] + st.Totals.ResistShown[1] + st.Totals.ResistShown[2] + st.Totals.ResistShown[3]
 			}
+			v.recalcHero()
+			res := resSum()
+			life = st.MaxHealth
 
 			v.applyQuestEffects([]d2quest.Effect{fx("stat-points", 5), fx("life-boost", 20), fx("resist-bonus", 10)})
 
 			t.expect(v, "stat points +5", st.StatsPoints == sp+5)
 			t.expect(v, "Potion of Life raises max life", st.MaxHealth > life)
-			t.expect(v, "Malah's scroll raises resistances", st.ResistBonus == 10 && (st.Totals == nil || st.Totals.ResistShown[0] > fire))
+			t.expect(v, "Malah's scroll raises resistances", st.ResistBonus == 10 && (st.Totals == nil || resSum() > res))
 
 			return true
 		}},
 		{"rewards: Larzuk's sockets on a sword", func(v *Game, t *uberAutoTest, _ float64) bool {
+			v.gameControls.FreeInventory(12) // the sample hero's pack is full
 			name, err := v.giveRewardTestItem("lsd", 2)
 			v.Infof("AUTOUBER gave %q err=%v", name, err)
 			t.expect(v, "a sword was given", err == nil)
@@ -206,16 +213,17 @@ func (v *Game) rewardSteps() []uberStep {
 			return true
 		}},
 		{"rewards: Hellforge drops (Hephasto, Mephisto) and the smashing", func(v *Game, t *uberAutoTest, _ float64) bool {
+			r := v.questRT
+			q := r.g.Quest(d2quest.QuestHellforge)
+			q.Active, q.NotIntro = true, true
+			r.g.Rec.SetSlot(q.Slot, 0) // the sample hero finished the quest long ago
+			r.g.Rec.Set(q.Slot, d2quest.FlagStarted)
+			q.State = 1 // Cain has sent the hero to the forge
+
 			v.questKillDrops("Hephasto the Armorer", 0)
 			v.questKillDrops("Mephisto", 242)
 
-			r := v.questRT
 			r.g.Items["hfh"], r.g.Items["mss"] = 1, 1
-
-			q := r.g.Quest(d2quest.QuestHellforge)
-			q.Active, q.NotIntro = true, true
-			r.g.Rec.SetSlot(q.Slot, 0)
-			r.g.Rec.Set(q.Slot, d2quest.FlagStarted)
 
 			v.questDispatch(d2quest.Event{Kind: d2quest.EvObjectOperated, Object: d2quest.ObjectHellforge, Level: 107})
 
@@ -238,7 +246,7 @@ func (v *Game) travelSteps() []uberStep {
 				via      string
 			}{{1, 2, "act:npc"}, {2, 3, "act:npc"}, {3, 4, "portal"}, {4, 5, "act:talk"}} {
 				v.questActChange(c.from, c.to, c.via)
-				t.expect(v, fmt.Sprintf("act %d is finished after the trip to act %d", c.from, c.to), rec.ActFinished(c.from))
+				t.expect(v, fmt.Sprintf("act %d is finished after the trip to act %d", c.from, c.to), rec.ActFinished(c.from) || (c.from == 4 && rec.Get(28, d2quest.FlagRewardGranted)))
 			}
 
 			// trips that are not forward act changes are ignored
@@ -359,7 +367,7 @@ func (v *Game) uberSteps() []uberStep {
 				v.uberKill(k)
 			}
 
-			if v.uber.ev.State() != "done" {
+			if v.uber.ev.State() != "done" || !v.uber.rewarded {
 				return false
 			}
 

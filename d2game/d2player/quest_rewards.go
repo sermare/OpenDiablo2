@@ -79,6 +79,24 @@ func (g *GameControls) GiveItemToCube(code string) error {
 	return nil
 }
 
+// FreeInventory removes up to n items from the inventory grid to make room (a
+// console aid for the autotests); it returns how many were removed.
+func (g *GameControls) FreeInventory(n int) int {
+	items := append([]InventoryItem{}, g.inventory.grid.Items()...)
+	done := 0
+
+	for _, it := range items {
+		if done >= n {
+			break
+		}
+
+		g.inventory.grid.Remove(it)
+		done++
+	}
+
+	return done
+}
+
 // SaveItems stores the hero after an item was changed by a reward.
 func (g *GameControls) SaveItems() { g.saveHero() }
 

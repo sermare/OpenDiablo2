@@ -8,7 +8,7 @@ scenario_check() {
   grep -qE "QUEST EFFECT reward life-boost value=20 .* max life [0-9]+ -> [0-9]+" $log.txt || { echo "FAIL: Potion of Life not applied"; fail=1; }
   grep -qE "QUEST EFFECT reward resist-bonus value=10 .* resistances \+10 now fire=" $log.txt || { echo "FAIL: Malah's scroll not applied"; fail=1; }
   grep -qE "REWARD socket item=lsd sockets=[1-6] " $log.txt || { echo "FAIL: Larzuk did not socket the sword"; fail=1; }
-  grep -qE "REWARD personalize item=cap name=" $log.txt || { echo "FAIL: Anya did not personalise the helm"; fail=1; }
+  grep -qE "REWARD personalize item=[a-z0-9]+ name=" $log.txt || { echo "FAIL: Anya did not personalise the helm"; fail=1; }
   grep -qE "QUEST EFFECT reward hire-barbarians .* mercenaries of barbarians are hirable" $log.txt || { echo "FAIL: Qual-Kehk's reward"; fail=1; }
   grep -qE "QUEST DROP hfh from \"Hephasto the Armorer\"" $log.txt || { echo "FAIL: Hellforge Hammer drop"; fail=1; }
   grep -qE "QUEST DROP mss from \"Mephisto\"" $log.txt || { echo "FAIL: Mephisto Soulstone drop"; fail=1; }

@@ -25,6 +25,8 @@ type uberRuntime struct {
 	ev      *d2uber.Event
 	frames  float64
 	spawned []*d2mapentity.Monster
+	// rewarded is set when the final reward (Standard of Heroes) was dropped.
+	rewarded bool
 }
 
 // uberRT returns the event runtime, creating it on first use.
@@ -128,6 +130,11 @@ func (v *Game) uberApply(actions []d2boss.Action) {
 			}
 		case d2boss.ActDropItem:
 			v.Infof("UBER drop %s (%s)", a.Key, a.Name)
+
+			if a.Key == d2uber.CodeStandardOfHeroes {
+				v.uber.rewarded = true
+			}
+
 			v.spawnQuestItem(a.Key)
 		default:
 			v.Infof("UBER action %s", a)

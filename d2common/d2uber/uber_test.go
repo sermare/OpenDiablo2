@@ -151,6 +151,28 @@ func TestFinaleTristram(t *testing.T) {
 	}
 }
 
+func TestFinaleAfterAreaBosses(t *testing.T) {
+	m, e, _ := newEvent()
+
+	for _, a := range Areas {
+		m.Enter(a.Level)
+		m.Killed(d2boss.Kill{Class: a.Boss.Class, Super: -1})
+	}
+
+	m.Enter(LevelTristram)
+	m.Tick(200)
+
+	for _, c := range []int{ClassUberMephisto, ClassUberDiablo, ClassUberBaal} {
+		m.Killed(d2boss.Kill{Class: c, Super: -1})
+	}
+
+	m.Tick(100)
+
+	if e.State() != "done" {
+		t.Fatalf("the event did not end after the area bosses were killed: %s", e.State())
+	}
+}
+
 func TestKilledEarlyBeforeAllArrived(t *testing.T) {
 	m, e, _ := newEvent()
 	m.Enter(LevelTristram)

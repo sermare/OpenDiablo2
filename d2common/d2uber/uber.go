@@ -273,6 +273,7 @@ func (e *Event) OnKill(m *d2boss.Manager, k d2boss.Kill) {
 	for _, a := range Areas {
 		if k.Class == a.Boss.Class && k.Level == a.Level {
 			e.organs[a.Drop] = true
+			delete(e.bossesAlive, k.Class)
 			m.Logf("uber trigger: %s dead -> drops %s", a.Boss.Name, a.Drop)
 			m.Emit("uber", d2boss.Action{Kind: d2boss.ActDropItem, Name: a.Boss.Name + " drops " + a.Drop, Key: a.Drop, Class: k.Class, Level: k.Level})
 		}
