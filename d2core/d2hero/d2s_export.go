@@ -82,7 +82,11 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 		exportAttributes(c, state, warn)
 		exportSkills(c.Body, state, opts.SkillIDs)
 		exportProgress(c.Body, state)
-		checkEquipment(c, state, warn)
+		// a character without any item in its file (a new one) gets no starting
+		// items written: item bits are never fabricated, so there is nothing to compare
+		if len(c.Items) > 0 {
+			checkEquipment(c, state, warn)
+		}
 	}
 
 	exportWorld(c.Header, state)
