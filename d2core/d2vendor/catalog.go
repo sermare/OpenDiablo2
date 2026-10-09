@@ -246,13 +246,29 @@ func GamblePoolFor(rec *d2records.RecordManager) (pool []GambleBase, ring, amule
 	return pool, ring, amulet, haveRing && haveAmulet && len(pool) > 0
 }
 
+// ShippedGambleParams are the Gamble* values of the 1.14b DifficultyLevels
+// data (read from patch_d2.mpq difficultylevels.bin: identical for all three
+// difficulties: GambleRare 10000, GambleSet 100, GambleUnique 50, GambleUber
+// 90, GambleUltra 33). The expansion's difficultylevels.txt, which is what a
+// text-table loader sees, has no Gamble* columns at all and so loads as zeros.
+//
+//nolint:gochecknoglobals // static lookup data
+var ShippedGambleParams = GambleParams{Rare: 10000, Set: 100, Unique: 50, Uber: 90, Ultra: 33}
+
 // GambleParamsFor reads the Gamble* columns of DifficultyLevels.txt
-// (difficulty 0 normal, 1 nightmare, 2 hell).
+// (difficulty 0 normal, 1 nightmare, 2 hell). When the table has no such
+// columns (all zero, as with the shipped .txt) the 1.14b .bin values are used,
+// otherwise every gamble item would be magic and never exceptional or elite.
 func GambleParamsFor(rec *d2records.RecordManager, difficulty int) GambleParams {
 	r := rec.DifficultyLevels[d2enum.DifficultyType(difficulty)]
 	if r == nil {
-		return GambleParams{}
+		return ShippedGambleParams
 	}
 
-	return GambleParams{Rare: r.GambleRare, Set: r.GambleSet, Unique: r.GambleUnique, Uber: r.GambleUber, Ultra: r.GambleUltra}
+	p := GambleParams{Rare: r.GambleRare, Set: r.GambleSet, Unique: r.GambleUnique, Uber: r.GambleUber, Ultra: r.GambleUltra}
+	if p == (GambleParams{}) {
+		return ShippedGambleParams
+	}
+
+	return p
 }
