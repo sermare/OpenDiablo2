@@ -464,7 +464,11 @@ func (g *MapGenerator) markWarpTiles(stamp *d2mapstamp.Stamp, path string, ox, o
 				}
 
 				dest := 0
-				if isCave && hasCave {
+				if to, ok := d2level.CanyonTombDestination(int(w.Style)); ok && levelID == d2level.LevelCanyonOfTheMagi {
+					// the seven King Tomb entrances of the Canyon of the Magi: style n is the n-th tomb
+					dest = to
+					g.engine.SetWarpDestination(ox+x, oy+y, dest)
+				} else if isCave && hasCave {
 					dest = cave
 					g.engine.SetWarpDestination(ox+x, oy+y, dest)
 				}

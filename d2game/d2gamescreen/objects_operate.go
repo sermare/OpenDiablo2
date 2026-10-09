@@ -56,7 +56,7 @@ func objectIsOperable(ob *d2mapentity.Object) bool {
 	rec := ob.Record()
 	info := d2object.Lookup(rec.OperateFn)
 
-	if !info.Class.Implemented() {
+	if !info.Operable() {
 		return false
 	}
 
@@ -113,6 +113,8 @@ func (v *Game) operateWorldObject(ob *d2mapentity.Object) {
 		v.operateRack(ob)
 	case d2object.ClassLoot, d2object.ClassExplode:
 		v.operateContainer(ob, info)
+	case d2object.ClassTeleport:
+		v.operateTeleport(ob, info)
 	default:
 		if info.Stub {
 			v.Infof("OBJECT stub %q (id %d) fn=%d class=%s: %s (%s)", ob.Label(), rec.Index, rec.OperateFn,

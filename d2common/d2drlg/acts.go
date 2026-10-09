@@ -42,3 +42,8 @@ func DrawActExtras(gameSeed uint32, act int) ActExtras {
 
 	return out
 }
+
+// RealTomb is the level id (66..72) of Tal Rasha's real tomb for a game seed: the tomb that the maze
+// finisher gives the Talrasha chamber with the Horadric orifice (TombA; the finisher notes stamp "Talrasha
+// on tombA, Kaa on tombB and a chest on the six others"). The other six tombs are decoys.
+func RealTomb(gameSeed uint32) int { return DrawActExtras(gameSeed, 1).TombA }

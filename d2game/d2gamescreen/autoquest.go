@@ -113,7 +113,7 @@ var act1Order = []string{"den", "burial", "cain", "tools", "tower", "andariel"}
 // act2Order is the order the later quests of Act 2 are played in (Radament is "radament").
 //
 //nolint:gochecknoglobals // static lookup data
-var act2Order = []string{"sun", "staff", "arcane", "summoner", "tombs"}
+var act2Order = []string{"radament", "sun", "staff", "arcane", "summoner", "tombs"}
 
 // stagePrereq lists the quests that must be done before a stage can run alone.
 //

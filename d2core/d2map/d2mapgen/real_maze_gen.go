@@ -55,7 +55,15 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 
 	base, _ := d2rand.DrlgBaseSeed(seed)
 
-	res, err := drlgmaze.Generate(tb, drlgmaze.Params{LevelID: levelID, Difficulty: diff, BaseSeed: base})
+	// the two special tombs of Act 2 are drawn from the game seed (the real Tal Rasha's tomb gets the
+	// chamber with the orifice, see d2drlg.RealTomb)
+	params := drlgmaze.Params{LevelID: levelID, Difficulty: diff, BaseSeed: base}
+	if levelID >= 40 && levelID <= 74 {
+		ex := d2drlg.DrawActExtras(seed, 1)
+		params.TombA, params.TombB = ex.TombA, ex.TombB
+	}
+
+	res, err := drlgmaze.Generate(tb, params)
 	if err != nil {
 		return err
 	}

@@ -300,6 +300,10 @@ func isOutdoor(level int) bool { return len(EdgeNeighbors(level)) > 0 }
 //     ones). The LvlWarp id is NOT the style there (style 4 leads down,
 //     LvlWarp 4 is "Cave Up").
 func TileDestination(level, style int) (int, bool) {
+	if level == LevelCanyonOfTheMagi {
+		return CanyonTombDestination(style)
+	}
+
 	if isOutdoor(level) {
 		if to, ok := Destination(level, style); ok {
 			return to, true

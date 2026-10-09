@@ -107,17 +107,17 @@ var operateInfos = []Info{
 		Note: "Tainted Sun quest"},
 	{Fn: 25, Class: ClassQuest, Name: "orifice (Horadric staff)", Stub: true, Note: "Horadric Staff quest"},
 	{Fn: 26, Class: ClassLoot, Name: "bookshelf", Sound: "object_bookshelf"},
-	{Fn: 27, Class: ClassTeleport, Name: "teleport pad", Sound: "object_teleportpad", Stub: true,
-		Note: "Arcane Sanctuary pads need the sanctuary layout"},
+	{Fn: 27, Class: ClassTeleport, Name: "teleport pad", Sound: "object_teleportpad",
+		Note: "the hero lands next to the nearest other pad (PadPartner)"},
 	{Fn: 28, Class: ClassQuest, Name: "Lam Esen's tome", Stub: true, Note: "Lam Esen's Tome quest (Act 3)"},
 	{Fn: 29, Class: ClassDoor, Name: "door (act 2 variant)"},
 	{Fn: 30, Class: ClassExplode, Name: "trap / exploding chest", Sound: "object_barrel_explode"},
 	{Fn: 31, Class: ClassQuest, Name: "Gidbinn altar", Stub: true, Note: "Blade of the Old Religion (Act 3)"},
 	{Fn: 32, Class: ClassStash, Name: "stash"},
 	{Fn: 33, Class: ClassQuest, Name: "Wirt's body", Stub: true, Note: "Wirt's leg is a Tristram quest drop"},
-	{Fn: 34, Class: ClassTeleport, Name: "arcane sanctuary portal", Stub: true, Note: "Act 2 arcane portal"},
+	{Fn: 34, Class: ClassTeleport, Name: "arcane sanctuary portal", Note: "Palace Cellar 3 <-> Arcane Sanctuary"},
 	{Fn: 42, Class: ClassQuest, Name: "tome", Stub: true},
-	{Fn: 43, Class: ClassTeleport, Name: "Duriel's lair / guild portal", Stub: true},
+	{Fn: 43, Class: ClassTeleport, Name: "Duriel's lair / guild portal", Note: "to the lair (73) from the real tomb"},
 	{Fn: 47, Class: ClassTeleport, Name: "stair", Stub: true},
 }
 
@@ -149,6 +149,55 @@ func (c Class) Implemented() bool {
 	}
 
 	return false
+}
+
+// OperateFn numbers of the Act 2 teleport objects.
+const (
+	FnTeleportPad  = 27
+	FnArcanePortal = 34
+	FnDurielPortal = 43
+)
+
+// Operable reports whether the engine does something when the player clicks an object with this
+// OperateFn: the implemented classes plus the Act 2 teleport pad (27), the Arcane Sanctuary portal (34)
+// and the portal to Duriel's lair (43).
+func (i Info) Operable() bool {
+	return i.Class.Implemented() || i.Fn == FnTeleportPad || i.Fn == FnArcanePortal || i.Fn == FnDurielPortal
+}
+
+// Pos is a position in tiles.
+type Pos struct{ X, Y float64 }
+
+// PadSearchRadius is how far (tiles) a teleport pad looks for its partner. The original searches the
+// pad's room and then the rooms next to it (OBJECTS_OperateFunction27_TeleportPad, D2MOO); the nearest
+// pad of the same objects.txt row stands for "the one in the same or an adjacent room" here (UNVERIFIED
+// as the room test is not modelled).
+const PadSearchRadius = 40.0
+
+// PadPartner returns the pad a teleport pad sends the player to: the nearest other pad of the same
+// objects.txt row within PadSearchRadius. pads are the positions of all pads of that row on the map,
+// self included (the pad at self is skipped).
+func PadPartner(self Pos, pads []Pos) (Pos, bool) {
+	var (
+		best Pos
+		bd   = PadSearchRadius * PadSearchRadius
+		ok   bool
+	)
+
+	for _, p := range pads {
+		dx, dy := p.X-self.X, p.Y-self.Y
+		d := dx*dx + dy*dy
+
+		if d < 0.25 { // the pad itself
+			continue
+		}
+
+		if d <= bd {
+			best, bd, ok = p, d, true
+		}
+	}
+
+	return best, ok
 }
 
 // Breakable reports whether the loot container breaks apart (barrels, urns,

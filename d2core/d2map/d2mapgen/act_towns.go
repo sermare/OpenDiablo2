@@ -191,10 +191,18 @@ func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, diff d2drlg.Dif
 			for i := range t.Components.Walls {
 				if w := &t.Components.Walls[i]; w.Type.Special() {
 					cands = append(cands, startCand{x, y, int(w.Style), int(w.Sequence)})
+
+					// the exits of Lut Gholein into the sewers and the palace (UNVERIFIED assignment, see d2level.TownTileDestination)
+					if to, ok := d2level.TownTileDestination(levelID, int(w.Style)); ok && w.Sequence == 0 {
+						g.engine.SetWarpDestination(x, y, to)
+						g.Infof("act town: exit tile style=%d at (%d,%d) leads to level %d", w.Style, x, y, to)
+					}
 				}
 			}
 		}
 	}
+
+	g.Infof("act town: level %d special tiles (x,y,style,sequence): %v", levelID, cands)
 
 	sx, sy, how, found := chooseTownStart(cands)
 	if !found {

@@ -105,7 +105,9 @@ func LogDRLGSummary(a *d2asset.AssetManager, seed uint32, levelID int, diff d2dr
 		logf("AUTOMAP world error: %v", err)
 	}
 
-	res, err := drlgmaze.Generate(tb, drlgmaze.Params{LevelID: levelID, Difficulty: diff, BaseSeed: base})
+	ex := d2drlg.DrawActExtras(seed, 1)
+
+	res, err := drlgmaze.Generate(tb, drlgmaze.Params{LevelID: levelID, Difficulty: diff, BaseSeed: base, TombA: ex.TombA, TombB: ex.TombB})
 	if err != nil {
 		logf("AUTOMAP level %d: %v", levelID, err)
 		return
