@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2ground"
@@ -91,6 +92,12 @@ func (v *Game) walkToItem(it *d2mapentity.Item) {
 func (v *Game) walkToObject(ob *d2mapentity.Object) {
 	x, y := ob.GetPositionF()
 	v.npcTarget = nil
+
+	switch ob.Kind() {
+	case d2level.ObjectDoor, d2level.ObjectWaypoint, d2level.ObjectPortal:
+		v.useObject(ob)
+		return
+	}
 
 	if _, ok := lootContainers[ob.Record().Index]; !ok {
 		v.OnPlayerMove(x, y)

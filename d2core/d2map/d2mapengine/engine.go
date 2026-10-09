@@ -34,6 +34,7 @@ type MapEngine struct {
 	startSubTileX int                       // Starting X position
 	startSubTileY int                       // Starting Y position
 	dt1Files      []string                  // List of DS1 strings
+	objBlock      *ObjectCollision          // run-time collision of doors
 
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/789
 	IsLoading bool // (temp) Whether we have processed the GenerateMapPacket(only for remote client)
@@ -56,6 +57,7 @@ func CreateMapEngine(l d2util.LogLevel, asset *d2asset.AssetManager) *MapEngine 
 		StampFactory:     stamp,
 		// This will be set to true when we are using a remote client connection, and then set to false after we process the GenerateMapPacket
 		IsLoading: false,
+		objBlock:  NewObjectCollision(),
 	}
 
 	engine.Logger = d2util.NewLogger()
@@ -73,6 +75,7 @@ func (m *MapEngine) GetStartingPosition() (x, y int) {
 // ResetMap clears all map and entity data and reloads it from the cached files.
 func (m *MapEngine) ResetMap(levelType d2enum.RegionIdType, width, height int) {
 	m.entities = make(map[string]d2interface.MapEntity)
+	m.objBlock = NewObjectCollision()
 	m.levelType = *m.asset.Records.Level.Types[levelType]
 	m.size = d2geom.Size{Width: width, Height: height}
 	m.tiles = make([]MapTile, width*height)
@@ -191,6 +194,7 @@ func (m *MapEngine) PlaceStamp(stamp *d2mapstamp.Stamp, tileOffsetX, tileOffsetY
 	for idx := range stampEntities {
 		e := stampEntities[idx]
 		m.entities[e.ID()] = e
+		m.trackEntity(e)
 	}
 }
 
@@ -230,6 +234,7 @@ func (m *MapEngine) Seed() int64 {
 // AddEntity adds an entity to a slice containing all entities.
 func (m *MapEngine) AddEntity(entity d2interface.MapEntity) {
 	m.entities[entity.ID()] = entity
+	m.trackEntity(entity)
 }
 
 // RemoveEntity removes an entity from the map engine
@@ -239,6 +244,7 @@ func (m *MapEngine) RemoveEntity(entity d2interface.MapEntity) {
 	}
 
 	delete(m.entities, entity.ID())
+	m.objBlock.Clear(entity.ID())
 }
 
 // GetTiles returns a slice of all tiles matching the given style,

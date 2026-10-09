@@ -105,7 +105,7 @@ func SummarizeD2S(data []byte, tables *d2s.ItemTables) string {
 	}
 
 	return fmt.Sprintf("name=%s class=%v level=%d exp=%d gold=%d str=%d dex=%d vit=%d ene=%d hp=%d mana=%d "+
-		"difficulty=%d act=%d seed=%d items=%d equipped=%v checksum=ok",
+		"difficulty=%d act=%d seed=%d items=%d equipped=%v waypoints=%#x checksum=ok",
 		c.Header.Name, c.Header.Class, a.Level, a.Experience, a.Gold, a.Strength, a.Dexterity, a.Vitality,
-		a.Energy, a.MaxHP, a.MaxMana, diff, act+1, c.Header.MapSeed, len(c.Items), eq)
+		a.Energy, a.MaxHP, a.MaxMana, diff, act+1, c.Header.MapSeed, len(c.Items), eq, c.Body.Waypoints[diff])
 }

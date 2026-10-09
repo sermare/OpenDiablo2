@@ -70,7 +70,13 @@ a semicolon-separated list of steps, run a few seconds after the game starts:
 | `panel:inventory\|character\|skills\|quest\|close` | Open a panel, or close all. |
 | `say:<command>` | Run an in-game console command. |
 | `expect:log=<substring>` | Fail the run unless the game log already contains it. |
+| `use:<object name or id>` | Walk to the nearest matching object (objects.txt name or id: `Waypoint`, `Door`, `Portal`, `119`) and operate it. Doors open/close and change collision, the waypoint opens its panel, portals change level. The next step waits until the walk or level change is over. |
+| `waypoint:<level id>` | Choose that level in the open waypoint panel (greyed entries fail the step). Logs `WAYPOINT travel` and `LEVEL CHANGE`. |
+| `expect:level=<id>` | Wait up to 4 s, then fail unless the hero is in that level; logs `AUTOSCRIPT level=<id> hero=(x,y)`. |
 | `exit` | Finish; with `OD2_AUTOEXIT=1` the process exits 0 on PASS, 1 on FAIL. |
+
+Console commands for these steps: `spawnportal <level>` (a portal object next to the hero), `setwaypoint <level> <0|1>`.
+Without `OD2_REALMAPS=1` only the Rogue Encampment can be loaded; other waypoints are listed greyed out. With it the Act 1 maze levels (for example Jail Level 1 = 29, Catacombs Level 2 = 35) load.
 
 Each step logs `AUTOSCRIPT step N: ...` and the end logs
 `AUTOSCRIPT RESULT PASS` or `AUTOSCRIPT RESULT FAIL`. Example:
