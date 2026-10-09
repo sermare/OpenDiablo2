@@ -76,7 +76,7 @@ func (g *MapGenerator) LoadLevel(levelID int, req LoadRequest) (arrival Arrival,
 
 	x, y := g.engine.GetStartPosition()
 
-	if sx, sy, ok := g.engine.NearestWalkable(int(x*subtilesPerTile), int(y*subtilesPerTile), arrivalSearchRadius); ok {
+	if sx, sy, ok := g.engine.NearestOpen(int(x*subtilesPerTile), int(y*subtilesPerTile), arrivalSearchRadius); ok {
 		x, y = (float64(sx)+0.5)/subtilesPerTile, (float64(sy)+0.5)/subtilesPerTile
 	}
 
@@ -103,8 +103,9 @@ func (townProvider) Load(g *MapGenerator, _ int, _ LoadRequest) error {
 }
 
 // maxMazeLevel is the last level id the maze provider tries: Act 1 (caves, crypts, jail, catacombs)
-// and Act 2 (sewers, palace, tombs, lair, arcane sanctuary; the exe's DRLG_ port: drlgmaze/maze_act23.go).
-const maxMazeLevel = 72
+// Act 2 (sewers, palace, tombs, lair, arcane sanctuary; the exe's DRLG_ port: drlgmaze/maze_act23.go)
+// and Act 3 (spider caves, flayer dungeons, sewers, temples, Durance of Hate).
+const maxMazeLevel = 102
 
 // mazeProvider builds Act 1 maze levels (caves, crypts, jail, catacombs) with
 // the DRLG port. It is only active with OD2_REALMAPS=1.

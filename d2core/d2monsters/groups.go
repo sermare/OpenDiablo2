@@ -249,8 +249,8 @@ func (d *Director) PopulateRoom(room Room, levelID int) ([]*PackResult, error) {
 
 	types := d2monster.PickLevelTypes(d.packRNG, list, det.NumMonsterTypes, det.MonsterPreferRanged)
 	density := [3]int{det.MonsterDensityNormal, det.MonsterDensityNightmare, det.MonsterDensityHell}[d.opt.Difficulty]
-	groups := d2monster.GroupsForRoom(room.W*room.H/(subtilesPerTile*subtilesPerTile), density,
-		d2monster.AvgGroupSize(types))
+	groups := d2monster.GroupsForRoomFrac(room.W*room.H/(subtilesPerTile*subtilesPerTile), density,
+		d2monster.AvgGroupSize(types), func(n int) int { return int(d.packRNG.Roll(int32(n))) })
 
 	var out []*PackResult
 

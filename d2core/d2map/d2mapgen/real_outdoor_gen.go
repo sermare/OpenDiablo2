@@ -44,6 +44,18 @@ func isPresetLevel(id int) bool {
 		return true
 	}
 
+	return isAct3Preset(id)
+}
+
+// isAct3Preset reports the Act 3 dungeon levels that are a single preset DS1 (Levels.txt DrlgType 2): the
+// treasure rooms of the Flayer Dungeons (90, 91), Sewers 2 (93), the six temples (94..99) and the third level
+// of the Durance of Hate (102).
+func isAct3Preset(id int) bool {
+	switch {
+	case id == 90, id == 91, id == 93, id >= 94 && id <= 99, id == 102:
+		return true
+	}
+
 	return false
 }
 
@@ -51,6 +63,14 @@ func isPresetLevel(id int) bool {
 // generator inputs (rectangle, od.flags, vis/warp, neighbour list).
 func levelParams(tb *d2drlg.Tables, levelID int, seed uint32, diff d2drlg.Difficulty) (drlgoutdoor.Params, *drlgworld.Layout, error) {
 	rec, _ := tb.Level(levelID)
+
+	if isAct3Preset(levelID) { // a dungeon of its own: no world, the rectangle is the level's size
+		p := drlgoutdoor.Params{ID: levelID, Vis: rec.Vis, Warp: rec.Warp,
+			Rect: drlgoutdoor.Rect{W: rec.SizeX[diff], H: rec.SizeY[diff]}}
+		p.BaseSeed, _ = d2rand.DrlgBaseSeed(seed)
+
+		return p, nil, nil
+	}
 
 	if isAct23Outdoor(levelID) { // no drlgworld.Layout: the Act 2/3 placers have their own world
 		p, err := drlgoutdoor.ParamsAct23(tb, seed, diff, levelID)
@@ -464,7 +484,11 @@ func (g *MapGenerator) markWarpTiles(stamp *d2mapstamp.Stamp, path string, ox, o
 				}
 
 				dest := 0
-				if isCave && hasCave {
+				if to, ok := d2level.Act3SlotDestination(levelID, int(w.Style)); ok {
+					// Act 3: the style of the entrance tile is the Vis slot of the dungeon
+					dest = to
+					g.engine.SetWarpDestination(ox+x, oy+y, dest)
+				} else if isCave && hasCave {
 					dest = cave
 					g.engine.SetWarpDestination(ox+x, oy+y, dest)
 				}
