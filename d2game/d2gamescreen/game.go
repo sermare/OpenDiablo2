@@ -23,6 +23,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2maprenderer"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2screen"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2vendor"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
@@ -146,6 +147,10 @@ type Game struct {
 	autoSoundDone        bool
 	ground               groundState
 	autoGround           autoGround
+	monsters             *d2monsters.Director
+	monsterTest          *monsterTest
+	attackTarget         *d2mapentity.Monster
+	attackRepathAcc      float64
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -267,6 +272,7 @@ func (v *Game) Advance(elapsed float64) error {
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
+		v.advanceMonsters(elapsed)
 	}
 
 	if v.gameControls != nil {
@@ -809,6 +815,16 @@ func (v *Game) commandSpawnMon(args []string) error {
 	monstat := v.asset.Records.Monster.Stats[name]
 	if monstat == nil {
 		v.terminal.Errorf("no monstat entry for \"%s\"", name)
+		return nil
+	}
+
+	// Hostile classes get the real monster AI; everything else stays a
+	// passive NPC as before.
+	if d := v.monsterDirector(); d != nil && d2monsters.IsHostile(monstat) {
+		if _, err := d.SpawnNear(monstat, x+monsterSpawnOffset, y, 2); err != nil {
+			v.terminal.Errorf("error generating monster \"%s\": %v", name, err)
+		}
+
 		return nil
 	}
 

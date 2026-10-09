@@ -482,6 +482,11 @@ func (g *GameControls) OnMouseButtonRepeat(event d2interface.MouseEvent) bool {
 	if isLeft && shouldDoLeft && inRect && !g.hero.IsCasting() {
 		g.lastLeftBtnActionTime = now
 
+		if mon := g.hoveredMonster(); mon != nil && event.KeyMod() != d2enum.KeyModShift {
+			g.inputListener.OnPlayerAttack(mon)
+			return true
+		}
+
 		if event.KeyMod() == d2enum.KeyModShift {
 			g.inputListener.OnPlayerCast(g.hero.LeftSkill.ID, px, py)
 		} else {
@@ -571,6 +576,19 @@ func (g *GameControls) hoveredWorldThing() d2interface.MapEntity {
 	switch g.hud.hoveredEntity.(type) {
 	case *d2mapentity.Item, *d2mapentity.Object:
 		return g.hud.hoveredEntity
+	}
+
+	return nil
+}
+
+// hoveredMonster returns the living monster under the cursor, if any.
+func (g *GameControls) hoveredMonster() *d2mapentity.Monster {
+	if g.hud == nil || g.hud.hoveredEntity == nil {
+		return nil
+	}
+
+	if m, ok := g.hud.hoveredEntity.(*d2mapentity.Monster); ok && m.Alive() {
+		return m
 	}
 
 	return nil

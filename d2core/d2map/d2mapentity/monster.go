@@ -1,0 +1,297 @@
+package d2mapentity
+
+import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
+)
+
+var _ d2interface.MapEntity = &Monster{}
+
+// MonsterEventKind says what finished or happened in a Monster's animation.
+type MonsterEventKind int
+
+// Monster events, drained by the owner with TakeEvents.
+const (
+	// MonsterEventHitFrame fires once when an attack/skill animation passes
+	// its halfway point: the moment damage is applied.
+	MonsterEventHitFrame MonsterEventKind = iota
+	// MonsterEventModeDone fires when a one-shot mode (attack, skill, hit
+	// recovery) has played once, or when a walk/run ends at its destination.
+	MonsterEventModeDone
+	// MonsterEventDied fires when the death animation has played once.
+	MonsterEventDied
+)
+
+// MonsterEvent is one animation event.
+type MonsterEvent struct {
+	Kind MonsterEventKind
+	Mode d2monster.Mode
+}
+
+// MonsterVitals are the combat numbers of a spawned monster, filled in by the
+// owner from monstats/monlvl (see d2monsters).
+type MonsterVitals struct {
+	Level           int
+	HP, MaxHP       int
+	Defense         int
+	Experience      int
+	TreasureClass   string
+	A1, A2          MonsterAttack
+	Difficulty      d2monster.Difficulty
+	DeathSeedSource uint32
+}
+
+// MonsterAttack is the damage profile of one attack mode.
+type MonsterAttack struct {
+	ToHit, Min, Max int
+}
+
+// Monster is a hostile unit: an animated composite driven by a
+// d2monster.Brain. It only knows how to move and animate; the AI, combat and
+// loot rules live in the owner (d2monsters).
+type Monster struct {
+	mapEntity
+	composite *d2asset.Composite
+	Stat      *d2records.MonStatRecord
+	StatEx    *d2records.MonStat2Record
+	Brain     *d2monster.Brain
+	Vitals    MonsterVitals
+	name      string
+
+	mode       d2monster.Mode
+	hitFired   bool
+	events     []MonsterEvent
+	dead       bool
+	deadTime   float64
+	walkSpeed  float64
+	runSpeed   float64
+	selectable bool
+}
+
+// subtile speed of a monstats velocity: V/16 subtile per 25 Hz frame
+// (missiles-pathing.md section (c), VERIFIED), i.e. V*25/16 per second.
+const velocityToSubtilesPerSecond = retailFps / 16.0
+
+// ID returns the monster's uuid.
+func (m *Monster) ID() string { return m.uuid }
+
+// Label is the monster's display name.
+func (m *Monster) Label() string { return m.name }
+
+// Selectable is true while the monster is alive.
+func (m *Monster) Selectable() bool { return m.selectable && !m.dead }
+
+// Alive reports whether the monster has not started dying.
+func (m *Monster) Alive() bool { return !m.dead }
+
+// Mode is the monster's current mode.
+func (m *Monster) Mode() d2monster.Mode { return m.mode }
+
+// GetPosition returns the monster's position.
+func (m *Monster) GetPosition() d2vector.Position { return m.mapEntity.Position }
+
+// GetVelocity returns the monster's velocity vector.
+func (m *Monster) GetVelocity() d2vector.Vector { return m.mapEntity.velocity }
+
+// GetSize returns the current frame size.
+func (m *Monster) GetSize() (width, height int) { return m.composite.GetSize() }
+
+// MonstatID returns the monstats class id.
+func (m *Monster) MonstatID() int { return m.Stat.ID }
+
+// SubtilePos is the integer subtile the monster stands on.
+func (m *Monster) SubtilePos() (x, y int) {
+	return int(m.Position.X()), int(m.Position.Y())
+}
+
+// Moving reports whether the monster still has somewhere to walk.
+func (m *Monster) Moving() bool { return !m.atTarget() || m.hasPath() }
+
+// TakeEvents returns and clears the pending animation events.
+func (m *Monster) TakeEvents() []MonsterEvent {
+	ev := m.events
+	m.events = nil
+
+	return ev
+}
+
+// Render draws the animated composite.
+func (m *Monster) Render(target d2interface.Surface) {
+	renderOffset := m.Position.RenderOffset()
+	target.PushTranslation(
+		int((renderOffset.X()-renderOffset.Y())*magicOffsetScalarY),
+		int(((renderOffset.X()+renderOffset.Y())*magicOffsetScalarX)-magicOffsetX),
+	)
+
+	defer target.Pop()
+
+	_ = m.composite.Render(target)
+}
+
+// animation mode used for each monster mode, with fallbacks for classes that
+// lack a mode (monstats2 m* columns): run -> walk, A2/skills -> A1.
+var modeFallback = map[d2monster.Mode][]d2enum.MonsterAnimationMode{
+	d2monster.ModeDying:   {d2enum.MonsterAnimationModeDeath},
+	d2monster.ModeDead:    {d2enum.MonsterAnimationModeDead, d2enum.MonsterAnimationModeDeath},
+	d2monster.ModeNeutral: {d2enum.MonsterAnimationModeNeutral},
+	d2monster.ModeWalk:    {d2enum.MonsterAnimationModeWalk},
+	d2monster.ModeRun:     {d2enum.MonsterAnimationModeRun, d2enum.MonsterAnimationModeWalk},
+	d2monster.ModeGetHit:  {d2enum.MonsterAnimationModeGetHit},
+	d2monster.ModeAttack1: {d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeAttack2: {d2enum.MonsterAnimationModeAttack2, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeSkill1:  {d2enum.MonsterAnimationModeSkill1, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeSkill2:  {d2enum.MonsterAnimationModeSkill2, d2enum.MonsterAnimationModeSkill1, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeSkill3:  {d2enum.MonsterAnimationModeSkill3, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeSkill4:  {d2enum.MonsterAnimationModeSkill4, d2enum.MonsterAnimationModeAttack1},
+	d2monster.ModeCast:    {d2enum.MonsterAnimationModeCast, d2enum.MonsterAnimationModeAttack1},
+}
+
+// SetMode switches the unit to a mode and starts its animation. It returns
+// false if the class has no animation for the mode or any fallback.
+func (m *Monster) SetMode(mode d2monster.Mode) bool {
+	for _, am := range modeFallback[mode] {
+		if m.StatEx != nil && !m.StatEx.HasAnimationMode[am] {
+			continue
+		}
+
+		if err := m.composite.SetMode(am, m.StatEx.BaseWeaponClass); err != nil {
+			continue
+		}
+
+		m.mode = mode
+		m.hitFired = false
+		m.Brain.Mode = mode
+
+		return true
+	}
+
+	return false
+}
+
+// MoveAlong starts walking (or running) along path. The monster keeps its
+// current mode until it arrives; Advance then emits MonsterEventModeDone.
+func (m *Monster) MoveAlong(path []d2vector.Position, run bool) bool {
+	if len(path) == 0 {
+		return false
+	}
+
+	mode, speed := d2monster.ModeWalk, m.walkSpeed
+	if run {
+		mode, speed = d2monster.ModeRun, m.runSpeed
+	}
+
+	if !m.SetMode(mode) {
+		return false
+	}
+
+	m.SetSpeed(speed)
+	m.SetPath(path, nil)
+
+	return true
+}
+
+// StopMoving stops walking and returns to neutral.
+func (m *Monster) StopMoving() {
+	m.mapEntity.StopMoving()
+
+	if m.mode == d2monster.ModeWalk || m.mode == d2monster.ModeRun {
+		m.SetMode(d2monster.ModeNeutral)
+		m.events = append(m.events, MonsterEvent{MonsterEventModeDone, d2monster.ModeWalk})
+	}
+}
+
+// Face turns the monster toward a position (in subtiles).
+func (m *Monster) Face(x, y float64) {
+	p := d2vector.NewPosition(x, y)
+	m.composite.SetDirection(m.Position.DirectionTo(p.Vector))
+}
+
+// Die starts the death animation. It is idempotent.
+func (m *Monster) Die() {
+	if m.dead {
+		return
+	}
+
+	m.dead = true
+	m.mapEntity.StopMoving()
+
+	if !m.SetMode(d2monster.ModeDying) {
+		m.SetMode(d2monster.ModeDead)
+	}
+
+	m.Brain.Mode = d2monster.ModeDying
+}
+
+// CorpseAge is the time in seconds since the monster finished dying.
+func (m *Monster) CorpseAge() float64 { return m.deadTime }
+
+// Advance processes one rendering tick.
+func (m *Monster) Advance(tickTime float64) {
+	if !m.dead {
+		m.Step(tickTime)
+	}
+
+	if err := m.composite.Advance(tickTime); err != nil {
+		return
+	}
+
+	m.checkEvents(tickTime)
+}
+
+func (m *Monster) checkEvents(tickTime float64) {
+	played := m.composite.GetPlayedCount() >= 1
+	frameCount := m.composite.GetFrameCount()
+	if frameCount < 1 {
+		frameCount = 1
+	}
+
+	half := float64(m.composite.GetCurrentFrame())/float64(frameCount) >= 0.5
+
+	switch m.mode {
+	case d2monster.ModeWalk, d2monster.ModeRun:
+		if !m.Moving() {
+			m.SetMode(d2monster.ModeNeutral)
+			m.events = append(m.events, MonsterEvent{MonsterEventModeDone, d2monster.ModeWalk})
+		}
+	case d2monster.ModeAttack1, d2monster.ModeAttack2, d2monster.ModeSkill1, d2monster.ModeSkill2,
+		d2monster.ModeSkill3, d2monster.ModeSkill4, d2monster.ModeCast:
+		if half && !m.hitFired {
+			m.hitFired = true
+			m.events = append(m.events, MonsterEvent{MonsterEventHitFrame, m.mode})
+		}
+
+		if played {
+			done := m.mode
+			m.SetMode(d2monster.ModeNeutral)
+			m.events = append(m.events, MonsterEvent{MonsterEventModeDone, done})
+		}
+	case d2monster.ModeGetHit:
+		if played {
+			m.SetMode(d2monster.ModeNeutral)
+			m.events = append(m.events, MonsterEvent{MonsterEventModeDone, d2monster.ModeGetHit})
+		}
+	case d2monster.ModeDying:
+		if played {
+			m.events = append(m.events, MonsterEvent{MonsterEventDied, d2monster.ModeDying})
+
+			if !m.SetMode(d2monster.ModeDead) {
+				m.mode = d2monster.ModeDead
+			}
+
+			m.Brain.Mode = d2monster.ModeDead
+		}
+	case d2monster.ModeDead:
+		m.deadTime += tickTime
+	}
+}
+
+// rotate sets the facing; movement modes are chosen by the owner.
+func (m *Monster) rotate(direction int) {
+	if m.composite.GetDirection() != direction {
+		m.composite.SetDirection(direction)
+	}
+}

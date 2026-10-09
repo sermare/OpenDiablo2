@@ -8,6 +8,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
@@ -180,6 +181,28 @@ func (f *MapEntityFactory) NewItem(x, y int, codes ...string) (*Item, error) {
 	return result, nil
 }
 
+// DropItems rolls a treasure class with the Diablo II drop rules (see
+// diablo2item.ItemFactory.DropItems).
+func (f *MapEntityFactory) DropItems(tc string, opts diablo2item.DropOptions) ([]*diablo2item.Item, error) {
+	return f.item.DropItems(tc, opts)
+}
+
+// NewDroppedItem creates a ground item entity for an already generated item at
+// a subtile position.
+func (f *MapEntityFactory) NewDroppedItem(subX, subY int, item *diablo2item.Item) (*Item, error) {
+	filepath := fmt.Sprintf("%s/%s.DC6", d2resource.ItemGraphics, item.CommonRecord().FlippyFile)
+
+	animation, err := f.asset.LoadAnimation(filepath, d2resource.PaletteUnits)
+	if err != nil {
+		return nil, err
+	}
+
+	animation.PlayForward()
+	animation.SetPlayLoop(false)
+
+	return &Item{AnimatedEntity: NewAnimatedEntity(subX, subY, animation), Item: item}, nil
+}
+
 // NewNPC creates a new NPC and returns a pointer to it.
 func (f *MapEntityFactory) NewNPC(x, y int, monstat *d2records.MonStatRecord, direction int) (*NPC, error) {
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/803
@@ -222,6 +245,59 @@ func (f *MapEntityFactory) NewNPC(x, y int, monstat *d2records.MonStatRecord, di
 	if result.monstatRecord != nil && result.monstatRecord.IsInteractable {
 		result.name = f.asset.TranslateString(result.monstatRecord.NameString)
 	}
+
+	return result, nil
+}
+
+// NewMonster creates a hostile Monster at the given subtile position, driven by
+// brain. Vitals are left for the caller to fill in.
+func (f *MapEntityFactory) NewMonster(x, y int, monstat *d2records.MonStatRecord, direction int,
+	brain *d2monster.Brain) (*Monster, error) {
+	statEx := f.asset.Records.Monster.Stats2[monstat.ExtraDataKey]
+	if statEx == nil {
+		return nil, fmt.Errorf("monster %q has no monstats2 row %q", monstat.Key, monstat.ExtraDataKey)
+	}
+
+	result := &Monster{
+		mapEntity:  newMapEntity(x, y),
+		Stat:       monstat,
+		StatEx:     statEx,
+		Brain:      brain,
+		selectable: true,
+		walkSpeed:  float64(monstat.SpeedBase) * velocityToSubtilesPerSecond,
+		runSpeed:   float64(monstat.SpeedRun) * velocityToSubtilesPerSecond,
+		name:       f.asset.TranslateString(monstat.NameString),
+	}
+
+	if result.runSpeed == 0 {
+		result.runSpeed = result.walkSpeed
+	}
+
+	var equipment [16]string
+
+	for compType, opts := range statEx.EquipmentOptions {
+		equipment[compType] = selectEquip(opts)
+	}
+
+	composite, err := f.asset.LoadComposite(d2enum.ObjectTypeCharacter, monstat.AnimationDirectoryToken,
+		d2resource.PaletteUnits)
+	if err != nil {
+		return nil, err
+	}
+
+	result.composite = composite
+	result.mapEntity.directioner = result.rotate
+
+	if err := composite.SetMode(d2enum.MonsterAnimationModeNeutral, statEx.BaseWeaponClass); err != nil {
+		return nil, err
+	}
+
+	if err := composite.Equip(&equipment); err != nil {
+		return nil, err
+	}
+
+	result.mode = d2monster.ModeNeutral
+	composite.SetDirection(direction)
 
 	return result, nil
 }

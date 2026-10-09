@@ -1,6 +1,9 @@
 package d2player
 
-import "github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
+import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+)
 
 type inputCallbackListener interface {
 	OnPlayerMove(x, y float64)
@@ -10,4 +13,5 @@ type inputCallbackListener interface {
 	// an item on the cursor; the item is already off the cursor.
 	OnPlayerDropItem(item InventoryItem)
 	OnPlayerSave() error
+	OnPlayerAttack(monster *d2mapentity.Monster)
 }
