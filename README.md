@@ -64,6 +64,37 @@ Missiles, collision and pathing (server simulation) · hirelings · stash/cube �
 server session core · D2Common data tables · key bindings from `default.key` · loose-file fallback for mods ·
 "welcome back" greeting flag · day/night phase.
 
+## Install on a Mac
+
+You need your own copy of Diablo II (and Lord of Destruction). No game files are included.
+
+1. **Get the game files.** The easiest way is Blizzard's official downloader run once under Wine; the steps are in
+   [docs/macos-quickstart.md](docs/macos-quickstart.md). You end up with a folder holding `d2data.mpq`, `d2char.mpq`,
+   `d2music.mpq`, `d2sfx.mpq`, `d2speech.mpq`, `d2video.mpq`, `patch_d2.mpq` (plus `d2exp.mpq`, `d2xmusic.mpq`,
+   `d2xtalk.mpq`, `d2xvideo.mpq` for Lord of Destruction).
+2. **Build the app** (needs `brew install go` and the Xcode command line tools, once):
+   ```sh
+   scripts/make-app.sh          # creates dist/OpenDiablo2.app (arm64, ad-hoc signed)
+   INSTALL=1 scripts/make-app.sh   # same, and copies it to /Applications
+   ```
+   `UNIVERSAL=1` also tries an Intel slice (best effort: the engine needs CGO).
+3. **Double-click `OpenDiablo2.app`** (first time: right-click, Open, because it is not notarised).
+   On first launch it looks for the game files in `/Applications/Diablo II`, `~/Library/Application Support/Diablo II`,
+   Wine prefixes (`~/.wine*/drive_c/Program Files (x86)/Diablo II`), CrossOver bottles and similar, offers what it finds,
+   and otherwise shows a folder picker. It checks the files and writes
+   `~/Library/Application Support/OpenDiablo2/config.json` for you. Missing files give a clear dialog.
+   It does not scan Documents, Desktop or Downloads (macOS would ask for permission); pick the folder by hand if needed.
+4. **Your characters.** Real `.d2s` characters are found automatically in `~/Library/Application Support/Diablo II*`,
+   Wine prefixes (`Saved Games/Diablo II`) and the game folder's `Save`, and imported into the character list. Originals are
+   only read. To use another folder set `"D2SDir"` in config.json (or `OD2_D2S_DIR`).
+5. **Settings** without editing files: press the console key (`` ` ``) in game and type `fullscreen`, `musicvolume 0.5`,
+   `soundvolume 1`, or `windowscale 2` (start window 1x to 4x, applies next launch). They are saved to config.json.
+6. **Logs and problems:** logs go to `~/Library/Logs/OpenDiablo2/OpenDiablo2.log` when started from Finder. If the game
+   crashes a dialog shows the log path. Config, saves and the log are the only things the app writes.
+
+Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>` moves config.json and Saves (for tests),
+`OD2_NO_SETUP=1` skips the first-run dialogs.
+
 ## How this is built
 
 - **Ghidra + an MCP server** let the AI read and name functions in the original binary. The decompiler had to be

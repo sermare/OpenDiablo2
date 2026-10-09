@@ -281,6 +281,10 @@ func (a *App) Run() (err error) {
 		return err
 	}
 
+	if err = a.firstRunSetup(); err != nil {
+		return err
+	}
+
 	// start profiler if argument was supplied
 	if len(*a.Options.profiler) > 0 {
 		profiler := enableProfiler(*a.Options.profiler, a)
@@ -341,7 +345,9 @@ func (a *App) Run() (err error) {
 		a.ToMainMenu()
 	}
 
-	err = a.renderer.Run(a.update, a.advance, 800, 600, windowTitle)
+	scale := a.windowScale()
+
+	err = a.renderer.Run(a.update, a.advance, 800*scale, 600*scale, windowTitle)
 
 	d2gamescreen.SaveActiveGame() // the window was closed: save the hero
 
