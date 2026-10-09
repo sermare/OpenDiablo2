@@ -104,7 +104,7 @@ func (townProvider) Load(g *MapGenerator, _ int, _ LoadRequest) error {
 
 // maxMazeLevel is the last level id the maze provider tries: Act 1 (caves, crypts, jail, catacombs)
 // and Act 2 (sewers, palace, tombs, lair, arcane sanctuary; the exe's DRLG_ port: drlgmaze/maze_act23.go).
-const maxMazeLevel = 72
+const maxMazeLevel = 74 // (73, Duriel's lair, is a preset level: actPresetPrest)
 
 // mazeProvider builds Act 1 maze levels (caves, crypts, jail, catacombs) with
 // the DRLG port. It is only active with OD2_REALMAPS=1.

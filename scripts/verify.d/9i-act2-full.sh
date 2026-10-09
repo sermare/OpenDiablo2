@@ -24,4 +24,11 @@ scenario_env() {
 scenario_check() {
   grep -E "LEVEL CHANGE|EXIT |AUTOSCRIPT step [0-9]+ FAIL|AUTOSCRIPT RESULT" $log.txt | cut -c1-200 | tail -40
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: the Act 2 walk did not pass"; fail=1; }
+  [ -s $a2/s94/Hero.d2s ] || { echo "SKIP: no revived sample hero in this run"; return; }
+  for route in "from=42 to=43 .*via=edge" "from=43 to=62 .*via=warp" "from=62 to=63" "from=63 to=64" "from=64 to=63" "from=43 to=44 .*via=edge" "from=44 to=65 .*via=warp" \
+               "from=65 to=44" "from=44 to=45 .*via=edge" "from=45 to=58 .*via=warp" "from=58 to=61" "from=61 to=58" "from=58 to=45"; do
+    grep -qE "LEVEL CHANGE $route" $log.txt || { echo "FAIL: missing level change $route"; fail=1; }
+  done
+  for s in oasis lostcity valley; do [ -s $tmp/act2-$s.png ] || { echo "FAIL: no screenshot act2-$s.png"; fail=1; }; done
+  if grep -E "EXIT gave up|EXIT no way found|Unknown tile|panic" $log.txt; then echo "FAIL: a walk gave up or unknown tiles"; fail=1; fi
 }

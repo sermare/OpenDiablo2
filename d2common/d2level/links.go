@@ -300,8 +300,13 @@ func isOutdoor(level int) bool { return len(EdgeNeighbors(level)) > 0 }
 //     ones). The LvlWarp id is NOT the style there (style 4 leads down,
 //     LvlWarp 4 is "Cave Up").
 func TileDestination(level, style int) (int, bool) {
+	// the Act 2 files: the style of a special tile is the Vis slot of Levels.txt
+	if to, ok := Act2VisDestination(level, style); ok {
+		return to, true
+	}
+
 	if level == LevelCanyonOfTheMagi {
-		return CanyonTombDestination(style)
+		return 0, false
 	}
 
 	if isOutdoor(level) {

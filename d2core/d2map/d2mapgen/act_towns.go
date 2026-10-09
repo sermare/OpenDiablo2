@@ -32,6 +32,10 @@ var actTownPrest = map[int]int{
 	d2level.Harrogath:           863,
 }
 
+// actPresetPrest are the single-file preset levels of Act 2 that are no town: the Harem (50, LvlPrest Def 353,
+// Act2/Palace/Harem2.ds1). Built like a town, without the town extras.
+var actPresetPrest = map[int]int{50: 353, 73: 481} // the Harem and Duriel's lair (Act2/Tomb/Duriel.ds1)
+
 // IsActTown reports whether the level is the town of act 2-5.
 func IsActTown(levelID int) bool { _, ok := actTownPrest[levelID]; return ok }
 
@@ -91,7 +95,11 @@ type actTownProvider struct{}
 
 func (actTownProvider) Name() string { return "act-town" }
 
-func (actTownProvider) CanLoad(levelID int) bool { return IsActTown(levelID) }
+func (actTownProvider) CanLoad(levelID int) bool {
+	_, preset := actPresetPrest[levelID]
+
+	return IsActTown(levelID) || preset
+}
 
 func (actTownProvider) Load(g *MapGenerator, levelID int, req LoadRequest) error {
 	return g.GenerateActTown(levelID, req.Seed, req.Difficulty)
@@ -104,6 +112,10 @@ func (actTownProvider) Load(g *MapGenerator, levelID int, req LoadRequest) error
 // start marker.
 func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, diff d2drlg.Difficulty) error {
 	def, ok := actTownPrest[levelID]
+	if !ok {
+		def, ok = actPresetPrest[levelID]
+	}
+
 	if !ok {
 		return fmt.Errorf("level %d is not a town of act 2-5", levelID)
 	}
@@ -192,8 +204,8 @@ func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, diff d2drlg.Dif
 				if w := &t.Components.Walls[i]; w.Type.Special() {
 					cands = append(cands, startCand{x, y, int(w.Style), int(w.Sequence)})
 
-					// the exits of Lut Gholein into the sewers and the palace (UNVERIFIED assignment, see d2level.TownTileDestination)
-					if to, ok := d2level.TownTileDestination(levelID, int(w.Style)); ok && w.Sequence == 0 {
+					// the exits of Lut Gholein and the Harem (UNVERIFIED assignment, see d2level.PresetTileDestination)
+					if to, ok := d2level.PresetTileDestination(levelID, int(w.Style)); ok && w.Sequence == 0 {
 						g.engine.SetWarpDestination(x, y, to)
 						g.Infof("act town: exit tile style=%d at (%d,%d) leads to level %d", w.Style, x, y, to)
 					}
@@ -202,7 +214,7 @@ func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, diff d2drlg.Dif
 		}
 	}
 
-	g.Infof("act town: level %d special tiles (x,y,style,sequence): %v", levelID, cands)
+	g.Infof("act preset: level %d special tiles (x,y,style,sequence): %v", levelID, cands)
 
 	sx, sy, how, found := chooseTownStart(cands)
 	if !found {
@@ -214,8 +226,10 @@ func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, diff d2drlg.Dif
 	g.Infof("act town: level %d (%s) region %d palette act %d file %d/%d %s map %dx%d start (%d,%d) %s",
 		levelID, rec.Name, int(region), rec.Act+1, idx+1, len(files), path, size.Width, size.Height, sx, sy, how)
 
-	g.placeTownExtras(levelID, sx, sy)
-	g.logTownNPCs(levelID)
+	if IsActTown(levelID) {
+		g.placeTownExtras(levelID, sx, sy)
+		g.logTownNPCs(levelID)
+	}
 
 	return nil
 }
