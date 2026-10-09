@@ -691,6 +691,23 @@ func (g *GameControls) AddGold(amount int) {
 	g.inventory.AddGold(amount)
 }
 
+// PickUpGold adds picked-up gold to the purse up to the carry cap of the
+// hero's level (d2inventory.InventoryGoldLimit, PLAYER_GetMaxGoldCarry
+// 0x623050) and returns the overflow, which the caller leaves on the ground
+// (0x558e40 drops it as piles; VERIFIED). Gameplay change: a pickup can no
+// longer take the purse past level*10000.
+func (g *GameControls) PickUpGold(amount int) (overflow int) {
+	level := 1
+	if g.hero.Stats != nil {
+		level = g.hero.Stats.Level
+	}
+
+	total, over := d2inventory.AddGold(g.hero.Gold, amount, d2inventory.InventoryGoldLimit(level))
+	g.AddGold(total - g.hero.Gold)
+
+	return over
+}
+
 // InventoryItemCount returns how many items are in the inventory grid.
 func (g *GameControls) InventoryItemCount() int { return len(g.inventory.grid.items) }
 

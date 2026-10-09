@@ -224,7 +224,7 @@ func (p *ContainerPanel) HandleClick(mx, my int, ctrl bool) bool {
 	switch act {
 	case ClickPickup:
 		p.Infof("picked up %s from the %s at (%d,%d)", held.GetItemCode(), p.kind.name, x, y)
-	case ClickPlace, ClickSwap, ClickAuto:
+	case ClickPlace, ClickSwap, ClickAuto, ClickMerge:
 		p.Infof("%s: %s at (%d,%d)", p.kind.name, act, x, y)
 	}
 

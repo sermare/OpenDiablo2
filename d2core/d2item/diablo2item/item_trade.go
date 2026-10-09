@@ -7,6 +7,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2trade"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
 )
 
@@ -168,4 +169,42 @@ func (i *Item) GambleBase() d2trade.Gamble {
 	}
 
 	return g
+}
+
+// extraStackStat is ItemStatCost row 254 (stat 0xfe), the per-item addition to
+// the stack limit (ItemStatCost.txt, "item_extra_stack").
+const extraStackStat = "item_extra_stack"
+
+// IsStackable reports whether the base item stacks (armor/weapons/misc.txt
+// "stackable"; the original's test 0x62c9a0).
+func (i *Item) IsStackable() bool {
+	rec := i.CommonRecord()
+
+	return rec != nil && rec.Stackable
+}
+
+// StackLimit is the stack size limit: the base record maxstack plus the item's
+// stat 0xfe, clamped to 511 (ITEM_GetMaxStack 0x6297b0, VERIFIED). The stat is
+// found by name in the evaluated stat list; items without it add 0.
+func (i *Item) StackLimit() int {
+	rec := i.CommonRecord()
+	if rec == nil {
+		return 0
+	}
+
+	extra := 0
+
+	if i.statList != nil {
+		for _, s := range i.statList.Stats() {
+			if s.Name() != extraStackStat {
+				continue
+			}
+
+			if vals := s.Values(); len(vals) > 0 {
+				extra += vals[0].Int()
+			}
+		}
+	}
+
+	return d2inventory.MaxStack(rec.MaxStack, extra)
 }
