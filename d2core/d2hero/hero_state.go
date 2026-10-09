@@ -70,7 +70,7 @@ type ImportedInfo struct {
 	Dead      bool `json:"dead,omitempty"`
 	// WeaponSetII is set when the second weapon set was active when the game was saved.
 	WeaponSetII bool `json:"weaponSetII,omitempty"`
-	// Source is the .d2s path the hero was imported from (never written to).
+	// Source is the .d2s the hero lives in: imported from, and saved back to (see D2SPath).
 	Source string `json:"source,omitempty"`
 }
 

@@ -49,9 +49,11 @@ scripts/check_repo_hygiene.sh || { echo "REPO HYGIENE FAILED"; exit 1; }
 step "build"
 go build -o $tmp/od2 . 2>&1 | grep -v "ld: warning" ; [ ${pipestatus[1]} -eq 0 ] || { echo "BUILD FAILED"; exit 1; }
 
+if [ -z "${SKIP_UNIT:-}" ]; then
 step "unit tests"
 go test ./... 2>&1 | grep -v "ld: warning\|no test files\|^# " | grep -v "^ok" ; [ ${pipestatus[1]} -eq 0 ] || fail=1
 echo "(only failures are printed above)"
+fi
 
 # Level generation on the real game data: time budget per level kind (cold caches, then warm) and the MPQ
 # decoder checks against the old decoder. The install folder is D2_GAME_DIR, else MpqPath of the game config.
@@ -95,13 +97,14 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   for f in scripts/verify.d/*.sh(N); do
     unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""
     source "$f"
+    # OD2_VERIFY_ONLY=<glob> (e.g. "83-*") runs only the scenarios whose file name matches
+    [ -n "${OD2_VERIFY_ONLY:-}" ] && [[ ${f:t} != ${~OD2_VERIFY_ONLY} ]] && continue
     fail_before=$fail
     for attempt in 1 2; do
       fail=$fail_before
       step "$scenario_name"
-      # every scenario starts from a pristine copy of the sample save: earlier scenarios (act changes, level-ups,
-      # exports) must not leak into later ones, and a retry must not see the failed attempt's save
-      [ -z "${OD2_VERIFY_SAVE:-}" ] && cp "$D2S_SAMPLE_BODY" "$save"
+      # saves are written back to the .d2s they were loaded from: every run starts from a fresh copy
+      if [ -z "${OD2_VERIFY_SAVE:-}" ]; then cp -f "$D2S_SAMPLE_BODY" "$save"; rm -f "$save.bak"; fi
       n=${f:t:r}
       cmd=$tmp/$n.command log=$tmp/$n.log
       {

@@ -339,6 +339,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceNPCInteraction(elapsed)
 	v.advanceAutoSound(elapsed)
 	v.advanceAutoTest(elapsed)
+	v.advanceFlow(elapsed)
 	v.advanceAutoScript(elapsed)
 	v.advanceQuests(elapsed)
 	v.advanceAutosave(elapsed)

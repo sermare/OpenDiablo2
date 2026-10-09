@@ -57,6 +57,7 @@ const (
 	srvOkBtnX, srvOkBtnY                     = 420, 305
 	multiplayerBtnX, multiplayerBtnY         = 264, 330
 	tcpNetBtnX, tcpNetBtnY                   = 264, 280
+	battleNetBtnX, battleNetBtnY             = 264, 240
 	networkCancelBtnX, networkCancelBtnY     = 264, 540
 	tcpHostBtnX, tcpHostBtnY                 = 264, 200
 	tcpJoinBtnX, tcpJoinBtnY                 = 264, 240
@@ -145,6 +146,7 @@ type MainMenu struct {
 	cinematicsButton    *d2ui.Button
 	mapTestButton       *d2ui.Button
 	networkTCPIPButton  *d2ui.Button
+	openBattleNetButton *d2ui.Button
 	networkCancelButton *d2ui.Button
 	btnTCPIPCancel      *d2ui.Button
 	btnTCPIPHostGame    *d2ui.Button
@@ -403,6 +405,13 @@ func (v *MainMenu) createMultiplayerMenuButtons() {
 	v.multiplayerButton.SetPosition(multiplayerBtnX, multiplayerBtnY)
 	v.multiplayerButton.OnActivated(func() { v.onMultiplayerClicked() })
 
+	// the original lists OPEN BATTLE.NET first; there is no Battle.net to
+	// connect to, so the button is shown and does nothing (wide buttons have no
+	// disabled picture: SetEnabled(false) would crash when it is drawn)
+	v.openBattleNetButton = v.uiManager.NewButton(d2ui.ButtonTypeWide, v.asset.TranslateString(d2enum.OpenBattleNetLabel))
+	v.openBattleNetButton.SetPosition(battleNetBtnX, battleNetBtnY)
+	v.openBattleNetButton.OnActivated(func() { v.Info("Open Battle.net is not available") })
+
 	v.networkTCPIPButton = v.uiManager.NewButton(d2ui.ButtonTypeWide, v.asset.TranslateString(d2enum.TCPIPGameLabel))
 	v.networkTCPIPButton.SetPosition(tcpNetBtnX, tcpNetBtnY)
 	v.networkTCPIPButton.OnActivated(func() { v.onNetworkTCPIPClicked() })
@@ -530,6 +539,7 @@ func (v *MainMenu) renderLabels(screen d2interface.Surface) {
 // Advance runs the update logic on the main menu
 func (v *MainMenu) Advance(tickTime float64) error {
 	d2util.PerfMark("main-menu-ready")
+	v.advanceFlow(tickTime)
 
 	switch v.screenMode {
 	case ScreenModeMainMenu, ScreenModeTrademark, ScreenModeMultiplayer:
@@ -617,6 +627,7 @@ func (v *MainMenu) SetScreenMode(screenMode mainMenuScreenMode) {
 	v.githubButton.SetVisible(isMainMenu)
 	v.mapTestButton.SetVisible(isMainMenu)
 	v.multiplayerButton.SetVisible(isMainMenu)
+	v.openBattleNetButton.SetVisible(isMultiplayer)
 	v.networkTCPIPButton.SetVisible(isMultiplayer)
 	v.networkCancelButton.SetVisible(isMultiplayer)
 	v.btnTCPIPCancel.SetVisible(isTCPIP)

@@ -294,12 +294,28 @@ func (f *HeroStateFactory) CreateHeroSkill(points int, name string) (*HeroSkill,
 	return result, nil
 }
 
-// HasGameStates returns true if the player has any previously saved game
+// HasGameStates returns true if the player has any character to list: a saved
+// hero of this engine or a real .d2s in one of the import folders. (Without the
+// second check a player who only has Diablo II saves would land on the
+// character creation screen.)
 func (f *HeroStateFactory) HasGameStates() bool {
 	basePath, _ := f.getGameBaseSavePath()
 	files, _ := ioutil.ReadDir(basePath)
 
-	return len(files) > 0
+	if len(files) > 0 {
+		return true
+	}
+
+	for _, dir := range ImportDirs() {
+		entries, _ := ioutil.ReadDir(dir)
+		for _, e := range entries {
+			if !e.IsDir() && strings.EqualFold(filepath.Ext(e.Name()), ".d2s") {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // CreateTestGameState is used for the map engine previewer
@@ -381,6 +397,51 @@ func (f *HeroStateFactory) Save(state *HeroState) error {
 	fileJSON, _ := json.MarshalIndent(state, "", "   ")
 	if err := ioutil.WriteFile(state.FilePath, fileJSON, writefilePermission); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// DeletedSuffix is appended to the name of a real .d2s that the character
+// select screen deletes ("Name.d2s.deleted"). The original game removes the
+// file; this keeps a copy the player can rename back.
+const DeletedSuffix = ".deleted"
+
+// NameTaken reports whether a character of that name exists already (as a
+// listed hero or as a .d2s in the folder a new one would be written to).
+func (f *HeroStateFactory) NameTaken(name string) bool {
+	if states, err := f.GetAllHeroStates(); err == nil {
+		for _, st := range states {
+			if strings.EqualFold(st.HeroName, name) {
+				return true
+			}
+		}
+	}
+
+	_, err := os.Stat(newD2SPath(&HeroState{HeroName: name}))
+
+	return err == nil
+}
+
+// DeleteHero removes a hero from the character list: its .od2 file and, for a
+// hero that lives in a real .d2s, that file (renamed to .d2s.deleted, since it
+// would be imported again otherwise). The .d2s.bak backup is left alone.
+func (f *HeroStateFactory) DeleteHero(state *HeroState) error {
+	if state == nil {
+		return nil
+	}
+
+	if state.FilePath != "" {
+		if err := os.Remove(state.FilePath); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+
+	if state.Imported != nil && state.Imported.Source != "" {
+		src := state.Imported.Source
+		if err := os.Rename(src, src+DeletedSuffix); err != nil && !os.IsNotExist(err) {
+			return err
+		}
 	}
 
 	return nil
