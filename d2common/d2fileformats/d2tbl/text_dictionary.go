@@ -65,12 +65,19 @@ func (td TextDictionary) loadHashEntries(hashEntries []*textDictionaryHashEntry,
 func (td TextDictionary) loadHashEntry(idx int, hashEntry *textDictionaryHashEntry, br *d2datautils.StreamReader) error {
 	br.SetPosition(uint64(hashEntry.NameString))
 
-	nameVal, err := br.ReadBytes(int(hashEntry.NameLength - 1))
-	if err != nil {
-		return fmt.Errorf("reading name value: %v", err)
-	}
+	value := ""
 
-	value := string(nameVal)
+	// NameLength counts the terminating zero; 0 would underflow to 65535.
+	if hashEntry.NameLength > 0 {
+		nameVal, err := br.ReadBytes(int(hashEntry.NameLength - 1))
+		if err != nil {
+			return fmt.Errorf("reading name value: %v", err)
+		}
+
+		// The 1.14 tables are UTF-8 for every language (verified against the
+		// shipped ENG/DEU/FRA/POL/KOR tables), so no code page conversion.
+		value = string(nameVal)
+	}
 
 	br.SetPosition(uint64(hashEntry.IndexString))
 

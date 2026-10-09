@@ -136,10 +136,21 @@ func (am *AssetManager) LoadLanguage(languagePath string) string {
 		return defaultLanguage
 	}
 
+	if len(languageByte) == 0 {
+		am.Debugf("Language file %s is empty", languagePath)
+		return defaultLanguage
+	}
+
 	languageCode := languageByte[0]
 	am.Debugf("Language code: %#02x", languageCode)
 
 	language := d2resource.GetLanguageLiteral(languageCode)
+	if language == "" {
+		// an unknown code would otherwise expand {LANG} to "" and break every table path
+		am.Warningf("Unknown language code %#02x, using %s", languageCode, defaultLanguage)
+
+		language = defaultLanguage
+	}
 	am.Infof("Language: %s", language)
 
 	am.language = language
@@ -298,6 +309,7 @@ func (am *AssetManager) TranslateString(input interface{}) string {
 	case fmt.Stringer:
 		key = s.String()
 	case int:
+		// BaseLabelNumbers returns -1 when the modified index is outside its table
 		key = fmt.Sprintf("#%d", d2enum.BaseLabelNumbers(s+am.languageModifier))
 	}
 
