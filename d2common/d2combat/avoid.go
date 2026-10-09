@@ -19,8 +19,13 @@ type AvoidInput struct {
 	Moving bool
 	// EvadeChance is stat 0x154, DodgeChance 0x152, AvoidChance 0x153.
 	EvadeChance, DodgeChance, AvoidChance int
-	// AnimBlockChance is the value of 57bcb0 and AnimIsBlock says the unit's
-	// current animation mode is 0xd (block). Both must hold to roll.
+	// AnimBlockChance is the value of 0x57bcb0 (VERIFIED: NOT a monster stat:
+	// the largest value among the entries of the layered stat 0x15c whose item
+	// type matches the weapon in either hand, i.e. the Weapon Block passive;
+	// 0 without a match) and AnimIsBlock says the unit's current animation
+	// action is 0xd (block). Both must hold to roll. Applies to players and
+	// monsters alike (the same code path); evade uses mode 3 or 2 for players
+	// and 15 or 2 for monsters (VERIFIED), returns code 8 and has no result bit.
 	AnimBlockChance int
 	AnimIsBlock     bool
 	// IsMissile selects avoid (true) over dodge (false).
