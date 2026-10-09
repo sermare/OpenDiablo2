@@ -21,9 +21,13 @@ import (
 //	VERIFIED   group followers are linked with MONAI_AddMinionToLeader; there is
 //	           no generic "follow the leader" in the think functions, cohesion
 //	           comes from placement and from group commands.
-//	VERIFIED   a super unique group is its class plus MinGrp..MaxGrp followers
-//	           drawn from the class' minion1/minion2 (The Countess: class 45,
-//	           minion1/2 = corruptrogue1/4, MinGrp = MaxGrp = 6).
+//	VERIFIED   a super unique group is its class plus superuniques MinGrp..MaxGrp
+//	           followers (The Countess: MinGrp = MaxGrp = 6). The notes say the
+//	           followers come from the class' minion1/minion2 (corruptrogue1/4),
+//	           but the real patch_d2 monstats.txt has those columns EMPTY for
+//	           corruptrogue3; followers then copy the unique's class (UNVERIFIED
+//	           fallback). Real data also shows that only SetBoss classes carry
+//	           minions (fallen1: SetBoss BossXfer minion1=fallen1 Party 2..3).
 //	VERIFIED   monster level: noRatio or boss classes use the monstats Level of
 //	           the difficulty, all others the area's levels.txt MonLvl.
 //
