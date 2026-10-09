@@ -279,16 +279,46 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 	v.playSoundAt(handle, ob.GetPosition(), "object")
 
 	ilvl := v.areaLevel()
-	tc := d2ground.ChestTreasureClass(v.localPlayer.Act, d2ground.Difficulty(v.difficulty()), ilvl, v.itemFactory().TreasureClassLevel)
+	diff := d2ground.Difficulty(v.difficulty())
 
 	v.ground.chestSeq++
 	seed := v.chestSeed() + v.ground.chestSeq
 
 	cx, cy := ob.GetPositionF()
-	loot, err := v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: seed, ILvl: ilvl, Players: 1}, 0)
 
-	if err != nil {
-		v.Errorf("chest %d: %v", id, err)
+	// The treasure class is rolled through d2object.Open (adapter d2objspawn); the loot itself
+	// is dropped by the engine hook, so the result is identical to the direct path below.
+	var (
+		loot *diablo2item.Loot
+		derr error
+		tc   string
+	)
+
+	hooks := d2object.ChestHooks{
+		TreasureClass: func(_ d2object.Def, act, _, lvl int) string {
+			return d2ground.ChestTreasureClass(act, diff, lvl, v.itemFactory().TreasureClassLevel)
+		},
+		Drop: func(class string, lvl int, sd uint32) int {
+			loot, derr = v.itemFactory().DropLoot(class, diablo2item.DropOptions{Seed: sd, ILvl: lvl, Players: 1}, 0)
+			if loot == nil {
+				return 0
+			}
+
+			return len(loot.Entries)
+		},
+	}
+
+	st := d2object.ChestState{}
+	if res, err := v.spawnTables().OpenChest(id, &st, hooks, v.localPlayer.Act, int(diff), ilvl, seed); err == nil {
+		tc = res.TreasureClass
+	} else {
+		// unknown object row: keep the original direct path
+		tc = d2ground.ChestTreasureClass(v.localPlayer.Act, diff, ilvl, v.itemFactory().TreasureClassLevel)
+		loot, derr = v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: seed, ILvl: ilvl, Players: 1}, 0)
+	}
+
+	if derr != nil {
+		v.Errorf("chest %d: %v", id, derr)
 		return
 	}
 

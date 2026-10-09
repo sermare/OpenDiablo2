@@ -5,10 +5,13 @@ const (
 	maxAffixPerSet = 3 // up to 3 prefixes and 3 suffixes on one item
 
 	// rareJewelBase is the constant added to rand(2) for the number of
-	// affixes on a rare jewel. The call is RAND_RollSeedRangeWithBase(2) with
-	// the base in a register the decompiler dropped: UNVERIFIED (3 matches
-	// the known 3-4 magic affixes on a rare jewel).
+	// affixes on a rare jewel. VERIFIED (5bf8c0, the call at 5bf94a loads
+	// EDX = 3 before 46deb0, which returns EDX + rand(n)): 3 or 4 affixes.
 	rareJewelBase = 3
+
+	// qualityTempered is quality 9 (the tempered branch of
+	// ITEMGEN_ApplyQualityToItem, 5bf890); it has no exported constant.
+	qualityTempered Quality = 9
 )
 
 // rareAffixCounts is the table at 6e45a8 (VERIFIED by reading the binary),
@@ -43,11 +46,17 @@ type AffixItem struct {
 	Jewel      bool
 }
 
-// AffixLevel is the affix level (alvl) of an item (VERIFIED, 5bf1c0): with no
-// magic level it is ilvl - qlvl/2, or 2*ilvl - 99 once ilvl reaches
-// 99 - qlvl/2; with a magic level it is ilvl + magiclvl. Clamped to 1..99.
+// AffixLevel is the affix level (alvl) of an item (VERIFIED, 5bf1c0). The
+// item level is first raised to qlvl (the base record byte at +0xfd read by
+// 628930, VERIFIED at 5bf2ed: CMP/JG then MOV). Then with no magic level
+// it is ilvl - qlvl/2, or 2*ilvl - 99 once ilvl reaches 99 - qlvl/2; with a
+// magic level it is ilvl + magiclvl. Clamped to 1..99.
 func AffixLevel(ilvl, qlvl, magicLevel int) int {
 	var alvl int
+
+	if ilvl < qlvl {
+		ilvl = qlvl
+	}
 
 	switch {
 	case magicLevel != 0:
@@ -91,9 +100,15 @@ func (a *Affix) Eligible(it *AffixItem) bool {
 		return false
 	case alvl < a.Level, a.MaxLevel != 0 && alvl > a.MaxLevel:
 		return false
-	case (it.Quality == QualityRare || it.Quality == QualityCrafted) && !a.Rare:
+	case a.Frequency == 0: // VERIFIED 5bf415: a zero frequency byte is skipped
 		return false
-	case a.Class != "" && a.Class != it.Class:
+	case (it.Quality == QualityRare || it.Quality == QualityCrafted || it.Quality == qualityTempered) && !a.Rare:
+		// VERIFIED 5bf3d1..5bf3ec: with the rare byte clear, quality 6 is
+		// skipped and so is quality-8 <= 1 (crafted 8 and tempered 9).
+		return false
+	case a.Class != "" && it.Class != "" && a.Class != it.Class:
+		// VERIFIED 5bf41f..5bf43c: an item whose ItemTypes class is 7 (none,
+		// 62c210) accepts class-restricted affixes; otherwise they must match.
 		return false
 	case !anyIn(a.IType, it.Types), anyIn(a.EType, it.Types):
 		return false
@@ -117,9 +132,10 @@ func (a *Affix) weight(it *AffixItem) int {
 // candidate effectively gets one extra weight). It returns nil when the gate
 // fails or there is no candidate.
 //
-// The game retries a clashing group up to 251 times instead of filtering the
-// candidates; the distribution is the same but the number of generator steps
-// consumed differs.
+// VERIFIED (5bf1c0): the LoD picker does not retry; it scans every row once,
+// skipping rows whose group is already on the item (5bf160 compares the group
+// word at +0x5c with the three prefixes and three suffixes; group 0 is NOT
+// exempt), then rolls once. (The 251 retries belong to the classic picker.)
 func PickAffix(rng RNG, pool []Affix, it *AffixItem, usedGroups map[int]bool, force bool) *Affix {
 	if !force && !rng.Chance() {
 		return nil
@@ -130,7 +146,7 @@ func PickAffix(rng RNG, pool []Affix, it *AffixItem, usedGroups map[int]bool, fo
 
 	for i := range pool {
 		a := &pool[i]
-		if !a.Eligible(it) || (a.Group != 0 && usedGroups[a.Group]) {
+		if !a.Eligible(it) || usedGroups[a.Group] {
 			continue
 		}
 
@@ -183,7 +199,7 @@ func RollMagicAffixes(rng RNG, prefixes, suffixes []Affix, it *AffixItem) MagicA
 }
 
 // RareAffixCount rolls how many magic affixes a rare item gets (VERIFIED
-// table; the jewel base is UNVERIFIED, see rareJewelBase).
+// table and jewel base, see rareJewelBase).
 func RareAffixCount(rng RNG, jewel bool) int {
 	if jewel {
 		return rareJewelBase + int(rng.Roll(2))
@@ -269,10 +285,13 @@ func PickRareName(rng RNG, n int) int {
 
 // PickAutoMagic picks the automagic affix of a base item that has an
 // `Auto prefix` value (ITEMGEN_PickAffixLod via 5bf5f0, "forced id").
-// UNVERIFIED: the notes only say the id is forced; here the base's auto
-// prefix selects the AutoMagic rows with that group, then the usual
-// eligibility and frequency weighting apply, without the 50% gate. Returns
-// nil when autoPrefix is zero or nothing qualifies.
+// VERIFIED (5bf1c0): the AutoMagic table (header +0x10..end) is scanned with
+// the last argument (param_7) compared against each row's group word at
+// +0x5c; matching rows then go through the same eligibility checks, group
+// clash test and frequency weighting as any affix, with no 50% gate when the
+// caller forces. That the caller passes the base item's Auto prefix as that
+// argument is inferred (5bf5f0 has no recorded xrefs). Returns nil when
+// autoPrefix is zero or nothing qualifies.
 func PickAutoMagic(rng RNG, pool []Affix, it *AffixItem, autoPrefix int) *Affix {
 	if autoPrefix == 0 {
 		return nil
@@ -291,10 +310,10 @@ func PickAutoMagic(rng RNG, pool []Affix, it *AffixItem, autoPrefix int) *Affix 
 
 // AutoMagicQuality reports whether an item of this quality gets its
 // automagic affix: qualities {1,2,3,4,6,8,9} (notes section 1.4); 9 is
-// tempered, which has no constant here.
+// tempered (qualityTempered).
 func AutoMagicQuality(q Quality) bool {
 	switch q {
-	case QualityLow, QualityNormal, QualitySuperior, QualityMagic, QualityRare, QualityCrafted, 9:
+	case QualityLow, QualityNormal, QualitySuperior, QualityMagic, QualityRare, QualityCrafted, qualityTempered:
 		return true
 	}
 
