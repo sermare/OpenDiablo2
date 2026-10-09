@@ -197,18 +197,37 @@ func wallBaseSubtile(x float64) (u, v float64) {
 	return subtilesPerTile, clampSub(subtilesPerTile - (x-wallHalfWidth)/wallHalfWidth*subtilesPerTile)
 }
 
-// renderShadedImage draws img with per-vertex light colours. at(x,y) gives the
-// tint for a pixel of the image. Uniformly lit images take the plain path.
+// shadeKind selects how the vertex colours of renderShadedImage are sampled from the light map.
+type shadeKind int
+
+const (
+	shadeFloor shadeKind = iota // a floor image: the colour follows the position inside the tile
+	shadeWall                   // a wall image: only the columns matter, sampled along the tile's south edges
+)
+
+// renderShadedImage draws img with per-vertex light colours sampled at tile (tileX, tileY).
+// Uniformly lit images take the plain path. The vertex colours live in a scratch slice of the
+// renderer, so a draw allocates nothing.
 func (mr *MapRenderer) renderShadedImage(target d2interface.Surface, img d2interface.Surface,
-	cols, rows int, alpha float64, at func(x, y float64) color.RGBA) {
+	cols, rows int, alpha float64, kind shadeKind, tileX, tileY int) {
 	w, h := img.GetSize()
 
-	vals := make([]color.RGBA, 0, (cols+1)*(rows+1))
+	vals := mr.shadeVals[:0]
 	uniform := true
+	baseX, baseY := float64(tileX*subtilesPerTile), float64(tileY*subtilesPerTile)
 
 	for j := 0; j <= rows; j++ {
 		for i := 0; i <= cols; i++ {
-			c := withAlpha(at(float64(i*w)/float64(cols), float64(j*h)/float64(rows)), alpha)
+			x, y := float64(i*w)/float64(cols), float64(j*h)/float64(rows)
+
+			var u, v float64
+			if kind == shadeFloor {
+				u, v = floorSubtile(x, y)
+			} else {
+				u, v = wallBaseSubtile(x)
+			}
+
+			c := withAlpha(mr.light.tintAt(baseX+u, baseY+v), alpha)
 			if len(vals) > 0 && c != vals[0] {
 				uniform = false
 			}
@@ -217,8 +236,9 @@ func (mr *MapRenderer) renderShadedImage(target d2interface.Surface, img d2inter
 		}
 	}
 
-	ss, ok := target.(d2interface.ShadedSurface)
-	if uniform || !ok {
+	mr.shadeVals = vals
+
+	if uniform {
 		target.PushColor(vals[0])
 		target.Render(img)
 		target.Pop()
@@ -226,14 +246,26 @@ func (mr *MapRenderer) renderShadedImage(target d2interface.Surface, img d2inter
 		return
 	}
 
-	idx := func(x, y float64) int {
-		i := int(x/float64(w)*float64(cols) + 0.5)
-		j := int(y/float64(h)*float64(rows) + 0.5)
-
-		return j*(cols+1) + i
+	if gs, ok := target.(d2interface.ShadedGridSurface); ok {
+		gs.RenderShadedGrid(img, cols, rows, vals)
+		return
 	}
 
-	ss.RenderShaded(img, cols, rows, func(x, y float64) color.RGBA { return vals[idx(x, y)] })
+	if ss, ok := target.(d2interface.ShadedSurface); ok {
+		stride := cols + 1
+		ss.RenderShaded(img, cols, rows, func(x, y float64) color.RGBA {
+			i := int(x/float64(w)*float64(cols) + 0.5)
+			j := int(y/float64(h)*float64(rows) + 0.5)
+
+			return vals[j*stride+i]
+		})
+
+		return
+	}
+
+	target.PushColor(vals[0])
+	target.Render(img)
+	target.Pop()
 }
 
 // fadeFor advances and returns the alpha of a wall tile fading toward target.

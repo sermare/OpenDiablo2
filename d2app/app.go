@@ -66,6 +66,7 @@ type App struct {
 	capturePath       string
 	captureFrames     []*image.RGBA
 	autoShot          *autoShotState
+	perf              *autoPerf
 	gitBranch         string
 	gitCommit         string
 	language          string
@@ -281,6 +282,9 @@ func (a *App) Run() (err error) {
 		return err
 	}
 
+	a.perf = newAutoPerf()
+	a.startPprofEnv()
+
 	// start profiler if argument was supplied
 	if len(*a.Options.profiler) > 0 {
 		profiler := enableProfiler(*a.Options.profiler, a)
@@ -428,6 +432,10 @@ func (a *App) render(target d2interface.Surface) {
 }
 
 func (a *App) advance() error {
+	if t0 := a.perfStamp(); !t0.IsZero() {
+		defer a.perfUpdateDone(t0)
+	}
+
 	current := d2util.Now()
 	elapsedUnscaled := current - a.lastTime
 	elapsed := elapsedUnscaled * a.timeScale
@@ -461,7 +469,13 @@ func (a *App) advance() error {
 }
 
 func (a *App) update(target d2interface.Surface) error {
+	t0 := a.perfStamp()
+
 	a.render(target)
+
+	if !t0.IsZero() {
+		a.perfRenderDone(t0)
+	}
 
 	if target.GetDepth() > 0 {
 		return errors.New("detected surface stack leak")
