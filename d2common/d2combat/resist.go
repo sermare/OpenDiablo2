@@ -115,7 +115,7 @@ func ApplyResist(damage, res int) int {
 
 // Absorb applies the absorb stats to a damage component in 8.8 fixed point.
 // Verified in COMBAT_ApplyDamageAbsorb (0x579c20): if the type has an absorb
-// stat, absorbPct > 0 absorbs damage*pct/100 (inferred MulDiv operands),
+// stat, absorbPct > 0 absorbs damage*pct/100 (MulDiv operands verified by the oracle),
 // then absorbFlat*256 more (capped at what is left). Everything absorbed is
 // returned as heal. A type without an absorb stat passes through unchanged.
 func Absorb(damage int, hasAbsorb bool, absorbPct, absorbFlat int) (remaining, heal int) {
@@ -124,7 +124,11 @@ func Absorb(damage int, hasAbsorb bool, absorbPct, absorbFlat int) (remaining, h
 	}
 
 	if absorbPct > 0 {
-		x := damage * absorbPct / 100
+		if absorbPct > AbsorbCap {
+			absorbPct = AbsorbCap // verified against the exe: the percent is capped at 40
+		}
+
+		x := int(MulDiv(int32(damage), int32(absorbPct), 100))
 		heal += x
 		damage -= x
 	}
