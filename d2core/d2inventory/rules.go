@@ -2,8 +2,8 @@ package d2inventory
 
 // Container geometry, drop, stack and gold rules of the original game, as pure
 // functions (inventory-trade.md, Inventory.cpp / inv.cpp). Rules marked
-// UNVERIFIED are not read from the executable yet; the addresses to confirm are
-// listed next to them.
+// VERIFIED were read in Game.exe 1.14b (addresses next to them); anything still
+// marked UNVERIFIED is a hypothesis.
 
 // Container names a storage page. The values follow the item page numbers.
 type Container int
@@ -64,13 +64,29 @@ func ClassifyDrop(overlapping int) DropOutcome {
 	}
 }
 
+// MaxStack is the stack limit of an item (ITEM_GetMaxStack, 0x6297b0,
+// VERIFIED): the base row maxstack plus the item's stat 0xfe (extra stack),
+// clamped to 511.
+func MaxStack(baseMax, extra int) int {
+	if m := baseMax + extra; m < MaxStackLimit {
+		return m
+	}
+
+	return MaxStackLimit
+}
+
+// MaxStackLimit is the hard clamp of MaxStack.
+const MaxStackLimit = 511
+
 // MergeStacks adds the quantity held (cursor) to a stack on the grid with a
-// stack limit max. It returns the new stack size and what remains on the
-// cursor. The surplus staying on the cursor is UNVERIFIED (confirm in the
-// handler of packet 0x21, FUN_0055c600; the stackable test 0x62c9a0 is
-// verified; the cap is max stack + stat 0xfe via FUN_006297b0).
+// stack limit max (ITEMACT_ServerStackItems 0x55c600 and its merge routine
+// 0x55c3c0, VERIFIED). When the sum exceeds max the grid stack is set to max
+// (even if it was above max) and the surplus stays on the cursor item (stat
+// 0x46); otherwise the grid stack takes everything, the cursor item is
+// consumed (rest 0) and the cursor is cleared. Nothing is merged when the
+// stackable test (0x62c9a0) fails; the caller decides that first.
 func MergeStacks(onGrid, held, max int) (stack, rest int) {
-	if max < 1 || onGrid >= max {
+	if max < 1 {
 		return onGrid, held
 	}
 
@@ -82,10 +98,27 @@ func MergeStacks(onGrid, held, max int) (stack, rest int) {
 	return max, total - max
 }
 
-// SplitStack takes n units off a stack for the cursor (packet 0x22 unstack,
-// FUN_0055c7f0; UNVERIFIED whether n is chosen in a dialog or fixed). It
-// returns the units left behind and the units taken; n is clamped to
-// 1..qty-1 (a split cannot take everything or nothing).
+// MergeDurability is the durability of the stack after a merge: the grid item
+// takes the cursor item's durability when that is lower (0x55c3c0, VERIFIED,
+// only for items that have durability).
+func MergeDurability(grid, cursor int) int {
+	if cursor < grid {
+		return cursor
+	}
+
+	return grid
+}
+
+// UnstackSupported is false: the server handler of packet 0x22 (unstack,
+// ITEMACT_ServerUnstackItem 0x55c7f0) is an empty stub that returns 0 in 1.14b
+// (VERIFIED), so the original never splits a stack with that packet. Splitting
+// by shift-click in the original is the UI path of the bank/inventory and is
+// not implemented through this packet.
+const UnstackSupported = false
+
+// SplitStack takes n units off a stack for the cursor. It is NOT a rule of the
+// original (see UnstackSupported); it is only a helper for an OD2 extension and
+// clamps n to 1..qty-1 (a split cannot take everything or nothing).
 func SplitStack(qty, n int) (left, taken int) {
 	if qty < 2 {
 		return qty, 0
@@ -102,9 +135,14 @@ func SplitStack(qty, n int) (left, taken int) {
 	return qty - n, n
 }
 
-// Gold limits. UNVERIFIED in the executable (confirm in the setters of the
-// gold stats, 0x0e inventory gold and 0x0f stash gold, in D2Common/D2Game;
-// addresses not located yet).
+// Gold limits, VERIFIED: PLAYER_GetMaxGoldCarry 0x623050 returns stat 0x0c
+// (level) * 10000; PLAYER_GetMaxStashGold 0x623640 returns the constant 2500000
+// (the same in classic and Lord of Destruction; no stat is involved). The
+// shared gold setter TRADE_Helper_53dc10 (0x53dc10) resets stat 0x0e/0x0f to 0
+// when a player's new value would exceed its limit and to 0 when negative, so
+// callers clamp first (FUN_00558e40 0x558e40 and FUN_0053e640 0x53e640 drop the
+// overflow as gold piles on the ground). The save loader (0x531a50) also zeroes
+// an over-cap or negative stat 0x0e / 0x0f.
 const (
 	// InventoryGoldPerLevel is the inventory gold cap per character level.
 	InventoryGoldPerLevel = 10000
@@ -137,4 +175,26 @@ func AddGold(have, add, limit int) (total, overflow int) {
 	}
 
 	return have + add, 0
+}
+
+// SetGold is the gold stat setter (0x53dc10, VERIFIED): the new amount is
+// have+delta; below zero or above the limit the stat becomes 0 (it does not
+// clamp). Use AddGold for the clamping callers do before calling it.
+func SetGold(have, delta, limit int) int {
+	n := have + delta
+	if n < 0 || n > limit {
+		return 0
+	}
+
+	return n
+}
+
+// SanitizeLoadedGold is what the save loader does with a stored gold stat
+// (0x531a50, VERIFIED): negative or above the limit becomes 0.
+func SanitizeLoadedGold(v, limit int) int {
+	if v < 0 || v > limit {
+		return 0
+	}
+
+	return v
 }
