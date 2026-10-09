@@ -364,7 +364,7 @@ func (a *autoQuest) stageEve() {
 		a.move(h, d2quest.LevelWorldstone1)
 		a.move(h, d2quest.LevelThrone)
 		a.expect(h, "STARTED bit set, state 2", a.bit(h, id, d2quest.FlagStarted) && a.quest(h, id).State == 2)
-		a.kill(h, d2quest.Event{Monster: d2quest.NPCBaal})
+		a.kill(h, d2quest.Event{Monster: d2quest.NPCBaalCrab})
 		a.state(h, id, "Baal dead")
 		a.expect(h, "reward pending + primary goal", a.bit(h, id, d2quest.FlagRewardPending) &&
 			a.bit(h, id, d2quest.FlagPrimaryGoal))

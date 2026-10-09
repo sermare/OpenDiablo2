@@ -690,7 +690,7 @@ func TestAct5QuestLine(t *testing.T) {
 
 	moveTo(g, LevelHarrogath, LevelWorldstone1)
 	moveTo(g, LevelWorldstone1, LevelThrone)
-	kill(g, NPCBaal, LevelThrone)
+	kill(g, NPCBaalCrab, LevelThrone)
 
 	if !g.get(eve, FlagRewardPending) {
 		t.Fatalf("baal %s", g.Describe(eve))

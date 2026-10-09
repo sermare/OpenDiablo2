@@ -343,7 +343,20 @@ func newSevenTombs() *Quest {
 		trigs: []trig{
 			{ev: EvAreaChanged, level: LevelCanyon, min: 1, max: 1, to: 2},
 			{ev: EvAreaChanged, level: LevelDurielLair, min: 1, max: 1, to: 2},
-			{ev: EvMonsterKilled, monster: NPCDuriel, min: 1, max: 2, to: 3, bit: FlagCustom1, page: 3},
+			{ev: EvMonsterKilled, monster: NPCDuriel, names: []string{"duriel"}, min: -1, max: 2, to: 3, bit: FlagCustom1, page: 3,
+				// VERIFIED (0x59ac40): bit 5 only when none of the bits 0, 3, 4, 5 is set
+				cond: func(g *Game, q *Quest) bool {
+					return !g.get(q, FlagRewardGranted) && !g.get(q, FlagLeaveTown) && !g.get(q, FlagEnterArea) &&
+						!g.get(q, FlagCustom1)
+				},
+				// the kill reaches the primary goal (VERIFIED for Mephisto's bit 0xd; assumed for Duriel,
+				// boss-encounters.md); the reward stays with Jerhyn and Meshif, so no reward pending
+				fx: func(g *Game, q *Quest) []Effect {
+					g.set(q, FlagPrimaryGoal, "Duriel killed")
+					g.globalDone(q)
+
+					return nil
+				}},
 		},
 		extra: func(g *Game, q *Quest, npc int) []Speech {
 			var out []Speech

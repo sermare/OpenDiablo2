@@ -264,11 +264,6 @@ func New(rec *d2s.QuestRecord, npc *d2s.NPCBlock, difficulty int) *Game {
 		g.byID[q.ID] = q
 	}
 
-	for _, q := range newBossQuests() {
-		g.Quests = append(g.Quests, q)
-		g.byID[q.ID] = q
-	}
-
 	return g
 }
 

@@ -37,7 +37,9 @@ type trig struct {
 	level    int // EvAreaChanged: the new level; EvMonsterKilled: the level of the kill (0: any)
 	old      int // EvAreaChanged: the level left (0: any)
 	monster  int
-	monsters []int // any of these classes (instead of monster)
+	monsters []int                        // any of these classes (instead of monster)
+	names    []string                     // or this monster name (Event.Name), as the boss kills are also matched
+	cond     func(g *Game, q *Quest) bool // extra condition
 	super    string
 	object   int
 	item     string
@@ -216,7 +218,19 @@ func (s *spec) isClaim(q *Quest, g *Game, npc, msg int) bool {
 	return false
 }
 
-func (t *trig) monsterMatches(class int) bool {
+func (t *trig) monsterMatches(e *Event) bool {
+	class := e.Monster
+
+	for _, n := range t.names {
+		if nameIs(e, n) {
+			return true
+		}
+	}
+
+	if len(t.names) > 0 && len(t.monsters) == 0 && t.monster == 0 {
+		return false
+	}
+
 	if len(t.monsters) == 0 {
 		return t.monster == 0 || t.monster == class
 	}
@@ -242,6 +256,10 @@ func (t *trig) matches(g *Game, q *Quest, goal int, e *Event) bool {
 		max = 0
 	}
 
+	if t.cond != nil && !t.cond(g, q) {
+		return false
+	}
+
 	for _, code := range t.req {
 		if !g.hasItem(code) {
 			return false
@@ -263,7 +281,7 @@ func (t *trig) matches(g *Game, q *Quest, goal int, e *Event) bool {
 	case EvAreaChanged:
 		return (t.level == 0 || t.level == e.NewLevel) && (t.old == 0 || t.old == e.OldLevel)
 	case EvMonsterKilled:
-		return t.monsterMatches(e.Monster) && (t.super == "" || t.super == e.Super) &&
+		return t.monsterMatches(e) && (t.super == "" || t.super == e.Super) &&
 			(t.level == 0 || t.level == e.Level || e.Level == 0)
 	case EvObjectOperated:
 		return t.object == e.Object

@@ -17,17 +17,14 @@ const (
 	QuestTaintedSun      = 10 // slot 11
 	QuestArcane          = 11 // slot 12
 	QuestSummoner        = 12 // slot 13
-	QuestSevenTombs      = 13 // slot 14
 	QuestA3Prologue      = 14 // Hratli's welcome, slot 16
 	QuestLamEsen         = 15 // slot 17
 	QuestKhalim          = 16 // slot 18
 	QuestBlade           = 17 // slot 19
 	QuestGoldenBird      = 18 // slot 20
 	QuestBlackenedTemple = 19 // slot 21
-	QuestGuardian        = 20 // slot 22
 	QuestA4Prologue      = 21 // Tyrael's welcome, slot 24
 	QuestFallenAngel     = 22 // slot 25
-	QuestTerrorsEnd      = 23 // slot 26
 	QuestHellforge       = 24 // slot 27
 	QuestNavi            = 25
 	QuestMalachai        = 29 // Malachai's stone gossip, slot 33
@@ -91,12 +88,9 @@ const (
 	// Classes of the monsters quests kill or talk to (monstats.txt rows of
 	// the 1.14b classic+expansion table; the expansion divider row is not
 	// counted, which matches the NPC ids above). Only the ones below were
-	// cross-checked against the binary notes; NPCBaal is UNVERIFIED (the row
+	// cross-checked against the binary notes (Baal is NPCBaalCrab in boss.go; the row
 	// named "Baal Throne" of monstats.txt).
 	NPCSummoner       = 250
-	NPCDuriel         = 211
-	NPCMephisto       = 242
-	NPCDiablo         = 243
 	NPCIzualGhost     = 406
 	NPCCouncilA       = 345
 	NPCCouncilB       = 346
@@ -110,7 +104,6 @@ const (
 	NPCAncient1       = 540
 	NPCAncient2       = 541
 	NPCAncient3       = 542
-	NPCBaal           = 543
 	NPCGuard2         = 331 // ACT2GUARD2 of the speech table (which guard class it is is unverified)
 )
 
