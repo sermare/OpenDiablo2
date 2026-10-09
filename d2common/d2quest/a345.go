@@ -368,7 +368,7 @@ func newBlackenedTemple() *Quest {
 func newGuardian() *Quest {
 	return newSpecQuest(&spec{
 		id: QuestGuardian, slot: 22, act: 2, logIndex: 6, name: "The Guardian", label: "A3Q6",
-		start: 0, goal: 5, tbl: map[int]int{1: 0, 2: 1, 3: 2, 4: 3}, rp: 5, done: 6,
+		start: 0, goal: 5, tbl: map[int]int{1: 0, 2: 1, 3: 2, 4: 3}, rp: 5, done: 6, kill: guardianSpeech(),
 		steps: []step{{from: 1, npc: NPCOrmus, msg: 628, to: 2}},
 		trigs: []trig{
 			{ev: EvAreaChanged, level: LevelDurance1, max: 3, to: 3},
@@ -401,7 +401,7 @@ func newFallenAngel() *Quest {
 func newTerrorsEnd() *Quest {
 	return newSpecQuest(&spec{
 		id: QuestTerrorsEnd, slot: 26, act: 3, logIndex: 2, name: "Terror's End", label: "A4Q2",
-		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 1}, rp: 2, done: 3, rpExp: 4, doneExp: 5,
+		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 1}, rp: 2, done: 3, rpExp: 4, doneExp: 5, kill: terrorSpeech(),
 		steps: []step{{from: 1, npc: NPCTyrael2, msg: 681, to: 2}},
 		trigs: []trig{
 			{ev: EvAreaChanged, level: LevelChaosSanctum, max: 3, to: 3},
@@ -583,7 +583,7 @@ func newRite() *Quest {
 func newEve() *Quest {
 	return newSpecQuest(&spec{
 		id: QuestEve, slot: 40, act: 4, logIndex: 6, name: "Eve of Destruction", label: "A5Q6",
-		start: 0, goal: 3, tbl: map[int]int{1: 0, 2: 0}, rp: 1, done: 3, noLeaveRule: true,
+		start: 0, goal: 3, tbl: map[int]int{1: 0, 2: 0}, rp: 1, done: 3, noLeaveRule: true, kill: eveSpeech(),
 		trigs: []trig{
 			{ev: EvAreaChanged, level: LevelWorldstone1, max: 1, to: 2},
 			{ev: EvAreaChanged, level: LevelThrone, max: 2, to: 2},
