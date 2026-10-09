@@ -5,7 +5,7 @@
   "bars": [
     {
       "label": "Game.exe functions named in Ghidra",
-      "done": 1947,
+      "done": 2175,
       "total": 10907,
       "note": "reverse engineering of the original 1.14b binary",
       "color": "#7c5cff"
@@ -19,7 +19,7 @@
     },
     {
       "label": "Source files studied in depth",
-      "done": 160,
+      "done": 175,
       "total": 277,
       "note": "NPC menu, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills",
       "color": "#2f9bff"

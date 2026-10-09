@@ -33,17 +33,20 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | **Import a real character into the engine — with her gear** | A level-94 Sorceress from a real `.d2s` loads, starts in town and wears her real Spired Helm, Archon Plate, Battle Boots, Light Gauntlets, Flail, Short Staff and Monarch |
 | **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; checked instruction-by-instruction against the real code: no differences |
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~1,950 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
+| Reverse-engineering map of the game | ~2,170 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
 ### 🔧 In progress right now (agents run in waves of 5 every 15 minutes)
 
 | Work item | Where |
 |---|---|
-| Monsters part 2: natural packs, unit-vs-unit collision, ranged projectiles, the other archetypes | next wave |
-| Save the engine's character back to a real `.d2s` + autosave | spawning now |
-| Hirelings (Kashya's mercenary) and stash/cube/belt panels | spawning now |
-| Renderer research: palette shifts, draw modes, lighting | spawning now |
-| Quests part 2 and the "welcome back" NPC bit mapping | spawning now |
+| **Skills that work like the real game**: the skill expression language, mana, cooldowns, missiles that hit and kill monsters | branch `feat/skill-pipeline` |
+| **Monsters part 2**: natural packs, more archetypes (Brute, Mummy, bosses), collision | branch `feat/monsters-2` |
+| **Real generated dungeons that render and can be walked**, with screenshots to check them | branch `feat/realmaps-render` |
+| **A ground-truth oracle** for level generation by emulating the real game code | RE notes: `drlg-oracle` |
+| **Imported real characters work in every screen** (character select, stats, skills) | branch `feat/imported-hero-ui` |
+| Save the engine's character back to a real `.d2s` + autosave | branch `feat/d2s-save-back` |
+| Stash, Horadric Cube and belt | branch `feat/stash-cube-belt` |
+| Research: hirelings, renderer (palettes, draw modes, lighting), quests part 2 | RE notes: `hirelings`, `renderer`, `quests-2` |
 
 ### 🎯 Plan and priorities (set by Claude)
 
