@@ -25,7 +25,8 @@ import (
 
 const (
 	fadeSeconds       = 0.4  // each way
-	objectUseTimeout  = 12.0 // seconds before a walk to an object is abandoned
+	objectUseTimeout  = 12.0 // seconds without progress before a walk to an object is abandoned
+	walkProgressStep  = 0.5  // tiles the hero must get closer to count as progress
 	doorRange         = 2.5  // tiles; the hero stops next to a closed door
 	portalRange       = 2.0  // tiles
 	warpClickRadius   = 1.5  // a click this close to a warp tile targets it
@@ -52,7 +53,8 @@ type levelTransition struct {
 
 type pendingUse struct {
 	ob      *d2mapentity.Object
-	elapsed float64
+	elapsed float64 // seconds since the hero last got closer to the object
+	best    float64 // the smallest distance so far (0: not measured yet)
 }
 
 // levelState is the level-change state of the game screen.
@@ -65,7 +67,9 @@ type levelState struct {
 	wpLevel    int
 	warps      []d2mapengine.WarpTile
 	warpTarget *d2mapengine.WarpTile
-	warpWait   float64 // seconds spent walking to warpTarget
+	warpWait   float64 // seconds since the hero last got closer to warpTarget
+	warpBest   float64 // smallest distance to warpTarget so far
+	warpBestOf *d2mapengine.WarpTile
 	warpSeen   map[[2]int]bool
 	changes    int
 	// edgeArmed is true once the hero stood away from every level border since
@@ -324,15 +328,23 @@ func (v *Game) advanceWarpUse(elapsed float64) {
 		return
 	}
 
+	px, py := v.heroTilePos()
+	dist := math.Hypot(float64(w.TileX)+0.5-px, float64(w.TileY)+0.5-py)
+
+	// the walk is only abandoned when the hero stops getting closer: a far
+	// stair takes longer than objectUseTimeout to reach
+	if v.levels.warpBestOf != w || dist < v.levels.warpBest-walkProgressStep {
+		v.levels.warpBestOf, v.levels.warpBest, v.levels.warpWait = w, dist, 0
+	}
+
 	if v.levels.warpWait += elapsed; v.levels.warpWait > objectUseTimeout {
-		v.Warningf("LEVEL gave up walking to the warp tile at (%d,%d)", w.TileX, w.TileY)
+		v.Warningf("LEVEL gave up walking to the warp tile at (%d,%d): the hero is %.1f tiles away", w.TileX, w.TileY, dist)
 		v.levels.warpTarget = nil
 
 		return
 	}
 
-	px, py := v.heroTilePos()
-	if math.Hypot(float64(w.TileX)+0.5-px, float64(w.TileY)+0.5-py) >= d2level.WarpRange {
+	if dist >= d2level.WarpRange {
 		return
 	}
 
@@ -387,6 +399,10 @@ func (v *Game) advanceObjectUse(elapsed float64) {
 	u := v.levels.use
 	if u == nil {
 		return
+	}
+
+	if d := v.distanceToObject(u.ob); u.best == 0 || d < u.best-walkProgressStep {
+		u.best, u.elapsed = d, 0 // still getting closer
 	}
 
 	u.elapsed += elapsed
