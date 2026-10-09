@@ -476,6 +476,12 @@ func DecodeClient(b []byte) (Message, error) {
 		m = &PartyRelation{}
 	case C2SPartyRequest:
 		m = &PartyRequest{}
+	case C2SSetQuestFlag:
+		m = &SetQuestFlag{}
+	case C2SNpcInteractPar:
+		m = &NpcInteractParams{}
+	case C2SMoveChecked:
+		m = &MoveChecked{}
 	default:
 		return nil, fmt.Errorf("%w: no typed decoder for client id %#x", ErrUnknownSize, b[0])
 	}

@@ -128,8 +128,10 @@ func ParseLoadAct(b []byte) (LoadAct, error) {
 	return LoadAct{Act: b[1], Seed: r.u32(2), StartLevel: r.u16(6), Aux: r.u32(8)}, nil
 }
 
-// PlayerInGame (0x59, 26 bytes) announces a player. Layout unverified (public
-// docs): [1..4]=unit id, [5]=class, [6..21]=name, [22..23]=level, [24..25]=party id.
+// PlayerInGame (0x59, 26 bytes) announces a player in the ENGINE's layout:
+// [1..4]=unit id, [5]=class, [6..21]=name, [22..23]=level, [24..25]=party id.
+// The real exe handler (0x459c00, see AssignPlayer) reads a position (x, y) at
+// 22 and 24 instead, so this layout is only valid between our own peers.
 type PlayerInGame struct {
 	UnitID uint32
 	Class  uint8
@@ -181,9 +183,13 @@ func ParsePlayerLeave(b []byte) (PlayerLeave, error) {
 	return PlayerLeave{UnitID: rbuf(b).u32(1)}, nil
 }
 
-// PlayerMove (0x0f, 16 bytes). Layout unverified (public docs): [1]=unit type,
-// [2..5]=unit id, [6]=move type, [7..8]=target x, [9..10]=target y, [11]=0,
-// [12..13]=current x, [14..15]=current y. Coordinates are sub-tiles.
+// PlayerMove (0x0f, 16 bytes). Verified from the deferred handler 0x4584b0:
+// [6]=move mode byte (passed to 0x47ca50), [7..8]=target x, [9..10]=target y,
+// [11]=a byte copied into the move record (always 0 here, meaning UNVERIFIED),
+// [12..13]=current x, [14..15]=current y (passed to 0x47c320). UNVERIFIED: [1]
+// unit type and [2..5] unit id (consumed by the unit lookup in the
+// dispatcher through registers) and that mode 1/2 are walk/run. Coordinates
+// are sub-tiles.
 type PlayerMove struct {
 	UnitID           uint32
 	Run              bool

@@ -23,7 +23,14 @@ const (
 // handlers answer return code 2 above 5), u32 unit id @5, length 9. Verified:
 // 0x547740 (02), 0x5477f0 (04), 0x547c70 (06), 0x547d00 (07), 0x547df0 (09),
 // 0x547e50 (0a), 0x547f50 (0d), 0x547fe0 (0e), 0x5480d0 (10), 0x548130 (11).
-// Which skill id is "hold" or "ex" comes from handler names only (UNVERIFIED).
+// Verified (0x547c70, 0x547d00, 0x547df0, 0x547e50, 0x547f50, 0x547fe0, 0x5480d0):
+// no skill id travels in these packets, the server uses the unit's selected
+// left (0x06/0x07/0x09/0x0a) or right (0x0d/0x0e/0x10/0x11) skill. 0x06 and 0x0d
+// store the target with flag 1, 0x07 and 0x0e with flag 0 (UNVERIFIED: that the
+// flag is "shift held"); 0x09/0x0a and 0x10 are thin wrappers that check the
+// target and then run the 0x06/0x07/0x0d body (0x11 -> 0x0e by symmetry,
+// UNVERIFIED: 0x548130 not read). So "hold" and "ex" differ only in that flag
+// or in being the wrapper path, never in the wire layout.
 type UnitOrder struct {
 	ID               byte
 	UnitType, UnitID uint32
@@ -70,11 +77,19 @@ func (ToggleState12) MarshalPacket() []byte { return []byte{C2SToggleState12} }
 
 func (*ToggleState12) unmarshal([]byte) {}
 
-// AllocateStat (0x3a, 3 bytes). Verified: the u16 at +1 is split into a low byte
-// (< 0x10) and a high byte (< 100); the handler then allocates high+1 points.
-// UNVERIFIED: that the low byte is the stat index (the callee takes it from a
-// register that was not traced).
+// AllocateStat (0x3a, 3 bytes, handler 0x549b40). Verified: the u16 at +1 is
+// split into a low byte (<= 0x0f, else return code 3) which is passed as the
+// stat argument to the allocate-one-point helper 0x56ec40, and a high byte
+// (<= 99) = Extra; the handler calls the helper Extra+1 times and stops with
+// return code 2 at the first failure. UNVERIFIED: the mapping of the stat byte
+// values to strength/energy/dexterity/vitality (0..3 in the public docs).
 type AllocateStat struct{ Stat, Extra uint8 }
+
+// Count is the number of points the packet asks for (Extra+1).
+func (m AllocateStat) Count() int { return int(m.Extra) + 1 }
+
+// Valid mirrors the handler's range checks (stat <= 0x0f, count <= 100).
+func (m AllocateStat) Valid() bool { return m.Stat <= 0x0f && m.Extra <= 99 }
 
 // PacketID implements Message.
 func (AllocateStat) PacketID() byte { return C2SAllocateStat }
@@ -84,8 +99,9 @@ func (m AllocateStat) MarshalPacket() []byte { return []byte{C2SAllocateStat, m.
 
 func (m *AllocateStat) unmarshal(b []byte) { m.Stat, m.Extra = b[1], b[2] }
 
-// AddSkillPoint (0x3b, 3 bytes, verified length). UNVERIFIED: u16 skill id @1
-// (the callee reads it from a register that was not traced).
+// AddSkillPoint (0x3b, 3 bytes, handler 0x549bc0). Verified: u16 skill id @1
+// (it is passed to the can-add check 0x547370, the level lookup 0x644dc0 and
+// the prerequisite check 0x56df60). The server may refuse with code 2.
 type AddSkillPoint struct{ Skill uint16 }
 
 // PacketID implements Message.
@@ -130,9 +146,11 @@ func (m *SetHotkey) unmarshal(b []byte) {
 	m.Slot, m.Skill, m.Right, m.ItemID = uint16(v>>16), uint16(v&0x7fff), v&0x8000 != 0, r.u32(5)
 }
 
-// NpcTrade (0x38, 13 bytes, verified length): three u32 handed to
-// TRADE_ServerHandleNpcMenuAction. The field meanings are UNVERIFIED (public
-// docs: menu action, npc id, extra).
+// NpcTrade (0x38, 13 bytes, handler 0x549ad0): three u32 handed to
+// 0x577b70(game, client, Action, NpcID, Param). Verified: NpcID @5 is checked
+// as a unit of type 1 (monster) within range 0x32 by 0x546e70 before the call;
+// Action @1 and Param @9 are passed through unchanged, their meaning is
+// UNVERIFIED (public docs: menu action, extra).
 type NpcTrade struct{ Action, NpcID, Param uint32 }
 
 // PacketID implements Message.

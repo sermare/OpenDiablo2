@@ -353,6 +353,7 @@ func TestClientMessagesRoundTrip(t *testing.T) {
 		&ToggleState12{}, &AllocateStat{Stat: 2, Extra: 4}, &AddSkillPoint{Skill: 36},
 		&SetHotkey{Slot: 3, Skill: 0x24, Right: true, ItemID: 0xffffffff}, &NpcTrade{1, 2, 3},
 		&PartyRequest{Action: 5, PlayerID: 77}, &PartyRelation{Action: 4, Flag: 1, PlayerID: 78},
+		&SetQuestFlag{Index: 41}, &NpcInteractParams{1, 9, 16, 32}, &MoveChecked{X: 300, Y: 500},
 	}
 	seen := map[byte]bool{}
 	for _, m := range msgs {
