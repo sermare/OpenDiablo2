@@ -14,11 +14,10 @@ import (
 const (
 	// StateOpenWounds is the name of the timed state 0x3e created by open wounds.
 	StateOpenWounds = "openwounds"
-	// StateUndeadPhysNullify names the attacker state 0x2f that makes physical
-	// resist void against undead (0x579bf4). UNVERIFIED: the name of state
-	// 0x2f is not known, so nothing in the engine applies this state yet; the
-	// rule is wired and active as soon as a skill gives it.
-	StateUndeadPhysNullify = "state_0x2f"
+	// StateSanctuaryPhysZero names the attacker state 0x2f (States.txt row 47,
+	// "sanctuary"; 0x3e is row 62 "openwounds", 0x15 is row 21 "stunned") that
+	// zeroes positive physical resist against boss-flag defenders (0x579b10).
+	StateSanctuaryPhysZero = "sanctuary"
 )
 
 // specialCrushingClasses are the monster classes of helper 0x63fed0 (divisor
@@ -29,10 +28,13 @@ func (e *Engine) isUndead(m *d2mapentity.Monster) bool {
 	return m.Stat != nil && (m.Stat.IsUndeadLow || m.Stat.IsUndeadHigh)
 }
 
-// physNullified is the 0x579b10 special case: the attacker has state 0x2f and
-// the defender is undead.
+// physNullified is the 0x579b10 special case: the attacker has state 0x2f
+// (States.txt row 47 "sanctuary") and the defender's monstats record has the
+// boss flag (bit 6 of the flag dword, verify-boss-flag.md). The helper at
+// 0x63f9e0 is called "boss flags" in verify-resist.md but "undead" in
+// verify-hit-resolution.md; the boss reading is used here (UNRECONCILED).
 func (e *Engine) physNullified(m *d2mapentity.Monster, src *d2mapentity.Player) bool {
-	return src != nil && e.isUndead(m) && e.setOf(src.ID()).Active(e.frame, StateUndeadPhysNullify)
+	return src != nil && m.Stat != nil && m.Stat.IsSpecialBoss && e.setOf(src.ID()).Active(e.frame, StateSanctuaryPhysZero)
 }
 
 // rawPhysResist is the defender's RAW stat 36 (monstats value of the

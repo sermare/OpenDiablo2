@@ -332,8 +332,8 @@ func TestStaggerSuppressed(t *testing.T) {
 	}
 }
 
-func TestEffectiveResistPhysicalNullified(t *testing.T) {
-	in := ResistInput{Resist: 40, IsPhysical: true, NoDifficultyPenalty: true, PhysicalNullified: true}
+func TestEffectiveResistZeroPhysical(t *testing.T) {
+	in := ResistInput{Resist: 40, IsPhysical: true, NoDifficultyPenalty: true, ZeroPhysical: true}
 	if got := EffectiveResist(in); got != 0 {
 		t.Fatalf("got %d want 0", got)
 	}
@@ -348,7 +348,7 @@ func TestEffectiveResistPhysicalNullified(t *testing.T) {
 		t.Fatalf("negative resist untouched, got %d", got)
 	}
 
-	in = ResistInput{Resist: 40, NoDifficultyPenalty: true, PhysicalNullified: true}
+	in = ResistInput{Resist: 40, NoDifficultyPenalty: true, ZeroPhysical: true}
 	if got := EffectiveResist(in); got != 40 {
 		t.Fatalf("non-physical untouched, got %d", got)
 	}

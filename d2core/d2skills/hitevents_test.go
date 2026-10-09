@@ -104,11 +104,11 @@ func TestOpenWoundsRefresh(t *testing.T) {
 	}
 }
 
-func TestPhysNullifiedVsUndead(t *testing.T) {
+func TestPhysZeroedVsBossWithSanctuary(t *testing.T) {
 	e := newTestEngine()
 	p := &d2mapentity.Player{}
 	undead := &d2mapentity.Monster{Stat: &d2records.MonStatRecord{}}
-	undead.Stat.IsUndeadLow = true
+	undead.Stat.IsSpecialBoss = true
 	living := &d2mapentity.Monster{Stat: &d2records.MonStatRecord{}}
 	living.Stat.ResistancePhysicalNormal = 40
 	undead.Stat.ResistancePhysicalNormal = 40
@@ -118,7 +118,7 @@ func TestPhysNullifiedVsUndead(t *testing.T) {
 		t.Fatalf("no state: phys resist %d want 40", got)
 	}
 
-	e.setOf(p.ID()).Apply(0, d2state.Instance{Name: StateUndeadPhysNullify})
+	e.setOf(p.ID()).Apply(0, d2state.Instance{Name: StateSanctuaryPhysZero})
 
 	tests := []struct {
 		m    *d2mapentity.Monster
@@ -131,7 +131,7 @@ func TestPhysNullifiedVsUndead(t *testing.T) {
 
 	for _, tt := range tests {
 		if got := e.resistFrom(tt.m, p, tt.kind); got != tt.want {
-			t.Errorf("%v %s: %d want %d", tt.m.Stat.IsUndeadLow, tt.kind, got, tt.want)
+			t.Errorf("%v %s: %d want %d", tt.m.Stat.IsSpecialBoss, tt.kind, got, tt.want)
 		}
 	}
 
