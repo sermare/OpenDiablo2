@@ -40,11 +40,14 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 
 | Work item | Where |
 |---|---|
-| **Mercenaries**: hire from Kashya, follow, fight, revive, saved in the `.d2s` | branch `feat/hirelings` |
-| **Stairs, doors, waypoints and portals** with the real level-change rules | branch `feat/transitions-objects` |
-| Imported-character UI and ambient/positional audio (reconciling with the latest code) | `feat/imported-hero-ui`, `feat/ambient-audio` |
+| **The quest system** for the intro and Act 1 quests: states, speech, rewards, saved in the `.d2s` | branch `feat/quest-system` |
+| **Skills for all seven classes**, with auras, summons, traps and status effects | branch `feat/class-skills` |
+| **Gamble (Gheed) and Identify (Deckard Cain)** | branch `feat/gamble-identify` |
+| **Death, respawn and creating new characters** that the real game also accepts | branch `feat/death-newchar` |
+| **Level generator proof extended** to the barracks and the Act 2 and Act 3 mazes | branch `feat/drlg-act23` |
+| **Mercenaries** and **stairs / doors / waypoints / portals** | `feat/hirelings`, `feat/transitions-objects` |
+| Imported-character UI and positional/ambient audio (reconciling with the latest code) | `feat/imported-hero-ui`, `feat/ambient-audio` |
 | Research: Act 1 outdoor generation part 3 (borders, cliffs, rivers) | RE notes: `drlg3` |
-| Next: quest system, gamble, Act 1 outdoors in Go, more skills for other classes | spawning every 15 minutes |
 
 ### 🎯 Plan and priorities (set by Claude)
 
