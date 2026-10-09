@@ -111,6 +111,19 @@ func SummarizeD2S(data []byte, tables *d2s.ItemTables) string {
 		merc = fmt.Sprintf("merc=type%d/name%d/exp%d/dead=%v ", m.Type, m.NameID, m.Experience, m.Dead)
 	}
 
+	// the ears a hero carries (a hardcore PvP kill leaves one): name/level/class
+	var ears []string
+
+	for i := range c.Items {
+		if e := c.Items[i].EarInfo; c.Items[i].Ear && e != nil {
+			ears = append(ears, fmt.Sprintf("%s/L%d/c%d", e.Name, e.Level, e.Class))
+		}
+	}
+
+	if len(ears) > 0 {
+		merc += fmt.Sprintf("ears=%v ", ears)
+	}
+
 	bar := SkillBarFromBlock(c.Header.SkillBlock())
 	spent := 0
 

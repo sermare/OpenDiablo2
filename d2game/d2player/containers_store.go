@@ -19,6 +19,12 @@ import (
 
 // realiseStored builds the item a stored entry describes.
 func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2item.Item, error) {
+	if s.D2S != nil && s.D2S.Ear && s.D2S.EarInfo != nil {
+		e := s.D2S.EarInfo
+
+		return f.NewEar(diablo2item.EarInfo{Name: e.Name, Level: int(e.Level), Class: int(e.Class)})
+	}
+
 	spec := diablo2item.Spec{
 		Code: s.Code, Quality: s.Quality, ILvl: s.ILvl, Seed: s.Seed,
 		Unique: s.Unique, SetItem: s.SetItem, Set: s.Set, Prefixes: s.Prefixes, Suffixes: s.Suffixes,
@@ -61,6 +67,12 @@ func storedFromItem(it *diablo2item.Item, page, x, y int, orig *d2s.Item) d2hero
 	if spec.Durability >= 0 {
 		d := spec.Durability
 		s.Durability = &d
+	}
+
+	if e := it.Ear(); e != nil && orig == nil {
+		// an ear earned in a hardcore PvP kill: its .d2s form is exact
+		ear := d2hero.EarD2S(e.Name, e.Level, d2s.Class(e.Class))
+		s.D2S = &ear
 	}
 
 	return s

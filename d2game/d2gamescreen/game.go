@@ -149,6 +149,7 @@ type Game struct {
 	autoTestDone         bool
 	autoScript           *autoScriptState
 	levels               levelState
+	portal               portalState
 	autoSoundElapsed     float64
 	autoSoundDone        bool
 	ground               groundState
@@ -225,6 +226,13 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"op", "arg"}, v.commandTrade},
 		{"pvp", "swings at another player (melee, needs hostility)", []string{"name"}, v.commandPvP},
 		{"giveitem", "puts a new item into the inventory", []string{"code"}, v.commandGiveItem},
+		{"pvpcast", "casts a skill (name, _ for a space) at another player's position",
+			[]string{"skill", "name"}, v.commandPvPCast},
+		{"pvpwalk", "walks the hero by dx dy tiles", []string{"dx", "dy"}, v.commandPvPWalk},
+		{"sethp", "sets the hero's life points (scenarios)", []string{"hp"}, v.commandSetHP},
+		{"townportal", "casts a town portal (scroll or tome charge; \"free\" skips the charge)", []string{"free"}, v.commandTownPortal},
+		{"closeportal", "closes the hero's town portal pair", []string{}, v.commandClosePortal},
+		{"portals", "logs the open town portal pairs", []string{}, v.commandPortals},
 		{"killnear", "kills the nearest monster as the hero (party experience tests)", []string{}, v.commandKillNear},
 	}
 
@@ -256,7 +264,7 @@ func (v *Game) OnUnload() error {
 	}
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
-		"party", "hostile", "roster", "trade", "pvp", "giveitem", "killnear"); err != nil {
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "killnear", "townportal", "closeportal", "portals", "pvpcast", "pvpwalk", "sethp"); err != nil {
 		return err
 	}
 

@@ -58,6 +58,7 @@ var _ d2item.Item = &Item{}
 type Item struct {
 	factory *ItemFactory
 	name    string
+	ear     *EarInfo // set for a player ear (see ear.go)
 	Seed    int64
 	// itemLevel is the level of the dropper when the item came from a drop, else 0.
 	itemLevel int
@@ -129,6 +130,10 @@ type minMaxEnhanceable struct {
 
 // Label returns the item name
 func (i *Item) Label() string {
+	if i.ear != nil {
+		return earName(*i.ear)
+	}
+
 	str := i.name
 
 	if !i.attributes.identitified {

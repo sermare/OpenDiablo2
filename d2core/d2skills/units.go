@@ -219,6 +219,10 @@ func (w *world) Frame() int            { return w.e.frame }
 // IsEnemy: heroes' missiles hurt monsters (all of the director's monsters are
 // hostile); monsters do not fire these missiles.
 func (w *world) IsEnemy(o d2missile.Owner, t d2missile.Target) bool {
+	if pt, ok := t.(*playerTarget); ok {
+		return o.IsPlayer && pt.e.isRival(pt.ID())
+	}
+
 	return o.IsPlayer && !t.IsPlayer()
 }
 
@@ -241,6 +245,10 @@ func (w *world) Targets(x, y int) []d2missile.Target {
 		if chebyshev(mx-x, my-y) <= r {
 			out = append(out, w.e.target(m))
 		}
+	}
+
+	for _, p := range w.e.rivalsNear(x, y, 1) {
+		out = append(out, w.e.rivalTarget(p))
 	}
 
 	return out

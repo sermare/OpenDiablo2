@@ -88,6 +88,8 @@ func (v *Game) skillEngine() *d2skills.Engine {
 		IgnoreTown:   scenario || os.Getenv("OD2_AUTOMONSTER") != "",
 		InfiniteAmmo: scenario,
 	})
+	v.skills.Rivals = v.skillRivals
+	v.skills.OnPvPHit = v.sendSkillPvP
 
 	return v.skills
 }
