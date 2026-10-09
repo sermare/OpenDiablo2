@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 )
 
 // heroUnit adapts a Player to d2skill.Unit.
@@ -256,3 +257,14 @@ func (w *world) Targets(x, y int) []d2missile.Target {
 }
 
 var _ d2path.Grid = (*world)(nil)
+
+// AdjustAROperands implements d2skill.AROperandAdjuster for the hero's skill
+// strikes: 0x57b8b0 against a monster target (d2monsters.HeroAROperands).
+func (h *heroUnit) AdjustAROperands(t d2missile.Target, ar, def int) (int, int) {
+	mt, ok := t.(*monsterTarget)
+	if !ok || h.p.Stats == nil {
+		return ar, def
+	}
+
+	return d2monsters.HeroAROperands(h.p.Stats.Totals, mt.m, ar, def)
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
@@ -146,6 +147,16 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 	// block chance with her shield, physical resistance and flat reduction
 	if t := p.Stats.Totals; t != nil {
 		defense, blockPct, physResist, reduce = t.Defense, t.BlockPct, t.PhysResist, t.DamageReduction
+	}
+
+	// the defender's armor vs melee (0x21) or vs missile (0x20) is part of the
+	// to-hit defense (ToHitInput.Defense contract); items only (Totals).
+	if t := p.Stats.Totals; t != nil && t.Stats != nil {
+		if via == "" {
+			defense += int(t.Stats.Get(d2statlist.StatArmorHTH))
+		} else {
+			defense += int(t.Stats.Get(d2statlist.StatArmorMissile))
+		}
 	}
 
 	in := d2combat.ToHitInput{
@@ -329,8 +340,11 @@ func (d *Director) HeroStrike(p *d2mapentity.Player, m *d2mapentity.Monster) boo
 		ar = t.AttackRating // with the equipment's attack rating, dexterity and AR percent
 	}
 
+	// VERIFIED (0x57b8b0): the attack rating operands of a player attacker
+	ar, mdef := HeroAROperands(p.Stats.Totals, m, ar, m.Vitals.Defense)
+
 	hit, chance, roll := d2combat.RollToHit(d.heroRoller(), d2combat.ToHitInput{
-		AttackRating: ar, Defense: m.Vitals.Defense,
+		AttackRating: ar, Defense: mdef,
 		AttackerLevel: p.Stats.Level, DefenderLevel: m.Vitals.Level,
 	})
 
