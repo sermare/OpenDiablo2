@@ -225,6 +225,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"op", "arg"}, v.commandTrade},
 		{"pvp", "swings at another player (melee, needs hostility)", []string{"name"}, v.commandPvP},
 		{"giveitem", "puts a new item into the inventory", []string{"code"}, v.commandGiveItem},
+		{"autobuy", "opens a vendor's trade window and buys the cheapest affordable item (OD2_AUTOTRADE_KEEP=1 keeps it)",
+			[]string{"vendor"}, v.commandAutoBuy},
 		{"killnear", "kills the nearest monster as the hero (party experience tests)", []string{}, v.commandKillNear},
 	}
 
@@ -256,7 +258,7 @@ func (v *Game) OnUnload() error {
 	}
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
-		"party", "hostile", "roster", "trade", "pvp", "giveitem", "killnear"); err != nil {
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "autobuy", "killnear"); err != nil {
 		return err
 	}
 

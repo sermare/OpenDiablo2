@@ -30,6 +30,12 @@ type ExportOptions struct {
 	SkillIDs []int
 	// LastPlayed is written to the header when non-zero.
 	LastPlayed time.Time
+	// Affixes maps rolled item names to save ids; with it (and the hero's
+	// containers) the items of the containers are written: moved, removed and
+	// made in the game (MergeContainerItems).
+	Affixes *AffixIDs
+	// Known says whether the engine has a record for a base item code.
+	Known func(code string) bool
 	// Warn receives a message for everything the engine state could not be
 	// written faithfully. May be nil.
 	Warn func(msg string)
@@ -90,6 +96,13 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 		if len(c.Items) > 0 {
 			exportEquipment(c, state, warn)
 			checkEquipment(c, state, warn)
+		}
+	}
+
+	if opts.Affixes != nil && state.Containers != nil {
+		added, removed := MergeContainerItems(c, state.Containers, tables, opts.Affixes, opts.Known, warn)
+		if added+removed > 0 {
+			warn("items: %d added, %d removed in the item list", added, removed)
 		}
 	}
 

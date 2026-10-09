@@ -515,3 +515,27 @@ func (v *Game) onRoster(notice string) {
 
 	v.Infof("SOCIAL roster n=%d party=%d invited_by=%q notice=%q", r.Len(), r.PartyID(v.me()), inv, notice)
 }
+
+// commandAutoBuy is "autobuy <vendor>": the scripted buy of OD2_AUTOTRADE for one
+// vendor, from an autoscript (see scripts/verify.d/9e-d2s-item-export.sh).
+func (v *Game) commandAutoBuy(args []string) error {
+	if len(args) != 1 || v.gameControls == nil || v.gameClient == nil {
+		return errors.New("usage: autobuy <vendor> (in a game)")
+	}
+
+	for _, e := range v.gameClient.MapEngine.Entities() {
+		if e.Label() != args[0] {
+			continue
+		}
+
+		if !v.openTrade(e, 1) {
+			return fmt.Errorf("%s has no trade window", args[0])
+		}
+
+		v.gameControls.Trade.RunAutoTest()
+
+		return nil
+	}
+
+	return fmt.Errorf("no %s here", args[0])
+}

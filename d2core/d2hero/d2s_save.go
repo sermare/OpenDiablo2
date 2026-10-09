@@ -22,6 +22,53 @@ type D2SExport struct {
 	Warnings []string
 	// Summary is what a re-parse of the written file shows.
 	Summary string
+	// NewItems has one line per item made in the game (picked up, bought) that
+	// the hero holds, saying whether it is in the re-parsed file and as what.
+	NewItems []string
+}
+
+// NewItemsInD2S re-parses an exported .d2s and looks up every container item of
+// the hero that was made in the game (no imported original).
+func NewItemsInD2S(state *HeroState, data []byte, tables *d2s.ItemTables) []string {
+	if state.Containers == nil {
+		return nil
+	}
+
+	c, err := d2s.Parse(data, tables)
+	if err != nil {
+		return []string{"re-parse failed: " + err.Error()}
+	}
+
+	var out []string
+
+	for i := range state.Containers.Items {
+		s := &state.Containers.Items[i]
+		if s.D2S != nil {
+			continue
+		}
+
+		line := fmt.Sprintf("code=%s page=%d x=%d y=%d", s.Code, s.Page, s.X, s.Y)
+		found := false
+
+		for j := range c.Items {
+			it := &c.Items[j]
+			if trimCode(it.Code) == s.Code && int(it.X) == s.X && int(it.Y) == s.Y && it.Location != d2s.LocationEquipped {
+				line += fmt.Sprintf(" found=true quality=%d ilvl=%d props=%d simple=%v ethereal=%v", it.Quality, it.Level,
+					len(it.Properties), it.Simple, it.Ethereal)
+				found = true
+
+				break
+			}
+		}
+
+		if !found {
+			line += " found=false"
+		}
+
+		out = append(out, line)
+	}
+
+	return out
 }
 
 // D2SPath returns where SaveD2S writes the hero.
@@ -55,6 +102,8 @@ func (f *HeroStateFactory) SaveD2S(state *HeroState) (*D2SExport, error) {
 
 	data, warnings, err := ExportD2SWithOptions(state, state.D2SBase, f.d2sTables, ExportOptions{
 		SkillIDs:   f.classSkillIDs(state.HeroType),
+		Affixes:    f.affixIDs(),
+		Known:      func(code string) bool { return f.asset.Records.Item.All[code] != nil },
 		LastPlayed: time.Now(),
 	})
 	res.Warnings = warnings
@@ -78,6 +127,7 @@ func (f *HeroStateFactory) SaveD2S(state *HeroState) (*D2SExport, error) {
 	}
 
 	res.Summary = SummarizeD2S(data, f.d2sTables)
+	res.NewItems = NewItemsInD2S(state, data, f.d2sTables)
 
 	return res, nil
 }
