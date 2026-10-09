@@ -44,7 +44,7 @@ func (v *Game) populateLevel() {
 	m := v.gameClient.MapEngine
 	size := m.Size()
 	hx, hy := v.heroTilePos()
-	groups, units, blocks := 0, 0, 0
+	groups, blocks := 0, 0
 
 	// a block that already holds a monster (DS1 markers) is left alone
 	occupied := map[[2]int]bool{}
@@ -79,20 +79,17 @@ func (v *Game) populateLevel() {
 			}
 
 			groups += len(res)
-
-			for _, r := range res {
-				units += len(r.Monsters)
-			}
 		}
 	}
 
 	// a monster the hero can never reach (an island of floor behind cliffs and
 	// water) is no use: it could not be killed, and a quest that wants the
 	// level cleared would never finish
+	total := len(v.monsters.Monsters()) // the director's list still holds the removed ones until the next frame
 	removed := v.removeUnreachableMonsters()
 
 	v.Infof("POPULATE level %d (%s): %d blocks, %d groups, %d monsters (%d unreachable ones removed)", level,
-		v.levelName(level), blocks, groups, units-removed, removed)
+		v.levelName(level), blocks, groups, total-removed, removed)
 }
 
 // removeUnreachableMonsters deletes the monsters standing where the hero cannot

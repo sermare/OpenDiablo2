@@ -63,6 +63,12 @@ var drlgEdges = [][2]int{
 	// Hills, Far Oasis, Lost City, Valley of Snakes in a chain. The Canyon of the
 	// Magi (46) has no seamless neighbour.
 	{41, 40}, {42, 41}, {43, 42}, {44, 43}, {45, 44},
+	// Act 4 (drlg-act45-outdoor.md section 2, pass 3 registrations with the act-4 table): the
+	// Pandemonium Fortress, Outer Steppes, Plains of Despair and City of the Damned form a chain
+	// of touching rectangles. Act 5: Harrogath, Bloody Foothills, Frigid Highlands and Arreat
+	// Plateau (the DRLG_LinkAdjacentLevelRange calls). Frozen Tundra (117) has no neighbour.
+	{104, 103}, {105, 104}, {106, 105},
+	{110, 109}, {111, 110}, {112, 111},
 }
 
 var allLinks []Link
@@ -318,6 +324,10 @@ func TileDestination(level, style int) (int, bool) {
 		return 0, false
 	}
 
+	if ActOfLevel(level) >= 4 {
+		return SlotDestination(level, style)
+	}
+
 	var ups, downs []int
 
 	for _, l := range allLinks {
@@ -368,4 +378,50 @@ func SingleTileDestination(level int) (int, bool) {
 	}
 
 	return to, to != 0
+}
+
+// SlotDestination is the tile rule of the Act 4 and Act 5 dungeons: a special tile with style k leads to
+// the k-th link of the level in the order of the Levels.txt Vis slots (style 0 is the way back, 1 the
+// way on, 2 the third exit). Observed in the DS1 files of the ice caves (113..119: up / ahead / down
+// floor = LvlWarp 73 / 74 / 75), the Arreat Summit (120: down to the ice caves, then to the Worldstone
+// Keep), the Worldstone Keep (128..131: up 81, down 82) and the River of Flame (107: south room, style 0).
+// UNVERIFIED against the exe (the tile id to warp id table is not decoded).
+func SlotDestination(level, style int) (int, bool) {
+	var dests []int
+
+	for _, l := range allLinks {
+		if l.From != level || l.Kind != KindTile {
+			continue
+		}
+
+		if len(dests) == 0 || dests[len(dests)-1] != l.To {
+			dests = append(dests, l.To)
+		}
+	}
+
+	if style < 0 || style >= len(dests) {
+		return 0, false
+	}
+
+	return dests[style], true
+}
+
+// OutdoorExitByPreset resolves the exit presets of Frozen Tundra (117), which has two tile links: the
+// western cave (Expansion/IceCave/WestEntrance_Snow.ds1) leads back to the Glacial Trail (115), the
+// eastern one (WestExit_Snow.ds1) on to the Ancients' Way (118).
+func OutdoorExitByPreset(level int, path string) (int, bool) {
+	if level != 117 {
+		return 0, false
+	}
+
+	p := strings.ToLower(path)
+
+	switch {
+	case strings.Contains(p, "westentrance"):
+		return 115, true
+	case strings.Contains(p, "westexit"):
+		return 118, true
+	}
+
+	return 0, false
 }

@@ -375,7 +375,9 @@ func (v *Game) advanceWarpUse(elapsed float64) {
 		v.levels.warpBestOf, v.levels.warpBest, v.levels.warpWait = w, dist, 0
 	}
 
-	if v.levels.warpWait += elapsed; v.levels.warpWait > objectUseTimeout {
+	// (a scripted walk to an exit has its own clock, exitTimeout: the way through a maze winds away
+	// from the tile for a while, which the straight distance does not show as progress)
+	if v.levels.warpWait += elapsed; v.levels.warpWait > objectUseTimeout && v.levels.exitWalk == nil {
 		v.Warningf("LEVEL gave up walking to the warp tile at (%d,%d): the hero is %.1f tiles away", w.TileX, w.TileY, dist)
 		v.levels.warpTarget = nil
 
