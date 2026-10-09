@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 )
 
 // Errors of the roster operations.
@@ -374,17 +375,7 @@ func (r *Roster) ShareXP(killer string, xp int) []XPShare {
 		return nil
 	}
 
-	var group []*entry
-
-	if k.party == 0 {
-		group = []*entry{k}
-	} else {
-		for _, o := range r.players {
-			if o.party == k.party && o.Area == k.Area {
-				group = append(group, o)
-			}
-		}
-	}
+	group := r.killGroup(k)
 
 	sort.Slice(group, func(i, j int) bool { return group[i].ID < group[j].ID })
 
@@ -412,6 +403,81 @@ func (r *Roster) ShareXP(killer string, xp int) []XPShare {
 	out[ki].XP += xp - given
 
 	return out
+}
+
+// killGroup is the killer plus the party members in the killer's area.
+func (r *Roster) killGroup(k *entry) []*entry {
+	if k.party == 0 {
+		return []*entry{k}
+	}
+
+	var group []*entry
+
+	for _, o := range r.players {
+		if o.party == k.party && o.Area == k.Area {
+			group = append(group, o)
+		}
+	}
+
+	return group
+}
+
+// ShareKillXP is the VERIFIED party split of the exe (0x0057c6b0, see
+// SplitKillXP) applied to a kill of a monster of monsterLevel whose UNSCALED
+// experience is xp: the recipients are the killer's party members in the
+// killer's area (at most MaxRecipients, the killer always first kept), the pool
+// is xp + (n-1)*xp*89/256 split by character level, and each share is then
+// scaled with the member's own level (d2herostats.KillXP, which also applies
+// the 0x7fffff clamp and the maxLevel stop; the item +% experience stays with
+// the member's client). A killer without a party gets exactly
+// d2herostats.KillXP(xp, ...), the solo rule.
+//
+// UNVERIFIED and not modelled (the roster has no positions or life): the
+// "alive" and "squared distance <= 6400" recipient tests, and the unit of that
+// distance; the area stands in for them.
+func (r *Roster) ShareKillXP(killer string, xp, monsterLevel, maxLevel int) []XPShare {
+	k, ok := r.players[killer]
+	if !ok {
+		return nil
+	}
+
+	group := r.killGroup(k)
+	sort.Slice(group, func(i, j int) bool { return group[i].ID < group[j].ID })
+
+	if len(group) > MaxRecipients { // keep the killer, then the lowest ids
+		kept := []*entry{k}
+
+		for _, o := range group {
+			if o != k && len(kept) < MaxRecipients {
+				kept = append(kept, o)
+			}
+		}
+
+		group = kept
+	}
+
+	levels := make([]int, len(group))
+	for i, o := range group {
+		levels[i] = imax(o.Level, 1)
+	}
+
+	if xp > 0 && len(group) > 1 {
+		levels2 := SplitKillXP(xp, levels)
+		out := make([]XPShare, len(group))
+
+		for i, o := range group {
+			out[i] = XPShare{ID: o.ID, XP: d2herostats.KillXP(levels2[i], monsterLevel, levels[i], maxLevel, 0)}
+		}
+
+		return out
+	}
+
+	base := xp
+	if base > 0 && monsterLevel > 0 {
+		base = d2herostats.KillXP(xp, monsterLevel, levels[0], maxLevel, 0)
+	}
+
+	return []XPShare{{ID: killer, XP: base}}
 }
 
 // Info is one player in a Snapshot.

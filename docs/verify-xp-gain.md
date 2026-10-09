@@ -36,5 +36,10 @@ xp += xp*pct/100; then 0x0057c400/0x0057c510 (cap at row MaxLvl-1, see verify-mo
 
 ## Go status
 d2herostats.KillXP / LevelScaleXP / MercKillShare / ExpRatioScale; d2party.SplitKillXP.
-Wired: d2monsters scaleKillXP (level scaling + level-99 cap). NOT wired: merc 86/256 share, party split, ExpRatio (column missing in extracted
-Experience.txt), item +% exp. Unverified: reference unit and unit of the 6400 distance test; x87 vs float rounding in the split.
+Wired: d2monsters scaleKillXP (0x7fffff clamp, level scaling, level-99 cap, item +% experience = stat 85 item_addexperience via
+HeroStatsState.ItemExperiencePct); party split (client offers the unscaled xp + monster level, server Roster.ShareKillXP = SplitKillXP
+then each share scaled with the member's level; the member's client adds its own item %); merc share (Director.creditOwnerMerc: the
+merc's own level pipeline, x86/256 when the owner or a pet made the kill).
+NOT wired: ExpRatio (column missing in the extracted Experience.txt; the exe keeps it in its own table; applied 1:1).
+Unverified: the "alive" and "distance <= 6400" recipient tests and their unit (roster has no positions; the area stands in),
+x87 vs float rounding in the split.

@@ -63,6 +63,7 @@ const (
 	StatMaxManaPct   = 77
 	StatGoldFind     = 79
 	StatMagicFind    = 80
+	StatAddExp       = 85 // item_addexperience: +% experience from kills (ItemStatCost id 85)
 	StatReduceReqPct = 91
 	StatFasterAttack = 93
 	StatFasterMove   = 96

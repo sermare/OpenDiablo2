@@ -2,6 +2,7 @@ package d2monsters
 
 import (
 	"fmt"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2hireling"
 	"hash/fnv"
 	"regexp"
 	"strings"
@@ -556,39 +557,88 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 	d.kill(u, src)
 }
 
-// scaleKillXP applies the VERIFIED level difference scaling and the level cap
-// of the original (0x0057c490 / 0x0057c300, d2herostats.KillXP) to a kill's
-// base experience. A kill at the hero's own level is unchanged. The ExpRatio
-// column and item +% experience are not applied here (data not extracted /
-// stat not wired). Unknown levels (<= 0) leave the experience as is.
+// scaleKillXP applies the VERIFIED clamp of one kill's experience to 0x7fffff,
+// the level difference scaling, the level cap and the item "+% experience"
+// bonus of the original (0x0057c490 / 0x0057c300, d2herostats.KillXP) to a
+// kill's base experience. A kill at the hero's own level, by a hero without the
+// bonus, is unchanged. The ExpRatio column is NOT applied: the extracted
+// Experience.txt has no such column (the exe keeps it in its own table), so it
+// stays 1:1, which is what the shipped ratio of 1024 >> 10 amounts to
+// (UNVERIFIED). Unknown levels (<= 0) leave the experience as is.
 func scaleKillXP(xp, monsterLevel int, st *d2hero.HeroStatsState) int {
+	if xp > d2herostats.KillXPCap {
+		xp = d2herostats.KillXPCap
+	}
+
 	if st == nil || st.Level <= 0 || monsterLevel <= 0 || xp <= 0 {
 		return xp
 	}
 
-	return d2herostats.KillXP(xp, monsterLevel, st.Level, heroMaxLevel, 0)
+	return d2herostats.KillXP(xp, monsterLevel, st.Level, heroMaxLevel, st.ItemExperiencePct())
 }
 
 // heroMaxLevel is the character level at which kills stop giving experience.
 const heroMaxLevel = 99
+
+// shrineXP adds the shrine experience bonus (percent of xp, truncated).
+func (d *Director) shrineXP(xp int) int {
+	if d.ExpBonusPct != nil {
+		xp += xp * d.ExpBonusPct() / 100
+	}
+
+	return xp
+}
 
 // awardKillXP gives the hero the experience of his kill (also the kills of his
 // merc and pets, which are credited to the owner at full value) and returns the
 // amount after the shrine bonus. The level-difference scaling happens before, in
 // scaleKillXP. Experience is capped later, at row MaxLvl-1 of Experience.txt
 // (VERIFIED 0x0057c510, hero_levelup.go).
-func (d *Director) awardKillXP(src *d2mapentity.Player, xp int, label string) int {
-	if d.ExpBonusPct != nil { // shrine experience boost (d2object), percent
-		xp += xp * d.ExpBonusPct() / 100
-	}
-
-	// in a network party the server splits the experience among the members
-	// that share the level (d2party.ShareXP); the awards come back as packets
-	if d.PartyXP == nil || !d.PartyXP(src, xp, label) {
-		src.Stats.Experience += xp
-	}
+func (d *Director) awardKillXP(src *d2mapentity.Player, xp int, _ string) int {
+	xp = d.shrineXP(xp)
+	src.Stats.Experience += xp
 
 	return xp
+}
+
+// creditKill credits the hero for a kill of a monster of monsterLevel worth
+// baseXP. In a network party the server splits the UNSCALED experience (shrine
+// bonus included) and each member's client scales its share (PartyXP hook,
+// d2party.Roster.ShareKillXP); otherwise the hero is scaled and credited here.
+// It returns the amount the killer got, or the offered amount for a party kill.
+func (d *Director) creditKill(src *d2mapentity.Player, baseXP, monsterLevel int, label string) int {
+	if baseXP > d2herostats.KillXPCap {
+		baseXP = d2herostats.KillXPCap
+	}
+
+	if d.PartyXP != nil {
+		if offered := d.shrineXP(baseXP); d.PartyXP(src, offered, monsterLevel, label) {
+			return offered
+		}
+	}
+
+	return d.awardKillXP(src, scaleKillXP(baseXP, monsterLevel, src.Stats), label)
+}
+
+// creditOwnerMerc gives the killer's merc its share of a kill (0x0057c990
+// VERIFIED): the unscaled xp goes through the merc's own pipeline (its level),
+// and a kill the merc did not make itself is worth 86/256 of that.
+func (d *Director) creditOwnerMerc(src *d2mapentity.Player, victim *unit, baseXP int) {
+	mu := d.mercs[src]
+	if mu == nil || mu.merc == nil || !mu.m.Alive() || d.hire == nil {
+		return
+	}
+
+	if baseXP > d2herostats.KillXPCap {
+		baseXP = d2herostats.KillXPCap
+	}
+
+	share := baseXP
+	if victim.m.Vitals.Level > 0 && baseXP > 0 {
+		share = d2herostats.KillXP(baseXP, victim.m.Vitals.Level, mu.merc.level, d2hireling.MaxLevel, 0)
+	}
+
+	d.creditMerc(mu.merc, victim, d2herostats.MercKillShare(share, d.killer == mu))
 }
 
 func (d *Director) kill(u *unit, src *d2mapentity.Player) {
@@ -603,19 +653,9 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 
 	if src != nil {
 		by = src.Name()
-		xp = d.awardKillXP(src, scaleKillXP(xp, u.m.Vitals.Level, src.Stats), u.m.Label())
-	}
-
-	// VERIFIED (0x57c990): the owner's merc is credited for every kill the owner
-	// gets; a merc that made the kill itself gets the full amount, otherwise
-	// xp * 0x56 >> 8 (86/256). The caller then doubles it (creditMerc).
-	// ENGINE CHOICE: a dead merc is not credited (it would heal on level-up).
-	if k := d.killer; k != nil && k.merc != nil {
-		d.creditMerc(k.merc, k, xp)
-	} else if src != nil {
-		if mu := d.mercs[src]; mu != nil && mu.merc != nil && mu.m.Alive() {
-			d.creditMerc(mu.merc, mu, xp*mercSharePct256>>8)
-		}
+		base := xp
+		xp = d.creditKill(src, base, u.m.Vitals.Level, u.m.Label())
+		d.creditOwnerMerc(src, u, base)
 	}
 
 	d.emit("death", "MONSTER death name=%s id=%d by=%s xp=%d", u.m.Label(), u.b.ID, by, xp)
