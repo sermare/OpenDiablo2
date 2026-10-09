@@ -44,7 +44,16 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		spec = rolled
 	}
 
-	return f.ItemFromSpec(spec)
+	item, err := f.ItemFromSpec(spec)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.D2S != nil {
+		item.SetOrigin(s.D2S) // the tooltip is built from the saved item
+	}
+
+	return item, nil
 }
 
 // storedFromItem describes a placed item.

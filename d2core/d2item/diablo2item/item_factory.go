@@ -5,6 +5,9 @@ import (
 	"math/rand"
 	"regexp"
 	"strconv"
+	"sync"
+
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2itemdesc"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2stats/diablo2stats"
 
@@ -71,6 +74,14 @@ type ItemFactory struct {
 	Seed   int64
 	// propRand rolls property values while a seeded item is built (see intn).
 	propRand *rand.Rand
+
+	// DescribeContext, when set, tells the exact item descriptions who is
+	// looking (hero level, attributes, worn set pieces) so unmet requirements
+	// are red; nil describes items for nobody.
+	DescribeContext func() *d2itemdesc.Context
+
+	descOnce   sync.Once
+	descTables *d2itemdesc.Tables
 }
 
 // SetSeed sets the item generator seed

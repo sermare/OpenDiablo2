@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -86,6 +87,9 @@ type Item struct {
 	GridY int
 
 	sockets []*d2item.Item // there will be checks for handling the craziness this might entail
+
+	// origin is the item as a .d2s save held it (see SetOrigin).
+	origin *d2s.Item
 }
 
 // nolint:structcheck,unused // WIP
@@ -850,6 +854,10 @@ const (
 // GetItemDescription gets the complete item description as a slice of strings.
 // This is what is used in the item's hover-tooltip
 func (i *Item) GetItemDescription() []string {
+	if lines, ok := i.describeOrigin(); ok {
+		return lines
+	}
+
 	lines := make([]string, 0)
 
 	common := i.CommonRecord()
