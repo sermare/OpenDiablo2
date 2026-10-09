@@ -105,7 +105,59 @@ func (f *HeroStateFactory) GetAllHeroStates() ([]*HeroState, error) {
 		result = append(result, gameState)
 	}
 
-	return result, nil
+	return append(result, f.importD2SCharacters(result)...), nil
+}
+
+// importD2SCharacters imports the real Diablo II characters (.d2s files) found
+// in the directory named by OD2_D2S_DIR that are not already in the list. The
+// originals are only read; each import is saved as a new .od2 file.
+func (f *HeroStateFactory) importD2SCharacters(existing []*HeroState) []*HeroState {
+	dir := os.Getenv("OD2_D2S_DIR")
+	if dir == "" {
+		return nil
+	}
+
+	known := make(map[string]bool, len(existing))
+	for _, h := range existing {
+		known[strings.ToLower(h.HeroName)] = true
+	}
+
+	files, _ := ioutil.ReadDir(dir)
+	imported := make([]*HeroState, 0)
+
+	for _, file := range files {
+		name := file.Name()
+		if file.IsDir() || !strings.EqualFold(filepath.Ext(name), ".d2s") ||
+			known[strings.ToLower(strings.TrimSuffix(name, filepath.Ext(name)))] {
+			continue
+		}
+
+		data, err := ioutil.ReadFile(filepath.Clean(filepath.Join(dir, name)))
+		if err != nil {
+			continue
+		}
+
+		state, err := f.ImportD2S(data)
+		if err != nil {
+			fmt.Printf("could not import %s: %v\n", name, err)
+			continue
+		}
+
+		if known[strings.ToLower(state.HeroName)] {
+			continue
+		}
+
+		if err := f.Save(state); err != nil {
+			fmt.Printf("could not save imported hero %s: %v\n", state.HeroName, err)
+			continue
+		}
+
+		known[strings.ToLower(state.HeroName)] = true
+
+		imported = append(imported, state)
+	}
+
+	return imported
 }
 
 // CreateHeroSkillsState will assemble the hero skills from the class stats record.

@@ -4,8 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"image/color"
+	"math"
+	"os"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
 
@@ -102,6 +107,15 @@ func CreateGame(
 }
 
 // Game represents the Gameplay screen
+const (
+	npcInteractDistance  = 3.0 // tiles
+	npcBubbleSeconds     = 3.0
+	npcBubbleLift        = 30 // pixels above the NPC's head
+	noonHour             = 12
+	autoTestDelaySeconds = 6.0
+	eveningHour          = 18
+)
+
 type Game struct {
 	*d2mapentity.MapEntityFactory
 	asset                *d2asset.AssetManager
@@ -117,6 +131,11 @@ type Game struct {
 	soundEnv             d2audio.SoundEnvironment
 	guiManager           *d2gui.GuiManager
 	keyMap               *d2player.KeyMap
+	npcTarget            d2interface.MapEntity
+	npcBubble            *d2ui.Label
+	npcBubbleTTL         float64
+	autoTestElapsed      float64
+	autoTestDone         bool
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -210,6 +229,7 @@ func (v *Game) Render(screen d2interface.Surface) {
 
 	screen.Clear(color.Black)
 	v.mapRenderer.Render(screen)
+	v.renderNPCBubble(screen)
 
 	if v.gameControls != nil {
 		if v.gameControls.HelpOverlay != nil && v.gameControls.HelpOverlay.IsOpen() {
@@ -226,6 +246,8 @@ func (v *Game) Render(screen d2interface.Surface) {
 // nolint:gocyclo // not need to change
 func (v *Game) Advance(elapsed float64) error {
 	v.soundEngine.Advance(elapsed)
+	v.advanceNPCInteraction(elapsed)
+	v.advanceAutoTest(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
@@ -332,6 +354,149 @@ func (v *Game) OnPlayerMove(targetX, targetY float64) {
 
 	if err != nil {
 		v.Errorf(moveErrStr, v.gameClient.PlayerID, targetX, targetY)
+	}
+}
+
+// OnPlayerInteract walks the player up to the given entity (e.g. an NPC)
+func (v *Game) OnPlayerInteract(entity d2interface.MapEntity) {
+	targetX, targetY := entity.GetPositionF()
+
+	v.Infof("interacting with %q", entity.Label())
+
+	v.npcTarget = entity
+	v.npcBubbleTTL = 0
+
+	v.OnPlayerMove(targetX, targetY)
+}
+
+// advanceNPCInteraction shows a text bubble over the NPC the player clicked
+// once the player has walked close enough, and hides it after a few seconds.
+func (v *Game) advanceNPCInteraction(elapsed float64) {
+	if v.npcBubbleTTL > 0 {
+		v.npcBubbleTTL -= elapsed
+		if v.npcBubbleTTL <= 0 {
+			v.npcTarget = nil
+		}
+
+		return
+	}
+
+	if v.npcTarget == nil || v.localPlayer == nil {
+		return
+	}
+
+	px, py := v.localPlayer.GetPositionF()
+	nx, ny := v.npcTarget.GetPositionF()
+
+	if math.Hypot(px-nx, py-ny) > npcInteractDistance {
+		return
+	}
+
+	if v.npcBubble == nil {
+		v.npcBubble = v.uiManager.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
+	}
+
+	v.npcBubble.SetText(v.npcTarget.Label())
+	v.npcBubbleTTL = npcBubbleSeconds
+
+	v.playNPCGreeting(v.npcTarget.Label())
+}
+
+// playNPCGreeting plays the NPC's spoken greeting. Greetings are rows of
+// Sounds.txt named <npc>_greeting_*: a time-of-day variant (morning,
+// day, evening) is preferred, then the generic hello rows, then the
+// "inactive" rows. Some NPCs (e.g. Warriv) have no generic hello at all.
+func (v *Game) playNPCGreeting(name string) string {
+	name = strings.ToLower(strings.TrimPrefix(name, "Deckard "))
+	base := name + "_greeting_"
+
+	timeOfDay := "time_2" // day
+
+	switch hour := time.Now().Hour(); {
+	case hour < noonHour:
+		timeOfDay = "time_1"
+	case hour >= eveningHour:
+		timeOfDay = "time_3"
+	}
+
+	for _, suffix := range []string{timeOfDay, "1", "2", "inactive_1"} {
+		record, found := v.asset.Records.Sound.Details[base+suffix]
+		if !found {
+			continue
+		}
+
+		path := "data/local/sfx/" + strings.ReplaceAll(record.FileName, "\\", "/")
+
+		ok, _ := v.asset.FileExists(path)
+		v.Debugf("greeting file %s exists=%v", path, ok)
+
+		if !ok {
+			continue
+		}
+
+		sfx, err := v.audioProvider.LoadSound(path, false, false)
+		if err != nil {
+			v.Warningf("could not load NPC greeting %s: %v", path, err)
+			return ""
+		}
+
+		if os.Getenv("OD2_AUTOTEST_MUTE") == "" {
+			sfx.Play()
+		}
+
+		v.Infof("NPC greeting: %s", path)
+
+		return path
+	}
+
+	return ""
+}
+
+// renderNPCBubble draws the interaction text bubble above the NPC.
+func (v *Game) renderNPCBubble(target d2interface.Surface) {
+	if v.npcBubbleTTL <= 0 || v.npcTarget == nil || v.npcBubble == nil {
+		return
+	}
+
+	sx, sy := v.mapRenderer.WorldToScreenF(v.npcTarget.GetPositionF())
+	_, h := v.npcTarget.GetSize()
+	w, _ := v.npcBubble.GetTextMetrics(v.npcBubble.GetText())
+
+	v.npcBubble.SetPosition(int(sx)-w/2, int(sy)-h-npcBubbleLift)
+	v.npcBubble.Render(target)
+}
+
+// advanceAutoTest checks NPC greetings without any clicking when the
+// OD2_AUTOTALK env var lists NPC names (comma separated). Set
+// OD2_AUTOTEST_MUTE to skip playback and OD2_AUTOEXIT to quit when done.
+func (v *Game) advanceAutoTest(elapsed float64) {
+	names := os.Getenv("OD2_AUTOTALK")
+	if names == "" || v.autoTestDone || v.localPlayer == nil {
+		return
+	}
+
+	v.autoTestElapsed += elapsed
+	if v.autoTestElapsed < autoTestDelaySeconds {
+		return
+	}
+
+	v.autoTestDone = true
+
+	present := make(map[string]bool)
+
+	for _, e := range v.gameClient.MapEngine.Entities() {
+		if label := e.Label(); label != "" {
+			present[label] = true
+		}
+	}
+
+	for _, name := range strings.Split(names, ",") {
+		path := v.playNPCGreeting(name)
+		v.Infof("AUTOTEST greeting npc=%s in_town=%v file=%q", name, present[name], path)
+	}
+
+	if os.Getenv("OD2_AUTOEXIT") != "" {
+		os.Exit(0)
 	}
 }
 

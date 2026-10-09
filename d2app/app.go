@@ -32,6 +32,7 @@ import (
 	ebiten2 "github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio/ebiten"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2config"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2input"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2render/ebiten"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2screen"
@@ -312,7 +313,23 @@ func (a *App) Run() (err error) {
 		return err
 	}
 
-	a.ToMainMenu()
+	// OD2_AUTOGAME=<save file> skips the menus and starts that character directly.
+	// It exists so changes can be tested without clicking through the UI.
+	if save := os.Getenv("OD2_AUTOGAME"); save != "" {
+		// a real Diablo II .d2s is imported first, then started like any save
+		if strings.EqualFold(filepath.Ext(save), ".d2s") {
+			imported, err := a.importD2SSave(save)
+			if err != nil {
+				a.Errorf("could not import %s: %v", save, err)
+			}
+
+			save = imported
+		}
+
+		a.ToCreateGame(save, d2clientconnectiontype.Local, "")
+	} else {
+		a.ToMainMenu()
+	}
 
 	if err := a.renderer.Run(a.update, a.advance, 800, 600, windowTitle); err != nil {
 		return err
@@ -676,4 +693,32 @@ func (a *App) ToCredits() {
 // ToCinematics forces the game to transition to the cinematics menu
 func (a *App) ToCinematics() {
 	a.screen.SetNextScreen(d2gamescreen.CreateCinematics(a, a.asset, a.renderer, a.audio, *a.Options.LogLevel, a.ui))
+}
+
+// importD2SSave imports a Diablo II .d2s character as a new OpenDiablo2 save
+// and returns the path of the saved file. The original is only read.
+func (a *App) importD2SSave(path string) (string, error) {
+	data, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		return "", err
+	}
+
+	factory, err := d2hero.NewHeroStateFactory(a.asset)
+	if err != nil {
+		return "", err
+	}
+
+	state, err := factory.ImportD2S(data)
+	if err != nil {
+		return "", err
+	}
+
+	if err = factory.Save(state); err != nil {
+		return "", err
+	}
+
+	a.Infof("imported %s (%v level %d, %d skills) -> %s",
+		state.HeroName, state.HeroType, state.Stats.Level, len(state.Skills), state.FilePath)
+
+	return state.FilePath, nil
 }
