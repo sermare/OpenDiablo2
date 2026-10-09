@@ -46,6 +46,11 @@ type ResistInput struct {
 	// Ignore is the context flag that disables pierce on immunities, the
 	// difficulty penalty and the cap altogether (ctx[5]).
 	Ignore bool
+	// PhysicalNullified: VERIFIED at 0x579bf4. For the physical type, a
+	// positive result is forced to 0 when the ATTACKER has state 0x2f and the
+	// DEFENDER is undead (helper 0x63f9e0). It applies even when Ignore is set.
+	// Set it only for the physical descriptor.
+	PhysicalNullified bool
 }
 
 // EffectiveResist returns the resist percent actually applied. Verified:
@@ -58,7 +63,8 @@ type ResistInput struct {
 //	cap = 75 (50 for damageresist w/o max stat); with a max stat: min(75+max, 95)
 //	return min(res, cap)
 //
-// Not modelled: the physical-resist special case of state 0x2f (returns 0).
+// Then, VERIFIED (0x579bee): a positive physical resist becomes 0 when
+// PhysicalNullified (attacker has state 0x2f and defender is undead).
 func EffectiveResist(in ResistInput) int {
 	res := in.Resist
 
@@ -79,7 +85,7 @@ func EffectiveResist(in ResistInput) int {
 	}
 
 	if in.Ignore {
-		return res
+		return nullifyPhysical(res, in)
 	}
 
 	limit := DefaultMaxResist
@@ -95,7 +101,15 @@ func EffectiveResist(in ResistInput) int {
 	}
 
 	if res > limit {
-		return limit
+		res = limit
+	}
+
+	return nullifyPhysical(res, in)
+}
+
+func nullifyPhysical(res int, in ResistInput) int {
+	if in.IsPhysical && in.PhysicalNullified && res > 0 {
+		return 0
 	}
 
 	return res
@@ -113,14 +127,23 @@ func ApplyResist(damage, res int) int {
 	return damage * (100 - res) / 100
 }
 
+// MaxAbsorbPercent is the cap on the absorb percent stat (VERIFIED, the
+// compare against 0x28 at 0x579c3a in COMBAT_ApplyDamageAbsorb).
+const MaxAbsorbPercent = 40
+
 // Absorb applies the absorb stats to a damage component in 8.8 fixed point.
-// Verified in COMBAT_ApplyDamageAbsorb (0x579c20): if the type has an absorb
-// stat, absorbPct > 0 absorbs damage*pct/100 (inferred MulDiv operands),
-// then absorbFlat*256 more (capped at what is left). Everything absorbed is
-// returned as heal. A type without an absorb stat passes through unchanged.
+// VERIFIED in COMBAT_ApplyDamageAbsorb (0x579c20): if the type has an absorb
+// stat, absorbPct is capped at 40, and if > 0 absorbs damage*pct/100
+// (MulDiv(damage, pct, 100)), then absorbFlat*256 more (capped at what is
+// left). Everything absorbed is returned as heal. A type without an absorb
+// stat passes through unchanged.
 func Absorb(damage int, hasAbsorb bool, absorbPct, absorbFlat int) (remaining, heal int) {
 	if !hasAbsorb {
 		return damage, 0
+	}
+
+	if absorbPct > MaxAbsorbPercent {
+		absorbPct = MaxAbsorbPercent
 	}
 
 	if absorbPct > 0 {
