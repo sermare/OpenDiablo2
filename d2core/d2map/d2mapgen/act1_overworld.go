@@ -36,6 +36,17 @@ const (
 
 // GenerateAct1Overworld generates the map and entities for the first town and surrounding area.
 func (g *MapGenerator) GenerateAct1Overworld() {
+	if RealMapsEnabled() {
+		// the town of the Act 1 world layout; the old fake wilderness only
+		// serves as the fallback
+		err := g.generateRealTown()
+		if err == nil {
+			return
+		}
+
+		g.Warningf("real town: %v; using the old overworld", err)
+	}
+
 	rand.Seed(g.engine.Seed())
 
 	wilderness1Details := g.asset.Records.GetLevelDetails(wildernessDetailsRecordID)

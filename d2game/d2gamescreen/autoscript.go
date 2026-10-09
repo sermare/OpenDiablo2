@@ -18,8 +18,9 @@ const (
 
 // logCapture keeps the tail of the game log so expect:log=... can search it.
 type logCapture struct {
-	mu  sync.Mutex
-	buf []byte
+	mu    sync.Mutex
+	buf   []byte
+	total int // bytes ever written (the buffer keeps the tail)
 }
 
 func (c *logCapture) Write(p []byte) (int, error) {
@@ -27,6 +28,7 @@ func (c *logCapture) Write(p []byte) (int, error) {
 	defer c.mu.Unlock()
 
 	c.buf = append(c.buf, p...)
+	c.total += len(p)
 	if len(c.buf) > autoScriptLogLimit {
 		c.buf = c.buf[len(c.buf)-autoScriptLogLimit/2:]
 	}
@@ -40,6 +42,38 @@ func (c *logCapture) contains(substr string) bool {
 	defer c.mu.Unlock()
 
 	for _, line := range bytes.Split(c.buf, []byte("\n")) {
+		if !bytes.Contains(line, []byte("AUTOSCRIPT")) && bytes.Contains(line, []byte(substr)) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// mark returns a position in the log for containsSince.
+func (c *logCapture) mark() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.total
+}
+
+// containsSince searches the lines written after the mark (ignoring the
+// runner's own lines).
+func (c *logCapture) containsSince(mark int, substr string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	start := mark - (c.total - len(c.buf)) // the mark's index in the buffer
+	if start < 0 {
+		start = 0
+	}
+
+	if start > len(c.buf) {
+		return false
+	}
+
+	for _, line := range bytes.Split(c.buf[start:], []byte("\n")) {
 		if !bytes.Contains(line, []byte("AUTOSCRIPT")) && bytes.Contains(line, []byte(substr)) {
 			return true
 		}
@@ -98,6 +132,12 @@ func (v *Game) advanceAutoScript(elapsed float64) {
 
 func (v *Game) autoScriptExit(pass bool) {
 	if os.Getenv("OD2_AUTOEXIT") != "" {
+		if p := v.localPlayer; p != nil {
+			v.Infof("HERO state at exit: level=%d exp=%d skillpoints=%d statpoints=%d gold=%d life=%d/%d",
+				p.Stats.Level, p.Stats.Experience, p.Stats.SkillPoints, p.Stats.StatsPoints, p.Gold,
+				p.Stats.Health, p.Stats.MaxHealth)
+		}
+
 		v.saveBeforeExit()
 		v.leaveNetworkGame()
 
@@ -161,6 +201,12 @@ func (h autoScriptHost) Panel(name string) error { return h.v.gameControls.AutoP
 func (h autoScriptHost) Say(command string) error { return h.v.terminal.Execute(command) }
 
 func (h autoScriptHost) LogContains(substr string) bool { return h.v.autoScript.log.contains(substr) }
+
+func (h autoScriptHost) LogMark() int { return h.v.autoScript.log.mark() }
+
+func (h autoScriptHost) LogContainsSince(mark int, substr string) bool {
+	return h.v.autoScript.log.containsSince(mark, substr)
+}
 
 func (h autoScriptHost) Logf(format string, args ...interface{}) { h.v.Infof(format, args...) }
 

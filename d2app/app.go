@@ -830,6 +830,7 @@ func (a *App) importD2SSave(path string) (string, error) {
 
 	// the hero's map seed drives OD2_REALMAPS and the OD2_AUTOMAP log
 	d2mapgen.HeroMapSeed = state.MapSeed
+	d2mapgen.HeroDifficulty = d2drlg.Difficulty(state.Difficulty)
 
 	if lvl := d2mapgen.AutomapLevel(); lvl != 0 {
 		d2mapgen.LogDRLGSummary(a.asset, state.MapSeed, lvl, d2drlg.Difficulty(state.Difficulty), a.Infof)

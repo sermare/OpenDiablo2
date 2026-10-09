@@ -126,3 +126,17 @@ func (m *MapEngine) checkLos(start, end d2vector.Position) (bool, d2vector.Posit
 
 	return true, end
 }
+
+// CanWalkTo reports whether a hero can walk from one sub-tile to another with
+// the engine's own search (the same one a click uses, long detours included).
+func (m *MapEngine) CanWalkTo(fromX, fromY, toX, toY int) bool {
+	from, to := d2path.Point{X: fromX, Y: fromY}, d2path.Point{X: toX, Y: toY}
+
+	if from == to {
+		return true
+	}
+
+	route, ok := d2path.LongAStar(collisionGrid{m}, d2path.MaskPlayer, from, to, 0)
+
+	return ok && !route.Partial
+}

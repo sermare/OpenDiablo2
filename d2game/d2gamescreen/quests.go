@@ -127,6 +127,8 @@ func (v *Game) quests() *questRuntime {
 	r.g.Start()
 	v.Infof("QUEST system started difficulty=%d class=%d level=%d (Act 1 quests + Radament; other quests untouched)",
 		diff, r.g.Hero.Class, r.g.Hero.Level)
+	v.Infof("HERO state at start: level=%d exp=%d skillpoints=%d statpoints=%d gold=%d", p.Stats.Level, p.Stats.Experience,
+		p.Stats.SkillPoints, p.Stats.StatsPoints, p.Gold)
 
 	for _, l := range r.g.Log() {
 		v.Infof("QUEST LOG act=%d quest=%d status=%d page=%d", l.Act, l.Index, l.Status, l.Page)

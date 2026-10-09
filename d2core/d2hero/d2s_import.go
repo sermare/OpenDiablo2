@@ -66,6 +66,8 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 
 	// a brand new character has no body: keep the class defaults
 	if !header.HasBody() {
+		state.Containers = f.StartingContainers(hero)
+
 		return state, nil
 	}
 
@@ -78,6 +80,7 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	state.Progress = &HeroProgress{Quests: quests(body), Waypoints: body.Waypoints, NPC: *body.NPCFlags()}
 
 	f.importD2SItems(state, data)
+	f.giveStartingItemsToFreshHero(state, hero)
 
 	if err := f.applyD2SSkills(state, hero, body.SkillPoints); err != nil {
 		return nil, err

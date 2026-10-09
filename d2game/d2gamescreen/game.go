@@ -153,6 +153,7 @@ type Game struct {
 	autoSoundElapsed     float64
 	autoSoundDone        bool
 	ground               groundState
+	populated            int // levels.changes+1 of the level that was populated with monsters
 	objects              objectState
 	autoObject           autoObject
 	autoGround           autoGround
@@ -306,6 +307,8 @@ func (v *Game) Render(screen d2interface.Surface) {
 // Advance runs the update logic on the Gameplay screen
 // nolint:gocyclo // not need to change
 func (v *Game) Advance(elapsed float64) error {
+	elapsed *= autoTimeScale()
+
 	v.gameClient.Drain()
 
 	v.soundEngine.Advance(elapsed)
@@ -337,6 +340,7 @@ func (v *Game) Advance(elapsed float64) error {
 		v.gameClient.MapEngine.Advance(elapsed)
 		v.advanceMonsters(elapsed)
 		v.advanceSkills(elapsed)
+		v.advanceHeroLevel()
 		v.advanceDeath(elapsed)
 	}
 
@@ -550,6 +554,16 @@ func (v *Game) advanceNPCInteraction(_ float64) {
 	v.playNPCGreeting(v.npcTarget.Label())
 }
 
+// endConversationUnlessMenuOpen forgets the NPC the hero walked up to once its
+// menu is gone: advanceNPCInteraction would otherwise open the menu again at
+// once (and play another greeting); like in the original the player clicks the
+// NPC again to talk again.
+func (v *Game) endConversationUnlessMenuOpen() {
+	if !v.gameControls.NPCMenu.IsOpen() {
+		v.npcTarget = nil
+	}
+}
+
 func (v *Game) anchorNPCMenu(menu *d2player.NPCMenu, npc d2interface.MapEntity) {
 	sx, sy := v.mapRenderer.WorldToScreenF(npc.GetPositionF())
 	_, h := npc.GetSize()
@@ -588,9 +602,12 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 
 		v.npcTarget = nil
 	case d2player.NPCActionTalk:
+		// the Talk row ends the menu; questTalk may open the topic submenu in its place
+		v.gameControls.NPCMenu.Close()
+
 		if v.questTalk(npc) {
-			v.gameControls.NPCMenu.Close()
 			v.Infof("NPC menu: Talk with %q (quest speech)", npc.Label())
+			v.endConversationUnlessMenuOpen()
 
 			return
 		}
@@ -598,8 +615,10 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 		path := v.playNPCGreeting(npc.Label())
 		v.Infof("NPC menu: Talk with %q (voice %q)", npc.Label(), path)
 		v.travelOnTalk(npc)
+		v.endConversationUnlessMenuOpen()
 	case d2player.NPCActionTopic:
 		v.questTopic(npc, row.StringID)
+		v.endConversationUnlessMenuOpen()
 	case d2player.NPCActionTrade, d2player.NPCActionTradeRepair:
 		v.openTrade(npc, uint32(time.Now().UnixNano()))
 	case d2player.NPCActionHire:

@@ -445,3 +445,38 @@ func TestWaypointColumnMatchesLevelsTxt(t *testing.T) {
 		}
 	}
 }
+
+func TestTileDestinationCaveEntrances(t *testing.T) {
+	tests := []struct {
+		name         string
+		level, style int
+		want         int
+		ok           bool
+	}{
+		{"Blood Moor cave entrance tile is Cave Down", 2, 5, 8, true},
+		{"Cold Plains cave entrance", 3, 5, 9, true},
+		{"Den of Evil entry stairs go up", 8, 0, 2, true},
+		{"Den of Evil has no way down", 8, 4, 0, false},
+		{"cave 1 entry stairs go up", 9, 0, 3, true},
+		{"cave 1 style 4 goes down", 9, 4, 13, true},
+		{"cave 1 of Stony Field: two up exits and one down", 10, 1, 5, true},
+		{"cave 1 of Stony Field down", 10, 4, 14, true},
+		{"Black Marsh hole", 11, 4, 15, true},
+		{"crypt level 1 entry stairs go up", 18, 0, 17, true},
+		{"crypt level 2 next stairs go down", 21, 1, 22, true},
+		{"crypt level 2 entry stairs go up", 21, 0, 20, true},
+		{"jail level 1 next stairs go down", 29, 1, 30, true},
+		{"catacombs level 1 next stairs go down", 34, 1, 35, true},
+		{"Burial Grounds crypt keeps its LvlWarp id", 17, 6, 18, true},
+		{"Burial Grounds mausoleum", 17, 7, 19, true},
+		{"a cottage tile leads nowhere", 2, 8, 0, false},
+		{"unknown style", 2, 99, 0, false},
+	}
+
+	for _, tc := range tests {
+		got, ok := TileDestination(tc.level, tc.style)
+		if ok != tc.ok || got != tc.want {
+			t.Errorf("%s: got %d %v, want %d %v", tc.name, got, ok, tc.want, tc.ok)
+		}
+	}
+}

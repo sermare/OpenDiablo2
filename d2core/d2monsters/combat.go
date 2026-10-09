@@ -481,23 +481,42 @@ func (d *Director) dropLoot(u *unit) {
 		upgrade = level
 	}
 
-	items, err := d.engine.DropItems(tc, diablo2item.DropOptions{
+	loot, err := d.engine.DropLoot(tc, diablo2item.DropOptions{
 		Seed: u.b.Seed.Step(), ILvl: level, UpgradeLevel: upgrade, Players: 1,
-	})
+	}, 0)
 	if err != nil {
 		d.emit("drop", "MONSTER drop name=%s tc=%q error=%v", u.m.Label(), tc, err)
 
 		return
 	}
 
-	names := make([]string, 0, len(items))
+	names := make([]string, 0, len(loot.Entries))
 	sx, sy := u.m.SubtilePos()
 
-	for i, it := range items {
+	for i, e := range loot.Entries {
+		x, y := sx+(i%3)-1, sy+(i/3)-1
+
+		if e.Item == nil { // a gold pile, not an item named "gld"
+			names = append(names, fmt.Sprintf("gold %d", e.Gold))
+
+			ent, err := d.engine.NewGoldPile(e.Gold, d.asset.TranslateString("gld"), x, y)
+			if err != nil {
+				d.Debugf("no ground graphic for a gold pile: %v", err)
+
+				continue
+			}
+
+			d.Counters.Drops++
+			d.engine.AddEntity(ent)
+
+			continue
+		}
+
+		it := e.Item
 		names = append(names, fmt.Sprintf("%s(%s)", it.CommonCode, colorToken.ReplaceAllString(it.Label(), "")))
 		d.Counters.Drops++
 
-		ent, err := d.engine.NewDroppedItem(sx+(i%3)-1, sy+(i/3)-1, it)
+		ent, err := d.engine.NewDroppedItem(x, y, it)
 		if err != nil {
 			d.Debugf("no ground graphic for %s: %v", it.CommonCode, err)
 
@@ -507,6 +526,6 @@ func (d *Director) dropLoot(u *unit) {
 		d.engine.AddEntity(ent)
 	}
 
-	d.emit("drop", "MONSTER drop name=%s tc=%q ilvl=%d items=%d [%s]", u.m.Label(), tc, level, len(items),
+	d.emit("drop", "MONSTER drop name=%s tc=%q ilvl=%d items=%d [%s]", u.m.Label(), tc, level, len(loot.Entries),
 		strings.Join(names, ", "))
 }

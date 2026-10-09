@@ -3,12 +3,14 @@ package d2mapgen
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgoutdoor"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgworld"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2ds1"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapstamp"
@@ -45,7 +47,7 @@ func isPresetLevel(id int) bool {
 
 // levelParams runs the world placement of the level's act and derives the
 // generator inputs (rectangle, od.flags, vis/warp, neighbour list).
-func levelParams(tb *d2drlg.Tables, levelID int, seed uint32, diff d2drlg.Difficulty) (drlgoutdoor.Params, error) {
+func levelParams(tb *d2drlg.Tables, levelID int, seed uint32, diff d2drlg.Difficulty) (drlgoutdoor.Params, *drlgworld.Layout, error) {
 	rec, _ := tb.Level(levelID)
 
 	switch rec.Act {
@@ -62,18 +64,22 @@ func levelParams(tb *d2drlg.Tables, levelID int, seed uint32, diff d2drlg.Diffic
 		}
 
 		if err != nil {
-			return drlgoutdoor.Params{}, err
+			return drlgoutdoor.Params{}, nil, err
 		}
 
-		return drlgoutdoor.ParamsFromLayout45(tb, lay, rec.Act, levelID, seed, diff)
+		p, err := drlgoutdoor.ParamsFromLayout45(tb, lay, rec.Act, levelID, seed, diff)
+
+		return p, lay, err
 	}
 
 	lay, err := drlgworld.Generate(tb, seed, diff)
 	if err != nil {
-		return drlgoutdoor.Params{}, err
+		return drlgoutdoor.Params{}, nil, err
 	}
 
-	return drlgoutdoor.ParamsFromLayout(tb, lay, levelID, seed)
+	p, err := drlgoutdoor.ParamsFromLayout(tb, lay, levelID, seed)
+
+	return p, lay, err
 }
 
 // outdoorProvider builds Act 1 wilderness levels with the DRLG port. Like the
@@ -119,7 +125,7 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 		return err
 	}
 
-	p, err := levelParams(tb, levelID, seed, diff)
+	p, lay, err := levelParams(tb, levelID, seed, diff)
 	if err != nil {
 		return err
 	}
@@ -141,6 +147,7 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 	}
 
 	g.engine.ResetMap(region, p.Rect.W, p.Rect.H)
+	g.engine.SetWorld(d2mapengine.World{Level: levelID, OriginX: p.Rect.X, OriginY: p.Rect.Y, Rects: worldRects(lay)})
 
 	var (
 		mon     monsterStats
@@ -178,6 +185,8 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 			g.engine.PlaceStampClipped(stamp, ox, oy, pr.SizeX, pr.SizeY)
 
 			presets++
+
+			g.markWarpTiles(stamp, path, ox, oy, levelID)
 
 			roomSeed := d2rand.New(levelSeed.Lo + uint32(def)*0x9E3779B1 + uint32(xc*131+yc))
 			g.placeMonsters(stamp, levelID, diff, ox, oy, pr.SizeX, pr.SizeY, roomSeed, &mon)
@@ -312,7 +321,7 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 		return err
 	}
 
-	p, err := levelParams(tb, levelID, seed, diff)
+	p, lay, err := levelParams(tb, levelID, seed, diff)
 	if err != nil {
 		return err
 	}
@@ -339,6 +348,7 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 	}
 
 	g.engine.ResetMap(region, pl.Rect.W, pl.Rect.H)
+	g.engine.SetWorld(d2mapengine.World{Level: levelID, OriginX: pl.Rect.X, OriginY: pl.Rect.Y, Rects: worldRects(lay)})
 
 	path := drlgoutdoor.NormalizePrestFile(pr.File[pl.File])
 	g.engine.AddDS1(path)
@@ -414,3 +424,33 @@ func (g *MapGenerator) outdoorEntry(lv *drlgoutdoor.Level, rect drlgoutdoor.Rect
 
 	return float64(rect.W) / 2, float64(rect.H) / 2, "(fallback: map centre, nothing walkable found)"
 }
+
+// markWarpTiles resolves the special (exit) wall tiles of a stamped preset: the
+// cave entrance presets (Act1/Caves/...) lead to the level's cave. Other
+// special tiles keep the style based lookup of d2level.TileDestination.
+func (g *MapGenerator) markWarpTiles(stamp *d2mapstamp.Stamp, path string, ox, oy, levelID int) {
+	cave, hasCave := d2level.CaveEntranceDestination(levelID)
+	isCave := strings.Contains(strings.ToLower(path), "/caves/")
+
+	sz := stamp.Size()
+	for y := 0; y < sz.Height; y++ {
+		for x := 0; x < sz.Width; x++ {
+			for _, w := range stamp.Tile(x, y).Walls {
+				if !w.Type.Special() || w.Style == startMarkerStyle {
+					continue
+				}
+
+				dest := 0
+				if isCave && hasCave {
+					dest = cave
+					g.engine.SetWarpDestination(ox+x, oy+y, dest)
+				}
+
+				g.Infof("real outdoor: exit tile style=%d at (%d,%d) in %s leads to level %d", w.Style, ox+x, oy+y, path, dest)
+			}
+		}
+	}
+}
+
+// startMarkerStyle is the style of the player start special tile (not an exit).
+const startMarkerStyle = 30
