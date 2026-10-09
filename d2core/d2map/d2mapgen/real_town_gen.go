@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgoutdoor"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgworld"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
@@ -90,4 +91,31 @@ func (g *MapGenerator) generateRealTown() error {
 	}
 
 	return nil
+}
+
+// act23Rects returns the level rectangles of the Act 2 or Act 3 world a level
+// belongs to (nil if the world cannot be placed), so that the walk across the
+// seamless borders of the desert levels works like in Act 1.
+func act23Rects(tb *d2drlg.Tables, levelID int, seed uint32, diff d2drlg.Difficulty) map[int]d2level.Rect {
+	var (
+		w   *drlgoutdoor.World23
+		err error
+	)
+
+	if levelID >= 40 && levelID <= 46 {
+		w, err = drlgoutdoor.PlaceAct2World(tb, seed, diff)
+	} else {
+		w, err = drlgoutdoor.PlaceAct3World(tb, seed, diff)
+	}
+
+	if err != nil {
+		return nil
+	}
+
+	out := make(map[int]d2level.Rect, len(w.Rects))
+	for id, r := range w.Rects {
+		out[id] = d2level.Rect{X: r.X, Y: r.Y, W: r.W, H: r.H}
+	}
+
+	return out
 }

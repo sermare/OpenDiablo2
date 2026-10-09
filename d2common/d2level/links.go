@@ -58,6 +58,11 @@ type Link struct {
 var drlgEdges = [][2]int{
 	{3, 4}, {2, 3}, {1, 2}, {17, 3},
 	{7, 26}, {6, 7}, {5, 6},
+	// Act 2 desert (DRLG_InitActLevelLinks case 1, drlg-act23-outdoor.md 3.1:
+	// the pass 3 vis registrations with warp -1): Lut Gholein, Rocky Waste, Dry
+	// Hills, Far Oasis, Lost City, Valley of Snakes in a chain. The Canyon of the
+	// Magi (46) has no seamless neighbour.
+	{41, 40}, {42, 41}, {43, 42}, {44, 43}, {45, 44},
 }
 
 var allLinks []Link
@@ -272,7 +277,10 @@ func CaveEntranceDestination(level int) (int, bool) {
 
 // upWarps are the LvlWarp ids that lead up (towards the town); the other
 // ids of a dungeon level lead down.
-var upWarps = map[int]bool{4: true, 8: true, 11: true, 13: true, 16: true, 17: true}
+var upWarps = map[int]bool{4: true, 8: true, 11: true, 13: true, 16: true, 17: true,
+	// Act 2: sewers 21/22, palace 25..27, arcane 30/31, tombs and the Valley of
+	// the Kings exits 45, maggot lair 48 (the "up" slots of Levels.txt rows 47..72)
+	21: true, 22: true, 25: true, 26: true, 27: true, 30: true, 31: true, 45: true, 48: true}
 
 // isOutdoor reports a level that borders others on seamless edges.
 func isOutdoor(level int) bool { return len(EdgeNeighbors(level)) > 0 }
@@ -340,3 +348,24 @@ func TileDestination(level, style int) (int, bool) {
 
 // downStyleBase is the tile style of the first "down" exit of a dungeon level.
 const downStyleBase = 4
+
+// SingleTileDestination returns the level that every tile link of a level
+// leads to, when it has links to one level only (the desert levels of Act 2:
+// Rocky Waste 41 -> Stony Tomb 55, Dry Hills 42 -> Halls of the Dead 56, ...).
+func SingleTileDestination(level int) (int, bool) {
+	to := 0
+
+	for _, l := range allLinks {
+		if l.From != level || l.Kind != KindTile {
+			continue
+		}
+
+		if to != 0 && l.To != to {
+			return 0, false
+		}
+
+		to = l.To
+	}
+
+	return to, to != 0
+}

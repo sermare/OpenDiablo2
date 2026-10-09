@@ -849,6 +849,14 @@ func (a *App) importD2SSave(path string) (string, error) {
 
 	// the hero's map seed drives OD2_REALMAPS and the OD2_AUTOMAP log
 	d2mapgen.HeroMapSeed = state.MapSeed
+
+	// OD2_AUTOMAPSEED=<n> plays the maps of another game seed (a test aid: Lut Gholein comes in two
+	// variants, LutW and LutN, by seed)
+	if n, err := strconv.ParseUint(os.Getenv("OD2_AUTOMAPSEED"), 10, 32); err == nil && n != 0 {
+		d2mapgen.HeroMapSeed = uint32(n)
+		a.Infof("map seed overridden by OD2_AUTOMAPSEED: %d", n)
+	}
+
 	d2mapgen.HeroDifficulty = d2drlg.Difficulty(state.Difficulty)
 
 	if lvl := d2mapgen.AutomapLevel(); lvl != 0 {
