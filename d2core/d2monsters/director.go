@@ -27,6 +27,7 @@ package d2monsters
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -265,7 +266,7 @@ func (d *Director) emit(kind, format string, args ...interface{}) {
 // included; mercenaries and summoned minions are not part of it (see Merc, Minions).
 func (d *Director) Monsters() []*d2mapentity.Monster {
 	out := make([]*d2mapentity.Monster, 0, len(d.units))
-	for _, u := range d.units {
+	for _, u := range d.sortedUnits() {
 		if !u.friendly() && !u.b.Allied { // converted monsters are the hero's friends
 			out = append(out, u.m)
 		}
@@ -497,9 +498,18 @@ func (d *Director) noteAggro(u *unit) {
 	u.hadTarget = u.b.HasTarget
 }
 
-// adoptPlacements converts hostile monster placements that the map stamps
-// created as NPCs (DS1 monster objects) into AI-driven monsters.
-func (d *Director) adoptPlacements() {
+type placement struct {
+	npc  *d2mapentity.NPC
+	x, y int
+}
+
+// freshPlacements marks the not yet seen NPC entities as seen and returns them
+// in a stable order (by position). Entity ids are random uuids and the
+// entity table is a map, so neither may decide the order monsters get their
+// brain ids in.
+func (d *Director) freshPlacements() []placement {
+	var out []placement
+
 	for id, e := range d.engine.Entities() {
 		npc, ok := e.(*d2mapentity.NPC)
 		if !ok || d.seenNPC[id] {
@@ -507,6 +517,27 @@ func (d *Director) adoptPlacements() {
 		}
 
 		d.seenNPC[id] = true
+
+		pos := npc.GetPosition()
+		out = append(out, placement{npc: npc, x: int(pos.X()), y: int(pos.Y())})
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].y != out[j].y {
+			return out[i].y < out[j].y
+		}
+
+		return out[i].x < out[j].x
+	})
+
+	return out
+}
+
+// adoptPlacements converts hostile monster placements that the map stamps
+// created as NPCs (DS1 monster objects) into AI-driven monsters.
+func (d *Director) adoptPlacements() {
+	for _, pl := range d.freshPlacements() {
+		npc := pl.npc
 
 		stat := d.statByID[npc.MonstatID()]
 		if stat == nil || !IsHostile(stat) {

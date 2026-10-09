@@ -1,8 +1,7 @@
 package d2mapstamp
 
 import (
-	"math"
-	"math/rand"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 
@@ -19,6 +18,7 @@ func NewStampFactory(asset *d2asset.AssetManager, l d2util.LogLevel, entity *d2m
 	result := &StampFactory{
 		asset:  asset,
 		entity: entity,
+		rng:    d2rand.New(0),
 	}
 
 	result.Logger = d2util.NewLogger()
@@ -33,8 +33,14 @@ func NewStampFactory(asset *d2asset.AssetManager, l d2util.LogLevel, entity *d2m
 type StampFactory struct {
 	asset  *d2asset.AssetManager
 	entity *d2mapentity.MapEntityFactory
+	rng    *d2rand.Seed // picks among a preset's files; reseeded with the map seed
 
 	*d2util.Logger
+}
+
+// Reseed restarts the file-picking stream; the map engine calls it with the map seed.
+func (f *StampFactory) Reseed(seed int64) {
+	f.rng.Init(uint32(seed))
 }
 
 // LoadStamp loads the Stamp data from file, using the given level type, level preset index, and
@@ -50,10 +56,9 @@ func (f *StampFactory) LoadStamp(levelType d2enum.RegionIdType, levelPreset, fil
 		}
 	}
 
-	// nolint:gosec // not a big deal for now
-	levelIndex := int(math.Round(float64(len(levelFilesToPick)-1) * rand.Float64()))
-	if fileIndex >= 0 && fileIndex < len(levelFilesToPick) {
-		levelIndex = fileIndex
+	levelIndex := fileIndex
+	if fileIndex < 0 || fileIndex >= len(levelFilesToPick) {
+		levelIndex = int(f.rng.Roll(int32(len(levelFilesToPick))))
 	}
 
 	if levelFilesToPick == nil {
