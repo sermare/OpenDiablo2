@@ -3,6 +3,7 @@ package d2hero
 import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 )
 
@@ -32,6 +33,9 @@ type HeroState struct {
 	// Containers is the inventory, belt, cube and stash content; nil for
 	// heroes that never saved any (older hero files omit it).
 	Containers *HeroContainers `json:"containers,omitempty"`
+
+	// statEquipped caches the equipped items as the stat list sees them.
+	statEquipped []d2statlist.Item
 }
 
 // HeroProgress carries the story progress of a .d2s save: the quest records,
