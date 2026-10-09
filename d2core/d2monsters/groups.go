@@ -120,6 +120,43 @@ func (d *Director) SpawnSuperUnique(key string, center d2path.Point) (*PackResul
 	return d.SpawnPack(d2monster.PlanSuperUnique(d.packRNG, key, d.classInfo(stat), rec.MinGrp, rec.MaxGrp), center)
 }
 
+// memberTypeFlags is the +0x16 type mask of a pack member (see the
+// MonType* constants): super unique leader 2 and unique leader 8, champions
+// 4 each, followers of a super unique or unique leader 0x10 (minion). The
+// followers of an ordinary group stay unflagged.
+func memberTypeFlags(plan d2monster.Pack, leader bool) uint16 {
+	switch {
+	case plan.SuperUnique != "":
+		if leader {
+			return d2mapentity.MonTypeSuperUnique
+		}
+
+		return d2mapentity.MonTypeMinion
+	case plan.Kind == d2monster.PackChampion:
+		return d2mapentity.MonTypeChampion
+	case plan.Kind == d2monster.PackUnique:
+		if leader {
+			return d2mapentity.MonTypeUnique
+		}
+
+		return d2mapentity.MonTypeMinion
+	}
+
+	return 0
+}
+
+// SpawnChampionGroup spawns a champion pack of a class (all members champions).
+// PopulateRoom does not roll for champion / unique packs yet (the exe's
+// chances are not recorded in the notes).
+func (d *Director) SpawnChampionGroup(stat *d2records.MonStatRecord, center d2path.Point) (*PackResult, error) {
+	return d.SpawnPack(d2monster.PlanChampion(d.packRNG, d.classInfo(stat)), center)
+}
+
+// SpawnUniqueGroup spawns a unique (rare) pack: a unique leader and minions.
+func (d *Director) SpawnUniqueGroup(stat *d2records.MonStatRecord, center d2path.Point) (*PackResult, error) {
+	return d.SpawnPack(d2monster.PlanUnique(d.packRNG, d.classInfo(stat)), center)
+}
+
 // SpawnPack creates the units of a plan on free cells around centre, links
 // the followers to the leader (MONAI_AddMinionToLeader) and logs the
 // composition. Members that find no free cell are dropped.
@@ -148,6 +185,8 @@ func (d *Director) SpawnPack(plan d2monster.Pack, center d2path.Point) (*PackRes
 
 			continue
 		}
+
+		m.TypeFlags |= memberTypeFlags(plan, res.Leader == nil)
 
 		if res.Leader == nil {
 			res.Leader = m

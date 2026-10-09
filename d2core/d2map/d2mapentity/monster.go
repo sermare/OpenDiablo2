@@ -63,6 +63,9 @@ type Monster struct {
 	StatEx    *d2records.MonStat2Record
 	Brain     *d2monster.Brain
 	Vitals    MonsterVitals
+	// TypeFlags is the per-spawn monster type byte (Game.exe monster data +0x16,
+	// tested by 0x59dd60 with masks 0xa and 2). Not a monstats column.
+	TypeFlags uint16
 	name      string
 
 	mode       d2monster.Mode
@@ -87,6 +90,21 @@ const velocityToSubtilesPerSecond = retailFps / 16.0
 
 // ID returns the monster's uuid.
 func (m *Monster) ID() string { return m.uuid }
+
+// Monster type flag bits of TypeFlags. The masks 0xa and 2 are VERIFIED
+// (0x57b8b0 via 0x59dd60); naming bit 1 super unique and bit 3 unique follows
+// the usual layout and is UNVERIFIED here.
+const (
+	MonTypeSuperUnique uint16 = 0x2
+	MonTypeUnique      uint16 = 0x8
+	// MonTypeChampion (0x4) and MonTypeMinion (0x10): the masks are VERIFIED
+	// as the 0xAC spawn packet writer (SCMD_SendOpAC 0x53c110) tests, in
+	// order, masks 4, 8, 2, 0x10, 0x40 and writes a boss number when 2 is set.
+	// The names follow the usual protocol order (champion, unique, super
+	// unique, minion, ghostly) and are UNVERIFIED.
+	MonTypeChampion uint16 = 0x4
+	MonTypeMinion   uint16 = 0x10
+)
 
 // Label is the monster's display name.
 func (m *Monster) Label() string { return m.name }
