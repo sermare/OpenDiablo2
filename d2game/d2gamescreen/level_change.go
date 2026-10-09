@@ -46,6 +46,8 @@ type levelTransition struct {
 	target int
 	start  d2level.StartType
 	via    string
+	// edge crossings: the world position at which the hero left the old level
+	edgeWX, edgeWY float64
 }
 
 type pendingUse struct {
@@ -66,13 +68,19 @@ type levelState struct {
 	warpWait   float64 // seconds spent walking to warpTarget
 	warpSeen   map[[2]int]bool
 	changes    int
+	// edgeArmed is true once the hero stood away from every level border since
+	// the last level change; crossing a border needs it, so a hero who arrives
+	// near the border does not bounce between two levels
+	edgeArmed bool
+	exitWalk  *exitWalk
+	kill      *killState // the scripted fight of a kill: step
 	// portalStateUntil is when the 75-frame state 0x66 after a portal jump ends.
 	portalStateUntil float64
 }
 
 // Busy reports that the hero is walking to an object or a level change runs.
 func (v *Game) levelBusy() bool {
-	return v.levels.trans != nil || v.levels.use != nil || v.levels.warpTarget != nil
+	return v.levels.trans != nil || v.levels.use != nil || v.levels.warpTarget != nil || v.levels.exitWalk != nil
 }
 
 // currentLevel returns the level the hero is in.
@@ -120,6 +128,8 @@ func (v *Game) advanceLevels(elapsed float64) {
 	v.closeWaypointPanelWhenFar()
 	v.advanceObjectUse(elapsed)
 	v.advanceWarpUse(elapsed)
+	v.advanceEdges()
+	v.advanceExitWalk(elapsed)
 	v.advanceFade(elapsed)
 }
 
@@ -216,8 +226,14 @@ func (v *Game) performLevelChange(t *levelTransition) {
 	}
 
 	var prefer d2client.ArrivalFunc
-	if t.via == "waypoint" {
+
+	switch t.via {
+	case "waypoint":
 		prefer = nextToWaypoint // waypoint travel lands you at the destination's waypoint
+	case "edge":
+		prefer = edgeArrival(from, t.target, t.edgeWX, t.edgeWY)
+	case "warp":
+		prefer = nextToWarpBackTo(from, t.target) // the stairs or cave entrance you came through
 	}
 
 	arrival, err := v.gameClient.ChangeLevel(t.target, prefer)
@@ -237,7 +253,9 @@ func (v *Game) performLevelChange(t *levelTransition) {
 
 	v.levels.cooldown.Mark(v.levels.clock)
 	v.levels.changes++
+	v.levels.edgeArmed = false
 	v.scanWarps()
+	v.questArea(t.target) // the quest system follows the hero between areas
 
 	px, py := v.heroTilePos()
 	v.Infof("LEVEL CHANGE from=%d to=%d (%s) act=%d via=%s start=%#x townTransition=%v actChange=%v arrival=(%.1f,%.1f) hero=(%.1f,%.1f)",
@@ -267,7 +285,7 @@ func nextToWaypoint(m *d2mapengine.MapEngine) (x, y float64, ok bool) {
 func (v *Game) resetLevelState() {
 	v.monsters, v.attackTarget, v.npcTarget = nil, nil, nil
 	v.ground.item, v.ground.chest = nil, nil
-	v.levels.use, v.levels.warpTarget, v.levels.wpObj = nil, nil, nil
+	v.levels.use, v.levels.warpTarget, v.levels.wpObj, v.levels.exitWalk = nil, nil, nil, nil
 	v.lastRegionType = d2enum.RegionNone
 
 	v.gameControls.NPCMenu.Close()
@@ -280,6 +298,9 @@ func (v *Game) scanWarps() {
 	v.levels.warpSeen = map[[2]int]bool{}
 
 	v.Infof("LEVEL %d: %d warp tile(s)", v.currentLevel(), len(v.levels.warps))
+	for _, w := range v.levels.warps {
+		v.Infof("LEVEL warp tile at (%d,%d) style=%d", w.TileX, w.TileY, w.Style)
+	}
 }
 
 // targetWarpAt selects the warp tile near a clicked point, if any.
@@ -318,7 +339,7 @@ func (v *Game) advanceWarpUse(elapsed float64) {
 	v.levels.warpTarget = nil
 	cur := v.currentLevel()
 
-	dest, ok := d2level.Destination(cur, w.Style)
+	dest, ok := d2level.TileDestination(cur, w.Style)
 	if !ok {
 		key := [2]int{w.TileX, w.TileY}
 		if !v.levels.warpSeen[key] {
@@ -674,4 +695,4 @@ func (h autoScriptHost) Level() (level int, x, y float64) {
 	return h.v.currentLevel(), x, y
 }
 
-func (h autoScriptHost) Busy() bool { return h.v.levelBusy() }
+func (h autoScriptHost) Busy() bool { return h.v.levelBusy() || h.v.playBusy() }

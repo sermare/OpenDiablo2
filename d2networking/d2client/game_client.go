@@ -249,6 +249,10 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 	if player.ID == g.PlayerID {
 		g.Progress, g.Difficulty = player.Progress, player.Difficulty
 		g.Level = d2level.RogueEncampment
+
+		if lvl := d2mapgen.RealLevel(); lvl != 0 {
+			g.Level = lvl // OD2_REALMAPS=1 OD2_AUTOLEVEL=<id> starts in that level
+		}
 		newPlayer.Progress, newPlayer.QuestDifficulty = player.Progress, int(player.Difficulty)
 
 		if g.Progress == nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2dt1"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2geom"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapstamp"
@@ -38,6 +39,7 @@ type MapEngine struct {
 
 	gridPaths     bool        // PathFind uses d2path (see UseCollisionPaths)
 	startOverride *[2]float64 // hero spawn tile set by a level generator (see SetStartPosition)
+	world         World       // where this map sits in the Act 1 world (see SetWorld)
 
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/789
 	IsLoading bool // (temp) Whether we have processed the GenerateMapPacket(only for remote client)
@@ -81,6 +83,23 @@ func (m *MapEngine) SetStartPosition(x, y float64) {
 	m.startOverride = &[2]float64{x, y}
 }
 
+// World places the loaded map in the Act 1 world: world tile = map tile +
+// (OriginX, OriginY), and Rects are the world rectangles of the levels that
+// can border it (d2level.EdgeExit). Level 0 means the map has no place in the
+// world (the old generators, mazes).
+type World struct {
+	Level            int
+	OriginX, OriginY int
+	Rects            map[int]d2level.Rect
+}
+
+// SetWorld records where the map sits in the world; generators of seamless
+// outdoor levels call it after ResetMap.
+func (m *MapEngine) SetWorld(w World) { m.world = w }
+
+// World returns the world placement of the map (Level 0 when it has none).
+func (m *MapEngine) World() World { return m.world }
+
 // ResetMap clears all map and entity data and reloads it from the cached files.
 func (m *MapEngine) ResetMap(levelType d2enum.RegionIdType, width, height int) {
 	m.entities = make(map[string]d2interface.MapEntity)
@@ -91,6 +110,7 @@ func (m *MapEngine) ResetMap(levelType d2enum.RegionIdType, width, height int) {
 	m.dt1TileData = make([]d2dt1.Tile, 0)
 	m.dt1Files = make([]string, 0)
 	m.startOverride = nil
+	m.world = World{}
 	m.gridPaths = false
 
 	for idx := range m.levelType.Files {

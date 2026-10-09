@@ -10,6 +10,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2ds1"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapstamp"
 )
 
@@ -75,6 +76,7 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 	}
 
 	g.engine.ResetMap(region, p.Rect.W, p.Rect.H)
+	g.engine.SetWorld(d2mapengine.World{Level: levelID, OriginX: p.Rect.X, OriginY: p.Rect.Y, Rects: worldRects(lay)})
 
 	var (
 		mon     monsterStats
@@ -113,6 +115,8 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 			g.engine.PlaceStampClipped(stamp, ox, oy, pr.SizeX, pr.SizeY)
 
 			presets++
+
+			g.logSpecialTiles(stamp, path, ox, oy)
 
 			roomSeed := d2rand.New(levelSeed.Lo + uint32(def)*0x9E3779B1 + uint32(xc*131+yc))
 			g.placeMonsters(stamp, levelID, diff, ox, oy, pr.SizeX, pr.SizeY, roomSeed, &mon)
@@ -205,4 +209,18 @@ func (g *MapGenerator) outdoorEntry(lv *drlgoutdoor.Level, rect drlgoutdoor.Rect
 	}
 
 	return float64(rect.W) / 2, float64(rect.H) / 2, "(fallback: map centre, nothing walkable found)"
+}
+
+// logSpecialTiles logs the special (exit/start marker) wall tiles of a stamped preset.
+func (g *MapGenerator) logSpecialTiles(stamp *d2mapstamp.Stamp, path string, ox, oy int) {
+	sz := stamp.Size()
+	for y := 0; y < sz.Height; y++ {
+		for x := 0; x < sz.Width; x++ {
+			for _, w := range stamp.Tile(x, y).Walls {
+				if w.Type.Special() {
+					g.Infof("real outdoor: special tile style=%d sequence=%d at (%d,%d) in %s", w.Style, w.Sequence, ox+x, oy+y, path)
+				}
+			}
+		}
+	}
 }

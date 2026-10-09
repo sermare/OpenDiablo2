@@ -30,6 +30,17 @@ const (
 	KindAutomap Kind = "automap"
 	// KindWaypoint travels to a waypoint level through the open waypoint panel.
 	KindWaypoint Kind = "waypoint"
+	// KindWalkTo walks to an exit (walkto:exit=<level>: a border, stairs or
+	// cave entrance leading to that level, the level change included) or to
+	// an object (walkto:object=<name>) and waits until the hero is there.
+	KindWalkTo Kind = "walkto"
+	// KindKill fights: kill:all[,<seconds>] every monster of the level,
+	// kill:near=<tiles>[,<seconds>] those within that distance.
+	KindKill Kind = "kill"
+	// KindUntil waits for a log line: until:<substring>,<timeout seconds>.
+	KindUntil Kind = "until"
+	// KindMenu picks a row of the open NPC menu (menu:Talk, menu:Trade, a topic text).
+	KindMenu Kind = "menu"
 )
 
 // ExpectLevelTimeout is how long (game seconds) an expect:level step waits for
@@ -46,6 +57,10 @@ type Step struct {
 	Level    int     // waypoint: target level; expect:level=: expected level
 	HasLevel bool    // an expect step checks the level
 	Text     string  // the step as written, for logging
+	// Target is the second half of walkto (exit or object name) and the
+	// kill mode ("all" or "near"); Radius is kill:near's distance in tiles.
+	Target string
+	Radius float64
 }
 
 // Panels accepted by the panel step.
@@ -68,8 +83,23 @@ type LevelHost interface {
 	Busy() bool
 }
 
+// PlayHost is implemented by hosts that can play: walk to exits and objects,
+// fight, and choose NPC menu rows. Like LevelHost it is optional.
+type PlayHost interface {
+	// WalkToExit starts the walk to the exit towards a level; Busy stays true
+	// until the hero arrived (or gave up).
+	WalkToExit(level int) error
+	// WalkToObject walks to the named object (any kind) and stops next to it.
+	WalkToObject(name string) error
+	// Menu chooses a row of the open NPC menu by its label or action.
+	Menu(row string) error
+	// Kill makes the hero fight; radius <= 0 means every monster of the level.
+	// Busy stays true until nothing is left to fight or seconds ran out.
+	Kill(radius, seconds float64) error
+}
+
 // BusyTimeout is the longest the runner waits for a busy host (game seconds).
-const BusyTimeout = 30.0
+const BusyTimeout = 120.0
 
 // Host performs the side effects of steps. Methods must not block.
 type Host interface {
@@ -179,6 +209,38 @@ func parseStep(raw string) (Step, error) {
 		if err != nil || s.Level <= 0 {
 			return s, errors.New("waypoint needs a level id")
 		}
+	case KindWalkTo:
+		switch {
+		case strings.HasPrefix(arg, "exit="):
+			s.Target = "exit"
+			s.Level, err = strconv.Atoi(strings.TrimPrefix(arg, "exit="))
+
+			if err != nil || s.Level <= 0 {
+				return s, errors.New("walkto:exit= needs a level id")
+			}
+		case strings.HasPrefix(arg, "object=") && len(arg) > len("object="):
+			s.Target, s.Arg = "object", strings.TrimPrefix(arg, "object=")
+		default:
+			return s, errors.New("walkto needs exit=<level> or object=<name>")
+		}
+	case KindKill:
+		err = parseKill(&s, arg)
+	case KindUntil:
+		i := strings.LastIndex(arg, ",")
+		if i <= 0 {
+			return s, errors.New("until needs <log substring>,<timeout seconds>")
+		}
+
+		s.Arg = strings.TrimSpace(arg[:i])
+		s.Seconds, err = strconv.ParseFloat(strings.TrimSpace(arg[i+1:]), 64)
+
+		if err != nil || s.Seconds <= 0 || s.Arg == "" {
+			return s, errors.New("until needs <log substring>,<positive timeout seconds>")
+		}
+	case KindMenu:
+		if arg == "" {
+			return s, errors.New("menu needs a row name")
+		}
 	case KindExpect:
 		if strings.HasPrefix(arg, "level=") {
 			s.Level, err = strconv.Atoi(strings.TrimPrefix(arg, "level="))
@@ -203,6 +265,44 @@ func parseStep(raw string) (Step, error) {
 
 	return s, err
 }
+
+// parseKill reads "all[,seconds]" or "near=<tiles>[,seconds]".
+func parseKill(s *Step, arg string) error {
+	what, secs := arg, ""
+	if i := strings.Index(arg, ","); i >= 0 {
+		what, secs = strings.TrimSpace(arg[:i]), strings.TrimSpace(arg[i+1:])
+	}
+
+	s.Seconds = DefaultKillSeconds
+
+	if secs != "" {
+		v, err := strconv.ParseFloat(secs, 64)
+		if err != nil || v <= 0 {
+			return errors.New("kill: bad timeout")
+		}
+
+		s.Seconds = v
+	}
+
+	switch {
+	case what == "all":
+		s.Target = "all"
+	case strings.HasPrefix(what, "near="):
+		r, err := strconv.ParseFloat(strings.TrimPrefix(what, "near="), 64)
+		if err != nil || r <= 0 {
+			return errors.New("kill:near= needs a distance in tiles")
+		}
+
+		s.Target, s.Radius = "near", r
+	default:
+		return errors.New("kill needs all or near=<tiles>")
+	}
+
+	return nil
+}
+
+// DefaultKillSeconds is how long a kill step fights unless it says otherwise.
+const DefaultKillSeconds = 120.0
 
 func parseXY(s string) (x, y float64, err error) {
 	parts := strings.Split(s, ",")
@@ -242,6 +342,9 @@ type Runner struct {
 	busyWait  float64
 	failed    bool
 	done      bool
+	// until is the waiting until: step and how long it has waited
+	until      *Step
+	untilSince float64
 }
 
 // NewRunner creates a runner for the steps.
@@ -268,6 +371,11 @@ func (r *Runner) Advance(elapsed float64) {
 		}
 
 		r.waiting = 0
+	}
+
+	if r.until != nil {
+		r.advanceUntil(elapsed)
+		return
 	}
 
 	if r.next >= len(r.steps) {
@@ -336,6 +444,17 @@ func (r *Runner) run(s Step) error {
 		}
 
 		return lh.Waypoint(s.Level)
+	case KindWalkTo, KindKill, KindMenu:
+		return r.play(s)
+	case KindUntil:
+		if r.host.LogContains(s.Arg) {
+			return nil
+		}
+
+		st := s
+		r.until, r.untilSince = &st, 0
+
+		return nil
 	case KindExpect:
 		if s.HasLevel {
 			return r.expectLevel(s.Level)
@@ -347,6 +466,42 @@ func (r *Runner) run(s Step) error {
 	}
 
 	return nil
+}
+
+func (r *Runner) play(s Step) error {
+	ph, ok := r.host.(PlayHost)
+	if !ok {
+		return fmt.Errorf("host does not support %s", s.Kind)
+	}
+
+	switch s.Kind {
+	case KindWalkTo:
+		if s.Target == "exit" {
+			return ph.WalkToExit(s.Level)
+		}
+
+		return ph.WalkToObject(s.Arg)
+	case KindKill:
+		return ph.Kill(s.Radius, s.Seconds)
+	default:
+		return ph.Menu(s.Arg)
+	}
+}
+
+// advanceUntil waits for the log line of an until: step.
+func (r *Runner) advanceUntil(elapsed float64) {
+	s := r.until
+
+	if r.host.LogContains(s.Arg) {
+		r.until = nil
+		return
+	}
+
+	if r.untilSince += elapsed; r.untilSince >= s.Seconds {
+		r.until = nil
+		r.failed = true
+		r.host.Logf("AUTOSCRIPT step %d FAIL: no log line containing %q within %.0f s", r.next, s.Arg, s.Seconds)
+	}
 }
 
 func (r *Runner) finish() {

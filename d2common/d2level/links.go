@@ -248,3 +248,34 @@ func ParseLevelLinks(levelsTxt []byte) ([][3]int, error) {
 
 	return out, sc.Err()
 }
+
+// Warp ids of LvlWarp.txt that matter for outdoor entrances.
+const (
+	WarpWildernessToCaveMax = 3 // ids 0..3: "Act 1 Wilderness to Cave Cliff/Floor L/R"
+	WarpCaveDown            = 5 // "Act 1 Cave Down"
+)
+
+// TileDestination is Destination for the special tile of a DS1 preset. The
+// style of the tile is the LvlWarp id for stairs inside the mazes, but the
+// cave entrance presets of the wilderness (Act1/Caves/DenEnt.ds1 and its
+// siblings, UNVERIFIED how the exe tells them apart) carry style 5, "Cave
+// Down", while Levels.txt lists the wilderness slots with the ids 0..3
+// ("Wilderness to Cave"). A "Cave Down" tile in a level that has such a slot
+// leads to the slot's level.
+func TileDestination(level, style int) (int, bool) {
+	if to, ok := Destination(level, style); ok {
+		return to, true
+	}
+
+	if style != WarpCaveDown {
+		return 0, false
+	}
+
+	for _, l := range allLinks {
+		if l.From == level && l.Kind == KindTile && l.Warp >= 0 && l.Warp <= WarpWildernessToCaveMax {
+			return l.To, true
+		}
+	}
+
+	return 0, false
+}

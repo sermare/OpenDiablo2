@@ -445,3 +445,26 @@ func TestWaypointColumnMatchesLevelsTxt(t *testing.T) {
 		}
 	}
 }
+
+func TestTileDestinationCaveEntrances(t *testing.T) {
+	tests := []struct {
+		name         string
+		level, style int
+		want         int
+		ok           bool
+	}{
+		{"Blood Moor cave entrance tile is Cave Down", 2, 5, 8, true},
+		{"Cold Plains cave entrance", 3, 5, 9, true},
+		{"Den of Evil up stairs", 8, 4, 2, true},
+		{"cave level 1 down stairs keep their own link", 9, 5, 13, true},
+		{"a cottage tile leads nowhere", 2, 8, 0, false},
+		{"unknown style", 2, 99, 0, false},
+	}
+
+	for _, tc := range tests {
+		got, ok := TileDestination(tc.level, tc.style)
+		if ok != tc.ok || got != tc.want {
+			t.Errorf("%s: got %d %v, want %d %v", tc.name, got, ok, tc.want, tc.ok)
+		}
+	}
+}
