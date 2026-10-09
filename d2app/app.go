@@ -369,6 +369,9 @@ func (a *App) Run() (err error) {
 		}
 
 		a.startAutoGame(save, connType, joinAddr)
+	} else if os.Getenv("OD2_AUTOSCREEN") == "charselect" {
+		// OD2_AUTOSCREEN=charselect opens the character select screen directly (for OD2_AUTOSHOT)
+		a.ToCharacterSelect(d2clientconnectiontype.Local, "")
 	} else {
 		a.ToMainMenu()
 	}
@@ -834,7 +837,9 @@ func (a *App) importD2SSave(path string) (string, error) {
 		return "", err
 	}
 
-	if err = factory.Save(state); err != nil {
+	state.Imported.Source = path
+
+	if err = factory.SaveImported(state); err != nil {
 		return "", err
 	}
 

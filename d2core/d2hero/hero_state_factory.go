@@ -130,32 +130,33 @@ func (f *HeroStateFactory) importD2SCharacters(existing []*HeroState) []*HeroSta
 		return nil
 	}
 
-	known := make(map[string]bool, len(existing))
+	byName := make(map[string]*HeroState, len(existing))
 	for _, h := range existing {
-		known[strings.ToLower(h.HeroName)] = true
+		byName[strings.ToLower(h.HeroName)] = h
 	}
 
 	imported := make([]*HeroState, 0)
 
 	for _, dir := range dirs {
-		imported = append(imported, f.importD2SDir(dir, known)...)
+		imported = append(imported, f.importD2SDir(dir, byName)...)
 	}
 
 	return imported
 }
 
-func (f *HeroStateFactory) importD2SDir(dir string, known map[string]bool) []*HeroState {
+func (f *HeroStateFactory) importD2SDir(dir string, byName map[string]*HeroState) []*HeroState {
 	files, _ := ioutil.ReadDir(dir)
 	imported := make([]*HeroState, 0)
 
 	for _, file := range files {
 		name := file.Name()
-		if file.IsDir() || !strings.EqualFold(filepath.Ext(name), ".d2s") ||
-			known[strings.ToLower(strings.TrimSuffix(name, filepath.Ext(name)))] {
+		if file.IsDir() || !strings.EqualFold(filepath.Ext(name), ".d2s") {
 			continue
 		}
 
-		data, err := ioutil.ReadFile(filepath.Clean(filepath.Join(dir, name)))
+		path := filepath.Clean(filepath.Join(dir, name))
+
+		data, err := ioutil.ReadFile(path)
 		if err != nil {
 			continue
 		}
@@ -166,8 +167,16 @@ func (f *HeroStateFactory) importD2SDir(dir string, known map[string]bool) []*He
 			continue
 		}
 
-		if known[strings.ToLower(state.HeroName)] {
-			continue
+		state.Imported.Source = path
+
+		prev := byName[strings.ToLower(state.HeroName)]
+		if prev != nil && !isImportOf(prev, state) {
+			continue // an engine-made hero of the same name: leave it alone
+		}
+
+		if prev != nil {
+			// an earlier import of this character: refresh it in place
+			state.FilePath = prev.FilePath
 		}
 
 		if err := f.Save(state); err != nil {
@@ -175,12 +184,52 @@ func (f *HeroStateFactory) importD2SDir(dir string, known map[string]bool) []*He
 			continue
 		}
 
-		known[strings.ToLower(state.HeroName)] = true
+		if prev != nil {
+			*prev = *state
+			continue
+		}
+
+		byName[strings.ToLower(state.HeroName)] = state
 
 		imported = append(imported, state)
 	}
 
 	return imported
+}
+
+// isImportOf reports whether an existing hero is an earlier import of the same
+// character: flagged as imported, or (saved before that flag existed) carrying
+// the same name and the level generator seed of the .d2s, which no hero made in
+// this engine has.
+func isImportOf(prev, state *HeroState) bool {
+	if !strings.EqualFold(prev.HeroName, state.HeroName) {
+		return false
+	}
+
+	return prev.Imported != nil || (state.MapSeed != 0 && prev.MapSeed == state.MapSeed)
+}
+
+// SaveImported saves an imported hero. A character imported before (same name)
+// keeps its .od2 file, so importing the same .d2s again does not pile up copies.
+func (f *HeroStateFactory) SaveImported(state *HeroState) error {
+	if state.FilePath == "" {
+		basePath, _ := f.getGameBaseSavePath()
+		files, _ := ioutil.ReadDir(basePath)
+
+		for _, file := range files {
+			if file.IsDir() || !strings.EqualFold(filepath.Ext(file.Name()), ".od2") {
+				continue
+			}
+
+			prev := f.LoadHeroState(filepath.Join(basePath, file.Name()))
+			if prev != nil && isImportOf(prev, state) {
+				state.FilePath = prev.FilePath
+				break
+			}
+		}
+	}
+
+	return f.Save(state)
 }
 
 // CreateHeroSkillsState will assemble the hero skills from the class stats record.

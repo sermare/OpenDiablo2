@@ -37,6 +37,9 @@ type HeroState struct {
 	// Containers is the inventory, belt, cube and stash content; nil for
 	// heroes that never saved any (older hero files omit it).
 	Containers *HeroContainers `json:"containers,omitempty"`
+	// Imported is set for heroes that came from a real .d2s save; nil for heroes
+	// created in this engine, which are shown as Expansion characters.
+	Imported *ImportedInfo `json:"imported,omitempty"`
 	// Expansion, Hardcore and Ladder are the choices made when the character
 	// was created (the .d2s status bits 0x20, 0x04 and 0x40).
 	Expansion bool `json:"expansion,omitempty"`
@@ -51,6 +54,19 @@ type HeroState struct {
 	// Merc is the hired mercenary (the d2s header fields); nil when the hero
 	// has none. The merc level is not stored: it is derived from Experience.
 	Merc *MercState `json:"merc,omitempty"`
+}
+
+// ImportedInfo carries what the character select screen shows about a real
+// Diablo II character, and the skill hotkeys of the original save.
+type ImportedInfo struct {
+	Hardcore  bool `json:"hardcore,omitempty"`
+	Expansion bool `json:"expansion"`
+	Ladder    bool `json:"ladder,omitempty"`
+	Dead      bool `json:"dead,omitempty"`
+	// WeaponSetII is set when the second weapon set was active when the game was saved.
+	WeaponSetII bool `json:"weaponSetII,omitempty"`
+	// Source is the .d2s path the hero was imported from (never written to).
+	Source string `json:"source,omitempty"`
 }
 
 // MercState is the persistent part of a mercenary, as the .d2s header keeps it

@@ -55,12 +55,22 @@ func (f *HeroStateFactory) loadD2SItemTables() (*d2s.ItemTables, error) {
 // applyD2SEquipment places the equipped items of a save into the hero's
 // equipment. Slots OpenDiablo2 does not model yet (amulet, rings, belt) and
 // items that cannot be resolved are skipped.
-func (f *HeroStateFactory) applyD2SEquipment(state *HeroState, items []d2s.Item, tables *d2s.ItemTables) {
+func (f *HeroStateFactory) applyD2SEquipment(state *HeroState, items []d2s.Item, tables *d2s.ItemTables, weaponSetII bool) {
 	for i := range items {
 		item := &items[i]
 		if item.Location != d2s.LocationEquipped {
 			continue
 		}
+
+		// weapons of the inactive weapon set are not worn
+		slot := ActiveWeaponSetSlot(item.Equipped, weaponSetII)
+		if slot == 0 {
+			continue
+		}
+
+		eqItem := *item
+		eqItem.Equipped = slot
+		item = &eqItem
 
 		code := strings.TrimSpace(item.Code)
 

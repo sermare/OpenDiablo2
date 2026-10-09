@@ -77,6 +77,7 @@ from a non-GUI shell fails with a Cocoa display error):
 | `OD2_AUTONEWCHAR=Druid[,hardcore][,classic][,ladder]` | Create a new character through the hero creation path, write its real `.d2s` (335 byte header, status new) to `OD2_D2S_WRITEBACK` without replacing existing files, log `NEWCHAR parse:` and, with `OD2_AUTONEWCHAR_REF=<real new character .d2s>`, `NEWCHAR diff` and `NEWCHAR oracle byte_identical=`. The hero list entry it makes is removed again. |
 | `OD2_AUTOTEST_MUTE=1` | Do not play sound during the autotest. |
 | `OD2_AUTOTRADE=Akara,Charsi` | Open each Act 1 vendor's trade window, log the stock with computed buy prices, run one scripted buy and sell (and a repair for Charsi) with the gold before and after, then restore the gold. `OD2_AUTOTRADE_SEED=<n>` fixes the stock, `OD2_AUTOTRADE_LEVEL=<n>` generates it for that hero level (a high level only gets magic items). |
+| `OD2_AUTOSCREEN=charselect` | Without `OD2_AUTOGAME`, open the character select screen instead of the main menu. It logs one `CHARSELECT slot=.. name=.. class=.. level=.. hardcore=.. expansion=.. ladder=.. dead=.. imported=..` line per listed hero. Combine with `OD2_D2S_DIR`. |
 | `OD2_AUTOGAMBLE=Gheed` | Open the vendor's gamble window and log `AUTOGAMBLE` lines: the 14 stock items (slot 0 ring, slot 1 amulet; unidentified name, quality, item level, gamble price), a scripted buy that reveals the item (gold before/after), a sell back, and a restock check (clock moved past four minutes). Uses `OD2_AUTOTRADE_SEED` / `OD2_AUTOTRADE_LEVEL`. |
 | `OD2_AUTOIDENTIFY=1` | Open Deckard Cain's identify window (directly if he is not in the camp) and log `AUTOIDENTIFY` lines: a few inventory items are marked unidentified, then identified one by one (100 gold each), with a Tome and a Scroll of Identify, and all at once, with the gold before/after. |
 | `OD2_AUTOPANEL=stash,cube,belt,inventory` | Open each container panel and log its items with grid positions (`AUTOPANEL panel=stash item #n code= x= y= w= h=`), then check that every saved item rebuilds identically from its spec. Compare with the save's own parse (nokkasorc.json: alt_position_id 1 inventory, 4 cube, 5 stash). `OD2_AUTOPANEL_HOLD=<s>` keeps it open. Scripts can use `panel:stash`, `panel:cube`, `panel:belt` too. |
@@ -107,6 +108,13 @@ a semicolon-separated list of steps, run a few seconds after the game starts:
 | `panel:inventory\|character\|skills\|quest\|party\|close` | Open a panel (`party`: the roster panel of a network game), or close all. |
 | `say:<command>` | Run an in-game console command. |
 | `expect:log=<substring>` | Fail the run unless the game log already contains it. |
+| `shot:<file>.png` | Save a screenshot of the window now (no spaces in the path). |
+| `exit` | Finish; with `OD2_AUTOEXIT=1` the process exits 0 on PASS, 1 on FAIL. |
+
+Opening a panel with `panel:` also logs the values it shows, so an imported hero can be checked without a
+screenshot: `PANEL character: level=94 name=.. str=122 dex=25 vit=368 ene=35 hp=cur/max mana=.. stamina=.. exp=2411280845 next=2492671933 ..`,
+`PANEL skills: class=.. unspent=.. spent=.. learned=[Fire Bolt(36)=1 ..]` plus `PANEL skills active: left=.. right=..` (the saved mouse skills),
+and `PANEL inventory: gold=.. items=<bag items> worn=[head=.. weapon=.. ..]`.
 | `waitlog:<substring>` | Wait (up to 90 s) until the game screen's log contains it, then go on; fails on a timeout. Lets the two processes of a network scenario run in step. |
 | `use:<object name or id>` | Walk to the nearest matching object (objects.txt name or id: `Waypoint`, `Door`, `Portal`, `119`) and operate it. Doors open/close and change collision, the waypoint opens its panel, portals change level. The next step waits until the walk or level change is over. |
 | `waypoint:<level id>` | Choose that level in the open waypoint panel (greyed entries fail the step). Logs `WAYPOINT travel` and `LEVEL CHANGE`. |
