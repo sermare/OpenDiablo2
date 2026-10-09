@@ -692,6 +692,18 @@ func (a *App) ToSelectHero(connType d2clientconnectiontype.ClientConnectionType,
 
 // ToCreateGame forces the game to transition to the Create Game screen
 func (a *App) ToCreateGame(filePath string, connType d2clientconnectiontype.ClientConnectionType, host string) {
+	if reason := a.playRefusal(filePath); reason != "" {
+		a.Infof("HARDCORE refused: %s", reason)
+
+		if os.Getenv("OD2_AUTOEXIT") != "" {
+			os.Exit(0)
+		}
+
+		a.ToMainMenu(reason)
+
+		return
+	}
+
 	gameClient, err := d2client.Create(connType, a.asset, *a.Options.LogLevel, a.scriptEngine)
 	if err != nil {
 		a.Error(err.Error())
@@ -722,6 +734,8 @@ func (a *App) ToCreateGame(filePath string, connType d2clientconnectiontype.Clie
 // difficulty is picked like on the difficulty screen (only unlocked ones;
 // OD2_AUTODIFFICULTY_FORCE=1 skips the unlock rule) and saved with the hero.
 func (a *App) startAutoGame(save string, connType d2clientconnectiontype.ClientConnectionType, joinAddr string) {
+	a.markAutoDead(save)
+
 	level, ok := d2gamescreen.AutoDifficulty()
 	if !ok {
 		a.ToCreateGame(save, connType, joinAddr)

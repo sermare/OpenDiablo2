@@ -333,8 +333,19 @@ func (v *CharacterSelect) updateCharacterBoxes() {
 		heroInfo := v.asset.TranslateString("level") + " " + strconv.FormatInt(int64(v.gameStates[idx].Stats.Level), 10) +
 			" " + v.asset.TranslateString(v.gameStates[idx].HeroType.String())
 
-		v.characterNameLabel[i].SetText(d2ui.ColorTokenize(heroName, d2ui.ColorTokenGold))
-		v.characterStatsLabel[i].SetText(d2ui.ColorTokenize(heroInfo, d2ui.ColorTokenWhite))
+		nameColor, infoColor := d2ui.ColorTokenGold, d2ui.ColorTokenWhite
+
+		switch v.gameStates[idx].Kind() {
+		case d2hero.KindHardcore:
+			nameColor = d2ui.ColorTokenRed
+			heroInfo += " (hardcore)"
+		case d2hero.KindDeadHardcore:
+			nameColor, infoColor = d2ui.ColorTokenRed, d2ui.ColorTokenGrey
+			heroInfo += " (DEAD)"
+		}
+
+		v.characterNameLabel[i].SetText(d2ui.ColorTokenize(heroName, nameColor))
+		v.characterStatsLabel[i].SetText(d2ui.ColorTokenize(heroInfo, infoColor))
 		v.characterExpLabel[i].SetText(d2ui.ColorTokenize(expText, d2ui.ColorTokenGreen))
 
 		heroType := v.gameStates[idx].HeroType
