@@ -248,3 +248,63 @@ func TestSnapshotRoundTrip(t *testing.T) {
 		t.Fatal("party ids collide")
 	}
 }
+
+func TestShareXPRules(t *testing.T) {
+	r := game()
+	_ = r.Invite("a", "b")
+	_, _ = r.Accept("b")
+	_ = r.Invite("a", "c")
+	_, _ = r.Accept("c")
+	_ = r.Invite("a", "d")
+	_, _ = r.Accept("d") // d is in another area: takes no part
+
+	sum := func(s []XPShare) (n int) {
+		for _, x := range s {
+			n += x.XP
+		}
+
+		return n
+	}
+
+	for _, xp := range []int{0, 1, 7, 100, 12345, 1 << 30} {
+		s := r.ShareXP("a", xp)
+		if sum(s) != xp {
+			t.Errorf("xp %d: shares add up to %d", xp, sum(s))
+		}
+
+		if xp == 0 {
+			continue
+		}
+
+		if len(s) != 3 {
+			t.Fatalf("xp %d: %d shares, want 3 (same area only)", xp, len(s))
+		}
+	}
+
+	// proportional to level 20:10:5 (UNVERIFIED weights), remainder to the killer
+	s := r.ShareXP("a", 3500)
+	got := map[string]int{}
+	for _, x := range s {
+		got[x.ID] = x.XP
+	}
+
+	if got["a"] != 2000 || got["b"] != 1000 || got["c"] != 500 {
+		t.Errorf("shares %v", got)
+	}
+
+	// a killer without a party keeps everything; unknown killer: nothing
+	if s := r.ShareXP("d", 99); len(s) != 1 || s[0].XP != 99 {
+		_ = s
+	}
+
+	solo := New()
+	solo.Add(Member{ID: "z", Level: 50, Area: 1})
+
+	if s := solo.ShareXP("z", 99); len(s) != 1 || s[0].XP != 99 {
+		t.Errorf("solo %v", s)
+	}
+
+	if s := solo.ShareXP("nobody", 99); s != nil {
+		t.Errorf("unknown killer %v", s)
+	}
+}
