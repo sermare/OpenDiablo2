@@ -1,7 +1,7 @@
 #!/bin/zsh
-# Sound: scenarios are audible by default; OD2_VERIFY_MUTE=1 silences them (OD2_AUTOTEST_MUTE).
-OD2_VERIFY_MUTE_ENV=""
-[ -n "$OD2_VERIFY_MUTE" ] && OD2_VERIFY_MUTE_ENV="OD2_AUTOTEST_MUTE=1"
+# Sound: scenarios are muted (OD2_AUTOTEST_MUTE) unless OD2_VERIFY_SOUND=1.
+OD2_VERIFY_MUTE_ENV="OD2_AUTOTEST_MUTE=1"
+[ -n "$OD2_VERIFY_SOUND" ] && OD2_VERIFY_MUTE_ENV=""
 export OD2_VERIFY_MUTE_ENV
 # One-command verification for the macOS fork. Needs a Diablo II 1.14b + LoD
 # install (see docs/macos-quickstart.md). Environment variables (all optional):
