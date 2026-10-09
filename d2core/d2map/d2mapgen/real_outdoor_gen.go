@@ -241,6 +241,14 @@ func (g *MapGenerator) placeExactTiles(lv *drlgoutdoor.Level, rect drlgoutdoor.R
 		return g.placePlainRoomsLookup(lv, rect, region), ", dword lookup"
 	}
 
+	plain, presets := g.applyExactTiles(tiles, rect, region)
+
+	return plain, fmt.Sprintf(", exact tiles incl. %d preset rooms", presets)
+}
+
+// applyExactTiles puts the records of every built room on the map cells and
+// returns the number of plain and preset rooms.
+func (g *MapGenerator) applyExactTiles(tiles []*drlgoutdoor.RoomTiles, rect drlgoutdoor.Rect, region d2enum.RegionIdType) (int, int) {
 	type cell struct{ floors, walls, shadows []d2mapengine.ExactTile }
 
 	cells := map[[2]int]*cell{}
@@ -290,7 +298,7 @@ func (g *MapGenerator) placeExactTiles(lv *drlgoutdoor.Level, rect drlgoutdoor.R
 		g.engine.SetExactTiles(k[0]-rect.X, k[1]-rect.Y, region, true, c.floors, c.walls, c.shadows)
 	}
 
-	return plain, fmt.Sprintf(", exact tiles incl. %d preset rooms", presets)
+	return plain, presets
 }
 
 // placePlainRoomsLookup is the pre-exact approximation: the floor/wall dwords of
@@ -370,6 +378,17 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 
 	g.engine.PlaceStampClipped(stamp, 0, 0, pl.Rect.W, pl.Rect.H)
 
+	// the exact records of the preset rooms (checked against Game.exe for the
+	// Act 4/5 preset levels); on failure the stamped DS1 tiles stay
+	exact := ""
+
+	if tiles, err := pl.BuildTiles(); err != nil {
+		g.Infof("real preset: exact tiles unavailable (%v); keeping the stamped tiles", err)
+	} else {
+		_, n := g.applyExactTiles(tiles, pl.Rect, region)
+		exact = fmt.Sprintf(", exact tiles for %d rooms", n)
+	}
+
 	var mon monsterStats
 
 	levelSeed := d2rand.LevelSeed(p.BaseSeed, uint32(levelID))
@@ -381,8 +400,8 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 	sx, sy, how := g.outdoorEntry(&drlgoutdoor.Level{}, pl.Rect)
 	g.engine.SetStartPosition(sx, sy)
 
-	g.Infof("real preset: level %d seed %#x: Def %d file %d (%s), %d rooms, map %dx%d tiles",
-		levelID, seed, pl.Def, pl.File, path, len(pl.Rooms), pl.Rect.W, pl.Rect.H)
+	g.Infof("real preset: level %d seed %#x: Def %d file %d (%s), %d rooms%s, map %dx%d tiles",
+		levelID, seed, pl.Def, pl.File, path, len(pl.Rooms), exact, pl.Rect.W, pl.Rect.H)
 	g.Infof("real preset: hero entry at tile (%.1f,%.1f) %s", sx, sy, how)
 
 	return nil
