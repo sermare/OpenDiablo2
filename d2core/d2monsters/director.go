@@ -83,6 +83,8 @@ type Counters struct {
 	MercSpawns, MercAttacks, MercHits, MercSkills, MercDeaths, MercRevives, MercTeleports, MercLevelUps int
 	// Shots is projectiles launched, ShotHits those that reached a hero.
 	Shots, ShotHits int
+	// BlockAnims counts hero block animations that played (cooldown rule).
+	BlockAnims int
 
 	// Raised counts corpses revived by Fallen Shaman / Greater Mummy casts.
 	Raised int
@@ -189,6 +191,13 @@ type Director struct {
 	// a note for the log (skills: dodge, avoid, Energy Shield, Bone Armor,
 	// Thorns...). melee is false for projectiles.
 	HeroDefense func(p *d2mapentity.Player, attacker *d2mapentity.Monster, melee bool, dmg int) (int, string)
+
+	// HeroAvoid, if set, rolls the hero's dodge / avoid / evade for a landed
+	// hit BEFORE the damage roll (the exe's order). It reports whether the hit
+	// was avoided, with a log note. melee is false for projectiles.
+	HeroAvoid func(p *d2mapentity.Player, attacker *d2mapentity.Monster, melee bool) (bool, string)
+
+	lastBlock map[*d2mapentity.Player]int // frame of the last hero block animation
 
 	// Counters are updated as events happen.
 	Counters Counters
