@@ -1,19 +1,33 @@
 package d2combat
 
 // Defense returns a unit's total defense. Verified in COMBAT_GetDefense
-// (0x6225a0):
+// (0x6225a0) with the emulator oracle:
 //
 //	base = armorClass + dex/4          (truncating toward zero)
-//	def  = base + base*bonusPct/100    (truncating toward zero)
+//	def  = base + base*bonusPct/100    (base > 0)
+//	def  = base - base*bonusPct/100    (base <= 0: the percent shrinks a
+//	                                    negative defense instead of growing it)
 //
 // bonusPct is the sum of the percent stats 0xab and 0x10 (item_armor_percent).
 // NOTE (binary): the game additionally adds a skill-driven bonus from state
-// 0x65 into the percent before the multiply and a stat 0xb6 term after it;
-// neither is modelled here.
+// 0x65 into the percent before the multiply; that is not modelled. See
+// DefenseWithFinalPct for the trailing stat 0xb6 term.
 func Defense(armorClass, dex, bonusPct int) int {
+	return DefenseWithFinalPct(armorClass, dex, bonusPct, 0)
+}
+
+// DefenseWithFinalPct is Defense plus the trailing term of the game: the
+// result gains def*finalPct/100 where finalPct is unit stat 0xb6 (182).
+func DefenseWithFinalPct(armorClass, dex, bonusPct, finalPct int) int {
 	base := armorClass + dex/4
 
-	return base + base*bonusPct/100
+	if base > 0 {
+		base += base * bonusPct / 100
+	} else {
+		base -= base * bonusPct / 100
+	}
+
+	return base + base*finalPct/100
 }
 
 // PlayerAttackRating is the base attack rating of a player:
