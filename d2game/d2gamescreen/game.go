@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
@@ -106,10 +108,12 @@ func CreateGame(
 
 // Game represents the Gameplay screen
 const (
-	npcInteractDistance = 3.0 // tiles
-	npcBubbleSeconds    = 3.0
-	npcBubbleLift       = 30 // pixels above the NPC's head
-	npcVoicePrefixLen   = 3
+	npcInteractDistance  = 3.0 // tiles
+	npcBubbleSeconds     = 3.0
+	npcBubbleLift        = 30 // pixels above the NPC's head
+	noonHour             = 12
+	autoTestDelaySeconds = 6.0
+	eveningHour          = 18
 )
 
 type Game struct {
@@ -130,6 +134,8 @@ type Game struct {
 	npcTarget            d2interface.MapEntity
 	npcBubble            *d2ui.Label
 	npcBubbleTTL         float64
+	autoTestElapsed      float64
+	autoTestDone         bool
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -241,6 +247,7 @@ func (v *Game) Render(screen d2interface.Surface) {
 func (v *Game) Advance(elapsed float64) error {
 	v.soundEngine.Advance(elapsed)
 	v.advanceNPCInteraction(elapsed)
+	v.advanceAutoTest(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
@@ -395,39 +402,54 @@ func (v *Game) advanceNPCInteraction(elapsed float64) {
 	v.playNPCGreeting(v.npcTarget.Label())
 }
 
-// playNPCGreeting plays the NPC's spoken greeting from the speech archive.
-// Voice files are named data/local/sfx/<Act>/<Name>/<Abc>_hello.wav (or
-// _greetings.wav); Cain's prefix is his full first name.
-func (v *Game) playNPCGreeting(name string) {
-	name = strings.TrimPrefix(name, "Deckard ")
-	if len(name) < npcVoicePrefixLen {
-		return
+// playNPCGreeting plays the NPC's spoken greeting. Greetings are rows of
+// Sounds.txt named <npc>_greeting_*: a time-of-day variant (morning,
+// day, evening) is preferred, then the generic hello rows, then the
+// "inactive" rows. Some NPCs (e.g. Warriv) have no generic hello at all.
+func (v *Game) playNPCGreeting(name string) string {
+	name = strings.ToLower(strings.TrimPrefix(name, "Deckard "))
+	base := name + "_greeting_"
+
+	timeOfDay := "time_2" // day
+
+	switch hour := time.Now().Hour(); {
+	case hour < noonHour:
+		timeOfDay = "time_1"
+	case hour >= eveningHour:
+		timeOfDay = "time_3"
 	}
 
-	prefix := name[:npcVoicePrefixLen]
-	if name == "Cain" {
-		prefix = name
-	}
-
-	for _, act := range []string{"Act1", "Act2", "Act3", "Act4", "Act5", "Common"} {
-		for _, line := range []string{"hello", "greetings"} {
-			path := fmt.Sprintf("data/local/sfx/%s/%s/%s_%s.wav", act, name, prefix, line)
-
-			if ok, _ := v.asset.FileExists(path); !ok {
-				continue
-			}
-
-			sfx, err := v.audioProvider.LoadSound(path, false, false)
-			if err != nil {
-				v.Warningf("could not load NPC greeting %s: %v", path, err)
-				return
-			}
-
-			sfx.Play()
-
-			return
+	for _, suffix := range []string{timeOfDay, "1", "2", "inactive_1"} {
+		record, found := v.asset.Records.Sound.Details[base+suffix]
+		if !found {
+			continue
 		}
+
+		path := "data/local/sfx/" + strings.ReplaceAll(record.FileName, "\\", "/")
+
+		ok, _ := v.asset.FileExists(path)
+		v.Debugf("greeting file %s exists=%v", path, ok)
+
+		if !ok {
+			continue
+		}
+
+		sfx, err := v.audioProvider.LoadSound(path, false, false)
+		if err != nil {
+			v.Warningf("could not load NPC greeting %s: %v", path, err)
+			return ""
+		}
+
+		if os.Getenv("OD2_AUTOTEST_MUTE") == "" {
+			sfx.Play()
+		}
+
+		v.Infof("NPC greeting: %s", path)
+
+		return path
 	}
+
+	return ""
 }
 
 // renderNPCBubble draws the interaction text bubble above the NPC.
@@ -442,6 +464,40 @@ func (v *Game) renderNPCBubble(target d2interface.Surface) {
 
 	v.npcBubble.SetPosition(int(sx)-w/2, int(sy)-h-npcBubbleLift)
 	v.npcBubble.Render(target)
+}
+
+// advanceAutoTest checks NPC greetings without any clicking when the
+// OD2_AUTOTALK env var lists NPC names (comma separated). Set
+// OD2_AUTOTEST_MUTE to skip playback and OD2_AUTOEXIT to quit when done.
+func (v *Game) advanceAutoTest(elapsed float64) {
+	names := os.Getenv("OD2_AUTOTALK")
+	if names == "" || v.autoTestDone || v.localPlayer == nil {
+		return
+	}
+
+	v.autoTestElapsed += elapsed
+	if v.autoTestElapsed < autoTestDelaySeconds {
+		return
+	}
+
+	v.autoTestDone = true
+
+	present := make(map[string]bool)
+
+	for _, e := range v.gameClient.MapEngine.Entities() {
+		if label := e.Label(); label != "" {
+			present[label] = true
+		}
+	}
+
+	for _, name := range strings.Split(names, ",") {
+		path := v.playNPCGreeting(name)
+		v.Infof("AUTOTEST greeting npc=%s in_town=%v file=%q", name, present[name], path)
+	}
+
+	if os.Getenv("OD2_AUTOEXIT") != "" {
+		os.Exit(0)
+	}
 }
 
 // OnPlayerSave instructs the server to save our player data

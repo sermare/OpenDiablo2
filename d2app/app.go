@@ -312,7 +312,13 @@ func (a *App) Run() (err error) {
 		return err
 	}
 
-	a.ToMainMenu()
+	// OD2_AUTOGAME=<save file> skips the menus and starts that character directly.
+	// It exists so changes can be tested without clicking through the UI.
+	if save := os.Getenv("OD2_AUTOGAME"); save != "" {
+		a.ToCreateGame(save, d2clientconnectiontype.Local, "")
+	} else {
+		a.ToMainMenu()
+	}
 
 	if err := a.renderer.Run(a.update, a.advance, 800, 600, windowTitle); err != nil {
 		return err
