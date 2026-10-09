@@ -206,6 +206,14 @@ func (t *monsterTarget) Defense(bool) int {
 	return v
 }
 
+// IsUndead and IsDemon implement d2missile.Kinded (monstats lUndead|hUndead
+// and demon).
+func (t *monsterTarget) IsUndead() bool {
+	return t.m.Stat != nil && (t.m.Stat.IsUndeadLow || t.m.Stat.IsUndeadHigh)
+}
+
+func (t *monsterTarget) IsDemon() bool { return t.m.Stat != nil && t.m.Stat.IsDemon }
+
 // Serial implements d2missile.Serial: the unit id Guided Arrow orders by.
 func (t *monsterTarget) Serial() int { return int(t.e.monsters.UnitID(t.m)) }
 

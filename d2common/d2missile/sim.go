@@ -71,6 +71,9 @@ type Missile struct {
 	// HitSubRange overrides the lifetime of the sub missiles of hit func 14
 	// (the exe passes the skill's linear value 0x150/0x154, flag 0x8000).
 	HitSubRange int
+	// HealMin, HealMax are Holy Bolt's calc1 / calc2 of the casting skill in
+	// 8.8 fixed point (hit function 7).
+	HealMin, HealMax int
 
 	legX, legY float64 // dest - source at creation: the length of a ground leg
 	parked     bool    // arrived at its aim point but still alive (hit func 10)
@@ -135,6 +138,8 @@ type CreateParams struct {
 	PierceChance int
 	// AreaRadius, HitSubRange: see Missile.
 	AreaRadius, HitSubRange int
+	// HealMin, HealMax: see Missile.
+	HealMin, HealMax int
 	// HomeMode overrides the Guided Arrow mode (default: 1 when Home is set
 	// else 2, for SrvDoFunc 7 / hit func 10 missiles).
 	HomeMode int
@@ -228,6 +233,7 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 	m.pathVel = d2combat.MissileStep(vel)
 	m.accel = sp.Accel
 	m.AreaRadius, m.HitSubRange = p.AreaRadius, p.HitSubRange
+	m.HealMin, m.HealMax = p.HealMin, p.HealMax
 	m.legX, m.legY = dx, dy
 
 	if m.Pierce == 0 && sp.Pierce && p.PierceChance > 0 {

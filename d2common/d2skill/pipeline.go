@@ -523,9 +523,17 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		hitSubRange = sk.Params[3] + (lvl-1)*sk.Params[4]
 	}
 
+	// Hit function 7 (Holy Bolt, 0x5a7a40, verified) heals allies by calc1 +
+	// rand(calc2 - calc1) of the skill, in 8.8 fixed point.
+	var healMin, healMax int
+
+	if ms.SrvHitFunc == 7 {
+		healMin, healMax = env.eval(sk.Calc[1])<<8, env.eval(sk.Calc[2])<<8
+	}
+
 	m, err := p.Sim.Create(d2missile.CreateParams{
 		Spec: ms, Owner: p.owner(u), SkillID: sk.ID, Level: lvl, Damage: desc,
-		AreaRadius: areaRadius, HitSubRange: hitSubRange,
+		AreaRadius: areaRadius, HitSubRange: hitSubRange, HealMin: healMin, HealMax: healMax,
 		X: sx, Y: sy, DestX: dx, DestY: dy, Angle: o.angle, Velocity: o.velocity, ClampToDest: o.clamp || sk.Lob,
 		// the missile rolls its pierce charges (stat 0x148) from skill_pierce +
 		// item_pierce at creation (0x59d4e0, verified)

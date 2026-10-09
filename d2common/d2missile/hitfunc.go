@@ -31,6 +31,8 @@ func (s *Sim) hitFunc(m *Missile, t Target) (ret int, ok bool) {
 	case 4:
 		s.spawnHitSub(m, 4)
 		return resKill | resDamage, true
+	case 7:
+		return s.holyBoltHit(m, t), true
 	case 10:
 		return s.guidedHit(m, t), true
 	case 14:
@@ -227,4 +229,80 @@ func (s *Sim) retarget(m *Missile) bool {
 	}
 
 	return false
+}
+
+// Healer is optionally implemented by a Target that Holy Bolt can heal
+// (amount in 8.8 fixed point, clamped to the maximum life by the target).
+type Healer interface{ Heal(amount int) }
+
+// Kinded is optionally implemented by a Target for the class filter of Holy
+// Bolt (sHitPar2): monstats lUndead|hUndead and demon flags (byte +0xd bits
+// 3,4 and 5 of the monstats record, tests 0x63f9e0 / 0x63f990, verified).
+type Kinded interface {
+	IsUndead() bool
+	IsDemon() bool
+}
+
+// holyBoltHit is hit function 7 (0x5a7a40, verified): no target -> 1 (ends).
+// With sHitPar1 != 0 (heals allies) and an owner: an ally of the owner
+// (tests 0x552320 / 0x552d80, taken as "not an enemy": UNVERIFIED detail) is
+// healed by calc1 + rand(calc2 - calc1) of the casting skill (8.8 fixed
+// point, added to life and clamped to max life) and the result is 1: the
+// missile ends WITHOUT damage. Anything else goes through the class filter
+// sHitPar2 (0 all, 1 undead, 2 demons): units that pass return 3 (destroy +
+// damage), others 4 (the bolt flies on); a player passes only for 0, a
+// non unit (missile) never passes.
+func (s *Sim) holyBoltHit(m *Missile, t Target) int {
+	if t == nil {
+		return resKill
+	}
+
+	sp := m.Spec
+
+	if sp.SHitPar[0] != 0 && m.Owner.ID != "" && !s.World.IsEnemy(m.Owner, t) {
+		if h, ok := t.(Healer); ok {
+			amount := m.HealMin
+
+			if span := m.HealMax - m.HealMin; span > 0 && m.Owner.Roller != nil {
+				amount += int(m.Owner.Roller.Roll(int32(span)))
+			}
+
+			if amount > 0 {
+				h.Heal(amount)
+			}
+
+			s.emit(Event{Kind: EventHeal, Missile: m, Target: t, Heal: amount})
+		}
+
+		return resKill
+	}
+
+	pass := func() int { return resKill | resDamage }
+
+	if sp.SHitPar[1] == 0 {
+		return pass()
+	}
+
+	if t.IsPlayer() {
+		return resKeep
+	}
+
+	k, ok := t.(Kinded)
+	if !ok {
+		return resKeep
+	}
+
+	if sp.SHitPar[1] == 2 {
+		if k.IsDemon() {
+			return pass()
+		}
+
+		return resKeep
+	}
+
+	if k.IsUndead() {
+		return pass()
+	}
+
+	return resKeep
 }

@@ -120,6 +120,8 @@ const (
 	// Damage is rolled once and applies to every enemy within Radius subtiles
 	// (squared distance <= Radius^2, verified 0x569510).
 	EventArea EventKind = "area"
+	// EventHeal: Holy Bolt healed an ally (Event.Heal, 8.8 fixed point).
+	EventHeal EventKind = "heal"
 )
 
 // Event is one thing that happened to a missile.
@@ -132,5 +134,6 @@ type Event struct {
 	Chance int // to-hit chance (EventHit / EventMiss), 0 when no roll
 	Roll   int
 	Name   string // explosion missile name (EventExplode)
+	Heal   int    // EventHeal: life healed, 8.8 fixed point
 	Radius int    // EventArea: radius in subtiles
 }
