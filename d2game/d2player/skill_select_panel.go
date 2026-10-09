@@ -270,12 +270,13 @@ func (s *SkillPanel) hover(c *popupCell) {
 // tooltipText is the name, the short description and the level of a skill,
 // and the key it is on.
 func (s *SkillPanel) tooltipText(sk *d2hero.HeroSkill) string {
-	return skillTooltip(s.asset, sk, d2hero.EffectiveSkillLevel(s.hero.Stats, s.hero.Class, sk), s.hero.SkillBar, s.keyName)
+	return skillTooltip(s.asset, sk, d2hero.EffectiveSkillLevel(s.hero.Stats, s.hero.Class, sk), s.hero.SkillBar, s.keyName, s.hero.Skills, s.hero.Stats.Level)
 }
 
 // skillTooltip builds the tooltip of a skill icon (popup and skill tree).
 // level is the effective level (points plus item bonuses, d2hero.EffectiveSkillLevel).
-func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, level int, bar *d2hero.SkillBar, keyName func(int) string) string {
+func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, level int, bar *d2hero.SkillBar, keyName func(int) string,
+	skills map[int]*d2hero.HeroSkill, heroLevel int) string {
 	name := asset.TranslateString(sk.NameKey)
 	if name == "" || name == sk.NameKey {
 		name = sk.Skill
@@ -287,23 +288,29 @@ func skillTooltip(asset *d2asset.AssetManager, sk *d2hero.HeroSkill, level int, 
 		lines = append(lines, short)
 	}
 
-	// "Current Skill Level: " is StrSkill2 of the string tables (the original's wording)
-	levelLabel := asset.TranslateString("StrSkill2")
-	if levelLabel == "" || levelLabel == "StrSkill2" {
-		levelLabel = "Current Skill Level: "
-	}
-
-	lines = append(lines, fmt.Sprintf("%s%d", levelLabel, level))
-
-	// the mana cost at the current level (level 1 for a skill with no points yet)
-	if label := asset.TranslateString(sk.ManaKey); sk.ManaKey != "" && label != sk.ManaKey {
-		lvl := level
-		if lvl < 1 {
-			lvl = 1
+	if sk.SkillRecord != nil && sk.SkillDescriptionRecord != nil && asset.Records != nil {
+		// VERIFIED order (0x4ec180): dsc2 block, "Current Skill Level: n" with
+		// its lines (the mana line is a descline row of kind 1), "Next Level",
+		// synergies. level is the effective level (points plus item bonuses).
+		lines = append(lines, skillDescLines(asset, sk, level, skills, heroLevel)...)
+	} else {
+		// no skilldesc row: the level label and the mana cost only
+		levelLabel := asset.TranslateString(keyCurrentLevel)
+		if levelLabel == "" || levelLabel == keyCurrentLevel {
+			levelLabel = "Current Skill Level: "
 		}
 
-		if line, ok := d2skilldesc.ManaCost(label, sk.SkillRecord.PipelineSkill().ManaCost(lvl)); ok {
-			lines = append(lines, line)
+		lines = append(lines, fmt.Sprintf("%s%d", levelLabel, level))
+
+		if label := asset.TranslateString(sk.ManaKey); sk.ManaKey != "" && label != sk.ManaKey && sk.SkillRecord != nil {
+			lvl := level
+			if lvl < 1 {
+				lvl = 1
+			}
+
+			if line, ok := d2skilldesc.ManaCost(label, sk.SkillRecord.PipelineSkill().ManaCost(lvl)); ok {
+				lines = append(lines, line)
+			}
 		}
 	}
 
