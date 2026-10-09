@@ -316,6 +316,10 @@ func (a *App) Run() (err error) {
 
 	// OD2_AUTOGAME=<save file> skips the menus and starts that character directly.
 	// It exists so changes can be tested without clicking through the UI.
+	if os.Getenv("OD2_AUTOSCRIPT") != "" && os.Getenv("OD2_AUTOGAME") == "" {
+		a.Warning("OD2_AUTOSCRIPT needs OD2_AUTOGAME: the script only runs inside a game")
+	}
+
 	if save := os.Getenv("OD2_AUTOGAME"); save != "" {
 		// a real Diablo II .d2s is imported first, then started like any save
 		if strings.EqualFold(filepath.Ext(save), ".d2s") {

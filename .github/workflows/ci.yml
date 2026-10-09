@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Packages that need neither a display, cgo (ebiten/glfw/oto) nor game data.
+  # Linux only builds and tests these; macOS builds and tests everything.
+  PURE_PKGS: >-
+    ./d2common
+    ./d2common/d2cache/...
+    ./d2common/d2calculation/...
+    ./d2common/d2combat/...
+    ./d2common/d2data/...
+    ./d2common/d2datautils/...
+    ./d2common/d2daynight/...
+    ./d2common/d2enum/...
+    ./d2common/d2fileformats/...
+    ./d2common/d2geom/...
+    ./d2common/d2interface/...
+    ./d2common/d2loader/asset/...
+    ./d2common/d2loader/filesystem/...
+    ./d2common/d2loader/mpq/...
+    ./d2common/d2math/...
+    ./d2common/d2path/...
+    ./d2common/d2resource/...
+    ./d2common/d2trade/...
+    ./d2common/d2util/assets/...
+    ./d2core/d2config
+    ./d2core/d2item
+    ./d2core/d2item/d2drop
+    ./d2core/d2map/d2mapgen/d2wilderness
+    ./d2core/d2stats
+    ./d2networking/d2gs
+    ./d2networking/d2client/d2clientconnectiontype
+    ./d2networking/d2netpacket/d2netpackettype
+    ./d2script
+    ./d2thread
+    ./d2game/d2autoscript
+  # New packages are gofmt-checked; the repo has older unformatted files that
+  # are deliberately left alone. Add new pure packages here.
+  GOFMT_DIRS: >-
+    d2game/d2autoscript
+
+jobs:
+  linux-pure:
+    name: Linux (pure packages)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: gofmt (new packages)
+        run: |
+          out="$(gofmt -l $GOFMT_DIRS)"
+          if [ -n "$out" ]; then echo "gofmt needed:"; echo "$out"; exit 1; fi
+      - name: build
+        run: go build $PURE_PKGS
+      - name: vet
+        run: go vet $PURE_PKGS
+      - name: test
+        run: go test $PURE_PKGS
+
+  macos:
+    name: macOS arm64 (full build)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: gofmt (new packages)
+        run: |
+          out="$(gofmt -l $GOFMT_DIRS)"
+          if [ -n "$out" ]; then echo "gofmt needed:"; echo "$out"; exit 1; fi
+      - name: build
+        run: go build ./...
+      # go vet on the whole tree reports older findings (e.g. in d2app), so
+      # vet only the pure packages here.
+      - name: vet (pure packages)
+        run: go vet $PURE_PKGS
+      # Tests that need game data skip themselves when D2_TABLES etc. are unset.
+      - name: test
+        run: go test ./...

@@ -42,5 +42,24 @@ EOT
   if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in log"; fail=1; fi
 fi
 
+if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
+  step "scripted scenario (walk to Akara, menu opens, inventory panel, exit)"
+  save="${OD2_VERIFY_SAVE:-/tmp/od2-verify-save.d2s}"
+  cmd=/tmp/od2-verify-script.command log=/tmp/od2-verify-script.log
+  cat > $cmd <<EOT
+#!/bin/zsh
+export OD2_AUTOGAME="$save" OD2_AUTOTEST_MUTE=1 OD2_AUTOEXIT=1
+export OD2_AUTOSCRIPT='wait:1;move:npc=Akara;wait:8;expect:log=NPC menu opened;panel:inventory;wait:1;panel:character;wait:1;panel:close;exit'
+/tmp/od2-verify 2>&1 | tee $log
+EOT
+  chmod +x $cmd; rm -f $log
+  open $cmd
+  for i in {1..90}; do sleep 1; pgrep -f /tmp/od2-verify >/dev/null || break; done
+  sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
+  grep -E "AUTOSCRIPT" $log.txt | cut -c1-200
+  grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: scripted scenario did not pass"; fail=1; }
+  if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in scripted log"; fail=1; fi
+fi
+
 echo
 [ $fail -eq 0 ] && echo "ALL CHECKS PASSED" || { echo "SOME CHECKS FAILED"; exit 1; }

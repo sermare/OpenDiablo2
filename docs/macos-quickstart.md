@@ -53,6 +53,38 @@ from a non-GUI shell fails with a Cocoa display error):
 | `OD2_AUTOTEST_MUTE=1` | Do not play sound during the autotest. |
 | `OD2_AUTOEXIT=1` | Quit when the autotest finishes. |
 
+### Scripted scenarios (`OD2_AUTOSCRIPT`)
+
+With `OD2_AUTOGAME` set, `OD2_AUTOSCRIPT` drives the hero without a mouse. It is
+a semicolon-separated list of steps, run a few seconds after the game starts:
+
+| Step | Effect |
+|---|---|
+| `wait:<seconds>` | Pause the script. |
+| `move:<x>,<y>` | Walk to a world position (tile units) through the normal move path. |
+| `move:npc=<name>` | Walk up to an NPC like a click would; its menu opens on arrival. |
+| `cast:<skill>[@x,y]` | Cast a skill by its skills.txt name (target defaults to the hero). |
+| `panel:inventory\|character\|skills\|quest\|close` | Open a panel, or close all. |
+| `say:<command>` | Run an in-game console command. |
+| `expect:log=<substring>` | Fail the run unless the game log already contains it. |
+| `exit` | Finish; with `OD2_AUTOEXIT=1` the process exits 0 on PASS, 1 on FAIL. |
+
+Each step logs `AUTOSCRIPT step N: ...` and the end logs
+`AUTOSCRIPT RESULT PASS` or `AUTOSCRIPT RESULT FAIL`. Example:
+
+```sh
+OD2_AUTOGAME=hero.d2s OD2_AUTOEXIT=1 OD2_AUTOSCRIPT='wait:1;move:npc=Akara;wait:8;expect:log=NPC menu opened;panel:inventory;exit' ./od2
+```
+
+The parser and state machine live in `d2game/d2autoscript` and are unit tested
+without a display.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` builds and tests on macOS arm64 (everything) and on
+Linux (only the packages that need no display or game data, listed in the
+workflow). New pure packages are gofmt-checked via `GOFMT_DIRS`.
+
 ## Real character saves
 
 `d2common/d2fileformats/d2s` reads the header, quests, waypoints, NPC flags,
@@ -63,7 +95,7 @@ turns one into an OpenDiablo2 hero. Items are not imported yet.
 
 `scripts/verify.sh` builds the engine, runs every unit test, runs the real-save
 oracle tests and starts a real `.d2s` character in the game to check the NPC
-menus, then prints `ALL CHECKS PASSED` or what failed. It needs a GUI session.
+menus and a scripted scenario (walk to Akara, open panels), then prints `ALL CHECKS PASSED` or what failed. It needs a GUI session.
 
 ```sh
 D2S_SAMPLE_BODY=/path/to/real.d2s D2S_SAMPLE_BODY_JSON=/path/to/expected.json \

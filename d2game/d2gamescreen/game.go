@@ -93,6 +93,7 @@ func CreateGame(
 	game.Logger = d2util.NewLogger()
 	game.Logger.SetLevel(l)
 	game.Logger.SetPrefix(logPrefix)
+	game.initAutoScript()
 
 	game.soundEnv = d2audio.NewSoundEnvironment(game.soundEngine)
 
@@ -137,6 +138,7 @@ type Game struct {
 	returnGreet          returnGreetings
 	autoTestElapsed      float64
 	autoTestDone         bool
+	autoScript           *autoScriptState
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -249,6 +251,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceDayClock(elapsed)
 	v.advanceNPCInteraction(elapsed)
 	v.advanceAutoTest(elapsed)
+	v.advanceAutoScript(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)

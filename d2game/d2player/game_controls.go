@@ -695,6 +695,46 @@ func (g *GameControls) toggleHelpOverlay() {
 	}
 }
 
+// AutoPanel opens (or closes) a panel by name for OD2_AUTOSCRIPT: inventory,
+// character, skills, quest or close. Opening an already-open panel is a no-op.
+func (g *GameControls) AutoPanel(name string) error {
+	var panel Panel
+
+	switch name {
+	case "close":
+		g.clearScreen()
+		g.updateLayout()
+
+		return nil
+	case "inventory":
+		panel = g.inventory
+	case "character":
+		panel = g.heroStatsPanel
+	case "skills":
+		panel = g.skilltree
+	case "quest":
+		panel = g.questLog
+	default:
+		return fmt.Errorf("unknown panel %q", name)
+	}
+
+	if panel.IsOpen() {
+		return nil
+	}
+
+	if name == "inventory" || name == "skills" {
+		g.openRightPanel(panel)
+	} else {
+		g.openLeftPanel(panel)
+	}
+
+	if !panel.IsOpen() {
+		return fmt.Errorf("panel %q did not open", name)
+	}
+
+	return nil
+}
+
 func (g *GameControls) toggleInventoryPanel() {
 	g.openRightPanel(g.inventory)
 }
