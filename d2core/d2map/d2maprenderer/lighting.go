@@ -58,7 +58,7 @@ type wallKey struct{ x, y, idx int }
 type wallFade struct{ alpha float64 }
 
 func newLighting() *lighting {
-	enabled := strings.TrimSpace(os.Getenv("OD2_LIGHTING")) == "1"
+	enabled := strings.TrimSpace(os.Getenv("OD2_LIGHTING")) != "0"
 
 	return &lighting{
 		enabled: enabled,
@@ -70,7 +70,7 @@ func newLighting() *lighting {
 }
 
 // SetLightingEnabled switches the light map rendering on or off (it defaults
-// to the OD2_LIGHTING=1 environment variable).
+// to on; OD2_LIGHTING=0 turns it off).
 func (mr *MapRenderer) SetLightingEnabled(on bool) { mr.light.enabled = on }
 
 // LightingEnabled reports whether lighting is on.

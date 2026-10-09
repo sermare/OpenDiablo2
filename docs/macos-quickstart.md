@@ -55,6 +55,9 @@ from a non-GUI shell fails with a Cocoa display error):
 | `OD2_AUTOTEST_MUTE=1` | Do not play sound during the autotest. |
 | `OD2_AUTOTRADE=Akara,Charsi` | Open each Act 1 vendor's trade window, log the stock with computed buy prices, run one scripted buy and sell (and a repair for Charsi) with the gold before and after, then restore the gold. `OD2_AUTOTRADE_SEED=<n>` fixes the stock, `OD2_AUTOTRADE_LEVEL=<n>` generates it for that hero level (a high level only gets magic items). |
 | `OD2_AUTOEXIT=1` | Quit when the autotest finishes. |
+| `OD2_AUTOSHOT=<file.png>` | Save the game screen (ebiten image, no OS permission needed) after `OD2_AUTOSHOT_DELAY` seconds (default 10) in the world; with `OD2_AUTOEXIT` it then quits. |
+| `OD2_AUTOTIME=<phase>[@degree]` | Force and freeze the day/night clock: phase 0..5 or `night`, `dawn`, `day`, `afternoon`, `dusk`, `midnight`; `@185` starts that many degrees into the day (128 ticks per degree). |
+| `OD2_LIGHTING=0` | Turn the light map rendering (on by default) off. |
 
 ### Scripted scenarios (`OD2_AUTOSCRIPT`)
 
