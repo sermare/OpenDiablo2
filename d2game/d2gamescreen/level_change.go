@@ -305,6 +305,7 @@ func (v *Game) afterLevelBuilt(from, to int, via string) {
 	v.levels.edgeArmed = false
 	v.scanWarps()
 	v.questArea(to) // the quest system follows the hero between areas
+	v.enterSoundEnv(to)
 	v.restoreCorpse()
 
 	v.Infof("LEVEL built: level %d (%s) via=%s from=%d", to, v.levelName(to), via, from)

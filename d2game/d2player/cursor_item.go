@@ -144,8 +144,12 @@ func (g *Inventory) HandleClick(mx, my int, ctrl bool) bool {
 	switch act {
 	case ClickPickup:
 		g.Infof("picked up %s from the inventory", held.GetItemCode())
+		itemSound(held, "item-pickup")
 	case ClickAuto:
 		g.Infof("auto-placed cursor item at (%d,%d)", x, y)
+		itemSound(g.cursor, "item-drop")
+	case ClickPlace, ClickSwap:
+		itemSound(g.cursor, "item-drop")
 	}
 
 	g.SetCursorItem(held)

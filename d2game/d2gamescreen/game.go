@@ -167,6 +167,7 @@ type Game struct {
 	attackRepathAcc      float64
 	soundTraceSet        bool
 	heroStepAcc          float64
+	speech               *d2audio.Sound // the NPC voice line playing, if any
 	ambientTest          *ambientTest
 	regionEnvs           map[int]int
 	autoPanel            autoPanelState
@@ -366,7 +367,7 @@ func (v *Game) Advance(elapsed float64) error {
 			if tile != nil {
 				levelDetails := v.asset.Records.Level.Details[int(tile.RegionType)]
 				if v.ambientTest == nil { // OD2_AUTOAMBIENT picks the environment itself
-					v.soundEnv.SetEnv(v.soundEnvForRegion(tile.RegionType, levelDetails.SoundEnvironmentID))
+					v.soundEnv.SetEnv(v.soundEnvForHero(tile.RegionType, levelDetails.SoundEnvironmentID))
 				}
 
 				// skip showing zone change text the first time we enter the world
@@ -410,6 +411,8 @@ func (v *Game) Advance(elapsed float64) error {
 }
 
 func (v *Game) bindGameControls() error {
+	d2player.SetItemSoundHook(v.onItemSound)
+
 	for _, player := range v.gameClient.Players {
 		if player.ID() != v.gameClient.PlayerID {
 			continue

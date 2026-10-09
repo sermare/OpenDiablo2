@@ -249,6 +249,14 @@ func (v *Game) onMonsterKilled(ev d2monsters.KillEvent) {
 		}
 
 		r.g.SyncDenMonsters(alive)
+
+		if alive == 0 {
+			v.playStinger(denStinger, "den of evil cleared")
+		}
+	}
+
+	if h, ok := questStingers[ev.Label]; ok && ev.ByHero {
+		v.playStinger(h, "killed "+ev.Label)
 	}
 
 	super := ""
