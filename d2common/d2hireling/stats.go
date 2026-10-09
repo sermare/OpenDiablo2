@@ -1,8 +1,16 @@
 package d2hireling
 
-// MaxLevel is the highest merc level (experience.txt has 99 levels; the exe
-// uses table size - 1, so 98 or 99: U which).
-const MaxLevel = 99
+// MaxLevel is the highest merc level reachable by gaining experience, 98 (V,
+// Game.exe: experience.txt "MaxLvl" row of class 0 = 99 is kept in
+// DAT_009648e8; MERC_AwardExperience 0x57c860 gives nothing at level >= 98
+// and its level-up loop stops at 98; MERC_SetLevelStats 0x570690 sets the
+// next-level experience to 0 from level 98 on).
+const MaxLevel = 98
+
+// MaxLoadLevel is the highest level a save can load at: the d2s loader
+// (0x568730) scans levels while level+1 <= 99, so a merc with enough stored
+// experience loads at 99 although it can never earn that level (V).
+const MaxLoadLevel = 99
 
 const (
 	minHP        = 40 // V
@@ -62,24 +70,41 @@ func (r *Record) StatsAt(level int) Stats {
 	return s
 }
 
-// LevelFromExp derives the merc level from experience (the d2s does not store
-// it): the highest level L whose threshold, with the ExpPerLvl of the row
-// valid at L, is <= exp. Minimum 1. U: the exe scans the rows the same way
-// but its off-by-one at the boundary was not traced.
+// LevelFromExp derives the merc level from experience when a save loads (the
+// d2s does not store it), as MERC_LoadFromD2sHeader 0x568730 does (V): start
+// at level 1 and step to level+1 while level+1 <= MaxLoadLevel and the
+// threshold of level+1, computed with the ExpPerLvl of the row valid at the
+// CURRENT level, is <= exp. Minimum 1.
 func (t *Table) LevelFromExp(id int, exp uint32) int {
 	level := 1
 
-	for l := 2; l <= MaxLevel; l++ {
-		r := t.Find(id, l)
-		if r == nil {
-			return level
-		}
-
-		if ExpThreshold(l, r.ExpPerLvl) > int64(exp) {
+	for level+1 <= MaxLoadLevel {
+		r := t.Find(id, level)
+		if r == nil || ExpThreshold(level+1, r.ExpPerLvl) > int64(exp) {
 			break
 		}
 
-		level = l
+		level++
+	}
+
+	return level
+}
+
+// LevelAfterGain is the level-up loop of MERC_AwardExperience 0x57c860 (V):
+// from level, the ExpPerLvl of the row valid at the STARTING level is used for
+// every step, and the loop never goes past MaxLevel (98).
+func (t *Table) LevelAfterGain(id, level int, exp uint32) int {
+	r := t.Find(id, level)
+	if r == nil {
+		return level
+	}
+
+	for n := level + 1; n <= MaxLevel; n++ {
+		if ExpThreshold(n, r.ExpPerLvl) > int64(exp) {
+			break
+		}
+
+		level = n
 	}
 
 	return level

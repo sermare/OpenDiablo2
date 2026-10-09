@@ -543,8 +543,16 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 		}
 	}
 
-	if k := d.killer; k != nil {
+	// VERIFIED (0x57c990): the owner's merc is credited for every kill the owner
+	// gets; a merc that made the kill itself gets the full amount, otherwise
+	// xp * 0x56 >> 8 (86/256). The caller then doubles it (creditMerc).
+	// ENGINE CHOICE: a dead merc is not credited (it would heal on level-up).
+	if k := d.killer; k != nil && k.merc != nil {
 		d.creditMerc(k.merc, k, xp)
+	} else if src != nil {
+		if mu := d.mercs[src]; mu != nil && mu.merc != nil && mu.m.Alive() {
+			d.creditMerc(mu.merc, mu, xp*mercSharePct256>>8)
+		}
 	}
 
 	d.emit("death", "MONSTER death name=%s id=%d by=%s xp=%d", u.m.Label(), u.b.ID, by, xp)

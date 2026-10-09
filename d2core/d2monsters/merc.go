@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2hireling"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
@@ -22,9 +23,14 @@ const mercTargetBase = 1 << 16
 const buffSeconds = 120
 
 // mercExpMultiplier is the multiplier on a kill's experience a merc receives
-// (hirelings.md: "exp += 2 * killExp", the multiplier is a register argument:
-// UNVERIFIED).
+// (VERIFIED, MERC_AwardExperience 0x57c860: exp += 2 * gain, where gain is the
+// merc's own pipeline result, times 86/256 when the merc did not make the
+// kill; the caller 0x57c990 passes it in EAX).
 const mercExpMultiplier = 2
+
+// mercSharePct256 is the share (in 1/256) of a kill the merc did not make
+// itself that it is credited (IMUL 0x56, SAR 8 at 0x57ca2d, VERIFIED).
+const mercSharePct256 = 0x56
 
 // MercSave is the persistent part of a mercenary (the d2s header fields).
 type MercSave struct {
@@ -506,6 +512,12 @@ func (d *Director) mercStrike(u *unit, mode d2monster.Mode) {
 	d.emit("merc", "MERC attack name=%s id=%08x target=%s mode=%s hit=true chance=%d roll=%d dmg=%d", u.m.Label(), mu.save.ID,
 		tu.m.Label(), mode, chance, roll, dmg)
 
+	// VERIFIED (0x579d70): hireling hits on a boss record are scaled by the
+	// difficulty's HireableBossDamagePercent.
+	if tu.m.Stat != nil && tu.m.Stat.IsSpecialBoss {
+		dmg = d2hireling.BossDamage(dmg, d2difficulty.Default.Row(d2difficulty.Level(d.opt.Difficulty)).HireableBossDamagePercent)
+	}
+
 	d.killer = u
 	d.damage(tu, mu.owner, dmg)
 	d.killer = nil
@@ -599,7 +611,7 @@ func (d *Director) creditMerc(mu *mercUnit, u *unit, xp int) {
 
 	mu.save.Experience += uint32(xp * mercExpMultiplier)
 
-	nl := d.hire.LevelFromExp(int(mu.save.Type), mu.save.Experience)
+	nl := d.hire.LevelAfterGain(int(mu.save.Type), mu.level, mu.save.Experience)
 	d.emit("merc", "MERC exp name=%s id=%08x gained=%d exp=%d", u.m.Label(), mu.save.ID, xp*mercExpMultiplier, mu.save.Experience)
 
 	if nl > mu.level {

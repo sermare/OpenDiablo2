@@ -186,6 +186,13 @@ func (v *Game) offerLine(o d2hireling.Offer) string {
 func (v *Game) openHire(npc d2interface.MapEntity) {
 	seller := v.npcClassID(npc)
 
+	if seller == d2hireling.SellerTyrael && v.localPlayer != nil && v.monsters != nil {
+		// Tyrael (0x16f) is on the revive allow-list of 0x577a10 but sells no mercs
+		v.openRevive(npc)
+
+		return
+	}
+
 	o := v.offerTable(seller)
 	if o == nil || v.localPlayer == nil {
 		v.Infof("NPC menu: Hire at %q has no offers (class %d)", npc.Label(), seller)
@@ -227,9 +234,35 @@ func (v *Game) openHire(npc d2interface.MapEntity) {
 	}
 }
 
+// openRevive shows only the revive row (Tyrael).
+func (v *Game) openRevive(npc d2interface.MapEntity) {
+	info, ok := v.monsters.Merc(v.localPlayer)
+	if !ok || !info.Save.Dead {
+		v.Infof("NPC menu: %q has no dead mercenary to revive", npc.Label())
+
+		return
+	}
+
+	rows := []d2player.NPCMenuRow{{
+		Fallback: fmt.Sprintf("Revive %s  %dg", v.mercDisplayName(info.Rec, int(info.Save.NameID)), info.ReviveCost),
+		Action:   d2player.NPCActionReviveMerc,
+	}}
+
+	v.gameControls.NPCMenu.Open(npc.Label(), rows, 0, 0, func(row d2player.NPCMenuRow) {
+		v.onHireChoice(d2hireling.SellerTyrael, row)
+	})
+	v.anchorNPCMenu(v.gameControls.NPCMenu, npc)
+}
+
 func (v *Game) onHireChoice(seller int, row d2player.NPCMenuRow) {
 	switch row.Action {
 	case d2player.NPCActionHireOffer:
+		if !v.hireGateOpen(seller) {
+			v.Infof("MERC hire refused: quest gate of seller %d (HIRE_ProcessHireOffer)", seller)
+
+			break
+		}
+
 		if err := v.hireOffer(seller, row.StringID); err != nil {
 			v.Infof("MERC hire failed: %v", err)
 		}
@@ -243,6 +276,19 @@ func (v *Game) onHireChoice(seller int, row d2player.NPCMenuRow) {
 
 	v.gameControls.NPCMenu.Close()
 	v.npcTarget = nil
+}
+
+// hireGateOpen is the quest gate of HIRE_ProcessHireOffer (VERIFIED): Qual-Kehk
+// needs Rescue on Mount Arreat done, Kashya needs Sisters' Burial Grounds done
+// for heroes below level 8, both read from the quest record of the game
+// difficulty. The OD2_AUTOMERC scenario calls hireOffer directly and skips it.
+func (v *Game) hireGateOpen(seller int) bool {
+	p := v.localPlayer
+	rt := v.quests()
+
+	return d2hireling.HireAllowed(seller, v.mercDifficulty()-1, p.Stats.Level, func(slot int) bool {
+		return rt != nil && rt.g != nil && rt.g.Rec != nil && rt.g.Rec.Get(slot, 0)
+	})
 }
 
 // hireOffer pays for and spawns the merc of an offer slot (HIRE_ProcessHireOffer:

@@ -84,7 +84,7 @@ type MercState struct {
 
 // MercFromHeader converts the d2s header fields; nil when there is no merc.
 func MercFromHeader(m d2s.Mercenary) *MercState {
-	if m.ID == 0 {
+	if !m.Exists() {
 		return nil
 	}
 
