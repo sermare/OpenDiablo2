@@ -219,4 +219,6 @@ func (h autoScriptHost) Hotkey(key, skill string) error {
 	return h.v.gameControls.AutoHotkey(key, skill)
 }
 
+func (h autoScriptHost) Click(spec string) error { return h.v.gameControls.AutoClick(spec) }
+
 func (h autoScriptHost) Press(key string) error { return h.v.gameControls.AutoPress(key) }

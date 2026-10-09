@@ -660,6 +660,10 @@ func (menu *KeyBindingMenu) onDefaultClicked() error {
 
 	menu.changesToBeSaved = make(map[d2enum.GameEvent]*bindingChange)
 
+	if err := menu.keyMap.SaveBindings(); err != nil {
+		menu.Errorf("could not save the key bindings: %v", err)
+	}
+
 	return menu.clearSelection()
 }
 
@@ -670,6 +674,12 @@ func (menu *KeyBindingMenu) onAcceptClicked() error {
 	}
 
 	menu.changesToBeSaved = make(map[d2enum.GameEvent]*bindingChange)
+
+	if err := menu.keyMap.SaveBindings(); err != nil {
+		menu.Errorf("could not save the key bindings: %v", err)
+	} else {
+		menu.Infof("KEYS saved %d events to the configuration", len(menu.keyMap.ExportBindings()))
+	}
 
 	return menu.clearSelection()
 }

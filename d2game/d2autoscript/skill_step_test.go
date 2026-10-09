@@ -5,6 +5,21 @@ import (
 	"testing"
 )
 
+func TestParseClickStep(t *testing.T) {
+	for _, spec := range []string{"click:left", "click:right", "click:left+shift@400,300", "click:left+ctrl"} {
+		steps, err := Parse(spec)
+		if err != nil || steps[0].Kind != KindClick {
+			t.Fatalf("%s: %v %+v", spec, err, steps)
+		}
+	}
+
+	for _, spec := range []string{"click", "click:", "click:middle", "click:up"} {
+		if _, err := Parse(spec); err == nil {
+			t.Fatalf("%s: want an error", spec)
+		}
+	}
+}
+
 func TestParseSkillSteps(t *testing.T) {
 	tests := []struct {
 		spec    string

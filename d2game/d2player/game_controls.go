@@ -3,6 +3,7 @@ package d2player
 import (
 	"fmt"
 	"math/rand"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -475,6 +476,8 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 		g.belt.Toggle()
 	case d2enum.ToggleAutomap:
 		g.automap.Toggle()
+	case d2enum.HoldShowGroundItems:
+		g.hud.showItems = true
 	case d2enum.UseBeltSlot1, d2enum.UseBeltSlot2, d2enum.UseBeltSlot3, d2enum.UseBeltSlot4:
 		g.UseBeltColumn(int(gameEvent - d2enum.UseBeltSlot1))
 	case d2enum.UseSkill1, d2enum.UseSkill2, d2enum.UseSkill3, d2enum.UseSkill4,
@@ -495,6 +498,10 @@ func (g *GameControls) OnKeyUp(event d2interface.KeyEvent) bool {
 
 	if gameEvent == d2enum.HoldRun {
 		g.hud.onToggleRunButton(true)
+	}
+
+	if gameEvent == d2enum.HoldShowGroundItems {
+		g.hud.showItems = false
 	}
 
 	return false
@@ -540,7 +547,7 @@ func (g *GameControls) OnMouseButtonRepeat(event d2interface.MouseEvent) bool {
 	py = truncateFloat64(py)
 
 	now := d2util.Now()
-	button := event.Button()
+	button := g.effectiveButton(event)
 	isLeft := button == d2enum.MouseButtonLeft
 	isRight := button == d2enum.MouseButtonRight
 	lastLeft := now - g.lastLeftBtnActionTime
@@ -548,8 +555,9 @@ func (g *GameControls) OnMouseButtonRepeat(event d2interface.MouseEvent) bool {
 	inRect := !g.isInActiveMenusRect(event.X(), event.Y())
 	shouldDoLeft := lastLeft >= mouseBtnActionsThreshold
 	shouldDoRight := lastRight >= mouseBtnActionsThreshold
+	standStill := event.KeyMod()&d2enum.KeyModShift != 0
 
-	if isLeft && (g.hoveredNPC() != nil || g.hoveredWorldThing() != nil) && event.KeyMod() != d2enum.KeyModShift {
+	if isLeft && (g.hoveredNPC() != nil || g.hoveredWorldThing() != nil) && !standStill {
 		return true
 	}
 
@@ -560,31 +568,18 @@ func (g *GameControls) OnMouseButtonRepeat(event d2interface.MouseEvent) bool {
 	if isLeft && shouldDoLeft && inRect && !g.hero.IsCasting() {
 		g.lastLeftBtnActionTime = now
 
-		if mon := g.hoveredMonster(); mon != nil && event.KeyMod() != d2enum.KeyModShift {
-			g.inputListener.OnPlayerAttack(mon)
-			return true
-		}
-
-		if event.KeyMod() == d2enum.KeyModShift {
-			g.UseActiveSkill(true, px, py)
-		} else {
-			g.inputListener.OnPlayerMove(px, py)
-		}
+		g.worldClick(button, event.KeyMod(), px, py)
 
 		if g.FreeCam {
-			if event.Button() == d2enum.MouseButtonLeft {
-				camVect := g.mapRenderer.Camera.GetPosition().Vector
+			camVect := g.mapRenderer.Camera.GetPosition().Vector
 
-				x := float64(halfScreenWidth) / subtilesPerTile
-				y := float64(halfScreenHeight) / subtilesPerTile
+			x := float64(halfScreenWidth) / subtilesPerTile
+			y := float64(halfScreenHeight) / subtilesPerTile
 
-				targetPosition := d2vector.NewPositionTile(x, y)
-				targetPosition.Add(&camVect)
+			targetPosition := d2vector.NewPositionTile(x, y)
+			targetPosition.Add(&camVect)
 
-				g.mapRenderer.SetCameraTarget(&targetPosition)
-
-				return true
-			}
+			g.mapRenderer.SetCameraTarget(&targetPosition)
 		}
 
 		return true
@@ -593,12 +588,46 @@ func (g *GameControls) OnMouseButtonRepeat(event d2interface.MouseEvent) bool {
 	if isRight && shouldDoRight && inRect && !g.hero.IsCasting() {
 		g.lastRightBtnActionTime = now
 
-		g.UseActiveSkill(false, px, py)
+		g.worldClick(button, event.KeyMod(), px, py)
 
 		return true
 	}
 
 	return true
+}
+
+// effectiveButton is the button a click counts as (Control+click is the right
+// button on macOS) - except while an item is on the cursor, when Control+click
+// still drops it.
+func (g *GameControls) effectiveButton(event d2interface.MouseEvent) d2enum.MouseButton {
+	if g.inventory.CursorItem() != nil {
+		return event.Button()
+	}
+
+	return EffectiveButton(event.Button(), event.KeyMod(), runtime.GOOS)
+}
+
+// worldClick performs a click on the game world (see ResolveWorldClick for the rules).
+func (g *GameControls) worldClick(button d2enum.MouseButton, mod d2enum.KeyMod, px, py float64) {
+	in := WorldClickInput{Button: button, Mod: mod, OverMonster: g.hoveredMonster() != nil}
+	if g.hero.LeftSkill != nil {
+		in.LeftSkillID = g.hero.LeftSkill.ID
+	}
+
+	act := ResolveWorldClick(in)
+	g.Infof("INPUT world-click button=%d mod=%d action=%s left_skill=%d", button, mod, act, in.LeftSkillID)
+
+	switch act {
+	case WorldAttack:
+		g.inputListener.OnPlayerAttack(g.hoveredMonster())
+	case WorldMove:
+		g.inputListener.OnPlayerMove(px, py)
+	case WorldCastLeft, WorldStandStill:
+		g.UseActiveSkill(true, px, py)
+	case WorldCastRight:
+		g.UseActiveSkill(false, px, py)
+	case WorldNone:
+	}
 }
 
 // OnMouseMove handles mouse movement events
@@ -754,7 +783,10 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 		return true
 	}
 
-	if event.Button() == d2enum.MouseButtonLeft && !g.isInActiveMenusRect(mx, my) && g.inventory.CursorItem() != nil {
+	button := g.effectiveButton(event)
+	standStill := event.KeyMod()&d2enum.KeyModShift != 0
+
+	if button == d2enum.MouseButtonLeft && !g.isInActiveMenusRect(mx, my) && g.inventory.CursorItem() != nil {
 		// clicking the world with an item on the cursor drops it (packet 0x17)
 		g.lastLeftBtnActionTime = d2util.Now()
 		item := g.inventory.CursorItem()
@@ -764,32 +796,28 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 		return true
 	}
 
-	if event.Button() == d2enum.MouseButtonLeft && !g.isInActiveMenusRect(mx, my) && !g.hero.IsCasting() {
+	if button == d2enum.MouseButtonLeft && !g.isInActiveMenusRect(mx, my) && !g.hero.IsCasting() {
 		g.lastLeftBtnActionTime = d2util.Now()
 
-		if npc := g.hoveredNPC(); npc != nil && event.KeyMod() != d2enum.KeyModShift {
+		if npc := g.hoveredNPC(); npc != nil && !standStill {
 			g.inputListener.OnPlayerInteract(npc)
 			return true
 		}
 
-		if thing := g.hoveredWorldThing(); thing != nil && event.KeyMod() != d2enum.KeyModShift {
+		if thing := g.hoveredWorldThing(); thing != nil && !standStill {
 			g.inputListener.OnPlayerInteract(thing)
 			return true
 		}
 
-		if event.KeyMod() == d2enum.KeyModShift {
-			g.UseActiveSkill(true, px, py)
-		} else {
-			g.inputListener.OnPlayerMove(px, py)
-		}
+		g.worldClick(button, event.KeyMod(), px, py)
 
 		return true
 	}
 
-	if event.Button() == d2enum.MouseButtonRight && !g.isInActiveMenusRect(mx, my) && !g.hero.IsCasting() {
+	if button == d2enum.MouseButtonRight && !g.isInActiveMenusRect(mx, my) && !g.hero.IsCasting() {
 		g.lastRightBtnActionTime = d2util.Now()
 
-		g.UseActiveSkill(false, px, py)
+		g.worldClick(button, event.KeyMod(), px, py)
 
 		return true
 	}
@@ -1279,6 +1307,11 @@ func (g *GameControls) onClickActionable(item actionableType) {
 
 func (g *GameControls) bindTerminalCommands(term d2interface.Terminal) error {
 	if err := term.Bind("freecam", "toggle free camera movement", nil, g.commandFreeCam); err != nil {
+		return err
+	}
+
+	if err := term.Bind("bindkey", "bind a key to a game event and save it, e.g. bindkey ToggleInventoryPanel X",
+		[]string{"event", "key"}, g.commandBindKey(term)); err != nil {
 		return err
 	}
 

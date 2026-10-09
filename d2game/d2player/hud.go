@@ -102,6 +102,7 @@ type HUD struct {
 	experienceTooltip  *d2ui.Tooltip
 	nameLabel          *d2ui.Label
 	hoveredEntity      d2interface.MapEntity
+	showItems          bool // the show-items key (Alt/Option) is held: label every ground item
 	healthGlobe        *globeWidget
 	manaGlobe          *globeWidget
 	widgetStamina      *d2ui.CustomWidget
@@ -588,6 +589,10 @@ func (h *HUD) renderForSelectableEntitiesHovered(target d2interface.Surface) {
 
 	h.hoveredEntity = nil
 
+	if h.showItems {
+		h.renderAllItemLabels(target)
+	}
+
 	for entityIdx := range h.mapEngine.Entities() {
 		entity := (h.mapEngine.Entities())[entityIdx]
 		if !entity.Selectable() {
@@ -622,6 +627,28 @@ func (h *HUD) renderForSelectableEntitiesHovered(target d2interface.Surface) {
 
 			break
 		}
+	}
+}
+
+// renderAllItemLabels draws the name of every ground item (the Alt / Option "show items" key).
+func (h *HUD) renderAllItemLabels(target d2interface.Surface) {
+	for _, entity := range h.mapEngine.Entities() {
+		if _, ok := entity.(*d2mapentity.Item); !ok {
+			continue
+		}
+
+		sx, sy := h.mapRenderer.WorldToScreenF(entity.GetPositionF())
+		if sx < 0 || sy < 0 || sx > screenWidth || sy > screenHeight {
+			continue
+		}
+
+		_, entityHeight := entity.GetSize()
+		pos := entity.GetPosition()
+		off := pos.RenderOffset()
+
+		h.nameLabel.SetText(entity.Label())
+		h.nameLabel.SetPosition(int(sx)-int(off.X()), int(sy)-int(off.Y())-entityHeight-hoverLabelOuterPad)
+		h.nameLabel.Render(target)
 	}
 }
 

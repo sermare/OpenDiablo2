@@ -38,6 +38,10 @@ const (
 	KindHotkey Kind = "hotkey"
 	// KindPress presses a skill hotkey: press:F1.
 	KindPress Kind = "press"
+	// KindClick sends a mouse click through the game's input handlers:
+	// click:<left|right>[+shift][+ctrl][+alt][@x,y] (screen pixels of the 800x600 screen).
+	// press:<Key> likewise presses any key by name (Tab, I, Escape, F1...).
+	KindClick Kind = "click"
 	// KindWaitLog waits (up to WaitLogTimeout game seconds) until the game log
 	// contains the text, then goes on; a timeout fails the step. It lets two
 	// processes of a network game run a scenario in step: waitlog:<substring>.
@@ -138,6 +142,12 @@ type SkillHost interface {
 	Hotkey(key, skill string) error
 	// Press presses the hotkey ("F1").
 	Press(key string) error
+}
+
+// ClickHost is implemented by hosts that support the click step.
+type ClickHost interface {
+	// Click sends the click described by spec (see KindClick).
+	Click(spec string) error
 }
 
 // LootHost is implemented by hosts that can pick up ground items.
@@ -276,6 +286,10 @@ func parseStep(raw string) (Step, error) {
 		}
 
 		s.Op = arg
+	case KindClick:
+		if b := strings.ToLower(arg); !strings.HasPrefix(b, "left") && !strings.HasPrefix(b, "right") {
+			return s, errors.New("click needs <left|right>[+shift|ctrl|alt][@x,y]")
+		}
 	case KindAutomap:
 		s.Arg = strings.ToLower(arg)
 		if !contains(AutomapModes, s.Arg) {
@@ -587,6 +601,13 @@ func (r *Runner) run(s Step) error {
 		}
 
 		return lh.Use(s.Arg)
+	case KindClick:
+		ch, ok := r.host.(ClickHost)
+		if !ok {
+			return errors.New("host does not support click")
+		}
+
+		return ch.Click(s.Arg)
 	case KindSkill, KindHotkey, KindPress:
 		sh, ok := r.host.(SkillHost)
 		if !ok {

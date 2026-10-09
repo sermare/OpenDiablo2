@@ -38,10 +38,15 @@ type Renderer struct {
 	renderCallback
 	*d2util.GlyphPrinter
 	lastRenderError error
+	fullscreenHook  func(bool)
 }
 
 // Update calls the game's logical update function (the `Advance` method)
 func (r *Renderer) Update() error {
+	if err := r.handleWindowShortcuts(); err != nil {
+		return err
+	}
+
 	if r.updateCallback == nil {
 		return errors.New("no update callback defined for ebiten renderer")
 	}
@@ -114,7 +119,12 @@ func (r *Renderer) Run(f renderCallback, u updateCallback, width, height int, ti
 	ebiten.SetWindowResizable(true)
 	ebiten.SetWindowSize(width, height)
 
-	return ebiten.RunGame(r)
+	err := ebiten.RunGame(r)
+	if errors.Is(err, errQuit) {
+		return nil
+	}
+
+	return err
 }
 
 // CreateSurface creates a renderer surface from an existing surface
