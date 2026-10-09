@@ -454,8 +454,16 @@ type castOpts struct {
 }
 
 func (p *Pipeline) owner(u Unit) d2missile.Owner {
-	return d2missile.Owner{ID: u.ID(), IsPlayer: u.IsPlayer(), Level: u.Level(), AttackRating: u.AttackRating(),
+	o := d2missile.Owner{ID: u.ID(), IsPlayer: u.IsPlayer(), Level: u.Level(), AttackRating: u.AttackRating(),
 		Roller: u.Roller()}
+
+	// A unit that can die reports it, so missiles that need a living owner
+	// (SrvDoFunc 6 and 7, verified 0x5ac1b0 / 0x5ac2c0) end with it.
+	if g, ok := u.(interface{ Gone() bool }); ok {
+		o.Gone = g.Gone
+	}
+
+	return o
 }
 
 var masteryStat = map[string]string{

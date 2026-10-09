@@ -622,3 +622,14 @@ func (d *Director) dropLoot(u *unit) {
 	d.emit("drop", "MONSTER drop name=%s tc=%q ilvl=%d items=%d [%s]", u.m.Label(), tc, level, len(loot.Entries),
 		strings.Join(names, ", "))
 }
+
+// UnitID is the monster's numeric unit id (the brain id, assigned in spawn
+// order from 1), the key the game's target picks order by; 0 for an unknown
+// monster.
+func (d *Director) UnitID(m *d2mapentity.Monster) uint32 {
+	if u := d.byEntity[m.ID()]; u != nil {
+		return u.b.ID
+	}
+
+	return 0
+}

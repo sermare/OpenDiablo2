@@ -1,6 +1,11 @@
 package d2missile
 
-import "math"
+import (
+	"math"
+	"sort"
+
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+)
 
 // Serial is optionally implemented by a Target: its unit id (unit+0xc in the
 // exe). Guided Arrow re-targeting prefers the lowest (verified 0x569a40).
@@ -33,7 +38,8 @@ func lowestSerial(ts []Target) Target {
 			id = sr.Serial()
 		}
 
-		if best == nil || (id != 0 && (bestID == 0 || id < bestID)) {
+		// the callback keeps the lowest id and, on a tie, the later one
+		if best == nil || (id != 0 && (bestID == 0 || id <= bestID)) {
 			best, bestID = t, id
 		}
 	}
@@ -71,4 +77,57 @@ func targetSize(t Target) int {
 	}
 
 	return 0
+}
+
+// Candidate is a unit offered to Scan: a living enemy the caller already
+// filtered for type, town and targetable flags.
+type Candidate struct {
+	Target Target
+	X, Y   int // integer subtile position
+}
+
+// Scan is the geometric part of the exe's unit scan (0x569510 with the
+// filter 0x569100, verified): candidates whose subtile position is within
+// radius subtiles (euclidean, squared compare) of the integer cell of
+// (x, y) and in line of sight of the owner (no wall bit 4 on the line from
+// the owner's cell to the candidate), ordered by unit id (lowest first).
+// Dead targets are dropped. owner is the owner's subtile.
+func Scan(g d2path.Grid, owner d2path.Point, x, y float64, radius int, cs []Candidate) []Target {
+	cx, cy := int(math.Floor(x)), int(math.Floor(y))
+	r2 := radius * radius
+
+	var picked []Candidate
+
+	for _, c := range cs {
+		if c.Target == nil || !c.Target.Alive() {
+			continue
+		}
+
+		if (c.X-cx)*(c.X-cx)+(c.Y-cy)*(c.Y-cy) > r2 {
+			continue
+		}
+
+		if clear, _ := d2path.TraceLine(g, d2path.FlagWall, owner, d2path.Point{X: c.X, Y: c.Y}); !clear {
+			continue
+		}
+
+		picked = append(picked, c)
+	}
+
+	serial := func(t Target) int {
+		if sr, ok := t.(Serial); ok {
+			return sr.Serial()
+		}
+
+		return 0
+	}
+
+	sort.SliceStable(picked, func(i, j int) bool { return serial(picked[i].Target) < serial(picked[j].Target) })
+
+	out := make([]Target, len(picked))
+	for i, c := range picked {
+		out[i] = c.Target
+	}
+
+	return out
 }
