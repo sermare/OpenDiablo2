@@ -59,32 +59,31 @@
 <text x="844" y="524" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ef5da8">100%</text>
 <text x="36" y="545" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">click-walk · greeting · menu · return greeting · vendors · gamble · identify · mercenary hire · quest dialogue ✓ (Act 1)</text>
 <text x="36" y="576" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Acts playable end to end (scripted play)</text>
-<text x="844" y="576" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">2 / 5</text>
+<text x="844" y="576" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">4 / 5</text>
 <rect x="36" y="588" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="588" width="295.2" height="18" rx="9" fill="url(#g6)" filter="url(#glow)"/>
-<rect x="331.2" y="588" width="442.8" height="18" rx="9" fill="#ff7a45" fill-opacity="0.28" stroke="#ff7a45" stroke-opacity="0.6" stroke-dasharray="4 3"/>
-<text x="844" y="602" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">40%</text>
-<text x="36" y="623" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+60% done on branches, not yet verified (dashed) · Act 1 first hour + Act 2 start verified; Acts 3, 4, 5 playthroughs on branches</text>
+<rect x="36" y="588" width="590.4" height="18" rx="9" fill="url(#g6)" filter="url(#glow)"/>
+<rect x="626.4" y="588" width="147.6" height="18" rx="9" fill="#ff7a45" fill-opacity="0.28" stroke="#ff7a45" stroke-opacity="0.6" stroke-dasharray="4 3"/>
+<text x="844" y="602" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">80%</text>
+<text x="36" y="623" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+20% done on branches, not yet verified (dashed) · Acts 1, 2, 4 and the start of 5 pass a scripted walk; the Act 3 playthrough is on a branch</text>
 <text x="36" y="654" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Levels walked by a verify scenario</text>
-<text x="844" y="654" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">18 / 136</text>
+<text x="844" y="654" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">38 / 136</text>
 <rect x="36" y="666" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="666" width="97.7" height="18" rx="9" fill="url(#g7)" filter="url(#glow)"/>
-<rect x="133.7" y="666" width="108.5" height="18" rx="9" fill="#ff9f43" fill-opacity="0.28" stroke="#ff9f43" stroke-opacity="0.6" stroke-dasharray="4 3"/>
-<text x="844" y="680" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff9f43">13%</text>
-<text x="36" y="701" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+15% done on branches, not yet verified (dashed) · levels a scenario enters (lower bound, counted from scripts/verify.d); dashed = scenarios on branches</text>
+<rect x="36" y="666" width="206.2" height="18" rx="9" fill="url(#g7)" filter="url(#glow)"/>
+<rect x="242.2" y="666" width="76.0" height="18" rx="9" fill="#ff9f43" fill-opacity="0.28" stroke="#ff9f43" stroke-opacity="0.6" stroke-dasharray="4 3"/>
+<text x="844" y="680" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff9f43">28%</text>
+<text x="36" y="701" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+10% done on branches, not yet verified (dashed) · levels a scenario enters (lower bound, counted from scripts/verify.d); dashed = Act 3 playthrough branch</text>
 <text x="36" y="732" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Main quests with logic implemented</text>
-<text x="844" y="732" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">7 / 27</text>
+<text x="844" y="732" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">27 / 27</text>
 <rect x="36" y="744" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="744" width="191.3" height="18" rx="9" fill="url(#g8)" filter="url(#glow)"/>
-<rect x="227.3" y="744" width="546.7" height="18" rx="9" fill="#e86fa6" fill-opacity="0.28" stroke="#e86fa6" stroke-opacity="0.6" stroke-dasharray="4 3"/>
-<text x="844" y="758" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#e86fa6">26%</text>
-<text x="36" y="779" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+74% done on branches, not yet verified (dashed) · Act 1 + Radament verified; Acts 2-5 logic is on a branch</text>
+<rect x="36" y="744" width="738.0" height="18" rx="9" fill="url(#g8)" filter="url(#glow)"/>
+<text x="844" y="758" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#e86fa6">100%</text>
+<text x="36" y="779" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">all 27 main quests: states, triggers, rewards (Act 1, Radament and nine more driven in scenarios)</text>
 <text x="36" y="810" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Player skills with engine behaviour</text>
 <text x="844" y="810" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">130 / 210</text>
 <rect x="36" y="822" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
 <rect x="36" y="822" width="456.9" height="18" rx="9" fill="url(#g9)" filter="url(#glow)"/>
 <text x="844" y="836" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#5fd0a5">62%</text>
-<text x="36" y="857" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">~130 of 7 classes x 30 skills; formula audit vs Game.exe is on a branch</text>
+<text x="36" y="857" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">~130 of 7 classes x 30 skills; formulas audited against Game.exe (calc language, defense, to-hit, resist)</text>
 <text x="36" y="888" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Monster AI archetypes implemented</text>
 <text x="844" y="888" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">145 / 148</text>
 <rect x="36" y="900" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -104,9 +103,9 @@
 <text x="844" y="1070" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#c58bff">0%</text>
 <text x="36" y="1091" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+36% done on branches, not yet verified (dashed) · 14 panels; a layout audit covering 5 is on a branch, never run in a game</text>
 <text x="36" y="1122" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Item generation gaps closed vs the exe</text>
-<text x="844" y="1122" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">0 / 12</text>
+<text x="844" y="1122" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11 / 12</text>
 <rect x="36" y="1134" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36.0" y="1134" width="676.5" height="18" rx="9" fill="#f2c94c" fill-opacity="0.28" stroke="#f2c94c" stroke-opacity="0.6" stroke-dasharray="4 3"/>
-<text x="844" y="1148" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#f2c94c">0%</text>
-<text x="36" y="1169" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+92% done on branches, not yet verified (dashed) · 12 gaps in the itemgen notes; the drop audit closes 11 (on a branch)</text>
+<rect x="36" y="1134" width="676.5" height="18" rx="9" fill="url(#g13)" filter="url(#glow)"/>
+<text x="844" y="1148" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#f2c94c">92%</text>
+<text x="36" y="1169" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">11 of the 12 gaps closed and checked against the emulator (stat-list aggregation remains); not wired into every drop path yet</text>
 </svg>

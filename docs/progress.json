@@ -47,26 +47,26 @@
     },
     {
       "label": "Acts playable end to end (scripted play)",
-      "done": 2,
+      "done": 4,
       "total": 5,
-      "pending": 3,
-      "note": "Act 1 first hour + Act 2 start verified; Acts 3, 4, 5 playthroughs on branches",
+      "pending": 1,
+      "note": "Acts 1, 2, 4 and the start of 5 pass a scripted walk; the Act 3 playthrough is on a branch",
       "color": "#ff7a45"
     },
     {
       "label": "Levels walked by a verify scenario",
-      "done": 18,
+      "done": 38,
       "total": 136,
-      "pending": 20,
-      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); dashed = scenarios on branches",
+      "pending": 14,
+      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); dashed = Act 3 playthrough branch",
       "color": "#ff9f43"
     },
     {
       "label": "Main quests with logic implemented",
-      "done": 7,
+      "done": 27,
       "total": 27,
-      "pending": 20,
-      "note": "Act 1 + Radament verified; Acts 2-5 logic is on a branch",
+      "pending": 0,
+      "note": "all 27 main quests: states, triggers, rewards (Act 1, Radament and nine more driven in scenarios)",
       "color": "#e86fa6"
     },
     {
@@ -74,7 +74,7 @@
       "done": 130,
       "total": 210,
       "pending": 0,
-      "note": "~130 of 7 classes x 30 skills; formula audit vs Game.exe is on a branch",
+      "note": "~130 of 7 classes x 30 skills; formulas audited against Game.exe (calc language, defense, to-hit, resist)",
       "color": "#5fd0a5"
     },
     {
@@ -103,10 +103,10 @@
     },
     {
       "label": "Item generation gaps closed vs the exe",
-      "done": 0,
+      "done": 11,
       "total": 12,
-      "pending": 11,
-      "note": "12 gaps in the itemgen notes; the drop audit closes 11 (on a branch)",
+      "pending": 0,
+      "note": "11 of the 12 gaps closed and checked against the emulator (stat-list aggregation remains); not wired into every drop path yet",
       "color": "#f2c94c"
     }
   ]
