@@ -14,27 +14,48 @@
 // n frames deals v*n/256 hit points in total (verified against the
 // Poison Javelin tooltip: 32 per frame for 200 frames = 25 hp).
 //
-// Unverified (marked U where used): stacking of several poisons (each
-// application is an independent stream here), the exact slow percents of
-// chill and freeze, and that a state's stats stop applying exactly at Until.
+// Still unverified (marked U where used): the exact slow percents of
+// freeze, group as armor exclusivity, and shrine states.
 package d2state
 
-// Rules pinned by tests (states.txt = patch_d2, ids are row numbers):
+// Rules pinned by tests (states.txt = patch_d2, ids are row numbers).
+// Exe addresses are Game.exe (1.14b); notes in d2-re-notes/verify-states.md.
 //
-//	verified:   cold slow = monstats ColdEffect of the difficulty (stats
-//	            velocitypercent, attackrate, other_animrate); stun length cap
-//	            250 frames; states are 25 Hz frames, active on [apply, Until);
-//	            curse_resistance >= 100 rejects a timed skill state.
-//	data:       group / curse / remhit / *staydeath / shatter / colorpri /
-//	            colorshift columns (TestReal*; skipped without D2_TABLES).
-//	unverified: exe use of group and curse as mutual exclusion (Defs.exclusive),
-//	            staydeath = "survives death", blue overriding colorpri, rounding
-//	            of length reductions, a shorter stun replacing a longer one,
-//	            ColdEffect 0 skipping stun, poison stacking, area-change removal
-//	            (no column in states.txt; just_portaled and sync_warped only).
-//
-// Exe addresses for Ghidra to confirm: 0x578830 (stun), 0x578990 (poison),
-// 0x578b00 (burn), 0x578ca0 (chill), 0x578f50 (freeze), 0x56c740
-// (SKILL_CreateTimedStateStatList: replacement and curse rules), 0x63af70 and
-// 0x63aef0 (set / clear a state bit), the state removal on death and the
-// states.txt row consumers of colorpri / colorshift (client draw code).
+//	VERIFIED in the exe:
+//	  stun     0x578830: cap 250 frames; a new stun sets the end even when
+//	           shorter; ColdEffect is not consulted.
+//	  poison   0x578990, burn 0x578b00: one statlist per unit and kind (states
+//	           2 and 0x73, stat hpregen 0x4a). A new one replaces strength and
+//	           end only when its per-frame value >= the active one's; a weaker
+//	           one is ignored. Poison and burn add up (two lists).
+//	  chill    0x578ca0: slow = monster ColdEffect of the difficulty, 0 skips,
+//	           -50 for non-monsters; length / difficulty divisor (min 1) for a
+//	           negative ColdEffect; an active chill only gets a later end.
+//	  freeze   0x578f50 (+0x578c50 reads ColdEffect): needs ColdEffect < 0;
+//	           length / difficulty divisor; only extends; players, uninterrupt-
+//	           able (state 0x36) and special monsters get chill instead or
+//	           nothing.
+//	  timed    0x56c740: one curse at a time (found through the curse mask
+//	           0x63b530, whatever the curse); same state + skill + level only
+//	           refreshes the end; lower level of the same skill is rejected;
+//	           otherwise old statlist freed and a new one made; curse_resistance
+//	           (stat 0x6d) >= 100 rejects, else length - trunc(length*r/100).
+//	           The group column is not read here (only by the monster AI check
+//	           0x5ea850); the curse column is the exclusion.
+//	  bits     0x63aef0 / 0x63af70 set or clear the state bit (bounds checked)
+//	           and queue the unit for sending.
+//	  death    0x627890 + 0x63b5b0: statlists survive per plrstaydeath (players)
+//	           or monstaydeath (all monsters); 0x63b0d0 clears the visible bits
+//	           with the boss mask for flagged bosses. Called from 0x57d310
+//	           (player) and 0x5a3f20 (monster).
+//	  colour   client 0x4d65a0: highest colorpri (strict >, id 0 ignored, ties
+//	           to the lowest id) -> colorshift; "blue" is not read; shift 104
+//	           is dropped for the local player in 3D mode.
+//	data:      group / curse / remhit / *staydeath / shatter / colorpri /
+//	           colorshift columns (TestReal*; skipped without D2_TABLES).
+//	unverified: armor / aura exclusivity by group (the exe has no such code in
+//	           0x56c740), state 0x39 curse immunity and the boss stun cap of
+//	           13 frames (not modelled), area-change removal (no bulk
+//	           clear-on-area code found; 0x63b0d0 has only the two death
+//	           callers), the difficulty divisors are not wired into the skills
+//	           engine (the DifficultyLevels record does not parse them).
