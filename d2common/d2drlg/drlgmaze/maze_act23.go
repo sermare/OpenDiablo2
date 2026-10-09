@@ -313,7 +313,12 @@ func (l *level) tombStart() {
 		ctr = (ctr + 1) & 3
 	}
 
-	start.def, start.file, start.locked = tombPrevDef[ctr], -1, true
+	prev := tombPrevDef
+	if l.typ == typeBaal {
+		prev = baalPrevDef
+	}
+
+	start.def, start.file, start.locked = prev[ctr], -1, true
 }
 
 // tombFinish is FUN_00675940.

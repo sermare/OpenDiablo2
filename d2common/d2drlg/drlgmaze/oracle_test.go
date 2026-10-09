@@ -42,6 +42,10 @@ type oracleMaze struct {
 	LvY   int `json:"lvy"`
 	LvW   int `json:"lvw"`
 	LvH   int `json:"lvh"`
+	X108  int `json:"x108"`
+	Y108  int `json:"y108"`
+	W108  int `json:"w108"`
+	H108  int `json:"h108"`
 
 	// Compact goldens carry the chunk count and an FNV-1a 64 hash of the
 	// sorted room keys instead of the room list.
@@ -77,7 +81,7 @@ func TestOracleMaze(t *testing.T) {
 		return
 	}
 
-	for _, f := range []string{"maze_act1.json", "maze_act23.json"} {
+	for _, f := range []string{"maze_act1.json", "maze_act23.json", "maze_act45.json"} {
 		t.Run(f, func(t *testing.T) { runOracleMaze(t, tb, filepath.Join("..", "testdata", f)) })
 	}
 }
@@ -102,7 +106,7 @@ func runOracleMaze(t *testing.T, tb *d2drlg.Tables, gp string) {
 	for _, g := range gold {
 		base, _ := d2rand.DrlgBaseSeed(g.Seed)
 		res, err := Generate(tb, Params{LevelID: g.Level, Difficulty: d2drlg.Difficulty(g.Diff), BaseSeed: base,
-			TombA: g.TombA, TombB: g.TombB, L27: Level27{g.X27, g.Y27, g.W27, g.H27, g.Side}})
+			TombA: g.TombA, TombB: g.TombB, L27: Level27{g.X27, g.Y27, g.W27, g.H27, g.Side}, L108: Level27{X: g.X108, Y: g.Y108, W: g.W108, H: g.H108}})
 		st := stats[g.Level]
 		if st == nil {
 			st = &stat{}
@@ -128,8 +132,8 @@ func runOracleMaze(t *testing.T, tb *d2drlg.Tables, gp string) {
 			st.countOK++
 		}
 
-		if g.Level == 28 && g.LvW > 0 && (res.RectX != g.LvX || res.RectY != g.LvY || res.RectW != g.LvW || res.RectH != g.LvH) {
-			t.Errorf("barracks seed %#x diff %d: rect %d,%d %dx%d want %d,%d %dx%d", g.Seed, g.Diff,
+		if (g.Level == 28 || g.Level == 107) && g.LvW > 0 && (res.RectX != g.LvX || res.RectY != g.LvY || res.RectW != g.LvW || res.RectH != g.LvH) {
+			t.Errorf("rect seed %#x diff %d: rect %d,%d %dx%d want %d,%d %dx%d", g.Seed, g.Diff,
 				res.RectX, res.RectY, res.RectW, res.RectH, g.LvX, g.LvY, g.LvW, g.LvH)
 		}
 
