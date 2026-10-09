@@ -78,6 +78,8 @@ type Skill struct {
 	AuraStatCalc    [7]*d2calc.Program
 
 	PassiveState string
+	// PassiveIType is passiveitype: the weapon type a mastery's stats are keyed to.
+	PassiveIType string
 	PassiveStat  [6]string
 	PassiveCalc  [6]*d2calc.Program
 

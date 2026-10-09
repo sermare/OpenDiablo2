@@ -92,7 +92,19 @@ func (v *Game) skillEngine() *d2skills.Engine {
 
 	if st := v.localPlayer.Stats; st != nil {
 		id, eng := v.localPlayer.ID(), v.skills
-		st.SkillStats = func() map[string]int { return eng.StateStats(id) }
+		st.SkillStats = func() map[string]int {
+			out := eng.StateStats(id)
+
+			for k, v := range eng.PassiveTotals(id) {
+				if out == nil {
+					out = map[string]int{}
+				}
+
+				out[k] += v
+			}
+
+			return out
+		}
 	}
 
 	return v.skills

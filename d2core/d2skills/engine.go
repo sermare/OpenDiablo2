@@ -186,6 +186,35 @@ func (e *Engine) StateStats(unitID string) map[string]int {
 	return st.StatMods(e.frame)
 }
 
+// PassiveTotals returns the stats a hero's true passives (passivestate set,
+// verified at 0x648130) add to its totals, ItemStatCost name -> value. Stats
+// keyed to a weapon type (passiveitype, the masteries) are left out: the exe
+// keys them by item type and they are not part of the plain totals.
+func (e *Engine) PassiveTotals(unitID string) map[string]int {
+	h := e.heroes[unitID]
+	if h == nil || h.inPassive {
+		return nil
+	}
+
+	out := map[string]int{}
+
+	h.inPassive = true
+	for id, s := range h.p.Skills {
+		if s == nil || s.SkillPoints < 1 {
+			continue
+		}
+
+		for _, m := range e.pipe.TruePassiveStats(h, id) {
+			if m.Param == "" && m.Value != 0 {
+				out[m.Stat] += m.Value
+			}
+		}
+	}
+	h.inPassive = false
+
+	return out
+}
+
 // stateDefs converts the states.txt records into the rules the state sets use
 // (cached; nil when the records have no states table).
 func (e *Engine) stateDefs() d2state.Defs {
