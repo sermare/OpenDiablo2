@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapgen"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 )
 
@@ -79,6 +80,7 @@ func (v *Game) advanceMonsters(elapsed float64) {
 	}
 
 	d.Advance(elapsed)
+	v.logLevelStatus(elapsed)
 	v.advanceHeroAttack(elapsed)
 	v.advanceMonsterTest(elapsed)
 }
@@ -331,4 +333,42 @@ func (v *Game) spawnPackTest(t *monsterTest) {
 	v.Infof("AUTOMONSTER pack start ref=%s leader=%s planned=%d spawned=%d followers=%d hero=(%d,%d) classes=%v",
 		t.ref, res.Leader.Label(), len(res.Plan.Members), len(res.Monsters), len(res.Leader.Brain.Minions),
 		hx, hy, counts)
+}
+
+// levelStatusSeconds is how often OD2_REALMAPS levels log the hero / monster
+// status (LEVELSTATUS lines) for the autotests.
+const levelStatusSeconds = 2.0
+
+func (v *Game) logLevelStatus(elapsed float64) {
+	if d2mapgen.RealLevel() == 0 || v.localPlayer == nil {
+		return
+	}
+
+	v.levelStatusAcc += elapsed
+	if v.levelStatusAcc < levelStatusSeconds {
+		return
+	}
+
+	v.levelStatusAcc = 0
+
+	hx, hy := int(v.localPlayer.Position.X()), int(v.localPlayer.Position.Y())
+	alive, nearest := 0, -1
+
+	for _, m := range v.monsters.Monsters() {
+		if !m.Alive() {
+			continue
+		}
+
+		alive++
+
+		mx, my := m.SubtilePos()
+		if d := d2monster.Distance(hx-mx, hy-my); nearest < 0 || d < nearest {
+			nearest = d
+		}
+	}
+
+	c := v.monsters.Counters
+	v.Infof("LEVELSTATUS hero=(%d,%d) tile=(%d,%d) hp=%d/%d monsters_alive=%d nearest=%d spawned=%d aggro=%d attacks=%d",
+		hx, hy, hx/5, hy/5, v.localPlayer.Stats.Health, v.localPlayer.Stats.MaxHealth, alive, nearest,
+		c.Spawned, c.Aggro, c.Attacks)
 }

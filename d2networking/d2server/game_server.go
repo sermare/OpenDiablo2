@@ -124,8 +124,8 @@ func NewGameServer(asset *d2asset.AssetManager,
 		return nil, err
 	}
 
-	if lvl := d2mapgen.AutomapLevel(); d2mapgen.RealMapsEnabled() && lvl != 0 {
-		// OD2_REALMAPS=1 + OD2_AUTOMAP=<maze level id>: DRLG port for that level
+	if lvl := d2mapgen.RealLevel(); lvl != 0 {
+		// OD2_REALMAPS=1 + OD2_AUTOLEVEL / OD2_AUTOMAP=<maze level id>: DRLG port for that level
 		if err := mapGen.GenerateRealMaze(lvl, d2mapgen.HeroMapSeed, 0); err != nil {
 			gameServer.Errorf("real maps: %v; falling back to the Act 1 overworld", err)
 			mapGen.GenerateAct1Overworld()

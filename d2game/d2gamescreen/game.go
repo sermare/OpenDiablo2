@@ -157,6 +157,7 @@ type Game struct {
 	attackTarget         *d2mapentity.Monster
 	attackRepathAcc      float64
 	autoPanel            autoPanelState
+	levelStatusAcc       float64
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
