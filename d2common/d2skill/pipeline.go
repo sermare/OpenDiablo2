@@ -519,6 +519,20 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		}
 	}
 
+	// SrvDoFunc 27 (Tornado, 0x5ad590, verified): period = Param1 else calc4,
+	// radius = Param2 else aurarangecalc.
+	var pulse int
+
+	if ms.SrvDoFunc == 27 {
+		if ms.Param[0] < 1 {
+			pulse = env.eval(sk.Calc[4])
+		}
+
+		if ms.Param[1] < 1 {
+			areaRadius = env.eval(sk.AuraRangeCalc)
+		}
+	}
+
 	if ms.SrvHitFunc == 14 {
 		hitSubRange = sk.Params[3] + (lvl-1)*sk.Params[4]
 	}
@@ -533,7 +547,7 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 
 	m, err := p.Sim.Create(d2missile.CreateParams{
 		Spec: ms, Owner: p.owner(u), SkillID: sk.ID, Level: lvl, Damage: desc,
-		AreaRadius: areaRadius, HitSubRange: hitSubRange, HealMin: healMin, HealMax: healMax,
+		AreaRadius: areaRadius, HitSubRange: hitSubRange, HealMin: healMin, HealMax: healMax, PulseEvery: pulse,
 		X: sx, Y: sy, DestX: dx, DestY: dy, Angle: o.angle, Velocity: o.velocity, ClampToDest: o.clamp || sk.Lob,
 		// the missile rolls its pierce charges (stat 0x148) from skill_pierce +
 		// item_pierce at creation (0x59d4e0, verified)

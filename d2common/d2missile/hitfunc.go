@@ -306,3 +306,40 @@ func (s *Sim) holyBoltHit(m *Missile, t Target) int {
 
 	return resKeep
 }
+
+// tornadoPulse is the part of SrvDoFunc 27 (Tornado, 0x5ad590, verified bytes;
+// the function is not defined in the project) that runs before the standard
+// move: every `period` frames an area damage like hit function 1 is applied
+// around the missile. period is missiles.txt Param1 when > 0, else the casting
+// skill's calc4 (record +0x144), minimum 1; the radius is Param2 when > 0, else
+// the skill's aurarangecalc (record +0x64), minimum 1, in subtiles; the pulse
+// uses the damage the missile carries, the missile record's HitFlags and
+// ResultFlags, and the skill's aurafilter (0xa583 for Tornado: enemy filter).
+// The pulse fires when the missile's remaining life is a multiple of the
+// period (the exe tests the value from 0x64b640 - missile data +0xe minus
+// +0x10 - which is taken as the remaining life: UNVERIFIED).
+func (s *Sim) tornadoPulse(m *Missile) {
+	period := m.Spec.Param[0]
+	if period < 1 {
+		period = m.PulseEvery
+	}
+
+	if period < 1 {
+		period = 1
+	}
+
+	if m.Life%period != 0 {
+		return
+	}
+
+	r := m.Spec.Param[1]
+	if r < 1 {
+		r = m.AreaRadius
+	}
+
+	if r < 1 {
+		r = 1
+	}
+
+	s.emit(Event{Kind: EventArea, Missile: m, Damage: m.Damage.Roll(m.Owner.Roller), Radius: r})
+}
