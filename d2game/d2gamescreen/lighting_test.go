@@ -61,3 +61,22 @@ func TestBaseLight(t *testing.T) {
 		t.Errorf("level 0x78 %v", c)
 	}
 }
+
+// The Act 2 outdoors (town 40, desert 41-46) have no Levels.txt colour and follow the day/night
+// ambient. They used to be looked up through the level TYPE (12, 16) and read the dark white-lit
+// cave rows of levels 12 and 16 (Pit Level 1/2).
+func TestAct2OutdoorsFollowDayNight(t *testing.T) {
+	t.Setenv("OD2_AUTOTIME", "day")
+	day := newDayClock()
+
+	for id := 40; id <= 46; id++ {
+		if c := baseLight(0, 0, 0, 0, 1, id, day); c.Intensity != 255 || c.R != 255 {
+			t.Errorf("level %d: %v", id, c)
+		}
+	}
+
+	// the dungeons keep the dark white-lit base from Levels.txt
+	if c := baseLight(0, 255, 255, 255, 1, 55, day); c.Intensity != 0 || c.B != 255 {
+		t.Errorf("tomb %v", c)
+	}
+}

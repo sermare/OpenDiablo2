@@ -131,6 +131,7 @@ type Game struct {
 	gameControls         *d2player.GameControls
 	localPlayer          *d2mapentity.Player
 	lastRegionType       d2enum.RegionIdType
+	lightLogLevel        int // level whose base light was last logged
 	travel               travelState
 	ticksSinceLevelCheck float64
 	escapeMenu           *d2player.EscapeMenu

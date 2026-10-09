@@ -56,6 +56,7 @@ type Animation struct {
 	frameIndex       int
 	directionIndex   int
 	lastFrameTime    float64
+	stepper          tickStepper // used instead of lastFrameTime when the speed came from SetPlaySpeed
 	playedCount      int
 	playMode         playMode
 	playLength       float64 // https://github.com/OpenDiablo2/OpenDiablo2/issues/813
@@ -81,10 +82,21 @@ func (a *Animation) Advance(elapsed float64) error {
 	}
 
 	frameCount := a.GetFrameCount()
-	frameLength := a.playLength / float64(frameCount)
-	a.lastFrameTime += elapsed
-	framesAdvanced := int(a.lastFrameTime / frameLength)
-	a.lastFrameTime -= float64(framesAdvanced) * frameLength
+	if frameCount == 0 {
+		return nil
+	}
+
+	var framesAdvanced int
+
+	if a.stepper.rate > 0 {
+		// animation speed known: step like the original (25 Hz ticks, 8.8 fixed point)
+		framesAdvanced = a.stepper.advance(elapsed)
+	} else {
+		frameLength := a.playLength / float64(frameCount)
+		a.lastFrameTime += elapsed
+		framesAdvanced = int(a.lastFrameTime / frameLength)
+		a.lastFrameTime -= float64(framesAdvanced) * frameLength
+	}
 
 	for i := 0; i < framesAdvanced; i++ {
 		startIndex := 0
@@ -382,6 +394,7 @@ func (a *Animation) PlayBackward() {
 func (a *Animation) Pause() {
 	a.playMode = playModePause
 	a.lastFrameTime = 0
+	a.stepper.reset()
 }
 
 // SetPlayLoop sets whether to loop the animation
@@ -392,6 +405,7 @@ func (a *Animation) SetPlayLoop(loop bool) {
 // SetPlaySpeed sets play speed of the animation
 func (a *Animation) SetPlaySpeed(playSpeed float64) {
 	a.SetPlayLength(playSpeed * float64(a.GetFrameCount()))
+	a.stepper = tickStepper{rate: rateFromFrameSeconds(playSpeed)}
 }
 
 // SetPlayLength sets the Animation's play length in seconds
@@ -399,6 +413,7 @@ func (a *Animation) SetPlayLength(playLength float64) {
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/813
 	a.playLength = playLength
 	a.lastFrameTime = 0
+	a.stepper = tickStepper{}
 }
 
 // SetColorMod sets the Animation's color mod
