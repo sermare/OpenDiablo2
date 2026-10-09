@@ -93,27 +93,6 @@ func (c *Creator) itemClass(st *itemState) int {
 	return classNone
 }
 
-// maxSockets is 62bd70: the number of sockets the item may have.
-func (c *Creator) maxSockets(st *itemState) int {
-	ty := c.Items.Type(st.base)
-	if ty == nil {
-		return 0
-	}
-
-	var lim int
-
-	switch {
-	case st.ilvl <= 25:
-		lim = ty.MaxSock1
-	case st.ilvl <= 40:
-		lim = ty.MaxSock25
-	default:
-		lim = ty.MaxSock40
-	}
-
-	return minInt(st.base.GemSockets, lim)
-}
-
 // classicExcluded: in classic items (version word below 100) stackable and
 // throwable items get no affixes (628bb0 / 62bbd0).
 func (c *Creator) classicExcluded(st *itemState) bool {

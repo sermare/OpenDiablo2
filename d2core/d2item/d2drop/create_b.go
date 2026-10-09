@@ -10,9 +10,8 @@ package d2drop
 // generator) and the forced affix ids of cube recipes.
 
 const (
-	flagIdentified uint32 = 0x10
-	jewelTypeIndex        = 0x3a // ItemTypes row of jewels (62b590 == 0x3a)
-	maxRetries            = 250  // a clashing classic pick is retried 251 times
+	jewelTypeIndex = 0x3a // ItemTypes row of jewels (62b590 == 0x3a)
+	maxRetries     = 250  // a clashing classic pick is retried 251 times
 )
 
 func (c *Creator) isJewel(st *itemState) bool {
@@ -30,9 +29,6 @@ func (c *Creator) HasStaffMods(st *itemState) bool {
 	return ty != nil && ty.StaffMods != ""
 }
 
-// staffMods is ITEMGEN_RollStaffMods (5beea0). NOT PORTED.
-func (c *Creator) staffMods(st *itemState) {}
-
 // applyAll applies the properties of the affixes in the order of the rare
 // and crafted rolls: prefix 0, suffix 0, prefix 1, ...
 func (c *Creator) applyAll(st *itemState) {
@@ -47,6 +43,10 @@ func (c *Creator) applyAll(st *itemState) {
 // is no prefix. It returns false if the item got neither, in which case the
 // caller falls back (and restores the generator).
 func (c *Creator) rollMagic(st *itemState) bool {
+	if c.Affixes == nil {
+		return false
+	}
+
 	pre := c.pickAffix(st, pickReq{spawnCheck: true, apply: true, prefix: true})
 	st.prefix[0] = pre
 
@@ -66,6 +66,10 @@ func (c *Creator) rollMagic(st *itemState) bool {
 // rollCharm is ITEMGEN_RollCharmAffixes (554b60), the path of normal quality
 // charms: the same prefix and suffix roll as rollMagic.
 func (c *Creator) rollCharm(st *itemState) bool {
+	if c.Affixes == nil {
+		return false
+	}
+
 	pre := c.pickAffix(st, pickReq{spawnCheck: true, apply: true, prefix: true})
 	st.prefix[0] = pre
 
@@ -84,6 +88,10 @@ func (c *Creator) rollCharm(st *itemState) bool {
 // rollRare is ITEMGEN_RollRareAffixes (5bff00) for quality 6: false if the
 // item's type cannot be rare or the roll found no names or no affixes.
 func (c *Creator) rollRare(st *itemState) bool {
+	if c.Affixes == nil {
+		return false
+	}
+
 	if ty := c.Items.Type(st.base); ty == nil || !ty.Rare {
 		return false
 	}
@@ -268,6 +276,10 @@ func (c *Creator) rollRareClassic(st *itemState) bool {
 // else 4), at least rand(5) of them; otherwise as the classic rare, except
 // that a failed pick still takes a slot.
 func (c *Creator) rollCrafted(st *itemState) bool {
+	if c.Affixes == nil {
+		return false
+	}
+
 	if !c.rollNames(st) {
 		return false
 	}
@@ -310,6 +322,10 @@ func (c *Creator) rollCrafted(st *itemState) bool {
 // rollTempered is the tempered quality (9) of ApplyQualityToItem: only the two
 // rare names are picked (5bf890), no affixes.
 func (c *Creator) rollTempered(st *itemState) bool {
+	if c.Affixes == nil {
+		return false
+	}
+
 	st.rareNames = [2]int{}
 
 	return c.rollNames(st)
@@ -321,6 +337,10 @@ func (c *Creator) rollTempered(st *itemState) bool {
 // applies its properties (see AffixTables.OnApply) and returns it, 0 if the
 // base has no group or nothing fits.
 func (c *Creator) pickAutomagic(st *itemState) int {
+	if c.Affixes == nil {
+		return 0
+	}
+
 	group := st.base.AutoPrefix
 	if group == 0 {
 		return 0

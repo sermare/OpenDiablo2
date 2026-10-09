@@ -195,7 +195,7 @@ func TestOracleCreateA(t *testing.T) {
 	}
 
 	items := loadItemTables(t)
-	c := &Creator{Items: items, Quality: loadQualityTables(t)}
+	c := &Creator{Items: items, Quality: loadQualityTables(t), Affixes: loadAffixTables(t)}
 
 	bad, ok, fails, skipped := 0, 0, 0, 0
 

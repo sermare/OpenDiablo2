@@ -753,6 +753,10 @@ func (c *Creator) normalClassic(st *itemState) {
 // class skill bonus of staves and the like (5beea0)
 
 func (c *Creator) staffMods(st *itemState) {
+	if c.Quality == nil {
+		return
+	}
+
 	cls := heroClass(c.itype(st).StaffMods)
 	if cls < 0 || len(c.Quality.ClassSkills[cls]) == 0 {
 		return
