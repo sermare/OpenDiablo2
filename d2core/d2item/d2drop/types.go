@@ -112,7 +112,7 @@ type ItemInfo struct {
 	Code          string
 	Level         int // qlvl, the base item's level
 	Rarity        int
-	TypeRarity    int // ItemTypes.Rarity of the item's type: the weight in generated "armo3"-style classes
+	TypeRarity    int      // ItemTypes.Rarity of the item's type: the weight in generated "armo3"-style classes
 	Types         []string // item type and all of its ancestors
 	Spawnable     bool
 	Quest         bool

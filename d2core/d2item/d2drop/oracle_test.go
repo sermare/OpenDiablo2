@@ -63,7 +63,7 @@ func TestOracleQuality(t *testing.T) {
 		for range r.Q {
 			got = append(got, RollQuality(rng, ratio, QualityInput{
 				ILvl: r.IL, QLvl: info.Level, MagicFind: r.MF,
-				Mods: QualityMods{Magic: r.M[0], Rare: r.M[1], Set: r.M[2], Unique: r.M[3]},
+				Mods:       QualityMods{Magic: r.M[0], Rare: r.M[1], Set: r.M[2], Unique: r.M[3]},
 				TypeNormal: info.TypeNormal, TypeMagic: info.TypeMagic, TypeRare: info.TypeRare,
 				Unique: info.Unique, Quest: info.Quest,
 			}))
