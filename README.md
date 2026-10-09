@@ -33,15 +33,17 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 | **Import a real character into the engine — with her gear** | A level-94 Sorceress from a real `.d2s` loads, starts in town and wears her real Spired Helm, Archon Plate, Battle Boots, Light Gauntlets, Flail, Short Staff and Monarch |
 | **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; checked instruction-by-instruction against the real code: no differences |
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~1,530 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
+| Reverse-engineering map of the game | ~1,950 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
 ### 🔧 In progress right now (agents run in waves of 5 every 15 minutes)
 
 | Work item | Where |
 |---|---|
 | **Monsters with the real AI** (own RNG, aggro, melee/ranged/pack archetypes), pathfinding, combat, death and loot | branch `feat/monsters` |
-| **Real level generator in Go**: maze levels, the Act 1 world layout and town variant from the seed | branch `feat/drlg-go` |
-| Next wave: sound engine, CI, trade windows, loot in chests, skills research part 2 | spawning every 15 minutes |
+| Save the engine's character back to a real `.d2s` + autosave | spawning now |
+| Hirelings (Kashya's mercenary) and stash/cube/belt panels | spawning now |
+| Renderer research: palette shifts, draw modes, lighting | spawning now |
+| Quests part 2 and the "welcome back" NPC bit mapping | spawning now |
 
 ### 🎯 Plan and priorities (set by Claude)
 
@@ -87,6 +89,7 @@ server session core · D2Common data tables · key bindings from `default.key` �
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | Vendors, ground items and chests, the sound engine, CI + scripted autotests and the Go level generator merged; skills part 2 researched (365 skill functions named, the calc language decoded) |
 | 2026-10-09 | Loot, trade, quests, packets, key bindings and day/night merged; monster AI think functions named (~90 created); maze level generation and the Act 1 world layout reverse engineered |
 | 2026-10-09 | `.d2s` **writer**: a real save round-trips byte-for-byte; combat formulas implemented and verified against 12 binary functions |
 | 2026-10-09 | Quests (state layout, framework, Den of Evil) and inventory/trade (price formulas, packets) reverse engineered |
