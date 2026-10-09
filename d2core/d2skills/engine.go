@@ -714,6 +714,9 @@ func (e *Engine) onSim(ev d2missile.Event) {
 	case d2missile.EventExpire:
 		e.Counters.Expired++
 		e.emit("missile", "MISSILE end name=%s id=%d reason=expire at=(%.1f,%.1f)", name, m.ID, m.X, m.Y)
+		// verified (0x5aba10): expiry runs the hit func with a null target, so
+		// area damage (hit func 1) also fires where a missile runs out.
+		e.splashAt(m)
 	case d2missile.EventExplode:
 		e.explosion(ev.Name, m.X, m.Y)
 	}

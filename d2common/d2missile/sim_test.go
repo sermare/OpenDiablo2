@@ -379,9 +379,9 @@ func TestAngleAndAccel(t *testing.T) {
 	}
 
 	run(s, w, 12)
-	// frame 5 and 10 each lower the velocity by 1000: 3072 -> 2072 -> 1072
-	if m.Velocity != 3072-2000 {
-		t.Fatalf("velocity %d", m.Velocity)
+	// accel acts on the 75%-scaled path velocity (2304); frames 5 and 10 lower it by 1000 each
+	if m.pathVel != 12*256*75/100-2000 {
+		t.Fatalf("path velocity %d", m.pathVel)
 	}
 }
 
@@ -488,5 +488,76 @@ func TestHomingStationaryAndHitEvery(t *testing.T) {
 
 	if len(phys) != 4 || phys[0] != 500 {
 		t.Errorf("hits every 5 frames over 20 frames at 50%%: %v", phys)
+	}
+}
+
+func TestPositiveAccelCapsAtUnscaledMaxVel(t *testing.T) {
+	// Blessed Hammer: Vel 18, MaxVel 30, Accel 250 (verified: cap is MaxVel<<8, not scaled)
+	w := newWorld()
+	s := NewSim(w, nil)
+	sp := &Spec{Vel: 18, MaxVel: 30, Accel: 250, Range: 400, CollideType: 3}
+	m, _ := s.Create(CreateParams{Spec: sp, Level: 1, DestX: 10})
+
+	if m.pathVel != 18*256*75/100 {
+		t.Fatalf("start %d", m.pathVel)
+	}
+
+	run(s, w, 5)
+
+	if m.pathVel != 18*256*75/100+250 {
+		t.Fatalf("after 5 frames %d", m.pathVel)
+	}
+
+	run(s, w, 400)
+
+	if m.pathVel != 30<<8 || m.accel != 0 {
+		t.Fatalf("cap %d accel %d", m.pathVel, m.accel)
+	}
+}
+
+func TestAimAtStartIsDiagonal(t *testing.T) {
+	s := NewSim(newWorld(), nil)
+	m, _ := s.Create(CreateParams{Spec: fireBolt(), Level: 1, X: 3, Y: 3, DestX: 3, DestY: 3})
+
+	if math.Abs(m.DX-m.DY) > 1e-9 || m.DX <= 0 {
+		t.Fatalf("dir %v,%v", m.DX, m.DY)
+	}
+}
+
+func TestMissAlwaysDestroysEvenWithoutCollideKillOrWithPierce(t *testing.T) {
+	w := newWorld()
+	w.targets = []*fakeTarget{newTarget("a", 6, 0), newTarget("b", 10, 0)}
+	w.targets[0].defense = 100000
+	sp := fireBolt()
+	sp.CollideKill, sp.ToHit, sp.Pierce = false, true, true
+	s := NewSim(w, nil)
+	_, _ = s.Create(CreateParams{Spec: sp, Level: 1, DestX: 30, Pierce: 5,
+		Owner: Owner{Level: 1, AttackRating: 10, Roller: fakeRoller{99}}})
+
+	k := kinds(run(s, w, 40))
+	if k[EventMiss] != 1 || k[EventPierce] != 0 || len(s.Missiles()) != 0 {
+		t.Fatalf("events %v", k)
+	}
+}
+
+func TestExpiryAndWallRunHitSubMissiles(t *testing.T) {
+	tbl := specs{"child": {ID: 1, Name: "child", Range: 10, CollideType: 3}}
+
+	for _, wall := range []bool{false, true} {
+		w := newWorld()
+		if wall {
+			w.grid.Set(5, 0, d2path.FlagWall)
+		}
+
+		sp := fireBolt()
+		sp.Range, sp.SrvHitFunc = 10, 2
+		sp.HitSubMissile = [4]string{"child"}
+		s := NewSim(w, tbl)
+		_, _ = s.Create(CreateParams{Spec: sp, Level: 1, DestX: 30})
+
+		creates := kinds(run(s, w, 30))[EventCreate]
+		if creates != 1 { // the child is created while stepping: OnEvent was set by run() after the parent
+			t.Fatalf("wall=%v creates=%d", wall, creates)
+		}
 	}
 }

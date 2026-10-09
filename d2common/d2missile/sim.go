@@ -31,7 +31,7 @@ type Missile struct {
 
 	X, Y     float64 // subtile position
 	DX, DY   float64 // unit direction
-	Velocity int     // 8.8, current
+	Velocity int     // 8.8, current, before the exe's 75% path scale (display/API)
 	Life     int     // remaining frames
 	Total    int     // lifetime at creation
 	// CollideFrom: unit collisions are only tested once Life <= CollideFrom
@@ -58,11 +58,17 @@ type Missile struct {
 	HitEvery int
 	ScalePct int
 
-	age      int
-	lastHit  string
-	nextHit  map[string]int
-	dead     bool
-	explodes bool
+	// pathVel is the exe's path velocity: the creation velocity * 75/100
+	// (verified, 0x59d5d0). Accel is added to it every 5th frame (verified,
+	// PATH_ApplyAccelAndScaleStep 0x651750) and it is clamped to MaxVel<<8,
+	// which is NOT scaled by 75% (verified: CreateServerMissile passes the raw
+	// MaxVel byte << 8 to 0x649a90). accel is zeroed once the cap is hit.
+	pathVel, accel int
+	age            int
+	lastHit        string
+	nextHit        map[string]int
+	dead           bool
+	explodes       bool
 }
 
 // Dead reports whether the missile has been destroyed.
@@ -151,7 +157,9 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 
 	dist := math.Hypot(dx, dy)
 
-	ux, uy := 1.0, 0.0
+	// An aim point equal to the start becomes start+(1,1) (verified,
+	// 0x59d7aa), i.e. a diagonal direction.
+	ux, uy := math.Sqrt2/2, math.Sqrt2/2
 	if dist > 0 {
 		ux, uy = dx/dist, dy/dist
 	}
@@ -184,6 +192,9 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 		CollideFrom: life - sp.Activate, Pierce: p.Pierce, OnHit: p.OnHit, Tag: p.Tag,
 		Home: p.Home, HitEvery: p.HitEvery, ScalePct: p.ScalePct, nextHit: map[string]int{},
 	}
+
+	m.pathVel = d2combat.MissileStep(vel)
+	m.accel = sp.Accel
 
 	if p.ClampToDest {
 		m.ClampDist = dist
@@ -255,15 +266,16 @@ func (s *Sim) stepOne(m *Missile) {
 	sp := m.Spec
 	m.age++
 
-	if sp.Accel != 0 && m.age%accelPeriod == 0 {
-		m.Velocity += sp.Accel // unit of Accel UNVERIFIED (8.8 per 5 frames assumed)
-		if m.Velocity < 0 {
-			m.Velocity = 0
+	if m.accel != 0 && m.age%accelPeriod == 0 {
+		m.pathVel += m.accel // verified: added to the 75%-scaled path velocity
+		if m.pathVel > sp.MaxVel<<8 {
+			m.pathVel = sp.MaxVel << 8
+			m.accel = 0
+		} else if m.pathVel < 0 {
+			m.pathVel = 0
 		}
 
-		if sp.MaxVel > 0 && m.Velocity > sp.MaxVel<<8 {
-			m.Velocity = sp.MaxVel << 8
-		}
+		m.Velocity = m.pathVel * 100 / 75
 	}
 
 	if m.Home != nil && m.Home.Alive() {
@@ -276,7 +288,7 @@ func (s *Sim) stepOne(m *Missile) {
 	}
 
 	// displacement per frame in subtiles: step(8.8) * 16 / 65536 (verified scale)
-	stepSub := float64(d2combat.MissileStep(m.Velocity)) / 4096.0
+	stepSub := float64(m.pathVel) / 4096.0
 
 	ox, oy := m.X, m.Y
 	arrived := false
@@ -300,7 +312,7 @@ func (s *Sim) stepOne(m *Missile) {
 		return // still in the activation delay
 	}
 
-	if m.Velocity == 0 { // stationary: test the cell it stands on
+	if m.pathVel == 0 { // stationary: test the cell it stands on
 		s.testCell(m, int(math.Floor(m.X)), int(math.Floor(m.Y)))
 		return
 	}
@@ -363,6 +375,7 @@ func (s *Sim) testCell(m *Missile, cx, cy int) bool {
 		m.X, m.Y = float64(cx)+0.5, float64(cy)+0.5
 		m.dead = true
 		s.emit(Event{Kind: EventWall, Missile: m})
+		s.spawnHitSubMissiles(m) // ProcessHitOrExpire(0, expire=1) runs the hit func (verified)
 		s.explode(m)
 
 		return true
@@ -429,6 +442,9 @@ func (s *Sim) process(m *Missile, t Target) {
 
 	if hit {
 		dmg := m.Damage.Roll(m.Owner.Roller)
+		if sp.Explosion && sp.SrvHitFunc == 0 {
+			dmg = d2combat.Damage{} // verified: the Explosion flag clears the damage bit (A=0)
+		}
 		if m.ScalePct > 0 && m.ScalePct != 100 {
 			dmg.Physical = dmg.Physical * int32(m.ScalePct) / 100
 			dmg.Fire = dmg.Fire * int32(m.ScalePct) / 100
@@ -446,6 +462,18 @@ func (s *Sim) process(m *Missile, t Target) {
 		s.spawnHitSubMissiles(m)
 	} else {
 		s.emit(Event{Kind: EventMiss, Missile: m, Target: t, Chance: chance, Roll: roll})
+
+		// verified (0x5aba10): a missed to-hit roll always destroys the missile
+		// (return 2), ignoring CollideKill and pierce; only AlwaysExplode runs
+		// the hit func.
+		m.dead = true
+
+		if sp.AlwaysExplode {
+			s.spawnHitSubMissiles(m)
+			s.explode(m)
+		}
+
+		return
 	}
 
 	if sp.Pierce && m.Pierce > 0 {
@@ -507,6 +535,7 @@ func (s *Sim) explode(m *Missile) {
 func (s *Sim) expire(m *Missile) {
 	m.dead = true
 	s.emit(Event{Kind: EventExpire, Missile: m})
+	s.spawnHitSubMissiles(m) // expiry runs the hit func with a null target (verified)
 
 	if m.Spec.AlwaysExplode {
 		s.explode(m)
