@@ -137,6 +137,8 @@ type Game struct {
 	returnGreet          returnGreetings
 	autoTestElapsed      float64
 	autoTestDone         bool
+	ground               groundState
+	autoGround           autoGround
 
 	renderer      d2interface.Renderer
 	inputManager  d2interface.InputManager
@@ -162,6 +164,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"spawnitemat", "spawns an item at the x,y coordinates",
 			[]string{"x", "y", "code1", "code2", "code3", "code4", "code5"}, v.commandSpawnItemAt},
 		{"spawnmon", "spawn monster at the local player position", []string{"name"}, v.commandSpawnMon},
+		{"spawnchest", "spawns chests/barrels (objects.txt ids, default 7 1 5) next to the hero",
+			[]string{"id1", "id2", "id3"}, v.commandSpawnChest},
 	}
 
 	for _, cmd := range commands {
@@ -191,7 +195,7 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon"); err != nil {
+	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest"); err != nil {
 		return err
 	}
 
@@ -249,6 +253,8 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceDayClock(elapsed)
 	v.advanceNPCInteraction(elapsed)
 	v.advanceAutoTest(elapsed)
+	v.advanceGroundInteraction(elapsed)
+	v.advanceAutoGround(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
 		v.gameClient.MapEngine.Advance(elapsed)
@@ -360,6 +366,16 @@ func (v *Game) OnPlayerMove(targetX, targetY float64) {
 
 // OnPlayerInteract walks the player up to the given entity (e.g. an NPC)
 func (v *Game) OnPlayerInteract(entity d2interface.MapEntity) {
+	switch e := entity.(type) {
+	case *d2mapentity.Item:
+		v.walkToItem(e)
+		return
+	case *d2mapentity.Object:
+		v.walkToObject(e)
+
+		return
+	}
+
 	targetX, targetY := entity.GetPositionF()
 
 	v.Infof("interacting with %q", entity.Label())

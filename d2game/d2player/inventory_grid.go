@@ -44,10 +44,11 @@ func NewItemGrid(asset *d2asset.AssetManager,
 	grid := record.Grid
 
 	itemGrid := &ItemGrid{
-		asset:          asset,
-		uiManager:      ui,
-		width:          grid.Box.Width,
-		height:         grid.Box.Height,
+		asset:     asset,
+		uiManager: ui,
+		// the box is in pixels; the item grid counts cells
+		width:          grid.Columns,
+		height:         grid.Rows,
 		originX:        grid.Box.Left,
 		originY:        grid.Box.Top + (grid.Rows * cellPadding),
 		slotSize:       grid.CellWidth,
@@ -142,6 +143,11 @@ func (g *ItemGrid) loadItem(item InventoryItem) {
 		var itemSprite *d2ui.Sprite
 
 		imgPath := fmt.Sprintf(fmtFlippyFile, item.GetItemCode())
+
+		// the invfile column (e.g. "invrsc" for the scroll "isc") is not always "inv"+code
+		if f, ok := item.(interface{ InventoryFileName() string }); ok && f.InventoryFileName() != "" {
+			imgPath = fmt.Sprintf("/data/global/items/%s.dc6", f.InventoryFileName())
+		}
 
 		itemSprite, err := g.uiManager.NewSprite(imgPath, d2resource.PaletteSky)
 		if err != nil {

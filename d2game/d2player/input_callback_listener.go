@@ -6,4 +6,7 @@ type inputCallbackListener interface {
 	OnPlayerMove(x, y float64)
 	OnPlayerCast(skillID int, x, y float64)
 	OnPlayerInteract(entity d2interface.MapEntity)
+	// OnPlayerDropItem is called when the hero clicks the world while holding
+	// an item on the cursor; the item is already off the cursor.
+	OnPlayerDropItem(item InventoryItem)
 }
