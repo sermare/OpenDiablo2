@@ -243,6 +243,7 @@ func NewGameControls(
 	}
 
 	gc.Trade = trade
+	gc.Identify = NewIdentifyWindow(asset, ui, l, inventory, hero, gc.saveHero, gc.onCloseTrade)
 
 	inventory.savedItems = hero.Containers != nil
 	gc.stash = NewContainerPanel(asset, ui, l, inventory, stashKind, gc.saveHero)
@@ -301,6 +302,7 @@ type GameControls struct {
 	HelpOverlay            *HelpOverlay
 	NPCMenu                *NPCMenu
 	Trade                  *TradeWindow
+	Identify               *IdentifyWindow
 	stash                  *ContainerPanel
 	cube                   *ContainerPanel
 	belt                   *BeltPanel
@@ -380,6 +382,11 @@ func (g *GameControls) OnKeyRepeat(event d2interface.KeyEvent) bool {
 func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 	if event.Key() == d2enum.KeyEscape && g.NPCMenu.IsOpen() {
 		g.NPCMenu.Choose(len(g.NPCMenu.Rows()) - 1)
+		return true
+	}
+
+	if event.Key() == d2enum.KeyEscape && g.Identify.IsOpen() {
+		g.Identify.Close()
 		return true
 	}
 
@@ -557,6 +564,7 @@ func (g *GameControls) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 
 	g.NPCMenu.OnMouseMove(event)
 	g.Trade.OnMouseMove(event)
+	g.Identify.OnMouseMove(event)
 	g.stash.OnMouseMove(mx, my)
 	g.cube.OnMouseMove(mx, my)
 	g.belt.OnMouseMove(mx, my)
@@ -634,6 +642,10 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	mx, my := event.X(), event.Y()
 
 	if g.NPCMenu.OnMouseButtonDown(event) {
+		return true
+	}
+
+	if g.Identify.OnMouseButtonDown(event) {
 		return true
 	}
 
@@ -971,7 +983,7 @@ func (g *GameControls) isLeftPanelOpen() bool {
 		partyPanel = false
 	}
 
-	return g.heroStatsPanel.IsOpen() || partyPanel || g.questLog.IsOpen() || g.inventory.moveGoldPanel.IsOpen() || g.Trade.IsOpen() ||
+	return g.heroStatsPanel.IsOpen() || partyPanel || g.questLog.IsOpen() || g.inventory.moveGoldPanel.IsOpen() || g.Trade.IsOpen() || g.Identify.IsOpen() ||
 		g.stash.IsOpen() || g.cube.IsOpen()
 }
 
@@ -1026,6 +1038,7 @@ func (g *GameControls) Render(target d2interface.Surface) error {
 	}
 
 	g.Trade.Render(target)
+	g.Identify.Render(target)
 	g.stash.Render(target)
 	g.cube.Render(target)
 	g.belt.Render(target)
@@ -1339,6 +1352,31 @@ func (g *GameControls) OpenTrade(v d2vendor.Vendor, seed uint32) {
 	g.clearScreen()
 	g.inventory.Open()
 	g.Trade.Open(v, seed, nil) // quest overrides: the quest record is not available here (UNVERIFIED path)
+	g.updateLayout()
+}
+
+// OpenGamble opens the gamble window of a vendor and the inventory beside it.
+func (g *GameControls) OpenGamble(v d2vendor.Vendor, seed uint32) error {
+	g.NPCMenu.Close()
+	g.clearScreen()
+	g.inventory.Open()
+
+	if err := g.Trade.OpenGamble(v, seed, nil); err != nil {
+		g.updateLayout()
+		return err
+	}
+
+	g.updateLayout()
+
+	return nil
+}
+
+// OpenIdentify opens Cain's identify window and the inventory beside it.
+func (g *GameControls) OpenIdentify() {
+	g.NPCMenu.Close()
+	g.clearScreen()
+	g.inventory.Open()
+	g.Identify.Open(nil) // quest bit (4,0)/(4,1) not reachable here: the fee is always charged (UNVERIFIED path)
 	g.updateLayout()
 }
 
