@@ -52,9 +52,18 @@ func automapDifficulty() d2drlg.Difficulty {
 	return d2drlg.Difficulty(v)
 }
 
-// LoadDRLGTables builds the DRLG tables from the game archives. lvlprest.bin
-// is used when present (it is authoritative where the txt is stripped).
+// LoadDRLGTables returns the DRLG tables built from the game archives (once per asset manager).
+// lvlprest.bin is used when present (it is authoritative where the txt is stripped).
 func LoadDRLGTables(a *d2asset.AssetManager) (*d2drlg.Tables, error) {
+	s, err := loadDRLGShared(a)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.tables, nil
+}
+
+func buildDRLGTables(a *d2asset.AssetManager) (*d2drlg.Tables, error) {
 	get := func(p string) []byte {
 		b, err := a.LoadFile(p)
 		if err != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgmaze"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 )
 
 // LevelProvider builds one kind of level into the map engine of a generator.
@@ -69,6 +70,8 @@ func (g *MapGenerator) LoadLevel(levelID int, req LoadRequest) (arrival Arrival,
 			arrival, err = Arrival{}, fmt.Errorf("%s: level %d: panic: %v", p.Name(), levelID, r)
 		}
 	}()
+
+	defer d2util.PerfTime(fmt.Sprintf("level-load id=%d provider=%s", levelID, p.Name()))()
 
 	if err := p.Load(g, levelID, req); err != nil {
 		return Arrival{}, fmt.Errorf("%s: level %d: %w", p.Name(), levelID, err)

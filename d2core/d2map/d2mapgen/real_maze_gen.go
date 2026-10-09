@@ -10,6 +10,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgmaze"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapstamp"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
@@ -40,6 +41,8 @@ var entryRoom = regexp.MustCompile(`(?i)(pre|prev|up|ent|exit)\d*\.ds1$`)
 // the comments below), so a map may differ from the real game's for the
 // same seed.
 func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Difficulty) error {
+	defer d2util.PerfTime(fmt.Sprintf("generate level=%d", levelID))()
+
 	if isOutdoorLevel(levelID) {
 		return g.GenerateRealOutdoor(levelID, seed, diff)
 	}

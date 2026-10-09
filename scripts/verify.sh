@@ -53,6 +53,21 @@ step "unit tests"
 go test ./... 2>&1 | grep -v "ld: warning\|no test files\|^# " | grep -v "^ok" ; [ ${pipestatus[1]} -eq 0 ] || fail=1
 echo "(only failures are printed above)"
 
+# Level generation on the real game data: time budget per level kind (cold caches, then warm) and the MPQ
+# decoder checks against the old decoder. The install folder is D2_GAME_DIR, else MpqPath of the game config.
+game_dir="${D2_GAME_DIR:-}"
+if [ -z "$game_dir" ]; then
+  game_dir=$(sed -n 's/.*"MpqPath": *"\(.*\)".*/\1/p' "$HOME/Library/Application Support/OpenDiablo2/config.json" 2>/dev/null | head -1)
+fi
+if [ -n "$game_dir" ] && [ -f "$game_dir/d2data.mpq" ]; then
+  step "level generation budget (real data: every act, outdoor / preset / maze levels)"
+  D2_GAME_DIR="$game_dir" go test -count=1 -v -run 'LevelBudget' ./d2core/d2map/d2mapgen/ 2>&1 | grep -E "PERF level|^(--- |FAIL|ok)" | cut -c1-160 | tee $tmp/budget.txt
+  grep -q "^ok" $tmp/budget.txt || { echo "FAIL: level generation budget"; fail=1; }
+  step "MPQ decoder against the old decoder (every imploded sector of d2data.mpq)"
+  D2_GAME_DIR="$game_dir" go test -count=1 -v -run 'Explode' ./d2common/d2fileformats/d2mpq/ 2>&1 | grep -E "^(--- |FAIL|ok)|identical" | tee $tmp/explode.txt
+  grep -q "^ok" $tmp/explode.txt || { echo "FAIL: MPQ explode decoder"; fail=1; }
+fi
+
 if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   step "real .d2s oracle tests"
   go test -v ./d2common/d2fileformats/d2s/ 2>&1 | grep -E "^(--- |FAIL|ok)" || fail=1
