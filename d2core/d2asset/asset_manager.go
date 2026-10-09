@@ -13,7 +13,6 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2dt1"
 
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
@@ -30,6 +29,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2loader"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2loader/asset/types"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2locale"
 )
 
 const (
@@ -77,6 +77,10 @@ type AssetManager struct {
 	Records          *d2records.RecordManager
 	language         string
 	languageModifier int
+
+	requestedLanguage string
+	locale            d2locale.Locale
+	fontDir           string
 }
 
 // SetLogLevel sets the log level for the asset manager,  record manager, and file loader
@@ -128,24 +132,57 @@ func (am *AssetManager) FileExists(filePath string) (bool, error) {
 	return am.Loader.Exists(filePath), nil
 }
 
-// LoadLanguage loads language from resource path
-func (am *AssetManager) LoadLanguage(languagePath string) string {
-	languageByte, err := am.LoadFile(languagePath)
-	if err != nil {
-		am.Debugf("Unable to load language file: %s", err)
-		return defaultLanguage
+// SetRequestedLanguage sets the language tag asked for by the user ("" or "auto" = the install's
+// own). It takes effect at the next LoadLanguage.
+func (am *AssetManager) SetRequestedLanguage(tag string) {
+	am.requestedLanguage = tag
+}
+
+// Locale returns the active locale (enUS until LoadLanguage ran).
+func (am *AssetManager) Locale() d2locale.Locale {
+	if am == nil || am.locale.Code == "" {
+		return d2locale.Default()
 	}
 
-	languageCode := languageByte[0]
-	am.Debugf("Language code: %#02x", languageCode)
+	return am.locale
+}
 
-	language := d2resource.GetLanguageLiteral(languageCode)
-	am.Infof("Language: %s", language)
+// FontDir returns the data/local/font sub directory of the active locale.
+func (am *AssetManager) FontDir() string {
+	return am.fontDir
+}
 
-	am.language = language
-	am.languageModifier = d2resource.GetLabelModifier(language)
+// InstalledLanguages lists the locales whose string tables exist in the loaded sources.
+func (am *AssetManager) InstalledLanguages() []d2locale.Locale {
+	return d2locale.Detect(am.Loader.Exists)
+}
 
-	return language
+// LoadLanguage picks the language: the requested one if installed, else the language byte stored
+// in languagePath, else enUS. It returns the language directory token (e.g. "ENG").
+func (am *AssetManager) LoadLanguage(languagePath string) string {
+	useByte := -1
+
+	languageByte, err := am.LoadFile(languagePath)
+	if err != nil || len(languageByte) == 0 {
+		am.Debugf("Unable to load language file: %v", err)
+	} else {
+		useByte = int(languageByte[0])
+		am.Debugf("Language code: %#02x", useByte)
+	}
+
+	loc, note := d2locale.Choose(am.requestedLanguage, useByte, am.Loader.Exists)
+	if note != "" {
+		am.Warningf("%s", note)
+	}
+
+	am.locale = loc
+	am.language = loc.Dir
+	am.languageModifier = loc.LabelModifier
+	am.fontDir = loc.ResolveFontDir(am.Loader.Exists)
+
+	am.Infof("Language: %s (%s), font dir %s", loc.Code, loc.Dir, am.fontDir)
+
+	return loc.Dir
 }
 
 // LoadAnimation loads an Animation by its resource path and its palette path
@@ -274,7 +311,7 @@ func (am *AssetManager) LoadStringTable(tablePath string) (d2tbl.TextDictionary,
 		return nil, err
 	}
 
-	table, err := d2tbl.LoadTextDictionary(data)
+	table, err := d2tbl.LoadTextDictionaryDecoded(data, am.Locale().Decode)
 	if err != nil {
 		return table, err
 	}
