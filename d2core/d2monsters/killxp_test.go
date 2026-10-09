@@ -66,3 +66,29 @@ func TestMercGetsKillXP(t *testing.T) {
 		}
 	}
 }
+
+// TestScaleKillXP is the regression for the level scaling: a kill at the
+// hero's level (or up to 5 levels below, or unknown levels) is unchanged.
+func TestScaleKillXP(t *testing.T) {
+	st := func(l int) *d2hero.HeroStatsState { return &d2hero.HeroStatsState{Level: l} }
+
+	for _, tc := range []struct {
+		name     string
+		xp, mlvl int
+		st       *d2hero.HeroStatsState
+		want     int
+	}{
+		{"same level unchanged", 300, 30, st(30), 300},
+		{"5 below unchanged", 300, 25, st(30), 300},
+		{"low level hero, monster above by 3", 300, 6, st(3), 300},
+		{"unknown monster level", 300, 0, st(30), 300},
+		{"no stats", 300, 30, nil, 300},
+		{"10 below is nearly nothing", 2560, 20, st(30), 130},
+		{"clvl 40 vs mlvl 50", 1000, 50, st(40), 800},
+		{"level 99 hero gets nothing", 300, 99, st(99), 0},
+	} {
+		if got := scaleKillXP(tc.xp, tc.mlvl, tc.st); got != tc.want {
+			t.Errorf("%s: got %d want %d", tc.name, got, tc.want)
+		}
+	}
+}
