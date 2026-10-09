@@ -230,18 +230,15 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 func (v *Game) pickUp(it *d2mapentity.Item) {
 	if it.IsGold() {
 		before := v.localPlayer.Gold
-		over := v.gameControls.PickUpGold(it.Gold)
+		pile := goldPileFuncs{
+			remove: func() { v.gameClient.MapEngine.RemoveEntity(it) },
+			leave:  func(amount int) { v.dropGoldOverflow(it, amount) },
+		}
 
-		if over >= it.Gold {
+		if !pickUpGoldPile(v.gameControls, pile, it.Gold) {
 			// the purse is full: the pile stays where it is (the original leaves the overflow on the ground)
 			v.Infof("gold pickup refused: carrying the maximum (%d)", before)
 			return
-		}
-
-		v.gameClient.MapEngine.RemoveEntity(it)
-
-		if over > 0 {
-			v.dropGoldOverflow(it, over)
 		}
 
 		v.playSoundAt("item_gold", it.GetPosition(), "pickup")
