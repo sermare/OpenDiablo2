@@ -23,6 +23,9 @@ type HeroState struct {
 	Difficulty d2enum.DifficultyType          `json:"difficulty"`
 	// MapSeed is the level generator seed of an imported .d2s (header 0xAB).
 	MapSeed uint32 `json:"mapSeed,omitempty"`
+	// D2SBase is the .d2s the hero was imported from. ExportD2S starts from it
+	// so everything the engine does not model survives a save back.
+	D2SBase []byte `json:"d2sBase,omitempty"`
 	// Progress is the quest/waypoint/NPC state imported from a .d2s; nil for
 	// heroes that have none (older hero files omit it).
 	Progress *HeroProgress `json:"progress,omitempty"`

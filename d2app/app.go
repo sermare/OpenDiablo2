@@ -338,11 +338,11 @@ func (a *App) Run() (err error) {
 		a.ToMainMenu()
 	}
 
-	if err := a.renderer.Run(a.update, a.advance, 800, 600, windowTitle); err != nil {
-		return err
-	}
+	err = a.renderer.Run(a.update, a.advance, 800, 600, windowTitle)
 
-	return nil
+	d2gamescreen.SaveActiveGame() // the window was closed: save the hero
+
+	return err
 }
 
 func (a *App) renderDebug(target d2interface.Surface) {

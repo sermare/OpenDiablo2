@@ -58,6 +58,11 @@ type autoScriptState struct {
 // A malformed script is reported and fails the run at once.
 func (v *Game) initAutoScript() {
 	spec := os.Getenv("OD2_AUTOSCRIPT")
+	if spec == "" && os.Getenv("OD2_AUTOSAVE") == "1" {
+		// change the gold, then exit; the exit saves the hero back to a .d2s
+		spec = "wait:1;say:setgold " + autosaveTestGold + ";wait:1;exit"
+	}
+
 	if spec == "" {
 		return
 	}
@@ -93,6 +98,8 @@ func (v *Game) advanceAutoScript(elapsed float64) {
 
 func (v *Game) autoScriptExit(pass bool) {
 	if os.Getenv("OD2_AUTOEXIT") != "" {
+		v.saveBeforeExit()
+
 		if pass {
 			os.Exit(0)
 		}
