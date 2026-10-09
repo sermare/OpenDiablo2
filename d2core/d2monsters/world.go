@@ -277,6 +277,14 @@ func (d *Director) Cast(b *d2monster.Brain, slot int, t d2monster.Target) bool {
 		mode = d2monster.ModeAttack1
 	}
 
+	if t.ID >= corpseTargetBase {
+		if cu := d.units[t.ID-corpseTargetBase]; cu == nil || cu.raising || cu.m.Alive() {
+			return false
+		}
+
+		d.units[t.ID-corpseTargetBase].raising = true // reserved until the cast lands or is lost
+	}
+
 	return d.Attack(b, mode, t)
 }
 
