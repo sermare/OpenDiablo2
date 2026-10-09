@@ -170,6 +170,15 @@ func (v *NPC) Selectable() bool {
 	return v.name != ""
 }
 
+// MonstatID returns the monstats class id (hcIdx) of this NPC, or -1.
+func (v *NPC) MonstatID() int {
+	if v.monstatRecord == nil {
+		return -1
+	}
+
+	return v.monstatRecord.ID
+}
+
 // Label returns the NPC's in-game name (e.g. "Deckard Cain") or an empty string if it does not have a name.
 func (v *NPC) Label() string {
 	return v.name

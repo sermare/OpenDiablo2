@@ -208,6 +208,7 @@ func NewGameControls(
 		heroStatsPanel: heroStatsPanel,
 		questLog:       questLog,
 		HelpOverlay:    helpOverlay,
+		NPCMenu:        NewNPCMenu(asset, ui),
 		keyMap:         keyMap,
 		bottomMenuRect: &d2geom.Rectangle{
 			Left:   menuBottomRectX,
@@ -283,6 +284,7 @@ type GameControls struct {
 	PartyPanel             *PartyPanel
 	questLog               *QuestLog
 	HelpOverlay            *HelpOverlay
+	NPCMenu                *NPCMenu
 	bottomMenuRect         *d2geom.Rectangle
 	leftMenuRect           *d2geom.Rectangle
 	rightMenuRect          *d2geom.Rectangle
@@ -354,6 +356,11 @@ func (g *GameControls) OnKeyRepeat(event d2interface.KeyEvent) bool {
 
 // OnKeyDown handles key presses
 func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
+	if event.Key() == d2enum.KeyEscape && g.NPCMenu.IsOpen() {
+		g.NPCMenu.Choose(len(g.NPCMenu.Rows()) - 1)
+		return true
+	}
+
 	if event.Key() == d2enum.KeyEscape {
 		g.onEscKey()
 		return true
@@ -508,6 +515,7 @@ func (g *GameControls) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 		}
 	}
 
+	g.NPCMenu.OnMouseMove(event)
 	g.hud.OnMouseMove(event)
 
 	if g.PartyPanel != nil {
@@ -538,6 +546,10 @@ func (g *GameControls) hoveredNPC() d2interface.MapEntity {
 // OnMouseButtonDown handles mouse button presses
 func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	mx, my := event.X(), event.Y()
+
+	if g.NPCMenu.OnMouseButtonDown(event) {
+		return true
+	}
 
 	for i := range g.actionableRegions {
 		// If click is on a game control element
@@ -834,6 +846,8 @@ func (g *GameControls) Render(target d2interface.Surface) error {
 	if err := g.renderPanels(target); err != nil {
 		return err
 	}
+
+	g.NPCMenu.Render(target)
 
 	if err := g.escapeMenu.Render(target); err != nil {
 		return err
