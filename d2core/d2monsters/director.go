@@ -126,7 +126,8 @@ type Director struct {
 
 	asset    *d2asset.AssetManager
 	engine   *d2mapengine.MapEngine
-	summoner *Summoner // lazily created, see petworld.go
+	summoner *Summoner  // lazily created, see petworld.go
+	firer    SkillFirer // skill engine callback for armed traps, see trapfire.go
 	players  func() []*d2mapentity.Player
 	opt      Options
 

@@ -281,6 +281,10 @@ func (d *Director) Cast(b *d2monster.Brain, slot int, t d2monster.Target) bool {
 		mode = d2monster.ModeAttack1
 	}
 
+	if handled, ok := d.fireTrap(d.unitOf(b), t); handled {
+		return ok
+	}
+
 	if t.ID >= corpseTargetBase {
 		if cu := d.units[t.ID-corpseTargetBase]; cu == nil || cu.raising || cu.m.Alive() {
 			return false

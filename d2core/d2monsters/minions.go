@@ -60,6 +60,7 @@ type allyState struct {
 	target   *unit
 	strikeAt *unit
 	thought  int
+	trap     *TrapSpec // set by ArmTrap (see trapfire.go)
 }
 
 // SpawnMinion creates an allied unit near a subtile.
@@ -318,6 +319,10 @@ func (d *Director) allyStep(u *unit) {
 	if a.until > 0 && d.frame >= a.until {
 		d.expire(u)
 
+		return
+	}
+
+	if a.kind == "trap" && !d.held(u) && d.trapTick(u) {
 		return
 	}
 
