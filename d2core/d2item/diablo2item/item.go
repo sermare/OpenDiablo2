@@ -58,7 +58,9 @@ type Item struct {
 	factory *ItemFactory
 	name    string
 	Seed    int64
-	rand    *rand.Rand // non-global rand instance for re-generating the item
+	// itemLevel is the level of the dropper when the item came from a drop, else 0.
+	itemLevel int
+	rand      *rand.Rand // non-global rand instance for re-generating the item
 
 	slotType d2enum.EquippedSlot
 
@@ -182,6 +184,10 @@ func (i *Item) ItemType() string {
 
 // ItemLevel returns the level of item
 func (i *Item) ItemLevel() int {
+	if i.itemLevel > 0 {
+		return i.itemLevel
+	}
+
 	return i.attributes.baseItemLevel
 }
 
@@ -354,7 +360,7 @@ func (i *Item) pickMagicAffixes(mod dropModifier) {
 	}
 
 	prefixes := i.factory.asset.Records.Item.Magic.Prefix
-	suffixes := i.factory.asset.Records.Item.Magic.Prefix
+	suffixes := i.factory.asset.Records.Item.Magic.Suffix
 
 	i.PrefixCodes = i.pickRandomAffixes(numPrefixes, totalAffixes, prefixes)
 	i.SuffixCodes = i.pickRandomAffixes(numSuffixes, totalAffixes, suffixes)
