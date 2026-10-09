@@ -11,10 +11,15 @@
 // room per cell (BuildRoomGrids then builds the 9x9 A/B/C tile grids of a
 // plain room).
 //
-// What is NOT covered: the tile-record creation per cell (0x680720 and
-// callees) and the DT1 tile library. BuildRoomGrids stops where the game calls
-// DRLG_PickRandomTile for the random tile markers of a sub-theme pattern and
-// models it as exactly one room-seed step (see RoomBuildOptions.PickTile).
+// Level.BuildTiles continues where the room list ends: the tile records of every
+// room (0x680720 for plain rooms, 0x6696c0 for presets, 0x671680 per cell, the
+// DT1 library of the room and DRLG_PickRandomTile 0x6704f0 with the room seed,
+// the tree markers of the sub-theme patterns, the border-cell lookup and merge
+// with already built neighbour rooms). The game builds rooms in the order the
+// player streams them in; BuildTiles fixes the order (plain rooms in creation
+// order, then presets in creation order) and the golden uses the same one.
+//
 // Only levels 2-7, 0x11 and 0x27 of Act 1 are covered by the golden; other
-// level types (Acts 2-5) are not implemented.
+// level types (Acts 2-5) are not implemented. Tile code paths no golden room
+// reaches are not ported and make BuildTiles return an error (see tiles.go).
 package drlgoutdoor
