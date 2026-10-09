@@ -28,7 +28,12 @@ launch_game() {
 # game process appears, then until it exits
 wait_run() {
   local i
-  for i in {1..120}; do pgrep -f "$tmp/od2" >/dev/null && break; sleep 1; done
+  for i in {1..120}; do
+    pgrep -f "$tmp/od2" >/dev/null && break
+    # a game that crashed or finished instantly is already gone but left its log: do not wait the full start timeout
+    [ $i -gt 5 ] && [ -s "${log:-/nonexistent}" ] && return
+    sleep 1
+  done
   for i in {1..420}; do pgrep -f "$tmp/od2" >/dev/null || break; sleep 1; done
   # a game still alive now is stuck (e.g. on the title screen): kill it, never leave windows behind.
   # The pattern is this run's private scratch dir, so other runs/agents/the user's own games are untouched.
@@ -36,7 +41,10 @@ wait_run() {
 }
 # every run gets its own scratch folder and server port, so parallel runs (e.g. several agents) do not collide
 tmp=$(mktemp -d /tmp/od2-verify.XXXXXX)
-trap 'pkill -f "$tmp/od2" 2>/dev/null; pkill -f "$tmp/[0-9a-z-]*\.command" 2>/dev/null' EXIT INT TERM
+cleanup_games() { pkill -f "$tmp/od2" 2>/dev/null; pkill -f "$tmp/[0-9a-z-]*\.command" 2>/dev/null; }
+trap cleanup_games EXIT
+trap 'cleanup_games; exit 130' INT
+trap 'cleanup_games; exit 143' TERM
 step() { printf '\n== %s\n' "$1"; }
 
 # every run uses its own server port so parallel runs (e.g. several agents) do not collide
@@ -106,7 +114,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
       # saves are written back to the .d2s they were loaded from: every run starts from a fresh copy
       if [ -z "${OD2_VERIFY_SAVE:-}" ]; then cp -f "$D2S_SAMPLE_BODY" "$save"; rm -f "$save.bak"; fi
       n=${f:t:r}
-      cmd=$tmp/$n.command log=$tmp/$n.log
+      cmd=$tmp/$n.command log=$tmp/$n.log; rm -f $log
       {
         echo '#!/bin/zsh'
         echo "export OD2_PORT=$OD2_PORT"
