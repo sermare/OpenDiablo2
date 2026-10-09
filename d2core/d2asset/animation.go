@@ -36,7 +36,10 @@ type animationFrame struct {
 
 type animationDirection struct {
 	decoded bool
-	frames  []animationFrame
+	// surfaced is set once the frame images of this direction exist. DCC animations create
+	// them lazily, one direction at a time (see ensureSurfaces).
+	surfaced bool
+	frames   []animationFrame
 }
 
 // static check that we implement the animation interface
@@ -46,6 +49,7 @@ var _ d2interface.Animation = &Animation{}
 type Animation struct {
 	renderer         d2interface.Renderer
 	onBindRenderer   func(renderer d2interface.Renderer) error
+	ensureDirection  func(direction int) error // creates the images of one direction (DCC only)
 	directions       []animationDirection
 	effect           d2enum.DrawEffect
 	colorMod         color.Color
@@ -126,7 +130,22 @@ const (
 	zero = 0.0
 )
 
+// ensureSurfaces creates the images of the current direction if the animation builds them lazily.
+// Creating all 8 or 16 directions of a monster mode at the first draw cost a visible hitch (hundreds of
+// ms for a pack of monsters coming into view); only the direction that is actually drawn is needed.
+func (a *Animation) ensureSurfaces() {
+	if a.ensureDirection == nil || a.directionIndex >= len(a.directions) || a.directions[a.directionIndex].surfaced {
+		return
+	}
+
+	if err := a.ensureDirection(a.directionIndex); err != nil {
+		log.Println(err)
+	}
+}
+
 func (a *Animation) renderShadow(target d2interface.Surface) {
+	a.ensureSurfaces()
+
 	direction := a.directions[a.directionIndex]
 	frame := direction.frames[a.frameIndex]
 
@@ -154,6 +173,8 @@ func (a *Animation) renderShadow(target d2interface.Surface) {
 // GetCurrentFrameSurface returns the surface for the current frame of the
 // animation
 func (a *Animation) GetCurrentFrameSurface() d2interface.Surface {
+	a.ensureSurfaces()
+
 	return a.directions[a.directionIndex].frames[a.frameIndex].image
 }
 
@@ -162,6 +183,8 @@ func (a *Animation) Render(target d2interface.Surface) {
 	if a.renderer == nil {
 		a.BindRenderer(target.Renderer())
 	}
+
+	a.ensureSurfaces()
 
 	direction := a.directions[a.directionIndex]
 	frame := direction.frames[a.frameIndex]
@@ -225,6 +248,8 @@ func (a *Animation) RenderSection(target d2interface.Surface, bound image.Rectan
 	if a.renderer == nil {
 		a.BindRenderer(target.Renderer())
 	}
+
+	a.ensureSurfaces()
 
 	direction := a.directions[a.directionIndex]
 	frame := direction.frames[a.frameIndex]

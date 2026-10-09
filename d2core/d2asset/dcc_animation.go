@@ -31,10 +31,21 @@ func newDCCAnimation(
 		onBindRenderer: func(r d2interface.Renderer) error {
 			if DCC.renderer != r {
 				DCC.renderer = r
-				return DCC.createSurfaces()
+
+				// the images belong to a renderer: build them again, per direction, when drawn
+				for i := range DCC.directions {
+					DCC.directions[i].surfaced = false
+				}
 			}
 
 			return nil
+		},
+		ensureDirection: func(direction int) error {
+			if DCC.renderer == nil {
+				return nil
+			}
+
+			return DCC.createDirectionSurfaces(direction)
 		},
 	}
 
@@ -140,17 +151,6 @@ func (a *DCCAnimation) decodeFrame(directionIndex int) animationFrame {
 	return frame
 }
 
-func (a *DCCAnimation) createSurfaces() error {
-	for directionIndex := 0; directionIndex < len(a.directions); directionIndex++ {
-		err := a.createDirectionSurfaces(directionIndex)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (a *DCCAnimation) createDirectionSurfaces(directionIndex int) error {
 	for frameIndex := 0; frameIndex < a.dcc.FramesPerDirection; frameIndex++ {
 		if !a.directions[directionIndex].decoded {
@@ -167,6 +167,8 @@ func (a *DCCAnimation) createDirectionSurfaces(directionIndex int) error {
 
 		a.directions[directionIndex].frames[frameIndex].image = surface
 	}
+
+	a.directions[directionIndex].surfaced = true
 
 	return nil
 }
