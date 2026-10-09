@@ -184,11 +184,9 @@ type Game struct {
 	// Expansion selects the Lord of Destruction rules (the Cow King checks the
 	// Baal quest instead of the Diablo quest).
 	Expansion bool
-	// ExeBossBits makes the kills of Mephisto, Diablo and Baal set the bits the
-	// binary sets (done + primary goal, see boss_exe.go) instead of reward
-	// pending. Off by default (the claim talks and the unlock effects of the
-	// engine's reward flow stay as they were).
-	ExeBossBits bool
+	// LegacyBossBits restores the engine's earlier boss flow (kills of Mephisto, Diablo and Baal leave reward pending, no
+	// hammer drop from Hephasto). By default (false) the kills set the bits the binary sets (done + primary goal, see boss_exe.go).
+	LegacyBossBits bool
 	// Level is the id of the level the hero is in.
 	Level int
 	// Items counts the quest items the hero carries by item code.

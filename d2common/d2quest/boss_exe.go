@@ -1,6 +1,6 @@
 package d2quest
 
-// Kill bits of the end bosses as the binary sets them (Game.ExeBossBits).
+// Kill bits of the end bosses as the binary sets them (Game.LegacyBossBits).
 //
 // VERIFIED (Game.exe 1.14b, read-only Ghidra):
 //   - Mephisto, QUEST_A3_TheGuardian_CompleteQuest 0x5b9d00: slot 22 bits 0xd
@@ -21,7 +21,7 @@ package d2quest
 //
 // None of the three sets bit 1 (reward pending): there is no reward talk, the
 // quest is done at once. The engine's own flow marks them reward pending and
-// pays the claim effects when the hero speaks; ExeBossBits keeps those
+// pays the claim effects when the hero speaks; LegacyBossBits keeps those
 // effects but grants at once.
 const (
 	exeBitMephisto = 11 // 0xb, set by the Guardian's completion only

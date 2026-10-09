@@ -28,7 +28,6 @@ func TestExeBossBits(t *testing.T) {
 			id: QuestEveOfDestruction, wantNone: true},
 	} {
 		g, _ := newGame(t)
-		g.ExeBossBits = true
 		g.Expansion = !c.classic
 		g.Level = c.level
 
@@ -73,13 +72,40 @@ func TestExeBossBits(t *testing.T) {
 	}
 }
 
-// TestExeBossBitsOffByDefault: the default flow still ends in reward pending.
-func TestExeBossBitsOffByDefault(t *testing.T) {
+// TestLegacyBossBits: Game.LegacyBossBits keeps the old flow that ends in reward pending.
+func TestLegacyBossBits(t *testing.T) {
 	g, _ := newGame(t)
+	g.LegacyBossBits = true
 	g.Dispatch(Event{Kind: EvMonsterKilled, Monster: NPCMephisto, Name: "Mephisto"})
 
 	got := g.Rec.Slot(g.Quest(QuestGuardian).Slot)
 	if got&bitOf(FlagRewardPending) == 0 || got&bitOf(FlagRewardGranted) != 0 {
 		t.Errorf("default flow changed: 0x%04x", got)
+	}
+}
+
+// TestHephastoDropsTheHammer pins 0x5b4190 / 0x5af8c0: by default Hephasto's death (class 409) drops the Hellforge
+// hammer and changes no quest bit; with LegacyBossBits nothing happens.
+func TestHephastoDropsTheHammer(t *testing.T) {
+	for _, on := range []bool{false, true} {
+		g, _ := newGame(t)
+		g.LegacyBossBits = !on
+		before := g.Rec.Slot(g.Quest(QuestHellforge).Slot)
+
+		effects := g.Dispatch(Event{Kind: EvMonsterKilled, Monster: NPCHephasto, Name: "hephasto"})
+
+		drop := false
+
+		for _, f := range effects {
+			drop = drop || (f.Kind == EffectGiveItem && f.Code == ItemHellforgeHammer)
+		}
+
+		if drop != on {
+			t.Errorf("default=%v: hammer drop = %v", on, drop)
+		}
+
+		if after := g.Rec.Slot(g.Quest(QuestHellforge).Slot); after != before {
+			t.Errorf("default=%v: slot changed 0x%04x -> 0x%04x", on, before, after)
+		}
 	}
 }
