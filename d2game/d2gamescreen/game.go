@@ -152,7 +152,8 @@ type Game struct {
 	autoSoundElapsed     float64
 	autoSoundDone        bool
 	ground               groundState
-	populated            int // levels.changes+1 of the level that was populated with monsters
+	levelStore           levelStore // state of the levels the hero has left (level_persist.go)
+	populated            int        // levels.changes+1 of the level that was populated with monsters
 	objects              objectState
 	autoObject           autoObject
 	autoGround           autoGround

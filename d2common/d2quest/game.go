@@ -14,8 +14,10 @@
 //     GUID lists of the original become booleans on the quest;
 //   - object, missile and portal effects are reported as Effects instead of
 //     being simulated;
-//   - quests that are not implemented (Act 2 after Radament and Acts 3-5) have
-//     no node; their record slots are left untouched.
+//   - the quests of Acts 2-5 are implemented from the notes (Act 2 in detail,
+//     Acts 3-5 as table driven nodes whose triggers are UNVERIFIED, see
+//     generic.go); the "act finished" words and the unlock of the next act are
+//     set by the TravelToActN calls.
 //
 // Evidence: the state machines of Act 1 and Radament's Lair follow the clean-room
 // D2MOO quest sources, which the notes checked against the 1.14b binary for the
@@ -125,6 +127,13 @@ const (
 	EffectSpawn
 	// EffectUnlockAct: a new act can be travelled to (Value = act number 1..5).
 	EffectUnlockAct
+	// EffectReward: a quest reward the engine may not have a mechanism for yet.
+	// Code names it: "stat-points" (Value points), "life-boost" (Value life),
+	// "socket-quest" (Larzuk), "hire-ironwolves" (Asheara's Iron Wolf mercenaries),
+	// "hire-barbarians" (Qual-Kehk), "resist-bonus" (Malah's scroll, Value
+	// percent), "personalize" (Anya), "unlock-difficulty" (Baal dead),
+	// "game-complete". The engine applies the ones it supports and logs the rest.
+	EffectReward
 )
 
 // Effect is a request to the engine.
@@ -245,13 +254,12 @@ func New(rec *d2s.QuestRecord, npc *d2s.NPCBlock, difficulty int) *Game {
 		newA1Prologue, newDenOfEvil, newBurialGrounds, newToolsOfTheTrade, newSearchForCain,
 		newForgottenTower, newSistersToTheSlaughter, newA2Prologue, newRadament, newNavi,
 		newA1Intro,
+		newHoradricStaff, newTaintedSun, newArcaneSanctuary, newSummoner, newSevenTombs,
+		newA3Prologue, newLamEsen, newKhalim, newBlade, newGoldenBird, newBlackenedTemple, newGuardian,
+		newA4Prologue, newFallenAngel, newTerrorsEnd, newHellforge, newMalachai,
+		newSiege, newRescue, newPrison, newBetrayal, newRite, newEve,
 	} {
 		q := init()
-		g.Quests = append(g.Quests, q)
-		g.byID[q.ID] = q
-	}
-
-	for _, q := range newBossQuests() {
 		g.Quests = append(g.Quests, q)
 		g.byID[q.ID] = q
 	}
@@ -298,6 +306,13 @@ func (g *Game) Start() {
 	for _, id := range []int{QuestDenOfEvil, QuestRadament} {
 		if q := g.byID[id]; q != nil && q.seq != nil {
 			q.seq(g, q)
+		}
+	}
+
+	// the quests after a completed one of Acts 2-5 are available
+	for _, q := range g.Quests {
+		if g.get(q, FlagRewardGranted) && len(chainAfter[q.ID]) > 0 {
+			g.chainFrom(q)
 		}
 	}
 }

@@ -99,7 +99,10 @@ func (mpq *MPQ) ReadFile(fileName string) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	fileBlockData.FileName = strings.ToLower(fileName)
+	// each stream gets its own copy of the block: streams are used from several goroutines
+	block := *fileBlockData
+	block.FileName = strings.ToLower(fileName)
+	fileBlockData = &block
 
 	stream, err := CreateStream(mpq, fileBlockData, fileName)
 	if err != nil {
@@ -121,7 +124,10 @@ func (mpq *MPQ) ReadFileStream(fileName string) (d2interface.DataStream, error) 
 		return nil, err
 	}
 
-	fileBlockData.FileName = strings.ToLower(fileName)
+	// each stream gets its own copy of the block: streams are used from several goroutines
+	block := *fileBlockData
+	block.FileName = strings.ToLower(fileName)
+	fileBlockData = &block
 
 	stream, err := CreateStream(mpq, fileBlockData, fileName)
 	if err != nil {
