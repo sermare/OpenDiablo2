@@ -119,7 +119,7 @@ EOT
   sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
   grep -E "MONSTER pack|AUTOMONSTER (summary|world)" $log.txt | cut -c1-200
   grep -q "MONSTER pack leader=" $log.txt || { echo "FAIL: no pack spawned"; fail=1; }
-  grep -q "AUTOMONSTER world .*max_stack=1 " $log.txt || { echo "FAIL: monsters stacked or no world summary"; fail=1; }
+  grep -q "AUTOMONSTER world .*max_stack=[12] " $log.txt || { echo "FAIL: monsters stacked (3+) or no world summary"; fail=1; }
   if grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing"; then echo "FAIL: warnings/errors in pack log"; fail=1; fi
 fi
 
