@@ -44,6 +44,7 @@ type MapEngine struct {
 	startOverride *[2]float64 // hero spawn tile set by a level generator (see SetStartPosition)
 	world         World       // where this map sits in the Act 1 world (see SetWorld)
 	warpDest      map[[2]int]int
+	population    []PlannedMonster // natural monsters of the level (see SetPopulation)
 
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/789
 	IsLoading bool // (temp) Whether we have processed the GenerateMapPacket(only for remote client)
@@ -120,6 +121,7 @@ func (m *MapEngine) ResetMap(levelType d2enum.RegionIdType, width, height int) {
 	m.world = World{}
 	m.warpDest = nil
 	m.gridPaths = false
+	m.population = nil
 
 	for idx := range m.levelType.Files {
 		m.addDT1(m.levelType.Files[idx])
@@ -242,6 +244,14 @@ func (m *MapEngine) PlaceStamp(stamp *d2mapstamp.Stamp, tileOffsetX, tileOffsetY
 // that equal rooms do not repeat the same pattern. Tiles that fall outside
 // the map are ignored.
 func (m *MapEngine) PlaceStampClipped(stamp *d2mapstamp.Stamp, tileOffsetX, tileOffsetY, w, h int) {
+	m.PlaceStampClippedWhere(stamp, tileOffsetX, tileOffsetY, w, h, nil, true)
+}
+
+// PlaceStampClippedWhere is PlaceStampClipped with the entity filter of
+// Stamp.EntitiesWhere: only the DS1 objects keep accepts become entities, and
+// the DS1 monsters are skipped when monsters is false.
+func (m *MapEngine) PlaceStampClippedWhere(stamp *d2mapstamp.Stamp, tileOffsetX, tileOffsetY, w, h int,
+	keep func(idx int) bool, monsters bool) {
 	size := stamp.Size()
 	if w > size.Width {
 		w = size.Width
@@ -265,7 +275,7 @@ func (m *MapEngine) PlaceStampClipped(stamp *d2mapstamp.Stamp, tileOffsetX, tile
 		}
 	}
 
-	for _, e := range stamp.Entities(tileOffsetX, tileOffsetY) {
+	for _, e := range stamp.EntitiesWhere(tileOffsetX, tileOffsetY, keep, monsters) {
 		pos := e.GetPosition()
 		tx, ty := int(pos.X())/subtilesPerTile, int(pos.Y())/subtilesPerTile
 

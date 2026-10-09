@@ -35,6 +35,7 @@ type MapGenerator struct {
 	engine *d2mapengine.MapEngine
 
 	providers []LevelProvider
+	pop       *popEnv // tables of the real population (see real_pop.go)
 
 	*d2util.Logger
 }

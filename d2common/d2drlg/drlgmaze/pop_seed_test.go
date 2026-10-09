@@ -1,10 +1,13 @@
 package drlgmaze
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
@@ -30,14 +33,39 @@ type popSeedLevel struct {
 func TestChunkRoomSeeds(t *testing.T) {
 	tb := realTables(t)
 
-	raw, err := os.ReadFile(filepath.Join("..", "testdata", "pop_presets.json"))
-	if err != nil {
-		t.Skip(err)
-	}
+	files, _ := filepath.Glob(filepath.Join("..", "testdata", "pop_presets*.json*"))
 
 	var gold []popSeedLevel
-	if err := json.Unmarshal(raw, &gold); err != nil {
-		t.Fatal(err)
+
+	for _, f := range files {
+		fh, err := os.Open(f)
+		if err != nil {
+			continue
+		}
+
+		var r io.Reader = fh
+
+		if strings.HasSuffix(f, ".gz") {
+			zr, err := gzip.NewReader(fh)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			r = zr
+		}
+
+		var part []popSeedLevel
+		if err := json.NewDecoder(r).Decode(&part); err != nil {
+			t.Fatalf("%s: %v", f, err)
+		}
+
+		fh.Close()
+
+		gold = append(gold, part...)
+	}
+
+	if len(gold) == 0 {
+		t.Skip("no preset population golden")
 	}
 
 	checked, bad := 0, 0

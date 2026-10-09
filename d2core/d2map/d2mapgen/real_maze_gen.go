@@ -80,6 +80,22 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 
 	levelSeed := d2rand.LevelSeed(base, uint32(levelID))
 
+	// the original's population: rooms are the DrlgRoom chunks with their seeds
+	pop := g.newPopLevel(levelID, seed, diff)
+	chunkRooms := map[int][]*popRoom{}
+
+	if pop != nil {
+		for _, c := range res.Chunks {
+			noPop := false
+			if pr, ok := tb.PrestByDef(res.Rooms[c.Room].Def); ok && pr.Populate == 0 {
+				noPop = true
+			}
+
+			pr := pop.addRoom(c.X-res.MinX+realMazeMargin, c.Y-res.MinY+realMazeMargin, c.W, c.H, c.Seed, noPop)
+			chunkRooms[c.Room] = append(chunkRooms[c.Room], pr)
+		}
+	}
+
 	for ri, r := range res.Rooms {
 		rec, ok := g.asset.Records.Level.Presets[r.Def]
 		if !ok || r.File < 0 {
@@ -110,7 +126,26 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 
 		ox, oy := r.X-res.MinX+realMazeMargin, r.Y-res.MinY+realMazeMargin
 
-		g.engine.PlaceStampClipped(stamp, ox, oy, r.W, r.H)
+		if pop != nil {
+			var first *popRoom
+			if rs := chunkRooms[ri]; len(rs) > 0 {
+				first = rs[0]
+			}
+
+			var gate *d2rand.Seed
+			if r.GateSteps > 0 {
+				gate = &r.GateSeed
+			}
+
+			ps := pop.addPreset(stamp, ox, oy, gate, first)
+			for _, pr := range chunkRooms[ri] {
+				pr.preset = ps
+			}
+
+			g.engine.PlaceStampClippedWhere(stamp, ox, oy, r.W, r.H, ps.keepFunc(), false)
+		} else {
+			g.engine.PlaceStampClipped(stamp, ox, oy, r.W, r.H)
+		}
 
 		if os.Getenv("OD2_AUTOMAP_ASCII") != "" {
 			g.Infof("AUTOMAP room %d def=%d %s at tile (%d,%d) %dx%d", ri, r.Def, files[r.File], ox, oy, r.W, r.H)
@@ -122,12 +157,19 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 			entries = append(entries, roomRect{ox, oy, r.W, r.H, files[r.File]})
 		}
 
-		roomSeed := d2rand.New(levelSeed.Lo + uint32(ri)*0x9E3779B1)
-		g.placeMonsters(stamp, levelID, diff, ox, oy, r.W, r.H, roomSeed, &mon)
+		if pop == nil {
+			roomSeed := d2rand.New(levelSeed.Lo + uint32(ri)*0x9E3779B1)
+			g.placeMonsters(stamp, levelID, diff, ox, oy, r.W, r.H, roomSeed, &mon)
+		}
 	}
 
 	g.engine.BlockEmptyTiles()
 	g.engine.UseCollisionPaths(true)
+
+	if pop != nil {
+		pop.run()
+		pop.logSummary("real maze")
+	}
 
 	sx, sy, how := g.findEntry(res, entries, realMazeMargin)
 	g.engine.SetStartPosition(sx, sy)

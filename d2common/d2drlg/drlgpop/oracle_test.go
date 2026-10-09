@@ -1,7 +1,6 @@
 package drlgpop
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -63,20 +62,7 @@ func TestOraclePresetUnits(t *testing.T) {
 		t.Skip("D2_TABLES / D2_DS1_ROOT not set")
 	}
 
-	gp := os.Getenv("ORACLE_POP")
-	if gp == "" {
-		gp = filepath.Join("..", "testdata", "pop_presets.json")
-	}
-
-	raw, err := os.ReadFile(gp)
-	if err != nil {
-		t.Skip(err)
-	}
-
-	var gold []goldLevel
-	if err := json.Unmarshal(raw, &gold); err != nil {
-		t.Fatal(err)
-	}
+	gold := loadPopGold(t)
 
 	nm := realNames(t)
 

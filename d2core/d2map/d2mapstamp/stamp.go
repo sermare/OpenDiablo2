@@ -120,10 +120,28 @@ func (mr *Stamp) TileData(style, sequence int32, tileType d2enum.TileType) *d2dt
 
 // Entities spawns all entities and objects in this tile on the map.
 func (mr *Stamp) Entities(tileOffsetX, tileOffsetY int) []d2interface.MapEntity {
+	return mr.EntitiesWhere(tileOffsetX, tileOffsetY, nil, true)
+}
+
+// Version returns the version of the DS1 file.
+func (mr *Stamp) Version() int {
+	return mr.ds1.Version()
+}
+
+// EntitiesWhere is Entities restricted to the DS1 object records for which keep
+// (indices into Objects) returns true (all of them when keep is nil), and
+// without the DS1 monsters when monsters is false. The real-map generator
+// uses it to create only the preset units that survive the original's
+// FilterPresetObjects and to make the monsters itself.
+func (mr *Stamp) EntitiesWhere(tileOffsetX, tileOffsetY int, keep func(idx int) bool, monsters bool) []d2interface.MapEntity {
 	entities := make([]d2interface.MapEntity, 0)
 
-	for _, object := range mr.ds1.Objects {
-		if object.Type == int(d2enum.ObjectTypeCharacter) {
+	for idx, object := range mr.ds1.Objects {
+		if keep != nil && !keep(idx) {
+			continue
+		}
+
+		if object.Type == int(d2enum.ObjectTypeCharacter) && monsters {
 			monPreset := mr.factory.asset.Records.Monster.Presets[mr.ds1.Act][object.ID]
 			monstat := mr.factory.asset.Records.Monster.Stats[monPreset]
 			// If monstat is nil here it is a place_ type object, idk how to handle those yet.

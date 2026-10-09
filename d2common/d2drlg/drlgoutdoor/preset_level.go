@@ -16,6 +16,9 @@ type PresetLevel struct {
 	Rect  Rect
 	Rooms []*Room
 	Seed  *d2rand.Seed // level seed after the rooms
+	// GateSeed is the level seed when the DS1 objects were filtered (the draws
+	// of drlgpop.Filter start from it).
+	GateSeed d2rand.Seed
 }
 
 // Counts of the DS1 object RNG gates (DRLG_FilterPresetObjects, 0x66a230).
@@ -202,6 +205,8 @@ func GeneratePreset(env *Env, p Params, fileOverride int) (res *PresetLevel, err
 
 	var ds *Pattern
 
+	gateSeed := *l.Seed
+
 	if rec.Scan != 0 || rec.Pops != 0 {
 		if file < 0 || file >= len(rec.File) {
 			return nil, errors.New("drlgoutdoor: preset file index out of range")
@@ -216,7 +221,7 @@ func GeneratePreset(env *Env, p Params, fileOverride int) (res *PresetLevel, err
 		}
 	}
 
-	out := &PresetLevel{ID: p.ID, Def: rec.Def, File: file, Rect: rect, Seed: l.Seed}
+	out := &PresetLevel{ID: p.ID, Def: rec.Def, File: file, Rect: rect, Seed: l.Seed, GateSeed: gateSeed}
 
 	remY := rect.H
 
