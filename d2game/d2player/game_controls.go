@@ -278,7 +278,7 @@ func NewGameControls(
 	// skill selection: the popups pick through SelectSkill, the icons show the hotkeys
 	hud.skillSelectMenu.SetCallbacks(gc.onSkillPopupPick, gc.hotkeyName)
 	gc.skilltree.tooltipText = func(s *d2hero.HeroSkill) string {
-		return skillTooltip(asset, s, d2hero.EffectiveSkillLevel(gc.hero.Stats, gc.hero.Class, s), gc.hero.SkillBar, gc.hotkeyName, gc.hero.Skills, gc.hero.Stats.Level)
+		return skillTooltip(asset, s, d2hero.EffectiveSkillLevel(gc.hero.Stats, gc.hero.Class, s), gc.hero.SkillBar, gc.hotkeyName, gc.hero.Skills, gc.hero.Stats)
 	}
 
 	if audioProvider != nil {

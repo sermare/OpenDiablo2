@@ -18,6 +18,7 @@ func TestSkillDescTexts(t *testing.T) {
 	desc := d2skilldesc.Desc{
 		DescDam: 1,
 		Lines: []d2skilldesc.Row{
+			{Kind: d2skilldesc.KindPhysDamage},
 			{Kind: d2skilldesc.KindMana},
 			{Kind: 2, TextA: "Dmg: ", TextB: "%", CalcA: "ln34"},
 			{Kind: 99},
@@ -54,14 +55,14 @@ func TestSkillDescTexts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := skillDescTexts(tr, reg, sk, desc, tc.points, 20, map[int]int{1: tc.points}, mana)
+			got := skillDescTexts(tr, reg, sk, desc, tc.points, 20, map[int]int{1: tc.points}, mana, heroInputs{})
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got %+v\nwant %+v", got, tc.want)
 			}
 		})
 	}
 
-	if got := skillDescTexts(tr, reg, nil, desc, 1, 1, nil, nil); !reflect.DeepEqual(got, descTexts{}) {
+	if got := skillDescTexts(tr, reg, nil, desc, 1, 1, nil, nil, heroInputs{}); !reflect.DeepEqual(got, descTexts{}) {
 		t.Fatalf("nil skill: %+v", got)
 	}
 }
@@ -84,5 +85,29 @@ func TestLabelKeys(t *testing.T) {
 		if key != want {
 			t.Errorf("key %q want %q", key, want)
 		}
+	}
+}
+
+// The weapon part of kind-9 damage is SrcDam/128 of the weapon (0x648f90),
+// added before the row's own percent and flat bonuses, and the damage line
+// sits at its row position.
+func TestSkillDescWeaponDamage(t *testing.T) {
+	reg := d2skill.NewRegistry()
+	sk := &d2skill.Skill{ID: 1, Name: "Strike", MaxLvl: 5}
+	sk.HitShift, sk.MinDam, sk.MaxDam, sk.SrcDam = 8, 2, 4, 64
+	reg.Add(sk)
+
+	desc := d2skilldesc.Desc{Lines: []d2skilldesc.Row{
+		{Kind: 2, TextA: "A ", CalcA: "par1"},
+		{Kind: d2skilldesc.KindPhysDamage},
+		{Kind: d2skilldesc.KindToHit},
+	}}
+	tr := func(s string) string { return s }
+
+	got := skillDescTexts(tr, reg, sk, desc, 1, 1, map[int]int{1: 1}, nil, heroInputs{Weapon: [2]int{10, 20}})
+	want := []string{"Current Skill Level: 1", "Damage: 7-14"}
+
+	if !reflect.DeepEqual(got.Current, want) {
+		t.Fatalf("got %v want %v", got.Current, want)
 	}
 }
