@@ -547,7 +547,7 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 
 	opt := d2monsters.MinionOptions{Owner: p, Kind: o.Kind, HPPct: o.HPPct, HPFlat: o.HPFlat, Frames: o.Frames, Tag: o.PetType}
 	if opt.Tag == "" || opt.Tag == "none" {
-		opt.Tag = sk.Name
+		opt.Tag = stat.Key // the tag petworld.go gives such minions
 	}
 
 	for _, m := range o.Stats {
@@ -573,7 +573,6 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		}
 	}
 
-	alive := e.alivePets(p.ID(), opt.Tag)
 	hx, hy := u.Pos()
 	x, y := o.X, o.Y
 
@@ -581,30 +580,26 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		x, y = hx, hy
 	}
 
-	count := o.Count
-
-	if o.Kind == "minion" || o.Kind == "totem" {
-		if room := o.Max - len(alive); count > room {
-			count = room
+	// d2summon.Roster decides how many minions appear and which old ones make
+	// room; the Summoner computes their stats (d2monsters/petworld.go).
+	ids, plan := e.monsters.Summoner().Cast(p.ID(), stat.Key, o, nil, func(i, n int) (int, int) {
+		if o.Kind == "wall" {
+			return wallCell(hx, hy, x, y, i, n, o.Mode)
 		}
 
-		if count < 1 {
-			e.emit("summon", "SUMMON skill=%q key=%s refused=limit alive=%d max=%d", sk.Name, stat.Key, len(alive), o.Max)
-			return
-		}
+		return x, y
+	})
+
+	if len(ids) == 0 {
+		e.emit("summon", "SUMMON skill=%q key=%s refused=limit max=%d evicted=%d", sk.Name, stat.Key, o.Max, len(plan.Evict))
+		return
 	}
 
 	made := 0
 
-	for i := 0; i < count; i++ {
-		px, py := x, y
-		if o.Kind == "wall" {
-			px, py = wallCell(hx, hy, x, y, i, count, o.Mode)
-		}
-
-		m, err := e.monsters.SpawnMinion(stat, px, py, opt)
-		if err != nil {
-			e.emit("summon", "SUMMON skill=%q key=%s refused=%v", sk.Name, stat.Key, err)
+	for _, id := range ids {
+		m := e.monsters.MinionByBrainID(id)
+		if m == nil {
 			continue
 		}
 

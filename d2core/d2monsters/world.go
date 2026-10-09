@@ -135,7 +135,7 @@ func (d *Director) Nearest(b *d2monster.Brain) (d2monster.Target, int, bool) {
 		found    bool
 	)
 
-	if u := d.unitOf(b); u != nil && u.merc != nil {
+	if u := d.unitOf(b); u != nil && u.friendly() {
 		return d.nearestEnemy(b)
 	}
 
@@ -188,7 +188,7 @@ func (d *Director) Nearest(b *d2monster.Brain) (d2monster.Target, int, bool) {
 // AttackTarget implements d2monster.Senses: the nearest hero inside the
 // monster's aggro radius (the exe's filter is UNVERIFIED).
 func (d *Director) AttackTarget(b *d2monster.Brain) (d2monster.Target, int, bool) {
-	if u := d.unitOf(b); u != nil && u.merc != nil {
+	if u := d.unitOf(b); u != nil && u.friendly() {
 		return d.nearestEnemy(b)
 	}
 
@@ -258,6 +258,10 @@ func (d *Director) Attack(b *d2monster.Brain, mode d2monster.Mode, t d2monster.T
 	}
 
 	u.attackTarget = t.ID
+
+	if u.ally != nil { // the pet AI names its victim by unit id
+		u.ally.strikeAt = d.units[t.ID]
+	}
 	d.playPlans(u, attackPlans(d.soundRecord(u), mode, d.snd.Intn))
 	u.aimX, u.aimY = t.X, t.Y
 

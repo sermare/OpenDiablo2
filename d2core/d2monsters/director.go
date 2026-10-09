@@ -124,10 +124,11 @@ type moveIntent struct {
 type Director struct {
 	*d2util.Logger
 
-	asset   *d2asset.AssetManager
-	engine  *d2mapengine.MapEngine
-	players func() []*d2mapentity.Player
-	opt     Options
+	asset    *d2asset.AssetManager
+	engine   *d2mapengine.MapEngine
+	summoner *Summoner // lazily created, see petworld.go
+	players  func() []*d2mapentity.Player
+	opt      Options
 
 	frame    int
 	acc      float64
@@ -381,6 +382,10 @@ func (d *Director) step() {
 
 	d.indexPlayers()
 	d.launcher.Step()
+
+	if d.summoner != nil {
+		d.summoner.Step()
+	}
 
 	for _, u := range d.sortedUnits() {
 		if !d.engineHas(u) {

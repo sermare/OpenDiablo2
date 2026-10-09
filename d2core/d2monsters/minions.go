@@ -7,6 +7,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2summon"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 )
@@ -45,6 +46,10 @@ type MinionOptions struct {
 	Level int
 	// Tag is free for the caller (the skill name).
 	Tag string
+	// Stats, when set, replace the monstats-derived life, defense, attack
+	// rating and damage (d2summon.Compute); HPPct/HPFlat/DamagePct/ToHit/
+	// ArmorClass are then ignored for those numbers.
+	Stats *d2summon.Stats
 }
 
 type allyState struct {
@@ -88,10 +93,17 @@ func (d *Director) SpawnMinion(stat *d2records.MonStatRecord, subX, subY int, op
 	}
 
 	v := &m.Vitals
-	v.MaxHP += v.MaxHP*opt.HPPct/100 + opt.HPFlat
-	v.HP = v.MaxHP
 
-	v.Defense += opt.ArmorClass
+	if s := opt.Stats; s != nil {
+		v.MaxHP, v.Defense = s.MaxHP, s.Defense
+		v.A1 = d2mapentity.MonsterAttack{ToHit: s.AR, Min: s.DmgMin, Max: s.DmgMax}
+		v.HP = v.MaxHP
+	} else {
+		v.MaxHP += v.MaxHP*opt.HPPct/100 + opt.HPFlat
+		v.HP = v.MaxHP
+		v.Defense += opt.ArmorClass
+	}
+
 	v.Experience = 0
 	v.TreasureClass = ""
 
@@ -303,6 +315,13 @@ func (d *Director) allyStep(u *unit) {
 	switch m.Mode() {
 	case d2monster.ModeNeutral, d2monster.ModeWalk, d2monster.ModeRun:
 	default:
+		return
+	}
+
+	if usesPetAI(u) {
+		d.followIntent(u)
+		d2monster.Tick(d, u.b)
+
 		return
 	}
 
