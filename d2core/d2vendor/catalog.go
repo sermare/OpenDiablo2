@@ -22,16 +22,19 @@ type Vendor struct {
 	// Repairs: the vendor repairs items (price code: Charsi 154, Fara 178,
 	// Hratli 253, Halbu 257, Larzuk 511; VERIFIED in the notes).
 	Repairs bool
+	// Gambles: the vendor has a gamble window (menu table of the notes:
+	// Gheed 147, Elzix 199, Alkor 254, Drehya 512, Jamella 405).
+	Gambles bool
 }
 
-// Act1 lists the Act 1 vendors that have a trade window. Gheed's gamble stock
-// is not implemented (the gamble row of his menu still logs "not implemented").
+// Act1 lists the Act 1 vendors that have a trade window (Gheed's gamble
+// window is built by GamblePoolFor / GambleParamsFor and TradeWindow.OpenGamble).
 //
 //nolint:gochecknoglobals // static lookup data
 var Act1 = []Vendor{
 	{Name: "Akara", NPC: "akara", ClassID: 148},
 	{Name: "Charsi", NPC: "charsi", ClassID: 154, Repairs: true},
-	{Name: "Gheed", NPC: "gheed", ClassID: 147},
+	{Name: "Gheed", NPC: "gheed", ClassID: 147, Gambles: true},
 }
 
 // ByClassID finds a vendor by monstats class id.
@@ -144,4 +147,61 @@ func NPCPricing(rec *d2records.RecordManager, v Vendor, quests *d2s.QuestRecord)
 	}
 
 	return n
+}
+
+// GamblePoolFor builds the gamble pool from gamble.txt (the Gamble records),
+// sorted by level requirement. ring and amulet are the bases of the two fixed
+// slots. ok is false when the tables hold no gamble rows or no ring/amulet.
+func GamblePoolFor(rec *d2records.RecordManager) (pool []GambleBase, ring, amulet GambleBase, ok bool) {
+	var haveRing, haveAmulet bool
+
+	build := func(code string) (GambleBase, bool) {
+		icr := rec.Item.All[code]
+		if icr == nil {
+			return GambleBase{}, false
+		}
+
+		b := GambleBase{Code: code, Level: icr.RequiredLevel}
+
+		if x := rec.Item.All[icr.UberCode]; x != nil && icr.UberCode != "" {
+			b.Exc, b.ExcLvl = icr.UberCode, x.RequiredLevel
+		}
+
+		if x := rec.Item.All[icr.UltraCode]; x != nil && icr.UltraCode != "" {
+			b.Elite, b.EliteL = icr.UltraCode, x.RequiredLevel
+		}
+
+		return b, true
+	}
+
+	for _, g := range rec.Gamble {
+		b, found := build(g.Code)
+		if !found {
+			continue
+		}
+
+		pool = append(pool, b)
+
+		switch g.Code {
+		case "rin":
+			ring, haveRing = b, true
+		case "amu":
+			amulet, haveAmulet = b, true
+		}
+	}
+
+	SortGamblePool(pool)
+
+	return pool, ring, amulet, haveRing && haveAmulet && len(pool) > 0
+}
+
+// GambleParamsFor reads the Gamble* columns of DifficultyLevels.txt
+// (difficulty 0 normal, 1 nightmare, 2 hell).
+func GambleParamsFor(rec *d2records.RecordManager, difficulty int) GambleParams {
+	r := rec.DifficultyLevels[d2enum.DifficultyType(difficulty)]
+	if r == nil {
+		return GambleParams{}
+	}
+
+	return GambleParams{Rare: r.GambleRare, Set: r.GambleSet, Unique: r.GambleUnique, Uber: r.GambleUber, Ultra: r.GambleUltra}
 }

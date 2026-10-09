@@ -175,6 +175,14 @@ func ExportD2SItems(c *HeroContainers) (out []d2s.Item, skipped []StoredItem) {
 		it := *s.D2S
 		it.X, it.Y = uint8(s.X), uint8(s.Y)
 
+		// identification done in the game (Cain, a scroll, a bought gamble item) is
+		// the one change besides the position: an item never becomes
+		// unidentified again. The affix data of an unidentified item is stored in
+		// the save anyway, so only the flag changes.
+		if s.Identified {
+			it.Identified = true
+		}
+
 		if s.Page == PageBelt {
 			it.Location, it.Page = d2s.LocationBelt, 0
 		} else {
