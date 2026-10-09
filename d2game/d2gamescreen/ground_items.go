@@ -237,7 +237,7 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 	v.playSoundAt(handle, ob.GetPosition(), "object")
 
 	ilvl := v.areaLevel()
-	tc := d2ground.ChestTreasureClass(v.localPlayer.Act, d2ground.Normal, ilvl, v.itemFactory().TreasureClassLevel)
+	tc := d2ground.ChestTreasureClass(v.localPlayer.Act, d2ground.Difficulty(v.difficulty()), ilvl, v.itemFactory().TreasureClassLevel)
 
 	v.ground.chestSeq++
 	seed := v.chestSeed() + v.ground.chestSeq

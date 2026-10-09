@@ -9,6 +9,7 @@ type Navigator interface {
 	ToMainMenu(errorMessageOptional ...string)
 	ToSelectHero(connType d2clientconnectiontype.ClientConnectionType, connHost string)
 	ToCreateGame(filePath string, connType d2clientconnectiontype.ClientConnectionType, connHost string)
+	ToSelectDifficulty(filePath string, connType d2clientconnectiontype.ClientConnectionType, connHost string)
 	ToCharacterSelect(connType d2clientconnectiontype.ClientConnectionType, connHost string)
 	ToMapEngineTest(region int, level int)
 	ToCredits()

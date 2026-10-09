@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 )
 
@@ -81,7 +82,9 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 	if c.Body != nil && state.Stats != nil {
 		exportAttributes(c, state, warn)
 		exportSkills(c.Body, state, opts.SkillIDs)
+		origQuests := questRecordsOf(c.Body)
 		exportProgress(c.Body, state)
+		exportProgression(c.Header, origQuests, state)
 		// a character without any item in its file (a new one) gets no starting
 		// items written: item bits are never fabricated, so there is nothing to compare
 		if len(c.Items) > 0 {
@@ -356,4 +359,26 @@ func exportDeath(c *d2s.Character, state *HeroState) {
 
 	binary.LittleEndian.PutUint32(c.CorpseHeader[corpseHeaderX:], uint32(d.Corpse.X))
 	binary.LittleEndian.PutUint32(c.CorpseHeader[corpseHeaderY:], uint32(d.Corpse.Y))
+}
+
+func questRecordsOf(b *d2s.Body) (q [3]d2s.QuestRecord) {
+	for d := range q {
+		q[d] = d2s.QuestRecord(b.Quests[d])
+	}
+
+	return q
+}
+
+// exportProgression raises the progression byte when the hero finished act
+// bosses the original save had not recorded. It never lowers it, and an
+// unchanged hero keeps the original byte.
+func exportProgression(h *d2s.Header, orig [3]d2s.QuestRecord, state *HeroState) {
+	now := d2difficulty.ProgressionOf(state.questRecords(), h.IsExpansion())
+	if now <= d2difficulty.ProgressionOf(orig, h.IsExpansion()) {
+		return
+	}
+
+	if now > d2difficulty.Progression(h.Status) {
+		h.Status = d2difficulty.WithProgression(h.Status, now)
+	}
 }

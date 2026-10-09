@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
@@ -437,8 +438,15 @@ func (d *Director) dropLoot(u *unit) {
 
 	level := u.m.Vitals.Level
 
+	// the treasure class moves along its level group with the monster level
+	// only in the expansion above Normal (VERIFIED, 0x558d80)
+	upgrade := 0
+	if d2difficulty.UpgradesTreasureClass(d.opt.Expansion, d2difficulty.Level(d.opt.Difficulty), true) {
+		upgrade = level
+	}
+
 	items, err := d.engine.DropItems(tc, diablo2item.DropOptions{
-		Seed: u.b.Seed.Step(), ILvl: level, UpgradeLevel: level, Players: 1,
+		Seed: u.b.Seed.Step(), ILvl: level, UpgradeLevel: upgrade, Players: 1,
 	})
 	if err != nil {
 		d.emit("drop", "MONSTER drop name=%s tc=%q error=%v", u.m.Label(), tc, err)

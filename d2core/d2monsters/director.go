@@ -62,6 +62,9 @@ type Options struct {
 	Seed uint32
 	// Difficulty selects the monstats columns.
 	Difficulty d2monster.Difficulty
+	// LogStats logs a DIFFTEST line with the level, life, defense, attack and
+	// resistances of every spawned monster.
+	LogStats bool
 	// Classic selects the plain monlvl.txt columns (HP, AC...) instead of the
 	// LoD columns (L-HP...) that the expansion uses (UNVERIFIED which the
 	// original takes; the L- columns are the default).
@@ -278,6 +281,15 @@ func (d *Director) Spawn(stat *d2records.MonStatRecord, subX, subY int) (*d2mape
 	d.emit("spawn", "MONSTER spawn name=%s id=%s class=%d ai=%s level=%d hp=%d defense=%d pos=(%d,%d)%s",
 		m.Label(), stat.Key, stat.ID, prof.AI, m.Vitals.Level, m.Vitals.HP, m.Vitals.Defense, subX, subY,
 		implementedNote(b))
+
+	if d.opt.LogStats {
+		// compared with the real tables by the difficulty scenario (verify.d/9a)
+		v := m.Vitals
+		d.emit("diff", "DIFFTEST monster id=%s difficulty=%d level=%d hp=%d defense=%d xp=%d tc=%q "+
+			"a1=%d/%d-%d a2=%d/%d-%d res=%v", stat.Key, int(d.opt.Difficulty), v.Level, v.MaxHP, v.Defense,
+			v.Experience, v.TreasureClass, v.A1.ToHit, v.A1.Min, v.A1.Max, v.A2.ToHit, v.A2.Min, v.A2.Max,
+			MonsterResists(stat, d.opt.Difficulty))
+	}
 
 	return m, nil
 }

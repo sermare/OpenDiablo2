@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
@@ -122,8 +123,15 @@ func (v *Game) advanceDeath(elapsed float64) {
 // difficulty returns the difficulty the monsters run at (the same switch the
 // monster scenarios use).
 func (v *Game) difficulty() int {
+	// the monster scenarios may force a difficulty (OD2_AUTODIFFICULTY goes
+	// through the difficulty screen and the hero instead)
 	if n, err := strconv.Atoi(os.Getenv("OD2_AUTOMONSTER_DIFF")); err == nil && n >= 0 && n <= 2 {
 		return n
+	}
+
+	// otherwise the difficulty the hero chose when the game was created
+	if v.gameClient != nil {
+		return int(d2difficulty.Clamp(int(v.gameClient.Difficulty)))
 	}
 
 	return int(d2monster.Normal)
