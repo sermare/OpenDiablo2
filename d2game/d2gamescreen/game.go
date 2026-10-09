@@ -159,6 +159,10 @@ type Game struct {
 	castTestState        *castTest
 	attackTarget         *d2mapentity.Monster
 	attackRepathAcc      float64
+	soundTraceSet        bool
+	heroStepAcc          float64
+	ambientTest          *ambientTest
+	regionEnvs           map[int]int
 	autoPanel            autoPanelState
 	levelStatusAcc       float64
 
@@ -299,6 +303,8 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceGroundInteraction(elapsed)
 	v.advanceLevels(elapsed)
 	v.advanceAutoGround(elapsed)
+	v.advanceSound(elapsed)
+	v.advanceAutoAmbient(elapsed)
 	v.advanceAutoPanel(elapsed)
 
 	if (v.escapeMenu != nil && !v.escapeMenu.IsOpen()) || len(v.gameClient.Players) != 1 {
@@ -322,7 +328,9 @@ func (v *Game) Advance(elapsed float64) error {
 
 			if tile != nil {
 				levelDetails := v.asset.Records.Level.Details[int(tile.RegionType)]
-				v.soundEnv.SetEnv(levelDetails.SoundEnvironmentID)
+				if v.ambientTest == nil { // OD2_AUTOAMBIENT picks the environment itself
+					v.soundEnv.SetEnv(v.soundEnvForRegion(tile.RegionType, levelDetails.SoundEnvironmentID))
+				}
 
 				// skip showing zone change text the first time we enter the world
 				if v.lastRegionType != d2enum.RegionNone && v.lastRegionType != tile.RegionType {
@@ -353,7 +361,7 @@ func (v *Game) Advance(elapsed float64) error {
 		v.mapRenderer.SetCameraTarget(&position)
 	}
 
-	v.soundEnv.Advance(elapsed)
+	v.soundEnv.Advance(elapsed * v.ambientSpeed())
 
 	if v.gameControls != nil {
 		if v.gameControls.PartyPanel != nil {

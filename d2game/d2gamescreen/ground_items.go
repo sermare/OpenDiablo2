@@ -3,13 +3,13 @@ package d2gamescreen
 import (
 	"fmt"
 	"math"
-	"os"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2ground"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
@@ -184,7 +184,7 @@ func (v *Game) pickUp(it *d2mapentity.Item) {
 	if it.IsGold() {
 		v.gameClient.MapEngine.RemoveEntity(it)
 		v.gameControls.AddGold(it.Gold)
-		v.playSound("item_gold")
+		v.playSoundAt("item_gold", it.GetPosition(), "pickup")
 		v.Infof("AUTOGROUND pickup gold amount=%d total=%d", it.Gold, v.localPlayer.Gold)
 
 		if v.ground.onPickup != nil {
@@ -201,7 +201,7 @@ func (v *Game) pickUp(it *d2mapentity.Item) {
 
 	v.gameClient.MapEngine.RemoveEntity(it)
 	v.gameControls.SetCursorItem(it.Item)
-	v.playSound("cursor_point_drop")
+	v.playSoundAt("cursor_point_drop", it.GetPosition(), "pickup")
 	v.Infof("AUTOGROUND pickup name=%q quality=%s -> cursor", plainLabel(it.Label()), it.Item.QualityName())
 
 	if v.ground.onPickup != nil {
@@ -223,7 +223,7 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 	}
 
 	id := ob.Record().Index
-	v.playSound(lootContainers[id])
+	v.playSoundAt(lootContainers[id], ob.GetPosition(), "object")
 
 	ilvl := v.areaLevel()
 	tc := d2ground.ChestTreasureClass(v.localPlayer.Act, d2ground.Normal, ilvl, v.itemFactory().TreasureClassLevel)
@@ -322,7 +322,7 @@ func (v *Game) spawnGroundItem(it *diablo2item.Item, c d2ground.Cell) (*d2mapent
 	}
 
 	v.gameClient.MapEngine.AddEntity(ent)
-	v.playSound(ent.DropSound)
+	v.playSoundAt(ent.DropSound, ent.GetPosition(), "drop")
 
 	return ent, nil
 }
@@ -336,7 +336,7 @@ func (v *Game) spawnGoldPile(amount int, c d2ground.Cell) (*d2mapentity.Item, er
 	}
 
 	v.gameClient.MapEngine.AddEntity(ent)
-	v.playSound(ent.DropSound)
+	v.playSoundAt(ent.DropSound, ent.GetPosition(), "drop")
 
 	return ent, nil
 }
@@ -380,19 +380,11 @@ func (v *Game) freeDropCells(cx, cy, n int, reachable bool) []d2ground.Cell {
 	return d2ground.DropCells(cx, cy, n, dropSearchRange, blocked)
 }
 
-// playSound plays a Sounds.txt handle (silently skipped for unknown handles and
-// when OD2_AUTOTEST_MUTE is set).
-func (v *Game) playSound(handle string) {
-	if handle == "" || os.Getenv("OD2_AUTOTEST_MUTE") != "" {
-		return
-	}
-
-	if v.asset.Records.Sound.Details[handle] == nil {
-		v.Debugf("unknown sound handle %q", handle)
-		return
-	}
-
-	v.soundEngine.PlaySoundHandle(handle)
+// playSoundAt plays a Sounds.txt handle at a map position through the
+// positional voice bank (silently skipped for unknown handles; the engine
+// makes no sound under OD2_AUTOTEST_MUTE).
+func (v *Game) playSoundAt(handle string, pos d2vector.Position, kind string) {
+	v.playSoundAtPos(handle, pos, d2audio.PlayOpts{Kind: kind})
 }
 
 // plainLabel strips the colour tokens ("[gold]...") and line breaks of a name.

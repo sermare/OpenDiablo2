@@ -214,6 +214,7 @@ func (d *Director) Attack(b *d2monster.Brain, mode d2monster.Mode, t d2monster.T
 	}
 
 	u.attackTarget = t.ID
+	d.playPlans(u, attackPlans(d.soundRecord(u), mode, d.snd.Intn))
 	u.aimX, u.aimY = t.X, t.Y
 
 	if mode != d2monster.ModeAttack1 && mode != d2monster.ModeAttack2 {
