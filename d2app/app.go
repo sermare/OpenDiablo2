@@ -348,7 +348,18 @@ func (a *App) Run() (err error) {
 			save = imported
 		}
 
-		a.ToCreateGame(save, d2clientconnectiontype.Local, "")
+		// OD2_HOST=1 hosts a network game (TCP on OD2_PORT, bind address OD2_BIND),
+		// OD2_JOIN=<host:port> joins one; OD2_PROTO=d2gs speaks the D2 game protocol
+		connType, joinAddr := d2clientconnectiontype.Local, ""
+
+		switch join := os.Getenv("OD2_JOIN"); {
+		case os.Getenv("OD2_HOST") == "1":
+			connType = d2clientconnectiontype.LANServer
+		case join != "":
+			connType, joinAddr = d2clientconnectiontype.LANClient, join
+		}
+
+		a.ToCreateGame(save, connType, joinAddr)
 	} else {
 		a.ToMainMenu()
 	}

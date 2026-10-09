@@ -204,6 +204,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"level"}, v.commandSpawnPortal},
 		{"setwaypoint", "activates (1) or clears (0) the waypoint of a level for the hero",
 			[]string{"level", "0|1"}, v.commandSetWaypoint},
+		{"players", "logs the players of the game with their positions", []string{}, v.commandPlayers},
+		{"chat", "sends a chat line to all players (_ for a space)", []string{"text"}, v.commandChat},
 	}
 
 	for _, cmd := range commands {
@@ -233,7 +235,7 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint"); err != nil {
+	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat"); err != nil {
 		return err
 	}
 
@@ -294,6 +296,8 @@ func (v *Game) Render(screen d2interface.Surface) {
 // Advance runs the update logic on the Gameplay screen
 // nolint:gocyclo // not need to change
 func (v *Game) Advance(elapsed float64) error {
+	v.gameClient.Drain()
+
 	v.soundEngine.Advance(elapsed)
 	v.advanceDayClock(elapsed)
 	v.advanceLighting()
@@ -955,6 +959,7 @@ func (v *Game) OnPlayerCast(skillID int, targetX, targetY float64) {
 	// skills the skill pipeline implements run locally with real missiles; the
 	// rest keep the old path (a CastSkill packet that plays the client effects)
 	if v.localPlayer != nil && v.castWithPipeline(skillID, targetX, targetY) {
+		v.announceCast(skillID, targetX, targetY)
 		return
 	}
 

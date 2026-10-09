@@ -48,7 +48,9 @@ func TestExpectedSizeClient(t *testing.T) {
 		kind SizeKind
 	}{
 		{0x00, 0, SizeInvalid},
-		{0x01, 0, SizeUnknown},
+		{0x01, 5, SizeFixed}, // (G) walk: 0x5475b0 rejects len != 5
+		{0x02, 0, SizeUnknown},
+		{0x3c, 9, SizeFixed}, // (G) 0x549ca0 rejects len != 9
 		{0x13, 9, SizeFixed}, // (G) handler 0x548990 rejects len != 9
 		{0x16, 13, SizeFixed},
 		{0x1c, 3, SizeFixed},
@@ -252,7 +254,7 @@ func TestDecoderErrors(t *testing.T) {
 		{"s2c invalid id", ServerToClient, []byte{0x17, 0, 0}, ErrInvalidID},
 		{"s2c id too high", ServerToClient, []byte{0xb5}, ErrInvalidID},
 		{"s2c bad variable", ServerToClient, []byte{0x3e, 1}, ErrBadLength},
-		{"c2s unknown size", ClientToServer, []byte{0x01, 0, 0, 0, 0}, ErrUnknownSize},
+		{"c2s unknown size", ClientToServer, []byte{0x02, 0, 0, 0, 0}, ErrUnknownSize},
 		{"c2s control id", ClientToServer, []byte{0x67}, ErrInvalidID},
 		{"c2s zero id", ClientToServer, []byte{0x00}, ErrInvalidID},
 	}
@@ -296,7 +298,7 @@ func TestDecoderRandomBytesNeverPanics(t *testing.T) {
 }
 
 func FuzzDecoder(f *testing.F) {
-	f.Add([]byte{0x01, 0, 0, 0, 0, 0, 0, 0, 0})
+	f.Add([]byte{0x02, 0, 0, 0, 0, 0, 0, 0, 0})
 	f.Add([]byte{0x9c, 0, 5, 0, 0})
 	f.Fuzz(func(t *testing.T, b []byte) {
 		for _, dir := range []Direction{ServerToClient, ClientToServer} {
@@ -338,6 +340,11 @@ func TestClientMessagesRoundTrip(t *testing.T) {
 		&RepairItem{1, 2, 3, 99},
 		&HireMercenary{1, 2},
 		&GambleItem{1},
+		&MoveToLocation{Run: false, X: 300, Y: 500},
+		&MoveToLocation{Run: true, X: 1, Y: 65535},
+		&CastOnLocation{Right: false, X: 7, Y: 8},
+		&CastOnLocation{Right: true, X: 9, Y: 10},
+		&SelectSkill{Skill: 36, Right: true, ItemID: 0xffffffff},
 	}
 	seen := map[byte]bool{}
 	for _, m := range msgs {
@@ -399,7 +406,7 @@ func TestClientDecodeTruncation(t *testing.T) {
 			t.Errorf("id %#x oversize: expected error", id)
 		}
 	}
-	if _, err := DecodeClient([]byte{0x01, 0, 0, 0, 0}); !errors.Is(err, ErrUnknownSize) {
+	if _, err := DecodeClient([]byte{0x02, 0, 0, 0, 0}); !errors.Is(err, ErrUnknownSize) {
 		t.Errorf("untyped id: %v", err)
 	}
 }

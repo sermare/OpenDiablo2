@@ -92,6 +92,12 @@ a semicolon-separated list of steps, run a few seconds after the game starts:
 | `waypoint:<level id>` | Choose that level in the open waypoint panel (greyed entries fail the step). Logs `WAYPOINT travel` and `LEVEL CHANGE`. |
 | `expect:level=<id>` | Wait up to 4 s, then fail unless the hero is in that level; logs `AUTOSCRIPT level=<id> hero=(x,y)`. |
 | `automap:on\|off\|toggle\|full\|mini\|stats` | Set the automap (Tab); `stats` logs `AUTOMAP state ... cells=N floor= wall= object=` and the markers. See `docs/automap.md`. |
+| `skill:left=<name>` / `skill:right=<name>` | Select a skill on the left/right button (same checks as the popup: learned, not passive, left-capable on the left); logs `SKILLBAR select ...` and a `SKILLBAR state` line with the hotkeys. |
+| `skill:popup=left\|right\|close` | Open the skill popup of a button (logs the grid: `SKILLBAR popup ... [Fire Ball@r1c1(lvl20) ...]`, row/column per skilldesc page/row/column). |
+| `skill:hover=<name>` / `skill:click=<name>` | Put the mouse on an icon of the open popup (or skill tree) / click it (selects, plays the click, closes the popup). |
+| `hotkey:F1=<name>[@left]` / `press:F1` | Assign a skill to a hotkey slot / press the key. `press` takes the same path as the keyboard: while an icon is hovered it assigns it, otherwise it selects the assigned skill (`SKILLBAR hotkey`, `SKILLBAR press`). |
+| `skill:use=left\|right` | Cast the active left/right skill through the normal skill pipeline (as a click would). |
+| `skill:spend=<name>` / `skill:nospend=<name>` | Put an unused skill point into a skill (skills.txt reqlevel/reqskill1-3 apply) / pass only if the point is refused. Console: `levelup <n>` grants level-ups (1 skill point and 5 stat points each). |
 | `exit` | Finish; with `OD2_AUTOEXIT=1` the process exits 0 on PASS, 1 on FAIL. |
 
 Console commands for these steps: `spawnportal <level>` (a portal object next to the hero), `setwaypoint <level> <0|1>`.

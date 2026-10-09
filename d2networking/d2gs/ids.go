@@ -22,6 +22,12 @@ func (d Direction) String() string {
 // 0x2f..0x37 come from handler bodies (verified); the rest of the 0x01..0x66
 // range is documented in Names with Verified=false.
 const (
+	C2SWalkToLocation    byte = 0x01 // verified: len 5, u16 x @1, u16 y @3
+	C2SRunToLocation     byte = 0x03 // verified: same layout as 0x01
+	C2SCastLeftLocation  byte = 0x05 // verified: len 5, u16 x @1, u16 y @3 (skill = selected left skill)
+	C2SCastRightLocation byte = 0x0c // verified: same layout (selected right skill)
+	C2SChat              byte = 0x15 // verified: [type][?] then NUL-terminated message @3 and recipient name
+	C2SSelectSkill       byte = 0x3c // verified: len 9, u32 skill (bit 31 = right hand) @1, u32 item id @5
 	C2SInteractUnit      byte = 0x13
 	C2SPickUpUnit        byte = 0x16
 	C2SDropCursorItem    byte = 0x17

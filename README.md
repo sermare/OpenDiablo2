@@ -13,6 +13,9 @@
 > [docs/UPSTREAM_README.md](docs/UPSTREAM_README.md)). **It is not playable yet** — see the status below.
 > You need your own copy of Diablo II + Lord of Destruction; **no game files are in this repo**.
 
+> **Working on the code?** [CONTRIBUTING.md](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) ·
+> [Testing](docs/TESTING.md) · [Reverse engineering](docs/REVERSE_ENGINEERING.md)
+
 Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The graphic above is generated from
 [`docs/progress.json`](docs/progress.json) by [`scripts/make_progress_svg.py`](scripts/make_progress_svg.py).
 
@@ -24,6 +27,8 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 
 | Done | Evidence |
 |---|---|
+| **Multiplayer**: two instances join over TCP using the real game's packet framing (Huffman table read from the binary); both build the same level from the host's map seed, see each other, walk, cast and chat | Two-process scenario passes: both saw the other's name and position, walk/cast/chat arrived, clean leave |
+| **The quest system**: the intro quests, all of Act 1 and Radament's Lair — states, NPC speech with the real voice lines, rewards, quest log, saved in the `.d2s` | A scripted Act 1 line passes 70 of 70 checks; Den of Evil with real killed cave monsters; the quest bits appear in the exported `.d2s` |
 | Runs natively on Apple Silicon with the **real 1.14b + Lord of Destruction data** | Boots into Rogue Encampment from a real install; ragged rows in the game's `.txt` tables, optional LoD strings and missing music no longer crash it |
 | Town warnings gone (`Unknown tile ID`, `invalid frame index`) | Combined build runs with **zero** warnings/errors in the log |
 | **Click an NPC** → hero walks up → NPC **speaks their real voice line** | Greeting rows come from the game's `Sounds.txt`; the autotest resolves Warriv, Akara, Charsi, Kashya, Gheed |
@@ -40,9 +45,8 @@ _Last updated: 2026-10-09 · Claude updates this on every merged success._
 
 | Work item | Where |
 |---|---|
-| **The quest system** for the intro and Act 1 quests: states, speech, rewards, saved in the `.d2s` | branch `feat/quest-system` |
 | **Skills for all seven classes**, with auras, summons, traps and status effects | branch `feat/class-skills` |
-| **Multiplayer**: two game instances, host and join over the real packet format | branch `feat/multiplayer` |
+| **A scripted playthrough of the first hour of Act 1** that finds and fixes the seams between systems | branch `feat/act1-playthrough` |
 | **Exact outdoor tile ids** (Blood Moor etc.), proven against the real game | branch `feat/drlg-tiles` |
 | **Skill hotkeys and skill selection screen**; **remaining boss/monster behaviours** | `feat/skillbar`, `feat/monster-ai-3` |
 | **Acts 2 to 5 towns and travelling between acts**; **Nightmare and Hell difficulty** | `feat/act-towns`, `feat/difficulty` |

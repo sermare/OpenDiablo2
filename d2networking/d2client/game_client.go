@@ -2,7 +2,12 @@ package d2client
 
 import (
 	"fmt"
+	"hash/fnv"
 	"os"
+	"sort"
+	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 
@@ -54,6 +59,16 @@ type GameClient struct {
 	Difficulty d2enum.DifficultyType
 	Level      int
 
+	// Multiplayer: packets of a network game arrive on another goroutine; they are
+	// queued and handled on the game loop by Drain. gameInfo is the host's map
+	// seed and difficulty (game protocol), which every level of the game uses.
+	pktMu      sync.Mutex
+	pending    []d2netpacket.NetPacket
+	queueing   bool
+	hasInfo    bool
+	infoDiffic d2enum.DifficultyType
+	ownCasts   int32 // casts already played locally whose echo from the server is to be skipped
+
 	*d2util.Logger
 }
 
@@ -77,6 +92,7 @@ func Create(connectionType d2clientconnectiontype.ClientConnectionType,
 	// for a remote client connection, set loading to true - wait until we process the GenerateMapPacket
 	// before we start updating map entites
 	result.MapEngine.IsLoading = connectionType == d2clientconnectiontype.LANClient
+	result.queueing = connectionType == d2clientconnectiontype.LANClient
 
 	mapGen, err := d2mapgen.NewMapGenerator(asset, l, result.MapEngine)
 	if err != nil {
@@ -114,7 +130,108 @@ func (g *GameClient) Open(connectionString, saveFilePath string) error {
 		g.scriptEngine.AllowEval()
 	}
 
-	return g.clientConnection.Open(connectionString, saveFilePath)
+	err := g.clientConnection.Open(connectionString, saveFilePath)
+
+	if g.connectionType == d2clientconnectiontype.LANServer {
+		// the host's own hero is added synchronously above; from now on remote
+		// players' packets come from other goroutines
+		g.pktMu.Lock()
+		g.queueing = true
+		g.pktMu.Unlock()
+	}
+
+	return err
+}
+
+// SetGameInfo records the host's map seed and difficulty (d2gs protocol). Levels
+// built from now on use them, so every player of the game sees the same maps.
+func (g *GameClient) SetGameInfo(mapSeed uint32, difficulty uint8) {
+	if mapSeed != 0 {
+		d2mapgen.HeroMapSeed = mapSeed
+	}
+
+	g.pktMu.Lock()
+	g.hasInfo, g.infoDiffic = true, d2enum.DifficultyType(difficulty)
+	g.pktMu.Unlock()
+
+	g.Infof("GAMEINFO host map seed=%d difficulty=%d", mapSeed, difficulty)
+}
+
+// LevelDifficulty is the difficulty levels are built with: the host's in a
+// game joined over the network, else the hero's own.
+func (g *GameClient) LevelDifficulty() d2enum.DifficultyType {
+	g.pktMu.Lock()
+	defer g.pktMu.Unlock()
+
+	if g.hasInfo {
+		return g.infoDiffic
+	}
+
+	return g.Difficulty
+}
+
+// SkipOwnCastEcho marks that the next CastSkill packet of the local player was
+// played locally already (the server echoes casts to every client).
+func (g *GameClient) SkipOwnCastEcho() { atomic.AddInt32(&g.ownCasts, 1) }
+
+// Drain handles the packets queued from the network goroutines. The game loop
+// calls it every frame.
+func (g *GameClient) Drain() {
+	g.pktMu.Lock()
+	batch := g.pending
+	g.pending = nil
+	g.pktMu.Unlock()
+
+	for _, p := range batch {
+		if err := g.handlePacket(p); err != nil {
+			g.Errorf("%s: %v", p.PacketType, err)
+		}
+	}
+}
+
+// PlayersSummary lists the players this client knows, with their tile positions:
+// "Name@(x,y)" sorted by name.
+func (g *GameClient) PlayersSummary() string {
+	var out []string
+
+	for id, p := range g.Players {
+		pos := p.Position.World()
+		tag := ""
+
+		if id == g.PlayerID {
+			tag = "*"
+		}
+
+		out = append(out, fmt.Sprintf("%s%s@(%.0f,%.0f)", tag, p.Name(), pos.X(), pos.Y()))
+	}
+
+	sort.Strings(out)
+
+	return fmt.Sprintf("PLAYERS n=%d [%s]", len(out), strings.Join(out, " "))
+}
+
+// MapFingerprint hashes the layout of the map (size, region types and the
+// walkability of every sub-tile): equal for clients that built the same level.
+func MapFingerprint(m *d2mapengine.MapEngine) uint32 {
+	h := fnv.New32a()
+	sz := m.Size()
+	fmt.Fprintf(h, "%dx%d;", sz.Width, sz.Height)
+
+	for i := range *m.Tiles() {
+		t := &(*m.Tiles())[i]
+		_, _ = h.Write([]byte{byte(t.RegionType)})
+
+		for _, f := range t.SubTiles {
+			b := byte(0)
+			if f.BlockWalk {
+				b = 1
+			}
+
+			_, _ = h.Write([]byte{b})
+		}
+	}
+
+	return h.Sum32()
 }
 
 // Close destroys the server if the client is local. For remote clients
@@ -137,6 +254,21 @@ func (g *GameClient) Destroy() error {
 // packets.
 // nolint:gocyclo // switch statement on packet type makes sense, no need to change
 func (g *GameClient) OnPacketReceived(packet d2netpacket.NetPacket) error {
+	g.pktMu.Lock()
+	if g.queueing {
+		g.pending = append(g.pending, packet)
+		g.pktMu.Unlock()
+
+		return nil
+	}
+	g.pktMu.Unlock()
+
+	return g.handlePacket(packet)
+}
+
+// handlePacket applies one packet from the server.
+// nolint:gocyclo // switch statement on packet type makes sense, no need to change
+func (g *GameClient) handlePacket(packet d2netpacket.NetPacket) error {
 	switch packet.PacketType {
 	case d2netpackettype.GenerateMap:
 		if err := g.handleGenerateMapPacket(packet); err != nil {
@@ -168,6 +300,10 @@ func (g *GameClient) OnPacketReceived(packet d2netpacket.NetPacket) error {
 		}
 	case d2netpackettype.PlayerDisconnectionNotification:
 		if err := g.handlePlayerDisconnectionPacket(packet); err != nil {
+			return err
+		}
+	case d2netpackettype.Chat:
+		if err := g.handleChatPacket(packet); err != nil {
 			return err
 		}
 	case d2netpackettype.ServerClosed:
@@ -209,6 +345,18 @@ func (g *GameClient) handleGenerateMapPacket(packet d2netpacket.NetPacket) error
 	}
 
 	g.RegenMap = true
+	g.Infof("MAP generated region=%v seed=%d fingerprint=%08x", mapData.RegionType, g.MapEngine.Seed(), MapFingerprint(g.MapEngine))
+
+	return nil
+}
+
+func (g *GameClient) handleChatPacket(packet d2netpacket.NetPacket) error {
+	chat, err := d2netpacket.UnmarshalChat(packet.PacketData)
+	if err != nil {
+		return err
+	}
+
+	g.Infof("CHAT <%s> %s", chat.Name, chat.Text)
 
 	return nil
 }
@@ -240,11 +388,17 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 
 	newPlayer.Containers = player.Containers
 	newPlayer.Merc = player.Merc
+	newPlayer.SkillBar = player.SkillBar
+	newPlayer.SyncSkillBar()
 	newPlayer.Death = player.Death
 	newPlayer.Hardcore = player.Hardcore
 
 	g.Players[newPlayer.ID()] = newPlayer
 	g.MapEngine.AddEntity(newPlayer)
+
+	wp := newPlayer.Position.World()
+	g.Infof("PLAYER ADD name=%q id=%s local=%v pos=(%.1f,%.1f) players=%d", player.Name, player.ID,
+		player.ID == g.PlayerID, wp.X(), wp.Y(), len(g.Players))
 
 	if player.ID == g.PlayerID {
 		g.Progress, g.Difficulty = player.Progress, player.Difficulty
@@ -287,6 +441,10 @@ func (g *GameClient) handleMovePlayerPacket(packet d2netpacket.NetPacket) error 
 	}
 
 	player := g.Players[movePlayer.PlayerID]
+	if player == nil {
+		return nil // a player this client has not been told about yet
+	}
+
 	start := d2vector.NewPositionTile(movePlayer.StartX, movePlayer.StartY)
 	dest := d2vector.NewPositionTile(movePlayer.DestX, movePlayer.DestY)
 	path := g.MapEngine.PathFind(start, dest)
@@ -320,7 +478,17 @@ func (g *GameClient) handleCastSkillPacket(packet d2netpacket.NetPacket) error {
 		return err
 	}
 
+	if playerCast.SourceEntityID == g.PlayerID && atomic.LoadInt32(&g.ownCasts) > 0 {
+		atomic.AddInt32(&g.ownCasts, -1)
+		return nil // played locally already
+	}
+
 	player := g.Players[playerCast.SourceEntityID]
+	if player == nil {
+		return nil
+	}
+
+	g.Infof("PLAYER CAST name=%q skill=%d target=(%.1f,%.1f)", player.Name(), playerCast.SkillID, playerCast.TargetX, playerCast.TargetY)
 	player.StopMoving()
 
 	castX := playerCast.TargetX * numSubtilesPerTile
@@ -490,6 +658,11 @@ func (g *GameClient) handlePlayerDisconnectionPacket(packet d2netpacket.NetPacke
 	}
 
 	player := g.Players[disconnectPacket.ID]
+	if player == nil {
+		return nil
+	}
+
+	g.Infof("PLAYER LEAVE name=%q id=%s players=%d", player.Name(), disconnectPacket.ID, len(g.Players)-1)
 	g.MapEngine.RemoveEntity(player)
 	delete(g.Players, disconnectPacket.ID)
 
