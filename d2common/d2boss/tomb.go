@@ -110,3 +110,12 @@ func (t *Tomb) OnKill(m *Manager, k Kill) {
 
 // OnTick implements Encounter.
 func (t *Tomb) OnTick(*Manager, int) {}
+
+// LairWarpBlocked is the gate of the warp into Duriel's Lair (level 73):
+// SERVER_EnterWarpTile 0x553140 asks FUN_00543a70, which for level 73 calls
+// FUN_0059b700 = "the Seven Tombs node (id 13) is active and its private byte
+// +0xb is 0" and cancels the warp then. VERIFIED: that test. INFERRED: that
+// byte +0xb becomes non-zero when the staff is in the orifice (no writer was
+// found in the quest's handlers 0x59a730, 0x59a390, 0x59adb0 or the helpers
+// next to 0x59b700), so the lair is blocked until the staff is placed.
+func (t *Tomb) LairWarpBlocked() bool { return t.state == tombSealed }

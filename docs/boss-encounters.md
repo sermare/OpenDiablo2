@@ -78,8 +78,25 @@ Known divergence (not changed here to avoid touching tick.go/ai_baal.go, which f
 modes. Exe: Throne 2, Crab 0, Taunt 1, ToStairs 1, Tentacle 1, Clone 0. This tree: TargetOnly for all but ToStairs (None).
 `TestBaalTargetModesDivergence` pins today's values and must change with that merge.
 
-Unverified, exe addresses to confirm: Mephisto's moat/blood-guard teleport (no AI code found; likely level preset or the 0x5aedc0
-wounded-teleport helper, 0x5aedc0 and class list), Diablo seal summon wave sizes (0x5b2e60, 0x5b3360), the Baal wave contents of
-skill 286 (FUN_005ee2f0), Diablo and Baal kill quest bits (kill handlers near 0x5ba440 pattern; Baal 0x58bce0), Mephisto hellforge
-soulstone drop (treasureclass "Mephistoq"), Andariel -> Act 2 travel (0x5446e0 slot 15 boarding), Duriel lair lock (object 100
-handler, quest private byte +0xb at 0x59b700).
+## Verified in the bosses pass (feat/verify-bosses, details in d2-re-notes/verify-bosses.md)
+- VERIFIED Mephisto moat: his think (0x5f6950) has no teleport; the only teleport helper, MONAI_TryWoundedMonTeleport 0x5aedc0
+  (hard-coded skill 0xb8 = MonTeleport 184, not read from the monster's skills), needs AiGeneral flag 0x20, which no MONAI_SetAiFlag
+  site sets (sites set 0x1, 0x2, 0x10, 0x40). So Mephisto and the blood guards never teleport; the moat trick works.
+- VERIFIED seals: object 392..396 -> flag 0..4 in order (FUN_005b3240); the bosses are spawned by the dummy object 131 in level 108
+  (QUEST_OnObjectOperated -> 0x5b3360, position matched against three stored positions -> super unique id; a failed spawn retries
+  after 10 frames); group size = MinGrp/MaxGrp of the super unique row (9, 5, 9). Arrival 0x5b2e60 sends a mode-0 record to every
+  other living non-pet monster of level 108 (`Seals.PurgeOnArrival`, off). The Diablo spawn itself is quest timer 1 (handler not traced).
+- VERIFIED Baal waves: skill 286 is cast with a missile (hit function 54 -> CCMD_Func_54c470 super unique spawn); the super unique
+  hcIdx come from the table 0x6e4ab8 = 61..65 = rows "Baal Subject 1..5". The think is gated: no step while a living monster that
+  is not hostile to the throne (the previous wave) is within edge distance 0x40 of it (a type-1 scan, callback 0x5db5f0), plus the
+  250/100 frame timers. Earlier note "hero within 0x40" was wrong.
+- VERIFIED kill bits: Mephisto 0x5b9d00 slot 22 bits 0xd, 0, 0xb; Diablo 0x5b2950 slot 26 bits 0xd, 0 (+6, 7 classic); Baal 0x58bae0
+  slot 40 bits 0xd, 0 and only in level 132. None sets reward pending. `Game.ExeBossBits` (off) applies them. Baal's death also fires
+  missile 625 at the corpse (0x58bce0, effect not identified).
+- VERIFIED drops: Mephisto's kill stamps item code "mss " (soulstone) on the unit and drops it (0x557980); Mephistoq has none. The Hellforge
+  handler 0x5b4190 stamps "hfh " the same way (which monster is attached: not traced).
+- VERIFIED travel: Meshif (class 210) sets slot 15 (and slot 10 if open), Warriv (155) slot 7, class 367 slot 28 (expansion) in 0x5446e0.
+- VERIFIED Duriel lair gate: warp into level 73 is blocked while the Seven Tombs node is active and private byte +0xb is 0 (0x59b700);
+  the writer of +0xb was not found (`Tomb.LairWarpBlocked` assumes: staff placed).
+
+Still unverified: Diablo's arrival spawn (timer 1 handler), which dummy object pairs with which seal, the Hellforge hammer's monster.

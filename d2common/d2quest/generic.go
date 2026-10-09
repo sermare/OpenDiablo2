@@ -52,6 +52,7 @@ type trig struct {
 	page     int  // quest log page to store (0: derived)
 	bit      int  // record bit to set (-1: none; 0: mirror the state)
 	fx       func(g *Game, q *Quest) []Effect
+	exe      *exeKill // verified kill bits of the exe, used when Game.ExeBossBits is set (boss_exe.go)
 }
 
 // spec describes a table driven quest.
@@ -403,7 +404,21 @@ func newSpecQuest(s *spec) *Quest {
 				page = 2
 			}
 
-			apply(g, q, t.to, t.goal, t.direct, page, t.bit, false)
+			direct := t.direct
+
+			if g.ExeBossBits && t.exe != nil {
+				if !t.exe.applies(g, e) {
+					continue
+				}
+
+				direct = true
+			}
+
+			apply(g, q, t.to, t.goal, direct, page, t.bit, false)
+
+			if g.ExeBossBits && t.exe != nil {
+				t.exe.finish(g, q, s)
+			}
 
 			if t.fx != nil {
 				for _, f := range t.fx(g, q) {

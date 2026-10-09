@@ -80,10 +80,13 @@ const (
 	ActWake
 	// ActPortal: a portal to Level opens (Class is its object).
 	ActPortal
+	// ActPurge: every other living, non-pet monster of Level goes into death
+	// mode (the record FUN_005b2e60 sends, mode 0; see Seals.PurgeOnArrival).
+	ActPurge
 )
 
 func (k ActionKind) String() string {
-	return [...]string{"spawn-monster", "spawn-npc", "spawn-object", "object-mode", "message", "wake", "portal"}[k]
+	return [...]string{"spawn-monster", "spawn-npc", "spawn-object", "object-mode", "message", "wake", "portal", "purge"}[k]
 }
 
 // Action is one request to the engine.

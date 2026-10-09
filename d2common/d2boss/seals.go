@@ -26,6 +26,14 @@ import "fmt"
 // seal operate functions (52, 54, 55, 56) only open the seal; the delay before
 // Diablo; his position (the "diablo start point" object, 255).
 type Seals struct {
+	// PurgeOnArrival makes the Diablo arrival emit ActPurge (off by default).
+	// The exe sends every other living non-pet monster of level 0x6c a record
+	// of mode 0 (FUN_005a5860(unit, 0) + MONAI_Proc_5a5630); mode 0 is the
+	// death mode of the monster mode table, which 0x5a5630 special-cases
+	// together with mode 0xc, so the remaining monsters are put to death.
+	// VERIFIED: the loop and its filter; INFERRED: that mode 0 kills them.
+	PurgeOnArrival bool
+
 	open        [5]bool
 	killed      map[int]bool // seal boss super unique rows that died
 	spawned     map[int]bool
@@ -147,7 +155,13 @@ func (s *Seals) maybeArrive(m *Manager) {
 
 	s.arrived = true
 	m.logf("diablo trigger: all 5 seals open and 3 seal bosses dead -> Diablo is summoned")
-	m.emit("diablo", Action{Kind: ActMessage, Name: "Diablo summoned", Note: "the remaining monsters of the level are sent a record (effect unverified)"})
+	m.emit("diablo", Action{Kind: ActMessage, Name: "Diablo summoned", Note: "the remaining monsters of the level are sent a record (mode 0, inferred death)"})
+
+	if s.PurgeOnArrival {
+		m.emit("diablo", Action{Kind: ActPurge, Name: "remaining monsters of the Chaos Sanctuary", Level: LevelChaos,
+			Note: "FUN_005b2e60: mode 0 record to every living non-pet monster except class 0xf3"})
+	}
+
 	m.after(diabloDelay, func() {
 		s.diabloAlive = true
 		m.emit("diablo", Action{Kind: ActSpawnMonster, Name: "Diablo", Class: ClassDiablo, Super: -1, Boss: true,
