@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
@@ -133,6 +132,7 @@ type Game struct {
 	keyMap               *d2player.KeyMap
 	npcTarget            d2interface.MapEntity
 	greetingLast         map[string]string
+	dayClock             *dayClock
 	greetingRecent       map[string]string
 	returnGreet          returnGreetings
 	autoTestElapsed      float64
@@ -246,6 +246,7 @@ func (v *Game) Render(screen d2interface.Surface) {
 // nolint:gocyclo // not need to change
 func (v *Game) Advance(elapsed float64) error {
 	v.soundEngine.Advance(elapsed)
+	v.advanceDayClock(elapsed)
 	v.advanceNPCInteraction(elapsed)
 	v.advanceAutoTest(elapsed)
 
@@ -459,6 +460,22 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 	}
 }
 
+func (v *Game) currentDayPhase() dayPhaseSource {
+	if v.dayClock == nil {
+		v.dayClock = newDayClock()
+	}
+
+	return v.dayClock
+}
+
+func (v *Game) advanceDayClock(elapsed float64) {
+	if v.dayClock == nil {
+		v.dayClock = newDayClock()
+	}
+
+	v.dayClock.Advance(elapsed)
+}
+
 // playNPCGreeting plays the NPC's spoken greeting, chosen the way the real
 // game's picker does (see pickGreeting in npc_greeting.go).
 func (v *Game) playNPCGreeting(name string) string {
@@ -476,7 +493,7 @@ func (v *Game) playNPCGreeting(name string) string {
 	set := loadGreetingSet(v.asset.Records.Sound.Details, name)
 
 	// nolint:gosec // not concerned with crypto-strong randomness
-	handle := pickGreeting(set, v.returnGreet.Take(name), phaseFromHour(time.Now().Hour()),
+	handle := pickGreeting(set, v.returnGreet.Take(name), v.currentDayPhase().Phase(),
 		v.greetingLast[name], v.greetingRecent, rand.Intn)
 	if handle == "" {
 		return ""

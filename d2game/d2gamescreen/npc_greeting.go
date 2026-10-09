@@ -3,6 +3,7 @@ package d2gamescreen
 import (
 	"fmt"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2daynight"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 )
 
@@ -30,31 +31,38 @@ const (
 	greetingReturn greetingMode = 2
 )
 
-// gamePhase mirrors the real environment phase (0..5) that selects TIME_n:
-// phase 1 -> TIME_1, phases 2 and 3 -> TIME_2, phases 0, 4 and 5 -> TIME_3.
-func timeGroupForPhase(phase int) int {
-	switch phase {
-	case 1:
-		return 0
-	case 2, 3:
-		return 1
-	default:
-		return 2
-	}
+// dayPhaseSource supplies the game's day/night phase (0..5) so the greeting
+// does not depend on the wall clock and stays testable.
+type dayPhaseSource interface {
+	Phase() int
 }
 
-// phaseFromHour approximates the game's day/night phase from the wall clock.
-// OpenDiablo2 has no day/night cycle, so this is a stand-in (unverified
-// mapping; the real game uses its own environment phase, not the clock).
-func phaseFromHour(hour int) int {
-	switch {
-	case hour >= 5 && hour < 11:
-		return 1
-	case hour >= 11 && hour < 18:
-		return 2
-	default:
-		return 4
-	}
+// dayClock drives a d2daynight environment from frame time.
+type dayClock struct {
+	env *d2daynight.Env
+	acc float64
+}
+
+func newDayClock() *dayClock {
+	return &dayClock{env: d2daynight.NewCycling()}
+}
+
+// Advance converts elapsed seconds into environment ticks.
+func (c *dayClock) Advance(elapsed float64) {
+	c.acc += elapsed * d2daynight.TicksPerSecond
+	n := int(c.acc)
+	c.acc -= float64(n)
+	c.env.Advance(n)
+}
+
+// Phase implements dayPhaseSource.
+func (c *dayClock) Phase() int { return c.env.Phase() }
+
+// timeGroupForPhase returns the index of the GREETING_TIME_n group for the
+// environment phase: phase 1 -> TIME_1, phases 2 and 3 -> TIME_2, phases 0,
+// 4 and 5 -> TIME_3.
+func timeGroupForPhase(phase int) int {
+	return int(d2daynight.Classify(phase))
 }
 
 // loadGreetingSet gathers the greeting groups of an NPC from Sounds.txt
