@@ -20,7 +20,6 @@ import (
 // images for 1x1 grid tile items (rings and stuff) are 28x28 pixel
 // however, the grid cells are 29x29 pixels, this is for padding
 // for each row in inventory, we need to account for this padding
-const cellPadding = 1
 
 const (
 	fmtFlippyFile = "/data/global/items/inv%s.dc6"
@@ -50,7 +49,7 @@ func NewItemGrid(asset *d2asset.AssetManager,
 		width:          gridCells(grid.Columns, grid.Box.Width, grid.CellWidth),
 		height:         gridCells(grid.Rows, grid.Box.Height, grid.CellHeight),
 		originX:        grid.Box.Left,
-		originY:        grid.Box.Top + (grid.Rows * cellPadding),
+		originY:        grid.Box.Top,
 		slotSize:       grid.CellWidth,
 		sprites:        make(map[string]*d2ui.Sprite),
 		equipmentSlots: genEquipmentSlotsMap(record),
@@ -314,7 +313,7 @@ func newPlainItemGrid(asset *d2asset.AssetManager, ui *d2ui.UIManager, l d2util.
 		width:          cols,
 		height:         rows,
 		originX:        left,
-		originY:        top + rows*cellPadding,
+		originY:        top,
 		slotSize:       cell,
 		sprites:        make(map[string]*d2ui.Sprite),
 		equipmentSlots: map[d2enum.EquippedSlot]EquipmentSlot{},

@@ -37,7 +37,7 @@ type autoPanelState struct {
 }
 
 func autoPanelEnabled() bool {
-	return os.Getenv("OD2_AUTOPANEL") != "" || os.Getenv("OD2_AUTOBELT") != "" || os.Getenv("OD2_AUTOSTASH") != ""
+	return os.Getenv("OD2_AUTOPANEL") != "" || os.Getenv("OD2_AUTOUILAYOUT") != "" || os.Getenv("OD2_AUTOBELT") != "" || os.Getenv("OD2_AUTOSTASH") != ""
 }
 
 // autoStash walks to the stash object like a click on it does and waits for
@@ -112,6 +112,8 @@ func (v *Game) advanceAutoPanel(elapsed float64) {
 	}
 
 	a.done = true
+
+	v.autoUILayout()
 
 	for _, name := range strings.Split(os.Getenv("OD2_AUTOPANEL"), ",") {
 		if name = strings.TrimSpace(name); name != "" {
