@@ -81,3 +81,14 @@ Verified against the original game: the character file format (byte-identical ro
 generator and level seeds, the level layout generators for all five acts (room lists, world layout, tile records for
 the preset and outdoor levels), the monster scaling tables, and the packet size tables. Everything else listed in
 [STATUS_MATRIX.md](STATUS_MATRIX.md) as "approximate" is a best reading of the original, not a proof.
+
+## Open items
+
+- Lava levels under-populated (unresolved). River of Flame (107) and the Chaos Sanctuary (108) make 84 and 44 groups
+  at MonDen 800, about 8x fewer than their density rolls predict (51315 rolls give 410.5 and 38025 give 304.2;
+  the neighbouring Act 4 levels 104-106 land near their prediction: 57, 78 and 81 groups against 82.4, 82.2 and 79.3).
+  The engine's walkable-ground estimate (45.8 and 22.4) is below the groups made, so the checker passes.
+- The `auto` minimum of `scripts/pop_check.py` is derived from the engine's own rolls and walkability, so it cannot
+  catch a real under-population like the one above. Compare with the oracle for golden group counts when available.
+- Levels 73, 110 and 120 keep a minimum of 0 (no natural monsters). Level 73 passed again with 0 after the rebase; 110 and 120
+  were not re-run yet (game runs paused).
