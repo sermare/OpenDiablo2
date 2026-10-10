@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"math"
+	"os"
 	"sort"
 	"sync"
 
@@ -506,6 +507,12 @@ func (v *Game) portalShrine() string {
 	dest := d2level.PortalShrineDest(v.currentLevel())
 	if dest == 0 {
 		return "world=portal no act start"
+	}
+
+	// the autotest cycles every shrine code (OD2_AUTOOBJECT_SHRINE): a level
+	// change would end those scenarios, so only the destination is logged
+	if os.Getenv("OD2_AUTOOBJECT_SHRINE") != "" {
+		return fmt.Sprintf("world=portal dest=%d (autotest: level change skipped)", dest)
 	}
 
 	if v.levelBusy() || !v.startLevelChange(dest, d2level.StartActChange, "shrine") {
