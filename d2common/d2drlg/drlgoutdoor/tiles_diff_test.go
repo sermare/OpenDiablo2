@@ -125,6 +125,10 @@ func TestTileDiffDir(t *testing.T) {
 						if want != got {
 							c[1]++
 
+							if os.Getenv("TILEDIFF_VERBOSE") != "" && c[1] <= 400 {
+								t.Logf("TILEDIFF-REC level=%d room=%d (%d,%d) %s[%d] want={%s} got={%s}", g.Level, i, rt.Room.X, rt.Room.Y, k.name, j, want, got)
+							}
+
 							if j < len(gl) {
 								byFile[fmt.Sprintf("%s %s", k.name, gl[j][4])]++
 							}

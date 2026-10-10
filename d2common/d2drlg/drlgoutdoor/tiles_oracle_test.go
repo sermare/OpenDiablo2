@@ -106,7 +106,7 @@ func digestRoom(rt *RoomTiles) string {
 func TestOracleTiles(t *testing.T) {
 	env := testEnv(t)
 
-	files := []string{"tiles_act1.json", "tiles_act23.json", "tiles_act45.json", "tiles_towns.json", "tiles_presets.json"}
+	files := []string{"tiles_act1.json", "tiles_act23.json", "tiles_act45.json", "tiles_towns.json", "tiles_presets.json", "tiles_presets7.json"}
 	if gp := os.Getenv("ORACLE_TILES"); gp != "" {
 		files = strings.Split(gp, ",")
 	}
@@ -324,13 +324,13 @@ func tilesOfLevel(t *testing.T, env *Env, cache map[uint32]*drlgworld.Layout, se
 	if rec, ok := env.Tables.Level(id); ok && rec.DrlgType == 2 {
 		override := -1
 
-		if id == 1 { // the Act 1 world forces the town file (TownN1/E1/S1/W1)
+		if id == 1 || id == 27 { // the Act 1 world forces the town file (TownN1/E1/S1/W1) and Courtyard 1's file
 			lay := cache[seed]
 			if lay == nil {
 				return nil, fmt.Errorf("no world layout for seed %#x", seed)
 			}
 
-			override = lay.TownFile
+			override = PresetFileOverride(lay, id)
 		}
 
 		pl, err := GeneratePreset(env, p, override)
