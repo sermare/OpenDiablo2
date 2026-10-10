@@ -111,21 +111,21 @@ var (
 //nolint:gochecknoglobals // static lookup data
 var npcMenuTable = map[int][]NPCMenuRow{
 	// Talk only
-	176: {rowTalk},          // Atma
-	146: {rowTalk},          // Cain1
-	200: {rowTalk},          // Geglash
-	201: {rowTalk},          // Jerhyn
-	155: {rowTalk},          // Warriv1
-	210: {rowTalk},          // Meshif1
-	251: {rowTalk},          // Tyrael1
-	367: {rowTalk, rowHire}, // 0x16f Tyrael2: Hire opens only the merc revive (0x577a10 allow-list)
-	297: {rowTalk},          // Natalya
-	266: {rowTalk},          // Navi
-	331: {rowTalk},          // 0x14b act 2 guard
-	377: {rowTalk},          // 0x179 act 2 guard
-	378: {rowTalk},          // 0x17a act 2 guard
-	406: {rowTalk},          // Izual ghost
-	408: {rowTalk},          // Malachai
+	176: {rowTalk}, // Atma
+	146: {rowTalk}, // Cain1
+	200: {rowTalk}, // Geglash
+	201: {rowTalk}, // Jerhyn
+	155: {rowTalk}, // Warriv1
+	210: {rowTalk}, // Meshif1
+	251: {rowTalk}, // Tyrael1
+	367: {rowTalk}, // 0x16f Tyrael2: Talk only (Game.exe 0x725d60 entry: count=2, one string 0xd35; verified). The 0x577a10 revive allow-list is server side, not a menu row
+	297: {rowTalk}, // Natalya
+	266: {rowTalk}, // Navi
+	331: {rowTalk}, // 0x14b act 2 guard
+	377: {rowTalk}, // 0x179 act 2 guard
+	378: {rowTalk}, // 0x17a act 2 guard
+	406: {rowTalk}, // Izual ghost
+	408: {rowTalk}, // Malachai
 
 	// Talk + Trade
 	148: {rowTalk, rowTrade}, // Akara
