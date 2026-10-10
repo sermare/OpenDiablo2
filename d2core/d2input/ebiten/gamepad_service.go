@@ -1,6 +1,7 @@
 package ebiten
 
 import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -78,6 +79,8 @@ func (s *GamepadService) Update(elapsed float64) {
 	}
 
 	mx, my := ebiten.CursorPosition()
+	sz := d2display.Get() // the virtual cursor and the hero stand on the real screen
+	s.ctl.SetScreen(sz.W, sz.H, sz.W/2, sz.H/2-30)
 	s.ctl.Update(elapsed, pads, mx, my)
 
 	for _, line := range s.ctl.DrainLog() {

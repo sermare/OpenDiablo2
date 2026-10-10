@@ -1,6 +1,7 @@
 package d2ui
 
 import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
@@ -9,8 +10,6 @@ import (
 
 const (
 	blackAlpha70 = 0x000000C8
-	screenWidth  = 800
-	screenHeight = 600
 )
 
 // static check that Tooltip implements widget
@@ -103,9 +102,13 @@ func (t *Tooltip) adjustCoordinatesToScreen(maxW, maxH, halfW, halfH int) (rx, r
 		xOffset = 0
 	}
 
+	// tooltips clamp to the real screen, which is wider than the interface column on large displays
+	sx, sy, sw, sh := d2display.ScreenRectInColumn()
+	right, bottom := sx+sw, sy+sh
+
 	renderX := t.x
-	if (t.x + xOffset) > screenWidth {
-		renderX = screenWidth - xOffset
+	if (t.x + xOffset) > right {
+		renderX = right - xOffset
 	}
 
 	switch t.originY {
@@ -118,8 +121,8 @@ func (t *Tooltip) adjustCoordinatesToScreen(maxW, maxH, halfW, halfH int) (rx, r
 	}
 
 	renderY := t.y
-	if (t.y + yOffset) > screenHeight {
-		renderY = screenHeight - yOffset
+	if (t.y + yOffset) > bottom {
+		renderY = bottom - yOffset
 	}
 
 	return renderX, renderY

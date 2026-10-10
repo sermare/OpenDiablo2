@@ -2,6 +2,7 @@ package d2player
 
 import (
 	"fmt"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2automap"
@@ -329,7 +330,7 @@ func (a *Automap) Advance(elapsed float64) {
 }
 
 func (a *Automap) screenSize() (w, h int) {
-	return 800, 600
+	return d2display.W(), d2display.H()
 }
 
 func (a *Automap) revealObjects(m *d2automap.Model, hx, hy float64, area d2automap.Area) int {

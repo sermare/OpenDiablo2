@@ -7,6 +7,7 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2ds1"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
@@ -22,8 +23,11 @@ const (
 )
 
 const (
-	screenMiddleX = 400
-	two           = 2
+	// extraViewTop and extraViewBottom are the pixels above and below the screen that the tile range covers
+	// (tall wall and roof pieces reach into the screen from tiles that stand outside it).
+	extraViewTop    = 200
+	extraViewBottom = 450
+	two             = 2
 
 	dbgOffsetXY   = 40
 	dbgBoxWidth   = 220
@@ -83,7 +87,7 @@ func CreateMapRenderer(asset *d2asset.AssetManager, renderer d2interface.Rendere
 		asset:     asset,
 		renderer:  renderer,
 		mapEngine: mapEngine,
-		viewport:  NewViewport(0, 0, 800, 600),
+		viewport:  NewViewport(0, 0, d2display.W(), d2display.H()),
 		light:     newLighting(),
 	}
 
@@ -181,14 +185,10 @@ func (mr *MapRenderer) Render(target d2interface.Surface) {
 
 	mapSize := mr.mapEngine.Size()
 
-	stxf, styf := mr.viewport.ScreenToWorld(screenMiddleX, -200)
-	etxf, etyf := mr.viewport.ScreenToWorld(screenMiddleX, 1050)
+	sz := d2display.Get()
+	mr.viewport.Resize(sz.W, sz.H)
 
-	startX := int(math.Max(0, math.Floor(stxf)))
-	startY := int(math.Max(0, math.Floor(styf)))
-
-	endX := int(math.Min(float64(mapSize.Width), math.Ceil(etxf)))
-	endY := int(math.Min(float64(mapSize.Height), math.Ceil(etyf)))
+	startX, startY, endX, endY := TileRange(mr.viewport, sz.W, sz.H, mapSize.Width, mapSize.Height)
 
 	mr.stats = DrawStats{Lit: mr.light.active()}
 	if mr.light.active() {
@@ -209,6 +209,29 @@ func (mr *MapRenderer) Render(target d2interface.Surface) {
 	if mr.entityDebugVisLevel > 0 {
 		mr.renderEntityDebug(target)
 	}
+}
+
+// TileRange is the range of tiles [startX,endX) x [startY,endY) that covers a screen of width x height pixels
+// (clamped to a map of mapW x mapH tiles). The range is taken from the top and bottom middle of the screen
+// as the 800x600 game always did, and widened by the extra half width on both sides for wider screens
+// (a screen pixel to the right is +1/160 tile in x and -1/160 in y). At 800x600 it is exactly the old range.
+func TileRange(v *Viewport, width, height, mapW, mapH int) (startX, startY, endX, endY int) {
+	stxf, styf := v.ScreenToWorld(width/two, -extraViewTop)
+	etxf, etyf := v.ScreenToWorld(width/two, height+extraViewBottom)
+
+	grow := float64(width-d2display.BaseW) / two / (orthoTileWidth * two)
+	if grow < 0 {
+		grow = 0
+	} else if width > d2display.BaseW {
+		grow += float64(alignedWidth) / half / (orthoTileWidth * two) // the view shifts by 200 px beside open panels
+	}
+
+	startX = int(math.Max(0, math.Floor(stxf-grow)))
+	startY = int(math.Max(0, math.Floor(styf-grow)))
+	endX = int(math.Min(float64(mapW), math.Ceil(etxf+grow)))
+	endY = int(math.Min(float64(mapH), math.Ceil(etyf+grow)))
+
+	return startX, startY, endX, endY
 }
 
 // MoveCameraTo sets the position of the Camera to the given x and y coordinates.

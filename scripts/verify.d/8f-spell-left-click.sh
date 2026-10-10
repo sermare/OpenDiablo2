@@ -14,10 +14,10 @@ scenario_env() {
   echo 'export OD2_REALMAPS=1 OD2_AUTOLEVEL=2 OD2_AUTOMONSTER="zombie1,1" OD2_AUTOMONSTER_PASSIVE=1 OD2_AUTOMONSTER_HOLD=1 OD2_AUTOMONSTER_DIFF=0 OD2_AUTOMONSTER_SECONDS=120'
   local s='wait:2;expect:level=2;wait:4;say:learnskillid 36;say:learnskillid 47;skill:left=Fire Bolt;skill:right=Fire Ball;say:heropos'
   s="$s;click:left@monster;wait:5"                                  # 1 left click on a monster: casts the left skill
-  s="$s;click:left@${SPELL_GROUND:-600,300};wait:6;say:heropos"     # 2 left click on the ground: walks
-  s="$s;click:left+shift@${SPELL_GROUND:-600,300};wait:4;say:heropos"  # 3 Shift+click: casts the left skill standing still
-  s="$s;click:left+cmd@${SPELL_GROUND:-600,300};wait:4;say:heropos"    # 4 Cmd+click: the right skill
-  s="$s;click:right@${SPELL_GROUND:-600,300};wait:4;say:heropos;exit"  # 5 right click: the right skill
+  s="$s;click:left@${SPELL_GROUND:-hero:200,0};wait:6;say:heropos"     # 2 left click on the ground: walks
+  s="$s;click:left+shift@${SPELL_GROUND:-hero:200,0};wait:4;say:heropos"  # 3 Shift+click: casts the left skill standing still
+  s="$s;click:left+cmd@${SPELL_GROUND:-hero:200,0};wait:4;say:heropos"    # 4 Cmd+click: the right skill
+  s="$s;click:right@${SPELL_GROUND:-hero:200,0};wait:4;say:heropos;exit"  # 5 right click: the right skill
   echo "export OD2_AUTOSCRIPT='$s'"
 }
 scenario_check() {

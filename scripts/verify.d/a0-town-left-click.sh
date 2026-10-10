@@ -11,9 +11,9 @@ scenario_env() {
     echo "# no revived sample hero, using the default save" >&2
   fi
   local s='wait:2;say:learnskillid 55;skill:left=Glacial Spike;say:heropos'
-  s="$s;click:left@560,340;wait:6;say:heropos"          # 1 left click, Glacial Spike: walks
-  s="$s;click:right@300,360;wait:1;click:left+cmd@300,360;wait:3;say:heropos"  # 2 right click and Cmd+click: cast the right skill (refused in town), no move
-  s="$s;skill:left=Attack;click:left@300,300;wait:6;say:heropos;exit"  # 3 Attack: walks
+  s="$s;click:left@hero:160,40;wait:6;say:heropos"          # 1 left click, Glacial Spike: walks
+  s="$s;click:right@hero:-100,60;wait:1;click:left+cmd@hero:-100,60;wait:3;say:heropos"  # 2 right click and Cmd+click: cast the right skill (refused in town), no move
+  s="$s;skill:left=Attack;click:left@hero:-100,0;wait:6;say:heropos;exit"  # 3 Attack: walks
   echo "export OD2_AUTOSCRIPT='$s'"
 }
 scenario_check() {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
@@ -29,8 +30,9 @@ func (e *synthEvent) Duration() int                    { return 1 }
 func (e *synthEvent) Button() d2enum.MouseButton       { return e.button }
 
 // ParseClickSpec parses a click step argument: "<left|right>[+shift][+ctrl][+cmd][+alt][@x,y]",
-// e.g. "left", "left+shift@400,300" or "left+ctrl". x,y are screen pixels of the
-// 800x600 game screen; without them the click lands near the screen centre.
+// e.g. "left", "left+shift@400,300" or "left+ctrl". x,y are screen pixels (the GameControls
+// methods also take @hero:dx,dy and @ui:x,y, see parseClick); without them the click lands near the
+// centre of an 800x600 screen.
 func ParseClickSpec(spec string) (button d2enum.MouseButton, mod d2enum.KeyMod, x, y int, err error) {
 	const centerX, centerY = 400, 280
 
@@ -81,6 +83,45 @@ type autoHold struct {
 	repeated int
 }
 
+// parseClick resolves the position forms of a click spec and returns the event in column space (what the
+// handlers receive). Positions: "@x,y" screen pixels; "@hero:dx,dy" relative to the hero's screen position
+// (resolution independent); "@ui:x,y" pixels of the 800x600 interface column; "@monster" (see
+// resolveMonsterSpec). Without a position the click lands just above the centre of the screen.
+func (g *GameControls) parseClick(spec string) (d2enum.MouseButton, d2enum.KeyMod, int, int, error) {
+	sx, sy := d2display.W()/2, d2display.H()/2-20 //nolint:gomnd // just above the hero
+
+	if i := strings.Index(spec, "@hero"); i >= 0 {
+		dx, dy := 0, 0
+		if rest := spec[i+len("@hero"):]; strings.HasPrefix(rest, ":") {
+			if _, e := fmt.Sscanf(rest[1:], "%d,%d", &dx, &dy); e != nil {
+				return 0, 0, 0, 0, fmt.Errorf("click position %q: want @hero:dx,dy", rest)
+			}
+		}
+
+		hx, hy := g.mapRenderer.WorldToScreen(g.hero.GetPositionF())
+		spec = fmt.Sprintf("%s@%d,%d", spec[:i], hx+dx, hy+dy)
+	} else if i := strings.Index(spec, "@ui:"); i >= 0 {
+		var ux, uy int
+		if _, e := fmt.Sscanf(spec[i+len("@ui:"):], "%d,%d", &ux, &uy); e != nil {
+			return 0, 0, 0, 0, fmt.Errorf("click position %q: want @ui:x,y", spec[i:])
+		}
+
+		hx, hy := d2display.ToScreen(ux, uy)
+		spec = fmt.Sprintf("%s@%d,%d", spec[:i], hx, hy)
+	} else if !strings.Contains(spec, "@") {
+		spec = fmt.Sprintf("%s@%d,%d", spec, sx, sy)
+	}
+
+	button, mod, x, y, err := ParseClickSpec(spec)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+
+	cx, cy := d2display.ToColumn(x, y)
+
+	return button, mod, cx, cy, nil
+}
+
 // resolveMonsterSpec replaces a "@monster" target of a click spec by the screen position of the living monster
 // nearest to the hero, and returns that monster (nil when the spec has no such target).
 func (g *GameControls) resolveMonsterSpec(spec string) (string, *d2mapentity.Monster, error) {
@@ -126,7 +167,7 @@ func (g *GameControls) AutoClick(spec string) error {
 		return err
 	}
 
-	button, mod, x, y, err := ParseClickSpec(spec)
+	button, mod, x, y, err := g.parseClick(spec)
 	if err != nil {
 		return err
 	}
@@ -147,7 +188,12 @@ func (g *GameControls) AutoClick(spec string) error {
 // AutoHoldStart presses a mouse button (spec as for click:) and keeps it down: AutoHoldTick then repeats it
 // like the input manager does for a real held button, until AutoHoldEnd.
 func (g *GameControls) AutoHoldStart(spec string) error {
-	button, mod, x, y, err := ParseClickSpec(spec)
+	spec, _, err := g.resolveMonsterSpec(spec)
+	if err != nil {
+		return err
+	}
+
+	button, mod, x, y, err := g.parseClick(spec)
 	if err != nil {
 		return err
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
@@ -141,8 +142,8 @@ const (
 )
 
 const (
-	screenWidth  = 800
-	screenHeight = 600
+	screenWidth  = d2display.BaseW
+	screenHeight = d2display.BaseH
 )
 
 const (
@@ -439,7 +440,7 @@ func (v *CharacterSelect) Render(screen d2interface.Surface) {
 	}
 
 	if v.showDeleteConfirmation {
-		screen.DrawRect(screenWidth, screenHeight, d2util.Color(blackHalfOpacity))
+		fillScreen(screen, d2util.Color(blackHalfOpacity))
 		v.okCancelBox.RenderSegmented(screen, 2, 1, 0)
 		v.deleteCharConfirmLabel.Render(screen)
 	}

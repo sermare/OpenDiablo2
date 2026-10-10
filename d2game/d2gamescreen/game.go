@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
@@ -358,6 +359,19 @@ func (v *Game) OnUnload() error {
 	return nil
 }
 
+// DisplayAnchor stands the interface column (bottom bar, panels) on the bottom of the screen.
+func (v *Game) DisplayAnchor() d2display.Anchor { return d2display.AnchorBottom }
+
+// fillScreen covers the whole screen (not just the 800x600 column) with a colour.
+func fillScreen(screen d2interface.Surface, c color.Color) {
+	ox, oy := d2display.ColumnOrigin()
+	sz := d2display.Get()
+
+	screen.PushTranslation(-ox, -oy)
+	screen.DrawRect(sz.W, sz.H, c)
+	screen.Pop()
+}
+
 // Render renders the Gameplay screen
 func (v *Game) Render(screen d2interface.Surface) {
 	if v.gameClient.RegenMap {
@@ -366,13 +380,17 @@ func (v *Game) Render(screen d2interface.Surface) {
 		v.gameClient.MapEngine.IsLoading = false
 	}
 
+	// the world fills the whole screen: leave the interface column the app translated into
+	ox, oy := d2display.ColumnOrigin()
+	screen.PushTranslation(-ox, -oy)
 	screen.Clear(color.Black)
 	v.mapRenderer.Render(screen)
 	v.logDrawStats()
+	screen.Pop()
 
 	if v.gameControls != nil {
 		if v.gameControls.HelpOverlay != nil && v.gameControls.HelpOverlay.IsOpen() {
-			screen.DrawRect(screenWidth, screenHeight, d2util.Color(black50alpha))
+			fillScreen(screen, d2util.Color(black50alpha))
 		}
 
 		if err := v.gameControls.Render(screen); err != nil {
@@ -720,7 +738,8 @@ func (v *Game) anchorNPCMenu(menu *d2player.NPCMenu, npc d2interface.MapEntity) 
 		ay = npcMenuTopMin
 	}
 
-	menu.SetAnchor(int(sx), ay)
+	cx, cy := d2display.ToColumn(int(sx), ay) // the menu lives in the interface column
+	menu.SetAnchor(cx, cy)
 }
 
 // openNPCMenu shows the Talk/Trade/... menu for an NPC.

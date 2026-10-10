@@ -3,6 +3,7 @@ package d2input
 import (
 	"sort"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	ebiten_input "github.com/OpenDiablo2/OpenDiablo2/d2core/d2input/ebiten"
@@ -35,7 +36,9 @@ func (im *inputManager) Advance(elapsed, _ float64) error {
 	im.updateKeyMod()
 	im.updateButtonMod()
 
-	cursorX, cursorY := im.inputService.CursorPosition()
+	// handlers work in column space (the 800x600 interface); world picking converts back with
+	// d2display.ToScreen (docs/DISPLAY.md)
+	cursorX, cursorY := d2display.ToColumn(im.inputService.CursorPosition())
 	eventBase := HandlerEvent{
 		im.keyMod,
 		im.buttonMod,

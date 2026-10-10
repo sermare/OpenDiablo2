@@ -22,6 +22,9 @@ const (
 
 const (
 	worldToOrthoOffsetX = 3
+
+	// alignedWidth is the width of the free half of the interface column.
+	alignedWidth = 400
 )
 
 // Viewport is used for converting vectors between screen (pixel), orthogonal (Camera) and world (isometric) space.
@@ -49,6 +52,31 @@ func NewViewport(x, y, width, height int) *Viewport {
 			Width:  width,
 			Height: height,
 		},
+	}
+}
+
+// Size is the current full size of the viewport (the logical screen).
+func (v *Viewport) Size() (width, height int) {
+	return v.defaultScreenRect.Width, v.defaultScreenRect.Height
+}
+
+// Resize makes the viewport cover a screen of the given size and keeps the current alignment.
+func (v *Viewport) Resize(width, height int) {
+	if v.defaultScreenRect.Width == width && v.defaultScreenRect.Height == height {
+		return
+	}
+
+	a := v.align
+	v.defaultScreenRect.Width, v.defaultScreenRect.Height = width, height
+	v.screenRect.Width, v.screenRect.Height = width, height
+	v.align = center
+	v.screenRect.Left = v.defaultScreenRect.Left
+
+	switch a {
+	case left:
+		v.toLeft()
+	case right:
+		v.toRight()
 	}
 }
 
@@ -198,7 +226,9 @@ func (v *Viewport) toLeft() {
 		return
 	}
 
-	v.screenRect.Width = v.defaultScreenRect.Width / half
+	// The world is shown in the half of the 800 wide interface column that the open panel leaves free:
+	// its centre moves to W/2+200 (at 800x600 this is the right half, as in the original).
+	v.screenRect.Width = alignedWidth
 	v.screenRect.Left = v.defaultScreenRect.Left + v.defaultScreenRect.Width/half
 	v.align = left
 }
@@ -208,7 +238,8 @@ func (v *Viewport) toRight() {
 		return
 	}
 
-	v.screenRect.Width = v.defaultScreenRect.Width / half
+	v.screenRect.Width = alignedWidth
+	v.screenRect.Left = v.defaultScreenRect.Left + v.defaultScreenRect.Width/half - alignedWidth
 	v.align = right
 }
 
