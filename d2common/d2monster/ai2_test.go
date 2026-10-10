@@ -24,11 +24,10 @@ func TestNewArchetypesRegistered(t *testing.T) {
 		}
 	}
 
-	// documented TODOs stay unported (the former Summoner/Vulture/Duriel TODOs
-	// are ported in ai_boss2.go)
+	// the former Tentacle/FrogDemon TODOs are ported in ai_fb_3.go
 	for _, n := range []string{"Tentacle", "FrogDemon"} {
-		if _, ok := Lookup(n); ok {
-			t.Errorf("%s should still be a TODO", n)
+		if _, ok := Lookup(n); !ok {
+			t.Errorf("%s should be ported", n)
 		}
 	}
 }

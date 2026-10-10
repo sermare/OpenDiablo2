@@ -136,6 +136,7 @@ func TestFBNRaven(t *testing.T) {
 	// a fresh raven gets the default 3 pecks
 	f, b = fbnPetNew("Raven", 10, 30, 5, 4, 100, 20)
 	f.hasTarget = true
+	f.frame = 10
 
 	Tick(f, b)
 
