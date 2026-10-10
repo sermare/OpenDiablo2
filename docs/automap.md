@@ -40,7 +40,9 @@ screen diamond (screen/10 + margin) around the hero, same trigger.
   left (AutoMap Left), clipped to the box. Set by the options screen. Tab shows/hides (the flag was not located: U). V for sizes and box.
 - Origin: full = (0x28 + hx - W/2 - panelShift, 0xf + hy - H/2) with panelShift -W/4 (right panel open) or +W/4 (left panel open); the hero is at
   (W/2-40, H/2-15) and its cross at +8,-8. Mini adds (W/3 - d264 - 0x10, H/3 - d260 - 0x10), d264 = 2W/3, d260 = 0x4e (right side). V.
-- Fade option: far cells are drawn with transparency effects. U, not implemented. Centre-on-cleared option, party names: not implemented.
+- Fade option (AutoMapFade, AUTOMAP_SetFadeOption): the cell draw mode is 5 (normal) or, with fade on, 0/1/2 for cells inside a box (+-0x8c x -0x96..+0x82) around the screen centre, by distance (<50, <100, <150 on the (min*2+max)/2 metric); on the mini map flat mode 1. V that the values are passed, U that 0/1/2 are about 25/50/75 percent and the 50/100 steps. Implemented: d2automap.CellTransparency.
+- Centre option (AutoMap Centers, AUTOMAP_RecalcOffsets): the mini map offsets d210/d214 are recomputed on a size change and, only if the option is on, when the panel layout changes. Implemented (MiniBoxOffsets, ComputeLayoutOffsets). The mini map moves to the left when a right panel is open.
+- Party / names options (AUTOMAP_DrawUnitMarker): cross for party members only with Show Party; names (players, town NPCs, "Stash" text for object 267 instead of its black cross) with Show Names; dead players and hostile monsters are not drawn; permanent portal (60) hidden in levels 0x6f,0x70,0x75,0x7d-0x7f; mini cross offset (-1,+5). Implemented: d2automap.Classify.
 - Text after the cells and markers: game name/password/IP, level name, "v 1.14b", clock; gold, right aligned, y = 0x18 + 16n. V.
 - Drawn from the HUD pass before panels and text.
 
@@ -52,4 +54,4 @@ with the Act 1 palette these are (36,96,216), (252,44,0), (24,252,0), (68,112,11
 minion colour is only partly decoded (U).
 
 ## What this fork does not do
-Saving the revealed map with the character, the fade option, party names, centre-on-cleared, monster/minion classification beyond NPCs.
+Saving the revealed map with the character (kept per level in memory for the session: d2automap.Store), roster markers for party members outside the view (RosterMarker only), minion classification beyond the model flag. Console/script: `automap fade|nofade|names|nonames|party|noparty|center|nocenter` override the options (verification aid). Scenarios: 91-automap-fidelity (town, Jail 1, return), 91-automap-outdoor (Blood Moor).

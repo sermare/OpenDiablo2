@@ -10,6 +10,8 @@
 #   ZIP=1 scripts/make-app.sh        also write dist/OpenDiablo2-<version>-macos-arm64.zip
 #                                    (ditto, keeps the signature and bundle metadata)
 #
+# Info.plist: arm64 only, macOS 14+, Retina (NSHighResolutionCapable); no document
+# types (saves are imported from the Diablo II folder, not opened from Finder).
 # The app is ad-hoc signed (codesign -s -). No game files are included: on first
 # launch it looks for your Diablo II folder or asks you to pick it.
 set -euo pipefail
@@ -54,9 +56,8 @@ if [ "${UNIVERSAL:-0}" = 1 ]; then
 fi
 cp "$BIN" "$APP/Contents/MacOS/$EXE"
 
-echo "==> icon from d2logo.png"
-# d2logo.png is 256x249; centre-crop to a square, then render every iconset size.
-sips -c 249 249 d2logo.png --out "$WORK/square.png" >/dev/null
+echo "==> icon (original artwork drawn by scripts/icon/main.go; no Blizzard art)"
+go run scripts/icon/main.go "$WORK/square.png" 1024
 ICONSET="$WORK/OpenDiablo2.iconset"
 mkdir -p "$ICONSET"
 for s in 16 32 128 256 512; do
@@ -64,7 +65,7 @@ for s in 16 32 128 256 512; do
 	sips -z $((s * 2)) $((s * 2)) "$WORK/square.png" --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/OpenDiablo2.icns"
-cp d2logo.png "$APP/Contents/Resources/d2logo.png" # the engine loads it as the window icon
+sips -z 256 256 "$WORK/square.png" --out "$APP/Contents/Resources/d2logo.png" >/dev/null # the engine loads it as the window icon
 
 cat >"$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -82,7 +83,9 @@ cat >"$APP/Contents/Info.plist" <<EOF
 	<key>CFBundleShortVersionString</key><string>$VERSION</string>
 	<key>CFBundleVersion</key><string>$BUILD</string>
 	<key>LSApplicationCategoryType</key><string>public.app-category.games</string>
-	<key>LSMinimumSystemVersion</key><string>11.0</string>
+	<key>LSMinimumSystemVersion</key><string>14.0</string>
+	<key>LSArchitecturePriority</key><array><string>arm64</string></array>
+	<key>NSSupportsAutomaticGraphicsSwitching</key><true/>
 	<key>NSHighResolutionCapable</key><true/>
 	<key>NSPrincipalClass</key><string>NSApplication</string>
 	<key>NSHumanReadableCopyright</key><string>OpenDiablo2 is free software (GPL). Diablo II is a trademark of Blizzard Entertainment; game files are not included.</string>
