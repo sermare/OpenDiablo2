@@ -507,7 +507,7 @@ func (v *Game) warpingShrine(ob *d2mapentity.Object) string {
 func (v *Game) gemShrine(ob *d2mapentity.Object) string {
 	var (
 		inv  []d2object.GemChoice
-		gems = v.gameControls.InventoryGems()
+		gems = v.gameControls.InventoryGems(v.isGemType)
 	)
 
 	for _, g := range gems {
@@ -536,4 +536,13 @@ func (v *Game) gemShrine(ob *d2mapentity.Object) string {
 	}
 
 	return fmt.Sprintf("world=gem-upgrade gems_in_inventory=%d code=%s upgraded=%v", len(gems), code, up)
+}
+
+// isGemType tells whether an itemtypes.txt code is, or inherits from, the gem type (0x14).
+func (v *Game) isGemType(code string) bool {
+	if t := v.itemFactory().DescriptionTables(); t != nil {
+		return t.IsA(code, "gem")
+	}
+
+	return code == "gem"
 }

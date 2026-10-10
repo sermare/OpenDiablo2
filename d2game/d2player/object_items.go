@@ -37,9 +37,10 @@ func (g *GameControls) ConsumeKey(src *diablo2item.Item) (left int) {
 	return left
 }
 
-// InventoryGems returns the loose gems of the inventory grid (item type "gem"), in grid order. Socketed
-// gems are not part of the grid and are not upgraded by the shrine.
-func (g *GameControls) InventoryGems() []*diablo2item.Item {
+// InventoryGems returns the loose gems of the inventory grid (item type 0x14 "gem", reached through the
+// equivalences of itemtypes.txt: gema, gemr... gem0..gem4, skulls), in grid order. isGem tells whether a
+// type code is a gem type. Socketed gems are not part of the grid and are not upgraded by the shrine.
+func (g *GameControls) InventoryGems(isGem func(typeCode string) bool) []*diablo2item.Item {
 	var out []*diablo2item.Item
 
 	for _, it := range g.inventory.grid.items {
@@ -48,7 +49,7 @@ func (g *GameControls) InventoryGems() []*diablo2item.Item {
 			continue
 		}
 
-		if rec := item.CommonRecord(); rec != nil && rec.Type == "gem" {
+		if rec := item.CommonRecord(); rec != nil && (isGem(rec.Type) || isGem(rec.Type2)) {
 			out = append(out, item)
 		}
 	}

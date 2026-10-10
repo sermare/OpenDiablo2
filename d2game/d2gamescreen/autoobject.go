@@ -287,6 +287,13 @@ func (v *Game) autoObjectGive(env string) {
 		}
 
 		name, err := v.gameControls.GiveItem(code)
+		if err != nil {
+			// the sample hero's bags are full: make room (a debug aid, as the freeinv command) and try again
+			v.Infof("OBJECT autotest freed %d inventory items", v.gameControls.FreeInventory(3))
+
+			name, err = v.gameControls.GiveItem(code)
+		}
+
 		v.Infof("OBJECT autotest gave %q -> %q err=%v", code, name, err)
 	}
 }
