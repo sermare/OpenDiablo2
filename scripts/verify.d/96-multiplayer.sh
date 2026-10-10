@@ -3,30 +3,62 @@ scenario_name="multiplayer (two processes over TCP with the d2gs protocol: join,
 # The runner starts one process per scenario (the host, with $save). This scenario starts the joiner itself from
 # scenario_env (it retries until the host listens) with a second character, writes its own log to $tmp/96-join.log
 # and checks both logs. Both use OD2_PROTO=d2gs (Huffman compressed D2GS packets) on 127.0.0.1:$OD2_PORT.
-# Timeline (script seconds; the joiner's clock starts a few seconds after the host's):
-#   joiner: 10 look, walk 6 tiles east, 20 look, cast, chat, 36 look, leave
-#   host:    7 look (joiner still at the start), 26 look (joiner arrived), chat, 61 look (joiner gone), leave
+# The two scripts run in step with `waitlog:` steps (each waits for a line the other process caused in its own log),
+# so the timeline does not depend on how fast either process starts or on how busy the machine is. (Fixed `wait:`s on
+# each side drifted apart under load: the host looked at the joiner while it was still walking, or the joiner had
+# already left the level.) The only waits left are game seconds inside one process (a short walk).
+#   joiner: host is in the game -> look 1 (both at the start) -> chat "j ready"
+#   host:   "j ready" -> look 1 (joiner still at the start) -> chat "h looked"
+#   joiner: "h looked" -> walk 6 tiles east and arrive -> look 2 -> chat "j arrived"
+#   host:   "j arrived" -> look 2 (joiner at its new place) -> chat "hello from host"
+#   joiner: host's chat -> cast, chat "hello from joiner", chat "j done", leave
+#   host:   joiner's chat -> the leave -> look 3 (alone) -> leave
+# A chat line is logged by every client, the sender's own copy included, so a step waits for the OTHER hero's name.
+# Both processes use an isolated config dir (the .od2 saves of the imported heroes live there), so parallel runs of
+# this and other scenarios do not write the same hero files.
 mp_second_save="$HOME/git/d2s-test/Maricon.d2s"
 mp_join_log=$tmp/96-join.log
+mp_cfg=$tmp/96-config
+
+# _mp_name <file>: the hero name of a .d2s
+_mp_name() { python3 -c 'import sys;b=open(sys.argv[1],"rb").read();print(b[0x14:0x24].split(b"\0")[0].decode())' "$1"; }
 
 scenario_env() {
+  local hn jn
+  mkdir -p $mp_cfg
+  # a copy of the real config (it holds the MPQ path), so the run never edits the real one
+  cp "$HOME/Library/Application Support/OpenDiablo2/config.json" $mp_cfg/config.json 2>/dev/null
+  hn=$(_mp_name $save)
   if [ ! -f "$mp_second_save" ]; then
     echo 'echo "multiplayer: second character missing, only the host runs"'
-  else
-    local jsave=$tmp/join.d2s jcmd=$tmp/96-join.command
-    cp "$mp_second_save" $jsave
-    {
-      echo '#!/bin/zsh'
-      echo "export OD2_PORT=$OD2_PORT OD2_PROTO=d2gs OD2_JOIN=127.0.0.1:$OD2_PORT OD2_JOIN_RETRY=120"
-      echo "export OD2_AUTOGAME=\"$jsave\" ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
-      echo "export OD2_AUTOSCRIPT='wait:10;say:players;move:126,117;wait:10;say:players;cast:Fire Bolt@128,117;wait:2;say:chat hello_from_joiner;wait:14;say:players;exit'"
-      echo "$tmp/od2 2>&1 | tee $mp_join_log"
-    } > $jcmd
-    chmod +x $jcmd; rm -f $mp_join_log
-    launch_game $jcmd
+    echo "export OD2_PROTO=d2gs OD2_HOST=1 OD2_BIND=127.0.0.1 OD2_D2S_WRITEBACK=$tmp OD2_CONFIG_DIR=\"$mp_cfg\""
+    echo "export OD2_AUTOSCRIPT='wait:7;say:players;exit'"
+    return
   fi
-  echo "export OD2_PROTO=d2gs OD2_HOST=1 OD2_BIND=127.0.0.1 OD2_D2S_WRITEBACK=$tmp"
-  echo "export OD2_AUTOSCRIPT='wait:7;say:players;wait:19;say:players;say:chat hello_from_host;wait:35;say:players;exit'"
+
+  local jsave=$tmp/join.d2s jcmd=$tmp/96-join.command
+  jn=$(_mp_name $mp_second_save)
+  cp "$mp_second_save" $jsave
+
+  local js="waitlog:PLAYER ADD name=\"$hn\";say:players;say:chat j_ready"
+  js+=";waitlog:CHAT <$hn> h looked;move:37,14;wait:8;say:players;say:chat j_arrived"
+  js+=";waitlog:CHAT <$hn> hello from host;cast:Fire Bolt@38,14;wait:2;say:chat hello_from_joiner;say:chat j_done;exit"
+  local hs="waitlog:CHAT <$jn> j ready;say:players;say:chat h_looked"
+  hs+=";waitlog:CHAT <$jn> j arrived;say:players;say:chat hello_from_host"
+  hs+=";waitlog:CHAT <$jn> j done;waitlog:PLAYER LEAVE name=\"$jn\";say:players;exit"
+
+  {
+    echo '#!/bin/zsh'
+    echo "export OD2_PORT=$OD2_PORT OD2_PROTO=d2gs OD2_JOIN=127.0.0.1:$OD2_PORT OD2_JOIN_RETRY=120"
+    echo "export OD2_AUTOGAME=\"$jsave\" ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp OD2_CONFIG_DIR=\"$mp_cfg\""
+    echo "export OD2_AUTOSCRIPT='$js'"
+    echo "$tmp/od2 2>&1 | tee $mp_join_log"
+  } > $jcmd
+  chmod +x $jcmd; rm -f $mp_join_log
+  launch_game $jcmd
+
+  echo "export OD2_PROTO=d2gs OD2_HOST=1 OD2_BIND=127.0.0.1 OD2_D2S_WRITEBACK=$tmp OD2_CONFIG_DIR=\"$mp_cfg\""
+  echo "export OD2_AUTOSCRIPT='$hs'"
 }
 
 scenario_check() {
