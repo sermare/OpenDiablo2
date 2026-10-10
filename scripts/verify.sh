@@ -134,6 +134,9 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
         [ -n "${OD2_VERIFY_SOUND:-}" ] || [ -n "$scenario_unmuted" ] || echo "export OD2_AUTOTEST_MUTE=1"
         # game clock x4 (OD2_AUTOSPEED) unless the scenario needs real time (perf, multiplayer); OD2_VERIFY_SPEED=1 turns it off
         [ -n "$scenario_realtime" ] || [ "${OD2_VERIFY_SPEED:-8}" = 1 ] || echo "export OD2_AUTOSPEED=${OD2_VERIFY_SPEED:-8}"
+        # OD2_VERIFY_CONFIG_DIR: a private config folder (a copy of a valid config.json) instead of the user's own;
+        # a scenario that needs its own OD2_CONFIG_DIR overrides it below
+        [ -n "${OD2_VERIFY_CONFIG_DIR:-}" ] && echo "export OD2_CONFIG_DIR=\"$OD2_VERIFY_CONFIG_DIR\""
         scenario_env
         echo "$tmp/od2 2>&1 | tee $log"
       } > $cmd
