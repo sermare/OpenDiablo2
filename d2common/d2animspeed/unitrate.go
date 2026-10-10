@@ -55,6 +55,18 @@ const (
 	PlayerKnockRate = 213
 )
 
+// Monster stat initialisation (VERIFIED: immediate operands of the stat writes in
+// MONAI_InitMonsterStatsFromMonstats 0x571af0; the engine does not apply them
+// yet). A fresh monster has stat 0x43 = 75, stat 0x44 = 100 and stat 0x45 = 100,
+// so its walk and run velocity is 75 percent of the MonStats velocity unless the
+// AI speed override or a slow changes stat 0x43. UNVERIFIED: that
+// MONAI_SetMoveSpeedOverride is what restores more for chasing monsters.
+const (
+	MonsterInitStat43 = 75
+	MonsterInitStat44 = 100
+	MonsterInitStat45 = 100
+)
+
 // ModeAction maps a unit kind and animation mode to its rate rule. Player modes
 // follow the PlrMode order (DT NU WL RN GH TN TW A1 A2 BL SC TH KK S1 S2 S3 S4
 // DD SQ KB); monster modes the MonMode order (DT NU WL GH A1 A2 BL SC S1 S2 S3

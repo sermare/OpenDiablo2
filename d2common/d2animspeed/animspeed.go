@@ -66,19 +66,21 @@ func Diminish(p, k int) int {
 	return k * p / (k + p)
 }
 
-// scale computes base*pct/100 the way the exe does (unsigned, truncating),
-// treating non-positive results as 0 and capping at MaxRate.
+// scale computes base*pct/100 the way the exe does for hit, block and cast
+// (VERIFIED by the oracle): a 32 bit unsigned product divided by 100, so a
+// negative percent wraps to a huge value and saturates at MaxRate, while a
+// percent of 0 gives 0. The result is capped at MaxRate.
 func scale(base, pct int) int {
-	if base <= 0 || pct <= 0 {
+	if base <= 0 {
 		return 0
 	}
 
-	r := base * pct / 100
-	if r > MaxRate-1 {
+	r := uint32(int32(base)*int32(pct)) / 100
+	if r >= MaxRate {
 		return MaxRate
 	}
 
-	return r
+	return int(r)
 }
 
 func clamp(v, lo, hi int) int {
