@@ -16,9 +16,9 @@ for n in {0..$((jobs-1))}; do
   [ -z "${grp[$n]}" ] && continue
   log=/tmp/verify-par-$$-$n.log; logs+=($log)
   if [ $n -eq 0 ]; then
-    OD2_VERIFY_ONLY="(${grp[$n]})" ./scripts/verify.sh > $log 2>&1 &
+    OD2_VERIFY_ONLY="(${grp[$n]})*" ./scripts/verify.sh > $log 2>&1 &
   else
-    SKIP_UNIT=1 OD2_VERIFY_ONLY="(${grp[$n]})" ./scripts/verify.sh > $log 2>&1 &
+    SKIP_UNIT=1 OD2_VERIFY_ONLY="(${grp[$n]})*" ./scripts/verify.sh > $log 2>&1 &
   fi
   pids+=($!)
   sleep 2
