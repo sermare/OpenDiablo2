@@ -28,6 +28,9 @@ type Game struct {
 	RoomCount func(level int) int
 }
 
+// SuperMade says whether the super unique with this hcIdx was made in this game already.
+func (g *Game) SuperMade(hcIdx int) bool { return g.superMade[hcIdx] }
+
 // NewGame builds the regions of a game (MONREGION_InitForGame).
 func NewGame(t *Tables, seed uint32, diff int, expansion bool) *Game {
 	g := &Game{Tables: t, Difficulty: diff, Expansion: expansion, Seed: *d2rand.New(seed)}
