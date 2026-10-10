@@ -18,8 +18,8 @@ scenario_check() {
     grep -qE "QUEST SPEECH npc=\"Alkor\" class=254 msg=$m mode=[0-9] .* sound=[0-9]+ handle=ESOUND_ALKOR_ACT3_Q1" $log.txt || { echo "FAIL: Alkor did not speak message $m"; fail=1; }
   done
   grep -q "LEVEL quest object id=193 name=\"Lam Esen's Tome\"" $log.txt || { echo "FAIL: no tome in the Ruined Temple"; fail=1; }
-  grep -q "QUEST object operated id=193" $log.txt || { echo "FAIL: the tome was not operated"; fail=1; }
-  grep -q "QUEST EFFECT spawn-item code=bbb" $log.txt || { echo "FAIL: the tome object gave no item"; fail=1; }
+  grep -qE "QUEST object operated id=193|ACT3 .* operated \(id 193\)" $log.txt || { echo "FAIL: the tome was not operated"; fail=1; }
+  grep -qE "QUEST EFFECT spawn-item code=bbb|ACT3 .* operated \(id 193\): gives \"bbb\"" $log.txt || { echo "FAIL: the tome object gave no item"; fail=1; }
   grep -q 'LOOT stored "bbb"' $log.txt || { echo "FAIL: Lam Esen's Tome was not picked up"; fail=1; }
   grep -q "QUEST EFFECT reward stat-points +5" $log.txt || { echo "FAIL: Alkor's reward (5 stat points)"; fail=1; }
   grep -q "QUEST EFFECT delete-item code=bbb" $log.txt || { echo "FAIL: Alkor kept no tome"; fail=1; }

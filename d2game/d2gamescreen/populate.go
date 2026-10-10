@@ -198,7 +198,7 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 		// and the Flail drop read it. The director path (groups.go recordRank) does the same.
 		if pm.SuperKey != "" {
 			if rec := v.asset.Records.Monster.Unique.Super[pm.SuperKey]; rec != nil && rec.Name != "" {
-				mon.SetLabel(rec.Name)
+				mon.SetLabel(v.asset.TranslateString(rec.Name))
 			}
 		}
 

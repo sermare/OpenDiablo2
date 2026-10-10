@@ -12,7 +12,7 @@ scenario_env() {
   s+="$(qw_go 63 62 43 42 56 57 60)$(qw_chest 354)"
   s+="$(qw_go 57)$(qw_wp 48)$(qw_go 49)$(qw_chest 355)$(qw_go 48)$(qw_wp 40)say:giveitem vip;"
   s+="$(qw_talk 'Deckard Cain' 10)$(qw_talk 'Deckard Cain' 10)$(qw_talk 'Deckard Cain' 10)$(qw_talk 'Deckard Cain' 10)"
-  s+="$(qw_panel 2 2)say:cubeput msf;say:cubeput vip;say:transmute;wait:2;$(qw_panel 2 2)$(qw_talk 'Deckard Cain' 10)$(qw_panel 2 2)exit"
+  s+="$(qw_panel 2 2)say:cubeput msf vip - -;say:transmute;wait:2;$(qw_panel 2 2)$(qw_talk 'Deckard Cain' 10)$(qw_panel 2 2)exit"
   qw_env staff "$s"
 }
 scenario_check() {

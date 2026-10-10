@@ -23,8 +23,8 @@ scenario_check() {
     grep -qE "QUEST SPEECH npc=\"[A-Za-z]+\" class=[0-9]+ msg=$m mode=[0-9] .* sound=[0-9]+ handle=ESOUND_" $log.txt || { echo "FAIL: message $m was not spoken"; fail=1; }
   done
   grep -q "LEVEL quest object id=252 name=\"Gidbinn\"" $log.txt || { echo "FAIL: no Gidbinn in the Flayer Jungle"; fail=1; }
-  grep -q "QUEST object operated id=252" $log.txt || { echo "FAIL: Gidbinn was not operated"; fail=1; }
-  grep -q "QUEST EFFECT spawn-item code=g33" $log.txt || { echo "FAIL: the altar gave no Gidbinn"; fail=1; }
+  grep -qE "QUEST object operated id=252|ACT3 .* operated \(id 252\)" $log.txt || { echo "FAIL: Gidbinn was not operated"; fail=1; }
+  grep -qE "QUEST EFFECT spawn-item code=g33|ACT3 .* operated \(id 252\): gives \"g33\"" $log.txt || { echo "FAIL: the altar gave no Gidbinn"; fail=1; }
   grep -q 'LOOT stored "g33"' $log.txt || { echo "FAIL: Gidbinn was not picked up"; fail=1; }
   grep -q "QUEST EFFECT delete-item code=g33" $log.txt || { echo "FAIL: Ormus kept no blade"; fail=1; }
   grep -q "QUEST EFFECT reward hire-ironwolves" $log.txt || { echo "FAIL: Asheara's reward (Iron Wolves)"; fail=1; }
