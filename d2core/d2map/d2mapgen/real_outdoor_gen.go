@@ -70,7 +70,7 @@ func isAct3Preset(id int) bool {
 // Tristram (38) and Duriel's Lair (73, Act 2), proven equal to the emulator by TestOraclePresetAct1More.
 func isAct1Preset(id int) bool {
 	switch id {
-	case 25, 26, 27, 32, 33, 38, 73:
+	case 20, 25, 26, 27, 32, 33, 38, 73: // 20 (Forgotten Tower, DrlgType 2) was refused until a walk scenario entered it; not oracle-proven
 		return true
 	}
 

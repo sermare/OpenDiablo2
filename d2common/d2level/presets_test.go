@@ -77,3 +77,16 @@ func TestAct2VisSlotsMatchLevelsTxt(t *testing.T) {
 		t.Errorf("only %d Act 2 levels compared", seen)
 	}
 }
+
+// The two entrance tiles of the Burial Grounds lead to the Crypt and the Mausoleum (found by walkto:exit=18 failing).
+func TestBurialGroundsEntrances(t *testing.T) {
+	for _, c := range []struct{ style, want int }{{0, 18}, {1, 19}} {
+		if got, ok := TileDestination(17, c.style); !ok || got != c.want {
+			t.Errorf("style %d: %d %v, want %d", c.style, got, ok, c.want)
+		}
+	}
+
+	if _, ok := TileDestination(17, 5); ok {
+		t.Error("style 5 of the Burial Grounds must not lead anywhere")
+	}
+}
