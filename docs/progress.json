@@ -64,10 +64,10 @@
     },
     {
       "label": "Levels walked by a verify scenario",
-      "done": 52,
+      "done": 91,
       "total": 136,
       "pending": 0,
-      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); includes the whole Act 3 chain (Travincal, Council, Durance, Mephisto, red portal)",
+      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); includes the whole Act 3 chain (Travincal, Council, Durance, Mephisto, red portal); the 9s-walk scenarios add 39: Act 1 caves, Burial Grounds, Crypt, Mausoleum, Forgotten Tower and Cellars, Monastery to Catacombs 2, Act 2 Palace Cellar 2 / Stony Tombs / Halls 3, Act 3 temples, Act 5 ice caves and Nihlathak temple chain",
       "color": "#ff9f43"
     },
     {
@@ -80,10 +80,10 @@
     },
     {
       "label": "Player skills with engine behaviour",
-      "done": 141,
+      "done": 150,
       "total": 210,
       "pending": 0,
-      "note": "141 of 210 player skills have engine behaviour: all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry)",
+      "note": "150 of 210 player skills have engine behaviour: Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry)",
       "color": "#5fd0a5"
     },
     {
@@ -96,10 +96,10 @@
     },
     {
       "label": "Monster AI archetypes ported faithfully",
-      "done": 85,
+      "done": 96,
       "total": 148,
       "pending": 0,
-      "note": "~85: implemented minus about 60 stand-ins (estimate)",
+      "note": "~96 (estimate): batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
       "color": "#6c8cff"
     },
     {
@@ -112,10 +112,10 @@
     },
     {
       "label": "Item generation gaps closed vs the exe",
-      "done": 11,
+      "done": 12,
       "total": 12,
       "pending": 0,
-      "note": "11 of the 12 gaps closed and checked against the emulator (stat-list aggregation remains); not wired into every drop path yet",
+      "note": "12 of the 12 gaps closed (the last, stat-list aggregation, follows the exe decompile 0x627160 / 0x626c80 and is unit tested, not compared with the running emulator); not wired into every drop path yet",
       "color": "#f2c94c"
     },
     {
@@ -131,7 +131,7 @@
       "done": 3,
       "total": 4,
       "pending": 0,
-      "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and the party panel through the realm are not wired (trade works over the legacy path)",
+      "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and party commands now travel through the realm bridge with unit tests (feat/mp-and-mac-dmg), not yet seen in two game windows; trade works over the legacy path",
       "color": "#ffb86b"
     },
     {
@@ -139,7 +139,7 @@
       "done": 2,
       "total": 3,
       "pending": 1,
-      "note": "app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image has not been opened by a human; the desktop app was rebuilt from the landed tree",
+      "note": "app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image install is rehearsed by scripts/dmg_install_check.sh (quarantine, mount, copy, verify) but has not been opened in Finder by a human; the desktop app was rebuilt from the landed tree",
       "color": "#9be564"
     },
     {
