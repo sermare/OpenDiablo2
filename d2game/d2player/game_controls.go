@@ -369,6 +369,7 @@ type GameControls struct {
 	lastMouseX            int
 	lastMouseY            int
 	lastLeftBtnActionTime float64
+	autoHold              *autoHold // a button held by an OD2_AUTOSCRIPT hold: step (synthetic_input.go)
 	// heldLeftWalk is true while the left button is held down on a click that began as a plain
 	// ground click (a walk or a skill use). Only such a hold repeats; a click that began on an NPC,
 	// object or item interacts once.

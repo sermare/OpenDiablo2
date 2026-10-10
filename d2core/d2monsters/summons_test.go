@@ -34,15 +34,17 @@ func TestPlanSummonTable(t *testing.T) {
 			"foulcrow1", [][2]int{{0, 3}}, true, selfLimitedSummonCap, 0, "NU"},
 		{"MinionSpawner", &d2records.SkillRecord{Srvdofunc: 135}, &d2records.MonStatRecord{SpawnKey: "minion1", SpawnOffsetY: 3, AiKey: "MinionSpawner"}, true,
 			"minion1", [][2]int{{0, 3}}, true, selfLimitedSummonCap, 0, ""},
-		{"Impregnate summon column", &d2records.SkillRecord{Srvdofunc: 133, Summon: "painworm1", Summode: "NU"}, gen, true,
-			"painworm1", [][2]int{{0, 0}}, false, wormSummonCap, 0, "NU"},
-		{"Overseer Whip", &d2records.SkillRecord{Srvdofunc: 131, Summon: "suicideminion1", Summode: "S1", Sumumod: 33}, gen, true,
-			"suicideminion1", [][2]int{{0, 0}}, false, whipSummonCap, 0, "S1"},
+		// VERIFIED in the exe (0x5d0580, 0x5d0850): neither creates a unit
+		{"Impregnate creates no unit", &d2records.SkillRecord{Srvdofunc: 133, Summon: "painworm1", Summode: "NU"}, gen, false,
+			"", nil, false, 0, 0, ""},
+		{"Overseer Whip creates no unit", &d2records.SkillRecord{Srvdofunc: 131, Summon: "suicideminion1", Summode: "S1", Sumumod: 33}, gen, false,
+			"", nil, false, 0, 0, ""},
 		{"Hydra: three, Param1 lifetime, petmax 99",
 			&d2records.SkillRecord{Srvdofunc: 144, Summon: "hydra1", Pettype: "hydra", Petmax: d2calc.Compile("99", d2calc.KindSkill), Param1: 250},
 			gen, true, "hydra1", [][2]int{{-1, -1}, {0, 0}, {1, -1}}, false, hydraSummonCap, 250, ""},
+		// VERIFIED (0x5b1100, template 0x73a668): four units around the target
 		{"DiabPrison none pettype", &d2records.SkillRecord{Srvdofunc: 104, Summon: "boneprison1", Pettype: "none"}, gen, true,
-			"boneprison1", [][2]int{{0, 0}}, false, prisonSummonCap, 0, ""},
+			"boneprison1", [][2]int{{1, 1}, {1, -1}, {-1, -1}, {-1, 1}}, false, prisonSummonCap, 0, ""},
 		{"Nest of a generic AI (EvilHole stand-in) is held to the host cap", &d2records.SkillRecord{Srvdofunc: 91}, gen, true,
 			"foulcrow1", [][2]int{{0, 0}}, true, nestSummonCap, 0, ""},
 		{"a table petmax below the host cap wins", &d2records.SkillRecord{Srvdofunc: 144, Summon: "hydra1", Pettype: "hydra",
@@ -227,7 +229,7 @@ func TestRealMonsterSummonSlots(t *testing.T) {
 		}
 	}
 
-	for _, k := range []SummonKind{SummonNest, SummonSpawner, SummonWhip, SummonWorm, SummonHydra, SummonPrison} {
+	for _, k := range []SummonKind{SummonNest, SummonSpawner, SummonHydra, SummonPrison} {
 		if seen[k] == 0 {
 			t.Errorf("summon kind %d never planned from the real tables", k)
 		}
@@ -246,4 +248,45 @@ func max3(a, b, c int) int {
 	}
 
 	return a
+}
+
+func TestDiabPrisonClassesAndNumbering(t *testing.T) {
+	p, ok := PlanSummon(&d2records.SkillRecord{Srvdofunc: 104, Summon: "boneprison1", Pettype: "none"}, &d2records.MonStatRecord{})
+	if !ok {
+		t.Fatal("DiabPrison not planned")
+	}
+
+	want := []string{"boneprison1", "boneprison2", "boneprison3", "boneprison4"}
+	if len(p.Classes) != len(want) {
+		t.Fatalf("classes %v", p.Classes)
+	}
+
+	for i := range want {
+		if p.Classes[i] != want[i] {
+			t.Errorf("class %d = %q, want %q", i, p.Classes[i], want[i])
+		}
+	}
+
+	for _, tc := range []struct {
+		base string
+		n    int
+		want []string
+	}{
+		{"foo9", 2, []string{"foo9", "foo10"}},
+		{"noNumber", 3, nil},
+		{"", 1, nil},
+	} {
+		got := numberedClasses(tc.base, tc.n)
+		if len(got) != len(tc.want) {
+			t.Errorf("numberedClasses(%q,%d) = %v", tc.base, tc.n, got)
+
+			continue
+		}
+
+		for i := range got {
+			if got[i] != tc.want[i] {
+				t.Errorf("numberedClasses(%q,%d)[%d] = %q", tc.base, tc.n, i, got[i])
+			}
+		}
+	}
 }

@@ -1,6 +1,7 @@
 package d2monsters
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calc"
@@ -10,29 +11,34 @@ import (
 )
 
 // Monster-cast summons: the skills.txt rows a monstats skill slot can name
-// whose srvdofunc creates monsters (Nest, MinionSpawner, Overseer Whip,
-// Impregnate, Hydra, DiabPrison). The plan is a pure function of the tables
+// whose srvdofunc creates monsters (Nest, MinionSpawner, Hydra, DiabPrison). The plan is a pure function of the tables
 // (PlanSummon); the Director lands it at the hit frame of the cast
 // (landSummon), counts the live summons of the caster and refuses past the
 // limit.
 //
-// Rules taken from the tables, with their status:
+// Rules, with their status (exe read of 1.14b, notes in d2-re-notes/exe-verify-unverified.md):
 //   - class: the row's `summon` column; when empty (Nest, MinionSpawner,
-//     EvilHutSpawner) the caster's monstats `spawn` column. UNVERIFIED for the
-//     fallback (the exe helper 0x63fac0 MONSTER_ComputeSpawnOffsetFromSkill is
-//     only named in the notes, not read; Ghidra was unreachable).
-//   - cell: Nest and MinionSpawner place at the caster plus monstats
-//     spawnx/spawny subtiles (UNVERIFIED: not rotated by facing); the others
-//     at the aim point of the cast.
-//   - Hydra: three at (-1,-1) (0,0) (1,-1) around the aim point, lifetime
-//     Param1 frames (both from d2skill.doHydraFn, VERIFIED/U there); the
-//     limit is petmax (99 in the 1.14b table).
+//     EvilHutSpawner) the caster's monstats `spawn` column. Nest (0x5ca0b0) and
+//     MinionSpawner (0x5d0ab0) take the class from the skill's stored target
+//     data, which the AI queued from that column: consistent, not traced.
+//   - cell: Nest and MinionSpawner place at the cell stored in the cast (the
+//     caster plus spawnx/spawny; UNVERIFIED: not rotated by facing); Hydra and
+//     DiabPrison at the aim point of the cast.
+//   - Hydra (0x5c8ab0, VERIFIED): three units per cast at a table of three
+//     offsets around the aim point, classes consecutive from the skill's pick,
+//     lifetime Param1 frames; petmax is evaluated and handed on, there is no
+//     count check in the handler (the pet registry holds the limit).
+//   - DiabPrison (0x5cb900 -> 0x5b1100, VERIFIED): four units per cast around
+//     the TARGET unit, boneprison1..4 (class 340 plus the entry index), at the
+//     subtile offsets (1,1) (1,-1) (-1,-1) (-1,1).
+//   - Overseer Whip (131, 0x5d0580) and Impregnate (133, 0x5d0850) create NO
+//     unit (VERIFIED): the whip morphs the target into the next class of its
+//     chain and applies a state, Impregnate puts a timed state on the target.
+//     They are not summons here (the older stand-in laid suicideminion1 and
+//     painworm1 at the aim point).
 //   - how many per cast, how often, and the stop count are the AI's:
 //     FoulCrowNest aip1 gap / aip3 limit, MinionSpawner aip1..aip3 (ported in
 //     d2common/d2monster, VERIFIED); a cast spawns len(Cells) units.
-//   - Overseer Whip (131) also buffs its target with bloodlust in the exe; the
-//     buff is NOT simulated, only the table's summon column. UNVERIFIED.
-//   - DiabPrison: one boneprison1 at the aim point (UNVERIFIED count).
 
 // SummonKind classifies a summoning srvdofunc.
 type SummonKind int
@@ -42,14 +48,11 @@ const (
 	SummonNone SummonKind = iota
 	SummonNest
 	SummonSpawner
-	SummonWhip
-	SummonWorm
 	SummonHydra
 	SummonPrison
 )
 
-var summonKinds = map[int]SummonKind{91: SummonNest, 135: SummonSpawner, 131: SummonWhip,
-	133: SummonWorm, 144: SummonHydra, 104: SummonPrison}
+var summonKinds = map[int]SummonKind{91: SummonNest, 135: SummonSpawner, 144: SummonHydra, 104: SummonPrison}
 
 // SummonKindOf is the summon kind of a skills.txt srvdofunc.
 func SummonKindOf(srvdofunc int) SummonKind { return summonKinds[srvdofunc] }
@@ -58,7 +61,10 @@ func SummonKindOf(srvdofunc int) SummonKind { return summonKinds[srvdofunc] }
 type SummonPlan struct {
 	Kind  SummonKind
 	Class string // monstats key
-	Mode  string // spawn animation token ("NU"...), informational
+	// Classes names the class of each Cells entry when they differ (DiabPrison:
+	// boneprison1..4); nil means every cell is Class.
+	Classes []string
+	Mode    string // spawn animation token ("NU"...), informational
 	// Cells are subtile offsets of each unit from the anchor.
 	Cells [][2]int
 	// AtCaster anchors at the caster (Cells[0] is the monstats spawn offset);
@@ -105,6 +111,10 @@ func PlanSummon(rec *d2records.SkillRecord, caster *d2records.MonStatRecord) (Su
 	case SummonHydra:
 		p.Cells = [][2]int{{-1, -1}, {0, 0}, {1, -1}}
 		p.Frames = rec.Param1
+	case SummonPrison:
+		// the 0x73a668 template: four entries, the class advancing one per entry
+		p.Cells = [][2]int{{1, 1}, {1, -1}, {-1, -1}, {-1, 1}}
+		p.Classes = numberedClasses(p.Class, len(p.Cells))
 	}
 
 	if rec.Pettype != "" && !strings.EqualFold(rec.Pettype, "none") && rec.Petmax != nil {
@@ -127,20 +137,25 @@ var selfLimitedSummoners = map[string]bool{"foulcrownest": true, "mosquitonest":
 	"minionspawner": true, "vilemother": true,
 	"sandmaggotqueen": true} // SandMaggotQueen: aip1 brood limit (VERIFIED port)
 
-// Host safety net (UNVERIFIED numbers, a bound and not a rule from the
-// exe): the most live summons of one caster. A self-limited AI never gets
-// near it (largest aip live limit in the 1.14b tables is 27); any other AI
-// that casts a summoning skill (EvilHole and HighPriest run on generic
-// stand-in thinks that cast every few ticks, Overseer, Nihlathak, Diablo ...)
-// is held to a few units, so a bug or a missing host interface can never make
-// a caster lay units without end (the City of the Damned Stygian Hags did).
+// Host safety net (a bound and not a rule from the exe): the most live
+// summons of one caster. What the exe says: no summoning handler counts live
+// units. Casting is bounded by the AI: EvilHole (0x5fa590) lays aip1 units in
+// total (10 in the 1.14b tables, one per aip2 frames, a total and not a live
+// count), MinionSpawner (0x5e1ab0) casts while its cast counter is below aip1
+// (100) and its live minions are below aip2 (25), the Hydra handler makes
+// three per cast and DiabPrison four per cast with no check at all. So the
+// numbers below stay UNVERIFIED host choices (the DiabPrison 4 equals one
+// cast, the Nest 10 equals EvilHole's aip1 on every difficulty). A
+// self-limited AI never gets near them (largest aip live limit in the 1.14b
+// tables is 27); any other AI that casts a summoning skill (the EvilHole and
+// HighPriest stand-in thinks cast every few ticks) is held to a few units, so
+// a bug or a missing host interface can never make a caster lay units without
+// end (the City of the Damned Stygian Hags did).
 const (
 	selfLimitedSummonCap = 40
-	nestSummonCap        = 10 // EvilHole aip1 is 10
-	whipSummonCap        = 6
-	wormSummonCap        = 6
+	nestSummonCap        = 10
 	hydraSummonCap       = 9 // three casts of three
-	prisonSummonCap      = 4
+	prisonSummonCap      = 4 // one cast of four
 )
 
 // HostSummonCap is the most live units of one caster's summoning skill the
@@ -151,10 +166,6 @@ func HostSummonCap(k SummonKind, ai string) int {
 	}
 
 	switch k {
-	case SummonWhip:
-		return whipSummonCap
-	case SummonWorm:
-		return wormSummonCap
 	case SummonHydra:
 		return hydraSummonCap
 	case SummonPrison:
@@ -233,7 +244,35 @@ func (d *Director) SpawnCellsFree(b *d2monster.Brain) bool { return d.SpawnerCel
 // the plan size, trimmed so the caster's live summons of the class stay within
 // plan.MaxAlive (the table's petmax or the host cap, see HostSummonCap).
 func (d *Director) summonBudget(casterID uint32, plan SummonPlan) int {
+	if plan.Classes != nil {
+		return plan.summonRoom(d.liveSummons(casterID, "")) // the classes differ: count them all
+	}
+
 	return plan.summonRoom(d.liveSummons(casterID, plan.Class))
+}
+
+// numberedClasses is the class chain base, base+1 ... for n entries, from the
+// trailing number of a monstats key ("boneprison1" -> boneprison1..4). The exe
+// advances along the table's class links; in the 1.14b table the prison group
+// is the numbered keys.
+func numberedClasses(base string, n int) []string {
+	i := len(base)
+	for i > 0 && base[i-1] >= '0' && base[i-1] <= '9' {
+		i--
+	}
+
+	if i == len(base) {
+		return nil
+	}
+
+	num, _ := strconv.Atoi(base[i:])
+	out := make([]string, n)
+
+	for k := range out {
+		out[k] = base[:i] + strconv.Itoa(num+k)
+	}
+
+	return out
 }
 
 // landSummon creates the units of a summoning cast at its hit frame. It
@@ -270,6 +309,13 @@ func (d *Director) landSummon(u *unit) bool {
 
 	for i := 0; i < room; i++ {
 		c := plan.Cells[i]
+
+		stat := stat
+		if plan.Classes != nil {
+			if st := d.FindStat(plan.Classes[i]); st != nil {
+				stat = st
+			}
+		}
 
 		p, found := d2path.NearestFree(d.fp, d2path.MaskMonster, d2path.Point{X: ax + c[0], Y: ay + c[1]}, 6)
 		if !found {
@@ -346,6 +392,10 @@ func (d *Director) FBXCellFreeAt(_ *d2monster.Brain, p d2monster.Point) bool {
 // the City of the Damned (scenario 9h-act45-playthrough). Other scans keep
 // finding nothing.
 func (d *Director) FBXScan(b *d2monster.Brain, q d2monster.FBXScanQuery) d2monster.FBXScanResult {
+	if q.Kind == d2monster.FBXScanWoundedAlly {
+		return d.woundedAlly(b, q)
+	}
+
 	if q.Kind != d2monster.FBXScanLinkedClass || q.Class < 0 {
 		return d2monster.FBXScanResult{}
 	}
