@@ -203,7 +203,7 @@ func (v *Game) parseCastTest(eng *d2skills.Engine) *castTest {
 func (v *Game) startCastItem(eng *d2skills.Engine, t *castTest, it *castItem) {
 	it.started = true
 	it.c0 = eng.Counters
-	it.refusedSeen = eng.Counters.Refused
+	it.refusedSeen = eng.Counters.Wasted()
 
 	p := v.localPlayer
 	if s := p.Skills[it.id]; s == nil || s.SkillPoints < 1 {
@@ -257,8 +257,8 @@ func (v *Game) autoCast(elapsed float64) {
 	// a cast the engine refused (the target died in the cast animation, say) does not
 	// count: it is made again, a few times at most
 	if t.idx < len(t.items) {
-		if it := t.items[t.idx]; it.started && eng.Counters.Refused > it.refusedSeen {
-			if d := eng.Counters.Refused - it.refusedSeen; it.retries < castItemMaxRetries && it.casts > 0 {
+		if it := t.items[t.idx]; it.started && eng.Counters.Wasted() > it.refusedSeen {
+			if d := eng.Counters.Wasted() - it.refusedSeen; it.retries < castItemMaxRetries && it.casts > 0 {
 				if it.casts -= d; it.casts < 0 {
 					it.casts = 0
 				}
@@ -267,7 +267,7 @@ func (v *Game) autoCast(elapsed float64) {
 				v.Infof("AUTOCAST skill=%q cast refused, trying again (%d)", it.skill, it.retries)
 			}
 
-			it.refusedSeen = eng.Counters.Refused
+			it.refusedSeen = eng.Counters.Wasted()
 		}
 	}
 
