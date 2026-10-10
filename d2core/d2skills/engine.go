@@ -37,6 +37,13 @@ type Options struct {
 	// InfiniteAmmo makes arrow skills find ammunition (the quiver is not
 	// modelled).
 	InfiniteAmmo bool
+	// TeleportFlag returns the levels.txt Teleport column of the hero's level
+	// (0 / 1 / 2, see d2skill.Pipeline.TeleportFlag); nil means always 1.
+	TeleportFlag func() int
+	// Act returns the act (1..5) of the hero's level and Difficulty the game
+	// difficulty (0 normal .. 2 hell); Find Potion reads both (nil Act: act 1).
+	Act        func() int
+	Difficulty int
 }
 
 // Counters tally what happened, for scenario summaries.
@@ -69,6 +76,8 @@ type Engine struct {
 	frame int
 	acc   float64
 
+	lastDealt int // whole life points the last hurt() removed (leech)
+
 	heroes  map[string]*heroUnit
 	targets map[string]*monsterTarget
 	visuals map[uint32]*d2mapentity.Missile
@@ -85,6 +94,7 @@ type Engine struct {
 	pets       map[string][]*d2mapentity.Monster // hero id -> summons by pet type (see summon.go)
 	watches    []*watch
 	dots       map[string]dotTotal
+	abc        abcState // Find Potion / Find Item / Grim Ward / Whirlwind, effects_abc.go
 
 	// Counters are updated as events happen.
 	Counters Counters
@@ -114,6 +124,7 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 		Grid: monsters.Grid(), Frame: func() int { return e.frame },
 		Opt: d2skill.Options{IgnoreTown: opt.IgnoreTown, StaticFieldMinPct: staticFieldMin(asset, monsters)},
 	}
+	e.pipe.TeleportFlag = opt.TeleportFlag
 	e.pipe.ApplyState = e.applyMissileState
 	e.pipe.Near = e.near
 	e.pipe.After = e.after
@@ -324,9 +335,12 @@ func (e *Engine) targetAt(sx, sy int) d2skill.Target {
 
 	for _, m := range e.monsters.Corpses() {
 		mx, my := m.SubtilePos()
-		if d := chebyshev(mx-sx, my-sy); d < cbest {
+		// a corpse the Find skills already used is only taken when nothing fresher lies around
+		if d := chebyshev(mx-sx, my-sy); d < cbest || (d < pickRadius+1 && tg.CorpseLooted && !e.isLooted(m.ID())) {
 			cbest = d
 			tg.Corpse, tg.CX, tg.CY, tg.CorpseID, tg.CorpseHP, tg.CorpseKey = true, mx, my, m.ID(), m.Vitals.MaxHP, m.Stat.Key
+			tg.CorpseLevel = m.Vitals.Level
+			tg.CorpseLooted = e.isLooted(m.ID())
 		}
 	}
 
@@ -450,6 +464,7 @@ func (e *Engine) meleeResult(p *d2mapentity.Player, sk *d2skill.Skill, r *d2skil
 	if mt != nil {
 		e.Counters.Hits++
 		e.hurt(mt.m, p, &r.Damage, sk.Name)
+		e.leech(p, &r.Damage, e.lastDealt)
 		e.itemEvents(mt.m, p, true) // crushing blow, open wounds: after the base damage
 	}
 }
@@ -638,6 +653,7 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 	set.Hit(e.frame)
 
 	hp0 := m.Vitals.HP
+	e.lastDealt = whole
 	e.Counters.Damage += whole
 	e.emit("damage", "DAMAGE skill=%q target=%s raw=%.2f after_resist=%.2f dmg=%d hp=%d->%d/%d", what, m.Label(),
 		fixed(int(d.Physical+d.Fire+d.Lightning+d.Magic+d.Cold)), fixed(total), whole, hp0, maxInt(hp0-whole, 0), m.Vitals.MaxHP)
@@ -727,6 +743,7 @@ func (e *Engine) AreaChanged(md *d2monsters.Director) {
 	}
 
 	e.storms, e.traps, e.watches, e.timers = nil, nil, nil, nil
+	e.abcReset()
 	e.pets = map[string][]*d2mapentity.Monster{}
 	e.targets = map[string]*monsterTarget{}
 	e.dots = map[string]dotTotal{}

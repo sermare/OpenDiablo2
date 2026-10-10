@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"unicode"
 	"unicode/utf16"
 	"unicode/utf8"
 )
@@ -103,22 +102,24 @@ func Utf16BytesToString(b []byte) (string, error) {
 	return ret.String(), nil
 }
 
-// SplitIntoLinesWithMaxWidth splits the given string into lines considering the given maxChars
+// SplitIntoLinesWithMaxWidth splits the given string into lines considering the given maxChars.
+// Widths are counted in runes, with glyph codes above 0xFF (double byte CJK glyphs, see
+// d2locale) counting as two columns. Text that contains such glyphs, or a first word wider than
+// maxChars, is cut by glyph because those scripts do not separate words with blanks.
 func SplitIntoLinesWithMaxWidth(fullSentence string, maxChars int) []string {
 	lines := make([]string, 0)
 	line := ""
 	totalLength := 0
 	words := strings.Split(fullSentence, " ")
 
-	if len(words[0]) > maxChars {
-		// mostly happened within CJK characters (no whitespace)
+	if textWidth(words[0]) > maxChars || hasWideGlyph(fullSentence) {
 		return splitCjkIntoChunks(fullSentence, maxChars)
 	}
 
 	for _, word := range words {
-		totalLength += 1 + len(word)
+		totalLength += 1 + textWidth(word)
 		if totalLength > maxChars {
-			totalLength = len(word)
+			totalLength = textWidth(word)
 
 			lines = append(lines, line)
 			line = ""
@@ -136,23 +137,57 @@ func SplitIntoLinesWithMaxWidth(fullSentence string, maxChars int) []string {
 	return lines
 }
 
-func splitCjkIntoChunks(str string, chars int) []string {
-	chunks := make([]string, chars/len(str))
-	i, count := 0, 0
+const wideGlyphStart = 0x100
 
-	for j, ch := range str {
-		if ch < unicode.MaxLatin1 {
-			count++
-		} else {
-			// assume we're truncating CJK characters
-			count += 2
-		}
-
-		if count >= chars {
-			chunks = append(chunks, str[i:j])
-			i, count = j, 0
+func hasWideGlyph(s string) bool {
+	for _, r := range s {
+		if r >= wideGlyphStart {
+			return true
 		}
 	}
 
-	return append(chunks, str[i:])
+	return false
+}
+
+func runeWidth(r rune) int {
+	if r >= wideGlyphStart {
+		return 2 // nolint:gomnd // double byte glyph
+	}
+
+	return 1
+}
+
+func textWidth(s string) int {
+	w := 0
+	for _, r := range s {
+		w += runeWidth(r)
+	}
+
+	return w
+}
+
+// splitCjkIntoChunks cuts str into lines of at most chars columns, never splitting a glyph
+func splitCjkIntoChunks(str string, chars int) []string {
+	chunks := make([]string, 0)
+
+	var cur []rune
+
+	width := 0
+
+	for _, ch := range str {
+		w := runeWidth(ch)
+		if width+w > chars && len(cur) > 0 {
+			chunks = append(chunks, string(cur))
+			cur, width = cur[:0], 0
+		}
+
+		cur = append(cur, ch)
+		width += w
+	}
+
+	if len(cur) > 0 {
+		chunks = append(chunks, string(cur))
+	}
+
+	return chunks
 }

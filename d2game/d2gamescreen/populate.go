@@ -4,6 +4,8 @@ import (
 	"math"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapgen"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 )
@@ -42,6 +44,12 @@ func (v *Game) populateLevel() {
 	}
 
 	m := v.gameClient.MapEngine
+
+	if plan := m.Population(); plan != nil {
+		v.spawnPlannedPopulation(level, plan)
+		return
+	}
+
 	size := m.Size()
 	hx, hy := v.heroTilePos()
 	groups, blocks := 0, 0
@@ -90,6 +98,40 @@ func (v *Game) populateLevel() {
 
 	v.Infof("POPULATE level %d (%s): %d blocks, %d groups, %d monsters (%d unreachable ones removed)", level,
 		v.levelName(level), blocks, groups, total-removed, removed)
+}
+
+// spawnPlannedPopulation creates the natural monsters the real-map generator
+// decided (d2mapgen real_pop.go: the original's room population on the DRLG
+// room seeds), links pack followers to their leader and drops the ones the
+// hero could not reach.
+func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonster) {
+	made := make([]*d2mapentity.Monster, len(plan))
+	units := 0
+
+	for i, pm := range plan {
+		stat := v.monsters.FindStat(pm.Key)
+		if stat == nil {
+			continue
+		}
+
+		mon, err := v.monsters.Spawn(stat, pm.X, pm.Y)
+		if err != nil {
+			v.Warningf("POPULATE level %d: %s at (%d,%d): %v", level, pm.Key, pm.X, pm.Y, err)
+			continue
+		}
+
+		made[i] = mon
+		units++
+
+		if pm.Leader >= 0 && pm.Leader < len(made) && made[pm.Leader] != nil {
+			v.monsters.Group(made[pm.Leader], mon)
+		}
+	}
+
+	removed := v.removeUnreachableMonsters()
+
+	v.Infof("POPULATE level %d (%s): %d planned, %d monsters (%d unreachable ones removed)", level,
+		v.levelName(level), len(plan), units-removed, removed)
 }
 
 // removeUnreachableMonsters deletes the monsters standing where the hero cannot

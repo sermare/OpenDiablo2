@@ -43,7 +43,21 @@ type Character struct {
 
 // Parse decodes a complete .d2s file. tables is required for any character
 // with a body, because stats and items are described by game data.
-func Parse(data []byte, tables *ItemTables) (*Character, error) {
+func Parse(data []byte, tables *ItemTables) (c *Character, err error) {
+	err = safely(func() error {
+		var perr error
+		c, perr = parse(data, tables)
+
+		return perr
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func parse(data []byte, tables *ItemTables) (*Character, error) {
 	header, err := ParseHeader(data)
 	if err != nil {
 		return nil, err

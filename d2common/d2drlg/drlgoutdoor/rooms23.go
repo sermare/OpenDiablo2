@@ -1,26 +1,12 @@
 package drlgoutdoor
 
-import "strings"
+import "github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
 
-// ds1Gates are the Act 3 preset files that consume level-seed steps when their
-// DS1 is loaded (drlg-act23-outdoor.md 4.6; measured with the emulator over
-// every file the Act 2/3 outdoor presets loaded, so UNVERIFIED for files that
-// were never drawn: they are assumed to cost 0). Act 2 has none.
-var ds1Gates = map[string]int{
-	"act3/kurast/burbs08x08_1.ds1": 2,
-	"act3/kurast/burbs16x08_2.ds1": 2,
-	"act3/kurast/burbs08x16_2.ds1": 1,
-	"act3/kurast/burbs16x16_2.ds1": 1,
-	"act3/kurast/burbs16x16_3.ds1": 1,
-	"act3/kurast/metro16x16_3.ds1": 1,
-	"act3/kurast/slums08x08_2.ds1": 1,
-	"act3/kurast/slums16x16_0.ds1": 1,
-	"act3/kurast/slums16x16_2.ds1": 1,
-}
-
-// ds1GateSteps returns the gate step count of a LvlPrest file name.
+// ds1GateSteps returns the gate step count of a LvlPrest file name: the
+// level-seed steps DRLG_FilterPresetObjects takes when the DS1 is loaded while
+// the level is generated (d2drlg.DS1GateSteps, measured with the emulator).
 func ds1GateSteps(file string) int {
-	return ds1Gates[strings.ToLower(NormalizePrestFile(file))]
+	return d2drlg.DS1GateSteps(NormalizePrestFile(file))
 }
 
 // levelTypeFill is the end of DRLG_BuildOutdoorRoomGrids (0x6802b0): every

@@ -6,6 +6,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2missile"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2state"
 )
 
@@ -1032,10 +1033,32 @@ func doBlazeFn(c *cast) {
 	}
 }
 
-// doTeleportFn is SRVDO_027_Teleport: the caster appears at the aim point when
-// it can stand there.
+// doTeleportFn is SRVDO_027_Teleport. VERIFIED (0x5c84d0): the caster's level
+// must have the levels.txt Teleport column set (0 refuses), and with the value
+// 2 the cast is refused when the line to the target is blocked for mask 0x804
+// (walls and objects: no teleporting through them; U: the exe's helper answers
+// non-zero for a blocked line). The caster then appears at the aim point
+// (SERVER_MoveUnitToLevelPosition); U: the aim point must be walkable here.
 func doTeleportFn(c *cast) {
+	flag := 1
+	if c.p.TeleportFlag != nil {
+		flag = c.p.TeleportFlag()
+	}
+
 	x, y := c.aim()
+
+	switch {
+	case flag == 0:
+		c.fail(ReasonLOS)
+		return
+	case flag == 2 && c.p.Grid != nil:
+		hx, hy := c.u.Pos()
+		if clear, _ := d2path.TraceLine(c.p.Grid, 0x804, d2path.Point{X: hx, Y: hy}, d2path.Point{X: x, Y: y}); !clear {
+			c.fail(ReasonLOS)
+			return
+		}
+	}
+
 	if c.p.Walkable != nil && !c.p.Walkable(x, y) {
 		c.fail(ReasonLOS)
 		return
@@ -1463,6 +1486,16 @@ func doSummonFn(c *cast) {
 		o.Max = 1
 	}
 
+	// VERIFIED (SRVDO_114 / 115 / 119): the monster's level is skills.txt calc2
+	// (at least 1) through SKILL_ComputeSummonLevel; a blank calc2 keeps the
+	// owner's level here.
+	switch sk.SrvDoFunc {
+	case 114, 115, 119:
+		if !sk.Calc[2].Empty() {
+			o.Level = maxInt(c.calc(2), 1)
+		}
+	}
+
 	switch {
 	case sk.SrvDoFunc == 114:
 		o.Count = o.Max
@@ -1546,7 +1579,15 @@ func doCorpseExplosionFn(c *cast) {
 	}
 
 	d := &d2missile.DamageDesc{}
-	v := int32(mulDiv(c.tgt.CorpseHP, pct, 100)) << 8
+	v := int32(mulDiv(c.tgt.CorpseHP, pct, 100))
+
+	// VERIFIED (SRVDO_055 0x5c2c60): a corpse above the caster's level deals
+	// its damage scaled by caster level / corpse level.
+	if cl := c.tgt.CorpseLevel; cl > 0 && cl > c.u.Level() {
+		v = int32(mulDiv(int(v), c.u.Level(), cl))
+	}
+
+	v <<= 8
 	d.Fire = d2missile.Elem{Min: v, Max: v}
 	e.Desc = d
 	c.effect(e)

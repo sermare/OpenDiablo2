@@ -94,6 +94,7 @@ type Options struct {
 	profiler *string
 	Server   *d2networking.ServerOptions
 	LogLevel *d2util.LogLevel
+	Language *string
 }
 
 const (
@@ -216,6 +217,7 @@ func (a *App) parseArguments() {
 	a.Options.Server.Dedicated = flag.Bool("dedicated", false, "Starts a dedicated server")
 	a.Options.Server.MaxPlayers = flag.Int("players", 0, descPlayers)
 	a.Options.LogLevel = flag.Int("l", d2util.LogLevelDefault, descLogging)
+	a.Options.Language = flag.String("lang", "", "Game language: enUS deDE esES frFR itIT jaJP koKR plPL ptBR ruRU zhCN zhTW (default: the install's language)")
 	showVersion := flag.Bool("v", false, "Show version")
 	showHelp := flag.Bool("h", false, "Show help")
 

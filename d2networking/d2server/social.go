@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2party"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
@@ -213,6 +215,10 @@ func (g *GameServer) onPvPHit(client ClientConnection, packet d2netpacket.NetPac
 
 	p.Attacker = client.GetUniqueID() // the sender is the attacker, whatever it says
 
+	if p.Kill {
+		return g.onPvPKill(p)
+	}
+
 	g.soc.mu.Lock()
 	reason := g.pvpBlockedLocked(p.Attacker, p.Target)
 	an, tn := g.nameOf(p.Attacker), g.nameOf(p.Target)
@@ -236,6 +242,49 @@ func (g *GameServer) onPvPHit(client ClientConnection, packet d2netpacket.NetPac
 	}
 
 	return target.SendPacketToClient(pkt)
+}
+
+// earClassOrder maps the roster's hero class to the class number of an ear
+// (0 amazon .. 6 assassin).
+var earClassOrder = map[d2enum.Hero]int{
+	d2enum.HeroAmazon: 0, d2enum.HeroSorceress: 1, d2enum.HeroNecromancer: 2, d2enum.HeroPaladin: 3,
+	d2enum.HeroBarbarian: 4, d2enum.HeroDruid: 5, d2enum.HeroAssassin: 6,
+}
+
+// onPvPKill relays the death of a hardcore hero to its killer. p.Attacker is
+// the sender, the victim; p.Target the killer it names. Only a hostile pair of
+// which the victim is hardcore gets through (d2combat.PvPKillGivesEar), and
+// the name, class and level come from the roster, not from the sender.
+func (g *GameServer) onPvPKill(p d2netpacket.PvPHitPacket) error {
+	g.soc.mu.Lock()
+	reason := g.pvpBlockedLocked(p.Target, p.Attacker)
+	victim, ok := g.soc.roster.Member(p.Attacker)
+	g.soc.mu.Unlock()
+
+	switch {
+	case reason != "":
+		g.Infof("PVP KILL BLOCKED victim=%q killer=%q reason=%q", g.nameOf(p.Attacker), g.nameOf(p.Target), reason)
+
+		return nil
+	case !ok || !d2combat.PvPKillGivesEar(victim.Hardcore):
+		return nil
+	}
+
+	killer := g.connByID(p.Target)
+	if killer == nil {
+		return nil
+	}
+
+	p.VictimName, p.VictimClass, p.VictimLevel = victim.Name, earClassOrder[victim.Class], victim.Level
+
+	g.Infof("PVP KILL victim=%q killer=%q class=%d level=%d", victim.Name, g.nameOf(p.Target), p.VictimClass, p.VictimLevel)
+
+	pkt, err := d2netpacket.CreatePvPHitPacket(p)
+	if err != nil {
+		return err
+	}
+
+	return killer.SendPacketToClient(pkt)
 }
 
 // partyMaxLevel is the character level at which kills stop giving experience.

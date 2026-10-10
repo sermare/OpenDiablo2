@@ -70,11 +70,14 @@ var drlgEdges = [][2]int{
 	// Hills, Far Oasis, Lost City, Valley of Snakes in a chain. The Canyon of the
 	// Magi (46) has no seamless neighbour.
 	{41, 40}, {42, 41}, {43, 42}, {44, 43}, {45, 44},
-	// Act 3 (DRLG_PlaceAct3Levels, drlg-act23-outdoor.md 4.1): Kurast Docks, then the three jungle
-	// levels and the Kurast column 79..83 above Flayer Jungle. The jungle levels hang off each
-	// other at random, so every pair of 76..78 is a candidate: a border exists only where
-	// the world placement of the game seed makes the rectangles touch (SharedBorder).
-	{76, 75}, {77, 76}, {78, 77}, {78, 76}, {79, 78}, {80, 79}, {81, 80}, {82, 81}, {83, 82},
+	// Act 3 (drlg-act23-outdoor.md 4.1/4.2): the jungle grows north of the town,
+	// so Spider Forest (76) touches the town (75) and the second jungle level (77)
+	// always touches the first (the only level in the set when it is placed). The
+	// third (78) attaches to a random one of the two, so exactly one of {76,78} and
+	// {77,78} exists per seed; both are listed (EdgeExit still needs the rects to
+	// touch). Kurast (79..83) is one centred column stacked above 78.
+	{75, 76}, {76, 77}, {76, 78}, {77, 78},
+	{78, 79}, {79, 80}, {80, 81}, {81, 82}, {82, 83},
 	// Act 4 (drlg-act45-outdoor.md 2): pass 3 registers {level, ref} for the
 	// Outer Steppes (104, east of the Fortress), 105 and 106 (pinwheel placers
 	// next to their reference). 108 is joined to 107 by a Levels.txt warp (-1).
