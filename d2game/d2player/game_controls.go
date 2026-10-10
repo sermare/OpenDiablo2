@@ -16,6 +16,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2equip"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
@@ -358,7 +359,8 @@ type GameControls struct {
 	equipRand              *rand.Rand
 	equipStatus            map[d2equip.Loc]d2hero.EquipStatus
 	regen                  d2inventory.Regen
-	regenHP, regenMana     float64 // fractions of points not yet applied
+	regenHP, regenMana     float64           // fractions of points not yet applied
+	vitals                 d2herostats.Regen // natural life/mana regeneration (natural_regen.go)
 	bottomMenuRect         *d2geom.Rectangle
 	leftMenuRect           *d2geom.Rectangle
 	rightMenuRect          *d2geom.Rectangle
@@ -1156,6 +1158,7 @@ func (g *GameControls) Advance(elapsed float64) error {
 	g.hud.Advance(elapsed)
 	g.inventory.Advance(elapsed)
 	g.advancePotions(elapsed)
+	g.advanceNaturalRegen(elapsed)
 	g.automap.Advance(elapsed)
 	g.questLog.Advance(elapsed)
 	g.mercPanel.Advance(elapsed)
