@@ -161,6 +161,9 @@ func (v *Game) populateLevel() {
 // hero could not reach.
 func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonster) {
 	made := make([]*d2mapentity.Monster, len(plan))
+	natural := map[*d2mapentity.Monster]bool{}
+	packs := map[*d2mapentity.Monster]bool{} // unique / champion packs: their types are logged apart (umon list, not the level's drawn types)
+	special := make([]bool, len(plan))
 	units := 0
 
 	for i, pm := range plan {
@@ -176,6 +179,14 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 		}
 
 		made[i] = mon
+		special[i] = pm.Unique || pm.Champion || (pm.Leader >= 0 && pm.Leader < i && special[pm.Leader])
+
+		if special[i] {
+			packs[mon] = true
+		} else {
+			natural[mon] = true
+		}
+
 		units++
 
 		if pm.Leader >= 0 && pm.Leader < len(made) && made[pm.Leader] != nil {
@@ -185,16 +196,35 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 
 	removed := v.removeUnreachableMonsters()
 
+	v.logPopulateTypes(level, natural)
+	v.logPopulateClasses("packs", level, packs)
+
+	// pack leaders (units without a leader of their own) = groups the density rolls produced, uniques included
+	leaders := 0
+
+	for _, pm := range plan {
+		if pm.Leader < 0 {
+			leaders++
+		}
+	}
+
+	v.Infof("POPULATE groups level %d: %d", level, leaders)
+
 	v.Infof("POPULATE level %d (%s): %d planned, %d monsters (%d unreachable ones removed)", level,
 		v.levelName(level), len(plan), units-removed, removed)
 }
 
 // logPopulateTypes logs the classes of the natural monsters that survived the
-// reachability filter, one "POPULATE types" line per level, for the Act 3
-// population scenarios (scripts/verify.d/lib/act3pop.sh), which check every
+// reachability filter, one "POPULATE types" line per level (both population paths),
+// for the per-level population scenarios (scripts/verify.d/lib/poplevel.sh), which check every
 // class against the level's Levels.txt row (mon1..mon10 plus the minions of
 // those classes).
 func (v *Game) logPopulateTypes(level int, natural map[*d2mapentity.Monster]bool) {
+	v.logPopulateClasses("types", level, natural)
+}
+
+// logPopulateClasses logs "POPULATE <what> level N: key:count ..." for a set of monsters.
+func (v *Game) logPopulateClasses(what string, level int, natural map[*d2mapentity.Monster]bool) {
 	counts := map[string]int{}
 
 	for _, mon := range v.monsters.Monsters() {
@@ -215,7 +245,7 @@ func (v *Game) logPopulateTypes(level int, natural map[*d2mapentity.Monster]bool
 		parts[i] = k + ":" + strconv.Itoa(counts[k])
 	}
 
-	v.Infof("POPULATE types level %d: %s", level, strings.Join(parts, " "))
+	v.Infof("POPULATE %s level %d: %s", what, level, strings.Join(parts, " "))
 }
 
 // removeUnreachableMonsters deletes the monsters standing where the hero cannot
