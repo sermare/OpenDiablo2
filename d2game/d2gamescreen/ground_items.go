@@ -277,6 +277,11 @@ func (v *Game) pickUp(it *d2mapentity.Item) {
 // around it. The treasure class is "Act N Chest X" for the hero's act and
 // difficulty (see d2ground.ChestTreasureClass).
 func (v *Game) openChest(ob *d2mapentity.Object) {
+	plan := v.planContainer(ob) // locks, keys, barrel explosions, the small containers' odds (objects_gaps.go)
+	if plan.skip {
+		return
+	}
+
 	opened, err := ob.Open()
 	if err != nil {
 		v.Warningf("opening %q: %v", ob.Label(), err)
@@ -294,15 +299,48 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 
 	v.playSoundAt(handle, ob.GetPosition(), "object")
 
-	v.ground.chestSeq++
-	seed := v.chestSeed() + v.ground.chestSeq
+	if plan.rolls == 0 {
+		v.Infof("AUTOGROUND chest id=%d name=%q level=%d drops=0 (nothing in it)", id, ob.Label(), v.currentLevel())
+		v.afterContainer(ob, plan)
+
+		return
+	}
 
 	// the class and the item level follow from the monster level of the area
 	// the chest stands in (VERIFIED, see diablo2item.ChestLoot)
 	co := diablo2item.ChestDropOptions{
-		DropOptions: diablo2item.DropOptions{Seed: seed, Players: 1, MagicFind: v.heroMagicFind(), GoldFind: v.heroGoldFind()},
+		DropOptions: diablo2item.DropOptions{Seed: 0, Players: 1, MagicFind: v.heroMagicFind(), GoldFind: v.heroGoldFind()},
 		LevelID:     v.currentLevel(), Difficulty: v.difficulty(), Expansion: true,
 	}
+
+	all := &diablo2item.Loot{}
+	tc := ""
+
+	// a locked chest rolls its treasure class twice (0x583e70)
+	for r := 0; r < plan.rolls; r++ {
+		v.ground.chestSeq++
+
+		loot, class, err := v.rollChestOnce(co, id, v.chestSeed()+v.ground.chestSeq)
+		if err != nil {
+			v.Errorf("chest %d: %v", id, err)
+			return
+		}
+
+		tc = class
+
+		all.Entries = append(all.Entries, loot.Entries...)
+	}
+
+	cx, cy := ob.GetPositionF()
+	v.Infof("AUTOGROUND chest id=%d name=%q tc=%q level=%d seed=%d drops=%d rolls=%d locked=%v", id, ob.Label(), tc, v.currentLevel(),
+		v.chestSeed()+v.ground.chestSeq, len(all.Entries), plan.rolls, plan.locked)
+	v.spawnLoot(all, int(math.Floor(cx)), int(math.Floor(cy)), "chest")
+	v.afterContainer(ob, plan)
+}
+
+// rollChestOnce rolls the treasure class of a chest once with a seed and returns the loot and the class.
+func (v *Game) rollChestOnce(co diablo2item.ChestDropOptions, id int, seed uint32) (*diablo2item.Loot, string, error) {
+	co.DropOptions.Seed = seed
 
 	var (
 		loot *diablo2item.Loot
@@ -348,15 +386,11 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 		loot, tc, derr = v.itemFactory().ChestLoot(co)
 	}
 
-	if derr != nil || loot == nil {
-		v.Errorf("chest %d: %v", id, derr)
-		return
+	if derr == nil && loot == nil {
+		derr = fmt.Errorf("no loot")
 	}
 
-	cx, cy := ob.GetPositionF()
-	v.Infof("AUTOGROUND chest id=%d name=%q tc=%q level=%d seed=%d drops=%d", id, ob.Label(), tc, v.currentLevel(),
-		seed, len(loot.Entries))
-	v.spawnLoot(loot, int(math.Floor(cx)), int(math.Floor(cy)), "chest")
+	return loot, tc, derr
 }
 
 // chestSeed is the base of the chest drop seeds: the map seed, so a given
