@@ -45,8 +45,10 @@ type Counters struct {
 	// AreaHits are targets reached by area effects and splash, DotDamage the
 	// poison and burn damage dealt.
 	AreaHits, DotDamage int
-	ManaSpent           int // 8.8
-	Damage              int // whole points dealt after resists
+	// PvPHits are skill hits on hostile heroes.
+	PvPHits   int
+	ManaSpent int // 8.8
+	Damage    int // whole points dealt after resists
 }
 
 type timer struct {
@@ -85,6 +87,15 @@ type Engine struct {
 	pets       map[string][]*d2mapentity.Monster // hero id -> summons by pet type (see summon.go)
 	watches    []*watch
 	dots       map[string]dotTotal
+
+	// Rivals lists the heroes hostile to the local hero (see pvp.go); nil means
+	// no player versus player.
+	Rivals func() []*d2mapentity.Player
+	// OnPvPHit receives each scaled skill hit on a rival; the game sends it to
+	// the defender's client.
+	OnPvPHit func(PvPHit)
+
+	rivalTargets map[string]*playerTarget
 
 	// Counters are updated as events happen.
 	Counters Counters
@@ -344,6 +355,14 @@ func (e *Engine) targetAt(sx, sy int) d2skill.Target {
 		}
 	}
 
+	for _, p := range e.rivalsNear(sx, sy, pickRadius) {
+		px, py := int(p.Position.X()), int(p.Position.Y())
+		if d := chebyshev(px-sx, py-sy); d < best {
+			best = d
+			tg.Unit, tg.UX, tg.UY = e.rivalTarget(p), px, py
+		}
+	}
+
 	return tg
 }
 
@@ -369,6 +388,8 @@ func (e *Engine) runDo(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, tg
 	if tg.Unit != nil {
 		if mt, ok := tg.Unit.(*monsterTarget); ok {
 			tg.UX, tg.UY = mt.m.SubtilePos()
+		} else if pt, ok := tg.Unit.(*playerTarget); ok {
+			tg.UX, tg.UY = int(pt.p.Position.X()), int(pt.p.Position.Y())
 		}
 	}
 
@@ -451,6 +472,11 @@ func (e *Engine) meleeResult(p *d2mapentity.Player, sk *d2skill.Skill, r *d2skil
 		e.Counters.Hits++
 		e.hurt(mt.m, p, &r.Damage, sk.Name)
 		e.itemEvents(mt.m, p, true) // crushing blow, open wounds: after the base damage
+	}
+
+	if pt, ok := r.Target.(*playerTarget); ok {
+		e.Counters.Hits++
+		e.hurtPlayer(pt.p, p, &r.Damage, sk.Name)
 	}
 }
 
@@ -920,6 +946,10 @@ func (e *Engine) onSim(ev d2missile.Event) {
 
 		if mt != nil {
 			e.splash(m, mt.m, &ev.Damage)
+		}
+
+		if pt, ok := ev.Target.(*playerTarget); ok && ev.Damage.SumTotal(true) > 0 {
+			e.hurtPlayer(pt.p, e.owner(m), &ev.Damage, e.skillName(m.SkillID))
 		}
 	case d2missile.EventMiss:
 		e.Counters.Misses++

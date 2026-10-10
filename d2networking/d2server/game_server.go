@@ -625,7 +625,8 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		return g.onSetWaypoint(client, packet)
 	case d2netpackettype.PlayerConnectionRequest:
 		break // prevent log message. these are handled by handleConnection
-	case d2netpackettype.PartyCommand, d2netpackettype.TradeCommand, d2netpackettype.PvPHit, d2netpackettype.PartyXP:
+	case d2netpackettype.PartyCommand, d2netpackettype.TradeCommand, d2netpackettype.PvPHit, d2netpackettype.PartyXP,
+		d2netpackettype.PortalOpen:
 		_, err := g.socialPacket(client, packet)
 
 		return err

@@ -267,6 +267,14 @@ func (e *Engine) areaState(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill
 			describeMods(ef.Stats))
 	}
 
+	for _, rv := range e.rivalsNear(cx, cy, ef.Radius) {
+		n++
+
+		e.setOf(rv.ID()).Apply(e.frame, d2state.Instance{Name: ef.State, Until: e.frame + frames, Mods: statMods(ef.Stats),
+			Source: p.ID(), SkillID: sk.ID, Level: ef.Level})
+		e.emit("state", "STATE apply skill=%q unit=%s state=%s frames=%d (rival, local only)", sk.Name, rv.Name(), ef.State, frames)
+	}
+
 	e.emit("state", "STATE area skill=%q state=%s radius=%d at=(%d,%d) affected=%d", sk.Name, ef.State, ef.Radius, cx, cy, n)
 }
 
@@ -316,6 +324,8 @@ func (e *Engine) hitArea(p *d2mapentity.Player, u *heroUnit, name string, cx, cy
 			e.target(m)
 			e.hurt(m, p, &dmg, name)
 		}
+
+		n += e.hitRivals(p, cx, cy, radius, func() d2combat.Damage { return e.rollDesc(u, d) }, name)
 	}
 
 	e.Counters.AreaHits += n
@@ -461,6 +471,18 @@ func (e *Engine) pulseAura(a *auraRun) {
 				dmg := e.rollDesc(u, ef.Desc)
 				e.target(m)
 				e.hurt(m, a.p, &dmg, ef.SkillName)
+			}
+		}
+
+		for _, rv := range e.rivalsNear(hx, hy, ef.Radius) {
+			if ef.TargetState != "" {
+				e.setOf(rv.ID()).Apply(e.frame, d2state.Instance{Name: ef.TargetState, Until: until, Mods: statMods(ef.TargetStats),
+					Source: a.p.ID(), SkillID: ef.SkillID, Level: ef.Level})
+			}
+
+			if ef.Mode == "damage" && ef.Desc != nil {
+				dmg := e.rollDesc(u, ef.Desc)
+				e.hurtPlayer(rv, a.p, &dmg, ef.SkillName)
 			}
 		}
 	case "redemption":
@@ -1030,6 +1052,13 @@ func (e *Engine) splash(m *d2missile.Missile, primary *d2mapentity.Monster, dmg 
 		e.hurt(o, e.owner(m), &d, e.skillName(m.SkillID)+" splash")
 	}
 
+	for _, o := range e.rivalsNear(px, py, r) {
+		d := *dmg
+		n++
+
+		e.hurtPlayer(o, e.owner(m), &d, e.skillName(m.SkillID)+" splash")
+	}
+
 	if n > 0 {
 		e.Counters.AreaHits += n
 		e.emit("hit", "SKILL splash skill=%q at=(%d,%d) radius=%d targets=%d", e.skillName(m.SkillID), px, py, r, n)
@@ -1052,6 +1081,13 @@ func (e *Engine) splashAt(m *d2missile.Missile) {
 
 		e.target(o)
 		e.hurt(o, h.p, &d, e.skillName(m.SkillID)+" splash")
+	}
+
+	for _, o := range e.rivalsNear(int(m.X), int(m.Y), r) {
+		d := m.Damage.Roll(m.Owner.Roller)
+		n++
+
+		e.hurtPlayer(o, h.p, &d, e.skillName(m.SkillID)+" splash")
 	}
 
 	if n > 0 {

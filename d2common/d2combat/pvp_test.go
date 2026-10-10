@@ -37,6 +37,28 @@ func TestPvPReceive(t *testing.T) {
 	}
 }
 
+func TestPvPParts(t *testing.T) {
+	p := PvPParts{Phys: 100, Fire: 200, Magic: -4}.Scale(17)
+	if p.Phys != 17 || p.Fire != 34 || p.Magic != 0 || p.Total() != 51 {
+		t.Fatalf("scaled %+v", p)
+	}
+
+	if q, ok := PvPPartsFromSlice(p.Slice()); !ok || q != p {
+		t.Fatalf("round trip %+v %v", q, ok)
+	}
+
+	if _, ok := PvPPartsFromSlice([]int{1}); ok {
+		t.Fatal("short slice accepted")
+	}
+
+	got := PvPReceiveParts(PvPParts{Phys: 100, Fire: 100, Cold: 100, Light: 100, Magic: 100},
+		PvPDefender{PhysResist: 50, FireResist: 75, ColdResist: 0, LightResist: 100, MagicResist: 10, Reduce: 10, MagicReduce: 20})
+	// phys (100-10)*50% = 45, magic (100-20)*90% = 72, fire 25, cold 100, light 0
+	if got != 45+72+25+100 {
+		t.Fatalf("received %d", got)
+	}
+}
+
 func TestPvPEar(t *testing.T) {
 	if PvPKillGivesEar(false) || !PvPKillGivesEar(true) {
 		t.Fatal("ears only for hardcore victims")

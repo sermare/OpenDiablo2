@@ -6,6 +6,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2party"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2portal"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2playertrade"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket"
@@ -18,15 +19,16 @@ import (
 // heroes' saved containers); the clients resolve their own combat like they do
 // against monsters.
 type social struct {
-	mu     sync.Mutex
-	roster *d2party.Roster
-	trades map[string]*d2playertrade.Session // by player id; both traders map to the session
+	mu      sync.Mutex
+	roster  *d2party.Roster
+	trades  map[string]*d2playertrade.Session // by player id; both traders map to the session
+	portals *d2portal.Registry                // open town portal pairs, one per owner
 	// size replaces the item size lookup of the game data (tests).
 	size d2playertrade.Sizer
 }
 
 func newSocial() *social {
-	return &social{roster: d2party.New(), trades: map[string]*d2playertrade.Session{}}
+	return &social{roster: d2party.New(), trades: map[string]*d2playertrade.Session{}, portals: d2portal.NewRegistry()}
 }
 
 // socialAddPlayer enters a player into the roster.
@@ -42,6 +44,7 @@ func (g *GameServer) socialAddPlayer(client ClientConnection) {
 	g.soc.mu.Unlock()
 
 	g.broadcastRoster("")
+	g.broadcastPortals("")
 }
 
 // socialRemovePlayer takes a player out of the roster and ends its trade.
@@ -58,6 +61,12 @@ func (g *GameServer) socialRemovePlayer(id string) {
 	g.soc.mu.Unlock()
 
 	g.broadcastRoster(fmt.Sprintf("%s left the game", name))
+
+	// a hero's town portal closes when it leaves the game
+	if _, ok := g.soc.portals.Close(id); ok {
+		g.Infof("PORTAL closed owner=%q (left the game)", name)
+		g.broadcastPortals(fmt.Sprintf("%s's town portal closed", name))
+	}
 }
 
 // connByID looks a connection up. Like the rest of the server it reads the
@@ -215,6 +224,11 @@ func (g *GameServer) onPvPHit(client ClientConnection, packet d2netpacket.NetPac
 
 	g.soc.mu.Lock()
 	reason := g.pvpBlockedLocked(p.Attacker, p.Target)
+
+	if p.Kill { // the victim reports its death to the killer, who must have been allowed to hit it
+		reason = g.pvpBlockedLocked(p.Target, p.Attacker)
+	}
+
 	an, tn := g.nameOf(p.Attacker), g.nameOf(p.Target)
 	g.soc.mu.Unlock()
 
@@ -223,12 +237,18 @@ func (g *GameServer) onPvPHit(client ClientConnection, packet d2netpacket.NetPac
 		return nil
 	}
 
+	if p.Kill {
+		g.Infof("PVP KILL victim=%q killer=%q level=%d class=%d hardcore=%v", an, tn, p.Level, p.Class, p.Hardcore)
+	}
+
 	target := g.connByID(p.Target)
 	if target == nil {
 		return nil
 	}
 
-	g.Infof("PVP HIT attacker=%q target=%q damage=%d raw=%d", an, tn, p.Damage, p.Raw)
+	if !p.Kill {
+		g.Infof("PVP HIT attacker=%q target=%q damage=%d raw=%d skill=%q", an, tn, p.Damage, p.Raw, p.Skill)
+	}
 
 	pkt, err := d2netpacket.CreatePvPHitPacket(p)
 	if err != nil {
@@ -532,6 +552,8 @@ func (g *GameServer) socialPacket(client ClientConnection, packet d2netpacket.Ne
 		return true, g.onPvPHit(client, packet)
 	case d2netpackettype.PartyXP:
 		return true, g.onPartyXP(client, packet)
+	case d2netpackettype.PortalOpen:
+		return true, g.onPortalOpen(client, packet)
 	}
 
 	return false, nil
