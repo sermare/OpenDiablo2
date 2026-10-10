@@ -262,16 +262,18 @@ func TestDragonFlight(t *testing.T) {
 		t.Errorf("landing %+v", e)
 	}
 
-	// without a target: a teleport to the aim point, refused on a wall
+	// without a target unit the exe does nothing (0x5d6290 returns 0 before either half)
 	_, r = cf.cast("Dragon Flight", 12, 3)
-	if e := effectOf(t, r, "move"); !r.OK || e.X != 12 || e.Y != 3 || r.Melee != nil {
-		t.Errorf("flight to a point: %+v %+v", r, e)
+	if r.OK || r.Reason != ReasonTarget {
+		t.Errorf("flight to a point must fail: %+v", r)
 	}
 
-	cf.p.Walkable = func(x, y int) bool { return x != 40 }
+	// levels.txt Teleport 0 refuses the jump (batch 3, skills_batch3_test.go covers 1 and 2)
+	cf.u.cooldowns = map[int]int{}
+	cf.p.TeleportFlag = func() int { return 0 }
 
-	if _, r = cf.cast("Dragon Flight", 40, 3); r.OK || r.Reason != ReasonLOS {
-		t.Errorf("flight into a wall: %+v", r)
+	if _, r = cf.castOn("Dragon Flight", foe); r.OK || r.Reason != ReasonLOS {
+		t.Errorf("flight where Teleport is 0: %+v", r)
 	}
 }
 

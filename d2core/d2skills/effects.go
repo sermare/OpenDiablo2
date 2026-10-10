@@ -192,6 +192,10 @@ func (e *Engine) effect(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		e.ward(p, sk, ef)
 	case "whirl":
 		e.whirl(p, u, sk, ef)
+	case "knock_area":
+		e.knockArea(u, sk.Name, ef.X, ef.Y, ef.Radius, ef.Dist)
+	case "unit_clear_state":
+		e.unitClearState(ef)
 	case "self_damage":
 		loss := p.Stats.MaxHealth * ef.SelfDamagePct / 100
 		p.Stats.Health = maxInt(p.Stats.Health-loss, 1)
@@ -234,7 +238,18 @@ func (e *Engine) selfState(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill
 
 	// SRVDO_FrozenArmorState (0x5c7540) ends every state of the same States.txt
 	// group (itself included) before it builds the new statlist (0x56a480).
-	set.ClearGroup(e.frame, ef.State)
+	// Feral Rage and Maul do not (NoGroup); the forms switch off instead (Toggle).
+	switch {
+	case ef.Toggle:
+		if !toggleForm(set, e.frame, ef.State) {
+			e.emit("state", "STATE revert skill=%q unit=%s state=%s", sk.Name, who, ef.State)
+
+			return
+		}
+	case !ef.NoGroup:
+		set.ClearGroup(e.frame, ef.State)
+	}
+
 	set.Apply(e.frame, inst)
 	e.emit("state", "STATE apply skill=%q unit=%s state=%s frames=%d stacks=%d stats=%s chill_attackers=%d", sk.Name, who,
 		ef.State, ef.Frames, inst.Count, describeMods(ef.Stats), ef.Chill)
@@ -342,7 +357,13 @@ func (e *Engine) areaHit(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, 
 		cx, cy = u.Pos()
 	}
 
-	run := func() { e.hitAreaEx(p, u, sk.Name, cx, cy, ef.Radius, ef.Desc, ef.CorpseID, ef.Falloff, ef.FalloffSq) }
+	run := func() {
+		e.hitAreaEx(p, u, sk.Name, cx, cy, ef.Radius, ef.Desc, ef.CorpseID, ef.Falloff, ef.FalloffSq)
+
+		if ef.Knock { // result flag 8 of the damage struct (Dragon Tail)
+			e.knockArea(u, sk.Name, cx, cy, ef.Radius, d2skill.KnockDistance)
+		}
+	}
 
 	if ef.Delay > 0 {
 		e.after(ef.Delay, run)
@@ -1020,10 +1041,25 @@ func (e *Engine) registerTotem(p *d2mapentity.Player, u *heroUnit, sk *d2skill.S
 		name = ts.Name
 	}
 
+	radius := env.Eval(ts.AuraRangeCalc)
+
 	apply := func() bool {
 		if !m.Alive() {
 			e.setOf(p.ID()).Remove(name)
 			return false
+		}
+
+		// the totem's aura reaches only the units inside its circle
+		// (aurarangecalc, SRVDO_065 / 0x569510: squared distance <= radius squared)
+		if radius > 0 {
+			tx, ty := m.SubtilePos()
+			hx, hy := u.Pos()
+
+			if !inAuraRange(tx, ty, hx, hy, radius) {
+				e.setOf(p.ID()).Remove(name)
+
+				return true
+			}
 		}
 
 		e.setOf(p.ID()).Apply(e.frame, d2state.Instance{Name: name, Until: e.frame + auraPulse + 3, Mods: mods,

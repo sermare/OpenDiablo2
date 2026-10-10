@@ -10,7 +10,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | | F | P | S | M | T |
 |---|---|---|---|---|---|
 | before (start of feat/skills-npsd) | 59 | 42 | 3 | 8 | 8 |
-| after | 75 | 37 | 0 | 0 | 8 |
+| after | 79 | 33 | 0 | 0 | 8 |
 
 
 ## Necromancer
@@ -72,7 +72,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 113 | Concentration | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
 | 114 | Holy Freeze | 81 | F | F | enemy aura, cold damage + slow |
 | 115 | Vigor | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
-| 116 | Conversion | 79 | M | P | do 79 added (roll, state, level/life scale, charm AI); boss exclusion U |
+| 116 | Conversion | 79 | M | P | do 79 added (roll, state, level/life scale, charm AI); VERIFIED 0x56c0a0/0x5dc1e0: unique and super unique monsters are no valid target (skills-batch3.md); act-boss exclusion U |
 | 117 | Holy Shield | 18 | F | F | self state (do 18) |
 | 118 | Holy Shock | 66 | F | F | damage aura |
 | 119 | Sanctuary | 66 | P | F | VERIFIED 0x5cd880 + filter 0x569100: aurafilter 59270 reaches hostile undead non-boss monsters only, the hit carries result flag 8 (knockback) |
@@ -108,7 +108,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 54 | Teleport | 27 | P | F | levels.txt Teleport flag (0 refuse, 2 no walls) added (verified 0x5c84d0) |
 | 55 | Glacial Spike | - | F | F | generic missile path |
 | 56 | Meteor | 28 | P | P | SRVDO_028 creates meteorcenter (hit 14: area damage + meteorfire burning ground with its own fire damage columns); bodies read |
-| 57 | Thunder Storm | 29 | P | P | strikes the nearest enemy, no random targets |
+| 57 | Thunder Storm | 29 | P | P | VERIFIED 0x5c8650: radius Param7 and period perdelay ((100-dm56)*par4/100+par3) now used; still strikes the nearest enemy, the exe rotates through the targets |
 | 58 | Energy Shield | 23 | P | F | VERIFIED aurafunc 24 (0x5c8840): absorb pct of damage, limited by mana*16/ratio, cost absorb*ratio/16, shield ends at 0 mana; per-type walk and the player-attacker exclusion simplified (U) |
 | 59 | Blizzard | 28 | P | P | SRVDO_028 creates blizzardcenter; SrvDoFunc 10 drops blizzard1 shards (calc1 radius, calc2 period); bodies read; blizzard1 hits only its own cell (missile Size not modelled) |
 | 60 | Chilling Armor | 18 | F | F | do 18 self state with chill on melee attackers |
@@ -124,20 +124,20 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 |---|---|---|---|---|---|
 | 221 | Raven | 114 | P | F | summon level (calc2) now set through the order; stats from d2summon + MonLvl AC/AR (verified 0x5c2850) |
 | 222 | Plague Poppy | 115 | M | P | do 115 added: vine shooter with calc1 life, calc2 level |
-| 223 | Wearwolf | 116 | P | P | timed form state; the form attack skills are not rebound |
+| 223 | Wearwolf | 116 | P | F | VERIFIED 0x5c4e80 + 0x56a480: casting a form again (or the other one) only takes the shape back (group clear includes itself), free of mana while shapeshifted; the form attack skills are not rebound (restrict/State1) |
 | 224 | Shape Shifting | - | T | T |  |
 | 225 | Firestorm | 117 | P | P | fire bursts in a line approximated |
-| 226 | Oak Sage | 119 | P | P | totem aura as a state; stats follow the order |
+| 226 | Oak Sage | 119 | P | P | totem aura as a state, now only while the hero stands inside the aura circle (aurarangecalc of the aura skill); allies and mercenary are not reached |
 | 227 | Summon Spirit Wolf | 119 | P | F | summon level (calc2) + MonLvl AC/AR now applied; resist / armor / damage stats from the order |
-| 228 | Wearbear | 116 | P | P | timed form state |
+| 228 | Wearbear | 116 | P | F | VERIFIED like Wearwolf (0x5c4e80): toggle and free recast in the form |
 | 229 | Molten Boulder | - | P | P | emerge (hit 48) -> boulder (do 6 trail, hit 47) -> moltenboulderfirepath fire; bodies read, hit 47 monster-class bit UNVERIFIED |
 | 230 | Arctic Blast | 19 | F | F | stream (do 19) |
 | 231 | Cycle of Life | 115 | M | P | do 115 added (attack only; the corpse cycler heal is not simulated) |
-| 232 | Feral Rage | 120 | P | P | stacking state with leech stats; exe leech not applied |
-| 233 | Maul | 120 | P | P | stacking state, stun on hit |
+| 232 | Feral Rage | 120 | P | F | VERIFIED 0x5c57c0: count = min(calc2, count+1), aura stats evaluated with the count as level, applies on a miss too, keeps the wolf form (no group clear) |
+| 233 | Maul | 120 | P | F | VERIFIED 0x5c57c0: same stacking rule as Feral Rage (damagepercent = count * par3, stunlength at the count) |
 | 234 | Eruption | 28 | P | P | SRVDO_028 creates erruption center; SrvDoFunc 25 scatter (calc1/calc2) read; the crack and fire sub missiles are not read |
 | 235 | Cyclone Armor | 18 | F | F | do 18 |
-| 236 | Heart of Wolverine | 119 | P | P | totem aura as a state |
+| 236 | Heart of Wolverine | 119 | P | P | totem aura as a state, range-limited like Oak Sage |
 | 237 | Summon Fenris | 119 | P | F | summon level (calc2) + MonLvl AC/AR now applied |
 | 238 | Rabies | 121 | P | P | VERIFIED bite + infection + plague (0x5c6b70 / 0x5c5dc0), do 30 plague and hit 53 contagion (d2missile/gaps.go); the plague only spreads between units that implement d2missile.Ownable and Stateful (the engine monsters do not yet) |
 | 239 | Fire Claws | 2 | F | F | do 2 melee with fire |
@@ -147,7 +147,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 243 | Shock Wave | 8 | P | P | missile fan with stun |
 | 244 | Volcano | 123 | P | P | SRVDO_123 creates volcano with a random data byte; SrvDoFunc 28 lobs debris, hit 51 spawns the fire; bodies read |
 | 245 | Tornado | 118 | P | P | missile without the wander path |
-| 246 | Spirit of Barbs | 119 | P | P | totem aura as a state |
+| 246 | Spirit of Barbs | 119 | P | P | totem aura as a state, range-limited like Oak Sage |
 | 247 | Summon Grizzly | 119 | P | F | summon level (calc2) + MonLvl AC/AR now applied |
 | 248 | Fury | 13 | F | F | multi hit (do 13) |
 | 249 | Armageddon | 124 | P | P | random meteors approximated |

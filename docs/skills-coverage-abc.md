@@ -6,8 +6,8 @@ Status words: **fully simulated** (a ported function plus the missiles/states it
 
 | | before | after |
 |---|---|---|
-| fully simulated | 64 | 66 |
-| partial | 17 | 24 |
+| fully simulated | 64 | 69 |
+| partial | 17 | 21 |
 | stub | 1 | 0 |
 | missing | 8 | 0 |
 | total | 90 | 90 |
@@ -57,7 +57,7 @@ Status words: **fully simulated** (a ported function plus the missiles/states it
 | 129 | Mace Mastery | -/- | -/- | fully simulated | fully simulated | passive stats (PassiveTotals / mastery / defense hooks) |
 | 130 | Howl | -/22 | -/25 | fully simulated | fully simulated |  |
 | 131 | Find Potion | 33/69 | 26/38 | missing | fully simulated | SRVDO_069 0x5d6c40 + the act/difficulty potion table 0x73e988 (golden test) |
-| 132 | Leap | 40/77 | 29/43 | partial | partial | move to the aim point at once (no arc, clamped to 18 subtiles), srvdo 77 is U |
+| 132 | Leap | 40/77 | 29/43 | partial | partial | VERIFIED SRVDO_077 0x5d8e60: a landing player throws back everything hostile within calc1 (result flags 9, no damage; the radius unit and centre are U); the jump itself is still an instant move (no arc, clamped to 18 subtiles) |
 | 133 | Double Swing | -/70 | 27/39 | fully simulated | fully simulated |  |
 | 134 | Pole Arm Mastery | -/- | -/- | fully simulated | fully simulated | passive stats (PassiveTotals / mastery / defense hooks) |
 | 135 | Throwing Mastery | -/- | -/- | fully simulated | fully simulated | passive stats (PassiveTotals / mastery / defense hooks) |
@@ -68,7 +68,7 @@ Status words: **fully simulated** (a ported function plus the missiles/states it
 | 140 | Double Throw | -/74 | 11/42 | fully simulated | fully simulated |  |
 | 141 | Increased Stamina | -/- | -/- | fully simulated | fully simulated | passive stats (PassiveTotals / mastery / defense hooks) |
 | 142 | Find Item | 34/72 | 28/40 | missing | fully simulated | SRVDO_FindItem 0x5d7210: bucket roll over Param1..4 picks monstats TreasureClass1..4 and drops it at the corpse |
-| 143 | Leap Attack | 41/78 | 30/44 | partial | partial | leap plus a strike around the landing point, srvdo 78 is U |
+| 143 | Leap Attack | 41/78 | 30/44 | partial | fully simulated | VERIFIED SRVDO_078 0x5d9320 / 0x5d9170 / 0x5d8f90: ONE victim (the target in melee range, else the nearest in a scan), to-hit roll, calc1 percent, knockback bit, bash overlay, the victim's stun removed (skills-batch3.md) |
 | 144 | Concentrate | 32/2 | -/- | fully simulated | fully simulated |  |
 | 145 | Iron Skin | -/- | -/- | fully simulated | fully simulated | passive stats (PassiveTotals / mastery / defense hooks) |
 | 146 | Battle Cry | -/68 | -/25 | fully simulated | fully simulated |  |
@@ -95,7 +95,7 @@ Status words: **fully simulated** (a ported function plus the missiles/states it
 | 257 | Blade Sentinel | -/44 | -/- | partial | partial | summon works; the creeper missile (do function 20, hit function 37) path is not simulated |
 | 258 | Quickness | -/18 | -/- | fully simulated | fully simulated |  |
 | 259 | Fists of Fire | 23/35 | -/- | fully simulated | fully simulated |  |
-| 260 | Dragon Claw | 25/46 | -/- | partial | partial | two strikes and charge release are U (srvdo 46) |
+| 260 | Dragon Claw | 25/46 | -/- | partial | fully simulated | VERIFIED SRVDO_046 0x5d4cf0 / 0x5d4ba0: one blow per action frame (two per cast here), to-hit bonus plus stat 0x145, calc1 damage bonus, charges released |
 | 261 | Charged Bolt Sentry | -/45 | -/- | fully simulated | fully simulated |  |
 | 262 | Wake of Fire Sentry | -/45 | -/- | partial | partial | sentry works; wake of destruction maker (do function 31) is not simulated |
 | 263 | Weapon Block | -/- | -/- | partial | partial | passive stat is keyed to the weapon type, so it is left out of PassiveTotals; the block rule lives in d2combat/avoid.go |
@@ -105,12 +105,12 @@ Status words: **fully simulated** (a ported function plus the missiles/states it
 | 267 | Fade | -/18 | -/- | fully simulated | fully simulated |  |
 | 268 | Shadow Warrior | -/49 | -/- | fully simulated | fully simulated |  |
 | 269 | Claws of Thunder | 23/35 | -/- | fully simulated | fully simulated |  |
-| 270 | Dragon Tail | 27/50 | 9/7 | partial | partial | strike plus fire explosion are U (srvdo 50) |
+| 270 | Dragon Tail | 27/50 | 9/7 | partial | fully simulated | VERIFIED SRVDO_050 0x5d5b90: the kick is the plain kick; the explosion is kick damage x (calc1 + fire mastery) percent in radius par3 around the target with the knockback bit (the damage field, +0x10 = fire, is U) |
 | 271 | Lightning Sentry | -/45 | -/- | fully simulated | fully simulated |  |
 | 272 | Inferno Sentry | -/45 | -/- | fully simulated | fully simulated |  |
 | 273 | Mind Blast | -/51 | -/8 | partial | partial | area damage; stun/convert of the real function (srvdo 51) is U |
 | 274 | Blades of Ice | 23/35 | -/- | fully simulated | fully simulated |  |
-| 275 | Dragon Flight | 12/52 | 5/- | missing | partial | teleport next to the target and kick, or teleport to a point (SRVDO_052 0x5d6290); which of the exe branches runs on which condition is UNVERIFIED |
+| 275 | Dragon Flight | 12/52 | 5/- | missing | partial | VERIFIED SRVDO_052 0x5d6290: needs a target unit; the branch is the animation frame (first: teleport when levels.txt Teleport != 0, 2 refuses a blocked line; second: the kick with the skill bonus + stat 0x145 and the charge release); the port lands next to the target (the exe goes to its position) |
 | 276 | Death Sentry | -/45 | -/- | fully simulated | fully simulated |  |
 | 277 | Blade Shield | 28/54 | -/- | stub | partial | was a bare self state; now hurts enemies within par4 every perdelay frames while it lasts (SRVDO_054 0x5d6880 only starts the periodic effect; attachment missile hit rule U) |
 | 278 | Venom | -/18 | -/- | fully simulated | fully simulated |  |
