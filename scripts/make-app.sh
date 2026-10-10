@@ -130,6 +130,11 @@ if [ "${ZIP:-0}" = 1 ]; then
 		echo "game files found inside the bundle; refusing to zip" >&2; exit 1
 	fi
 	rm -f "$ZIPFILE"
+	if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
+		# ditto stores each file's access time too, and the lipo/find above just read the bundle:
+		# stamp again right before zipping so two builds give the same zip
+		find "$APP" -exec touch -h -t "$STAMP" {} +
+	fi
 	ditto -c -k --keepParent "$APP" "$ZIPFILE"
 	echo "zipped $ZIPFILE"
 fi
