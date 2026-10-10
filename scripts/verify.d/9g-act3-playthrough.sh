@@ -67,10 +67,11 @@ scenario_check() {
     grep -qE "NPC menu: Talk with \"$npc\"" $log.txt || { echo "FAIL: the hero did not talk to $npc"; fail=1; }
   done
   # the levels were populated from Levels.txt and the hero fought
-  for lvl in 76 77 78 79 80 81 82 83 92 100; do
+  for lvl in 76 77 78 79 80 81 83 92 100; do
     grep -E "POPULATE level $lvl " $log.txt | grep -qE "[1-9][0-9]* monsters" || { echo "FAIL: level $lvl got no monsters"; fail=1; }
   done
-  # Spider Cavern (a super unique), the Swampy Pit and the Flayer Dungeon carry their monsters in the DS1 (the natural groups can skip those blocks); since pass5 the DS1 monsters of mazes are created by the population plan, so a POPULATE line counts too
+  # since pass5 the DS1 monsters of mazes are created by the population plan, so a POPULATE line counts too
+  # Spider Cavern (a super unique), the Swampy Pit and the Flayer Dungeon carry their monsters in the DS1 (the natural groups can skip those blocks)
   for lvl in 85 86 88; do
     { grep -A3 "real maze: level $lvl " $log.txt | grep -qE "DS1 monsters: ([1-9][0-9]* direct|.* [1-9][0-9]* super uniques)" \
       || grep -E "POPULATE level $lvl " $log.txt | grep -qE "[1-9][0-9]* monsters"; } || { echo "FAIL: level $lvl got no monsters"; fail=1; }

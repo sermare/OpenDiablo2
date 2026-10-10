@@ -298,6 +298,10 @@ func (e *Engine) areaState(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill
 		e.emit("state", "STATE apply skill=%q unit=%s state=%s frames=%d (rival, local only)", sk.Name, rv.Name(), ef.State, frames)
 	}
 
+	if n == 0 {
+		e.Counters.EmptyArea++
+	}
+
 	e.emit("state", "STATE area skill=%q state=%s radius=%d at=(%d,%d) affected=%d", sk.Name, ef.State, ef.Radius, cx, cy, n)
 }
 

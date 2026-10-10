@@ -27,6 +27,7 @@ type Def struct {
 	Lockable       bool
 	RestoreVirgins bool
 	Parm0          int
+	Parm1, Parm3   int // wells: Parm1 heal per pulse /256, Parm3 life/mana flags (VERIFIED, WellPulse)
 	Damage         int
 	Selectable0    bool
 }
@@ -84,7 +85,7 @@ func ParseObjects(data []byte) ([]Def, error) {
 			SpawnMax: num("spawnmax"), TrapProb: num("trapprob"), Act: num("act"), SubClass: num("subclass"),
 			OperateFn: num("operatefn"), PopulateFn: num("populatefn"), InitFn: num("initfn"),
 			OperateRange: num("operaterange"), Lockable: num("lockable") != 0,
-			RestoreVirgins: num("restorevirgins") != 0, Parm0: num("parm0"), Damage: num("damage"),
+			RestoreVirgins: num("restorevirgins") != 0, Parm0: num("parm0"), Parm1: num("parm1"), Parm3: num("parm3"), Damage: num("damage"),
 			Selectable0: num("selectable0") != 0,
 		})
 	}

@@ -3,6 +3,7 @@ package d2remoteclient
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -26,6 +27,8 @@ import (
 )
 
 const logPrefix = "Remote Client"
+
+var errNoHero = errors.New("cannot load the hero")
 
 // RemoteClientConnection is the implementation of ClientConnection
 // for a remote client.
@@ -78,6 +81,13 @@ func (r *RemoteClientConnection) Open(connectionString, saveFilePath string) err
 		return err
 	}
 
+	// load the hero before connecting: a joiner without a hero must not take a
+	// place in the game (the server cannot do anything with an empty hero)
+	gameState := r.heroState.LoadHeroState(saveFilePath)
+	if gameState == nil {
+		return fmt.Errorf("%w: %s", errNoHero, saveFilePath)
+	}
+
 	r.tcpConnection, err = dialWithRetry(tcpAddress)
 	if err != nil {
 		return err
@@ -93,8 +103,6 @@ func (r *RemoteClientConnection) Open(connectionString, saveFilePath string) err
 	}
 
 	r.Infof("Connected to server at %s", r.tcpConnection.RemoteAddr().String())
-
-	gameState := r.heroState.LoadHeroState(saveFilePath)
 
 	packet, err := d2netpacket.CreatePlayerConnectionRequestPacket(r.GetUniqueID(), gameState)
 	if err != nil {

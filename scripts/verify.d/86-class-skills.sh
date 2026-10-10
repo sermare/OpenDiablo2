@@ -10,13 +10,13 @@ scenario_env() {
   # scares the zombies for 8 s, which would spoil every skill that needs them close)
   local list="Dopplezon,3;Valkyrie,3;Blade Fury,3;Dragon Flight,2;Whirlwind,3;Blade Shield,3;Find Potion,5;Find Item,5"
   list+=";Bash,1;War Cry,3;Battle Orders,1"
-  list+=";Poison Javelin,2;Multiple Shot,1"
-  list+=";Amplify Damage,1;Iron Maiden,1;Poison Dagger,1;Bone Armor,1;Corpse Explosion,1;Raise Skeleton,1"
+  list+=";Poison Javelin,4;Multiple Shot,1"
+  list+=";Amplify Damage,2;Iron Maiden,1;Poison Dagger,1;Bone Armor,1;Corpse Explosion,1;Raise Skeleton,1"
   list+=";Sacrifice,2;Might,1"
   list+=";Fire Ball,1;Frost Nova,1;Chain Lightning,2;Teleport,1;Energy Shield,1;Blizzard,1"
   list+=";Raven,1;Firestorm,1"
   # feat/skills-npsd: AI curses, Poison Nova, Hydra, Plague Poppy, Telekinesis, Conversion, Hunger
-  list+=";Dim Vision,1;Confuse,1;Attract,1;Poison Nova,1;Hydra,1;Plague Poppy,1;Telekinesis,2;Conversion,8;Hunger,2"
+  list+=";Dim Vision,2;Confuse,2;Attract,2;Poison Nova,1;Hydra,1;Plague Poppy,1;Telekinesis,2;Conversion,8;Hunger,2"
   list+=";Fists of Fire,2;Dragon Talon,1;Lightning Sentry,1;Shadow Warrior,1"
   list+=";Thunder Storm,1;Hurricane,1;Holy Fire,1;Grim Ward,2"
   echo "export OD2_AUTOCAST_CLASS=necromancer OD2_AUTOCAST_MANA=500 OD2_AUTOMONSTER=\"zombie1,5\" OD2_AUTOMONSTER_SECONDS=900"

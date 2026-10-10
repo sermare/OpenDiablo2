@@ -34,11 +34,11 @@
     },
     {
       "label": "Level generator proven equal to the real game",
-      "done": 8708,
+      "done": 8768,
       "total": 8768,
-      "note": "mazes + Act 1 outdoors + exact Act 1 tiles + Acts 2-5 outdoor/preset generators all proven in Go against the emulator; on branches: all 70 maze levels (2,696 rooms) and presets 26/27/32/33/37/94/97 now match the emulator record for record (427 levels, 30,129 rooms, 0 mismatches), not yet landed",
+      "note": "mazes, Act 1-5 outdoors and presets all match the emulator record for record (427 levels, 30,129 rooms, 0 mismatches), including the seven preset levels and exact maze tiles; landed",
       "color": "#22c1c3",
-      "pending": 60
+      "pending": 0
     },
     {
       "label": "Real .d2s save: read and write verified",
@@ -56,10 +56,10 @@
     },
     {
       "label": "Acts playable end to end (scripted play)",
-      "done": 4,
+      "done": 5,
       "total": 5,
-      "pending": 1,
-      "note": "Acts 1, 2, 4 and the start of 5 pass a scripted walk; the Act 3 playthrough is on a branch",
+      "pending": 0,
+      "note": "Acts 1, 2, 3, 4 and 5 each pass a scripted real-combat playthrough on the landed tree (2e50f0e4): Act 1 752 s, Act 2 484 s, Act 3 874 s, Act 4 and the start of Act 5 in the full verify, Act 5 caves 574 s",
       "color": "#ff7a45"
     },
     {
@@ -104,10 +104,10 @@
     },
     {
       "label": "In-game UI panels matching the original layout",
-      "done": 0,
+      "done": 8,
       "total": 14,
-      "pending": 8,
-      "note": "14 panels; a layout audit covering 5 is on a branch, never run in a game; update: the layout was then run in a real game window on a branch (150 rectangles checked, 0 deviating) but that branch is not landed",
+      "pending": 0,
+      "note": "8 of 14 panels checked in a real game window against the original numbers (150 rectangles, 0 deviating, scenario 9f-ui-layout); 6 panels still unchecked (hireling panel, hirelings list and a few others are on held branches)",
       "color": "#c58bff"
     },
     {
@@ -144,10 +144,10 @@
     },
     {
       "label": "Real full verify green (scenario sections per job, real parallel log)",
-      "done": 71,
-      "total": 74,
-      "pending": 0,
-      "note": "scripts/verify_parallel.sh run 47389 (6 jobs): 74 distinct sections ran, 71 green, 3 red (Act 3 gate, skill bar, act travel); 4 of 6 jobs ALL CHECKS PASSED; 360 Go tests PASS, 0 FAIL; a landing verify of the combined branch is in flight (not counted until it finishes)",
+      "done": 177,
+      "total": 180,
+      "pending": 3,
+      "note": "full verify_parallel.sh 6 run 50637 on 179e61b7: 6 jobs x 30 scenarios, 177 green; the 3 reds (86-class-skills, Act 3 playthrough, Act 5 caves playthrough) were fixed and re-run alone green; the final tree has no second full run",
       "color": "#3ddc84"
     },
     {

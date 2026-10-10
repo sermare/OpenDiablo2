@@ -13,4 +13,10 @@ scenario_check() {
   grep -qE "OBJECT effect expired shrine:Armor Boost state=128" $log.txt || { echo "FAIL: armor shrine did not expire"; fail=1; }
   grep -qE "OBJECT rearmed id=" $log.txt || { echo "FAIL: no shrine or well re-armed"; fail=1; }
   grep -qE "OBJECT operate .*class=rack .*drops=" $log.txt || { echo "FAIL: weapon rack did not drop"; fail=1; }
+  # numeric: the well (hero mana starts at 10 via OD2_AUTOOBJECT_MANA) must raise mana from below max to max (Parm1/256 of max, capped)
+  grep -E "OBJECT operate .*class=well " $log.txt | head -1 | sed -E 's/.*before\[life=([0-9]+)\/([0-9]+) mana=([0-9]+)\/([0-9]+)\] after\[life=([0-9]+)\/[0-9]+ mana=([0-9]+)\/[0-9]+\].*/\1 \3 \4 \5 \6/' | awk '{exit !(NF==5 && $3>0 && $2<$3 && $5>$2 && $5<=$3 && $4>=$1)}' || { echo "FAIL: well did not raise mana within [before,max]"; fail=1; }
+  for o in 'name="Barrel"' 'name="Chest"' 'name="Large Urn"'; do
+    grep -qF "$o fn=" $log.txt || { echo "FAIL: container $o was not operated"; fail=1; }
+  done
+  grep -qE "panic:|SIGSEGV|fatal error" $log.txt && { echo "FAIL: crash during object operation"; fail=1; }
 }

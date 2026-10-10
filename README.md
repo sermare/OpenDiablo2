@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/progress.svg?v=1791606802" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
+<p align="center"><img src="docs/progress.svg?v=1791619632" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
 <p align="center"><img src="https://raw.githubusercontent.com/sermare/OpenDiablo2/progress-history/docs/progress-history.svg" alt="Progress over time: one line per part, snapshot every 10 minutes" width="880"></p>
 
 [![CI](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml/badge.svg)](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml)
@@ -41,7 +41,7 @@ Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The 
 
 ## Status board
 
-_Last updated: 2026-10-09 (late evening; headline refreshed from measured data: Game v1 complete 58%, 64% with branches; full verify run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
+_Last updated: 2026-10-10 (after the pass6 landing; Game v1 complete 64%, 66% with held branches; full verify run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
 
 ### ✅ Working now (each one verified, not assumed)
 
@@ -151,6 +151,7 @@ Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>
 
 | Date | Success |
 |---|---|
+| 2026-10-10 | **LANDED: first real full verify green on the combined tree** (`integration` and `master` = 2e50f0e4): pass5 + population + playthroughs + skills-mp + travel + the Act 3 unseal, curse retry and Act 5 caves fixes. Run 50637: 6 jobs x 30 scenarios, 177 green; the 3 reds (class skills, Act 3 and Act 5 caves playthroughs) were fixed and passed alone. All five acts now pass a scripted real-combat playthrough (Act 3 in 874 s). Caveats: no second full run on the final tree; the Act 5 caves pass relies on restoring vitals (the engine has no natural mana regen yet, agent working on it). Headline Game v1 complete 64% (66% with held branches) |
 | 2026-10-09 | **Progress board refreshed from real numbers**: Ghidra all 11,257 `Game.exe` functions named (last 22 Warden/module functions named later the same day, a few names unverified); new bar *Real full verify green* from a real `verify_parallel.sh` log (74 sections ran, 71 green; red: Act 3 gate, skill bar, act travel; 4 of 6 jobs ALL CHECKS PASSED); *Game v1 complete* 58% (64% with branch work) |
 | 2026-10-09 | **Honest verification reset**: earlier parallel verifies ran only unit tests (filter bug) or skipped scenarios (unset sample save), so "all green" claims were void; guard added on a branch. First real runs: ~120 scenario sections across 6 jobs, red only on Act 3 gate (root cause found: level 100 stair tile style), skill bar (two root causes fixed) and load-dependent flakes. Pending on branches, not yet landed: exact maze/preset tiles, unique/champion packs, audio volume rules, difficulty and combat-math audits, 22 last exe names (11,257 of 11,257 named) |
 | 2026-10-09 | **Exact tile placement for Acts 2–5 outdoors** (72 levels, 7,558 rooms equal to the emulator), the **Act 2 start playable** (Lut Gholein → Rocky Waste → Halls of the Dead), level state kept when you leave and return, **caves 13–16 and 37**, **Acts 2–5 quest logic**, **monster AI for every archetype** (17 faithful ports, the rest stand-ins), **real NPC speech and music fixed** (the paths were wrong; test runs were muted so nobody noticed), progress chart over time |

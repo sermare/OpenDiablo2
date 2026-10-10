@@ -1,0 +1,49 @@
+name: Mac bundle check
+
+# Builds the app bundle and disk image on macOS arm64 and runs the static bundle
+# checks. No Diablo II files are involved and nothing is launched. The result is
+# kept as a short-lived workflow artifact only; nothing is published.
+on:
+  pull_request:
+    paths:
+      - 'scripts/make-app.sh'
+      - 'scripts/make-dmg.sh'
+      - 'scripts/release.sh'
+      - 'scripts/check_app_bundle.sh'
+      - 'scripts/icon/**'
+      - 'bundle_darwin.go'
+      - 'main.go'
+      - 'go.mod'
+      - '.github/workflows/mac-bundle.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: mac-bundle-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    name: app bundle + dmg (macos-14, arm64)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # git describe needs the tags
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: true
+      - name: scripts/release.sh (build, ad-hoc sign, zip, dmg, static checks)
+        run: scripts/release.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenDiablo2-macos-arm64-check
+          path: |
+            dist/*.zip
+            dist/*.dmg
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 3
