@@ -1,4 +1,5 @@
 scenario_name="Act 1 playthrough (fresh level 1 hero, a Sorceress unless OD2_HERO names a class: Akara, gate to Blood Moor, fights, loot, Den of Evil, reward, exported .d2s)"
+scenario_turbo=1  # passed twice under OD2_TURBO=1, faster (numbers: ~/git/d2-re-notes/turbo-mode.md)
 a1=$tmp/act1
 # The first hour of Act 1 played by OD2_AUTOSCRIPT (see docs/PLAYTEST.md): talk to Akara (intro, Den of
 # Evil quest, topic), walk out of the town through its border into Blood Moor (real level change), fight

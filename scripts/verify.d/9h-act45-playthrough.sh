@@ -1,4 +1,5 @@
 scenario_timeout=1200
+scenario_turbo=1  # passed twice under OD2_TURBO=1, faster (numbers: ~/git/d2-re-notes/turbo-mode.md)
 scenario_name="Act 4 playthrough and the start of Act 5 (level 94 sample hero: Fortress to the Chaos Sanctuary and back, Harrogath to the Crystalline Passage)"
 a45=$tmp/act45
 # Played by OD2_AUTOSCRIPT (see docs/PLAYTEST.md, "Act 4 and 5"). Act 4 walks out of the Pandemonium Fortress across

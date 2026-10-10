@@ -509,6 +509,10 @@ func (a *App) advance() error {
 		return err
 	}
 
+	if d2util.TurboEnabled() && a.captureState != captureStateNone {
+		d2util.TurboRequestDraw() // OD2_TURBO draws only some frames; a capture needs this one
+	}
+
 	return nil
 }
 

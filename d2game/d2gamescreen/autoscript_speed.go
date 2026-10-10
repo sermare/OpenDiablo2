@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"sync"
+
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 )
 
 const (
@@ -28,6 +30,11 @@ var (
 // faster than real time, so a long playthrough fits the time a verification
 // run may take. Without the variable the game runs at normal speed.
 func autoTimeScale() float64 {
+	if d2util.TurboEnabled() {
+		// turbo: every update is exactly one tick of virtual time
+		return 1
+	}
+
 	autoTimeScaleOnce.Do(func() {
 		if f, err := strconv.ParseFloat(os.Getenv("OD2_AUTOSPEED"), 64); err == nil && f > 1 {
 			if f > maxAutoTimeScale {

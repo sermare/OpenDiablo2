@@ -113,6 +113,7 @@ fi
 #   scenario_env()    echo shell lines (exports) for the game; may use $save, $tmp, $OD2_PORT
 #   scenario_check()  inspect $log.txt (ANSI-stripped log) and set fail=1 on problems
 #   scenario_realtime=1      (optional) keep the game clock at real time (default: OD2_AUTOSPEED=4 for every scenario)
+#   scenario_turbo=1         (optional) run under OD2_TURBO=1 by default (OD2_TURBO=0 overrides)
 #   scenario_timeout=<seconds> (optional) wall-clock limit before the game is reaped (default 420; long playthroughs)
 #   scenario_unmuted=1       (optional) play real audio (no OD2_AUTOTEST_MUTE); OD2_VERIFY_SOUND=1 does it for all
 #   scenario_timeout=<seconds> (optional) wall-clock limit of the game window (default 420; the reaper kills at 8 minutes)
@@ -128,7 +129,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
 
   scen_run=0 scen_pass=0
   for f in scripts/verify.d/*.sh(N); do
-    unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""; scenario_realtime=""; scenario_timeout=""
+    unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""; scenario_realtime=""; scenario_timeout=""; scenario_turbo=""
     source "$f"
     # OD2_VERIFY_ONLY=<glob> (e.g. "83-*") runs only the scenarios whose file name matches
     [ -n "${OD2_VERIFY_ONLY:-}" ] && [[ ${f:t} != ${~OD2_VERIFY_ONLY} && ${f:t:r} != ${~OD2_VERIFY_ONLY} ]] && continue
@@ -153,6 +154,10 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
         # OD2_VERIFY_CONFIG_DIR: a private config folder (a copy of a valid config.json) instead of the user's own;
         # a scenario that needs its own OD2_CONFIG_DIR overrides it below
         [ -n "${OD2_VERIFY_CONFIG_DIR:-}" ] && echo "export OD2_CONFIG_DIR=\"$OD2_VERIFY_CONFIG_DIR\""
+        # OD2_TURBO=1: virtual 25 Hz clock, many ticks per frame, draw every Nth frame (see d2common/d2util/turbo.go)
+        # a scenario with scenario_turbo=1 (passed twice under turbo) runs turbo by default; OD2_TURBO=0 turns it off
+        turbo_v="${OD2_TURBO:-$scenario_turbo}"
+        [ -n "$turbo_v" ] && [ "$turbo_v" != 0 ] && [ -z "$scenario_realtime" ] && echo "export OD2_TURBO=$turbo_v"
         scenario_env
         echo "$tmp/od2 2>&1 | tee $log"
       } > $cmd
