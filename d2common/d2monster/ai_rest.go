@@ -30,26 +30,22 @@ var genericAIs = map[string]genericKind{
 	"DeathMauler":  kindMelee,
 	"BloodLord":    kindMelee,
 	"FrozenHorror": kindMelee, "Ancient": kindMelee,
-	"CorruptLancer": kindMelee, "ElementalBeast": kindMelee, "DarkWanderer": kindMelee,
+	"CorruptLancer": kindMelee, "ElementalBeast": kindMelee,
 	"7TIllusion": kindMelee, "FlyingScimitar": kindFlyer,
 
 	// casters / ranged
-	"FingerMage": kindCaster,
-	"Imp":        kindCaster, "MinionSpawner": kindCaster,
-	"Hydra": kindTurret,
+	"FingerMage":    kindCaster,
+	"MinionSpawner": kindCaster,
+	"Hydra":         kindTurret,
 
 	// flyers
 	"BloodHawk": kindFlyer, "Mosquito": kindFlyer,
-	"BladeCreeper": kindFlyer, "MaggotEgg": kindInert,
+	"MaggotEgg": kindInert,
 
 	// stationary shooters
 	"GargoyleTrap": kindTurret,
-	"DesertTurret": kindTurret, "ArcaneTower": kindTurret,
-	"Catapult": kindTurret, "CatapultSpotter": kindTurret, "AssassinSentry": kindTurret,
-	"DeathSentry": kindTurret,
-
-	// summoned pets: follow the owner like a mercenary
-	"DruidWolf": kindPet, "DruidBear": kindPet,
+	"ArcaneTower":  kindTurret,
+	"Catapult":     kindTurret, "AssassinSentry": kindTurret,
 
 	// non-combat by design
 	"GoodNpcRanged": kindInert,

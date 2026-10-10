@@ -96,10 +96,10 @@
     },
     {
       "label": "Monster AI archetypes ported faithfully",
-      "done": 85,
+      "done": 93,
       "total": 148,
       "pending": 0,
-      "note": "~85: implemented minus about 60 stand-ins (estimate)",
+      "note": "~93 (estimate): batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
       "color": "#6c8cff"
     },
     {
