@@ -21,7 +21,7 @@ AiGeneral: +0x14 wave counter, +0x18 flags (bit0 announced, bit1 sent), +0x1c ne
 announce (counter < 5), cast skill 285 on itself, flag0, next = frame + 250; flag0 set -> counter > 4: morph into class 0x22f
 with stat list 0x8e and wait 5; otherwise FUN_005ee2f0 casts 286 at throne + (0,13), counter++, next = frame + 100, flag1 set,
 flag0 clear. A hero within 0x40 gets Skill1 with aip1%, else the throne waits 10.
-Waves = SuperUniques "Baal Subject 1..5" (rows 62..66): classes 62, 105, 121, 122, 135, groups 5, 3, 5, 8, 5 (V from the table;
+Waves = SuperUniques "Baal Subject 1..5" (rows 62..66): classes 62, 105, 557, 558, 571 (corrected: the Class column resolved by hcIdx; 121/122/135 were wrong), groups 5, 3, 5, 8, 5 (V from the table;
 that skill 286 uses exactly these is U). The engine gates the next wave on the previous being dead (U: the exe think function is
 purely timed).
 - BaalToStairs 0x5ee720 (V): scan radius 25 for object 563, none -> wait 25; within aip1 -> state 0x92 and the unit leaves the level;
