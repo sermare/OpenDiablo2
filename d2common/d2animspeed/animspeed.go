@@ -47,8 +47,12 @@ const (
 	// AttackBasePct is stat 0x44 with a weapon of WSM 0 and no IAS (UNVERIFIED
 	// composition; the exe clamps stat0x44 + diminished item IAS to 15..175).
 	AttackBasePct = 100
-	// KickAdjust is added to the attack percent for the assassin kick mode
-	// (VERIFIED: -30; applies to player mode 0x12).
+	// KickAdjust is added to the attack percent when the unit's raw mode field is
+	// 0x12 (VERIFIED value). NOTE (oracle): player kick (mode 12) does NOT get
+	// it; the oracle shows modes 7, 8, 11 and 12 all play at plain attack
+	// rates, and mode 0x12 (the sequence mode) is not an attack, so the term
+	// only fires if a form change makes the effective mode an attack while the
+	// raw mode is 0x12 (UNVERIFIED which case that is).
 	KickAdjust = -30
 )
 
@@ -62,19 +66,21 @@ func Diminish(p, k int) int {
 	return k * p / (k + p)
 }
 
-// scale computes base*pct/100 the way the exe does (unsigned, truncating),
-// treating non-positive results as 0 and capping at MaxRate.
+// scale computes base*pct/100 the way the exe does for hit, block and cast
+// (VERIFIED by the oracle): a 32 bit unsigned product divided by 100, so a
+// negative percent wraps to a huge value and saturates at MaxRate, while a
+// percent of 0 gives 0. The result is capped at MaxRate.
 func scale(base, pct int) int {
-	if base <= 0 || pct <= 0 {
+	if base <= 0 {
 		return 0
 	}
 
-	r := base * pct / 100
-	if r > MaxRate-1 {
+	r := uint32(int32(base)*int32(pct)) / 100
+	if r >= MaxRate {
 		return MaxRate
 	}
 
-	return r
+	return int(r)
 }
 
 func clamp(v, lo, hi int) int {
