@@ -11,6 +11,8 @@ scenario_name="party, trade and PvP (two processes over TCP with the d2gs protoc
 #     the real hero's inventory is full)
 #   5 both leave the party, declare hostility, swing at each other, host makes peace, a swing is blocked
 #   6 joiner leaves; the host sees it
+# The gold step waits for the server's echo of the added item: an offer update of the other side that arrives in
+# between replaces the local offer (PlayerTradeWindow.Update), and the gold packet would then carry no item.
 # Protocol details with no verified counterpart (party/trade/PvP packets ride the 0xAE/0x6c tunnel, the
 # trade rules, the XP weights) are marked UNVERIFIED in d2common/d2party, d2core/d2playertrade and
 # d2networking/d2netpacket/packet_social.go.
@@ -55,7 +57,7 @@ scenario_env() {
   hscript+=";say:pvp $jn;say:hostile $jn 1;wait:1"
   hscript+=";say:spawnmon zombie1;wait:1;say:killnear;waitlog:PARTYXP award"
   hscript+=";say:trade request $jn;waitlog:TRADE open with"
-  hscript+=";say:trade add cm2;say:trade gold 1000;waitlog:gold=400 you_accepted;wait:1;say:capframe $tmp/9d-host-trade.png;wait:2;say:trade accept -"
+  hscript+=";say:trade add cm2;waitlog:yours=[Hellfire Torch];say:trade gold 1000;waitlog:gold=400 you_accepted;wait:1;say:capframe $tmp/9d-host-trade.png;wait:2;say:trade accept -"
   hscript+=";waitlog:TRADE done;wait:2;say:roster"
   hscript+=";say:party leave -;waitlog:$hn left the party;say:hostile $jn 1;waitlog:$jn is now hostile toward $hn;wait:1"
   hscript+=";$(_swings $jn);wait:2"
@@ -66,7 +68,7 @@ scenario_env() {
   jscript+=";panel:party;wait:2;say:roster;say:capframe $tmp/9d-joiner-party.png;automap:stats;panel:close"
   jscript+=";say:pvp $hn;waitlog:PARTYXP award"
   jscript+=";waitlog:TRADE request from;say:trade yes -;waitlog:TRADE open with"
-  jscript+=";say:trade add tbk;say:trade gold 400;waitlog:gold=1000 you_accepted;wait:1;say:capframe $tmp/9d-joiner-trade.png;wait:2;say:trade accept -"
+  jscript+=";say:trade add tbk;waitlog:yours=[Tome of Town Portal];say:trade gold 400;waitlog:gold=1000 you_accepted;wait:1;say:capframe $tmp/9d-joiner-trade.png;wait:2;say:trade accept -"
   jscript+=";waitlog:TRADE done;wait:2;say:roster"
   jscript+=";waitlog:$hn left the party;say:hostile $hn 1;waitlog:$hn is now hostile toward $jn;wait:1"
   jscript+=";$(_swings $hn);wait:2"
