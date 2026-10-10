@@ -23,7 +23,7 @@ func TestRewardNPCMenus(t *testing.T) {
 		{"Jerhyn", 201, []NPCMenuAction{NPCActionTalk}},
 		{"Warriv1", 155, []NPCMenuAction{NPCActionTalk}},
 		{"Warriv2", 175, []NPCMenuAction{NPCActionTalk, NPCActionTravelWest}},
-		{"Tyrael2", 367, []NPCMenuAction{NPCActionTalk, NPCActionHire}},
+		{"Tyrael2", 367, []NPCMenuAction{NPCActionTalk}},
 		{"Nihlathak", 514, []NPCMenuAction{NPCActionTalk, NPCActionGamble}},
 		{"Cain5", 265, []NPCMenuAction{NPCActionTalk, NPCActionIdentify}},
 		{"Cain6", 520, []NPCMenuAction{NPCActionTalk, NPCActionIdentify}},
