@@ -288,3 +288,26 @@ func (v *Game) chaosPurge() {
 
 	v.Infof("CHAOS purge: %d monsters of the level are gone", n)
 }
+
+// commandSetMana is the console command "setmana <n>": the hero's mana is n
+// (at most the maximum; debug, the natural regeneration scenario starts empty).
+func (v *Game) commandSetMana(args []string) error {
+	if len(args) != 1 || v.localPlayer == nil || v.localPlayer.Stats == nil {
+		return fmt.Errorf("usage: setmana <n> (in a game)")
+	}
+
+	n, err := strconv.Atoi(args[0])
+	if err != nil || n < 0 {
+		return fmt.Errorf("setmana needs a non-negative number")
+	}
+
+	s := v.localPlayer.Stats
+	if n > s.MaxMana {
+		n = s.MaxMana
+	}
+
+	s.Mana = n
+	v.Infof("VITALS mana set to %d/%d", s.Mana, s.MaxMana)
+
+	return nil
+}
