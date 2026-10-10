@@ -84,8 +84,29 @@ Steam and Battle.net locations) and offers it, otherwise it asks you to pick the
 `d2xvideo`). Picking the parent of `Diablo II` works too. If files are missing it
 shows a dialog listing them; nothing crashes, and your files are only read.
 
+One command builds everything and checks it (nothing is launched, no game files needed):
+
+```sh
+scripts/release.sh    # dist/OpenDiablo2-<version>-macos-arm64.{zip,dmg} + SHA256SUMS
+```
+
+It builds with `-trimpath`, signs ad hoc (`codesign -s -`), zips, makes the dmg
+(volume `OpenDiablo2`, app plus an `Applications` symlink and a short README, no
+background picture) and runs `scripts/check_app_bundle.sh <app> <dmg>`. The version is
+the number in the latest `v*` git tag (`v0.1-pre-alpha` gives `0.1.0`;
+`VERSION=1.2.3` overrides) and `CFBundleVersion` is the commit count; the full
+`git describe` string is stored in the `OD2GitDescribe` Info.plist key. File dates are
+set from the commit time (`SOURCE_DATE_EPOCH`). The `Mac bundle check` workflow runs
+the same script on `macos-14` for changes to these files.
+
+The Info.plist has no `LSEnvironment`: real maps are the engine default, so the app
+needs no `OD2_*` variable. `check_app_bundle.sh` fails if that changes, and also
+checks the bundle id, arm64-only, macOS 14 minimum (plist and Mach-O), games category,
+Retina, signature identifier, no game files or MPQ headers, no `/Users` path in the
+binary, and the dmg layout.
+
 Where things live: settings and saves in `~/Library/Application Support/OpenDiablo2`
-(override with `OD2_CONFIG_DIR`), log in `~/Library/Logs/OpenDiablo2/OpenDiablo2.log`
+(`OD2_CONFIG_DIR=<dir>` moves config.json and Saves, for a throwaway profile), log in `~/Library/Logs/OpenDiablo2/OpenDiablo2.log`
 (previous run in `OpenDiablo2.previous.log`). Retina: the app is high-resolution
 capable and scales the 800x600 game to the window (`WindowScale` in config.json
 or `windowscale` in the console sets the start size).
