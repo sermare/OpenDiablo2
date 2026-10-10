@@ -3,7 +3,7 @@ scenario_env() { echo 'export OD2_AUTOUILAYOUT=1'; }
 scenario_check() {
   golden=scripts/verify.d/ui-layout.golden
   grep -q "AUTOUILAYOUT done" $log.txt || { echo "FAIL: the layout run did not finish"; fail=1; return; }
-  sed -n 's/.*UILAYOUT \([a-z]* [a-z_0-9.]* [0-9 -]*\)$/\1/p' $log.txt > $tmp/ui-layout.got
+  tr -d "\r" < $log.txt | sed -n 's/.*UILAYOUT \([a-z]* [a-z_0-9.]* [0-9 -]*\)$/\1/p' > $tmp/ui-layout.got
   n=0
   while read -r line; do
     case "$line" in "#"*|"") continue;; esac
