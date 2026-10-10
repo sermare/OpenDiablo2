@@ -615,6 +615,13 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		}
 	}
 
+	// STAND-IN: hit function 13 (Glacial Spike) splash radius = Param1 +
+	// Param2*(lvl-1) subtiles, the skills.txt "radius" / "radius per level"
+	// columns; the exe body (0x5a8360) was not read.
+	if ms.SHitPar[0] < 1 && ms.SrvHitFunc == 13 {
+		areaRadius = sk.Params[1] + sk.Params[2]*(lvl-1)
+	}
+
 	furyCount := 0
 	if ms.SrvHitFunc == 20 {
 		furyCount = env.eval(sk.Calc[1])

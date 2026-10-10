@@ -25,7 +25,11 @@ var meteorOffsets = [18][2]int{
 // Meteor would never end), taken as 0. 10 is the Guided Arrow logic.
 func (s *Sim) hitFunc(m *Missile, t Target) (ret int, ok bool) {
 	switch m.Spec.SrvHitFunc {
-	case 1:
+	case 1, 13:
+		// STAND-IN for 13 (Glacial Spike, 0x5a8360, body not read): skills.txt
+		// gives the splash a radius (Param1 "radius" + Param2 per level) and the
+		// missile ExplosionMissile/ClientHit the freeze art, so it is modelled as
+		// the area hit of function 1 (UNVERIFIED which of both the exe uses).
 		s.areaDamage(m)
 		return resKill, true
 	case 2:
@@ -42,6 +46,18 @@ func (s *Sim) hitFunc(m *Missile, t Target) (ret int, ok bool) {
 		}
 
 		s.areaDamage(m)
+
+		return resKill, true
+	case 29:
+		// STAND-IN (Frozen Orb, 0x5a9640, body not read): while the orb
+		// passes enemies (target given) nothing happens; where it ends (wall,
+		// expiry) HitSubMissile1 (frozenorbnova) flies out in orbRing
+		// directions and the orb ends.
+		if t != nil {
+			return 0, true
+		}
+
+		s.orbRing(m)
 
 		return resKill, true
 	case 36:
