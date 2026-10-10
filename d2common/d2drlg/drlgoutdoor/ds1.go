@@ -19,8 +19,10 @@ type Pattern struct {
 	Floor  [][]uint32
 	Shadow []uint32
 	Groups []Group
-	// Act is the act byte of the file (version >= 8), Objects its object list.
+	// Act is the act byte of the file (version >= 8), Objects its object list
+	// in file order. Version is the DS1 version.
 	Act     int
+	Version int
 	Objects []Object
 }
 
@@ -51,7 +53,7 @@ func ParsePattern(data []byte) (*Pattern, error) {
 	}
 
 	ver := i32()
-	p := &Pattern{}
+	p := &Pattern{Version: ver}
 	p.W = i32() + 1
 	p.H = i32() + 1
 
@@ -127,7 +129,12 @@ func ParsePattern(data []byte) (*Pattern, error) {
 		}
 
 		for k := 0; k < no; k++ {
-			p.Objects = append(p.Objects, Object{Type: i32(), ID: i32(), X: i32(), Y: i32(), Flags: i32()})
+			ob := Object{Type: i32(), ID: i32(), X: i32(), Y: i32()}
+			if ver >= 6 { // older files have no flags word (DRLG_ParseDS1Data)
+				ob.Flags = i32()
+			}
+
+			p.Objects = append(p.Objects, ob)
 		}
 	}
 

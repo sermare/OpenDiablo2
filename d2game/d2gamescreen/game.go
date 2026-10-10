@@ -238,6 +238,7 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"socket|personalize"}, v.commandRewardItem},
 		{"transmute", "transmutes the quest recipes in the Horadric Cube (Staff, Khalim's Will, Pandemonium portals)",
 			nil, v.commandTransmute},
+		{"setexp", "raises the hero's experience to at least <amount>; the level follows (debug)", []string{"amount"}, v.commandSetExp},
 	}
 
 	for _, cmd := range commands {
@@ -268,7 +269,7 @@ func (v *Game) OnUnload() error {
 	}
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
-		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "killnear", "rewarditem", "transmute"); err != nil {
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "killnear", "rewarditem", "transmute", "setexp"); err != nil {
 		return err
 	}
 
