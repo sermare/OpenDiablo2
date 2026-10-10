@@ -8,7 +8,7 @@ scenario_env() {
   local s="$(qw_begin 3)say:setwaypoint 78 1;say:setwaypoint 75 1;$(qw_panel 3 3)$(qw_talk Hratli)$(qw_panel 3 3)"
   # Gidbinn first (the hero arrives by the waypoint; a walk from the altar back to the waypoint finds no way in this
   # generated jungle, see docs/PLAYTEST.md), then out of the Flayer Dungeon hole and back to the waypoint from there
-  s+="wait:11;$(qw_wp 78)kill:all,150;$(qw_chest 252)$(qw_panel 3 3)$(qw_go 88)$(qw_go 78)wait:2;travel:3;expect:level=75;wait:3;"
+  s+="wait:11;$(qw_wp 78)kill:all,100;$(qw_chest 252)$(qw_chest 252)$(qw_chest 252)$(qw_panel 3 3)$(qw_go 88)$(qw_go 78)wait:2;say:spawnportal 75;use:Portal;expect:level=75;wait:3;"
   # (the way back to Kurast is the act travel: the Flayer Dungeon hole leaves the hero at a spot of the generated jungle
   # from which no walk reaches the waypoint on every build; verify runs failed at 'use:Waypoint' with 30+ tiles to go)
   s+="$(qw_talk Ormus 10)$(qw_panel 3 3)$(qw_talk Asheara 10)$(qw_panel 3 3)$(qw_talk Ormus 10)$(qw_panel 3 3)exit"
