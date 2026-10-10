@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="880" height="1722" viewBox="0 0 880 1722" role="img" aria-label="Native macOS Diablo II — progress">
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="1644" viewBox="0 0 880 1644" role="img" aria-label="Native macOS Diablo II — progress">
 <defs>
 <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14162a"/><stop offset="1" stop-color="#1d1a33"/></linearGradient>
 <linearGradient id="g0" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c5cff" stop-opacity="0.75"/><stop offset="1" stop-color="#7c5cff"/></linearGradient>
@@ -16,23 +16,22 @@
 <linearGradient id="g12" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6c8cff" stop-opacity="0.75"/><stop offset="1" stop-color="#6c8cff"/></linearGradient>
 <linearGradient id="g13" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c58bff" stop-opacity="0.75"/><stop offset="1" stop-color="#c58bff"/></linearGradient>
 <linearGradient id="g14" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f2c94c" stop-opacity="0.75"/><stop offset="1" stop-color="#f2c94c"/></linearGradient>
-<linearGradient id="g15" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6fd3ff" stop-opacity="0.75"/><stop offset="1" stop-color="#6fd3ff"/></linearGradient>
-<linearGradient id="g16" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffb86b" stop-opacity="0.75"/><stop offset="1" stop-color="#ffb86b"/></linearGradient>
-<linearGradient id="g17" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9be564" stop-opacity="0.75"/><stop offset="1" stop-color="#9be564"/></linearGradient>
-<linearGradient id="g18" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3ddc84" stop-opacity="0.75"/><stop offset="1" stop-color="#3ddc84"/></linearGradient>
+<linearGradient id="g15" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffb86b" stop-opacity="0.75"/><stop offset="1" stop-color="#ffb86b"/></linearGradient>
+<linearGradient id="g16" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9be564" stop-opacity="0.75"/><stop offset="1" stop-color="#9be564"/></linearGradient>
+<linearGradient id="g17" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3ddc84" stop-opacity="0.75"/><stop offset="1" stop-color="#3ddc84"/></linearGradient>
 <filter id="glow" x="-5%" y="-50%" width="110%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 </defs>
-<rect width="880" height="1722" rx="18" fill="url(#bg)"/>
-<rect x="1" y="1" width="878" height="1720" rx="17" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+<rect width="880" height="1644" rx="18" fill="url(#bg)"/>
+<rect x="1" y="1" width="878" height="1642" rx="17" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
 <text x="36" y="46" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#ffffff">Native macOS Diablo II — progress</text>
 <text x="36" y="72" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#b8b9d6">driven by Claude · counts come from code, tests and Ghidra; estimates are marked with ~ · dashed = on branches, not yet verified</text>
 <text x="844" y="46" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">updated 2026-10-10</text>
 <text x="36" y="114" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Game v1 complete</text>
-<text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">80%</text>
+<text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">85%</text>
 <rect x="36" y="128" width="808" height="26" rx="13" fill="#ffffff" fill-opacity="0.08"/>
-<rect x="36" y="128" width="655.7" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
-<rect x="36" y="128" width="643.7" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
-<text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +1% on branches, not yet verified</text>
+<rect x="36" y="128" width="702.6" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
+<rect x="36" y="128" width="689.7" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
+<text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +2% on branches, not yet verified</text>
 <text x="36" y="192" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#8c8eb0">v1 = double-click the Mac app, make or load a character, play Acts 1-5 single player without a blocker</text>
 <text x="36" y="226" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Game.exe functions named in Ghidra</text>
 <text x="844" y="226" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11,257 / 11,257</text>
@@ -124,28 +123,23 @@
 <rect x="36" y="1330" width="738.0" height="18" rx="9" fill="url(#g14)" filter="url(#glow)"/>
 <text x="844" y="1344" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#f2c94c">100%</text>
 <text x="36" y="1365" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">12 of the 12 gaps closed (the last, stat-list aggregation, follows the exe decompile 0x627160 / 0x626c80 and is unit tested, not compared with the running emulator); not wired into every drop path yet</text>
-<text x="36" y="1396" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Sound and music confirmed by a human listen</text>
-<text x="844" y="1396" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">0 / 5</text>
+<text x="36" y="1396" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Multiplayer playable through the game screen</text>
+<text x="844" y="1396" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">3 / 4</text>
 <rect x="36" y="1408" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<text x="844" y="1422" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#6fd3ff">0%</text>
-<text x="36" y="1443" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">menu music, NPC voices, footsteps, spell/combat sounds, ambient: each needs a person to listen (I can only check logs)</text>
-<text x="36" y="1474" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Multiplayer playable through the game screen</text>
-<text x="844" y="1474" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">3 / 4</text>
+<rect x="36" y="1408" width="553.5" height="18" rx="9" fill="url(#g15)" filter="url(#glow)"/>
+<text x="844" y="1422" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ffb86b">75%</text>
+<text x="36" y="1443" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and party commands now travel through the realm bridge with unit tests (feat/mp-and-mac-dmg), not yet seen in two game windows; trade works over the legacy path</text>
+<text x="36" y="1474" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Mac app: build, Finder launch with real maps, disk image</text>
+<text x="844" y="1474" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">2 / 3</text>
 <rect x="36" y="1486" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="1486" width="553.5" height="18" rx="9" fill="url(#g16)" filter="url(#glow)"/>
-<text x="844" y="1500" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ffb86b">75%</text>
-<text x="36" y="1521" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and party commands now travel through the realm bridge with unit tests (feat/mp-and-mac-dmg), not yet seen in two game windows; trade works over the legacy path</text>
-<text x="36" y="1552" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Mac app: build, Finder launch with real maps, disk image</text>
-<text x="844" y="1552" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">2 / 3</text>
+<rect x="36" y="1486" width="492.0" height="18" rx="9" fill="url(#g16)" filter="url(#glow)"/>
+<rect x="528.0" y="1486" width="246.0" height="18" rx="9" fill="#9be564" fill-opacity="0.28" stroke="#9be564" stroke-opacity="0.6" stroke-dasharray="4 3"/>
+<text x="844" y="1500" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#9be564">67%</text>
+<text x="36" y="1521" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+33% done on branches, not yet verified (dashed) · app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image install is rehearsed by scripts/dmg_install_check.sh (quarantine, mount, copy, verify) but has not been opened in Finder by a human; the desktop app was rebuilt from the landed tree</text>
+<text x="36" y="1552" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real full verify green (scenario sections per job, real parallel log)</text>
+<text x="844" y="1552" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">259 / 259</text>
 <rect x="36" y="1564" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="1564" width="492.0" height="18" rx="9" fill="url(#g17)" filter="url(#glow)"/>
-<rect x="528.0" y="1564" width="246.0" height="18" rx="9" fill="#9be564" fill-opacity="0.28" stroke="#9be564" stroke-opacity="0.6" stroke-dasharray="4 3"/>
-<text x="844" y="1578" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#9be564">67%</text>
-<text x="36" y="1599" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+33% done on branches, not yet verified (dashed) · app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image install is rehearsed by scripts/dmg_install_check.sh (quarantine, mount, copy, verify) but has not been opened in Finder by a human; the desktop app was rebuilt from the landed tree</text>
-<text x="36" y="1630" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real full verify green (scenario sections per job, real parallel log)</text>
-<text x="844" y="1630" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">259 / 259</text>
-<rect x="36" y="1642" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="1642" width="738.0" height="18" rx="9" fill="url(#g18)" filter="url(#glow)"/>
-<text x="844" y="1656" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#3ddc84">100%</text>
-<text x="36" y="1677" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">batch 3 and batch 4 full verify_parallel.sh 6 runs both ALL JOBS PASSED (193 and 194 scenarios; batch 4 with no retry at all); batch 6a: 5 of 6 jobs green, the 6th red only on a scenario that crossed the new level quest gates (fixed in the scenario, passed alone); batch 6b run 31638 and batch 7 run 7644 passed (6th and 7th clean in a row); batch 8 run 36803 had two red scenarios (92-objects2, 93-objects-gaps; fixed and re-run alone, no clean full run on the final tree); batch 9 run 98647 passed fully, so the current streak is 1 clean full verify</text>
+<rect x="36" y="1564" width="738.0" height="18" rx="9" fill="url(#g17)" filter="url(#glow)"/>
+<text x="844" y="1578" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#3ddc84">100%</text>
+<text x="36" y="1599" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">batch 3 and batch 4 full verify_parallel.sh 6 runs both ALL JOBS PASSED (193 and 194 scenarios; batch 4 with no retry at all); batch 6a: 5 of 6 jobs green, the 6th red only on a scenario that crossed the new level quest gates (fixed in the scenario, passed alone); batch 6b run 31638 and batch 7 run 7644 passed (6th and 7th clean in a row); batch 8 run 36803 had two red scenarios (92-objects2, 93-objects-gaps; fixed and re-run alone, no clean full run on the final tree); batch 9 run 98647 passed fully, so the current streak is 1 clean full verify</text>
 </svg>
