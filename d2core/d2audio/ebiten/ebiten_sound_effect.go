@@ -64,6 +64,12 @@ func (v *SoundEffect) SetPan(pan float64) {
 	v.panStream.Lock.Unlock()
 }
 
+// SetVolumeScale replaces the provider's master volume factor of this effect
+// (the sound engine applies the master volumes itself and sets 1).
+func (v *SoundEffect) SetVolumeScale(scale float64) {
+	v.volumeScale = scale
+}
+
 // SetVolume ets the volume
 func (v *SoundEffect) SetVolume(volume float64) {
 	v.player.SetVolume(volume * v.volumeScale)

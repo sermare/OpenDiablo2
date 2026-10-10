@@ -103,6 +103,8 @@ func (v *Game) skillEngine() *d2skills.Engine {
 		Act:          v.currentAct,
 		Difficulty:   int(v.gameClient.Difficulty),
 	})
+	v.skills.Rivals = v.skillRivals
+	v.skills.OnPvPHit = v.sendSkillPvP
 
 	if st := v.localPlayer.Stats; st != nil {
 		id, eng := v.localPlayer.ID(), v.skills
@@ -120,6 +122,8 @@ func (v *Game) skillEngine() *d2skills.Engine {
 			return out
 		}
 	}
+
+	v.skills.OnSound = v.onSkillSound
 
 	return v.skills
 }

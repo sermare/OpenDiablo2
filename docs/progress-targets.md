@@ -20,7 +20,37 @@ verify yet; it is not counted in the percentage. Numbers marked `~` are estimate
 | Monster AI archetypes implemented | 148 `monai.txt` entries | AI names with a Go think function (145; Tentacle, TentacleHead, FrogDemon missing) |
 | Monster AI archetypes ported faithfully | 148 | ~85: ported from the exe think functions, not stand-ins |
 | In-game UI panels matching the original layout | 14 panels | panels whose logged rectangles equal the golden from the exe in a real game run (0 so far) |
+| Real full verify green (scenario sections per job, real parallel log) | distinct `==` sections that ran in a real `scripts/verify_parallel.sh` log (74 in run 47389) | sections with no `FAIL:` line (71: red are Act 3 gate, skill bar, act travel); update from each new full run |
 | Item generation gaps closed vs the exe | 12 gaps in the itemgen notes | gaps closed and checked against the emulator |
 
 How to update: edit `docs/progress.json` (`done`, `pending`, `total`, `note`), run `python3 scripts/make_progress_svg.py`,
 commit. A bar moves from pending to done only when its branch is merged into `integration` and `verify.sh` passed on it.
+
+## Game v1 complete (the headline bar)
+
+**Definition of v1:** a person double-clicks the Mac app, makes or loads a character and plays Acts 1-5 single player
+(quests, items, skills, monsters, saves, sound) without hitting a blocker; multiplayer through the game screen and
+the Mac packaging count too. The percentage is the weighted average of the bars below (weights sum to 100, kept in
+`docs/progress.json` under `v1.weights`). Reverse-engineering bars (names in Ghidra, files studied) are deliberately
+not in it: they support the game but are not the product. The dashed part is work on branches that has not passed the
+full verify yet.
+
+| Weight | Bar |
+|---|---|
+| 14 | Acts playable end to end (scripted play) |
+| 10 | Acts played start to finish by a human tester (0 until a person plays them) |
+| 6 | Levels walked by a verify scenario |
+| 8 | Main quests with logic implemented |
+| 10 | Player skills with engine behaviour |
+| 6 + 2 | Monster AI archetypes ported faithfully + implemented |
+| 6 | Item generation gaps closed vs the exe |
+| 6 | In-game UI panels matching the original layout |
+| 6 | Sound and music confirmed by a human listen |
+| 6 | Real full verify green (scenario sections per job) |
+| 4 | Multiplayer playable through the game screen |
+| 4 | Mac app: build, Finder launch with real maps, disk image |
+| 4 + 4 + 4 | Level generator proven, .d2s save verified, NPC interaction features |
+
+New bars (all start honest): *Sound and music confirmed by a human listen* (0/5: only a person can confirm
+menu music, NPC voices, footsteps, spell sounds, ambient), *Multiplayer playable through the game screen* (0/4),
+*Mac app* (2/3), *Acts played start to finish by a human tester* (0/5: the real completeness gauge).

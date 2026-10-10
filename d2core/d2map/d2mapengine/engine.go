@@ -146,7 +146,13 @@ func (m *MapEngine) addDT1(fileName string) {
 	}
 
 	m.dt1Starts = append(m.dt1Starts, len(m.dt1TileData))
+	first := len(m.dt1TileData)
 	m.dt1TileData = append(m.dt1TileData, dt1.Tiles...)
+
+	if isMarkerDT1(fileName) {
+		stripMarkerGraphics(m.dt1TileData[first:])
+	}
+
 	m.extendRank()
 	m.dt1Files = append(m.dt1Files, fileName)
 }
@@ -490,4 +496,37 @@ func (m *MapEngine) GetTileData(style, sequence int, tileType d2enum.TileType, i
 	}
 
 	return nil
+}
+
+// markerDT1Names are the base names of marker-only DT1 files (Warp, InvisWal, Mesa Inv_Wall, the expansion
+// town Collision.dt1). That the original draws none of them is inferred from the game never showing the lattices.
+var markerDT1Names = []string{"/warp.dt1", "/inviswal.dt1", "/inv_wall.dt1", "/collision.dt1"}
+
+// isMarkerDT1 reports whether a DT1 file only holds logical marker tiles (warps, start positions, invisible
+// walls). Their pixel data is an editor lattice (blue/green grid) that the original never shows; the files
+// exist for the sub-tile flags and the tile keys.
+func isMarkerDT1(file string) bool {
+	file = strings.ToLower(strings.ReplaceAll(file, "\\", "/"))
+
+	for _, name := range markerDT1Names {
+		if strings.HasSuffix(file, name) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// stripMarkerGraphics removes the graphics of marker tiles in place (the slice must be a private copy). The
+// sub-tile flags stay, so collision still works.
+func stripMarkerGraphics(tiles []d2dt1.Tile) {
+	for i := range tiles {
+		tiles[i].Blocks = nil
+
+		// a floor keeps its size: it is drawn as an empty image, a zero-sized one would be reported every frame
+		if tiles[i].Type != 0 {
+			tiles[i].Height = 0
+			tiles[i].Width = 0
+		}
+	}
 }

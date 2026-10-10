@@ -17,6 +17,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2party"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2portal"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
@@ -84,6 +85,8 @@ type GameClient struct {
 	OnPvPHit  func(d2netpacket.PvPHitPacket)
 	OnPartyXP func(d2netpacket.PartyXPPacket)
 	OnRoster  func(notice string)
+	// OnPortals receives the server's list of open town portal pairs.
+	OnPortals func(pairs []d2portal.Pair, notice string)
 
 	*d2util.Logger
 }
@@ -331,6 +334,8 @@ func (g *GameClient) handlePacket(packet d2netpacket.NetPacket) error {
 		return g.handlePvPPacket(packet)
 	case d2netpackettype.PartyXP:
 		return g.handlePartyXPPacket(packet)
+	case d2netpackettype.PortalUpdate:
+		return g.handlePortalPacket(packet)
 	case d2netpackettype.ServerClosed:
 		// https://github.com/OpenDiablo2/OpenDiablo2/issues/802
 		g.Infof("Server has been closed")
@@ -480,6 +485,15 @@ func (g *GameClient) handleMovePlayerPacket(packet d2netpacket.NetPacket) error 
 	player := g.Players[movePlayer.PlayerID]
 	if player == nil {
 		return nil // a player this client has not been told about yet
+	}
+
+	if movePlayer.StartX == movePlayer.DestX && movePlayer.StartY == movePlayer.DestY {
+		// the server's "stands here" after a level change
+		player.StopMoving()
+		player.Position.Set(movePlayer.StartX*numSubtilesPerTile, movePlayer.StartY*numSubtilesPerTile)
+		player.Target = player.Position
+
+		return nil
 	}
 
 	start := d2vector.NewPositionTile(movePlayer.StartX, movePlayer.StartY)

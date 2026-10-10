@@ -3,16 +3,18 @@ package d2gamescreen
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
-	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2playertrade"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2skills"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket"
 )
@@ -44,6 +46,7 @@ func (v *Game) hookNetwork() {
 	v.gameClient.OnPvPHit = v.onPvPHit
 	v.gameClient.OnPartyXP = v.onPartyXP
 	v.gameClient.OnRoster = v.onRoster
+	v.hookPortals()
 }
 
 // advanceSocial connects the screen's pieces to the roster once they exist.
@@ -55,6 +58,8 @@ func (v *Game) advanceSocial(_ float64) {
 	v.social.hooked = true
 
 	v.gameControls.SetTradeHandler(v)
+	v.gameControls.OnTownPortal = v.useTownPortalItem
+	v.syncPortals() // pairs that arrived while the map was still loading
 	v.gameControls.SetRelationSource(v.relationOf)
 
 	if pp := v.gameControls.PartyPanel; pp != nil {
@@ -151,67 +156,6 @@ func (v *Game) commandKillNear(_ []string) error {
 
 	v.Infof("KILLNEAR %s", m.Label())
 	d.Damage(m, 1<<20, v.localPlayer)
-
-	return nil
-}
-
-// commandSpawnRank spawns a champion pack, a unique pack or a super unique
-// (by its SuperUniques.txt key) beside the hero and logs its type flags and
-// modifiers (MONSTER rank ...), for the drop tests.
-func (v *Game) commandSpawnRank(args []string) error {
-	d := v.monsterDirector()
-	if d == nil {
-		return errors.New("no monsters yet")
-	}
-
-	centre := d2path.Point{X: int(v.localPlayer.Position.X()) + monsterTestRing, Y: int(v.localPlayer.Position.Y())}
-
-	var (
-		res *d2monsters.PackResult
-		err error
-	)
-
-	switch args[0] {
-	case "super":
-		res, err = d.SpawnSuperUnique(args[1], centre)
-	case "champion", "unique":
-		stat := d.FindStat(args[1])
-		if stat == nil {
-			return fmt.Errorf("no monster %q", args[1])
-		}
-
-		if args[0] == "champion" {
-			res, err = d.SpawnChampionGroup(stat, centre)
-		} else {
-			res, err = d.SpawnUniqueGroup(stat, centre)
-		}
-	default:
-		return fmt.Errorf("spawnrank: unknown kind %q", args[0])
-	}
-
-	if err != nil {
-		return err
-	}
-
-	v.rankLeader = res.Leader
-
-	for _, m := range res.Monsters {
-		v.Infof("MONSTER rank kind=%s name=%s type_flags=%#x super_unique=%q hcidx=%d mods=%v", args[0], m.Label(), m.TypeFlags,
-			m.SuperUnique, m.SuperUniqueIdx, m.Modifiers)
-	}
-
-	return nil
-}
-
-// commandKillLeader kills the leader of the last spawnrank pack as the hero.
-func (v *Game) commandKillLeader(_ []string) error {
-	d := v.monsterDirector()
-	if d == nil || v.rankLeader == nil {
-		return errors.New("no pack leader")
-	}
-
-	v.Infof("KILLLEADER %s", v.rankLeader.Label())
-	d.Damage(v.rankLeader, 1<<20, v.localPlayer)
 
 	return nil
 }
@@ -328,11 +272,108 @@ func (v *Game) pvpSwing(target *d2mapentity.Player) error {
 	return v.gameClient.SendPacketToServer(pkt)
 }
 
+// commandPvPCast is "pvpcast <skill> <player>": the skill goes at the other
+// player's position (scenarios: the autoscript cast needs fixed coordinates).
+func (v *Game) commandPvPCast(args []string) error {
+	id, err := v.resolveTarget(args[1])
+	if err != nil {
+		return err
+	}
+
+	target := v.gameClient.Players[id]
+	if target == nil {
+		return fmt.Errorf("player %s is not here", args[1])
+	}
+
+	eng := v.skillEngine()
+	if eng == nil {
+		return errors.New("no skill engine yet")
+	}
+
+	skill := strings.ReplaceAll(args[0], "_", " ")
+
+	sid := eng.SkillID(skill)
+	if sid < 0 {
+		return fmt.Errorf("unknown skill %q", skill)
+	}
+
+	x, y := target.GetPositionF()
+	v.Infof("PVP CAST skill=%q target=%q at=(%.1f,%.1f)", skill, target.Name(), x, y)
+	v.OnPlayerCast(sid, x, y)
+
+	return nil
+}
+
+// commandPvPWalk is "pvpwalk <dx> <dy>": walk by that many tiles.
+func (v *Game) commandPvPWalk(args []string) error {
+	dx, err1 := strconv.ParseFloat(args[0], 64)
+	dy, err2 := strconv.ParseFloat(args[1], 64)
+
+	if err1 != nil || err2 != nil {
+		return errors.New("pvpwalk needs two numbers")
+	}
+
+	x, y := v.localPlayer.GetPositionF()
+	v.OnPlayerMove(x+dx, y+dy)
+
+	return nil
+}
+
+// commandSetHP is "sethp <n>": the hero's life points (scenarios).
+func (v *Game) commandSetHP(args []string) error {
+	n, err := strconv.Atoi(args[0])
+	if err != nil || n < 1 {
+		return errors.New("sethp needs a positive number")
+	}
+
+	v.localPlayer.Stats.Health = n
+	v.Infof("HP set to %d/%d", n, v.localPlayer.Stats.MaxHealth)
+
+	return nil
+}
+
+// skillRivals lists the heroes the local hero's skills may hurt: declared
+// hostile (and not in its party), not in town, alive and in this level.
+func (v *Game) skillRivals() []*d2mapentity.Player {
+	if v.localPlayer == nil || v.gameClient.IsSinglePlayer() || v.localPlayer.IsInTown() {
+		return nil
+	}
+
+	var out []*d2mapentity.Player
+
+	for id, p := range v.gameClient.Players {
+		if id == v.me() || p == nil || p.IsInTown() || !v.gameClient.Roster.CanAttack(v.me(), id) {
+			continue
+		}
+
+		out = append(out, p)
+	}
+
+	return out
+}
+
+// sendSkillPvP announces a scaled skill hit on a hostile hero to the server,
+// which checks the hostility and relays it to the defender.
+func (v *Game) sendSkillPvP(h d2skills.PvPHit) {
+	pkt, err := d2netpacket.CreatePvPHitPacket(d2netpacket.PvPHitPacket{Attacker: v.me(), Target: h.Target.ID(),
+		Damage: h.Parts.Total(), Raw: h.Raw, Skill: h.Skill, Parts: h.Parts.Slice()})
+	if err != nil {
+		v.Errorf("PVP skill packet: %v", err)
+		return
+	}
+
+	v.Infof("PVP SKILL target=%q skill=%q raw=%d scaled=%d pct=%d", h.Target.Name(), h.Skill, h.Raw, h.Parts.Total(),
+		d2combat.PvPPercent())
+
+	if err := v.gameClient.SendPacketToServer(pkt); err != nil {
+		v.Errorf("PVP skill packet: %v", err)
+	}
+}
+
 // onPvPHit applies a hit of a hostile player to the local hero.
 func (v *Game) onPvPHit(p d2netpacket.PvPHitPacket) {
 	if p.Kill {
 		v.onPvPKill(p)
-
 		return
 	}
 
@@ -342,12 +383,23 @@ func (v *Game) onPvPHit(p d2netpacket.PvPHitPacket) {
 
 	st := v.localPlayer.Stats
 	physResist, reduce := 0, 0
+	def := d2combat.PvPDefender{}
 
 	if t := st.Totals; t != nil {
 		physResist, reduce = t.PhysResist, t.DamageReduction
+		def = d2combat.PvPDefender{
+			PhysResist: t.PhysResist, MagicResist: t.MagicResist, Reduce: t.DamageReduction, MagicReduce: t.MagicReduction,
+			FireResist: t.ResistShown[d2statlist.ResFire], ColdResist: t.ResistShown[d2statlist.ResCold],
+			LightResist: t.ResistShown[d2statlist.ResLight],
+		}
 	}
 
 	taken := d2combat.PvPReceive(p.Damage, physResist, reduce)
+
+	if parts, ok := d2combat.PvPPartsFromSlice(p.Parts); ok {
+		taken = d2combat.PvPReceiveParts(parts, def)
+	}
+
 	before := st.Health
 
 	st.Health -= taken
@@ -360,56 +412,73 @@ func (v *Game) onPvPHit(p d2netpacket.PvPHitPacket) {
 		attacker = m.Name
 	}
 
-	v.Infof("PVP HIT attacker=%q raw=%d scaled=%d taken=%d hp %d->%d/%d", attacker, p.Raw, p.Damage, taken, before,
-		st.Health, st.MaxHealth)
+	v.Infof("PVP HIT attacker=%q raw=%d scaled=%d taken=%d hp %d->%d/%d skill=%q", attacker, p.Raw, p.Damage, taken, before,
+		st.Health, st.MaxHealth, p.Skill)
 
 	if before > 0 && st.Health == 0 {
-		// softcore: nothing special happens for a hostile kill; the hero dies
-		// like to a monster (corpse, experience loss) and the killer gets no ear
-		// (ears are a hardcore rule, d2combat.PvPKillGivesEar)
+		// the hero dies like to a monster (corpse, experience loss); the victim
+		// also tells the killer, who gets an ear for a hardcore victim
+		// (d2combat.PvPKillGivesEar)
 		v.Infof("PVP KILLED by=%q ear=%v hardcore=%v", attacker, d2combat.PvPKillGivesEar(v.localPlayer.Hardcore),
 			v.localPlayer.Hardcore)
 
-		if d2combat.PvPKillGivesEar(v.localPlayer.Hardcore) {
-			// tell the server where the hero fell; it names the victim from the roster
-			x, y := v.localPlayer.GetPositionF()
+		class, _ := d2hero.D2SClassOf(v.localPlayer.Class)
 
-			if pkt, err := d2netpacket.CreatePvPHitPacket(d2netpacket.PvPHitPacket{
-				Kill: true, Attacker: v.me(), Target: p.Attacker, X: int(x), Y: int(y)}); err == nil {
-				_ = v.gameClient.SendPacketToServer(pkt)
-			}
+		pkt, err := d2netpacket.CreatePvPHitPacket(d2netpacket.PvPHitPacket{Attacker: v.me(), Target: p.Attacker, Kill: true,
+			Level: st.Level, Class: int(class), Hardcore: v.localPlayer.Hardcore})
+		if err == nil {
+			err = v.gameClient.SendPacketToServer(pkt)
+		}
+
+		if err != nil {
+			v.Errorf("PVP kill packet: %v", err)
 		}
 	}
 }
 
-// onPvPKill is the killer's side of a hardcore kill: the ear of the victim
-// (name, class, level) is made with the item factory and dropped on the ground
-// where the victim fell. The inventory saves it with the other items and the
-// .d2s item encoder writes it (d2hero.D2SItemFromStored).
+// onPvPKill is the killer's side of a PvP death: the victim's client reports
+// it; for a hardcore victim the killer receives an ear, which is dropped on the
+// ground where the victim fell (the original puts the ear in the killer's
+// inventory or on the ground; the drop is UNVERIFIED).
 func (v *Game) onPvPKill(p d2netpacket.PvPHitPacket) {
-	ear, err := v.itemFactory().NewEar(p.VictimName, p.VictimClass, p.VictimLevel)
-	if err != nil {
-		v.Warningf("PVP EAR not made for %q: %v", p.VictimName, err)
-
+	if p.Target != v.me() || v.localPlayer == nil {
 		return
 	}
 
-	cells := v.freeDropCells(p.X, p.Y, 1, false)
-	if len(cells) == 0 {
-		v.Warningf("PVP EAR of %q: no free ground cell", p.VictimName)
+	victim := p.Attacker
+	if m, ok := v.gameClient.Roster.Member(p.Attacker); ok {
+		victim = m.Name
+	}
 
+	if !d2combat.PvPKillGivesEar(p.Hardcore) {
+		v.Infof("PVP KILL victim=%q level=%d softcore, no ear", victim, p.Level)
+		return
+	}
+
+	x, y := v.localPlayer.GetPositionF()
+	if pl := v.gameClient.Players[p.Attacker]; pl != nil {
+		x, y = pl.GetPositionF()
+	}
+
+	ear, err := v.itemFactory().NewEar(victim, p.Class, p.Level)
+	if err != nil {
+		v.Errorf("PVP EAR: %v", err)
+		return
+	}
+
+	cells := v.freeDropCells(int(math.Floor(x)), int(math.Floor(y)), 1, false)
+	if len(cells) == 0 {
+		v.Warningf("PVP EAR: no free ground cell")
 		return
 	}
 
 	if _, err := v.spawnGroundItem(ear, cells[0]); err != nil {
-		v.Warningf("PVP EAR of %q: no ground graphic: %v", p.VictimName, err)
-
+		v.Errorf("PVP EAR: %v", err)
 		return
 	}
 
-	v.Infof("ITEMGEN created source=pvp %s", ear.CreationLine())
-	v.Infof("PVP EAR name=%q class=%d level=%d label=%q pos=(%d,%d)", p.VictimName, p.VictimClass, p.VictimLevel,
-		plainLabel(ear.Label()), cells[0].X, cells[0].Y)
+	v.Infof("PVP EAR dropped victim=%q level=%d class=%d label=%q pos=(%d,%d)", victim, p.Level, p.Class, plainLabel(ear.Label()),
+		cells[0].X, cells[0].Y)
 }
 
 // ---- trade ----

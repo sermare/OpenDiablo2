@@ -52,8 +52,10 @@ type Counters struct {
 	// AreaHits are targets reached by area effects and splash, DotDamage the
 	// poison and burn damage dealt.
 	AreaHits, DotDamage int
-	ManaSpent           int // 8.8
-	Damage              int // whole points dealt after resists
+	// PvPHits are skill hits on hostile heroes.
+	PvPHits   int
+	ManaSpent int // 8.8
+	Damage    int // whole points dealt after resists
 }
 
 type timer struct {
@@ -96,11 +98,25 @@ type Engine struct {
 	dots       map[string]dotTotal
 	abc        abcState // Find Potion / Find Item / Grim Ward / Whirlwind, effects_abc.go
 
+	// Rivals lists the heroes hostile to the local hero (see pvp.go); nil means
+	// no player versus player.
+	Rivals func() []*d2mapentity.Player
+	// OnPvPHit receives each scaled skill hit on a rival; the game sends it to
+	// the defender's client.
+	OnPvPHit func(PvPHit)
+
+	rivalTargets map[string]*playerTarget
+
 	// Counters are updated as events happen.
 	Counters Counters
 	// OnEvent receives every log line as a structured event (kind cast, mana,
 	// missile, hit, damage, state...).
 	OnEvent func(kind, line string)
+	// OnSound plays a skill or missile sound; it returns a function that stops
+	// it again (looping travel sounds), or nil.
+	OnSound func(SoundEvent) (stop func())
+
+	travel map[uint32]func() // missile id -> stop of its travel sound
 }
 
 // New creates an engine for a map. monsters supplies targets and the grid.
@@ -111,6 +127,7 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 		heroes: map[string]*heroUnit{}, targets: map[string]*monsterTarget{},
 		visuals: map[uint32]*d2mapentity.Missile{}, fx: map[*d2mapentity.Missile]int{},
 		sets: map[string]*d2state.Set{}, auras: map[string]*auraRun{}, pets: map[string][]*d2mapentity.Monster{}, dots: map[string]dotTotal{},
+		travel: map[uint32]func(){},
 	}
 
 	e.Logger.SetLevel(l)
@@ -300,9 +317,19 @@ func (e *Engine) CastAt(p *d2mapentity.Player, skillID, sx, sy int) bool {
 
 	e.castOverlay(p, e.asset.Records.Skill.Details[skillID])
 
-	run := func() { e.runDo(p, u, sk, tg) }
-
 	rec := e.asset.Records.Skill.Details[skillID]
+	if rec != nil {
+		e.skillSound(p, "skill-start", rec.Stsound, sk.Name)
+	}
+
+	run := func() {
+		if rec != nil {
+			e.skillSound(p, "skill-do", rec.Dosound, sk.Name)
+		}
+
+		e.runDo(p, u, sk, tg)
+	}
+
 	if rec == nil || rec.Anim == d2enum.PlayerAnimationModeNone {
 		run()
 		return true
@@ -358,6 +385,14 @@ func (e *Engine) targetAt(sx, sy int) d2skill.Target {
 		}
 	}
 
+	for _, p := range e.rivalsNear(sx, sy, pickRadius) {
+		px, py := int(p.Position.X()), int(p.Position.Y())
+		if d := chebyshev(px-sx, py-sy); d < best {
+			best = d
+			tg.Unit, tg.UX, tg.UY = e.rivalTarget(p), px, py
+		}
+	}
+
 	return tg
 }
 
@@ -383,6 +418,8 @@ func (e *Engine) runDo(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, tg
 	if tg.Unit != nil {
 		if mt, ok := tg.Unit.(*monsterTarget); ok {
 			tg.UX, tg.UY = mt.m.SubtilePos()
+		} else if pt, ok := tg.Unit.(*playerTarget); ok {
+			tg.UX, tg.UY = int(pt.p.Position.X()), int(pt.p.Position.Y())
 		}
 	}
 
@@ -466,6 +503,11 @@ func (e *Engine) meleeResult(p *d2mapentity.Player, sk *d2skill.Skill, r *d2skil
 		e.hurt(mt.m, p, &r.Damage, sk.Name)
 		e.leech(p, &r.Damage, e.lastDealt)
 		e.itemEvents(mt.m, p, true) // crushing blow, open wounds: after the base damage
+	}
+
+	if pt, ok := r.Target.(*playerTarget); ok {
+		e.Counters.Hits++
+		e.hurtPlayer(pt.p, p, &r.Damage, sk.Name)
 	}
 }
 
@@ -906,6 +948,8 @@ func (e *Engine) runTimers() {
 }
 
 func (e *Engine) onSim(ev d2missile.Event) {
+	e.missileSound(ev)
+
 	m := ev.Missile
 	name := m.Spec.Name
 
@@ -937,6 +981,10 @@ func (e *Engine) onSim(ev d2missile.Event) {
 
 		if mt != nil {
 			e.splash(m, mt.m, &ev.Damage)
+		}
+
+		if pt, ok := ev.Target.(*playerTarget); ok && ev.Damage.SumTotal(true) > 0 {
+			e.hurtPlayer(pt.p, e.owner(m), &ev.Damage, e.skillName(m.SkillID))
 		}
 	case d2missile.EventMiss:
 		e.Counters.Misses++

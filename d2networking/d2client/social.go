@@ -46,6 +46,22 @@ func (g *GameClient) handleRosterPacket(packet d2netpacket.NetPacket) error {
 	return nil
 }
 
+// handlePortalPacket hands the server's list of town portal pairs to the game.
+func (g *GameClient) handlePortalPacket(packet d2netpacket.NetPacket) error {
+	u, err := d2netpacket.UnmarshalPortalUpdate(packet.PacketData)
+	if err != nil {
+		return err
+	}
+
+	g.Infof("PORTAL list pairs=%d notice=%q", len(u.Pairs), u.Notice)
+
+	if g.OnPortals != nil {
+		g.OnPortals(u.Pairs, u.Notice)
+	}
+
+	return nil
+}
+
 func (g *GameClient) handleTradePacket(packet d2netpacket.NetPacket) error {
 	u, err := d2netpacket.UnmarshalTradeUpdate(packet.PacketData)
 	if err != nil {

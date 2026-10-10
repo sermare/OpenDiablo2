@@ -45,6 +45,7 @@ func (a *App) initialize() error {
 	a.screen = d2screen.NewScreenManager(a.ui, *a.Options.LogLevel, a.guiManager)
 
 	a.audio.SetVolumes(a.config.BgmVolume, a.config.SfxVolume)
+	a.applySpeechOption()
 	d2player.SetOptionsBackend(optionsBackend{a})
 
 	if err := a.loadStrings(); err != nil {

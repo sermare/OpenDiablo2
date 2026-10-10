@@ -62,16 +62,7 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		spec = rolled
 	}
 
-	item, err := f.ItemFromSpec(spec)
-	if err != nil {
-		return nil, err
-	}
-
-	if s.D2S != nil {
-		item.SetOrigin(s.D2S) // the tooltip is built from the saved item
-	}
-
-	return item, nil
+	return f.ItemFromSpec(spec)
 }
 
 // storedFromItem describes a placed item.
@@ -92,13 +83,17 @@ func storedFromItem(it *diablo2item.Item, page, x, y int, orig *d2s.Item) d2hero
 		s.Mods = append(s.Mods, d2hero.StoredMod{Code: m.Code, Param: m.Param, Min: m.Min, Max: m.Max, Value: m.Value})
 	}
 
-	if spec.Rolled != nil || spec.Ear != nil {
+	if spec.Ear != nil {
+		s.Spec = &spec // an ear is rebuilt from its player, and written to the .d2s as an ear
+	}
+
+	if spec.Rolled != nil {
 		s.Spec = &spec
 		stat := it.StatItem()
 		s.Stat = &stat
 	}
 
-	if orig == nil && spec.Ear == nil {
+	if orig == nil {
 		// made in the game: keep the rolled numbers for the .d2s export
 		f := it.Facts()
 		s.Facts = &f
@@ -286,7 +281,7 @@ func (g *GameControls) SpecRoundTripMismatches() (checked, mismatched int) {
 			return
 		}
 
-		if a, b := strings.Join(item.GeneratedDescription(), "|"), strings.Join(again.GeneratedDescription(), "|"); a != b {
+		if a, b := strings.Join(item.GetItemDescription(), "|"), strings.Join(again.GetItemDescription(), "|"); a != b {
 			g.Infof("AUTOPANEL spec mismatch code=%s: %q != %q", item.CommonCode, a, b)
 			mismatched++
 		}
