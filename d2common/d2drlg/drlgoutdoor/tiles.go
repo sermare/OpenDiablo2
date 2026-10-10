@@ -55,8 +55,9 @@ type RoomTiles struct {
 	// neighbouring rooms can still advance it).
 	Seed d2rand.Seed
 
-	groups []*tileGroup // newest first
-	nbrs   []*Room
+	groups   []*tileGroup // newest first
+	nbrs     []*Room
+	warpHead map[int]*TileRecord // exit entry (by cell style) -> newest linked warp record
 }
 
 // unported marks a branch of the original that no tested room reaches.
@@ -394,32 +395,38 @@ func (t *tileBuilder) touch(rec *TileRecord, ori int, v uint32, x, y int) {
 
 // tileObjRow is a row of the exe's tile object table (0x6f0738, 28 bytes): a
 // wall tile (style, sequence, orientation 9 or not) of a level spawns an object
-// or monster at a subtile offset. Only the rows of the outdoor levels that have
-// an entry in the level range table (0x6f0580), Act 5, are kept; the other
-// rows belong to Act 1/2 mazes. A type 2 row with id 0x5b/0x5c would roll the
-// room seed; none of the kept rows does.
+// (typ 2) or monster (typ 1) with id at a subtile offset. The rows a level
+// owns are the inclusive range of the level table at 0x6f0578 (tileObjLevels).
+// A typ 2 row with id 0x5b/0x5c rolls the room seed before the spawn (rows 19
+// and 20, the Act 2 mazes; not ported). The spawn itself touches no RNG.
 type tileObjRow struct {
 	style, seq int
 	ori9       bool
+	typ, id    int
 	dx, dy     int
 }
 
-var tileObjRows = [...]tileObjRow{ // rows 23..33
-	{3, 3, false, -2, 4}, {2, 1, false, 1, 2}, {2, 1, true, 2, 1}, {2, 6, false, 1, 1},
-	{2, 2, false, 0, 1}, {2, 3, true, 1, 0}, {26, 0, false, 0, 1}, {2, 4, true, 0, 0},
-	{2, 4, false, 0, 0}, {29, 0, true, 2, 0}, {29, 0, false, 0, 2},
+var tileObjRows = [...]tileObjRow{
+	{7, 0, true, 2, 14, 5, 0}, {7, 0, false, 2, 13, 0, 5}, {5, 0, true, 2, 16, 0, 0}, {5, 0, false, 2, 15, 0, 0},
+	{6, 0, true, 2, 27, 5, -2}, {4, 0, true, 2, 24, 1, 2}, {4, 0, false, 2, 23, 0, 0}, {4, 3, true, 2, 25, 1, 0},
+	{1, 2, false, 2, 62, 0, 3}, {1, 2, true, 2, 63, 3, 0}, {0, 0, true, 2, 16, 0, 0}, {0, 0, false, 2, 64, 0, 0},
+	{2, 0, true, 2, 47, 5, 0}, {0, 1, true, 2, 291, 2, 0}, {0, 1, false, 2, 290, 0, 2}, {5, 0, true, 2, 293, 2, 0},
+	{4, 0, false, 2, 292, 0, 2}, {0, 0, true, 2, 295, 2, 0}, {0, 0, false, 2, 294, 0, 2}, {2, 4, true, 2, 92, 1, 0},
+	{2, 1, false, 2, 91, 0, 2}, {0, 1, true, 2, 229, 0, 0}, {0, 1, false, 2, 230, 0, 0}, {3, 3, false, 2, 449, -2, 4},
+	{2, 1, false, 1, 435, 1, 2}, {2, 1, true, 1, 435, 2, 1}, {2, 6, false, 1, 435, 1, 1}, {2, 2, false, 1, 433, 0, 1},
+	{2, 3, true, 1, 432, 1, 0}, {26, 0, false, 1, 434, 0, 1}, {2, 4, true, 1, 524, 0, 0}, {2, 4, false, 1, 525, 0, 0},
+	{29, 0, true, 2, 60, 2, 0}, {29, 0, false, 2, 60, 0, 2},
 }
 
-// tileObjRange maps a level to its row range (inclusive, first row is 23).
-func tileObjRange(id int) (lo, hi int, ok bool) {
-	switch id {
-	case 109:
-		return 23, 24, true
-	case 111, 112, 117:
-		return 24, 33, true
-	}
-
-	return 0, 0, false
+// tileObjLevels is the level table at 0x6f0578 (level, first row, last row),
+// searched in order; read from the exe.
+var tileObjLevels = [...][3]int{
+	{28, 0, 3}, {29, 0, 3}, {30, 0, 3}, {31, 0, 3}, {26, 4, 6}, {27, 4, 6}, {32, 5, 9}, {33, 5, 9},
+	{34, 10, 11}, {35, 10, 11}, {36, 10, 11}, {37, 10, 12}, {51, 13, 14}, {52, 15, 18}, {53, 15, 18},
+	{54, 15, 18}, {55, 19, 20}, {56, 19, 20}, {57, 19, 20}, {58, 19, 20}, {59, 19, 20}, {60, 19, 20},
+	{61, 19, 20}, {66, 19, 20}, {67, 19, 20}, {68, 19, 20}, {69, 19, 20}, {70, 19, 20}, {71, 19, 20},
+	{72, 19, 20}, {62, 21, 22}, {63, 21, 22}, {64, 21, 22}, {109, 23, 24}, {111, 24, 33}, {112, 24, 33},
+	{117, 24, 33},
 }
 
 // tileObject is DRLG_CreateTileObject (0x6706a0) as far as it shows in the
@@ -430,15 +437,22 @@ func (t *tileBuilder) tileObject(rec *TileRecord, room *Room, v uint32, ori9 boo
 		return
 	}
 
-	lo, hi, ok := tileObjRange(t.l.Params.ID)
-	if !ok {
-		return
-	}
-
 	style, seq := int(v>>20)&0x3f, int(v>>8)&0xff
 
+	for _, lv := range tileObjLevels {
+		if lv[0] != t.l.Params.ID {
+			continue
+		}
+
+		t.tileObjectRows(rec, room, lv[1], lv[2], style, seq, ori9, x, y)
+
+		return
+	}
+}
+
+func (t *tileBuilder) tileObjectRows(rec *TileRecord, room *Room, lo, hi, style, seq int, ori9 bool, x, y int) {
 	for k := lo; k <= hi; k++ {
-		r := tileObjRows[k-23]
+		r := tileObjRows[k]
 		if r.style != style || r.seq != seq || r.ori9 != ori9 {
 			continue
 		}
@@ -446,6 +460,10 @@ func (t *tileBuilder) tileObject(rec *TileRecord, room *Room, v uint32, ori9 boo
 		sx, sy := (x-room.X)*5+r.dx, (y-room.Y)*5+r.dy
 		if sx < 0 || sy < 0 || sx >= room.W*5 || sy >= room.H*5 {
 			return
+		}
+
+		if r.typ == 2 && (r.id == 0x5b || r.id == 0x5c) {
+			panic(unported("tile object row that rolls the room seed"))
 		}
 
 		if rec != nil {
@@ -558,6 +576,18 @@ func (t *tileBuilder) warpWall(rec *TileRecord, v uint32, ori int) {
 			return
 		}
 	}
+
+	// 0x670fae: the record leaves its group chain: its next pointer is reused
+	// for the exit entry's own list (rec.next = link.head; link.head = rec).
+	// Every older record of the same group becomes unreachable for the
+	// neighbour lookup (0x671190), so a room next to a cave-entrance piece does
+	// not merge with the cells built before it (levels 94 and 97).
+	if t.rt.warpHead == nil {
+		t.rt.warpHead = map[int]*TileRecord{}
+	}
+
+	rec.next = t.rt.warpHead[style]
+	t.rt.warpHead[style] = rec
 
 	if w.LitVersion != 0 {
 		dw := uint32(w.Tiles)<<8 | v

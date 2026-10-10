@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgworld"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 )
 
@@ -281,6 +282,25 @@ func GeneratePreset(env *Env, p Params, fileOverride int) (res *PresetLevel, err
 	return out, nil
 }
 
+// PresetFileOverride is the preset file index the Act 1 world search forces
+// on a level before it is generated (level data +4, read by 0x66ad50: a value
+// other than -1 replaces the rolled file): the Rogue Encampment's town file and
+// Courtyard 1's exit side (0..2). -1 means the file is rolled.
+func PresetFileOverride(lay *drlgworld.Layout, id int) int {
+	if lay == nil {
+		return -1
+	}
+
+	switch id {
+	case 1:
+		return lay.TownFile
+	case 27:
+		return lay.BarracksExitSide
+	}
+
+	return -1
+}
+
 // ParamsPreset builds the generator inputs of a DrlgType 2 level that is not
 // part of any world layout (Act 1 treasure caves 13..16 and Andariel's
 // Catacombs Level 4, 37): the rectangle is the Levels.txt offset and size, vis
@@ -295,6 +315,22 @@ func ParamsPreset(t d2drlg.Levels, id int, gameSeed uint32, diff d2drlg.Difficul
 	p := Params{ID: id, Vis: rec.Vis, Warp: rec.Warp}
 	p.BaseSeed, _ = d2rand.DrlgBaseSeed(gameSeed)
 	p.Rect = Rect{rec.OffsetX, rec.OffsetY, rec.SizeX[diff], rec.SizeY[diff]}
+
+	// Levels.txt Depend (record +0x2c, read by 0x644190): the offset is relative
+	// to the rectangle origin of that level (Courtyard 1 on Monastery, Cathedral
+	// on Courtyard 2). Verified against the emulator: 27 -> (3000, 960),
+	// 33 -> (3996, 966). Only bases with an absolute Levels.txt offset are
+	// resolved here; a base placed by a world layout is not available.
+	for dep, n := rec.Depend, 0; dep != 0; n++ {
+		base, ok := t.Level(dep)
+		if !ok || n > 4 || base.OffsetX < 0 {
+			return Params{}, fmt.Errorf("drlgoutdoor: level %d depends on level %d with no absolute offset", id, dep)
+		}
+
+		p.Rect.X += base.OffsetX
+		p.Rect.Y += base.OffsetY
+		dep = base.Depend
+	}
 
 	return p, nil
 }
