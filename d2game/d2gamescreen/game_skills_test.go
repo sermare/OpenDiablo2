@@ -83,6 +83,10 @@ func TestMissedHit(t *testing.T) {
 		t.Error("a skill that hit once is done")
 	}
 
+	if it.missedHit(d2skills.Counters{Hits: 7, Melee: 3, AreaHits: 1}) {
+		t.Error("an aura pulse (Holy Fire) that hurt someone is a hit")
+	}
+
 	it.hitRetries = castItemMaxHitRetries
 	if it.missedHit(start) {
 		t.Error("retries are bounded")

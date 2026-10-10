@@ -59,9 +59,9 @@ type castItem struct {
 }
 
 // missedHit reports whether a mustHit skill finished without a single hit
-// (melee strike or missile) and may be cast again.
+// (melee strike, missile or area/aura pulse: Holy Fire hurts only through those) and may be cast again.
 func (it *castItem) missedHit(c d2skills.Counters) bool {
-	return it.mustHit && it.hitRetries < castItemMaxHitRetries && c.Hits-it.c0.Hits <= 0
+	return it.mustHit && it.hitRetries < castItemMaxHitRetries && (c.Hits-it.c0.Hits)+(c.AreaHits-it.c0.AreaHits) <= 0
 }
 
 // castItemMaxRetries bounds how often a refused cast is repeated.
