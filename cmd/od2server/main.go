@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2mp"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2realm"
 )
 
@@ -25,6 +26,7 @@ func main() {
 	maxClients := flag.Int("max-clients", 256, "maximum number of connected players")
 	maxGames := flag.Int("max-games", 128, "maximum number of games")
 	idle := flag.Duration("idle", 10*time.Minute, "drop connections that are silent for this long (0 = never)")
+	heroLife := flag.Int("hero-life", 0, "fixed life of every hero in the placeholder gameplay rules (0 = formula; scripted scenarios use a sturdy value)")
 	flag.Parse()
 
 	store, err := d2realm.NewDirStore(*saves)
@@ -33,7 +35,7 @@ func main() {
 	}
 
 	cfg := d2realm.Config{Store: store, ServerName: *name, MaxClients: *maxClients, MaxGames: *maxGames,
-		IdleTimeout: *idle, Logf: log.Printf}
+		IdleTimeout: *idle, Logf: log.Printf, Rules: d2mp.DefaultRules{HeroLife: int32(*heroLife)}}
 
 	if *tables != "" {
 		if cfg.Tables, err = loadTables(*tables); err != nil {

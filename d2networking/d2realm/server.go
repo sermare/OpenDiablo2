@@ -13,6 +13,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2gs"
+	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2mp"
 )
 
 // Chat types of the 0x26 packet. Normal is the d2gs value; the others are
@@ -37,6 +38,9 @@ type Config struct {
 	Logf func(format string, args ...interface{})
 	// ServerName is shown in the Hello reply.
 	ServerName string
+	// Rules supplies the game data of the gameplay simulation (nil =
+	// d2mp.DefaultRules, a self-contained placeholder rule set).
+	Rules d2mp.Rules
 }
 
 type game struct {
@@ -44,6 +48,10 @@ type game struct {
 	password string
 	seed     uint32
 	members  []*session
+
+	sim   *d2mp.Sim     // authoritative gameplay simulation
+	done  chan struct{} // closed when the game ends
+	start time.Time
 }
 
 type session struct {
@@ -62,6 +70,7 @@ type session struct {
 	act      byte
 	level    uint16
 	hasLevel bool
+	simLevel uint16 // level of the hero in the simulation, as last announced
 }
 
 // Server is the realm.
@@ -328,7 +337,7 @@ func (s *Server) packet(ss *session, p []byte) {
 
 		s.leaveGame(ss, true)
 	default:
-		// gameplay packets are not relayed by the lobby server
+		s.gameplayPacket(ss, p)
 	}
 }
 
@@ -363,6 +372,8 @@ func (s *Server) message(ss *session, typ byte, body []byte) {
 		s.doSelect(ss, m)
 	case LevelChange:
 		s.doLevel(ss, m)
+	case Command:
+		s.doCommand(ss, m)
 	default:
 		ss.result(typ, CodeBadRequest, "not a client message")
 	}
@@ -758,6 +769,7 @@ func (s *Server) doCreate(ss *session, m CreateGame) {
 	}
 
 	s.games[key] = g
+	s.startGame(g)
 	s.enter(ss, g)
 	s.cfg.Logf("realm: %s created game %q (seed %#x)", ss.charName, g.info.Name, g.seed)
 }
@@ -841,6 +853,7 @@ func (s *Server) enter(ss *session, g *game) {
 	}
 
 	g.members = append(g.members, ss)
+	s.simJoin(ss)
 }
 
 // leaveGame removes ss from its game (drop-out). back reports whether the
@@ -860,13 +873,26 @@ func (s *Server) leaveGame(ss *session, back bool) {
 	}
 
 	ss.game = nil
+	ss.simLevel = 0
+
+	if g.sim != nil {
+		g.sim.Leave(ss.unitID)
+	}
 
 	for _, m := range g.members {
 		m.send(d2gs.PlayerLeave{UnitID: ss.unitID}.Marshal())
 		m.system("%s left the game.", ss.charName)
 	}
 
+	if g.sim != nil {
+		s.flush(g)
+	}
+
 	if len(g.members) == 0 {
+		if g.done != nil {
+			close(g.done)
+		}
+
 		delete(s.games, strings.ToLower(g.info.Name))
 		s.cfg.Logf("realm: game %q closed", g.info.Name)
 	}

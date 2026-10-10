@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+
+	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2mp"
 )
 
 // ProtocolVersion is the version of the realm extension messages (OUR
@@ -20,6 +22,7 @@ const (
 	MsgListChars   byte = 0x85
 	MsgSelectChar  byte = 0x86
 	MsgLevelChange byte = 0x87 // level change inside a game
+	MsgCommand     byte = 0x88 // gameplay command with no d2gs packet (party, trade, waypoint, respawn)
 )
 
 // Server -> client tunnel message types (carried in d2gs 0xAE).
@@ -32,6 +35,7 @@ const (
 	MsgPresence    byte = 0x95
 	MsgPlayerLevel byte = 0x96
 	MsgGameJoined  byte = 0x97
+	MsgWorld       byte = 0x98 // batch of world events (d2mp), at most one per simulation step
 )
 
 // Code is the outcome of a request.
@@ -222,6 +226,12 @@ type LevelChange struct {
 	Level uint16
 }
 
+// Command is a gameplay command with no d2gs packet (see d2mp.Command).
+type Command struct{ Cmd d2mp.Command }
+
+// World is a batch of world events from the game simulation (see d2mp).
+type World struct{ Events []d2mp.Event }
+
 // ListGamesReq asks for the game list.
 type ListGamesReq struct{}
 
@@ -342,6 +352,12 @@ func Encode(msg interface{}) (typ byte, body []byte) {
 		typ = MsgLevelChange
 		w.u8(m.Act)
 		w.u16(m.Level)
+	case Command:
+		typ = MsgCommand
+		w.bytes(d2mp.EncodeCommand(m.Cmd))
+	case World:
+		typ = MsgWorld
+		w.bytes(d2mp.EncodeEvents(m.Events))
 	case HelloAck:
 		typ = MsgHelloAck
 		w.u8(byte(m.Code))
@@ -421,6 +437,20 @@ func Decode(typ byte, body []byte) (interface{}, error) {
 		msg = SelectChar{Name: r.str()}
 	case MsgLevelChange:
 		msg = LevelChange{Act: r.u8(), Level: r.u16()}
+	case MsgCommand:
+		c, err := d2mp.DecodeCommand(r.bytes())
+		if err != nil {
+			return nil, ErrMalformed
+		}
+
+		msg = Command{Cmd: c}
+	case MsgWorld:
+		evs, err := d2mp.DecodeEvents(r.bytes())
+		if err != nil {
+			return nil, ErrMalformed
+		}
+
+		msg = World{Events: evs}
 	case MsgHelloAck:
 		m := HelloAck{Code: Code(r.u8()), Message: r.str()}
 
@@ -468,13 +498,4 @@ func Decode(typ byte, body []byte) (interface{}, error) {
 
 // LevelSeed derives the seed of one level from the game seed, so every
 // client of a game generates the same level (OUR extension).
-func LevelSeed(gameSeed uint32, level uint16) uint32 {
-	h := gameSeed ^ (uint32(level)+1)*0x9E3779B1
-	h ^= h >> 16
-	h *= 0x85EBCA6B
-	h ^= h >> 13
-	h *= 0xC2B2AE35
-	h ^= h >> 16
-
-	return h
-}
+func LevelSeed(gameSeed uint32, level uint16) uint32 { return d2mp.LevelSeed(gameSeed, level) }
