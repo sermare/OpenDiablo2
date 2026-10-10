@@ -102,6 +102,10 @@ func (h *heroUnit) skill(id int) int {
 // SkillLevel is the effective level: the points plus the +skills of the
 // hero's items (d2hero.EffectiveSkillLevel); BaseSkillLevel the points only.
 func (h *heroUnit) SkillLevel(id int) int {
+	if h.merc != nil {
+		return h.merc.skills[id]
+	}
+
 	if s := h.p.Skills[id]; s != nil {
 		return d2hero.EffectiveSkillLevel(h.p.Stats, h.p.Class, s)
 	}
@@ -231,6 +235,10 @@ func (h *heroUnit) WeaponDamage() (min, max int) {
 // whose weapon type the equipped weapon is of (itemtypes equiv chain). 0
 // without a weapon or masteries.
 func (h *heroUnit) Mastery(k d2skill.MasteryKind, sk *d2skill.Skill) int {
+	if h.merc != nil {
+		return 0
+	}
+
 	if h.p.Equipment == nil || h.p.Equipment.RightHand == nil {
 		return 0
 	}
