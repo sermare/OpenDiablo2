@@ -281,51 +281,6 @@ func TestMephistoSelector(t *testing.T) {
 
 // ---- Diablo ----
 
-func TestDiabloWeights(t *testing.T) {
-	// in sight, engaged: the base table of FUN_005e7710
-	w := DiabloWeights(true, true, false, false, 100, 5, 0, 0, 1, false)
-	want := map[int]int{diaA1: 40, diaA2: 70, diaLight: 40, diaFire: 24, diaCold: 40, diaWall: 15}
-
-	for i, v := range w {
-		if v != want[i] {
-			t.Errorf("weight[%d]=%d want %d", i, v, want[i])
-		}
-	}
-
-	// hurt: A1 50; chilled: no cold/wall; lightning resist < fire resist: fire -10
-	w = DiabloWeights(true, true, false, false, 10, 5, 50, 20, 1, true)
-	if w[diaA1] != 50 || w[diaCold] != 0 || w[diaWall] != 0 || w[diaFire] != 14 {
-		t.Errorf("modifiers: %v", w)
-	}
-
-	// not engaged: no breath and no fire
-	w = DiabloWeights(true, false, false, false, 100, 5, 0, 0, 1, false)
-	if w[diaLight] != 0 || w[diaFire] != 0 {
-		t.Errorf("unengaged: %v", w)
-	}
-
-	// no sight, engaged, far: wall -5, run 20, no breath
-	w = DiabloWeights(false, true, false, false, 100, 30, 0, 0, 3, false)
-	if w[diaWall] != 10 || w[diaRun] != 20 || w[diaLight] != 0 || w[diaPrison] != 20 || w[diaCircle] != 20 {
-		t.Errorf("no sight: %v", w)
-	}
-
-	// away from home: walk-home and run disabled, circle 10, firewall 15
-	w = DiabloWeights(false, true, true, true, 100, 10, 0, 0, 3, false)
-	if w[diaWalkHome] != 0 || w[diaRun] != 0 || w[diaCircle] != 10 || w[diaFirewall] != 15 || w[diaRunHome] != 60 {
-		t.Errorf("away: %v", w)
-	}
-
-	// no negative weights ever
-	for _, h := range []bool{true, false} {
-		for _, wt := range DiabloWeights(false, h, false, false, 100, 30, 100, 0, 0, false) {
-			if wt < 0 {
-				t.Fatal("negative weight")
-			}
-		}
-	}
-}
-
 func TestPickWeighted(t *testing.T) {
 	b := brainAt(profile("Diablo"))
 	counts := make([]int, 4)

@@ -502,7 +502,18 @@ func TestBloodRavenLeashAndShots(t *testing.T) {
 		t.Fatalf("keep returning: %v", w.log)
 	}
 
+	// the exe's leash test uses the TARGET's distance to the anchor (batch 5):
+	// a target still 50 or more from it keeps her running home
 	b.X = 22
+	b.Wake = 0
+	runOne(t, w, b)
+
+	if b.Scratch[brFleeHome] != 1 {
+		t.Fatal("a target far from the anchor keeps the flag set")
+	}
+
+	w.target = Target{ID: 1, X: 60, Y: 100, Size: 1, IsPlayer: true}
+	w.dist = 38
 	b.Wake = 0
 	runOne(t, w, b)
 
@@ -542,7 +553,14 @@ func TestBloodRavenFiresAtRandomSpot(t *testing.T) {
 		dy = -dy
 	}
 
-	if dx < 5 || dx > 10 || dy < 5 || dy > 10 {
+	// batch 5 (0x5e5260 disassembly): r = roll(15)+5 on one axis, a modulo r
+	// roll on the other, signs from two coin flips
+	hi, lo := dx, dy
+	if lo > hi {
+		hi, lo = lo, hi
+	}
+
+	if hi < 5 || hi > 19 || lo >= hi {
 		t.Errorf("spot (%d,%d) is %d,%d from the target", c.X, c.Y, dx, dy)
 	}
 

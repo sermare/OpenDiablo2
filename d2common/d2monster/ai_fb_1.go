@@ -479,6 +479,8 @@ func thinkNihlathak(c *Ctx) {
 	b := c.B
 	sk := b.Profile.Skills
 
+	c.questHook("nihlathak") // QUEST_A5_BetrayalOfHarrogath_RefreshLogOnNihlathakThink, every think
+
 	if c.W.HasState(b, 0xc) {
 		if ss, ok := c.W.(StateSetter); ok {
 			ss.SetUnitState(b, 0xc, false)
@@ -540,16 +542,18 @@ func thinkNihlathak(c *Ctx) {
 
 			if free {
 				// the exe also stores the level's spawn range at AiGeneral+0x3c
-				// (UNVERIFIED use); the engine's summon skill sizes the group
+				// (not modelled); the engine's summon skill sizes the group
 				c.Cast(4, tgt)
 
 				return
 			}
-
-			c.Wander(6)
-
-			return
 		}
+
+		// VERIFIED (batch 5): with the roll passed and nobody to help, the exe
+		// wanders (6) whether or not Skill5 exists or has room, and ends the tick.
+		c.Wander(6)
+
+		return
 	}
 
 	if sk[3].Used() && c.Dist < 14 {
