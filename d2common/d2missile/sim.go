@@ -808,18 +808,14 @@ func (s *Sim) finish(m *Missile, kind EventKind) bool {
 	return false
 }
 
-// PierceCharges rolls the pierce charges a missile with the Pierce flag
-// starts with (0x59d4e0, verified): up to 4 times a percent roll below
-// chance (owner's skill_pierce + item_pierce) adds a charge; the first failed
-// roll stops it.
-func PierceCharges(chance int, r d2combat.Roller) int {
-	n := 0
-
-	for r != nil && n < 4 && int(r.Roll(100)) < chance {
-		n++
-	}
-
-	return n
+// PierceCharges is the number of pierce charges a missile with the Pierce flag
+// starts with (0x59d4e0, VERIFIED against the exe in the emulator, see
+// d2combat.RollPierceCharges): up to 4 attempts with a PRIVATE generator that
+// does not depend on the owner's, so the result is a fixed function of chance
+// (owner's skill_pierce + item_pierce): chance <= 66 gives 0 charges. The
+// roller argument is ignored and only kept for the callers.
+func PierceCharges(chance int, _ d2combat.Roller) int {
+	return int(d2combat.RollPierceCharges(int32(chance), 0, 3, true, 0, 0))
 }
 
 // String describes a missile for logs.
