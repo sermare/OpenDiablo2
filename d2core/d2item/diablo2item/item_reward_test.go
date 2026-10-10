@@ -15,7 +15,7 @@ func TestImbue(t *testing.T) {
 	f.asset.Records.Item.Types["helm"] = &d2records.ItemTypeRecord{Code: "helm", Equiv1: "armo"}
 	f.asset.Records.Item.Types["armo"] = &d2records.ItemTypeRecord{Code: "armo"}
 
-	old, err := f.Create(CreateParams{Code: "cap", ILvl: 20, Quality: d2drop.QualityMagic, Seed: 5})
+	old, err := f.Create(CreateParams{Code: "cap", ILvl: 20, Quality: d2drop.QualityNormal, Seed: 5})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func TestImbue(t *testing.T) {
 	old.TypeCode = "helm"
 	old.SetPersonalName("Hero")
 
-	if info := old.ImbueInfo(); !info.WeaponOrArmor || info.Quality != int(d2drop.QualityMagic) {
+	if info := old.ImbueInfo(); !info.WeaponOrArmor || info.Quality != int(d2drop.QualityNormal) {
 		t.Fatalf("info %+v", info)
 	}
 
@@ -55,5 +55,17 @@ func TestImbue(t *testing.T) {
 
 	if _, err := f.Imbue(old, 34, 101); err == nil {
 		t.Error("a ring was imbued")
+	}
+
+	// magic quality is refused (0x62c700 accepts qualities 1..3 only)
+	magic, err := f.Create(CreateParams{Code: "cap", ILvl: 20, Quality: d2drop.QualityMagic, Seed: 6})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	magic.TypeCode = "helm"
+
+	if _, err := f.Imbue(magic, 34, 102); err == nil {
+		t.Error("a magic item was imbued")
 	}
 }

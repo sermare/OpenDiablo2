@@ -2,6 +2,7 @@ package d2gamescreen
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -133,17 +134,17 @@ func (v *Game) applyItemRewardTo(kind string, target *diablo2item.Item) (string,
 		}
 
 		it := pick(func(i *diablo2item.Item) bool {
-			_, err := d2reward.LarzukSockets(i.SocketInfo(), diff)
+			_, err := d2reward.LarzukSockets(i.SocketInfo(), nil)
 			return err == nil
 		})
 		if it == nil {
 			return "", v.refusal(target, "no item of the hero can be socketed", func(i *diablo2item.Item) error {
-				_, err := d2reward.LarzukSockets(i.SocketInfo(), diff)
+				_, err := d2reward.LarzukSockets(i.SocketInfo(), nil)
 				return err
 			})
 		}
 
-		n, _ := d2reward.LarzukSockets(it.SocketInfo(), diff)
+		n, _ := d2reward.LarzukSockets(it.SocketInfo(), rand.Intn)
 		it.SetNumSockets(n)
 		r.rewards.SocketPending--
 		v.gameControls.SaveItems()
