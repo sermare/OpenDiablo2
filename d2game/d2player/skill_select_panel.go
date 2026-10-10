@@ -65,6 +65,7 @@ type SkillPanel struct {
 	cells        []popupCell
 	sprites      map[string]*d2ui.Sprite
 	hovered      *popupCell
+	pinned       bool // HoverSkill (autotests) holds the hover
 	hoverTooltip *d2ui.Tooltip
 	levelLabel   *d2ui.Label
 	keyLabel     *d2ui.Label
@@ -88,7 +89,7 @@ func (s *SkillPanel) Open() {
 // Close the popup.
 func (s *SkillPanel) Close() {
 	s.isOpen = false
-	s.hovered = nil
+	s.hovered, s.pinned = nil, false
 }
 
 // IsOpen returns true if the popup is open.
@@ -106,7 +107,7 @@ func (s *SkillPanel) Toggle() {
 // RegenerateImageCache lays the popup out again (the hero learned a skill).
 func (s *SkillPanel) RegenerateImageCache() {
 	s.cells = layoutSkillPopup(s.hero.Skills, s.isLeftPanel)
-	s.hovered = nil
+	s.hovered, s.pinned = nil, false
 }
 
 // IsInRect returns whether the X Y coordinates are on an icon of the popup.
@@ -218,16 +219,18 @@ func (s *SkillPanel) HandleClick(x, y int) bool {
 
 // HandleMouseMove updates the hovered icon and its tooltip.
 func (s *SkillPanel) HandleMouseMove(x, y int) bool {
+	println("DBG skillpanel move", x, y)
 	if !s.isOpen {
 		return false
 	}
 
 	c := cellAt(s.cells, x, y)
 	if c == nil {
-		s.hovered = nil
+		s.hovered, s.pinned = nil, false
 		return false
 	}
 
+	s.pinned = true // a scripted hover stays until the popup changes: a stray real pointer must not undo it
 	s.hover(c)
 
 	return true
