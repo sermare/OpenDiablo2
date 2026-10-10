@@ -8,6 +8,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgmaze"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgoutdoor"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
@@ -132,6 +133,10 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 		roomSeed := d2rand.New(levelSeed.Lo + uint32(ri)*0x9E3779B1)
 		g.placeMonsters(stamp, levelID, diff, ox, oy, r.W, r.H, roomSeed, &mon)
 	}
+
+	exact := g.applyExactMazeTiles(levelID, seed, res, region, w, h)
+
+	g.Infof("TILESTATS level=%d exact=%v %s", levelID, exact, g.engine.TileStats())
 
 	g.engine.BlockEmptyTiles()
 	g.engine.UseCollisionPaths(true)
@@ -437,4 +442,39 @@ func (g *MapGenerator) safeNPC(x, y int, stat *d2records.MonStatRecord) (npc *d2
 	}()
 
 	return g.engine.NewNPC(x, y, stat, 0)
+}
+
+// applyExactMazeTiles replaces the stamped DS1 tiles of the maze rooms by the tile
+// records the game builds for them (drlgoutdoor.MazeLevel: every chunk is a
+// preset room of its DS1, DT1 library from the LvlPrest Dt1Mask, rarity pick
+// with the room seed, neighbour and border merging). The stamp keeps the
+// entities and the marker tiles. When the build fails (a code path of the game
+// that is not ported) the stamped tiles stay and false is returned.
+func (g *MapGenerator) applyExactMazeTiles(levelID int, seed uint32, res *drlgmaze.Result, region d2enum.RegionIdType, w, h int) bool {
+	if os.Getenv("OD2_MAZE_STAMP") == "1" { // debugging switch: the old stamp lookup, for before/after counts
+		return false
+	}
+
+	env, err := outdoorEnv(g.asset)
+	if err != nil {
+		g.Infof("maze tiles: level %d: %v", levelID, err)
+		return false
+	}
+
+	ml, err := drlgoutdoor.NewMazeLevel(env, res, levelID, seed)
+	if err == nil {
+		var tiles []*drlgoutdoor.RoomTiles
+
+		if tiles, err = ml.BuildTiles(); err == nil {
+			rect := drlgoutdoor.Rect{X: res.MinX - realMazeMargin, Y: res.MinY - realMazeMargin, W: w, H: h}
+			_, n := g.applyExactTiles(tiles, rect, region, false)
+			g.Infof("maze tiles: level %d: exact records for %d rooms", levelID, n)
+
+			return true
+		}
+	}
+
+	g.Infof("maze tiles: level %d: exact records unavailable (%v); keeping the stamped DS1 tiles", levelID, err)
+
+	return false
 }

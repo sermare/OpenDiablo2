@@ -82,11 +82,17 @@ func (l *Level) createRooms() {
 // presetChunkBits are the room flags the DS1 wall cells of orientation 10/11
 // contribute per 8x8 chunk (drlg3.md section 10, DRLG_LoadPresetDs1ForRooms).
 func presetChunkBits(d *Pattern, cx, cy int) uint32 {
+	return presetRectBits(d, cx*8, cy*8, 8, 8)
+}
+
+// presetRectBits is presetChunkBits over an arbitrary window of the DS1 (the
+// chunks of maze rooms up to 12x12 are one room of the room's whole size).
+func presetRectBits(d *Pattern, x0, y0, w, h int) uint32 {
 	var bits uint32
 
 	for k := range d.Wall {
-		for y := cy * 8; y < min(d.H, cy*8+8); y++ {
-			for x := cx * 8; x < min(d.W, cx*8+8); x++ {
+		for y := y0; y < min(d.H, y0+h); y++ {
+			for x := x0; x < min(d.W, x0+w); x++ {
 				o := d.Orient[k][y*d.W+x]
 				if o != 10 && o != 11 {
 					continue

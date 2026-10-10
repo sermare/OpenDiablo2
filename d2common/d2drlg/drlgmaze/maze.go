@@ -118,6 +118,9 @@ type Room struct {
 type Chunk struct {
 	Room       int
 	X, Y, W, H int
+	// Lo is the level-seed step that seeded the chunk's room (AllocRoomEx);
+	// the room seed is Init(Lo) and the tile builder's S4 its first step.
+	Lo uint32
 }
 
 // Result is a generated maze level.
@@ -832,9 +835,9 @@ func (l *level) commit(p Params, res *Result) {
 		// PlacePresetRooms: one DrlgRoom for rooms <= 12x12, else 8x8 chunks
 		// (rows outer, columns inner); one level-seed step each (verified).
 		if r.w <= 12 && r.h <= 12 {
-			l.seed.Step()
+			lo := l.seed.Step()
 			l.gate(gate)
-			res.Chunks = append(res.Chunks, Chunk{i, r.x, r.y, r.w, r.h})
+			res.Chunks = append(res.Chunks, Chunk{i, r.x, r.y, r.w, r.h, lo})
 
 			continue
 		}
@@ -843,10 +846,10 @@ func (l *level) commit(p Params, res *Result) {
 
 		for y := 0; y < r.h; y += 8 {
 			for x := 0; x < r.w; x += 8 {
-				l.seed.Step()
+				lo := l.seed.Step()
 				l.gate(gate1)
 				gate1 = 0
-				res.Chunks = append(res.Chunks, Chunk{i, r.x + x, r.y + y, imin(8, r.w-x), imin(8, r.h-y)})
+				res.Chunks = append(res.Chunks, Chunk{i, r.x + x, r.y + y, imin(8, r.w-x), imin(8, r.h-y), lo})
 			}
 		}
 	}
