@@ -134,8 +134,10 @@ func (e *Engine) hurtPlayer(dst, src *d2mapentity.Player, d *d2combat.Damage, wh
 
 	e.Counters.PvPHits++
 	e.Counters.Damage += scaled.Total()
-	e.emit("damage", "PVPSKILL skill=%q target=%s raw=%d scaled=%d pct=%d parts=%v", what, dst.Name(), raw.Total(),
-		scaled.Total(), d2combat.PvPPercent(), scaled.Slice())
+	// exact= is the unrounded 8.8 damage per type (raw= is rounded to whole points per type): scenarios check the
+	// charged total against d2combat.PvPScaledBounds with it
+	e.emit("damage", "PVPSKILL skill=%q target=%s raw=%d scaled=%d pct=%d parts=%v exact=%v", what, dst.Name(), raw.Total(),
+		scaled.Total(), d2combat.PvPPercent(), scaled.Slice(), [5]int32{d.Physical, d.Fire, d.Lightning, d.Magic, d.Cold})
 
 	// a tick that is still under one point is only carried, nothing to send
 	if scaled.Total() == 0 {

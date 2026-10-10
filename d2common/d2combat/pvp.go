@@ -116,6 +116,28 @@ func (c *PvPCarry) Scale(raw [5]int32, pct int) PvPParts {
 	return PvPParts{out[0], out[1], out[2], out[3], out[4]}
 }
 
+// PvPScaledBounds is the exact range of whole points a defender has been charged after n hits whose 8.8 fixed point
+// values add up to sum88 in one damage type, when every hit went through PvPCarry.Scale at pct percent (starting
+// from an empty carry). Each hit adds floor(v*pct/100) units of 1/256 point to the carry, the carry pays out whole
+// points and keeps a remainder under one point, so with t the sum of those floors:
+//
+//	sum88*pct/100 - n < t <= sum88*pct/100   and   charged*256 <= t < charged*256 + 256
+//
+// hence hi = floor(sum88*pct/25600), never more than the exact scaled damage, and lo = the smallest charged with
+// charged*25600 > sum88*pct - 100*n - 25600 (a deficit of under one point plus n/256 for the truncation).
+// 9f-pvp-skills-ear checks its logged hits against the same formula.
+func PvPScaledBounds(pct int, sum88 int64, n int) (lo, hi int) {
+	exact := sum88 * int64(pct)
+	hi = int(exact / 25600)
+
+	num := exact - 100*int64(n) - 25600
+	if num < 0 {
+		return 0, hi
+	}
+
+	return int(num/25600) + 1, hi
+}
+
 // PvPDefendCarry keeps the fraction of a point that the defender's elemental
 // resist cuts off a hit, per element (fire, lightning, cold), in hundredths.
 // A burning ground tick of one scaled point against 75 percent resist is 0.25
