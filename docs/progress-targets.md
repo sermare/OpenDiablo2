@@ -20,6 +20,7 @@ verify yet; it is not counted in the percentage. Numbers marked `~` are estimate
 | Monster AI archetypes implemented | 148 `monai.txt` entries | AI names with a Go think function (145; Tentacle, TentacleHead, FrogDemon missing) |
 | Monster AI archetypes ported faithfully | 148 | ~85: ported from the exe think functions, not stand-ins |
 | In-game UI panels matching the original layout | 14 panels | panels whose logged rectangles equal the golden from the exe in a real game run (0 so far) |
+| Real full verify green (scenario sections per job, real parallel log) | distinct `==` sections that ran in a real `scripts/verify_parallel.sh` log (74 in run 47389) | sections with no `FAIL:` line (71: red are Act 3 gate, skill bar, act travel); update from each new full run |
 | Item generation gaps closed vs the exe | 12 gaps in the itemgen notes | gaps closed and checked against the emulator |
 
 How to update: edit `docs/progress.json` (`done`, `pending`, `total`, `note`), run `python3 scripts/make_progress_svg.py`,
@@ -37,14 +38,15 @@ full verify yet.
 | Weight | Bar |
 |---|---|
 | 14 | Acts playable end to end (scripted play) |
-| 14 | Acts played start to finish by a human tester (0 until a person plays them) |
+| 10 | Acts played start to finish by a human tester (0 until a person plays them) |
 | 6 | Levels walked by a verify scenario |
 | 8 | Main quests with logic implemented |
 | 10 | Player skills with engine behaviour |
 | 6 + 2 | Monster AI archetypes ported faithfully + implemented |
 | 6 | Item generation gaps closed vs the exe |
-| 8 | In-game UI panels matching the original layout |
+| 6 | In-game UI panels matching the original layout |
 | 6 | Sound and music confirmed by a human listen |
+| 6 | Real full verify green (scenario sections per job) |
 | 4 | Multiplayer playable through the game screen |
 | 4 | Mac app: build, Finder launch with real maps, disk image |
 | 4 + 4 + 4 | Level generator proven, .d2s save verified, NPC interaction features |

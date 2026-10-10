@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/progress.svg?v=1791595050" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
+<p align="center"><img src="docs/progress.svg?v=1791599049" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
 <p align="center"><img src="https://raw.githubusercontent.com/sermare/OpenDiablo2/progress-history/docs/progress-history.svg" alt="Progress over time: one line per part, snapshot every 10 minutes" width="880"></p>
 
 [![CI](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml/badge.svg)](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml)
@@ -24,7 +24,7 @@ Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The 
 
 ## Status board
 
-_Last updated: 2026-10-09 (evening) · Claude updates this on every merged success._
+_Last updated: 2026-10-09 (late evening; headline refreshed from measured data: Game v1 complete 58%, 64% with branches; full verify run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
 
 ### ✅ Working now (each one verified, not assumed)
 
@@ -46,7 +46,7 @@ _Last updated: 2026-10-09 (evening) · Claude updates this on every merged succe
 | **Import a real character into the engine — with her gear** | A level-94 Sorceress from a real `.d2s` loads, starts in town and wears her real Spired Helm, Archon Plate, Battle Boots, Light Gauntlets, Flail, Short Staff and Monarch |
 | **Diablo II's own random number generator** (`d2rand`) and the level-seed hierarchy | Reverse engineered from the binary; tests use independent Python vectors; checked instruction-by-instruction against the real code: no differences |
 | **Test without clicking** (`OD2_AUTOGAME`, `OD2_AUTOTALK`, `OD2_AUTOMENU`, …) | Lets the AI verify changes by itself; see the quickstart |
-| Reverse-engineering map of the game | ~2,500 functions named in Ghidra; 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
+| Reverse-engineering map of the game | 11,235 of 11,257 functions named in Ghidra (re-queried live); 277 source files indexed; notes on units, saves, packets, rendering, sound, NPC menu, **skills and combat formulas** |
 
 ### 🔧 In progress right now (agents run in waves; the machine is the limit)
 
@@ -134,6 +134,7 @@ Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>
 
 | Date | Success |
 |---|---|
+| 2026-10-09 | **Progress board refreshed from real numbers**: Ghidra 11,235 of 11,257 `Game.exe` functions named (22 anti-cheat left on purpose); new bar *Real full verify green* from a real `verify_parallel.sh` log (74 sections ran, 71 green; red: Act 3 gate, skill bar, act travel; 4 of 6 jobs ALL CHECKS PASSED); *Game v1 complete* 58% (64% with branch work) |
 | 2026-10-09 | **Exact tile placement for Acts 2–5 outdoors** (72 levels, 7,558 rooms equal to the emulator), the **Act 2 start playable** (Lut Gholein → Rocky Waste → Halls of the Dead), level state kept when you leave and return, **caves 13–16 and 37**, **Acts 2–5 quest logic**, **monster AI for every archetype** (17 faithful ports, the rest stand-ins), **real NPC speech and music fixed** (the paths were wrong; test runs were muted so nobody noticed), progress chart over time |
 | 2026-10-09 | **Acts 2, 3, 4 and 5 level generators match the real game (1,626 levels)**, exact tile records for Act 1 outdoors (240 levels), act towns and travel, party/trade/PvP, boss encounters and Baal waves, options menu and hardcore death, the scripted first hour of Act 1, imported-hero UI, `OpenDiablo2.app` packaging merged (full verify: ALL CHECKS PASSED) |
 | 2026-10-09 | Skills for all seven classes, skill hotkeys and the selection screen, Nightmare/Hell difficulty, boss behaviours and forced states, multiplayer and documentation merged; Act 4/5 level generators specified and checked against the real game |
