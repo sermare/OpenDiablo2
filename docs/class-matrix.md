@@ -5,14 +5,14 @@ Act 1 to 5 chain one scenario at a time through `scripts/verify.sh` with `OD2_HE
 `d2core/d2hero/herogen` (`scripts/verify.d/lib/hero.sh`), except 9b, which starts a brand new level 1 hero of the class.
 The scripted fights cast the class' left skill (`d2game/d2gamescreen/fightskill.go`), real combat, no god mode.
 
-Last update 2026-10-10 05:39, commit `29b967f8`, 15 run(s) in the table. A cell is *result runtime deaths*:
+Last update 2026-10-10 06:03, commit `eb75496e`, 19 run(s) in the table. A cell is *result runtime deaths*:
 `PASS` / `PASS*` (passed on the second attempt that verify.sh makes) / `FAIL`, wall clock, deaths of the hero (`d`).
 
 | class | 9b Act 1 (fresh) | 9e Act 2 | 9g Act 3 | 9h Acts 4+5 | 9i Act 5 caves | total | deaths | passed |
 |---|---|---|---|---|---|---|---|---|
 | amazon | PASS 4m10s d0 | PASS 3m09s d0 | PASS 10m00s d0 | PASS 8m15s d0 | PASS 6m14s d0 | 31m48s | 0 | 5/5 |
 | sorc | PASS 4m11s d0 | PASS 3m51s d0 | PASS 10m28s d0 | PASS* 17m55s d0 | PASS 7m41s d0 | 44m06s | 0 | 5/5 |
-| necro | - | - | - | - | - | - | 0 | 0/5 |
+| necro | PASS 4m14s d0 | PASS 3m29s d0 | PASS 8m54s d0 | PASS 5m54s d0 | - | 22m31s | 0 | 4/5 |
 | paladin | - | - | - | - | - | - | 0 | 0/5 |
 | barb | PASS 4m13s d0 | PASS 3m26s d0 | PASS 8m28s d0 | PASS 5m42s d0 | PASS 6m14s d0 | 28m03s | 0 | 5/5 |
 | druid | - | - | - | - | - | - | 0 | 0/5 |
@@ -32,6 +32,10 @@ Last update 2026-10-10 05:39, commit `29b967f8`, 15 run(s) in the table. A cell 
 | sorc | 9g-act3-playthrough | PASS | 10m28s | 0 | none |
 | sorc | 9h-act45-playthrough | PASS* | 17m55s | 0 | FAIL: the Act 4/5 playthrough did not pass |
 | sorc | 9i-act5-caves-playthrough | PASS | 7m41s | 0 | none |
+| necro | 9b-act1-playthrough | PASS | 4m14s | 0 | [Game Server][WARNING] D2S export: container item "cap" (page 1) not written: quality 6 of cap cannot be written (rare/crafted names are not modelled) |
+| necro | 9e-act2-playthrough | PASS | 3m29s | 0 | [Game Server][WARNING] D2S export: container item "tax": 6 stat(s) the save cannot hold were left out |
+| necro | 9g-act3-playthrough | PASS | 8m54s | 0 | none |
+| necro | 9h-act45-playthrough | PASS | 5m54s | 0 | none |
 | barb | 9b-act1-playthrough | PASS | 4m13s | 0 | [Game Server][WARNING] D2S export: container item "sbw": 4 stat(s) the save cannot hold were left out |
 | barb | 9e-act2-playthrough | PASS | 3m26s | 0 | [Game Server][WARNING] D2S export: container item "ba1": 1 stat(s) the save cannot hold were left out |
 | barb | 9g-act3-playthrough | PASS | 8m28s | 0 | none |
