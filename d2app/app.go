@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/profile"
 	"golang.org/x/image/colornames"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math"
@@ -172,6 +173,7 @@ func (a *App) loadEngine() error {
 	}
 
 	a.renderer = renderer
+	d2display.Set(d2display.Base) // the error screens use the legacy size
 	renderer.SetFullscreenHook(func(full bool) {
 		a.config.FullScreen = full
 		a.saveConfig()
@@ -318,6 +320,7 @@ func (a *App) Run() (err error) {
 	d2util.PerfMark("renderer-created")
 
 	windowTitle := fmt.Sprintf("OpenDiablo2 (%s)", a.gitBranch)
+	startSize, startScale := a.displaySize()
 
 	// If we fail to initialize, we will show the error screen
 	if err := a.initialize(); err != nil {
@@ -386,9 +389,7 @@ func (a *App) Run() (err error) {
 		a.ToMainMenu()
 	}
 
-	scale := a.windowScale()
-
-	err = a.renderer.Run(a.update, a.advance, 800*scale, 600*scale, windowTitle)
+	err = a.renderer.Run(a.update, a.advance, startSize.W*startScale, startSize.H*startScale, windowTitle)
 
 	d2gamescreen.SaveActiveGame() // the window was closed: save the hero
 

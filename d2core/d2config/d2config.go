@@ -18,6 +18,9 @@ type Configuration struct {
 	RunInBackground bool
 	VsyncEnabled    bool
 	Backend         string
+	// Display is the window / screen size section (docs/DISPLAY.md). Zero = the default 1512x982,
+	// limited to the screen. OD2_DISPLAY=WxH overrides it, OD2_UI_SCALE=1..4 the integer UI scale.
+	Display DisplayConfig
 	// WindowScale multiplies the 800x600 start window size (0 or 1 = normal).
 	WindowScale int
 	// D2SDir is an optional folder of real Diablo II .d2s characters to import
@@ -34,6 +37,13 @@ type Configuration struct {
 	// [primary, secondary] key names (see d2player.KeyName). Empty = defaults.
 	KeyBindings map[string][]string `json:",omitempty"`
 	path        string
+}
+
+// DisplayConfig is the "Display" section of config.json.
+type DisplayConfig struct {
+	// Width and Height are the logical start size of the window in pixels (0 = default).
+	Width  int
+	Height int
 }
 
 // Save saves the configuration object to disk

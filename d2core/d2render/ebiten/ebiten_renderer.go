@@ -4,6 +4,7 @@ import (
 	"errors"
 	"image"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -17,8 +18,6 @@ import (
 )
 
 const (
-	screenWidth       = 800
-	screenHeight      = 600
 	defaultSaturation = 1.0
 	defaultBrightness = 1.0
 	defaultSkewX      = 0.0
@@ -76,9 +75,18 @@ func (r *Renderer) Draw(screen *ebiten.Image) {
 	r.lastRenderError = r.renderCallback(createEbitenSurface(r, screen))
 }
 
-// Layout returns the renderer screen width and height
-func (r *Renderer) Layout(_, _ int) (width, height int) {
-	return screenWidth, screenHeight
+// Layout returns the logical screen size: the window (or full screen) size divided by the integer UI
+// scale, never below 800x600 (see d2display). At an 800x600 window it is the original fixed size.
+func (r *Renderer) Layout(outsideWidth, outsideHeight int) (width, height int) {
+	s := d2display.Logical(outsideWidth, outsideHeight, d2display.Scale())
+	d2display.Set(s)
+
+	return s.W, s.H
+}
+
+// ScreenSize returns the size of the monitor in full screen mode (0, 0 if unknown).
+func (r *Renderer) ScreenSize() (width, height int) {
+	return ebiten.ScreenSizeInFullscreen()
 }
 
 // CreateRenderer creates an ebiten renderer instance
@@ -204,12 +212,19 @@ func (r *Renderer) ShowPanicScreen(message string) {
 	}
 }
 
-// SetWindowScale resizes the window to scale times the 800x600 game screen (the
-// game keeps its logical size, so the interface grows with the window).
+// SetWindowScale sets the integer UI scale: the window becomes scale times the logical screen size
+// and keeps that logical size (the interface grows with the window).
 func (r *Renderer) SetWindowScale(scale int) {
-	if scale < 1 || ebiten.IsFullscreen() {
+	if scale < 1 {
 		return
 	}
 
-	ebiten.SetWindowSize(screenWidth*scale, screenHeight*scale)
+	s := d2display.Get()
+	d2display.SetScale(scale)
+
+	if ebiten.IsFullscreen() {
+		return
+	}
+
+	ebiten.SetWindowSize(s.W*scale, s.H*scale)
 }

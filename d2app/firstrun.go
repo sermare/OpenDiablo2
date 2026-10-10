@@ -7,11 +7,17 @@ import (
 	"strconv"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2app/d2setup"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2config"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 )
 
-const maxWindowScale = 4
+const (
+	maxWindowScale = 4
+	// windowChromeHeight is the room kept for the menu bar and title bar when the start window is
+	// limited to the monitor height.
+	windowChromeHeight = 80
+)
 
 // firstRunSetup makes sure the Diablo II files are configured (asking the
 // user through native dialogs when they are not) and tells the hero factory
@@ -47,6 +53,38 @@ func (a *App) firstRunSetup() error {
 }
 
 // windowScale is the start window size multiplier from config.json (1..4).
+// displaySize resolves the logical start size and the integer UI scale: OD2_DISPLAY=WxH and
+// OD2_UI_SCALE=1..4 win over the config (Display section, UIScale option, WindowScale), which wins over the
+// default 1512x982 limited to the monitor. It stores both in the display model.
+func (a *App) displaySize() (d2display.Size, int) {
+	var screen d2display.Size
+
+	if r, ok := a.renderer.(interface{ ScreenSize() (int, int) }); ok {
+		screen.W, screen.H = r.ScreenSize()
+		// keep room for the menu bar and the title bar of a window
+		if screen.H > 0 {
+			screen.H -= windowChromeHeight
+		}
+	}
+
+	size, err := d2display.Resolve(os.Getenv("OD2_DISPLAY"), d2display.Size{
+		W: a.config.Display.Width, H: a.config.Display.Height}, screen)
+	if err != nil {
+		a.Warning(err.Error())
+	}
+
+	scale := a.windowScale()
+	if v, err := strconv.Atoi(os.Getenv("OD2_UI_SCALE")); err == nil && v >= 1 && v <= d2display.MaxUIScale {
+		scale = v
+	}
+
+	d2display.Set(size)
+	d2display.SetScale(scale)
+	a.Infof("display %dx%d, ui scale %d", size.W, size.H, scale)
+
+	return size, scale
+}
+
 func (a *App) windowScale() int {
 	// the accessibility option (Esc -> Options -> Accessibility) wins once it was chosen
 	if i, set := a.config.Options[d2config.OptUIScale]; set && i >= 0 && i < 3 {
