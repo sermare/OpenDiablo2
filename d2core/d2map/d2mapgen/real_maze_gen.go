@@ -180,7 +180,7 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 		}
 	}
 
-	exact := g.applyExactMazeTiles(levelID, seed, res, region, w, h)
+	exact := g.applyExactMazeTiles(levelID, seed, res, region, w, h, pop)
 
 	g.Infof("TILESTATS level=%d exact=%v %s", levelID, exact, g.engine.TileStats())
 
@@ -530,7 +530,7 @@ func (g *MapGenerator) safeNPC(x, y int, stat *d2records.MonStatRecord) (npc *d2
 // with the room seed, neighbour and border merging). The stamp keeps the
 // entities and the marker tiles. When the build fails (a code path of the game
 // that is not ported) the stamped tiles stay and false is returned.
-func (g *MapGenerator) applyExactMazeTiles(levelID int, seed uint32, res *drlgmaze.Result, region d2enum.RegionIdType, w, h int) bool {
+func (g *MapGenerator) applyExactMazeTiles(levelID int, seed uint32, res *drlgmaze.Result, region d2enum.RegionIdType, w, h int, pop *popLevel) bool {
 	if os.Getenv("OD2_MAZE_STAMP") == "1" { // debugging switch: the old stamp lookup, for before/after counts
 		return false
 	}
@@ -549,6 +549,10 @@ func (g *MapGenerator) applyExactMazeTiles(levelID int, seed uint32, res *drlgma
 			rect := drlgoutdoor.Rect{X: res.MinX - realMazeMargin, Y: res.MinY - realMazeMargin, W: w, H: h}
 			_, n := g.applyExactTiles(tiles, rect, region, false)
 			g.Infof("maze tiles: level %d: exact records for %d rooms", levelID, n)
+
+			if pop != nil {
+				pop.useLogic(tiles, ml.Chunk)
+			}
 
 			return true
 		}

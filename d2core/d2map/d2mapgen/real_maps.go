@@ -80,6 +80,9 @@ func buildDRLGTables(a *d2asset.AssetManager) (*d2drlg.Tables, error) {
 		LvlPrestBin: get("/data/global/excel/lvlprest.bin"),
 		LvlTypes:    get("/data/global/excel/LvlTypes.txt"),
 		LvlSub:      get("/data/global/excel/LvlSub.txt"),
+		// the lit warp pieces of the exact tile builder look the exit's LvlWarp row up (a level whose exit has no
+		// row there, such as Valley of Snakes, stopped with game error 0x2b1 and kept the stamped tiles)
+		LvlWarp: get("/data/global/excel/LvlWarp.txt"),
 	}
 	if raw.Levels == nil || raw.LvlMaze == nil || (raw.LvlPrest == nil && raw.LvlPrestBin == nil) {
 		return nil, fmt.Errorf("DRLG tables missing from the archives")

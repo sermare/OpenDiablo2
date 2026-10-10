@@ -51,6 +51,8 @@ type RoomTiles struct {
 	Room                   *Room
 	Lib                    *Library
 	Walls, Floors, Shadows []*TileRecord
+	// Logic is the room's logic region list (logic.go), newest node first.
+	Logic []LogicRegion
 	// Seed is the room seed after the whole build (later builds of
 	// neighbouring rooms can still advance it).
 	Seed d2rand.Seed
@@ -684,6 +686,8 @@ func (t *tileBuilder) buildCells(g *RoomGrids) {
 			t.cell(0, g.C.Get(x, y), r.X+x, r.Y+y, false)
 		}
 	}
+
+	t.rt.Logic = t.logicRegionsWhole()
 }
 
 // neighbourRooms is 0x66e8f0 for the rooms of the same level: every room whose
@@ -766,6 +770,7 @@ func (l *Level) buildTiles(plainOnly bool) (res []*RoomTiles, err error) {
 
 			rt := &RoomTiles{Room: r, Lib: lib, nbrs: l.neighbourRooms(r)}
 			tb := &tileBuilder{l: l, r: r, rt: rt, built: built}
+			tb.markTownAdjacency()
 
 			if typ == 1 {
 				g, e := l.BuildRoomGrids(r, &RoomBuildOptions{tiles: tb})

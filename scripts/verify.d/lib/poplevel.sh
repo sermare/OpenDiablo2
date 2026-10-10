@@ -8,10 +8,19 @@ poplevel_env() {
   echo "export OD2_REALMAPS=1 OD2_AUTOLEVEL=$1 OD2_POPULATE=1"
   echo "export OD2_AUTOSCRIPT='wait:2;exit'"
 }
+# poplevel_check <level> <min monsters> [<density rolls> [<rooms>]]: the optional numbers are the oracle's for the sample
+# hero's seed (0x101D574A, normal): the density rolls of the real game's logic regions (testdata/logic_regions.json) and
+# the number of rooms, which the engine must reproduce exactly.
 poplevel_check() {
-  local lvl=$1 min=$2 rc
+  local lvl=$1 min=$2 rolls=${3:-} rooms=${4:-} rc
   grep -E "POPULATE (level|types|packs|groups)|AUTOSCRIPT RESULT|density rolls" $log.txt | cut -c1-260
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: population scenario for level $lvl did not pass"; fail=1; }
+  if [ -n "$rolls" ]; then
+    grep -E "population: [0-9]+ rooms" $log.txt | grep -q " $rolls density rolls at" || { echo "FAIL: level $lvl density rolls are not $rolls (the real game's logic regions)"; fail=1; }
+  fi
+  if [ -n "$rooms" ]; then
+    grep -E "population: [0-9]+ rooms" $log.txt | grep -q "population: $rooms rooms" || { echo "FAIL: level $lvl does not have $rooms rooms"; fail=1; }
+  fi
   python3 -I scripts/pop_check.py $log.txt $lvl $min; rc=$?
   [ $rc -eq 1 ] && { echo "FAIL: level $lvl population does not match its Levels.txt row"; fail=1; }
   [ $rc -eq 2 ] && echo "SKIP: D2_TABLES unset"
