@@ -8,7 +8,9 @@ poplevel_env() {
   echo "export OD2_REALMAPS=1 OD2_AUTOLEVEL=$1 OD2_POPULATE=1"
   echo "export OD2_AUTOSCRIPT='wait:2;exit'"
 }
-# poplevel_check <level> <min monsters> [<density rolls> [<rooms>]]: the optional numbers are the oracle's for the sample
+# poplevel_check <level> <min monsters | auto> [<density rolls> [<rooms>]]: "auto" is the stochastic bound of
+# scripts/pop_check.py (AUTO_SIGMA) from the oracle's density rolls, for the levels whose measured counts moved when
+# the roll counts became the real game's (58-60); the optional numbers are the oracle's for the sample
 # hero's seed (0x101D574A, normal): the density rolls of the real game's logic regions (testdata/logic_regions.json) and
 # the number of rooms, which the engine must reproduce exactly.
 poplevel_check() {

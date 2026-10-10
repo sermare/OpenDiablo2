@@ -1404,6 +1404,16 @@ func (g *GameControls) bindTerminalCommands(term d2interface.Terminal) error {
 		return err
 	}
 
+	// test-only: logs the hero position so OD2_AUTOSCRIPT scenarios can assert that a click walked (or did not)
+	if err := term.Bind("heropos", "log the hero's world position (HERO pos=...), for scenarios", nil, func([]string) error {
+		p := g.hero.Position.World()
+		g.Infof("HERO pos=(%.2f,%.2f) town=%t", p.X(), p.Y(), g.hero.IsInTown())
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
 	if err := term.Bind("setleftskill", "set skill to fire on left click", []string{"id"}, g.commandSetLeftSkill(term)); err != nil {
 		return err
 	}

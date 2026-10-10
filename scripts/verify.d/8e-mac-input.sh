@@ -20,7 +20,8 @@ scenario_check() {
 
   # the mouse: in order of the steps (Attack on the left: walk; right; Control+click = right; Shift = stand still; Fire Bolt: cast / stand still)
   actions=$(grep "INPUT world-click" $log.txt | sed 's/.*action=\([a-z-]*\) left_skill=\([0-9]*\)/\1:\2/' | tr -d '\r' | tr '\n' ' ')
-  want="move:0 cast-right:0 cast-right:0 stand-still:0 cast-left:36 stand-still:36 "
+  # a plain left click with a spell on the left button: in town (where this scenario runs) a spell that cannot be used there just walks, so move:36 (outside town it is cast-left:36)
+  want="move:0 cast-right:0 cast-right:0 stand-still:0 move:36 stand-still:36 "
   [ "$actions" = "$want" ] || { echo "FAIL: world click actions '$actions' want '$want'"; fail=1; }
 
   # the keyboard
