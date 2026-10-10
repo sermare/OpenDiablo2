@@ -142,7 +142,8 @@ type Game struct {
 	guiManager           *d2gui.GuiManager
 	keyMap               *d2player.KeyMap
 	npcTarget            d2interface.MapEntity
-	tradeActive          bool // a vendor window opened from the NPC menu is open
+	tradeActive          bool        // a vendor window opened from the NPC menu is open
+	rewardDrop           *rewardDrop // an item reward the hero walks to claim with the cursor item
 	greetingLast         map[string]string
 	dayClock             *dayClock
 	greetingRecent       map[string]string
@@ -253,8 +254,16 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"portals", "logs the open town portal pairs", []string{}, v.commandPortals},
 		{"useportal", "uses the nearest town portal object without walking to it (scenarios)", []string{}, v.commandUsePortal},
 		{"killnear", "kills the nearest monster as the hero (party experience tests)", []string{}, v.commandKillNear},
-		{"rewarditem", "spends a pending Larzuk (socket) or Anya (personalize) quest reward on an item",
-			[]string{"socket|personalize"}, v.commandRewardItem},
+		{"rewarditem", "spends a pending Larzuk (socket), Anya (personalize) or Charsi (imbue) quest reward on an item",
+			[]string{"socket|personalize|imbue"}, v.commandRewardItem},
+		{"questpending", "puts quest <act> <quest> into the state of a finished quest whose reward waits (debug)",
+			[]string{"act", "quest"}, v.commandQuestPending},
+		{"pickitem", "takes the first inventory item with this base code (or any) onto the cursor",
+			[]string{"code|any"}, v.commandPickItem},
+		{"giveitemq", "puts a new item of a quality (1 low .. 4 magic, 6 rare) into the inventory",
+			[]string{"code", "quality"}, v.commandGiveItemQ},
+		{"freeinv", "removes up to n items from the inventory to make room (debug)", []string{"n"}, v.commandFreeInv},
+		{"putitem", "puts the cursor item back into the inventory", nil, v.commandPutItem},
 		{"transmute", "transmutes the quest recipes in the Horadric Cube (Staff, Khalim's Will, Pandemonium portals)",
 			nil, v.commandTransmute},
 		{"setexp", "raises the hero's experience to at least <amount>; the level follows (debug)", []string{"amount"}, v.commandSetExp},
@@ -291,6 +300,7 @@ func (v *Game) OnUnload() error {
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
 		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "spawnrank", "killleader", "killnear", "rewarditem", "transmute", "setexp",
+		"questpending", "pickitem", "putitem", "giveitemq", "freeinv",
 		"townportal", "closeportal", "portals", "useportal", "pvpcast", "pvpwalk", "sethp"); err != nil {
 		return err
 	}
@@ -563,6 +573,10 @@ func (v *Game) OnPlayerInteract(entity d2interface.MapEntity) {
 		return
 	}
 
+	if v.tryRewardDrop(entity) { // an NPC that is owed an item reward and the hero holds an item
+		return
+	}
+
 	targetX, targetY := entity.GetPositionF()
 
 	v.Infof("interacting with %q", entity.Label())
@@ -648,6 +662,12 @@ func (v *Game) advanceNPCInteraction(_ float64) {
 		return
 	}
 
+	if v.rewardDrop != nil && v.rewardDrop.npc == v.npcTarget {
+		v.finishRewardDrop()
+
+		return
+	}
+
 	v.openNPCMenu(menu, v.npcTarget)
 	v.playNPCGreeting(v.npcTarget.Label())
 }
@@ -675,6 +695,7 @@ func (v *Game) openNPCMenu(menu *d2player.NPCMenu, npc d2interface.MapEntity) []
 	rows, known := d2player.NPCMenuFor(classID)
 
 	rows = v.withTravelRows(classID, rows)
+	rows = v.withRewardRows(classID, rows)
 
 	menu.Open(npc.Label(), rows, 0, 0, func(row d2player.NPCMenuRow) {
 		v.onNPCMenuChoice(npc, row)
@@ -727,6 +748,8 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 		v.openIdentify(npc)
 	case d2player.NPCActionTravelWest, d2player.NPCActionSailWest, d2player.NPCActionTravelEast, d2player.NPCActionSailEast:
 		v.travelFromNPC(npc, row)
+	case d2player.NPCActionReward, d2player.NPCActionRespec:
+		v.onRewardRow(npc, row)
 	default:
 		v.Infof("NPC menu: %s (%s) not implemented yet", row.Action, row.Fallback)
 	}

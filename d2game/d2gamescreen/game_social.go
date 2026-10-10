@@ -137,6 +137,7 @@ func (v *Game) commandGiveItem(args []string) error {
 	}
 
 	v.Infof("GIVEITEM code=%s name=%q", args[0], name)
+	v.questItemPickedUp(args[0]) // the quest system counts a quest item the hero now carries
 
 	return nil
 }

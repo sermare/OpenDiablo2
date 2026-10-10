@@ -221,3 +221,7 @@ OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOGAME=hero.d2s OD2_AUTOEXIT=1 \
 * Durance of Hate 2 (101) is generated but not walked; level 102 (Durance 3, Mephisto) is a preset level that nothing enters yet, and the red portal to the Pandemonium Fortress is only the act-travel rule.
 * Sewers 1 has two entrances in each of Kurast Bazaar and Upper Kurast (slots 0 and 1); coming back up, the hero arrives at the first one (which one the original uses is UNVERIFIED).
 * The Great Marsh and the jungle lose a third of their monsters to the "hero cannot walk there" filter (islands of floor between water and undergrowth).
+
+## Quest rewards through the NPCs (scenario 9k)
+
+Branch `feat/reward-npc-ui`. Larzuk (sockets), Anya (personalise) and Charsi (imbue) take the item the hero holds on the cursor when the hero clicks them (`OnItemDropOnNPC`; scripts use `say:pickitem <code>` then `move:npc=`); while a reward is owed their menu also gets a row (Add Sockets / Personalize / Imbue) that opens the inventory (a row of this fork, UNVERIFIED against the exe). Akara gets the "Reset Stat/Skill Points" row (string 0x2ba0, gated by quest slot 41). Debug aids: `questpending <act> <quest>`, `giveitemq`, `pickitem`, `putitem`, `freeinv`. Not persisted: the owed sockets/personalisation (only the imbue and the reset follow the quest record). Hratli and Jerhyn have no travel rows in the exe table; act travel stays Warriv, Meshif, the Mephisto portal and Tyrael talk.

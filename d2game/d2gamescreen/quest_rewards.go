@@ -3,6 +3,7 @@ package d2gamescreen
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2quest"
@@ -52,14 +53,15 @@ func (v *Game) applyQuestReward(e d2quest.Effect) {
 				st.Totals.ResistShown[0], st.Totals.ResistShown[1], st.Totals.ResistShown[2], st.Totals.ResistShown[3])
 		}
 	case o.PendingSocket:
-		note = "Larzuk waits for an item (rewarditem socket)"
+		note = "Larzuk waits for an item (click him with an item on the cursor, or the Add Sockets row)"
 
-		v.gameControls.Speech.Notice("Larzuk can add sockets: use the console command rewarditem socket", questNoticeSeconds)
+		v.gameControls.Speech.Notice("Larzuk can add sockets: click him with an item", questNoticeSeconds)
 	case o.PendingPersonalize:
-		note = "Anya waits for an item (rewarditem personalize)"
+		note = "Anya waits for an item (click her with an item on the cursor, or the Personalize row)"
 
-		v.gameControls.Speech.Notice("Anya can personalize an item: use the console command rewarditem personalize", questNoticeSeconds)
+		v.gameControls.Speech.Notice("Anya can personalize an item: click her with an item", questNoticeSeconds)
 	case o.Hire != "":
+		v.gameControls.Speech.Notice("Mercenaries of "+o.Hire+" can now be hired", questNoticeSeconds)
 		note = "mercenaries of " + o.Hire + " are hirable"
 	case o.UnlockDifficulty:
 		note = "next difficulty unlocked by the quest bits"
@@ -97,8 +99,14 @@ func (v *Game) questDifficulty() int {
 
 // applyItemReward spends a pending item reward on an item of the hero (the
 // cursor first, then the inventory) and returns what happened. kind is
-// "socket" (Larzuk) or "personalize" (Anya).
+// "socket" (Larzuk), "personalize" (Anya) or "imbue" (Charsi).
 func (v *Game) applyItemReward(kind string) (string, error) {
+	return v.applyItemRewardTo(kind, nil)
+}
+
+// applyItemRewardTo is applyItemReward for a given item (the one dropped on
+// the NPC); nil searches the cursor and the inventory for one the rule accepts.
+func (v *Game) applyItemRewardTo(kind string, target *diablo2item.Item) (string, error) {
 	r := v.quests()
 	if r == nil {
 		return "", fmt.Errorf("the quest system is not running")
@@ -106,18 +114,33 @@ func (v *Game) applyItemReward(kind string) (string, error) {
 
 	diff := v.questDifficulty()
 
+	pick := func(pred func(*diablo2item.Item) bool) *diablo2item.Item {
+		if target != nil {
+			if pred(target) {
+				return target
+			}
+
+			return nil
+		}
+
+		return v.gameControls.FindItem(pred)
+	}
+
 	switch kind {
 	case "socket":
 		if r.rewards.SocketPending <= 0 {
 			return "", fmt.Errorf("Larzuk owes no sockets")
 		}
 
-		it := v.gameControls.FindItem(func(i *diablo2item.Item) bool {
+		it := pick(func(i *diablo2item.Item) bool {
 			_, err := d2reward.LarzukSockets(i.SocketInfo(), diff)
 			return err == nil
 		})
 		if it == nil {
-			return "", fmt.Errorf("no item of the hero can be socketed")
+			return "", v.refusal(target, "no item of the hero can be socketed", func(i *diablo2item.Item) error {
+				_, err := d2reward.LarzukSockets(i.SocketInfo(), diff)
+				return err
+			})
 		}
 
 		n, _ := d2reward.LarzukSockets(it.SocketInfo(), diff)
@@ -132,11 +155,13 @@ func (v *Game) applyItemReward(kind string) (string, error) {
 			return "", fmt.Errorf("Anya owes no personalisation")
 		}
 
-		it := v.gameControls.FindItem(func(i *diablo2item.Item) bool {
+		it := pick(func(i *diablo2item.Item) bool {
 			return d2reward.CanPersonalize(i.PersonalizeInfo()) == nil
 		})
 		if it == nil {
-			return "", fmt.Errorf("no item of the hero can be personalised")
+			return "", v.refusal(target, "no item of the hero can be personalised", func(i *diablo2item.Item) error {
+				return d2reward.CanPersonalize(i.PersonalizeInfo())
+			})
 		}
 
 		it.SetPersonalName(v.localPlayer.Name())
@@ -145,9 +170,80 @@ func (v *Game) applyItemReward(kind string) (string, error) {
 		v.Infof("REWARD personalize item=%s name=%q pending=%d", it.CommonCode, it.Label(), r.rewards.PersonalizePending)
 
 		return it.Label(), nil
+	case "imbue":
+		return v.imbueItem(pick)
 	}
 
-	return "", fmt.Errorf("unknown item reward %q (socket or personalize)", kind)
+	return "", fmt.Errorf("unknown item reward %q (socket, personalize or imbue)", kind)
+}
+
+// refusal explains why the NPC does not take the dropped item (the rule's own
+// words) or, with no item given, falls back to the general message.
+func (v *Game) refusal(target *diablo2item.Item, general string, rule func(*diablo2item.Item) error) error {
+	if target != nil {
+		if err := rule(target); err != nil {
+			return err
+		}
+	}
+
+	return fmt.Errorf("%s", general)
+}
+
+// imbueItem is Charsi's reward: the item becomes a rare of the same base (the
+// quest then ends: ClaimImbue sets the reward bit).
+func (v *Game) imbueItem(pick func(func(*diablo2item.Item) bool) *diablo2item.Item) (string, error) {
+	r := v.quests()
+	if !v.imbueOwed() {
+		return "", fmt.Errorf("Charsi owes no imbue")
+	}
+
+	it := pick(func(i *diablo2item.Item) bool { return d2reward.CanImbue(i.ImbueInfo()) == nil })
+	if it == nil {
+		return "", fmt.Errorf("no item of the hero can be imbued")
+	}
+
+	f := v.gameControls.ItemFactory()
+	ilvl := d2reward.ImbueLevel(v.localPlayer.Stats.Level)
+
+	fresh, err := f.Imbue(it, ilvl, uint32(time.Now().UnixNano())|1)
+	if err != nil {
+		return "", err
+	}
+
+	if cur, ok := v.gameControls.CursorItem().(*diablo2item.Item); ok && cur == it {
+		err = v.gameControls.ReplaceCursorItem(fresh)
+	} else if !v.gameControls.ReplaceInventoryItem(it, fresh) {
+		err = fmt.Errorf("the item left the inventory")
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	before := it.Label()
+
+	r.imbuePending = false
+	v.applyQuestEffects(r.g.ClaimImbue())
+	v.gameControls.SaveItems()
+	v.Infof("REWARD imbue item=%s was=%q now=%q ilvl=%d", fresh.CommonCode, before, fresh.Label(), fresh.ItemLevel())
+
+	return fresh.Label(), nil
+}
+
+// imbueOwed says Charsi owes the imbue: the Horadric Malus was handed in
+// (reward pending in the Tools of the Trade slot, which a save keeps) and
+// the quest is not yet rewarded.
+func (v *Game) imbueOwed() bool {
+	r := v.questRT
+	if r == nil || r.g == nil {
+		return false
+	}
+
+	if q := r.g.Quest(d2quest.QuestTools); q != nil && r.g.Rec != nil {
+		return r.g.Rec.Get(q.Slot, d2quest.FlagRewardPending) && !r.g.Rec.Get(q.Slot, d2quest.FlagRewardGranted)
+	}
+
+	return r.imbuePending
 }
 
 // commandRewardItem is "rewarditem <socket|personalize>".
