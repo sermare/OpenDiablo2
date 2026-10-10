@@ -103,6 +103,10 @@ func (e *Engine) itemEvents(m *d2mapentity.Monster, p *d2mapentity.Player, melee
 	}
 
 	t := p.Stats.Totals
+	if t.SlowTarget > 0 {
+		e.applySlowTarget(m, t.SlowTarget)
+	}
+
 	if t.CrushingBlow <= 0 && t.OpenWounds <= 0 {
 		return
 	}

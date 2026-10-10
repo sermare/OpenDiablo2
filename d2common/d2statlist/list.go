@@ -82,6 +82,7 @@ const (
 	StatDeadlyStrike = 141
 	StatCrushing     = 136
 	StatOpenWounds   = 135
+	StatSlowTarget   = 150 // item_slow: "slows target by N%"
 	StatCritical     = 337 // passive_critical_strike
 	StatDodge        = 338
 	StatAvoid        = 339

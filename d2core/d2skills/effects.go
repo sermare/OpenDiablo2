@@ -37,6 +37,8 @@ type auraRun struct {
 	u    *heroUnit // the merc that keeps the aura (nil: the hero)
 	ef   d2skill.Effect
 	next int
+	// frac is the part of a mana point (1/256) the upkeep owes from earlier pulses.
+	frac int
 }
 
 type stormRun struct {
@@ -530,6 +532,24 @@ func (e *Engine) aurasTick() {
 	}
 }
 
+// auraUpkeepPay is the mana rule of a friendly aura pulse: upkeep and the owed fraction are 24.8 fixed point
+// (1/256 mana). With less mana than the upkeep nothing is paid and ok is false; otherwise the whole mana points
+// the upkeep adds up to leave the pool and the rest is carried to the next pulse.
+func auraUpkeepPay(mana, frac, upkeep int) (newMana, newFrac int, ok bool) {
+	if mana*256 < upkeep {
+		return mana, frac, false
+	}
+
+	owed := frac + upkeep
+	mana -= owed >> 8
+
+	if mana < 0 {
+		mana = 0
+	}
+
+	return mana, owed & 0xff, true
+}
+
 func (e *Engine) pulseAura(a *auraRun) {
 	a.next = e.frame + auraPulse
 	ef := &a.ef
@@ -547,7 +567,29 @@ func (e *Engine) pulseAura(a *auraRun) {
 	hx, hy := u.Pos()
 	until := e.frame + auraPulse + 3
 
-	if len(ef.Stats) > 0 || ef.State != "" && ef.Mode == "friendly" {
+	// VERIFIED (SRVDO_065 0x5cd4b0): a player's friendly aura applies its stats only while the mana covers the
+	// upkeep, (lvlmana*(lvl-1)+mana)<<manashift in 24.8, and pays it after a pulse that applied; a pulse
+	// without the mana drops the state (the marker state 0x55 goes off).
+	upkeep := 0
+	if ef.Mode == "friendly" && u.merc == nil {
+		upkeep = ef.Cost
+	}
+
+	paid := true
+
+	if upkeep > 0 {
+		var mana int
+
+		mana, a.frac, paid = auraUpkeepPay(a.p.Stats.Mana, a.frac, upkeep)
+		a.p.Stats.Mana = mana
+
+		if !paid {
+			e.setOf(a.p.ID()).Remove(ef.State)
+			e.emit("state", "STATE aura upkeep short skill=%q mana=%d need=%d/256", ef.SkillName, mana, upkeep)
+		}
+	}
+
+	if paid && (len(ef.Stats) > 0 || ef.State != "" && ef.Mode == "friendly") {
 		// a merc's aura helps its owner and itself (party range is not modelled)
 		for _, id := range []string{a.p.ID(), u.ID()} {
 			e.setOf(id).Apply(e.frame, d2state.Instance{Name: ef.State, Until: until, Mods: statMods(ef.Stats), Source: u.ID(),

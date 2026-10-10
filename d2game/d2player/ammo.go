@@ -64,6 +64,15 @@ func (g *GameControls) UseAmmo() bool {
 	}
 
 	s.SetQuantity(s.Quantity() - 1)
+	resetThrownDurability(s)
 
 	return true
+}
+
+// resetThrownDurability is what the exe does with every shot (SKILL_ConsumeThrowQuantity 0x56a090, VERIFIED):
+// the stack's durability is set back to its maximum, so a thrown javelin stack never wears down.
+func resetThrownDurability(s *diablo2item.Item) {
+	if cur, max := s.Durability(); max > 0 && cur != max {
+		s.SetDurability(max)
+	}
 }
