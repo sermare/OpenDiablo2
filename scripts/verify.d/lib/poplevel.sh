@@ -12,7 +12,12 @@ poplevel_env() {
 # hero's seed (0x101D574A, normal): the density rolls of the real game's logic regions (testdata/logic_regions.json) and
 # the number of rooms, which the engine must reproduce exactly.
 poplevel_check() {
-  local lvl=$1 min=$2 rolls=${3:-} rooms=${4:-} rc
+  local lvl=$1 min=$2 rolls=${3:-} rooms=${4:-} rc row
+  # scripts/verify.d/lib/pop_rolls.txt: "<level> <rooms> <density rolls>" of the real game for the sample seed, from the emulator
+  if [ -z "$rolls" ] && [ -f scripts/verify.d/lib/pop_rolls.txt ]; then
+    row=$(grep "^$lvl " scripts/verify.d/lib/pop_rolls.txt | head -1)
+    if [ -n "$row" ]; then rooms=${rooms:-$(echo $row | cut -d' ' -f2)}; rolls=$(echo $row | cut -d' ' -f3); fi
+  fi
   grep -E "POPULATE (level|types|packs|groups)|AUTOSCRIPT RESULT|density rolls" $log.txt | cut -c1-260
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: population scenario for level $lvl did not pass"; fail=1; }
   if [ -n "$rolls" ]; then

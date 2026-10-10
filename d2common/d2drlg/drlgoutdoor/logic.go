@@ -282,8 +282,9 @@ func isTownLevel(id int) bool {
 // (0x66eb40) adds for each exit bit (0x10 << k, vis slot k) of the room: the rooms of that level with the matching
 // back exit bit that are closer than 6 tiles on both axes. The adjacent level's rooms are not generated here; the
 // rectangle of the town stands in for them (a town is tiled with rooms and its exit rooms touch the neighbour), which
-// matched the emulator's flags for the levels next to a town (TestOracleLogicRegions). UNVERIFIED where a town's exit
-// does not touch the whole length of the neighbour's edge.
+// matched the emulator's flags for the levels next to a town (TestOracleLogicRegions). An exit through a level warp
+// (Palace / Sewers from Lut Gholein) links the destination's first room with the back exit bit whatever the distance.
+// UNVERIFIED where a town's exit does not touch the whole length of the neighbour's edge.
 func (t *tileBuilder) markTownAdjacency() {
 	l, r := t.l, t.r
 
@@ -297,6 +298,14 @@ func (t *tileBuilder) markTownAdjacency() {
 		}
 
 		nb := l.Params.Vis[k]
+
+		// an exit through a level warp (a stair or portal tile rather than an open edge): the first room of the
+		// destination with the matching exit bit is linked whatever its distance, so the town marks the room
+		if l.Params.Warp[k] != -1 {
+			r.Flags |= 0x800000
+
+			return
+		}
 
 		rects := map[int]Rect{}
 		for _, n := range l.Params.Neighbors {

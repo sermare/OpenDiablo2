@@ -85,6 +85,7 @@ func TestOracleLogicRegions(t *testing.T) {
 
 	cache := map[uint32]*drlgworld.Layout{}
 	levels, rooms, bad, badID := 0, 0, 0, 0
+	badLevels := map[int]int{}
 
 	for _, g := range gold {
 		rts, err := logicRooms(t, env, cache, g.Seed, g.Level)
@@ -146,6 +147,7 @@ func TestOracleLogicRegions(t *testing.T) {
 
 			if diff != "" {
 				bad++
+				badLevels[g.Level]++
 
 				if bad <= 5 {
 					t.Errorf("seed %#x level %d room %d (%d,%d %dx%d Def %d): %s", g.Seed, g.Level, i, rt.Room.X, rt.Room.Y, rt.Room.W, rt.Room.H, rt.Room.PrestDef, diff)
@@ -154,7 +156,7 @@ func TestOracleLogicRegions(t *testing.T) {
 		}
 	}
 
-	t.Logf("%d levels, %d rooms, %d differ, %d region ids zero/non-zero differ", levels, rooms, bad, badID)
+	t.Logf("%d levels, %d rooms, %d differ (by level %v), %d region ids zero/non-zero differ", levels, rooms, bad, badLevels, badID)
 
 	if bad != 0 || badID != 0 {
 		t.Fail()
