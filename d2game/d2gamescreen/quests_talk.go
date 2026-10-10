@@ -135,7 +135,7 @@ func (v *Game) questSpeak(npc questNPC, s d2quest.Speech) {
 	v.logSubtitle(npc.label, s.Msg, text)
 
 	if hasSound && os.Getenv("OD2_AUTOTEST_MUTE") == "" {
-		if v.soundEngine.PlaySoundID(snd.Index) == nil {
+		if v.playSpeech(snd.Index) == nil && v.speechAudio() {
 			v.Warningf("could not play message %d (sound %d)", s.Msg, snd.Index)
 		}
 	}

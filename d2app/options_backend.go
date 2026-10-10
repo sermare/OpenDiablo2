@@ -30,6 +30,10 @@ func (o optionsBackend) Change(key string, index int) error {
 
 	o.a.applyAccessibility(key)
 
+	if key == d2config.OptNpcSpeech {
+		o.a.applySpeechOption()
+	}
+
 	return o.a.config.Save()
 }
 

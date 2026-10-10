@@ -20,6 +20,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
@@ -310,28 +311,30 @@ func NewGameControls(
 
 // GameControls represents the game's controls on the screen
 type GameControls struct {
-	keyMap                 *KeyMap
-	actionableRegions      []actionableRegion
-	asset                  *d2asset.AssetManager
-	renderer               d2interface.Renderer // https://github.com/OpenDiablo2/OpenDiablo2/issues/798
-	inputListener          inputCallbackListener
-	hero                   *d2mapentity.Player
-	heroState              *d2hero.HeroStateFactory
-	mapRenderer            *d2maprenderer.MapRenderer
-	escapeMenu             *EscapeMenu
-	ui                     *d2ui.UIManager
-	inventory              *Inventory
-	hud                    *HUD
-	questItemUse           func(code string) bool // Book of Skill, Potion of Life, Scroll of Resistance
-	skilltree              *skillTree
-	heroStatsPanel         *HeroStatsPanel
-	PartyPanel             *PartyPanel
-	questLog               *QuestLog
-	HelpOverlay            *HelpOverlay
-	NPCMenu                *NPCMenu
-	Waypoints              *WaypointPanel
-	Trade                  *TradeWindow
-	Identify               *IdentifyWindow
+	keyMap            *KeyMap
+	actionableRegions []actionableRegion
+	asset             *d2asset.AssetManager
+	renderer          d2interface.Renderer // https://github.com/OpenDiablo2/OpenDiablo2/issues/798
+	inputListener     inputCallbackListener
+	hero              *d2mapentity.Player
+	heroState         *d2hero.HeroStateFactory
+	mapRenderer       *d2maprenderer.MapRenderer
+	escapeMenu        *EscapeMenu
+	ui                *d2ui.UIManager
+	inventory         *Inventory
+	hud               *HUD
+	questItemUse      func(code string) bool // Book of Skill, Potion of Life, Scroll of Resistance
+	skilltree         *skillTree
+	heroStatsPanel    *HeroStatsPanel
+	PartyPanel        *PartyPanel
+	questLog          *QuestLog
+	HelpOverlay       *HelpOverlay
+	NPCMenu           *NPCMenu
+	Waypoints         *WaypointPanel
+	Trade             *TradeWindow
+	Identify          *IdentifyWindow
+	// OnTownPortal is called when a scroll or tome of town portal is right clicked.
+	OnTownPortal           func(src *diablo2item.Item)
 	PTrade                 *PlayerTradeWindow // trade with another player
 	relation               func(p *d2mapentity.Player) d2enum.PlayersRelationships
 	stash                  *ContainerPanel

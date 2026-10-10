@@ -5,7 +5,7 @@
 # Exit 0 only if every job printed ALL CHECKS PASSED.
 jobs=${1:-6}
 cd "${0:A:h}/.." || exit 1
-slow=(9b-act1-playthrough 9e-act2-playthrough 9g-act3-durance 9h-act45-playthrough 9i-act5-caves-playthrough 99-act-travel 96-multiplayer 9d-party-trade 83-cave-chain-persist 9f-act2-lutn 86-class-skills 94-perf-real-levels 9e-cube 9g-quest-rewards-uber 9c-act1-reload 98-skillbar)
+slow=(9b-act1-playthrough 9e-act2-playthrough 9g-act3-durance 9h-act45-playthrough 9i-act5-caves-playthrough 99-act-travel 96-multiplayer 9d-party-trade 9f-pvp-skills-ear 9g-town-portals 83-cave-chain-persist 9f-act2-lutn 86-class-skills 94-perf-real-levels 9e-cube 9g-quest-rewards-uber 9c-act1-reload 98-skillbar)
 all=(${${(f)"$(ls scripts/verify.d/*.sh | sed 's#.*/##; s#\.sh$##')"}})
 ordered=($slow ${all:|slow})
 typeset -A grp

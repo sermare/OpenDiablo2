@@ -65,7 +65,7 @@ func (v *Game) advanceBarks(elapsed float64) {
 	v.logSubtitle(npc.Label(), s.Msg, text)
 
 	if hasSound && os.Getenv("OD2_AUTOTEST_MUTE") == "" {
-		v.soundEngine.PlaySoundID(snd.Index)
+		v.playSpeech(snd.Index)
 	}
 
 	if text != "" {
