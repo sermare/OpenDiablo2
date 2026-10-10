@@ -214,8 +214,19 @@ level build.
 
 | 52 | `scripts/verify_parallel.sh` printed "ALL JOBS PASSED" in a minute: no game scenario ran | it passes scenario names without `.sh`, `verify.sh` matched `OD2_VERIFY_ONLY` against the file name with `.sh`, so every scenario was skipped | match with and without the suffix | the 9j/9k scenarios appear in the parallel logs |
 
+| 53 | Durance of Hate Level 2: "level 101 has no exit towards level 102" (the Act 3 gate scenario 9g stops there, also on `fork/integration`) | the stairs down carry the style 3 in the generated level, the style rules know 4 and up | `observedTileDestinations` {101, 3} -> 102. The walk then stops 18 tiles short of the stairs: that part of the generated level 101 is not reachable from the arrival (a generation/walkability problem, not fixed; 9g still fails there) | `TestDuranceLevel2StairsDown` |
+
+## Scenarios that fail on `fork/integration` itself (not caused by this branch)
+
+Run with `scripts/verify.sh` one scenario at a time on an archive of `fork/integration`, and on this branch: `98-skillbar` (the skill tree hover/F6 and the
+skill points: "Charged Bolt not learned" ...), `99-act-travel` (the NPC menus of Fara and Malah do not open in time) and
+`9g-act3-durance` (above) fail in both. The scenarios `9b/9c/9d` (Act 1), `9e`, `9h`, `9i`, `87`, `97` pass here one at a time; under six
+parallel jobs on a loaded machine many scenarios (gamble, performance, AI states, ...) fail by timing, which the one retry does not always cure.
+
 ## Limits found, not fixed
 
+* A walk from the Gidbinn altar of the Flayer Jungle back to its waypoint finds no way (the hero walks west and gives up), a walk from the
+  dungeon hole to the waypoint works once the monsters of the level are dead; the Blade scenario fights first (`kill:all`) and keeps that order.
 * The prison doors (class 434) of Rescue on Mount Arreat are not in the DS1 monster lists of the generated Frigid Highlands
   (no `place_prisondoor`-like marker; 3 `Cage` objects exist), so the kill step of that quest cannot be played; the quest
   moves to its "entered the area" state and shows its pages, nothing more. The count on the log page is a fixed number.
