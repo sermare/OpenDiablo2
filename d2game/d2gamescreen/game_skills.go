@@ -100,6 +100,8 @@ func (v *Game) skillEngine() *d2skills.Engine {
 
 			return 1
 		},
+		Act:          v.currentAct,
+		Difficulty:   int(v.gameClient.Difficulty),
 	})
 
 	if st := v.localPlayer.Stats; st != nil {
@@ -376,6 +378,10 @@ func (v *Game) corpseForCast(victim *d2mapentity.Monster, elapsed float64, t *ca
 	bd := 0
 
 	for _, c := range v.monsters.Corpses() {
+		if v.skills != nil && v.skills.Looted(c.ID()) { // Find Potion / Find Item / Grim Ward used it up
+			continue
+		}
+
 		cx, cy := c.SubtilePos()
 		if d := d2monster.Distance(hx-cx, hy-cy); best == nil || d < bd {
 			best, bd = c, d

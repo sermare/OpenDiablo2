@@ -153,6 +153,14 @@ func (e *Engine) effect(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		e.move(p, u, sk, ef)
 	case "convert":
 		e.convert(p, sk, ef)
+	case "shield":
+		e.shield(p, u, sk, ef)
+	case "loot":
+		e.loot(p, sk, ef)
+	case "ward":
+		e.ward(p, sk, ef)
+	case "whirl":
+		e.whirl(p, u, sk, ef)
 	case "self_damage":
 		loss := p.Stats.MaxHealth * ef.SelfDamagePct / 100
 		p.Stats.Health = maxInt(p.Stats.Health-loss, 1)
@@ -619,6 +627,12 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		}
 
 		made++
+
+		if o.OwnerHPPct > 0 { // Dopplezon: life is a percent of the owner's maximum life
+			hp := maxInt(p.Stats.MaxHealth*o.OwnerHPPct/100, 1)
+			m.Vitals.MaxHP, m.Vitals.HP = hp, hp
+		}
+
 		e.pets[p.ID()] = append(e.pets[p.ID()], m)
 
 		if o.UseCorpseType {

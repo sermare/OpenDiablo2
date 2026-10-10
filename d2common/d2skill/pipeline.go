@@ -61,11 +61,13 @@ type Target struct {
 	// Raise Skeleton, Corpse Explosion, Revive...). CX, CY is its subtile,
 	// CorpseID an engine handle, CorpseHP its maximum life and CorpseKey its
 	// monstats key.
-	Corpse    bool
-	CX, CY    int
-	CorpseID  string
-	CorpseHP  int
-	CorpseKey string
+	Corpse bool
+	// CorpseLooted: Find Potion / Find Item / Grim Ward already worked on it (state 0x76).
+	CorpseLooted bool
+	CX, CY       int
+	CorpseID     string
+	CorpseHP     int
+	CorpseKey    string
 	// CorpseLevel is the corpse monster's level (Corpse Explosion scales its
 	// damage down when the corpse is above the caster).
 	CorpseLevel int
@@ -287,6 +289,11 @@ type Effect struct {
 	// CasterLevel is the caster's character level ("convert": a converted
 	// monster above that level is scaled down to it, SRVDO_079).
 	CasterLevel int
+	// Loot, Ward and Whirl carry the orders of the "loot" (Find Potion, Find
+	// Item), "ward" (Grim Ward) and "whirl" (Whirlwind) effects, class_abc.go.
+	Loot  *LootOrder
+	Ward  *WardOrder
+	Whirl *WhirlOrder
 }
 
 // Strike is one delayed hit of a "strikes" effect.
@@ -328,6 +335,9 @@ type SummonOrder struct {
 	// Cells lists subtile offsets from (X, Y) for each of Count summons (the
 	// three hydras of SRVDO_144 stand in a triangle); empty = all at (X, Y).
 	Cells [][2]int
+	// OwnerHPPct, when > 0, sets the minion's life to that percent of the
+	// owner's maximum life (Dopplezon, SRVDO_015).
+	OwnerHPPct int
 }
 
 // MeleeResult is a resolved melee strike.

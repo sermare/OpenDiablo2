@@ -720,6 +720,13 @@ func (d *Director) dropLoot(u *unit, byPlayer bool) {
 
 		return
 	}
+
+	d.dropLootFrom(u, tc)
+}
+
+// dropLootFrom rolls the named treasure class for a monster (its own class on
+// death, another column of monstats for Find Item).
+func (d *Director) dropLootFrom(u *unit, tc string) {
 	if tc == "" {
 		d.emit("drop", "MONSTER drop name=%s tc=- items=0", u.m.Label())
 
