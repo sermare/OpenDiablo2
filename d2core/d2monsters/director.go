@@ -133,8 +133,9 @@ type unit struct {
 	fleeUntil           int
 	slowPct             int
 	lastFlee, lastThink int
-	lastLabel           string // the AI state last traced (forced.go)
-	raising             bool   // a corpse a shaman is raising (corpses.go)
+	lastLabel           string    // the AI state last traced (forced.go)
+	raising             bool      // a corpse a shaman is raising (corpses.go)
+	skill               *monSkill // the monstats skill of the attack in progress (skilldmg.go), nil = plain attack
 }
 
 type moveIntent struct {
@@ -156,7 +157,12 @@ type Director struct {
 	players  func() []*d2mapentity.Player
 	opt      Options
 
-	frame    int
+	frame int
+
+	// castSlot is the monstats slot of the Cast in progress (castSet), read
+	// by Attack to bind the skill to the unit.
+	castSlot int
+	castSet  bool
 	acc      float64
 	clock    float64
 	adoptAcc float64

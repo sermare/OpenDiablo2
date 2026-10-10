@@ -117,6 +117,10 @@ func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain)
 		scale(lv.dm, pick(r.DamageMinA2Normal, r.DamageMinA2Nightmare, r.DamageMinA2Hell)),
 		scale(lv.dm, pick(r.DamageMaxA2Normal, r.DamageMaxA2Nightmare, r.DamageMaxA2Hell)))
 
+	v.S1 = MonsterAttackFrom(scale(lv.th, pick(r.AttackRatingS1Normal, r.AttackRatingS1Nightmare, r.AttackRatingS1Hell)),
+		scale(lv.dm, pick(r.DamageMinS1Normal, r.DamageMinS1Nightmare, r.DamageMinS1Hell)),
+		scale(lv.dm, pick(r.DamageMaxS1Normal, r.DamageMaxS1Nightmare, r.DamageMaxS1Hell)))
+
 	// Casters (Skeleton Mage) have no physical A1 damage: their A1 is the
 	// first elemental damage column, scaled like physical damage. Poison and
 	// cold lengths are not modelled (the hit is instant). UNVERIFIED reading
@@ -129,6 +133,10 @@ func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain)
 
 	if v.A1.ToHit == 0 {
 		v.A1.ToHit = scale(lv.th, 100)
+	}
+
+	if v.S1.ToHit == 0 {
+		v.S1.ToHit = v.A1.ToHit
 	}
 
 	if v.A2.ToHit == 0 {

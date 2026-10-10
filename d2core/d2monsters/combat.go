@@ -95,7 +95,7 @@ func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 		return
 	}
 
-	atk, ok := attackFor(&u.m.Vitals, mode)
+	atk, ok := d.attackOf(u, mode)
 	if !ok {
 		return
 	}
@@ -116,7 +116,7 @@ func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 		return
 	}
 
-	if attackIsRanged(u.m.Stat, mode) {
+	if d.attackFlies(u, mode) {
 		d.fireShot(u, mode, atk)
 
 		return
@@ -205,14 +205,17 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 	}
 
 	if hit {
-		dmg = atk.Min + int(u.b.Seed.Roll(int32(atk.Max-atk.Min+1)))
-		if dmg < 1 {
-			dmg = 1
+		if atk.Max > 0 || atk.ElemMax == 0 {
+			dmg = atk.Min + int(u.b.Seed.Roll(int32(atk.Max-atk.Min+1)))
+			if dmg < 1 {
+				dmg = 1
+			}
 		}
 
 		// VERIFIED (0x579c90): flat reduction first, then the physical resist
 		// percent; no floor per component, the Total is only subtracted when > 0.
 		dmg = heroPhysicalDamage(dmg, reduce, physResist)
+		dmg += d.elementalHit(u, p, atk)
 
 		// skill defenses run after the to-hit and shield block steps and the
 		// armor reductions: Energy Shield, Bone Armor, Thorns
@@ -273,7 +276,7 @@ func (d *Director) fireShot(u *unit, mode d2monster.Mode, atk d2mapentity.Monste
 
 	shot := Shot{
 		Owner: u.b.ID, Mode: mode.String(), From: d2path.Point{X: sx, Y: sy}, To: d2path.Point{X: ax, Y: ay},
-		Missile: missileFor(u.m.Stat, mode), Velocity: d.missileVelocity(missileFor(u.m.Stat, mode)),
+		Missile: shotMissile(u, mode), Velocity: d.missileVelocity(shotMissile(u, mode)),
 		Collide: func(x, y int) bool {
 			for _, tid := range d.targetIDs() {
 				p := d.targets[tid]

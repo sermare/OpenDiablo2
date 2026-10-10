@@ -44,6 +44,7 @@ type MonsterVitals struct {
 	Experience      int
 	TreasureClass   string
 	A1, A2          MonsterAttack
+	S1              MonsterAttack // S1MinD/S1MaxD/S1TH: the damage of modes SC and S1 (VERIFIED 0x5a2960)
 	Difficulty      d2monster.Difficulty
 	DeathSeedSource uint32
 }
@@ -51,6 +52,11 @@ type MonsterVitals struct {
 // MonsterAttack is the damage profile of one attack mode.
 type MonsterAttack struct {
 	ToHit, Min, Max int
+	// Elem is an added elemental part (skills.txt EType/EMin/EMax or a
+	// missile's own columns), rolled min..max and reduced by the defender's
+	// resistance; ElemType is "fire", "cold", "ltng", "mag" or "pois".
+	ElemType         string
+	ElemMin, ElemMax int
 }
 
 // Monster is a hostile unit: an animated composite driven by a
