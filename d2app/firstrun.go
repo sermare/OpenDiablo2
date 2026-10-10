@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2app/d2setup"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2config"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 )
 
@@ -47,6 +48,11 @@ func (a *App) firstRunSetup() error {
 
 // windowScale is the start window size multiplier from config.json (1..4).
 func (a *App) windowScale() int {
+	// the accessibility option (Esc -> Options -> Accessibility) wins once it was chosen
+	if i, set := a.config.Options[d2config.OptUIScale]; set && i >= 0 && i < 3 {
+		return i + 1
+	}
+
 	if s := a.config.WindowScale; s >= 1 && s <= maxWindowScale {
 		return s
 	}

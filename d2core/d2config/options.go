@@ -3,6 +3,8 @@ package d2config
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2input/d2gamepad"
 )
 
 // Option keys of the in-game options menu (Esc -> Options). The menu rows and
@@ -27,6 +29,11 @@ const (
 	OptAutomapCenter    = "automapcenter"
 	OptAutomapShowParty = "automapparty"
 	OptAutomapNames     = "automapnames"
+
+	// Accessibility (Esc -> Options -> Accessibility).
+	OptUIScale     = "uiscale"     // window size multiplier, 1X..3X
+	OptColorblind  = "colorblind"  // colour-blind friendly item colours
+	OptSubtitleLog = "subtitlelog" // NPC speech subtitles are also written to the log
 )
 
 // OptionDef describes one row of the options menu.
@@ -57,6 +64,25 @@ var (
 // 3D bias, gamma, contrast) are shown in 10% steps. UNVERIFIED: the original
 // draws these rows as slider bars; the step count is our choice.
 func OptionDefs() []OptionDef {
+	defs := baseOptionDefs()
+	defs = append(defs,
+		OptionDef{OptUIScale, []string{"1X", "2X", "3X"}, 0},
+		OptionDef{OptColorblind, []string{"OFF", "ON"}, 0},
+		OptionDef{OptSubtitleLog, []string{"OFF", "ON"}, 0},
+	)
+
+	// one remap row per gamepad button: the value is the action name
+	def := d2gamepad.DefaultMapping()
+	names := d2gamepad.ActionNames()
+
+	for _, b := range d2gamepad.Buttons() {
+		defs = append(defs, OptionDef{d2gamepad.OptionKey(b), names, int(def[b])})
+	}
+
+	return defs
+}
+
+func baseOptionDefs() []OptionDef {
 	return []OptionDef{
 		{OptSound, levels(), 10},
 		{OptMusic, levels(), 3},
@@ -160,3 +186,17 @@ func (c *Configuration) SetOption(key string, index int) error {
 
 	return nil
 }
+
+// PadMapping is the gamepad button mapping chosen in the controls pages.
+func (c *Configuration) PadMapping() d2gamepad.Mapping {
+	return d2gamepad.MappingFromChoices(c.OptionValue)
+}
+
+// UIScale is the chosen window size multiplier (1..3).
+func (c *Configuration) UIScale() int { return c.OptionIndex(OptUIScale) + 1 }
+
+// ColorBlind reports the colour-blind friendly item colours option.
+func (c *Configuration) ColorBlind() bool { return c.OptionIndex(OptColorblind) == 1 }
+
+// SubtitleLog reports the NPC speech subtitle log option.
+func (c *Configuration) SubtitleLog() bool { return c.OptionIndex(OptSubtitleLog) == 1 }

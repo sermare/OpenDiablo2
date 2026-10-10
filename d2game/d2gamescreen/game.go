@@ -254,6 +254,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 
 // OnUnload releases the resources of Gameplay screen
 func (v *Game) OnUnload() error {
+	v.gameControls.UnbindGamepad()
+
 	if err := v.gameControls.UnbindTerminalCommands(v.terminal); err != nil {
 		return err
 	}
@@ -450,6 +452,7 @@ func (v *Game) bindGameControls() error {
 
 		v.gameControls.Load()
 		v.gameControls.SetCubePortalHandler(v.cubePortal)
+		v.gameControls.BindGamepad()
 		v.gameControls.Automap().SetLevelSource(v.currentLevel, v.levelName)
 		v.gameControls.SetEquipSound(v.playHeroUISound)
 		v.gameControls.SetQuestItemUse(v.useQuestItem)

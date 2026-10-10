@@ -182,6 +182,12 @@ func (v *Label) Advance(elapsed float64) error {
 }
 
 func getColor(token ColorToken) color.Color {
+	if colorBlind.Load() {
+		if c, ok := colorBlindPalette[token]; ok {
+			return d2util.Color(c)
+		}
+	}
+
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/823
 	colors := map[ColorToken]color.Color{
 		ColorTokenGrey:   d2util.Color(colorGrey100Alpha),

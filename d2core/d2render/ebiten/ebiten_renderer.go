@@ -12,6 +12,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2config"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2input/d2gamepad"
 )
 
 const (
@@ -174,6 +175,10 @@ func (r *Renderer) GetVSyncEnabled() bool {
 
 // GetCursorPos returns the current cursor position x,y coordinates
 func (r *Renderer) GetCursorPos() (x, y int) {
+	if vx, vy, ok := d2gamepad.Default().Cursor(); ok {
+		return vx, vy // a gamepad is in use: its virtual cursor
+	}
+
 	return ebiten.CursorPosition()
 }
 
@@ -190,4 +195,14 @@ func (r *Renderer) ShowPanicScreen(message string) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// SetWindowScale resizes the window to scale times the 800x600 game screen (the
+// game keeps its logical size, so the interface grows with the window).
+func (r *Renderer) SetWindowScale(scale int) {
+	if scale < 1 || ebiten.IsFullscreen() {
+		return
+	}
+
+	ebiten.SetWindowSize(screenWidth*scale, screenHeight*scale)
 }

@@ -61,7 +61,17 @@ const (
 	KindLoot Kind = "loot"
 	// KindMenu picks a row of the open NPC menu (menu:Talk, menu:Trade, a topic text).
 	KindMenu Kind = "menu"
+	// KindPad injects virtual gamepad input (a synthetic controller, so no
+	// hardware is needed): pad:connect, pad:disconnect, pad:press=A (tap),
+	// pad:hold=A, pad:release=A, pad:stick=left|right,x,y.
+	KindPad Kind = "pad"
 )
+
+// PadHost is implemented by hosts that can inject virtual gamepad input.
+type PadHost interface {
+	// Pad performs one pad: operation (see KindPad).
+	Pad(op string) error
+}
 
 // ExpectLevelTimeout is how long (game seconds) an expect:level step waits for
 // a level change in progress (fade out, load, fade in) before it fails.
@@ -345,6 +355,10 @@ func parseStep(raw string) (Step, error) {
 	case KindMenu:
 		if arg == "" {
 			return s, errors.New("menu needs a row name")
+		}
+	case KindPad:
+		if arg == "" {
+			return s, errors.New("pad needs an operation (connect, press=A, stick=left,1,0, ...)")
 		}
 	case KindLoot:
 		err = parseLoot(&s, arg)
@@ -643,6 +657,13 @@ func (r *Runner) run(s Step) error {
 		return err
 	case KindWalkTo, KindKill, KindMenu:
 		return r.play(s)
+	case KindPad:
+		ph, ok := r.host.(PadHost)
+		if !ok {
+			return errors.New("host does not support pad steps")
+		}
+
+		return ph.Pad(s.Arg)
 	case KindLoot:
 		lh, ok := r.host.(LootHost)
 		if !ok {
