@@ -124,7 +124,8 @@ func PlanSummon(rec *d2records.SkillRecord, caster *d2records.MonStatRecord) (Su
 // MosquitoNest aip1, Sarcophagus aip3, MinionSpawner aip1/aip2, VileMother
 // aip1/aip2 (all ported VERIFIED in d2common/d2monster). Lower-case names.
 var selfLimitedSummoners = map[string]bool{"foulcrownest": true, "mosquitonest": true, "sarcophagus": true,
-	"minionspawner": true, "vilemother": true}
+	"minionspawner": true, "vilemother": true,
+	"sandmaggotqueen": true} // SandMaggotQueen: aip1 brood limit (VERIFIED port)
 
 // Host safety net (UNVERIFIED numbers, a bound and not a rule from the
 // exe): the most live summons of one caster. A self-limited AI never gets
