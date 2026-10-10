@@ -277,3 +277,45 @@ func (b *Buffs) Total(stat int) int64 {
 func (x Buff) Describe(now float64) string {
 	return fmt.Sprintf("%s state=%d stats=[%s] remaining=%.1fs", x.Source, x.State, x.Stats.String(), x.Expires-now)
 }
+
+// WellFlags are the bits of the well's Parm3 (VERIFIED in 0x583620).
+// Parm3 = 3 for every well in the 1.14b table.
+const (
+	WellMana = 1 // Parm3 bit 0: the pulse heals mana
+	WellLife = 2 // Parm3 bit 1: the pulse heals life
+)
+
+// WellVitals adds stamina to Vitals for the well pulse.
+type WellVitals struct {
+	Vitals
+	Stamina, MaxStamina int
+}
+
+// WellPulse is one heal pulse of a well (OperateFn 22). VERIFIED in 0x583620 (the heal helper of the
+// well event at 0x5837b0): life and mana (each only when below maximum and the Parm3 bit is set) and
+// stamina (always) rise by Parm1 * max >> 8, capped at the maximum; the helper also removes the poison
+// and freeze stat lists and the states in a mask, and heals the hero's pets the same way (not modelled
+// here). Parm1 is 128 for every well (a pulse is half of the maximum). UNVERIFIED: how many pulses a
+// well holds and how the event at 0x5837b0 spaces them (it reschedules itself Parm0+1 frames later
+// while a counter in the object data is non-zero; Parm0 is 750 for every well).
+func WellPulse(v WellVitals, parm1, parm3 int) (out WellVitals, changed bool) {
+	out = v
+	grow := func(cur *int, max int) {
+		if *cur < max {
+			*cur = minInt(*cur+max*parm1>>8, max)
+			changed = true
+		}
+	}
+
+	if parm3&WellLife != 0 {
+		grow(&out.Life, out.MaxLife)
+	}
+
+	if parm3&WellMana != 0 {
+		grow(&out.Mana, out.MaxMana)
+	}
+
+	grow(&out.Stamina, out.MaxStamina)
+
+	return out, changed
+}

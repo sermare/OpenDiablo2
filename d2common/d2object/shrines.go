@@ -318,3 +318,49 @@ func containsInt(a []int, v int) bool {
 
 	return false
 }
+
+// ShrineRetries is the number of rerolls the exe allows when a rolled shrine's LevelMin exceeds the
+// level (VERIFIED in OBJECT_ChooseShrineType 0x54d840 / OBJECT_RollShrineForLevel 0x54d5c0: a counter
+// starts at 8 and the loop runs while level < LevelMin and --counter > 0). After the last try the
+// roll is kept even if the level is too low.
+const ShrineRetries = 8
+
+// RemapShrineCode applies the final fix-up of OBJECT_ChooseShrineType (VERIFIED, 0x54d840): the rolled
+// code 5 (Mana Exchange) becomes 3 (Mana Boost), 4 (Health Exchange) becomes 2 (Health Boost) and 0x10
+// (Enirhs) becomes 0x12 (Gem Upgrade). These are the "(OUT)" features of shrines.txt.
+func RemapShrineCode(code int) int {
+	switch code {
+	case ShrineManaExchange:
+		return ShrineMana
+	case ShrineHealthExchange:
+		return ShrineHealth
+	case ShrineEnirhs:
+		return ShrineGem
+	}
+
+	return code
+}
+
+// RollShrineUniform is the roll of a shrine object whose Parm0 is 0 (VERIFIED, 0x54d840): a uniform
+// pick over the rows 1..len(rows)-1 (rarity is not used), rerolled up to ShrineRetries times while the
+// row's LevelMin exceeds areaLevel, then RemapShrineCode. rows is indexed by shrine code.
+func RollShrineUniform(rows []Shrine, r *Roller, areaLevel int) (Shrine, bool) {
+	if len(rows) < 2 {
+		return Shrine{}, false
+	}
+
+	code := 1
+
+	for tries := ShrineRetries; ; {
+		code = 1 + r.Roll(len(rows)-1)
+		if areaLevel >= rows[code].LevelMin {
+			break
+		}
+
+		if tries--; tries <= 0 {
+			break
+		}
+	}
+
+	return ShrineByCode(rows, RemapShrineCode(code))
+}
