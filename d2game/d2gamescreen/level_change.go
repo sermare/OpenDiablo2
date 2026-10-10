@@ -309,6 +309,7 @@ func (v *Game) afterLevelBuilt(from, to int, via string) {
 	v.scanWarps()
 	v.questArea(to) // the quest system follows the hero between areas
 	v.uberEnter(to)
+	v.chaosEnter(to)
 	v.restoreCorpse()
 	v.restoreLevel(to)
 

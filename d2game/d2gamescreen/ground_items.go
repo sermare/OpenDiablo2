@@ -113,7 +113,7 @@ func (v *Game) walkToObject(ob *d2mapentity.Object) {
 		return
 	}
 
-	if d2quest.IsQuestObject(ob.Record().Index) {
+	if d2quest.IsQuestObject(ob.Record().Index) || isSealObject(ob.Record().Index) {
 		v.ground.item, v.ground.chest, v.ground.questObj, v.ground.elapsed = nil, nil, ob, 0
 
 		v.Infof("walking to quest object %d (%q) at (%.1f,%.1f)", ob.Record().Index, ob.Label(), x, y)

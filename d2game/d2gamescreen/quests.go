@@ -208,6 +208,7 @@ func (v *Game) advanceQuests(elapsed float64) {
 
 	v.advanceBarks(elapsed)
 	v.advanceUber(elapsed)
+	v.advanceChaos(elapsed)
 
 	if r.auto != nil {
 		r.auto.advance(engineHost{v}, elapsed)
@@ -271,10 +272,17 @@ func (v *Game) onMonsterKilled(ev d2monsters.KillEvent) {
 	v.questDispatch(d2quest.Event{Kind: d2quest.EvMonsterKilled, Monster: ev.Class, Super: super, Name: ev.Label, Level: r.area})
 	v.questKillDrops(ev.Label, ev.Class)
 	v.uberKilled(ev)
+	v.chaosKilled(ev)
 }
 
 // questObjectOperated is a quest object (cairn stone, Malus chest...) used by the hero.
 func (v *Game) questObjectOperated(ob *d2mapentity.Object) {
+	if id := ob.Record().Index; isSealObject(id) {
+		v.chaosOperate(ob)
+
+		return
+	}
+
 	id := ob.Record().Index
 
 	v.Infof("QUEST object operated id=%d name=%q", id, ob.Label())

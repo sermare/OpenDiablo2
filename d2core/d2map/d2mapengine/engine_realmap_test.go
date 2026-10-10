@@ -152,3 +152,39 @@ func TestStartPositionOverride(t *testing.T) {
 		t.Fatalf("override ignored: (%v,%v)", x, y)
 	}
 }
+
+func TestReachableFromSeparatesIslands(t *testing.T) {
+	// ground in columns 0-1 and 3-4 of a 5x1 map; column 2 is void: two islands
+	m, _ := testEngine(5, 1, func(x, y int) bool { return x != 2 })
+	m.BlockEmptyTiles()
+
+	r := m.ReachableFrom(2, 2)
+	if r == nil {
+		t.Fatal("start on ground must give a set")
+	}
+
+	tests := []struct {
+		name       string
+		subX, subY int
+		want       bool
+	}{
+		{"start", 2, 2, true},
+		{"same tile", 4, 4, true},
+		{"next tile", 7, 2, true},
+		{"void", 12, 2, false},
+		{"other island", 17, 2, false},
+		{"outside", -3, 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := r.At(tt.subX, tt.subY); got != tt.want {
+				t.Fatalf("At(%d,%d)=%v want %v", tt.subX, tt.subY, got, tt.want)
+			}
+		})
+	}
+
+	if m.ReachableFrom(12, 2) != nil {
+		t.Fatal("a blocked start must give nil")
+	}
+}
