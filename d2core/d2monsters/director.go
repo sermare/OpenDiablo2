@@ -592,7 +592,7 @@ func (d *Director) adoptPlacements() {
 		npc := pl.npc
 
 		stat := d.statByID[npc.MonstatID()]
-		if stat == nil || !IsHostile(stat) {
+		if stat == nil || !(IsHostile(stat) || IsDestructibleProp(stat)) {
 			continue
 		}
 
@@ -601,16 +601,8 @@ func (d *Director) adoptPlacements() {
 
 		d.engine.RemoveEntity(npc)
 
-		// a placement that stands for a super unique (the Council of Travincal, the guards of Mephisto...)
-		// becomes the named boss with its followers, modifiers and treasure class
-		if npc.SuperKey != "" {
-			res, err := d.SpawnSuperUnique(npc.SuperKey, d2path.Point{X: x, Y: y})
-			if err == nil {
-				d.Infof("adopted DS1 super unique %q (%s) at (%d,%d): %d monsters", npc.SuperKey, stat.Key, x, y, len(res.Monsters))
-				continue
-			}
-
-			d.Infof("could not build super unique %q: %v; placing a plain %s", npc.SuperKey, err, stat.Key)
+		if d.adoptSuperUnique(npc, x, y) {
+			continue
 		}
 
 		if _, err := d.Spawn(stat, x, y); err != nil {
@@ -620,6 +612,46 @@ func (d *Director) adoptPlacements() {
 			d.Infof("adopted DS1 placement %s at (%d,%d)", stat.Key, x, y)
 		}
 	}
+}
+
+// adoptSuperUnique spawns the boss of a DS1 super unique placement (with its followers and its own name: a quest asks
+// for "Shenk the Overseer", not for an "Overseer"); it reports whether it did.
+func (d *Director) adoptSuperUnique(npc *d2mapentity.NPC, x, y int) bool {
+	key := npc.SuperUnique()
+	if key == "" {
+		return false
+	}
+
+	res, err := d.SpawnSuperUnique(key, d2path.Point{X: x, Y: y})
+	if err != nil {
+		d.Infof("could not spawn super unique %s: %v", key, err)
+
+		return false
+	}
+
+	if rec := d.asset.Records.Monster.Unique.Super[key]; rec != nil {
+		res.Leader.SetLabel(d.asset.TranslateString(rec.Name))
+	}
+
+	d.Infof("adopted DS1 super unique %s (%s) at (%d,%d) with %d follower(s)", key, res.Leader.Label(), x, y,
+		len(res.Monsters)-1)
+
+	return true
+}
+
+// IsDestructibleProp says whether a monstats row is a stationary killable prop that a quest or a fight may destroy:
+// the prison doors of Rescue on Mount Arreat and the barricade doors and towers of Harrogath. They have the AI "Idle"
+// (so IsHostile is false, they never attack) but "killable" is set. Before they were left as plain NPC placements that
+// the hero could not attack, so the prison doors could not be broken.
+func IsDestructibleProp(st *d2records.MonStatRecord) bool {
+	if st == nil || !st.Enabled || st.IsNpc || st.IsInteractable || !st.IsKillable || st.Alignment != 0 {
+		return false
+	}
+
+	key := strings.ToLower(st.Key)
+
+	return strings.HasPrefix(key, "prisondoor") || strings.HasPrefix(key, "barricadedoor") ||
+		strings.HasPrefix(key, "barricadetower")
 }
 
 // IsHostile says whether a monstats row is an enemy the director should run.

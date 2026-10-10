@@ -235,6 +235,11 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"act", "quest"}, v.commandCompleteQuest},
 		{"restorevitals", "fills the hero's life and mana (debug)", nil, v.commandRestoreVitals},
 		{"setmana", "sets the hero's mana, at most the maximum (debug)", []string{"n"}, v.commandSetMana},
+
+		{"useitem", "uses the inventory item with this base code like a right click (debug)", []string{"code"}, v.commandUseItem},
+		{"lootquest", "picks up the quest items near the hero (debug)", []string{"tiles", "seconds"}, v.commandLootQuest},
+		{"clearinv", "empties the inventory grid (debug)", nil, v.commandClearInv},
+		{"questpanel", "opens the quest log on a quest and logs its title and page text", []string{"act", "quest"}, v.commandQuestPanel},
 		{"resetquests", "clears the hero's quest record in memory (debug)", nil, v.commandResetQuests},
 		{"travelfree", "1 lets act travel skip the quest and NPC rules (debug), 0 restores them",
 			[]string{"0|1"}, v.commandTravelFree},

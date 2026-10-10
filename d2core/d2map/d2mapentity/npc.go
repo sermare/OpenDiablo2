@@ -32,6 +32,13 @@ type NPC struct {
 	SuperKey string
 }
 
+// SetSuperUnique marks the NPC as the placement of a super unique (the monster director then spawns the boss with its
+// followers and name instead of a plain monster of the class).
+func (n *NPC) SetSuperUnique(key string) { n.SuperKey = key }
+
+// SuperUnique returns the SuperUniques.txt key of a super unique placement, "" for any other NPC.
+func (n *NPC) SuperUnique() string { return n.SuperKey }
+
 const (
 	magicOffsetX            = 5
 	magicOffsetScalarX      = 8

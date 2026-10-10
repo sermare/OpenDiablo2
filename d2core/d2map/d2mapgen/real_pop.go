@@ -470,8 +470,21 @@ func (p *popLevel) createSuper(game *d2monreg.Game, w d2monreg.World, room *d2mo
 
 	var pop d2monreg.Population
 
-	if game.SuperUnique(w, room, rec, rq.X, rq.Y, &pop) == nil || p.env.stat(rec.Class) == nil {
+	st := p.env.stat(rec.Class)
+	if st == nil {
 		p.stats.skipped++
+
+		return
+	}
+
+	if game.SuperUnique(w, room, rec, rq.X, rq.Y, &pop) == nil {
+		// The placement ring walk found no free spot (or the boss was refused). A boss that a quest waits for
+		// (Radament, Sewers Level 3) must not vanish with it: it is put on the DS1 spot as a super unique
+		// placement, which the monster director adopts with its followers and name (the way the maze path
+		// without the population does). Refusals by difficulty or by an earlier boss of the same hcIdx stay refusals.
+		if !p.fallbackSuper(game, key, rec, st, rq) {
+			p.stats.skipped++
+		}
 
 		return
 	}

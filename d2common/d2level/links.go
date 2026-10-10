@@ -376,7 +376,9 @@ func TileDestination(level, style int) (int, bool) {
 		return 0, false
 	}
 
-	if ActOfLevel(level) >= 4 {
+	// Act 3 jungle levels with cave entrances: Spider Forest (76) -> 84/85, Flayer Jungle (78) -> 86/88. Their entrance
+	// presets (Act3/Jungle/PygW.ds1, PygW2.ds1 ...) carry the style 0 and 1 of the slot order. OBSERVED, UNVERIFIED.
+	if ActOfLevel(level) >= 4 || level == 76 || level == 78 {
 		return SlotDestination(level, style)
 	}
 

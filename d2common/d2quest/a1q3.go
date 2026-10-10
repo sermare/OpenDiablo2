@@ -16,8 +16,21 @@ const (
 // (the Malus chest, cairn stones, Cain's gibbet, the Inifuss tree, the tower tome).
 func IsQuestObject(id int) bool {
 	return id == ObjectHoradricMalus || id == ObjectCainGibbet || id == ObjectInifussTree || id == ObjectTowerTome ||
-		id == ObjectTaintedSunAltar || id == ObjectOrifice || id == ObjectHorazonJournal ||
-		(id >= ObjectCairnStone1 && id <= ObjectCairnStone5)
+		(id >= ObjectCairnStone1 && id <= ObjectCairnStone5) || isLaterQuestObject(id)
+}
+
+// isLaterQuestObject lists the quest objects of Acts 2-4 the quest system reacts to: the tainted sun altar,
+// Tal Rasha's orifice, the three Horadric Staff chests, the Arcane Sanctuary journal, Lam Esen's tome, the
+// Compelling Orb and the Hellforge. (Before this list only the Act 1 objects were walked to as quest objects,
+// so operating the others in the world never reached the quest system.)
+func isLaterQuestObject(id int) bool {
+	switch id {
+	case ObjectTaintedSunAltar, ObjectOrifice, ObjectCubeChest, ObjectScrollChest, ObjectStaffChest,
+		ObjectHorazonJournal, ObjectLamEsenTome, ObjectCompellingOrb, ObjectHellforge, ObjectGidbinnAltar, ObjectGidbinn:
+		return true
+	}
+
+	return false
 }
 
 // superIs reports whether the killed monster is the named super unique.
