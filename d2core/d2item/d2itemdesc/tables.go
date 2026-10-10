@@ -516,8 +516,10 @@ func (t *Tables) loadRunewords(tb *tsv) {
 
 	// the id a save stores is the rank of the Runeword<N> number plus 27
 	// (verified: Chains of Honor 40, Heart of the Oak 77, Spirit 155 of the
-	// sample save; Runeword80 and Runeword96 do not exist)
-	sort.Slice(all, func(i, j int) bool { return all[i].n < all[j].n })
+	// sample save; Runeword80 and Runeword96 do not exist). Runeword95 is
+	// listed twice (Passion, Patience): both keep a rank, in file order, so
+	// the sort must be stable.
+	sort.SliceStable(all, func(i, j int) bool { return all[i].n < all[j].n })
 
 	for _, a := range all {
 		t.Runewords = append(t.Runewords, a.def)
