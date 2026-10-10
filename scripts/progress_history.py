@@ -22,7 +22,19 @@ FONT = "-apple-system,Segoe UI,Helvetica,Arial,sans-serif"
 
 
 def pcts(data):
-    return {b["label"]: round(100.0 * b["done"] / b["total"], 2) for b in data["bars"]}
+    out = {b["label"]: round(100.0 * b["done"] / b["total"], 2) for b in data["bars"]}
+    v1 = data.get("v1")
+    if v1 and v1.get("weights"):
+        w = v1["weights"]
+        num = sum(w[k] * out[k] for k in w if k in out)
+        den = sum(w[k] for k in w if k in out)
+        if den:
+            out[v1.get("title", "Game v1 complete")] = round(num / den, 2)
+            bars = {b["label"]: b for b in data["bars"]}
+            numb = sum(w[k] * min(100.0, 100.0 * (bars[k]["done"] + (bars[k].get("pending") or 0)) / bars[k]["total"])
+                       for k in w if k in bars)
+            out[v1.get("title", "Game v1 complete") + " (incl. branch work)"] = round(numb / den, 2)
+    return out
 
 
 def load():
