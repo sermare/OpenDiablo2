@@ -189,6 +189,15 @@ func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, diff d2drlg.Dif
 	g.engine.ResetMap(region, w, h)
 	g.engine.AddDS1(path) // ResetMap dropped the DT1 list
 	g.engine.PlaceStamp(stamp, 0, 0)
+
+	// the real game's tile records instead of the stamp's (style, sequence, type)
+	// lookup; Lut Gholein only when the world chose its file (OD2_REALMAPS=1)
+	if levelID != d2level.LutGholein || RealMapsEnabled() {
+		g.applyExactTown(levelID, seed, diff, region)
+	} else {
+		g.Infof("TILESTATS level=%d exact=false %s", levelID, g.engine.TileStats())
+	}
+
 	g.engine.BlockEmptyTiles()
 
 	if r, ok := rects[levelID]; ok {

@@ -46,6 +46,7 @@ you expect. Without the variable they skip (they never fail for missing data).
 | `D2_DS1` | A folder with the real town DS1 files (`LutW.ds1`, `LutN.ds1`, `DockTown3.ds1`, `Fortress.ds1`, `townWest.ds1`) | `d2mapgen` `TestRealTownDS1` |
 | `D2_DIFFICULTYLEVELS` | The `patch_d2` `DifficultyLevels.txt` | `d2difficulty` `TestRealTable` |
 | `D2_DS1_ROOT` | Folder holding `patch_d2`, `d2exp`, `d2data`, each with `data/global/tiles` extracted | outdoor oracle test (`drlgoutdoor`) |
+| `ORACLE_TILES_DIR` | A folder of full emulator tile dumps (`gen_tiles2.py` in the oracle, one level per `o_<seed>_<level>.json`; also needs `D2_TABLES` and `D2_DS1_ROOT`) | `drlgoutdoor` `TestTileDiffDir` (exact builder vs the emulator, per level), `TestTileSimDir` (old DS1 stamp path vs the emulator), `TestStaleCacheKeys`; results in [tile-diagnosis.md](tile-diagnosis.md) |
 | `D2_INSTALL` | The Diablo II install folder | `default.key` tests (`d2key`, `d2player`) |
 | `D2_DEFAULT_KEY` | A path to a real `default.key` | `d2key` |
 | `D2_PL2` | A real act palette `.pl2` | `d2pl2` shade factors |

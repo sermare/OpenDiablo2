@@ -115,7 +115,7 @@ func testEnv(t *testing.T) *Env {
 	}
 
 	tb, err := d2drlg.Load(d2drlg.Raw{Levels: rd("patch_d2/Levels.txt"), LvlPrest: rd("patch_d2/LvlPrest.txt"),
-		LvlPrestBin: rd("bin/patch_d2/lvlprest.bin"), LvlSub: rd("patch_d2/LvlSub.txt"), LvlTypes: rd("patch_d2/LvlTypes.txt"),
+		LvlPrestBin: rd("bin/patch_d2/lvlprest.bin"), LvlSub: rd("patch_d2/LvlSub.txt"), LvlTypes: rd("patch_d2/LvlTypes.txt"), LvlMaze: rd("patch_d2/LvlMaze.txt"),
 		LvlWarp: rd("d2exp/LvlWarp.txt")})
 	if err != nil {
 		t.Fatal(err)

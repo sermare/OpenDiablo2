@@ -25,6 +25,10 @@ func GenerateTown(env *Env, p Params, file int) (lv *Level, err error) {
 	}
 
 	l := &Level{Params: p, env: env, ctr: map[int]*counter{}}
+	if lr, ok := env.Tables.Level(p.ID); ok {
+		l.LType = lr.LevelType // the room tile libraries (BuildTiles) come from the level type
+	}
+
 	l.Seed = newLevelSeed(p)
 	l.W, l.H = p.Rect.W>>3, p.Rect.H>>3
 
