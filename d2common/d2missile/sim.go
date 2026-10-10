@@ -91,6 +91,23 @@ type Missile struct {
 	// Data28 is the missile data field 0x28 as SrvDoFunc 28 (Volcano) uses
 	// it: the seed of its scatter; the cast stores a random byte there.
 	Data28 uint32
+	// Data2C is the missile data field 0x2c: the second direction component of
+	// SrvDoFunc 16 (Frozen Orb's nova), the packed (x, y) shorts of 35 (Royal
+	// Strike's chaos ice), the walls still to summon for 13 (Bone Wall).
+	Data2C uint32
+	// Skill holds the numbers of the casting skill the hit functions 17, 18,
+	// 21 and 53 read from its record.
+	Skill SkillInfo
+	// Mark is the unit the exe keeps in data fields 0x28 / 0x2c (its type and
+	// id): the target of hit function 22 (Fist of the Heavens) and the leader
+	// the walls of SrvDoFunc 13 link to. MarkOwner is the same for SrvDoFunc 30:
+	// the caster that Rabies' contagion belongs to (the missile's own owner is
+	// the infected monster it follows).
+	Mark      Target
+	MarkOwner *Owner
+	// OnEffect, when set, is called with every EventState / EventSummon the
+	// missile causes, after the sim's OnEvent.
+	OnEffect func(Event)
 	// SubLoops is the sub-loop count of create flag 8: SrvDoFunc 23 / 24 pass
 	// Param1 so their sub missile lives that many extra SubStart..SubStop loops.
 	SubLoops int
@@ -121,6 +138,7 @@ type Missile struct {
 	dead           bool
 	explodes       bool
 	childDamage    DamageDesc // damage the sub missiles of SrvDoFunc 15 carry
+	plague         *Spec      // the SrvDoFunc 30 spec that created this contagion (hit function 53)
 	entered        bool       // the previous step entered a new subtile (path flag 8)
 }
 
@@ -187,7 +205,12 @@ type CreateParams struct {
 	DiscRadius, DiscLife int
 	// SpawnRadius, SpawnEvery, Data28, SubLoops: see Missile.
 	SpawnRadius, SpawnEvery, SubLoops int
-	Data28                            uint32
+	Data28, Data2C                    uint32
+	// Skill, Mark, MarkOwner, OnEffect: see Missile.
+	Skill     SkillInfo
+	Mark      Target
+	MarkOwner *Owner
+	OnEffect  func(Event)
 	// HomeMode overrides the Guided Arrow mode (default: 1 when Home is set
 	// else 2, for SrvDoFunc 7 / hit func 10 missiles).
 	HomeMode int
@@ -287,6 +310,10 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 	m.DiscRadius, m.DiscLife = p.DiscRadius, p.DiscLife
 
 	if p.Parent != nil {
+		if p.Parent.Spec.SrvDoFunc == 30 {
+			m.plague = p.Parent.Spec
+		}
+
 		if m.ChildDamage == nil {
 			m.ChildDamage = p.Parent.ChildDamage
 		}
@@ -297,12 +324,21 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 	}
 
 	m.SpawnRadius, m.SpawnEvery, m.Data28, m.SubLoops = p.SpawnRadius, p.SpawnEvery, p.Data28, p.SubLoops
+	m.Data2C, m.Skill, m.Mark, m.MarkOwner, m.OnEffect = p.Data2C, p.Skill, p.Mark, p.MarkOwner, p.OnEffect
 	m.destX, m.destY = p.DestX, p.DestY
 	m.seed.Init(uint32(m.ID))
 	m.legX, m.legY = dx, dy
 
-	if sp.SrvDoFunc == 15 { // Frozen Orb: the orb hurts nobody itself, its bolts carry the damage
+	if sp.SrvDoFunc == 15 || sp.SrvDoFunc == 30 {
+		// Frozen Orb and Rabies' plague hurt nobody themselves (neither has a Skill column), the
+		// bolts / contagion they create carry the damage
 		m.childDamage, m.Damage = p.Damage, DamageDesc{}
+	}
+
+	// SrvDoFunc 35 (chaos ice): a bolt without a heading of its own starts with
+	// the aim vector (UNVERIFIED: the exe's start values were not traced).
+	if sp.SrvDoFunc == 35 && m.Data2C == 0 {
+		m.Data2C = packShorts(int(math.Round(dx)), int(math.Round(dy)))
 	}
 
 	if m.Pierce == 0 && sp.Pierce && p.PierceChance > 0 {

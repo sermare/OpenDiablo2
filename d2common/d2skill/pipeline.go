@@ -545,6 +545,15 @@ type castOpts struct {
 	rangeLife  int
 	chainLeft  int // bolts allowed for a Chain Lightning cast (hit function 12)
 	data28     uint32
+	data2C     uint32
+	// mark / markOwner are the units the exe keeps in the missile's data fields
+	// 0x28 / 0x2c (Fist of the Heavens' target, Bone Wall's leader, Rabies'
+	// caster); see d2missile.Missile.Mark.
+	mark      d2missile.Target
+	markOwner *d2missile.Owner
+	// owner replaces the caster as the missile's owner (Rabies' plague belongs
+	// to the infected monster).
+	owner *d2missile.Owner
 }
 
 func (p *Pipeline) owner(u Unit) d2missile.Owner {
@@ -560,6 +569,20 @@ func (p *Pipeline) owner(u Unit) d2missile.Owner {
 	// Hit function 8 (Blaze) asks whether the owner is in state 13.
 	if h, ok := u.(interface{ HasState(id int) bool }); ok {
 		o.HasState = h.HasState
+	}
+
+	// SrvDoFunc 20 and 30 put their missile on the owner (0x5a7450).
+	o.Pos = func() (float64, float64) {
+		x, y := u.Pos()
+
+		return float64(x), float64(y)
+	}
+
+	// SrvDoFunc 30 hands Rabies' expiry frame to its contagion.
+	if h, ok := u.(interface {
+		StateExpire(state string) (int, bool)
+	}); ok {
+		o.StateExpire = h.StateExpire
 	}
 
 	return o
@@ -614,9 +637,10 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		switch ms.SrvHitFunc {
 		case 1:
 			areaRadius = env.eval(sk.Calc[1])
-		case 3, 12, 14, 20, 36, 47, 56:
-			// hit function 12 (Chain Lightning, 0x5a81c0) and 20 (Lightning Fury,
-			// 0x5a8e60) take their scan radius from aurarangecalc (verified)
+		case 3, 12, 14, 20, 22, 36, 47, 56:
+			// hit function 12 (Chain Lightning, 0x5a81c0), 20 (Lightning Fury,
+			// 0x5a8e60) and 22 (Fist of the Heavens, 0x5ab7f0) take their scan
+			// radius from aurarangecalc (verified)
 			areaRadius = env.eval(sk.AuraRangeCalc)
 		}
 	}
@@ -629,8 +653,25 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 	}
 
 	furyCount := 0
-	if ms.SrvHitFunc == 20 {
+
+	switch ms.SrvHitFunc {
+	case 20:
 		furyCount = env.eval(sk.Calc[1])
+	case 22: // Fist of the Heavens: at most calc4 holy bolts (0x5ab7f0, verified)
+		furyCount = env.eval(sk.Calc[4])
+	}
+
+	// Hit functions 17, 18, 21, 53 and SrvDoFunc 30 read their numbers from the
+	// casting skill's record (verified): Params, auratargetstate, auralencalc,
+	// the filter flag and the elemental length.
+	var info d2missile.SkillInfo
+
+	if needsSkillInfo(ms) {
+		copy(info.Param[:], sk.Params[:7])
+		info.AuraTargetState = sk.AuraTargetState
+		info.AuraLen = env.eval(sk.AuraLenCalc)
+		info.Filtered = sk.AuraFilter != 0
+		info.ElemLen = sk.ElemLen(env, lvl)
 	}
 
 	// SrvDoFunc 27 (Tornado, 0x5ad590, verified): period = Param1 else calc4,
@@ -694,11 +735,33 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		}
 	}
 
+	own := p.owner(u)
+	if o.owner != nil {
+		own = *o.owner
+	}
+
+	// SrvDoFunc 20 (Blade Sentinel's blade creeper) follows its owner, which in
+	// the exe is the sentinel monster itself. The engine's sentry model shoots it
+	// from the hero, so the missile is anchored where it starts and lasts its
+	// table lifetime instead of following (and outliving) the hero (stand-in).
+	var created *d2missile.Missile
+
+	if ms.SrvDoFunc == 20 && o.owner == nil {
+		fx, fy := sx, sy
+		heroGone := own.Gone
+		born := p.frame()
+		own.Pos = func() (float64, float64) { return fx, fy }
+		own.Gone = func() bool {
+			return (heroGone != nil && heroGone()) || (created != nil && p.frame() >= born+created.Total)
+		}
+	}
+
 	m, err := p.Sim.Create(d2missile.CreateParams{
-		Spec: ms, Owner: p.owner(u), SkillID: sk.ID, Level: lvl, Damage: desc,
-		DiscRadius: discRadius, DiscLife: discLife, SpawnRadius: spawnRadius, SpawnEvery: spawnEvery, Data28: o.data28,
+		Spec: ms, Owner: own, SkillID: sk.ID, Level: lvl, Damage: desc,
+		DiscRadius: discRadius, DiscLife: discLife, SpawnRadius: spawnRadius, SpawnEvery: spawnEvery, Data28: o.data28, Data2C: o.data2C,
+		Skill: info, Mark: o.mark, MarkOwner: o.markOwner, OnEffect: p.effectHook(u),
 		ChildDamage: p.ownDamages(u, sk, lvl, env, ms),
-		AreaRadius: areaRadius, HitSubRange: hitSubRange, HealMin: healMin, HealMax: healMax, PulseEvery: pulse,
+		AreaRadius:  areaRadius, HitSubRange: hitSubRange, HealMin: healMin, HealMax: healMax, PulseEvery: pulse,
 		ChainLeft: o.chainLeft, FuryCount: furyCount,
 		X: sx, Y: sy, DestX: dx, DestY: dy, Angle: o.angle, Velocity: o.velocity, ClampToDest: o.clamp || sk.Lob,
 		// the missile rolls its pierce charges (stat 0x148) from skill_pierce +
@@ -710,7 +773,34 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		return nil
 	}
 
+	created = m
+
 	return m
+}
+
+// needsSkillInfo reports whether a missile's functions read the casting skill's
+// record numbers (d2missile.SkillInfo).
+func needsSkillInfo(ms *d2missile.Spec) bool {
+	switch ms.SrvHitFunc {
+	case 17, 18, 21, 53:
+		return true
+	}
+
+	return ms.SrvDoFunc == 30
+}
+
+// effectHook turns the states the missile functions apply (Howl, Shout, Battle
+// Cry, Rabies) into ApplyState calls; nil without ApplyState.
+func (p *Pipeline) effectHook(u Unit) func(d2missile.Event) {
+	if p.ApplyState == nil {
+		return nil
+	}
+
+	return func(e d2missile.Event) {
+		if e.Kind == d2missile.EventState && e.Target != nil && e.Name != "" {
+			p.ApplyState(u, e.Target, e.Name, e.Frames)
+		}
+	}
 }
 
 // doChargedBolt is SRVDO_ChargedBolt (0x5c73a0; spot check against the binary:
@@ -748,7 +838,8 @@ func (p *Pipeline) doChargedBolt(u Unit, sk *Skill, lvl int, tgt Target, env *En
 // missile's level velocity plus calc1 (Howl: par1*(lvl-1)). The exe takes the
 // 64 destinations from tables at 0x6e2580/0x6e2680; here they are evenly
 // spaced on a circle (UNVERIFIED). Howl's missile applies auratargetstate on
-// hit (pSrvHitFunc 17; the duration LN(par5, par6) is UNVERIFIED).
+// hit (pSrvHitFunc 17, read: d2missile.howlHit, duration and flee distance
+// from Param3..6).
 func (p *Pipeline) doNovaRing(u Unit, sk *Skill, lvl int, _ Target, env *Env, res *DoResult) {
 	name := sk.SrvMissileA
 	if name == "" {
@@ -766,7 +857,9 @@ func (p *Pipeline) doNovaRing(u Unit, sk *Skill, lvl int, _ Target, env *Env, re
 	frames := d2calcLN(sk.Params[5], sk.Params[6], lvl)
 
 	var hook func(m *d2missile.Missile, t d2missile.Target)
-	if sk.AuraTargetState != "" && p.ApplyState != nil {
+	// the real Howl / Shout / Battle Cry missiles (hit functions 17, 18, 21) gate and
+	// apply the state themselves
+	if sk.AuraTargetState != "" && p.ApplyState != nil && !needsSkillInfo(ms) {
 		hook = func(_ *d2missile.Missile, t d2missile.Target) { p.ApplyState(u, t, sk.AuraTargetState, frames) }
 	}
 

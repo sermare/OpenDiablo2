@@ -34,6 +34,7 @@ const (
 //   - 23 and 24 (0x5ad2f0): drop SubMissile1 at the missile's own cell whenever
 //     the last step entered a new subtile.
 //   - 28 (0x5ad6f0): Volcano's scatter, see volcanoSpread.
+//   - 13, 16, 20, 30, 35: see gaps.go.
 func (s *Sim) doFunc(m *Missile) bool {
 	switch m.Spec.SrvDoFunc {
 	case 3:
@@ -51,6 +52,16 @@ func (s *Sim) doFunc(m *Missile) bool {
 		return s.spawnAtOwnCell(m)
 	case 28:
 		s.volcanoSpread(m)
+	case 13:
+		return s.boneWallStep(m)
+	case 16:
+		s.novaTurn(m)
+	case 20:
+		return s.followOwner(m)
+	case 30:
+		return s.contagionStep(m)
+	case 35:
+		s.chaosIceTurn(m)
 	}
 
 	return true

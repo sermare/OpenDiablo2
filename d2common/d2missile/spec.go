@@ -81,6 +81,14 @@ type Owner struct {
 	// HasState reports whether the owner has a state (id of States.txt); hit
 	// function 8 (Blaze) tests state 13 (blaze) on the owner (0x5a7c20, verified).
 	HasState func(state int) bool
+	// Pos is the owner's subtile position. SrvDoFunc 20 (Blade Sentinel's
+	// blade creeper) and 30 (Rabies' plague) put their missile on it every
+	// frame (0x5a7450, verified); a missile that needs it ends without one.
+	Pos func() (x, y float64)
+	// StateExpire reports the game frame a state (by skills.txt name) of the
+	// owner expires on, if it has it (STATS_GetStatListExpireFrame, used by
+	// SrvDoFunc 30 to hand Rabies' remaining time to its contagion).
+	StateExpire func(state string) (frame int, ok bool)
 }
 
 // Target is a unit a missile can hit.
@@ -155,6 +163,14 @@ const (
 	// helper Event.Helper (the missile's Param2) for the missile's skill and
 	// level (0x5acb00 -> 0x56b580, verified).
 	EventPeriodic EventKind = "periodic"
+	// EventState: a hit function applies a skill's state to Event.Target: Howl
+	// (hit 17, Name the state, Frames the time, Distance the flee distance),
+	// Shout / Battle Orders / Battle Command (hit 18), Battle Cry (hit 21) and
+	// Rabies' contagion (hit 53, Frames the time left on the carrier).
+	EventState EventKind = "state"
+	// EventSummon: SrvDoFunc 13 (Bone Wall's maker) summons one wall monster of
+	// the casting skill at the missile (Event.Target is the leader it links to).
+	EventSummon EventKind = "summon"
 )
 
 // Event is one thing that happened to a missile.
@@ -170,4 +186,6 @@ type Event struct {
 	Heal   int    // EventHeal: life healed, 8.8 fixed point
 	Radius int    // EventArea: radius in subtiles
 	Helper int    // EventPeriodic: index of the periodic helper (missile Param2)
+	// Frames, Distance: EventState duration and flee distance.
+	Frames, Distance int
 }

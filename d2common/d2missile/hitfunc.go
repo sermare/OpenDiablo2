@@ -49,17 +49,19 @@ func (s *Sim) hitFunc(m *Missile, t Target) (ret int, ok bool) {
 
 		return resKill, true
 	case 29:
-		// STAND-IN (Frozen Orb, 0x5a9640, body not read): while the orb
-		// passes enemies (target given) nothing happens; where it ends (wall,
-		// expiry) HitSubMissile1 (frozenorbnova) flies out in orbRing
-		// directions and the orb ends.
-		if t != nil {
-			return 0, true
-		}
-
-		s.orbRing(m)
-
-		return resKill, true
+		return s.orbHit(m), true
+	case 17:
+		return s.howlHit(m, t), true
+	case 18:
+		return s.shoutHit(m, t), true
+	case 21:
+		return s.battleCryHit(m, t), true
+	case 22:
+		return s.fistHit(m), true
+	case 37:
+		return s.bladeHit(t), true
+	case 53:
+		return s.contagionHit(m, t), true
 	case 36:
 		// Fire Blast ("bomb in air", 0x5a9ab0, verified): with a target it
 		// returns 0; without one it spawns HitSubMissile1 at the missile

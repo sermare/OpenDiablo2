@@ -16,7 +16,7 @@ Every row is cast through `d2skill.Pipeline` (Start + Do) at skill levels 1 and 
 | with a registered do handler | 162 |
 | generic srvmissile path | 22 |
 | unresolved table references (missile, state, overlay, skilldesc, summon, prereq, synergy, sumskill) | 0 |
-| skills whose missile closure has a movement/hit function the sim lacks | 11 |
+| skills whose missile closure has a movement/hit function the sim lacks | 0 |
 
 Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points); delay = cooldown frames L1 / L20; dmg20 = damage at L20 in points (elem = elemental min-max with synergies at zero, phys = min-max with a 10-20 weapon); elen = elemental length frames; missile = first srvmissile, vel L1->L20 and range; aura = aura length frames L20; pet = summon monster and petmax L20; syn = distinct synergy skill references in the calc columns; req = reqlevel / maxlvl / prerequisites; cast = result at L1/L20 (m missiles, e effect kinds, s strike); gaps = missile functions in the closure the sim does not model .
 
@@ -87,7 +87,7 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 61 | Fire Mastery | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | elem 0.0-0.0 | - | - | - | - | 0 | 30/20  | stats 1/1 |  |
 | 62 | Hydra | 14/144 | handler | 20.0 / 29.5 | 40 / 40 | elem 150.5-175.0 | - | - | - | hydra1 x99 | 2 | 30/20 Enchant | 1e/1e |  |
 | 63 | Lightning Mastery | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 30/20  | stats 1/1 |  |
-| 64 | Frozen Orb | 0/0 | generic | 25.0 / 34.5 | 25 / 25 | elem 262.0-276.5 | 675 | frozenorb (10->10, 30) | - | - | 1 | 30/20 Blizzard | 1m/1m | STAND-IN do15 bolt spiral + hit29 16-way nova ring frozenorbnova:do16 |
+| 64 | Frozen Orb | 0/0 | generic | 25.0 / 34.5 | 25 / 25 | elem 262.0-276.5 | 675 | frozenorb (10->10, 30) | - | - | 1 | 30/20 Blizzard | 1m/1m | STAND-IN do15 bolt spiral + hit29 16-way nova ring |
 | 65 | Cold Mastery | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 30/20  | stats 1/1 |  |
 
 ## Necromancer
@@ -106,7 +106,7 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 75 | Clay Golem | 0/56 | handler | 15.0 / 72.0 | 0 / 0 | - | - | - | - | ClayGolem x1 | 4 | 6/20  | 1e/1e |  |
 | 76 | Iron Maiden | 0/30 | handler | 5.0 / 5.0 | 0 / 0 | - | - | - | 1440 | - | 0 | 12/20 Amplify Damage | 1e/1e |  |
 | 77 | Terror | 0/30 | handler | 7.0 / 7.0 | 0 / 0 | - | - | - | 675 | - | 0 | 12/20 Weaken | 1e/1e |  |
-| 78 | Bone Wall | 0/60 | handler | 17.0 / 17.0 | 0 / 0 | - | - | bonewallmaker (12->12, 7) | - | bonewall x0 | 2 | 12/20 Bone Armor | 1e/1e | bonewallmaker:do13 |
+| 78 | Bone Wall | 0/60 | handler | 17.0 / 17.0 | 0 / 0 | - | - | bonewallmaker (12->12, 7) | - | bonewall x0 | 2 | 12/20 Bone Armor | 1e/1e |  |
 | 79 | Golem Mastery | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 12/20 Clay Golem | stats 0/0 |  |
 | 80 | Raise Skeletal Mage | 15/31 | handler | 8.0 / 27.0 | 0 / 0 | - | - | - | - | necromage x8 | 1 | 12/20 Raise Skeleton | 1e/1e |  |
 | 81 | Confuse | 0/61 | handler | 13.0 / 13.0 | 0 / 0 | - | - | - | 1200 | - | 0 | 18/20 Dim Vision | 1e/1e |  |
@@ -154,7 +154,7 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 118 | Holy Shock | 0/66 | handler | 0.0 / 0.0 | 0 / 0 | elem 1.0-156.0 | - | - | - | - | 2 | 24/20 Holy Freeze | 1e/1e |  |
 | 119 | Sanctuary | 0/66 | handler | 1.0 / 1.0 | 0 / 0 | elem 88.0-108.0 | - | - | - | - | 1 | 24/20 Thorns+Holy Freeze | 1e/1e |  |
 | 120 | Meditation | 0/65 | handler | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 1 | 24/20 Cleansing | 1e/1e |  |
-| 121 | Fist of the Heavens | 0/80 | handler | 25.0 / 25.0 | 25 / 25 | elem 675.0-725.0 | - | fistoftheheavensdelay (0->0, 10) | - | - | 1 | 30/20 Blessed Hammer+Conversion | 1e/1e | fistoftheheavensdelay:hit22 |
+| 121 | Fist of the Heavens | 0/80 | handler | 25.0 / 25.0 | 25 / 25 | elem 675.0-725.0 | - | fistoftheheavensdelay (0->0, 10) | - | - | 1 | 30/20 Blessed Hammer+Conversion | 1m/1m |  |
 | 122 | Fanaticism | 0/65 | handler | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 30/20 Concentration | 1e/1e |  |
 | 123 | Conviction | 0/66 | handler | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 30/20 Sanctuary | 1e/1e |  |
 | 124 | Redemption | 0/82 | handler | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 30/20 Vigor | 1e/1e |  |
@@ -168,7 +168,7 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 127 | Sword Mastery | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 1/20  | stats 3/3 |  |
 | 128 | Axe Mastery | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 1/20  | stats 3/3 |  |
 | 129 | Mace Mastery | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 1/20  | stats 3/3 |  |
-| 130 | Howl | 0/22 | handler | 4.0 / 4.0 | 0 / 0 | - | - | howl (12->12, 12) | - | - | 0 | 1/20  | 64m/64m | howl:hit17 |
+| 130 | Howl | 0/22 | handler | 4.0 / 4.0 | 0 / 0 | - | - | howl (12->12, 12) | - | - | 0 | 1/20  | 64m/64m |  |
 | 131 | Find Potion | 33/69 | handler | 2.0 / 2.0 | 0 / 0 | - | - | - | - | - | 0 | 1/20  | 1e/1e |  |
 | 132 | Leap | 40/77 | handler | 2.0 / 2.0 | 0 / 0 | - | - | leapknockback (0->0, 2) | - | - | 0 | 6/20  | 1e/1e |  |
 | 133 | Double Swing | 0/70 | handler | 1.0 / 0.0 | 0 / 0 | phys 10.0-20.0 | - | - | - | - | 1 | 6/20 Bash | s/s |  |
@@ -176,7 +176,7 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 135 | Throwing Mastery | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 6/20  | stats 3/3 |  |
 | 136 | Spear Mastery | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 6/20  | stats 3/3 |  |
 | 137 | Taunt | 0/71 | handler | 3.0 / 3.0 | 0 / 0 | - | - | - | - | - | 0 | 6/20 Howl | 1e/1e |  |
-| 138 | Shout | 0/68 | handler | 6.0 / 6.0 | 0 / 0 | - | - | shout (30->30, 15) | 5250 | - | 2 | 6/20 Howl | 1e/1e | shout:hit18 |
+| 138 | Shout | 0/68 | handler | 6.0 / 6.0 | 0 / 0 | - | - | shout (30->30, 15) | 5250 | - | 2 | 6/20 Howl | 64m1e/64m1e |  |
 | 139 | Stun | 32/2 | handler | 2.0 / 2.0 | 0 / 0 | elem 0.0-0.0 | 113 | - | - | - | 3 | 12/20 Bash | s/s |  |
 | 140 | Double Throw | 0/74 | handler | 1.0 / 1.0 | 0 / 0 | phys 10.0-20.0 | - | - | - | - | 1 | 12/20 Double Swing | refused:no_throwable/refused:no_throwable |  |
 | 141 | Increased Stamina | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 12/20  | stats 1/1 |  |
@@ -184,16 +184,16 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 143 | Leap Attack | 41/78 | handler | 9.0 / 9.0 | 0 / 0 | phys 10.0-20.0 | - | - | - | - | 1 | 18/20 Leap | 1es/1es |  |
 | 144 | Concentrate | 32/2 | handler | 2.0 / 2.0 | 0 / 0 | elem 0.0-0.0 | - | - | - | - | 3 | 18/20 Stun | s/s |  |
 | 145 | Iron Skin | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 18/20  | stats 1/1 |  |
-| 146 | Battle Cry | 0/68 | handler | 5.0 / 5.0 | 0 / 0 | - | - | battlecry (12->12, 12) | 1440 | - | 0 | 18/20 Taunt | 1e/1e | battlecry:hit21 |
+| 146 | Battle Cry | 0/68 | handler | 5.0 / 5.0 | 0 / 0 | - | - | battlecry (12->12, 12) | 1440 | - | 0 | 18/20 Taunt | 64m/64m |  |
 | 147 | Frenzy | 0/9 | handler | 1.5 / 1.5 | 0 / 0 | elem 0.0-0.0 | - | - | 150 | - | 3 | 24/20 Double Throw | 1es/1es |  |
 | 148 | Increased Speed | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 24/20 Increased Stamina | stats 1/1 |  |
-| 149 | Battle Orders | 0/68 | handler | 7.0 / 7.0 | 0 / 0 | - | - | battleorders (30->30, 15) | 5500 | - | 2 | 24/20 Shout | 1e/1e | battleorders:hit18 |
+| 149 | Battle Orders | 0/68 | handler | 7.0 / 7.0 | 0 / 0 | - | - | battleorders (30->30, 15) | 5500 | - | 2 | 24/20 Shout | 64m1e/64m1e |  |
 | 150 | Grim Ward | 33/75 | handler | 4.0 / 4.0 | 0 / 0 | - | - | grimwardmediumstart (0->0, 8) | 60 | - | 0 | 24/20 Find Item | 1e/1e |  |
 | 151 | Whirlwind | 38/76 | handler | 12.5 / 22.0 | 0 / 0 | phys 10.0-20.0 | - | - | - | - | 0 | 30/20 Leap Attack+Concentrate | 1e/1e |  |
 | 152 | Berserk | 39/2 | handler | 4.0 / 4.0 | 0 / 0 | elem 0.0-0.0 | - | - | 33 | - | 2 | 30/20 Concentrate | s/s |  |
 | 153 | Natural Resistance | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 30/20 Iron Skin | stats 4/4 |  |
 | 154 | War Cry | 0/68 | handler | 10.0 / 29.0 | 0 / 0 | phys 150.0-160.0 | - | warcry (12->12, 16) | - | - | 3 | 30/20 Battle Cry+Battle Orders | 1e/1e |  |
-| 155 | Battle Command | 0/68 | handler | 11.0 / 11.0 | 0 / 0 | - | - | battlecommand (30->30, 15) | 4875 | - | 2 | 30/20 Battle Orders | 1e/1e | battlecommand:hit18 |
+| 155 | Battle Command | 0/68 | handler | 11.0 / 11.0 | 0 / 0 | - | - | battlecommand (30->30, 15) | 4875 | - | 2 | 30/20 Battle Orders | 64m1e/64m1e |  |
 
 ## Druid
 
@@ -216,7 +216,7 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 235 | Cyclone Armor | 0/18 | handler | 5.0 / 24.0 | 0 / 0 | - | - | - | - | - | 3 | 12/20 Arctic Blast | 1e/1e |  |
 | 236 | Heart of Wolverine | 0/119 | handler | 20.0 / 39.0 | 0 / 0 | - | - | - | - | heartofwolverine x1 | 0 | 18/20 Oak Sage | 1e/1e |  |
 | 237 | Summon Fenris | 0/119 | handler | 20.0 / 20.0 | 0 / 0 | phys 69.0-74.0 | - | - | - | fenris x3 | 2 | 18/20 Oak Sage+Summon Spirit Wolf | 1e/1e |  |
-| 238 | Rabies | 57/121 | handler | 10.0 / 10.0 | 0 / 0 | elem 3.2-3.4 | 290 | rabiesplague (0->0, 10) | - | - | 1 | 18/20 Feral Rage | 1m/1m | rabiescontagion:hit53 rabiesplague:do30 |
+| 238 | Rabies | 57/121 | handler | 10.0 / 10.0 | 0 / 0 | elem 3.2-3.4 | 290 | rabiesplague (0->0, 10) | - | - | 1 | 18/20 Feral Rage | s/s |  |
 | 239 | Fire Claws | 58/2 | handler | 4.0 / 4.0 | 0 / 0 | elem 247.0-260.0 | - | - | - | - | 4 | 18/20 Feral Rage+Maul | s/s |  |
 | 240 | Twister | 0/118 | handler | 7.0 / 7.0 | 0 / 0 | phys 68.0-72.0 | - | twister (10->10, 50) | - | - | 2 | 18/20 Cyclone Armor | 3m/3m |  |
 | 241 | Vines | 0/115 | handler | 14.0 / 33.0 | 0 / 0 | - | - | - | - | vinecreature x1 | 0 | 24/20 Cycle of Life | 1e/1e |  |
@@ -240,7 +240,7 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 254 | Tiger Strike | 23/34 | handler | 1.0 / 1.0 | 0 / 0 | phys 10.0-20.0 | - | - | 375 | - | 0 | 1/20  | 1es/1es |  |
 | 255 | Dragon Talon | 24/42 | handler | 6.0 / 6.0 | 0 / 0 | - | - | - | - | - | 0 | 1/20  | s/s |  |
 | 256 | Shock Field | 0/43 | handler | 6.0 / 6.0 | 15 / 15 | elem 1.0-119.0 | - | shock field in air (12->12, 50) | - | - | 4 | 6/20 Fire Trauma | 1m/1m |  |
-| 257 | Blade Sentinel | 0/44 | handler | 7.0 / 7.0 | 50 / 50 | phys 82.0-90.0 | - | blade creeper (0->0, 10) | - | bladecreeper x5 | 0 | 6/20  | 1e/1e | blade creeper:do20 blade creeper:hit37 |
+| 257 | Blade Sentinel | 0/44 | handler | 7.0 / 7.0 | 50 / 50 | phys 82.0-90.0 | - | blade creeper (0->0, 10) | - | bladecreeper x5 | 0 | 6/20  | 1e/1e |  |
 | 258 | Quickness | 0/18 | handler | 10.0 / 10.0 | 0 / 0 | - | - | - | 8700 | - | 0 | 6/20 Claw Mastery | 1e/1e |  |
 | 259 | Fists of Fire | 23/35 | handler | 2.0 / 2.0 | 0 / 0 | elem 201.0-221.0 | - | fistsoffirefirewall (0->0, 64) | 375 | - | 1 | 6/20  | 1es/1es |  |
 | 260 | Dragon Claw | 25/46 | handler | 2.0 / 2.0 | 0 / 0 | phys 10.0-20.0 | - | - | - | - | 1 | 6/20 Dragon Talon | s/s |  |
@@ -263,7 +263,7 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 277 | Blade Shield | 28/54 | handler | 27.0 / 65.0 | 0 / 0 | phys 114.0-146.0 | - | blade shield attachment (0->0, 500) | 2875 | - | 0 | 30/20 Blade Fury | 2e/2e |  |
 | 278 | Venom | 0/18 | handler | 12.0 / 12.0 | 0 / 0 | elem 42.5-44.5 | 10 | - | 4900 | - | 0 | 30/20 Fade | 1e/1e |  |
 | 279 | Shadow Master | 0/49 | handler | 35.0 / 44.5 | 150 / 150 | - | - | - | - | shadowmaster x1 | 0 | 30/20 Shadow Warrior | 1e/1e |  |
-| 280 | Royal Strike | 23/34 | handler | 4.0 / 4.0 | 0 / 0 | phys 10.0-20.0 | - | royalstrikemeteorcenter (0->0, 60) | 375 | - | 0 | 30/20 Cobra Strike+Blades of Ice | 1es/1es | royalstrikechaosice:do35 |
+| 280 | Royal Strike | 23/34 | handler | 4.0 / 4.0 | 0 / 0 | phys 10.0-20.0 | - | royalstrikemeteorcenter (0->0, 60) | 375 | - | 0 | 30/20 Cobra Strike+Blades of Ice | 1es/1es |  |
 
 ## Non-player rows (147): srvdofunc coverage
 
@@ -348,16 +348,5 @@ Monster, item and scroll skills run through the monster AI / item code rather th
 
 | function | modelled | skills |
 |---|---|---|
-| do13 | no | 78 |
-| do16 | no | 64 |
-| do20 | no | 257 |
-| do30 | no | 238 |
-| do35 | no | 280 |
-| hit17 | no | 130 |
-| hit18 | no | 138 149 155 |
-| hit21 | no | 146 |
-| hit22 | no | 121 |
-| hit37 | no | 257 |
-| hit53 | no | 238 |
 
-Modelled by the sim: movement 1 2 3 5 6 7 10 14 15 23 24 25 27 28; hit 1 2 3 4 7 8 9 10 12 13 14 20 26 27 29 36 47 48 51 56.
+Modelled by the sim: movement 1 2 3 5 6 7 10 13 14 15 16 20 23 24 25 27 28 30 35; hit 1 2 3 4 7 8 9 10 12 13 14 17 18 20 21 22 26 27 29 36 37 47 48 51 53 56.

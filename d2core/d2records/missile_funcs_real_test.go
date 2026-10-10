@@ -1,6 +1,7 @@
 package d2records
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
@@ -21,6 +22,10 @@ type simRun struct {
 	w   *auditWorld
 	evs []d2missile.Event
 	res d2skill.DoResult
+	// states records every ApplyState call as "target:state:frames"
+	states []string
+	p      *d2skill.Pipeline
+	u      d2skill.Unit
 }
 
 func realCast(t *testing.T, skill string, lvl int) *simRun {
@@ -41,11 +46,14 @@ func realCast(t *testing.T, skill string, lvl int) *simRun {
 
 	p := &d2skill.Pipeline{Skills: reg, Missiles: mt, Sim: r.sim, Grid: r.w.grid, Frame: func() int { return 0 },
 		Opt: d2skill.Options{IgnoreTown: true, StaticFieldMinPct: 25}}
-	p.ApplyState = func(d2skill.Unit, d2missile.Target, string, int) {}
+	p.ApplyState = func(_ d2skill.Unit, t d2missile.Target, st string, frames int) {
+		r.states = append(r.states, fmt.Sprintf("%s:%s:%d", t.ID(), st, frames))
+	}
 	p.After = func(int, func()) {}
 
 	u := &auditUnit{reg: reg, self: sk.ID, lvl: lvl, player: true, rng: d2rand.New(1), mana: 5000 << 8, cd: map[int]int{}}
-	tg := d2skill.Target{X: 55, Y: 50, Corpse: true, CX: 55, CY: 50, CorpseID: "c1", CorpseHP: 200, CorpseKey: "zombie", CorpseLevel: 5}
+	r.p, r.u = p, u
+	tg := d2skill.Target{X: 55, Y: 50, Unit: r.w.foe, UX: 55, UY: 50, Corpse: true, CX: 55, CY: 50, CorpseID: "c1", CorpseHP: 200, CorpseKey: "zombie", CorpseLevel: 5}
 
 	if st := p.Start(u, sk.ID, tg); !st.OK {
 		t.Fatalf("%s: start refused %q", skill, st.Reason)

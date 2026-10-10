@@ -142,20 +142,12 @@ func TestAuditLoaderAndManaMatchTable(t *testing.T) {
 
 // knownMissileGaps pins, per player skill, the missile movement / hit
 // functions in the skill's missile closure that the sim does not model (see
-// docs/skills-coverage.md). Fixing one means deleting its entry here.
-var knownMissileGaps = map[int][]string{
-	64:  {"frozenorbnova:do16"},
-	78:  {"bonewallmaker:do13"},
-	121: {"fistoftheheavensdelay:hit22"},
-	130: {"howl:hit17"},
-	138: {"shout:hit18"},
-	146: {"battlecry:hit21"},
-	149: {"battleorders:hit18"},
-	155: {"battlecommand:hit18"},
-	238: {"rabiescontagion:hit53", "rabiesplague:do30"},
-	257: {"blade creeper:do20", "blade creeper:hit37"},
-	280: {"royalstrikechaosice:do35"},
-}
+// docs/skills-coverage.md). It is empty: the last eleven skills (Frozen Orb's
+// nova do16, Bone Wall do13, Fist of the Heavens hit22, Howl hit17, Shout /
+// Battle Orders / Battle Command hit18, Battle Cry hit21, Rabies do30 + hit53,
+// Blade Sentinel do20 + hit37, Royal Strike do35) were read from the exe and
+// ported in d2common/d2missile/gaps.go. A new entry here means a regression.
+var knownMissileGaps = map[int][]string{}
 
 func TestAuditMissileGapsArePinned(t *testing.T) {
 	rows, _ := buildAudit(t)

@@ -898,11 +898,41 @@ func doTwisterFn(c *cast) {
 	}
 }
 
-// doRabiesFn is SRVDO_121_Rabies: the plague missile (poison from EType).
+// doRabiesFn is SRVDO_121_Rabies (0x5c6b70, verified): a bite at the target
+// (to-hit roll, then the poison damage from the skill's EType columns, taken
+// from the generic melee strike here) that infects it (0x5c5dc0): the target
+// gets auratargetstate for the skill's elemental length, unless it already
+// carries it, and the plague missile (the skill's missile) starts on it. The
+// plague belongs to the infected monster and marks the caster, see
+// d2missile SrvDoFunc 30 / hit function 53, which spread the infection.
 func doRabiesFn(c *cast) {
-	if c.castM(c.missileName(), castOpts{}) == nil {
-		c.fail(ReasonMissile)
+	if !c.needTarget() {
+		return
 	}
+
+	m := c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, c.meleeOpt())
+	c.addMelee(m)
+
+	if !m.Hit || c.sk.AuraTargetState == "" {
+		return
+	}
+
+	if st, ok := c.tgt.Unit.(d2missile.Stateful); ok && st.HasStateNamed(c.sk.AuraTargetState) {
+		return
+	}
+
+	if c.p.ApplyState != nil {
+		c.p.ApplyState(c.u, c.tgt.Unit, c.sk.AuraTargetState, c.sk.ElemLen(c.env, c.lvl))
+	}
+
+	ow, ok := c.tgt.Unit.(d2missile.Ownable)
+	if !ok {
+		return
+	}
+
+	carrier, caster := ow.AsOwner(), c.p.owner(c.u)
+	c.castM(c.missileName(), castOpts{owner: &carrier, markOwner: &caster, stationary: true, hasStart: true,
+		startX: float64(c.tgt.UX) + 0.5, startY: float64(c.tgt.UY) + 0.5})
 }
 
 // doBlessedHammerFn is SRVDO_073_BlessedHammer: one hammer missile. Read from
@@ -951,10 +981,32 @@ func doMindBlastFn(c *cast) {
 	c.effect(Effect{Kind: "area_hit", Origin: "aim", X: ax, Y: ay, Radius: c.env.eval(c.sk.AuraRangeCalc), Desc: c.desc()})
 }
 
-// doShoutFn is SRVDO_068_Shout: Shout and Battle Orders are timed self states
-// (the party members in range get them too; only the hero exists here).
-// War Cry has no state: it damages and stuns the enemies around the hero.
+// doShoutFn is SRVDO_068_Shout: a nova ring of the skill's missile plus the
+// timed self state (Shout, Battle Orders, Battle Command, Battle Cry). A skill
+// whose missile has no hit function 18 / 21 and no state (War Cry) keeps the
+// older approximation: it damages and stuns the enemies around the hero.
 func doShoutFn(c *cast) {
+	// SRVDO_068 (0x5d6e50, verified) creates the nova ring of the skill's
+	// missile (the same ring as Howl) and then applies the skill's timed state
+	// to the caster. The ring's missiles carry hit function 18 (Shout, Battle
+	// Orders, Battle Command: allies get the state) or 21 (Battle Cry: enemies).
+	if ms := c.p.Missiles.ByName(c.missileName()); ms != nil && (ms.SrvHitFunc == 18 || ms.SrvHitFunc == 21) {
+		c.p.doNovaRing(c.u, c.sk, c.lvl, c.tgt, c.env, c.res)
+
+		if len(c.res.Missiles) == 0 {
+			c.fail(ReasonMissile)
+			return
+		}
+
+		if c.sk.AuraState != "" {
+			c.p.doState(c.sk, c.env, c.res, "self_state")
+			last := &c.res.Effects[len(c.res.Effects)-1]
+			last.Level, last.SkillID, last.SkillName = c.lvl, c.sk.ID, c.sk.Name
+		}
+
+		return
+	}
+
 	if c.sk.AuraState == "" {
 		d := c.desc()
 		d.StunLen = int32(c.env.eval(c.sk.Calc[1]))
@@ -1113,11 +1165,21 @@ func doChargeFn(c *cast) {
 	c.addMelee(c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o))
 }
 
-// doFistFn is SRVDO_080_FistOfTheHeavens (U): a lightning bolt on the aim point,
-// calc? holy bolts to enemies around are not modelled.
+// doFistFn is SRVDO_080_FistOfTheHeavens (0x5cebd0, verified): without a target
+// unit nothing happens. The skill's missile (fistoftheheavensdelay) is created
+// at the target, marking it; when it ends (Range frames) hit function 22
+// strikes the target with the lightning and sends holy bolts to the enemies
+// around. (The exe also puts the skill's srvoverlay on the target: the engine
+// draws that itself.)
 func doFistFn(c *cast) {
-	ax, ay := c.aim()
-	c.effect(Effect{Kind: "area_hit", Origin: "aim", X: ax, Y: ay, Radius: 3, Delay: 8, Desc: c.desc()})
+	if !c.needTarget() {
+		return
+	}
+
+	x, y := float64(c.tgt.UX)+0.5, float64(c.tgt.UY)+0.5
+	if c.castM(c.missileName(), castOpts{hasStart: true, startX: x, startY: y, stationary: true, mark: c.tgt.Unit}) == nil {
+		c.fail(ReasonMissile)
+	}
 }
 
 // ---- curses and auras ----
