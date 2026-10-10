@@ -199,6 +199,7 @@ func (v *Game) commandResetQuests(_ []string) error {
 	}
 
 	v.Infof("QUEST record cleared")
+	v.restartQuests()
 
 	return nil
 }

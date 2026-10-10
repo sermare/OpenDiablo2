@@ -345,8 +345,9 @@ func (g *MapGenerator) placeMonsters(stamp *d2mapstamp.Stamp, levelID int, diff 
 		x, y := ox*subtilesPerTile+o.X, oy*subtilesPerTile+o.Y
 
 		var (
-			stat  *d2records.MonStatRecord
-			count = 1
+			stat     *d2records.MonStatRecord
+			count    = 1
+			superKey string
 		)
 
 		lower := strings.ToLower(name)
@@ -355,6 +356,7 @@ func (g *MapGenerator) placeMonsters(stamp *d2mapstamp.Stamp, levelID int, diff 
 		case rec.Monster.Unique.Super[name] != nil:
 			sup := rec.Monster.Unique.Super[name]
 			stat = rec.Monster.Stats[sup.Class]
+			superKey = name
 			st.super++
 		case strings.HasPrefix(lower, "place_group"):
 			pct := 0
@@ -400,6 +402,7 @@ func (g *MapGenerator) placeMonsters(stamp *d2mapstamp.Stamp, levelID int, diff 
 				continue
 			}
 
+			npc.SuperKey = superKey
 			g.engine.AddEntity(npc)
 		}
 	}

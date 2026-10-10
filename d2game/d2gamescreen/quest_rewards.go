@@ -328,6 +328,25 @@ func (v *Game) commandTransmute(_ []string) error {
 	return err
 }
 
+// commandCubePut is "cubeput <code>...": the items go from the inventory into the cube.
+func (v *Game) commandCubePut(args []string) error {
+	var codes []string
+
+	for _, a := range args {
+		if a != "" && a != "-" {
+			codes = append(codes, a)
+		}
+	}
+
+	if err := v.gameControls.MoveToCube(codes...); err != nil {
+		return err
+	}
+
+	v.Infof("CUBE put %v into the cube", codes)
+
+	return nil
+}
+
 // giveRewardTestItem gives the hero an item of a given quality (the autotest).
 func (v *Game) giveRewardTestItem(code string, quality int) (string, error) {
 	return v.gameControls.GiveItemQuality(code, quality, 40)

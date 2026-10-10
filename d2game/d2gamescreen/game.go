@@ -163,6 +163,7 @@ type Game struct {
 	aiTest               *aiAutoTest
 	bossTest             *bossAutoTest
 	uber                 *uberRuntime
+	act3                 act3State
 	uberTest             *uberAutoTest
 	merc                 mercGame
 	skills               *d2skills.Engine
@@ -242,6 +243,10 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"socket|personalize"}, v.commandRewardItem},
 		{"transmute", "transmutes the quest recipes in the Horadric Cube (Staff, Khalim's Will, Pandemonium portals)",
 			nil, v.commandTransmute},
+		{"pickitem", "walks to the nearest ground item with this base code and picks it up (scripts)",
+			[]string{"code"}, v.commandPickItem},
+		{"cubeput", "moves inventory items (by base code) into the Horadric Cube; then use transmute (debug)",
+			[]string{"code1", "code2", "code3", "code4"}, v.commandCubePut},
 		{"setexp", "raises the hero's experience to at least <amount>; the level follows (debug)", []string{"amount"}, v.commandSetExp},
 	}
 

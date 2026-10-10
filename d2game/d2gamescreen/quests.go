@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2act3"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2quest"
@@ -184,6 +185,28 @@ func (v *Game) quests() *questRuntime {
 	return r
 }
 
+// restartQuests builds the quest engine again on the (just cleared) record. The quests that were done when
+// the game started are dormant in the old engine, so a debug reset of the record alone would leave Mephisto,
+// the Council and the rest deaf to their events.
+func (v *Game) restartQuests() {
+	r := v.questRT
+	if r == nil || v.localPlayer == nil {
+		return
+	}
+
+	p, old := v.localPlayer, r.g
+	g := d2quest.New(old.Rec, old.NPC, old.Difficulty)
+	g.Hero, g.Trace, g.Level = old.Hero, old.Trace, old.Level
+
+	r.g = g
+	v.syncQuestItems()
+	g.Start()
+
+	r.dirty = true
+
+	v.Infof("QUEST system restarted on the cleared record (difficulty=%d, level=%d)", g.Difficulty, p.Stats.Level)
+}
+
 // advanceQuests runs the quest timers, the log refresh and the OD2_AUTOQUEST scenario.
 func (v *Game) advanceQuests(elapsed float64) {
 	r := v.quests()
@@ -208,6 +231,7 @@ func (v *Game) advanceQuests(elapsed float64) {
 
 	v.advanceBarks(elapsed)
 	v.advanceUber(elapsed)
+	v.advanceAct3(elapsed)
 
 	if r.auto != nil {
 		r.auto.advance(engineHost{v}, elapsed)
@@ -268,8 +292,18 @@ func (v *Game) onMonsterKilled(ev d2monsters.KillEvent) {
 		super = ev.Label
 	}
 
-	v.questDispatch(d2quest.Event{Kind: d2quest.EvMonsterKilled, Monster: ev.Class, Super: super, Name: ev.Label, Level: r.area})
+	// the Council of Travincal: only the three members count for the Blackened Temple, not their followers
+	class, isSuper := ev.Class, false
+	if ev.Monster != nil && ev.Monster.SuperUnique != "" {
+		isSuper = true
+		if super == "" {
+			super = ev.Monster.SuperUnique
+		}
+	}
+
+	v.questDispatch(d2quest.Event{Kind: d2quest.EvMonsterKilled, Monster: d2act3.QuestKillClass(class, isSuper), Super: super, Name: ev.Label, Level: r.area})
 	v.questKillDrops(ev.Label, ev.Class)
+	v.act3Killed(ev)
 	v.uberKilled(ev)
 }
 
@@ -278,7 +312,26 @@ func (v *Game) questObjectOperated(ob *d2mapentity.Object) {
 	id := ob.Record().Index
 
 	v.Infof("QUEST object operated id=%d name=%q", id, ob.Label())
+	v.syncQuestItems()
 	v.questDispatch(d2quest.Event{Kind: d2quest.EvObjectOperated, Object: id, Level: v.quests().area})
+}
+
+// syncQuestItems raises the quest system's count of every quest item to what the inventory holds: items that
+// arrived by a console command, a trade or a cube recipe do not raise a pick-up event, and an object that wants an
+// item (the Compelling Orb wants Khalim's Will) must see it.
+func (v *Game) syncQuestItems() {
+	r := v.questRT
+	if r == nil || v.gameControls == nil {
+		return
+	}
+
+	for code, n := range v.gameControls.ItemCountsByCode() {
+		for _, q := range questItemCodes {
+			if code == q && r.g.Items[code] < n {
+				r.g.Items[code] = n
+			}
+		}
+	}
 }
 
 // questItemPickedUp reports an item the hero picked up.

@@ -297,6 +297,7 @@ func (p *popLevel) createPreset(game *d2monreg.Game, w d2monreg.World, room *d2m
 		}
 
 		class := -1
+		superKey := ""
 
 		switch rq.Monster.Kind {
 		case drlgpop.MonClass:
@@ -310,6 +311,7 @@ func (p *popLevel) createPreset(game *d2monreg.Game, w d2monreg.World, room *d2m
 
 			if rq.Monster.Super < len(p.env.nm.SuperKeys) {
 				if su := p.g.asset.Records.Monster.Unique.Super[p.env.nm.SuperKeys[rq.Monster.Super]]; su != nil {
+					superKey = p.env.nm.SuperKeys[rq.Monster.Super]
 					class = p.env.tb.MonByKey(su.Class)
 				}
 			}
@@ -334,6 +336,7 @@ func (p *popLevel) createPreset(game *d2monreg.Game, w d2monreg.World, room *d2m
 			continue
 		}
 
+		npc.SuperKey = superKey
 		p.g.engine.AddEntity(npc)
 
 		if rq.Monster.Kind == drlgpop.MonSuper {

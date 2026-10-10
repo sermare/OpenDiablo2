@@ -116,7 +116,7 @@ const chaseBorderSlack = 2.0
 func (v *Game) nearLevelBorder(x, y, margin float64) bool {
 	w := v.gameClient.MapEngine.World()
 	if w.Level == 0 {
-		return false
+		return v.nearWarpTile(x, y) // a dungeon has no borders; its stairs count where nearWarpTile says so
 	}
 
 	_, near := d2level.EdgeExit(w.Rects, w.Level, float64(w.OriginX)+x, float64(w.OriginY)+y, margin)
@@ -132,15 +132,22 @@ const warpChaseRadius = warpClickRadius + 1.5
 
 // nearWarpTile says whether a position (local tiles) lies near a warp tile of an outdoor level.
 func (v *Game) nearWarpTile(x, y float64) bool {
-	// dungeons: the warp tiles are stairs the fight may pass; the exits of the Act 4 and 5 mazes (the bridge
-	// of the River of Flame, the Worldstone Keep stairs) are areas of floor tiles and are left alone too
-	if v.gameClient.MapEngine.World().Level == 0 && d2level.ActOfLevel(v.currentLevel()) < 4 {
+	// dungeons: the warp tiles are stairs the fight may pass; the exits of the Act 3 lair (Mephisto stands next
+	// to the stairs of the Durance of Hate 3) and of the Act 4 and 5 mazes (the bridge of the River of Flame, the
+	// Worldstone Keep stairs) are left alone too
+	if v.gameClient.MapEngine.World().Level == 0 && d2level.ActOfLevel(v.currentLevel()) < 3 {
 		return false
 	}
 
 	for i := range v.levels.warps {
 		w := &v.levels.warps[i]
 		if math.Hypot(float64(w.TileX)+0.5-x, float64(w.TileY)+0.5-y) <= warpChaseRadius {
+			// a stair the rules refuse (Travincal's stairs while the Compelling Orb stands) cannot take the
+			// hero anywhere: the Council that stands around it must be fought
+			if dest, ok := warpDest(v.currentLevel(), w); ok && v.warpRefused(v.currentLevel(), dest) {
+				continue
+			}
+
 			return true
 		}
 	}

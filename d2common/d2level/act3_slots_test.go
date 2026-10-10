@@ -41,6 +41,9 @@ func TestAct3DungeonTileDestination(t *testing.T) {
 		{100, 0, 83},  // Durance 1 up to Travincal
 		{100, 4, 101}, // and down
 		{94, 0, 80},   // a temple returns to the Kurast level that leads there
+		// playtest bug 43: the Durance of Hate lists its exits up (0,1) then down (2,3); style 3 led nowhere
+		{100, 1, 83}, {100, 3, 101}, {100, 2, 101}, {101, 0, 100}, {101, 3, 102},
+		{92, 2, 81}, {92, 3, 81}, {92, 4, 93}, // Sewers 1: four ways up (80, 80, 81, 81), one down
 	} {
 		if got, ok := TileDestination(c.level, c.style); !ok || got != c.want {
 			t.Errorf("TileDestination(%d, %d) = %d %v, want %d", c.level, c.style, got, ok, c.want)
