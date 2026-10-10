@@ -23,10 +23,66 @@ type MercGearHost struct {
 	// Drink gives a potion's effect to the merc (healing and rejuvenation heal it; others
 	// are used up with no effect). Optional.
 	Drink func(d2inventory.PotionEffect)
+	// View gives the numbers the mercenary panel shows (false without a merc). Optional.
+	View func() (MercView, bool)
 }
 
 // SetMercGearHost sets the merc the controls give items to.
-func (g *GameControls) SetMercGearHost(h MercGearHost) { g.mercHost = h }
+func (g *GameControls) SetMercGearHost(h MercGearHost) {
+	g.mercHost = h
+	g.mercPanel.SetHost(MercPanelHost{View: h.View, ItemCode: g.mercSlotCode})
+}
+
+// mercSlotCode is the code of the item the hero's merc wears at a panel slot.
+func (g *GameControls) mercSlotCode(slot string) string {
+	loc, ok := MercSlotLoc(slot)
+	if !ok || g.hero.Merc == nil {
+		return ""
+	}
+
+	if it := g.hero.Merc.MercItemAt(loc); it != nil {
+		return it.Code
+	}
+
+	return ""
+}
+
+// ToggleMercPanel opens or closes the mercenary screen (it opens only when the hero has a merc).
+func (g *GameControls) ToggleMercPanel() {
+	if g.hero.Merc == nil && !g.mercPanel.IsOpen() {
+		return
+	}
+
+	g.openLeftPanel(g.mercPanel)
+}
+
+// mercPanelClick handles a left click on a body slot of the open mercenary screen: the item on the cursor
+// is given to the merc (the rules of GiveCursorToMerc), or, with an empty cursor, the merc's item is taken.
+func (g *GameControls) mercPanelClick(mx, my int) bool {
+	if !g.mercPanel.IsOpen() {
+		return false
+	}
+
+	slot := Mode800.MercSlotAt(mx, my)
+	loc, ok := MercSlotLoc(slot)
+
+	if !ok {
+		return false
+	}
+
+	if g.inventory.CursorItem() != nil {
+		v := g.GiveCursorToMerc()
+		if !v.OK {
+			g.Infof("MERC panel: refused slot=%s reason=%v %s", slot, v.Reason, v.Detail)
+		}
+	} else {
+		g.TakeMercItemToCursor(loc)
+	}
+
+	g.mercPanel.refresh()
+
+	return true
+}
 
 // MercGiveVerdict is what GiveCursorToMerc reports.
 type MercGiveVerdict struct {

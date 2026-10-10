@@ -93,6 +93,7 @@ that the pieces work together in the running engine; they never prove fidelity t
 | Buy, sell, repair, gamble and identify prices | yes | no | 32-bit integer maths as in the original; no comparison of printed prices with the running game | `d2trade` tests (`ItemPrice`, `GamblePrice`, `IdentifyCost`) |
 | NPC menus and greeting logic | yes | partly: menu rows and greeting rows come from the real tables | not checked visually in the board's words | scenario `10-menus-trade.sh` (`OD2_AUTOTALK`, `OD2_AUTOMENU`) |
 | Mercenaries (hire offers, stats, skills, experience, revive) | yes | partly: stat computation and level checked against a real save | the offer table is a model of the per-game roll | `d2hireling` `TestRealNokkaMercLevel`, `TestRealStatsHandComputed`, `TestRealOffers`; scenario `84-mercenary.sh` |
+| Mercenary screen (hireling panel: body slots, stat and resist cells, close button) and hire list rows (HP, defense, price, skills) | yes (opens with O, clicks give and take gear; pictures are a stand-in) | no: rectangles read from `UI_DrawMercenaryPanel` and its tables in the executable plus Inventory.txt `Hireling`/`Hireling2`, not compared on screen; label x of 7 captions unresolved | the label field c and the life format are unverified; pictures are the character panel's | `d2player`: `TestMercLayoutGolden` (`testdata/merc_panel.golden`), `TestMercPanelKeyRects`, `TestMercSlotAt`, `TestMercViewValues`; `d2hireling`: `TestHireMenuRows`, `TestQuoteRevive`, `TestSkillsAtLevel`, `TestRealHireMenus` |
 
 ## 6. Quests and world objects
 

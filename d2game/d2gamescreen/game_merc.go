@@ -173,6 +173,7 @@ func (v *Game) wireMercGear(p *d2mapentity.Player) {
 			return d2hero.MercRef{Class: info.Rec.Class, Base: info.Base}, true
 		},
 		Drink: func(e d2inventory.PotionEffect) { v.monsters.DrinkMerc(p, e) },
+		View:  func() (d2player.MercView, bool) { return v.mercView(p) },
 		Changed: func() {
 			if v.monsters.SetMercItems(p, v.gameControls.MercStatItems()) {
 				if info, ok := v.monsters.Merc(p); ok {
@@ -182,6 +183,29 @@ func (v *Game) wireMercGear(p *d2mapentity.Player) {
 			}
 		},
 	})
+}
+
+// mercView is the snapshot the mercenary panel shows: the living merc of this level, or the dead one
+// (here or left behind in another level).
+func (v *Game) mercView(p *d2mapentity.Player) (d2player.MercView, bool) {
+	if p == nil || p.Merc == nil || v.monsters == nil {
+		return d2player.MercView{}, false
+	}
+
+	info, ok := v.monsters.Merc(p)
+	if !ok {
+		info, ok = v.deadMerc()
+		if !ok {
+			return d2player.MercView{}, false
+		}
+	}
+
+	return d2player.MercView{
+		Name: v.mercDisplayName(info.Rec, int(info.Save.NameID)), Level: info.Level,
+		Exp: int(info.Save.Experience), NextExp: info.Stats.NextXP,
+		Str: info.Stats.Str, Dex: info.Stats.Dex, DmgMin: info.Stats.DmgMin, DmgMax: info.Stats.DmgMax,
+		Defense: info.Stats.Defense, Resist: info.Gear.Resist, HP: info.HP, MaxHP: info.MaxHP, Dead: info.Save.Dead,
+	}, true
 }
 
 // arriveMerc brings the hero's merc into a freshly built level. A living merc
@@ -313,6 +337,30 @@ func (v *Game) offerLine(o d2hireling.Offer) string {
 	return fmt.Sprintf("%s  Lv %d  %s  %dg", v.mercDisplayName(o.Rec, o.NameID), o.Stats.Level, o.Rec.SubType, o.Cost)
 }
 
+// menuLine is the text of one row of the hire list: name, level, kind, life, defense and price.
+func (v *Game) menuLine(r d2hireling.MenuRow) string {
+	name := r.NameKey
+	if s := v.asset.TranslateString(r.NameKey); s != "" && s != r.NameKey {
+		name = s
+	}
+
+	return fmt.Sprintf("%s  Lv %d  %s  HP %d  Def %d  %dg", name, r.Level, r.SubType, r.HP, r.Defense, r.Price)
+}
+
+func skillNames(sk []d2hireling.SkillAt) string {
+	out := ""
+
+	for i, s := range sk {
+		if i > 0 {
+			out += "+"
+		}
+
+		out += fmt.Sprintf("%s:%d", s.Name, s.Level)
+	}
+
+	return out
+}
+
 // openHire shows the hire list of a seller in the NPC menu: one row per
 // offered mercenary (name, level, kind, price), and a revive row when the
 // hero's merc is dead.
@@ -336,15 +384,11 @@ func (v *Game) openHire(npc d2interface.MapEntity) {
 	rows := []d2player.NPCMenuRow{}
 	lines := []string{}
 
-	for _, slot := range o.table.Offered() {
-		offer, ok := tab.MakeOffer(o.table, slot, v.localPlayer.Stats.Level)
-		if !ok {
-			continue
-		}
-
-		line := v.offerLine(offer)
-		rows = append(rows, d2player.NPCMenuRow{StringID: slot, Fallback: line, Action: d2player.NPCActionHireOffer})
-		lines = append(lines, fmt.Sprintf("%s [slot %d, %s]", line, slot, offer.Rec.HireDesc))
+	for _, r := range tab.HireMenu(o.table, v.localPlayer.Stats.Level, nil) {
+		line := v.menuLine(r)
+		rows = append(rows, d2player.NPCMenuRow{StringID: r.Slot, Fallback: line, Action: d2player.NPCActionHireOffer})
+		lines = append(lines, fmt.Sprintf("%s [slot %d, %s, hp=%d def=%d dmg=%d-%d skills=%s]", line, r.Slot, r.HireDesc,
+			r.HP, r.Defense, r.DmgMin, r.DmgMax, skillNames(r.Skills)))
 	}
 
 	if info, ok := v.deadMerc(); ok {
