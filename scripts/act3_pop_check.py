@@ -68,7 +68,13 @@ def main():
         problems.append("only %d natural monsters (need %d)" % (total, min_mon))
     nmon = int(row[lc["NumMon"]] or 0)
     # only the leaders count against NumMon: followers come from minion1/minion2
-    leaders = [k for k in counts if k in listed]
+    # (a listed class that is also the minion of another spawned class may be there only as a follower)
+    followers = set()
+    for k in counts:
+        st = stats.get(k)
+        if st:
+            followers.update(v for v in (st[mc["minion1"]].strip(), st[mc["minion2"]].strip()) if v and v != k)
+    leaders = [k for k in counts if k in listed and k not in followers]
     if len(leaders) > nmon:
         problems.append("%d listed types drawn, NumMon is %d" % (len(leaders), nmon))
     print("ACT3POP level %s (%s): monsters=%d types=%d (NumMon %d) legal=%s spawned=%s -> %s" % (
