@@ -382,6 +382,41 @@ func (t *monsterTarget) SubPos() (float64, float64) {
 	return float64(x) + 0.5, float64(y) + 0.5
 }
 
+// HasStateNamed implements d2missile.Stateful: whether the monster carries a
+// state (by skills.txt / States.txt name), as Rabies' contagion tests.
+func (t *monsterTarget) HasStateNamed(name string) bool {
+	return name != "" && t.e.setOf(t.m.ID()).Active(t.e.frame, name)
+}
+
+// AsOwner implements d2missile.Ownable: the monster as the owner of Rabies'
+// plague missile, which follows it (SrvDoFunc 30 puts the missile on the
+// owner's position every frame) and ends with it.
+func (t *monsterTarget) AsOwner() d2missile.Owner {
+	m, e := t.m, t.e
+
+	return d2missile.Owner{
+		ID: m.ID(), Level: m.Vitals.Level, AttackRating: m.Vitals.A1.ToHit, Roller: e.monSeed,
+		Gone: func() bool { return !m.Alive() },
+		Pos: func() (float64, float64) {
+			x, y := m.SubtilePos()
+
+			return float64(x), float64(y)
+		},
+		StateExpire: func(state string) (int, bool) {
+			if in := e.setOf(m.ID()).Get(e.frame, state); in != nil {
+				return in.Until, true
+			}
+
+			return 0, false
+		},
+	}
+}
+
+var (
+	_ d2missile.Stateful = (*monsterTarget)(nil)
+	_ d2missile.Ownable  = (*monsterTarget)(nil)
+)
+
 // world adapts the engine to d2missile.World.
 type world struct{ e *Engine }
 

@@ -695,6 +695,8 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 
 	made := 0
 
+	var first *d2mapentity.Monster
+
 	for _, id := range ids {
 		m := e.monsters.MinionByBrainID(id)
 		if m == nil {
@@ -702,6 +704,10 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		}
 
 		made++
+
+		if first == nil {
+			first = m
+		}
 
 		if o.OwnerHPPct > 0 { // Dopplezon: life is a percent of the owner's maximum life
 			hp := maxInt(p.Stats.MaxHealth*o.OwnerHPPct/100, 1)
@@ -725,6 +731,65 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 
 	e.emit("summon", "SUMMON skill=%q key=%s kind=%s created=%d alive=%d max=%d hp_pct=%d damage_pct=%d at=(%d,%d)", sk.Name,
 		stat.Key, o.Kind, made, len(e.alivePets(p.ID(), opt.Tag)), o.Max, o.HPPct, opt.DamagePct, x, y)
+
+	if o.Makers != nil && first != nil {
+		e.launchWallMakers(u, sk, o, first)
+	}
+}
+
+// wallRun is a Bone Wall in progress: the first wall (the leader every maker
+// missile marks) and the order the later pieces are made from.
+type wallRun struct {
+	leader *d2mapentity.Monster
+	p      *d2mapentity.Player
+	u      *heroUnit
+	sk     *d2skill.Skill
+	order  d2skill.SummonOrder // Count 1, no Makers
+}
+
+// launchWallMakers casts the two bonewallmaker missiles of Bone Wall from the
+// first wall, each carrying PerMaker walls to place (d2missile SrvDoFunc 13).
+func (e *Engine) launchWallMakers(u *heroUnit, sk *d2skill.Skill, o *d2skill.SummonOrder, leader *d2mapentity.Monster) {
+	// forget finished walls
+	for id, w := range e.walls {
+		if !w.leader.Alive() {
+			delete(e.walls, id)
+		}
+	}
+
+	lt := e.target(leader)
+	w := &wallRun{leader: leader, p: u.p, u: u, sk: sk, order: *o}
+	w.order.Makers, w.order.Count = nil, 1
+	e.walls[lt.ID()] = w
+
+	mk := o.Makers
+	fx, fy := leader.SubtilePos()
+	n := 0
+
+	for _, d := range mk.Dirs {
+		if e.pipe.CastWallMaker(u, sk.ID, mk.Missile, fx, fy, d[0], d[1], mk.PerMaker, lt) != nil {
+			n++
+		}
+	}
+
+	e.emit("summon", "SUMMON bone wall makers skill=%q missiles=%d per_maker=%d leader=%s", sk.Name, n, mk.PerMaker, leader.Label())
+}
+
+// onWallSummon consumes a bonewallmaker's EventSummon: one more wall piece at
+// the missile's subtile, linked to the leader the missile marks.
+func (e *Engine) onWallSummon(m *d2missile.Missile, leader d2missile.Target) {
+	if leader == nil {
+		return
+	}
+
+	w := e.walls[leader.ID()]
+	if w == nil {
+		return
+	}
+
+	o := w.order
+	o.X, o.Y = int(m.X), int(m.Y)
+	e.summon(w.p, w.u, w.sk, &d2skill.Effect{Kind: "summon", Summon: &o})
 }
 
 // wallCell is the i-th of n wall pieces: a line across the cast direction, or
