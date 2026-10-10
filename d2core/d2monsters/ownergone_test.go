@@ -21,8 +21,10 @@ func TestOwnerGone(t *testing.T) {
 		{"owner dead", &allyState{kind: "minion", owner: dead}, true},
 		{"no owner", &allyState{kind: "minion"}, false},
 		{"owner without stats", &allyState{kind: "minion", owner: &d2mapentity.Player{}}, false},
-		{"totem kept (UNVERIFIED)", &allyState{kind: "totem", owner: dead}, false},
-		{"trap kept (UNVERIFIED)", &allyState{kind: "trap", owner: dead}, false},
+		{"totem released with its owner (exe 0x573980)", &allyState{kind: "totem", owner: dead}, true},
+		{"totem of a live owner", &allyState{kind: "totem", owner: alive}, false},
+		{"trap released with its owner (exe 0x573980)", &allyState{kind: "trap", owner: dead}, true},
+		{"unknown kind kept", &allyState{kind: "hireling", owner: dead}, false},
 	} {
 		if got := ownerGone(tc.a); got != tc.want {
 			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)

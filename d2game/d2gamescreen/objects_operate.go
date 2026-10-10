@@ -385,8 +385,8 @@ func (v *Game) useShrine(ob *d2mapentity.Object, in *objInstance, s d2object.Shr
 		rec.Index, ob.Label(), rec.OperateFn, s.Code, s.Name, s.Sound, effect, reset)
 }
 
-// worldShrine runs the magic shrines. Portal is implemented (the hero is sent
-// to the act start, see portalShrine); the others are documented stubs.
+// worldShrine runs the magic shrines. Portal is implemented (it opens a town
+// portal, see portalShrine); the others are documented stubs.
 func (v *Game) worldShrine(ob *d2mapentity.Object, s d2object.Shrine) string {
 	w := d2object.WorldFor(s)
 
@@ -500,24 +500,30 @@ func (v *Game) advanceWell(id string, in *objInstance) {
 	}
 }
 
-// portalShrine is OBJECT_OperateTeleportToNearActStart (0x580950): the hero is
-// teleported to the start level (town) of the current act. It is not a town
-// portal object.
+// portalShrine is OBJECT_OperateTeleportToNearActStart (0x580950, VERIFIED
+// against the exe): the shrine does not move the hero. It opens a town portal
+// pair, one end beside the hero and one in the town of the act, through the
+// routine the Town Portal skill uses; unlike the skill it records no owner and
+// leaves the hero's own portals alone (this engine's pair registry has one
+// pair per owner, so the shrine's pair replaces the hero's: a known
+// approximation). In a town room the exe does nothing.
 func (v *Game) portalShrine() string {
-	dest := d2level.PortalShrineDest(v.currentLevel())
-	if dest == 0 {
-		return "world=portal no act start"
+	level := v.currentLevel()
+	dest := d2level.PortalShrineDest(level)
+
+	if !d2level.PortalShrineOpens(level) {
+		return fmt.Sprintf("world=portal level=%d: no portal opens here", level)
 	}
 
-	// the autotest cycles every shrine code (OD2_AUTOOBJECT_SHRINE): a level
-	// change would end those scenarios, so only the destination is logged
+	// the autotest cycles every shrine code (OD2_AUTOOBJECT_SHRINE): the
+	// portal would be harmless, but keep the old behaviour of logging only
 	if os.Getenv("OD2_AUTOOBJECT_SHRINE") != "" {
-		return fmt.Sprintf("world=portal dest=%d (autotest: level change skipped)", dest)
+		return fmt.Sprintf("world=portal dest=%d (autotest: portal skipped)", dest)
 	}
 
-	if v.levelBusy() || !v.startLevelChange(dest, d2level.StartActChange, "shrine") {
-		return fmt.Sprintf("world=portal dest=%d refused", dest)
+	if err := v.openTownPortal(); err != nil {
+		return fmt.Sprintf("world=portal dest=%d refused: %v", dest, err)
 	}
 
-	return fmt.Sprintf("world=portal dest=%d (%s)", dest, v.levelName(dest))
+	return fmt.Sprintf("world=portal dest=%d (%s) portal opened", dest, v.levelName(dest))
 }

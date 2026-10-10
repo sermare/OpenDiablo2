@@ -303,23 +303,33 @@ func (d *Director) petTick(u *unit) bool {
 	return true
 }
 
-// ownerGone reports that a player's summoned minion must vanish because its
-// owner died. D2MOO PlrModes.cpp (PLRMODE_StartXY_Dead and the death mode
-// handler) calls D2GAME_KillPlayerPets, which walks every pet type except the
-// hireling and removes the unit (SUNIT_RemoveUnit, no corpse, no death
-// animation). Applied to kind "minion" only; totems and traps are UNVERIFIED
-// (whether they are pet-list records depends on pettype.txt). The same source
-// frees pets when the owner leaves the game and, in classic (non-expansion)
-// games only, on an act change; leaving a level inside an act does not kill
-// them (they are teleported/pruned by the follow code), so nothing else is
-// done here. Monster-cast summons are not in the player pet list and nothing
-// in D2MOO kills them with their caster: see docs/KNOWN_GAPS.md.
+// ownerGone reports that a player's summoned unit (minion, totem or trap)
+// must vanish because its owner died. VERIFIED against the exe:
+// PLRMODE_ServerEnterDeadMode (0x57dcc0) calls PETS_ReleaseAllPetsOnActChange
+// (0x573980), which walks every pet type from 1 up (skeleton, golem, valkyrie,
+// wolves, totem, vine, traps, hydra ... in pettype.txt) and releases each
+// list: the units are removed with no corpse and no death animation
+// (PETS_ReleasePetListForType 0x572370). Only the hireable type (7) is kept,
+// flagged for revive. The same function runs on an act change
+// (SERVER_ChangePlayerAct 0x5387d0). A level change inside an act instead
+// runs MERC_RelocatePetsWithOwner (0x5732b0): per pet type, pets that warp
+// follow the owner, pets with the range flag are dropped when more than 40
+// subtiles away (squared distance 1600) and the other types are freed
+// (UNVERIFIED which pettype column maps to which flag bit). Monster-cast
+// summons are not in the player pet list: when a monster leader dies, the
+// exe (MONAI_OnLeaderDeathReassignMinions 0x58d4a0) hands the minions to
+// the first minion or detaches them; nothing is killed.
 func ownerGone(a *allyState) bool {
-	if a == nil || a.kind != "minion" || a.owner == nil || a.owner.Stats == nil {
+	if a == nil || a.owner == nil || a.owner.Stats == nil {
 		return false
 	}
 
-	return a.owner.Stats.Health <= 0
+	switch a.kind {
+	case "minion", "totem", "trap":
+		return a.owner.Stats.Health <= 0
+	}
+
+	return false
 }
 
 func (d *Director) allyStep(u *unit) {
