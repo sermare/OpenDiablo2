@@ -77,3 +77,27 @@ func TestAct2VisSlotsMatchLevelsTxt(t *testing.T) {
 		t.Errorf("only %d Act 2 levels compared", seen)
 	}
 }
+
+// The two entrance tiles of the Burial Grounds lead to the Crypt and the Mausoleum (found by walkto:exit=18 failing).
+func TestBurialGroundsEntrances(t *testing.T) {
+	for _, c := range []struct{ style, want int }{{0, 18}, {1, 19}} {
+		if got, ok := TileDestination(17, c.style); !ok || got != c.want {
+			t.Errorf("style %d: %d %v, want %d", c.style, got, ok, c.want)
+		}
+	}
+
+	if _, ok := TileDestination(17, 5); ok {
+		t.Error("style 5 of the Burial Grounds must not lead anywhere")
+	}
+}
+
+// The stairs of Nihlathak's Temple (style 1 tiles) lead on to the Halls of Anguish; the style 9 doors lead nowhere.
+func TestNihlathakTempleStairs(t *testing.T) {
+	if got, ok := TileDestination(121, 1); !ok || got != 122 {
+		t.Errorf("style 1: %d %v, want 122", got, ok)
+	}
+
+	if got, ok := TileDestination(121, 9); ok {
+		t.Errorf("style 9 must not lead anywhere, got %d", got)
+	}
+}

@@ -64,10 +64,10 @@
     },
     {
       "label": "Levels walked by a verify scenario",
-      "done": 52,
+      "done": 91,
       "total": 136,
       "pending": 0,
-      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); includes the whole Act 3 chain (Travincal, Council, Durance, Mephisto, red portal)",
+      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); includes the whole Act 3 chain (Travincal, Council, Durance, Mephisto, red portal); the 9s-walk scenarios add 39: Act 1 caves, Burial Grounds, Crypt, Mausoleum, Forgotten Tower and Cellars, Monastery to Catacombs 2, Act 2 Palace Cellar 2 / Stony Tombs / Halls 3, Act 3 temples, Act 5 ice caves and Nihlathak temple chain",
       "color": "#ff9f43"
     },
     {

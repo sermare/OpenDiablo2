@@ -354,6 +354,12 @@ func TileDestination(level, style int) (int, bool) {
 		return 0, false
 	}
 
+	// the Burial Grounds preset (Act1/Graveyard/gravey.ds1) has two entrance tiles, styles 0 and 1: the Vis slots of
+	// Levels.txt (Crypt, Mausoleum), as in the Durance rule. OBSERVED styles, UNVERIFIED which tile is which in the exe.
+	if to, ok := burialGroundsDestination(level, style); ok {
+		return to, true
+	}
+
 	if isOutdoor(level) {
 		if to, ok := Act3SlotDestination(level, style); ok {
 			return to, true
@@ -468,6 +474,13 @@ func SingleTileDestination(level int) (int, bool) {
 // Keep), the Worldstone Keep (128..131: up 81, down 82) and the River of Flame (107: south room, style 0).
 // UNVERIFIED against the exe (the tile id to warp id table is not decoded).
 func SlotDestination(level, style int) (int, bool) {
+	// Nihlathak's Temple (121, Expansion/wildtemple/tempEnter.ds1) has one link (to the Halls of Anguish) but its
+	// stairs tiles carry style 1 (the way back to Harrogath is the red portal, not a tile); the doors are style 9.
+	// OBSERVED, UNVERIFIED against the exe. Found by walkto:exit=122 in the 9s-walk-act5-ice scenario.
+	if level == 121 && style == 1 {
+		return 122, true
+	}
+
 	var dests []int
 
 	for _, l := range allLinks {
@@ -522,4 +535,13 @@ func duranceVisDestination(level, style int) (int, bool) {
 	}
 
 	return v[style], true
+}
+
+// burialGroundsDestination: style 0 of the Burial Grounds (17) leads to the Crypt (18), style 1 to the Mausoleum (19).
+func burialGroundsDestination(level, style int) (int, bool) {
+	if level != 17 || style < 0 || style > 1 {
+		return 0, false
+	}
+
+	return 18 + style, true
 }
