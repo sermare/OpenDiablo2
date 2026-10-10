@@ -44,7 +44,18 @@ tmp=$(mktemp -d /tmp/od2-verify.XXXXXX)
 # OD2_VERIFY_TMPFILE: write the scratch folder's path there (scripts/verify_classes.sh reads the game logs from it)
 [ -n "${OD2_VERIFY_TMPFILE:-}" ] && echo "$tmp" > "$OD2_VERIFY_TMPFILE"
 cleanup_games() { pkill -f "$tmp/od2" 2>/dev/null; pkill -f "$tmp/[0-9a-z-]*\.command" 2>/dev/null; }
-trap cleanup_games EXIT
+# A run leaves ~77 MB in its scratch folder; 1400 runs filled the disk. A run that passed removes its own folder
+# (a failed one keeps it for triage). Kept when OD2_VERIFY_KEEP=1 or OD2_VERIFY_TMPFILE is set (verify_classes.sh
+# reads the game logs from it after this script exits). Folders of other runs older than 6 h are pruned too: the
+# longest scenario is limited to 20 min, so nothing that old can still be running.
+cleanup_run_dir() {
+  cleanup_games
+  case "$tmp" in /tmp/od2-verify.??????) ;; *) return ;; esac
+  [ "${fail:-1}" = 0 ] && [ -z "${OD2_VERIFY_KEEP:-}" ] && [ -z "${OD2_VERIFY_TMPFILE:-}" ] && rm -rf "$tmp"
+  find /tmp/ -maxdepth 1 -name 'od2-verify.??????' -type d -mmin +360 -exec rm -rf {} + 2>/dev/null
+  return 0
+}
+trap cleanup_run_dir EXIT
 trap 'cleanup_games; exit 130' INT
 trap 'cleanup_games; exit 143' TERM
 step() { printf '\n== %s\n' "$1"; }
