@@ -30,7 +30,7 @@ scenario_check() {
   grep -E "LEVEL CHANGE|AUTOSCRIPT step [0-9]+ FAIL|AUTOSCRIPT RESULT|Tal Rasha's tomb|teleport pad" $log.txt | cut -c1-200 | tail -60
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: the Act 2 dungeon walk did not pass"; fail=1; }
   [ -s $a2/s94/Hero.d2s ] || { echo "SKIP: no revived sample hero in this run"; return; }
-  for route in "from=40 to=47 .*via=warp" "from=47 to=48" "from=48 to=49" "from=40 to=50 .*via=warp" "from=50 to=51" "from=51 to=52" "to=54 " "to=74 " "to=73 " "to=46 "; do
+  for route in "from=40 to=47 .*via=warp" "from=47 to=48" "from=48 to=49" "from=40 to=50 .*via=warp" "from=50 to=51" "from=51 to=52" "from=[0-9]+ to=54 " "from=[0-9]+ to=74 " "from=[0-9]+ to=73 " "from=[0-9]+ to=46 "; do
     grep -qE "LEVEL CHANGE $route" $log.txt || { echo "FAIL: missing level change $route"; fail=1; }
   done
   # all seven tomb entrances lead to a different tomb and back
