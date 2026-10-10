@@ -13,11 +13,28 @@
 > itself.
 >
 > This is a fork of [OpenDiablo2](https://github.com/OpenDiablo2/OpenDiablo2) (original README:
-> [docs/UPSTREAM_README.md](docs/UPSTREAM_README.md)). **It is not playable yet** — see the status below.
+> [docs/UPSTREAM_README.md](docs/UPSTREAM_README.md)). **It is an early play-test preview** (Acts 1 to 5 can be walked, with known gaps) — see [Try it](#try-it-for-non-developers) and [docs/KNOWN_GAPS.md](docs/KNOWN_GAPS.md).
 > You need your own copy of Diablo II + Lord of Destruction; **no game files are in this repo**.
 
 > **Working on the code?** [CONTRIBUTING.md](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) ·
 > [Testing](docs/TESTING.md) · [Reverse engineering](docs/REVERSE_ENGINEERING.md)
+
+## Try it (for non-developers)
+
+You do not need to read code. You need a Mac with Apple Silicon (macOS 14 or newer), your **own** copy of Diablo II
+and Lord of Destruction, and about 30 minutes.
+
+1. **Install.** Open the `OpenDiablo2-<version>-macos-arm64.dmg` you were given and drag OpenDiablo2 onto
+   Applications. First launch: right-click the app, choose Open, then Open again (it is not notarised).
+2. **Point it at your game files.** The app looks for your Diablo II folder and offers it; otherwise pick the folder
+   that holds `d2data.mpq` and the other `.mpq` files. Your files are only read.
+3. **Start the game.** Pick or create a hero and play. Real maps are the default; there is nothing to switch on.
+4. **Play-test.** Follow the guided checklist in [docs/PLAYTEST.md](docs/PLAYTEST.md#part-1-guided-30-minute-play-test)
+   (what to look for in each act and how to report what you find). Step by step install help:
+   [docs/macos-quickstart.md](docs/macos-quickstart.md). What is known to be missing or wrong:
+   [docs/KNOWN_GAPS.md](docs/KNOWN_GAPS.md).
+
+No game files, screenshots of game data or CD keys belong in this repository or in your report; describe what you saw in words.
 
 Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The graphic above is generated from
 [`docs/progress.json`](docs/progress.json) (what each bar measures: [docs/progress-targets.md](docs/progress-targets.md)) by [`scripts/make_progress_svg.py`](scripts/make_progress_svg.py).
