@@ -131,6 +131,8 @@ type Game struct {
 	lastZoneLevel        int    // Levels.txt id last announced; 0 = none yet
 	vendorSeed           uint32 // per game session base of every vendor stock seed (set on first use)
 	lightLogLevel        int    // level whose base light was last logged
+	statsLevel           int       // level of the last DRAWSTATS line
+	statsAt              time.Time // time of the last DRAWSTATS line
 	travel               travelState
 	ticksSinceLevelCheck float64
 	escapeMenu           *d2player.EscapeMenu
@@ -309,6 +311,7 @@ func (v *Game) Render(screen d2interface.Surface) {
 
 	screen.Clear(color.Black)
 	v.mapRenderer.Render(screen)
+	v.logDrawStats()
 
 	if v.gameControls != nil {
 		if v.gameControls.HelpOverlay != nil && v.gameControls.HelpOverlay.IsOpen() {

@@ -68,6 +68,7 @@ type MapRenderer struct {
 	entBuckets          map[[2]int]*entityBucket // per-frame entity index, see indexEntities
 	entFree             []*entityBucket
 	shadeVals           []color.RGBA // scratch for renderShadedImage
+	stats               DrawStats
 	roofCover           map[[2]int]bool // roof tiles fading out because the hero is under them
 
 	*d2util.Logger
@@ -187,6 +188,11 @@ func (mr *MapRenderer) Render(target d2interface.Surface) {
 
 	endX := int(math.Min(float64(mapSize.Width), math.Ceil(etxf)))
 	endY := int(math.Min(float64(mapSize.Height), math.Ceil(etyf)))
+
+	mr.stats = DrawStats{Lit: mr.light.active()}
+	if mr.light.active() {
+		mr.stats.LightSources = 1 + len(mr.light.input.Extra)
+	}
 
 	mr.indexEntities()
 	mr.renderPass1(target, startX, startY, endX, endY)
@@ -440,6 +446,8 @@ func (mr *MapRenderer) renderFloor(tile d2ds1.Tile, target d2interface.Surface, 
 		return
 	}
 
+	mr.stats.Floors++
+
 	mr.viewport.PushTranslationOrtho(-80, float64(tile.YAdjust))
 	defer mr.viewport.PopTranslation()
 
@@ -463,6 +471,12 @@ func (mr *MapRenderer) renderWall(tile d2ds1.Tile, viewport *Viewport, target d2
 		return
 	}
 
+	if upper {
+		mr.stats.UpperWalls++
+	} else {
+		mr.stats.Walls++
+	}
+
 	viewport.PushTranslationOrtho(-80, float64(tile.YAdjust))
 	defer viewport.PopTranslation()
 
@@ -478,6 +492,9 @@ func (mr *MapRenderer) renderWall(tile d2ds1.Tile, viewport *Viewport, target d2
 	if upper {
 		sx, sy := viewport.GetTranslationScreen()
 		alpha = mr.light.fadeFor(wallKey{tileX, tileY, idx}, mr.heroBehind(tileX, tileY, sx, sy, img))
+		if alpha < 1 {
+			mr.stats.WallsFading++
+		}
 	}
 
 	mr.renderShadedImage(target, img, wallShadeCols, wallShadeRows, alpha, shadeWall, tileX, tileY)
@@ -493,6 +510,8 @@ func (mr *MapRenderer) renderRoof(tile d2ds1.Tile, viewport *Viewport, target d2
 		return
 	}
 
+	mr.stats.Roofs++
+
 	viewport.PushTranslationOrtho(-80, float64(tile.YAdjust))
 	defer viewport.PopTranslation()
 
@@ -501,6 +520,10 @@ func (mr *MapRenderer) renderRoof(tile d2ds1.Tile, viewport *Viewport, target d2
 
 	if mr.light.active() {
 		alpha := mr.light.roofAlpha(wallKey{tileX, tileY, idx}, mr.roofCover[[2]int{tileX, tileY}])
+		if alpha < 1 {
+			mr.stats.RoofsFading++
+		}
+
 		if alpha <= 0 {
 			return
 		}
@@ -557,6 +580,8 @@ func (mr *MapRenderer) heroBehind(tileX, tileY, sx, sy int, img d2interface.Surf
 
 // renderLitEntity draws an entity tinted by one light map sample at its feet.
 func (mr *MapRenderer) renderLitEntity(target d2interface.Surface, e d2interface.MapEntity) {
+	mr.stats.Entities++
+
 	if !mr.light.active() {
 		e.Render(target)
 		return
@@ -599,6 +624,8 @@ func (mr *MapRenderer) renderShadow(tile d2ds1.Tile, target d2interface.Surface,
 
 		return
 	}
+
+	mr.stats.Shadows++
 
 	defer mr.viewport.PushTranslationOrtho(-80, float64(tile.YAdjust)).PopTranslation()
 
