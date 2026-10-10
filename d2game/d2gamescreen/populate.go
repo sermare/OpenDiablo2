@@ -33,6 +33,8 @@ const (
 	// populateSparseWalkableShare is the share used when no block reaches the
 	// usual one (engine choice, UNVERIFIED against the original's rooms).
 	populateSparseWalkableShare = 0.15
+	// populateRetries bounds the extra draws per room for a level that got no group.
+	populateRetries = 12
 )
 
 // populateLevel fills the level the hero stands in. It runs once per level
@@ -73,6 +75,26 @@ func (v *Game) populateLevel() {
 		occupied[[2]int{int(x) / populateBlockTiles, int(y) / populateBlockTiles}] = true
 	}
 
+	var rooms []d2monsters.Room
+
+	fill := func(room d2monsters.Room) bool {
+		res, err := v.monsters.PopulateRoom(room, level)
+		if err != nil {
+			v.Warningf("POPULATE level %d room %+v: %v", level, room, err)
+			return false
+		}
+
+		groups += len(res)
+
+		for _, g := range res {
+			for _, m := range g.Monsters {
+				natural[m] = true
+			}
+		}
+
+		return true
+	}
+
 	// a level with no block of the usual walkable share (the Kurast Causeway is a
 	// bridge between canals) is tried again with the sparse share, so it is not
 	// left empty
@@ -99,24 +121,25 @@ func (v *Game) populateLevel() {
 					room.WalkTiles = int(v.walkableShare(x0, y0, w, h, reach)*float64(w*h) + 0.5)
 				}
 
-				res, err := v.monsters.PopulateRoom(room, level)
-				if err != nil {
-					v.Warningf("POPULATE level %d block (%d,%d): %v", level, bx, by, err)
+				rooms = append(rooms, room)
+
+				if !fill(room) {
 					return
-				}
-
-				groups += len(res)
-
-				for _, g := range res {
-					for _, m := range g.Monsters {
-						natural[m] = true
-					}
 				}
 			}
 		}
 
 		if blocks > 0 {
 			break
+		}
+	}
+
+	// the fractional density of a sparse level can round every block to no group
+	// (Kurast Causeway: one bridge block of 0.8 monsters): draw again, a few
+	// times, so a level with ground to stand on is never left empty
+	for try := 0; groups == 0 && len(rooms) > 0 && try < populateRetries*len(rooms); try++ {
+		if !fill(rooms[try%len(rooms)]) {
+			return
 		}
 	}
 
