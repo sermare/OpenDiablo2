@@ -196,6 +196,10 @@ func (d *Director) SpawnPack(plan d2monster.Pack, center d2path.Point) (*PackRes
 			res.Leader.Brain.AddMinion(m.Brain)
 			m.LeaderID = res.Leader.Brain.ID
 			m.Modifiers = append([]int(nil), res.Leader.Modifiers...) // MONSTER_CopyLeaderUModsToMinion
+
+			if plan.Kind == d2monster.PackChampion { // a champion pack shares the leader's modifiers
+				m.TypeFlags |= d2mapentity.MonTypeModsRolled
+			}
 		}
 
 		res.Monsters = append(res.Monsters, m)

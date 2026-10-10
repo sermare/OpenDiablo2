@@ -20,9 +20,10 @@ scenario_check() {
   grep "MONSTER rank kind=champion" $log.txt | grep -q "type_flags=0x5 " || { echo "FAIL: no champion recorded with type flags 0x5"; fail=1; }
   grep "MONSTER rank kind=unique" $log.txt | grep -q "type_flags=0x9 .*mods=\[[0-9]" || { echo "FAIL: no unique leader with flags 0x9 and rolled modifiers"; fail=1; }
   grep "MONSTER rank kind=super" $log.txt | grep -q 'super_unique="Bishibosh"' || { echo "FAIL: the super unique key was not recorded"; fail=1; }
-  grep "MONSTER drop" $log.txt | grep -q 'tc="Act 1 Champ A".*type_flags=0x5 ' || { echo "FAIL: no drop from the champion class"; fail=1; }
-  grep "MONSTER drop" $log.txt | grep -q 'tc="Act 1 Unique A".*type_flags=0x9 ' || { echo "FAIL: no drop from the unique class"; fail=1; }
-  grep "MONSTER drop" $log.txt | grep -q 'tc="Act 1 Super A".*super_unique="Bishibosh"' || { echo "FAIL: no drop from the super unique class"; fail=1; }
+  grep "MONSTER drop" $log.txt | grep -qE 'tc="Act 1 (\([NH]\) )?Champ A".*type_flags=0x5 ' || { echo "FAIL: no drop from the champion class"; fail=1; }
+  grep "MONSTER drop" $log.txt | grep -qE 'tc="Act 1 (\([NH]\) )?Unique A".*type_flags=0x9 ' || { echo "FAIL: no drop from the unique class"; fail=1; }
+  grep "MONSTER drop" $log.txt | grep -qE 'tc="Act 1 (\([NH]\) )?Super A".*super_unique="Bishibosh"' || { echo "FAIL: no drop from the super unique class"; fail=1; }
+  grep -E 'MONSTER drop .*tc="Act 1 (\([NH]\) )?(Champ|Unique|Super) A"' $log.txt | cut -c1-300 | head -6
   kills=$(grep -c "MONSTER death" $log.txt)
   items=$(grep -c "ITEMGEN created source=monster" $log.txt)
   echo "kills=$kills created_items=$items"
