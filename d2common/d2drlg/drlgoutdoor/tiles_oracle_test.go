@@ -106,7 +106,7 @@ func digestRoom(rt *RoomTiles) string {
 func TestOracleTiles(t *testing.T) {
 	env := testEnv(t)
 
-	files := []string{"tiles_act1.json", "tiles_act23.json", "tiles_act45.json"}
+	files := []string{"tiles_act1.json", "tiles_act23.json", "tiles_act45.json", "tiles_towns.json", "tiles_presets.json"}
 	if gp := os.Getenv("ORACLE_TILES"); gp != "" {
 		files = strings.Split(gp, ",")
 	}
@@ -245,9 +245,9 @@ func explain(t *testing.T, rt *RoomTiles, g goldTileRoom) {
 	}
 }
 
-// tilesOfLevel generates a level of any act (Normal difficulty) the way the
-// golden was made and builds its tiles.
-func tilesOfLevel(t *testing.T, env *Env, cache map[uint32]*drlgworld.Layout, seed uint32, id int) ([]*RoomTiles, error) {
+// paramsOfLevel derives the generator inputs of a level of any act (Normal
+// difficulty) the way the golden was made.
+func paramsOfLevel(t *testing.T, env *Env, cache map[uint32]*drlgworld.Layout, seed uint32, id int) (Params, error) {
 	t.Helper()
 
 	var (
@@ -260,7 +260,7 @@ func tilesOfLevel(t *testing.T, env *Env, cache map[uint32]*drlgworld.Layout, se
 		lay := cache[seed]
 		if lay == nil {
 			if lay, err = drlgworld.Generate(env.Tables, seed, d2drlg.Normal); err != nil {
-				t.Fatal(err)
+				return p, err
 			}
 
 			cache[seed] = lay
@@ -279,18 +279,61 @@ func tilesOfLevel(t *testing.T, env *Env, cache map[uint32]*drlgworld.Layout, se
 
 		lay, e := gen(env.Tables, seed, d2drlg.Normal)
 		if e != nil {
-			t.Fatal(e)
+			return p, e
 		}
 
 		p, err = ParamsFromLayout45(env.Tables, lay, act, id, seed, d2drlg.Normal)
 	}
 
 	if err != nil {
-		t.Fatal(err)
+		// DrlgType 2 levels outside every world layout (Act 1 treasure caves,
+		// the maze-like presets): rectangle, vis and warp from the level record
+		if rec, ok := env.Tables.Level(id); ok && rec.DrlgType == 2 {
+			return ParamsPreset(env.Tables, id, seed, d2drlg.Normal)
+		}
+	}
+
+	return p, err
+}
+
+// tilesOfLevel generates a level of any act (Normal difficulty) the way the
+// golden was made and builds its tiles.
+func tilesOfLevel(t *testing.T, env *Env, cache map[uint32]*drlgworld.Layout, seed uint32, id int) ([]*RoomTiles, error) {
+	t.Helper()
+
+	p, err := paramsOfLevel(t, env, cache, seed, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if tb, ok := env.Tables.(*d2drlg.Tables); ok && id == 40 {
+		// Lut Gholein: the file slot comes from the Act 2 world (LutW / LutN)
+		w, err := PlaceAct2World(tb, seed, d2drlg.Normal)
+		if err != nil {
+			return nil, err
+		}
+
+		lv, err := GenerateTown(env, p, w.TownFile)
+		if err != nil {
+			return nil, err
+		}
+
+		return lv.BuildTiles()
 	}
 
 	if rec, ok := env.Tables.Level(id); ok && rec.DrlgType == 2 {
-		pl, err := GeneratePreset(env, p, -1)
+		override := -1
+
+		if id == 1 { // the Act 1 world forces the town file (TownN1/E1/S1/W1)
+			lay := cache[seed]
+			if lay == nil {
+				return nil, fmt.Errorf("no world layout for seed %#x", seed)
+			}
+
+			override = lay.TownFile
+		}
+
+		pl, err := GeneratePreset(env, p, override)
 		if err != nil {
 			return nil, err
 		}

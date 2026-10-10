@@ -260,14 +260,17 @@ func (g *MapGenerator) placeExactTiles(lv *drlgoutdoor.Level, rect drlgoutdoor.R
 		return g.placePlainRoomsLookup(lv, rect, region), ", dword lookup"
 	}
 
-	plain, presets := g.applyExactTiles(tiles, rect, region)
+	plain, presets := g.applyExactTiles(tiles, rect, region, false)
 
 	return plain, fmt.Sprintf(", exact tiles incl. %d preset rooms", presets)
 }
 
 // applyExactTiles puts the records of every built room on the map cells and
-// returns the number of plain and preset rooms.
-func (g *MapGenerator) applyExactTiles(tiles []*drlgoutdoor.RoomTiles, rect drlgoutdoor.Rect, region d2enum.RegionIdType) (int, int) {
+// returns the number of plain and preset rooms. clearRest also empties the
+// cells of the rectangle that no room has a record for (the real game draws
+// nothing there; the stamped DS1 tile would otherwise stay), keeping the
+// marker walls.
+func (g *MapGenerator) applyExactTiles(tiles []*drlgoutdoor.RoomTiles, rect drlgoutdoor.Rect, region d2enum.RegionIdType, clearRest bool) (int, int) {
 	type cell struct{ floors, walls, shadows []d2mapengine.ExactTile }
 
 	cells := map[[2]int]*cell{}
@@ -315,6 +318,16 @@ func (g *MapGenerator) applyExactTiles(tiles []*drlgoutdoor.RoomTiles, rect drlg
 
 	for k, c := range cells {
 		g.engine.SetExactTiles(k[0]-rect.X, k[1]-rect.Y, region, true, c.floors, c.walls, c.shadows)
+	}
+
+	if clearRest {
+		for y := 0; y < rect.H; y++ {
+			for x := 0; x < rect.W; x++ {
+				if cells[[2]int{rect.X + x, rect.Y + y}] == nil {
+					g.engine.SetExactTiles(x, y, region, true, nil, nil, nil)
+				}
+			}
+		}
 	}
 
 	return plain, presets
@@ -407,7 +420,7 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 	if tiles, err := pl.BuildTiles(); err != nil {
 		g.Infof("real preset: exact tiles unavailable (%v); keeping the stamped tiles", err)
 	} else {
-		_, n := g.applyExactTiles(tiles, pl.Rect, region)
+		_, n := g.applyExactTiles(tiles, pl.Rect, region, false)
 		exact = fmt.Sprintf(", exact tiles for %d rooms", n)
 	}
 

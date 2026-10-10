@@ -76,6 +76,7 @@ func (g *MapGenerator) generateRealTown() error {
 
 	g.engine.ResetMap(d2enum.RegionAct1Town, w, h)
 	g.engine.PlaceStamp(stamp, 0, 0)
+	g.applyExactTown(d2level.RogueEncampment, HeroMapSeed, HeroDifficulty, d2enum.RegionAct1Town)
 	g.engine.BlockEmptyTiles()
 	g.engine.UseCollisionPaths(true)
 	g.engine.SetWorld(d2mapengine.World{
