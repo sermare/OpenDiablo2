@@ -250,3 +250,54 @@ func (d *Director) SummonStats() (live, maxPerCaster int) {
 
 	return live, maxPerCaster
 }
+
+// ---- VileMother brood (Flesh Spawner, Stygian Hag, Grotesque) ----
+
+// FBXBroodClass implements d2monster.FBXBrood: the class id of the young the
+// mother lays (her monstats `spawn` column); -1 when she has none.
+func (d *Director) FBXBroodClass(b *d2monster.Brain) int {
+	u := d.unitOf(b)
+	if u == nil || u.m.Stat.SpawnKey == "" {
+		return -1
+	}
+
+	if st := d.FindStat(u.m.Stat.SpawnKey); st != nil {
+		return st.ID
+	}
+
+	return -1
+}
+
+// FBXCellFreeAt implements d2monster.FBXBrood: a monster can stand on the
+// subtile p.
+func (d *Director) FBXCellFreeAt(_ *d2monster.Brain, p d2monster.Point) bool {
+	return d.fp == nil || !d2path.Blocked(d.fp, p.X, p.Y, d2path.MaskMonster)
+}
+
+// FBXScan implements d2monster.FBXScanner for the one scan the Director
+// answers: the VileMother's brood count (aip2, "young alive"), the living
+// units of a class within the squared radius of the mother. Without it the
+// count was always 0, so every mother laid her whole brood limit (aip1: 21 on
+// Hell) one after another and 150 Stygian Dogs killed the level 94 hero in
+// the City of the Damned (scenario 9h-act45-playthrough). Other scans keep
+// finding nothing.
+func (d *Director) FBXScan(b *d2monster.Brain, q d2monster.FBXScanQuery) d2monster.FBXScanResult {
+	if q.Kind != d2monster.FBXScanLinkedClass || q.Class < 0 {
+		return d2monster.FBXScanResult{}
+	}
+
+	n := 0
+
+	for _, u := range d.units {
+		if u.b == b || !u.m.Alive() || u.m.Stat.ID != q.Class {
+			continue
+		}
+
+		dx, dy := u.b.X-b.X, u.b.Y-b.Y
+		if dx*dx+dy*dy <= q.Radius2 {
+			n++
+		}
+	}
+
+	return d2monster.FBXScanResult{Count: n, Found: n > 0}
+}
