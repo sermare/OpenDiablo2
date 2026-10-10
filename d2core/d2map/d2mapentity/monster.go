@@ -91,19 +91,22 @@ const velocityToSubtilesPerSecond = retailFps / 16.0
 // ID returns the monster's uuid.
 func (m *Monster) ID() string { return m.uuid }
 
-// Monster type flag bits of TypeFlags. The masks 0xa and 2 are VERIFIED
-// (0x57b8b0 via 0x59dd60); naming bit 1 super unique and bit 3 unique follows
-// the usual layout and is UNVERIFIED here.
+// Monster type flag bits of TypeFlags (the word at +0x16 of the monster data, unit+0x14). All five masks and their
+// names are VERIFIED from the exe's own predicates, which pass the mask to MONSTER_TestTypeFlags (0x4a8f50):
+// MONSTER_IsSuperUnique 0x4aab10 (0x2), MONSTER_IsChampion 0x4aaa90 (0x4), MONSTER_IsUnique 0x4aaad0 (0x8),
+// MONSTER_IsMinion 0x4aaaf0 (0x10) and MONSTER_IsGhostly 0x4aaab0 (0x40); the spawn packet writer
+// SCMD_SendOpAC (0x53c110) tests them in the order 4, 8, 2, 0x10, 0x40. Setters seen in the exe:
+// MONSTER_SetFlagsAndAddUniqueMod 0x5a2390 ORs in 0x5 (champion: 0x4 plus the bit 0x1), MONSTER_InitAsUniqueWithRolledMods
+// 0x5a2410 ORs in 0x1 and rolls the unique modifiers, MONSTER_SpawnMinionGroup 0x59e7a0 ORs in 0x10 after
+// MONAI_AddMinionToLeader. Two bits have no predicate: 0x1 (the unique modifiers were rolled) and 0x20 (ORed in by
+// MONSTER_MakeChampion 0x59edb0 together with the minion level and experience penalty; its meaning is still unknown
+// and that function's name does not match the 0x4 champion bit). structs-server.md line 36 had these wrong.
 const (
 	MonTypeSuperUnique uint16 = 0x2
+	MonTypeChampion    uint16 = 0x4
 	MonTypeUnique      uint16 = 0x8
-	// MonTypeChampion (0x4) and MonTypeMinion (0x10): the masks are VERIFIED
-	// as the 0xAC spawn packet writer (SCMD_SendOpAC 0x53c110) tests, in
-	// order, masks 4, 8, 2, 0x10, 0x40 and writes a boss number when 2 is set.
-	// The names follow the usual protocol order (champion, unique, super
-	// unique, minion, ghostly) and are UNVERIFIED.
-	MonTypeChampion uint16 = 0x4
-	MonTypeMinion   uint16 = 0x10
+	MonTypeMinion      uint16 = 0x10
+	MonTypeGhostly     uint16 = 0x40
 )
 
 // Label is the monster's display name.
