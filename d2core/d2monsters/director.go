@@ -271,6 +271,12 @@ func NewDirector(asset *d2asset.AssetManager, engine *d2mapengine.MapEngine,
 		d.statByID[st.ID] = st
 	}
 
+	for _, st := range asset.Records.Monster.Shadowed {
+		if d.statByID[st.ID] == nil {
+			d.statByID[st.ID] = st
+		}
+	}
+
 	return d
 }
 
