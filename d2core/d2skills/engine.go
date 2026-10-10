@@ -37,6 +37,10 @@ type Options struct {
 	// InfiniteAmmo makes arrow skills find ammunition (the quiver is not
 	// modelled).
 	InfiniteAmmo bool
+	// Act returns the act (1..5) of the hero's level and Difficulty the game
+	// difficulty (0 normal .. 2 hell); Find Potion reads both (nil Act: act 1).
+	Act        func() int
+	Difficulty int
 }
 
 // Counters tally what happened, for scenario summaries.
@@ -85,6 +89,7 @@ type Engine struct {
 	pets       map[string][]*d2mapentity.Monster // hero id -> summons by pet type (see summon.go)
 	watches    []*watch
 	dots       map[string]dotTotal
+	abc        abcState // Find Potion / Find Item / Grim Ward / Whirlwind, effects_abc.go
 
 	// Counters are updated as events happen.
 	Counters Counters
@@ -324,9 +329,11 @@ func (e *Engine) targetAt(sx, sy int) d2skill.Target {
 
 	for _, m := range e.monsters.Corpses() {
 		mx, my := m.SubtilePos()
-		if d := chebyshev(mx-sx, my-sy); d < cbest {
+		// a corpse the Find skills already used is only taken when nothing fresher lies around
+		if d := chebyshev(mx-sx, my-sy); d < cbest || (d < pickRadius+1 && tg.CorpseLooted && !e.isLooted(m.ID())) {
 			cbest = d
 			tg.Corpse, tg.CX, tg.CY, tg.CorpseID, tg.CorpseHP, tg.CorpseKey = true, mx, my, m.ID(), m.Vitals.MaxHP, m.Stat.Key
+			tg.CorpseLooted = e.isLooted(m.ID())
 		}
 	}
 
@@ -727,6 +734,7 @@ func (e *Engine) AreaChanged(md *d2monsters.Director) {
 	}
 
 	e.storms, e.traps, e.watches, e.timers = nil, nil, nil, nil
+	e.abcReset()
 	e.pets = map[string][]*d2mapentity.Monster{}
 	e.targets = map[string]*monsterTarget{}
 	e.dots = map[string]dotTotal{}

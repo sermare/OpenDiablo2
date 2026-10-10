@@ -669,7 +669,12 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 // dropLoot rolls the monster's treasure class with d2drop and puts the items
 // on the ground around the corpse.
 func (d *Director) dropLoot(u *unit) {
-	tc := u.m.Vitals.TreasureClass
+	d.dropLootFrom(u, u.m.Vitals.TreasureClass)
+}
+
+// dropLootFrom rolls the named treasure class for a monster (its own class on
+// death, another column of monstats for Find Item).
+func (d *Director) dropLootFrom(u *unit, tc string) {
 	if tc == "" {
 		d.emit("drop", "MONSTER drop name=%s tc=- items=0", u.m.Label())
 

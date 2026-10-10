@@ -61,11 +61,13 @@ type Target struct {
 	// Raise Skeleton, Corpse Explosion, Revive...). CX, CY is its subtile,
 	// CorpseID an engine handle, CorpseHP its maximum life and CorpseKey its
 	// monstats key.
-	Corpse    bool
-	CX, CY    int
-	CorpseID  string
-	CorpseHP  int
-	CorpseKey string
+	Corpse bool
+	// CorpseLooted: Find Potion / Find Item / Grim Ward already worked on it (state 0x76).
+	CorpseLooted bool
+	CX, CY       int
+	CorpseID     string
+	CorpseHP     int
+	CorpseKey    string
 }
 
 // Options tune the pipeline.
@@ -275,6 +277,11 @@ type Effect struct {
 	Level, SkillID int
 	// Dist is the maximum distance of a move, subtiles.
 	Dist int
+	// Loot, Ward and Whirl carry the orders of the "loot" (Find Potion, Find
+	// Item), "ward" (Grim Ward) and "whirl" (Whirlwind) effects, class_abc.go.
+	Loot  *LootOrder
+	Ward  *WardOrder
+	Whirl *WhirlOrder
 }
 
 // Strike is one delayed hit of a "strikes" effect.
@@ -309,6 +316,9 @@ type SummonOrder struct {
 	UseCorpseType bool
 	// Damage descriptor for traps (the trap skill's own damage).
 	Desc *d2missile.DamageDesc
+	// OwnerHPPct, when > 0, sets the minion's life to that percent of the
+	// owner's maximum life (Dopplezon, SRVDO_015).
+	OwnerHPPct int
 }
 
 // MeleeResult is a resolved melee strike.
