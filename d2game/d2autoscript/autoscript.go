@@ -35,7 +35,7 @@ const (
 	// KindPress presses a skill hotkey: press:F1.
 	KindPress Kind = "press"
 	// KindClick sends a mouse click through the game's input handlers:
-	// click:<left|right>[+shift][+ctrl][+alt][@x,y] (screen pixels of the 800x600 screen).
+	// click:<left|right>[+shift][+ctrl][+cmd][+alt][@x,y] (screen pixels of the 800x600 screen).
 	// press:<Key> likewise presses any key by name (Tab, I, Escape, F1...).
 	KindClick Kind = "click"
 	// KindWaitLog waits (up to WaitLogTimeout game seconds) until the game log

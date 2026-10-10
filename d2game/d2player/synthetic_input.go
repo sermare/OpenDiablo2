@@ -26,7 +26,7 @@ func (e *synthEvent) Key() d2enum.Key                  { return e.key }
 func (e *synthEvent) Duration() int                    { return 1 }
 func (e *synthEvent) Button() d2enum.MouseButton       { return e.button }
 
-// ParseClickSpec parses a click step argument: "<left|right>[+shift][+ctrl][+alt][@x,y]",
+// ParseClickSpec parses a click step argument: "<left|right>[+shift][+ctrl][+cmd][+alt][@x,y]",
 // e.g. "left", "left+shift@400,300" or "left+ctrl". x,y are screen pixels of the
 // 800x600 game screen; without them the click lands near the screen centre.
 func ParseClickSpec(spec string) (button d2enum.MouseButton, mod d2enum.KeyMod, x, y int, err error) {
@@ -59,10 +59,12 @@ func ParseClickSpec(spec string) (button d2enum.MouseButton, mod d2enum.KeyMod, 
 			mod |= d2enum.KeyModShift
 		case "ctrl", "control":
 			mod |= d2enum.KeyModControl
+		case "cmd", "command", "super", "meta":
+			mod |= d2enum.KeyModSuper
 		case "alt", "option":
 			mod |= d2enum.KeyModAlt
 		default:
-			return 0, 0, 0, 0, fmt.Errorf("click modifier %q: want shift, ctrl or alt", m)
+			return 0, 0, 0, 0, fmt.Errorf("click modifier %q: want shift, ctrl, cmd or alt", m)
 		}
 	}
 

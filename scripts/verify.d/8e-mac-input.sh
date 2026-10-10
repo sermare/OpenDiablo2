@@ -1,4 +1,4 @@
-scenario_name="mac input (click: left=move/left skill, right and Control+click = right skill, Shift = stand still; press: Tab/I/C/T/Q/Esc; bindkey saved in config.json)"
+scenario_name="mac input (click: left on ground = move, left on monster = left skill, right, Control+click and Cmd+click = right skill, Shift = stand still; press: Tab/I/C/T/Q/Esc; bindkey saved in config.json)"
 cfg=$tmp/input-config
 scenario_env() {
   mkdir -p $cfg
@@ -7,7 +7,7 @@ scenario_env() {
   echo "export OD2_CONFIG_DIR=\"$cfg\""
   # clicks land on the upper left of the screen (no NPC or object there); the hero starts with Attack on the left
   # button and Fire Ball on the right. Control+click is the right button on macOS (the game is run on macOS here).
-  local s='wait:2;click:left@120,120;click:right@120,120;click:left+ctrl@120,120;click:left+shift@120,120'
+  local s='wait:2;click:left@120,120;click:right@120,120;click:left+ctrl@120,120;click:left+cmd@120,120;click:left+shift@120,120'
   s="$s;skill:left=Fire Bolt;click:left@120,120;click:left+shift@120,120;skill:left=Attack"
   s="$s;automap:off;press:Tab;press:Tab"
   s="$s;press:I;press:I;press:C;press:C;press:T;press:T;press:Q;press:Q;press:Escape;press:Escape"
@@ -18,10 +18,10 @@ scenario_check() {
   grep -E "INPUT|KEYS|AUTOMAP state|AUTOSCRIPT RESULT" $log.txt | cut -c1-200 | head -50
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: input scenario did not pass"; fail=1; }
 
-  # the mouse: in order of the steps (Attack on the left: walk; right; Control+click = right; Shift = stand still; Fire Bolt: cast / stand still)
+  # the mouse: in order of the steps (Attack on the left: walk; right; Control+click and Cmd+click = right; Shift = stand still; Fire Bolt on the left: a ground click still walks, Shift+click casts standing)
   actions=$(grep "INPUT world-click" $log.txt | sed 's/.*action=\([a-z-]*\) left_skill=\([0-9]*\)/\1:\2/' | tr -d '\r' | tr '\n' ' ')
-  # a plain left click with a spell on the left button: in town (where this scenario runs) a spell that cannot be used there just walks, so move:36 (outside town it is cast-left:36)
-  want="move:0 cast-right:0 cast-right:0 stand-still:0 move:36 stand-still:36 "
+  # a plain left click on the ground ALWAYS walks, whatever the left skill (move:36); a spell is cast with Shift+click (stand-still:36) or on a monster
+  want="move:0 cast-right:0 cast-right:0 cast-right:0 stand-still:0 move:36 stand-still:36 "
   [ "$actions" = "$want" ] || { echo "FAIL: world click actions '$actions' want '$want'"; fail=1; }
 
   # the keyboard

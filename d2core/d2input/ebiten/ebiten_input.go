@@ -140,16 +140,28 @@ func (is InputService) InputChars() []rune {
 // same ebiten.IsKeyPressed once per tick, just before Update, so a press duration > 0 is the same
 // answer for the whole tick without the round trip.
 func (is InputService) IsKeyPressed(key d2enum.Key) bool {
+	if key == d2enum.KeyMeta {
+		return commandHeld()
+	}
+
 	return inpututil.KeyPressDuration(keyToEbiten[key]) > 0
 }
 
 // IsKeyJustPressed checks if the provided key is just transitioned from up to down.
 func (is InputService) IsKeyJustPressed(key d2enum.Key) bool {
+	if key == d2enum.KeyMeta {
+		return false // no ebiten key: only the held state is known
+	}
+
 	return inpututil.IsKeyJustPressed(keyToEbiten[key])
 }
 
 // IsKeyJustReleased checks if the provided key is just transitioned from down to up.
 func (is InputService) IsKeyJustReleased(key d2enum.Key) bool {
+	if key == d2enum.KeyMeta {
+		return false
+	}
+
 	return inpututil.IsKeyJustReleased(keyToEbiten[key])
 }
 
@@ -171,5 +183,13 @@ func (is InputService) IsMouseButtonJustReleased(button d2enum.MouseButton) bool
 
 // KeyPressDuration returns how long the key is pressed in frames.
 func (is InputService) KeyPressDuration(key d2enum.Key) int {
+	if key == d2enum.KeyMeta {
+		if commandHeld() {
+			return 1
+		}
+
+		return 0
+	}
+
 	return inpututil.KeyPressDuration(keyToEbiten[key])
 }

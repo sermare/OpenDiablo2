@@ -138,13 +138,15 @@ folder with the archives and list the MPQs in `MpqLoadOrder` (patch first):
 ## Controls (mouse, trackpad, keyboard)
 
 The controls follow the original game. A trackpad has one button, so the right
-button is a two-finger click or Control+click.
+button is a two-finger click, Control+click or Command+click. A plain left click
+on the ground always walks, so a spell on the left button never stops the hero walking.
 
 | Input | Action |
 |---|---|
-| Click (left) | Use the left skill. With the plain Attack skill: walk to the spot, attack a monster under the cursor. With any other skill (a spell): cast it at the cursor. NPCs, objects and ground items under the cursor are talked to, opened or picked up. |
-| Right click, two-finger click, **Control+click** | Use the right skill at the cursor. (With an item on the cursor, Control+click still drops it.) |
-| Shift+click | Stand still: use the left skill (Attack swings) without walking. |
+| Click (left) on the ground | **Always walks** to the spot, whatever the left skill. NPCs, objects and ground items under the cursor are talked to, opened or picked up. |
+| Click (left) on a monster | Use the left skill: Attack walks up and swings, a spell is cast at the monster. |
+| Shift+click | Stand still: use the left skill at the clicked spot without walking (how to cast Fire Wall, Blizzard and other ground spells; Attack swings). |
+| Right click, two-finger click, **Control+click**, **Command+click** | Use the right skill at the cursor. (With an item on the cursor, Control+click still drops it.) |
 | Option (Alt) held | Show the names of all items lying on the ground. |
 | Control held | Run (the original's "hold run"), `R` toggles run/walk. |
 | `Tab` | Automap. |
@@ -243,7 +245,7 @@ Debug console commands for act travel (use with `say:`): `completequest <act> <q
 | `skill:popup=left\|right\|close` | Open the skill popup of a button (logs the grid: `SKILLBAR popup ... [Fire Ball@r1c1(lvl20) ...]`, row/column per skilldesc page/row/column). |
 | `skill:hover=<name>` / `skill:click=<name>` | Put the mouse on an icon of the open popup (or skill tree) / click it (selects, plays the click, closes the popup). |
 | `hotkey:F1=<name>[@left]` / `press:F1` | Assign a skill to a hotkey slot / press the key. `press` takes the same path as the keyboard: while an icon is hovered it assigns it, otherwise it selects the assigned skill (`SKILLBAR hotkey`, `SKILLBAR press`). |
-| `click:<left\|right>[+shift][+ctrl][+alt][@x,y]` | Send a mouse click (screen pixels, default near the centre) through the same handlers as a real click; logs `INPUT world-click ... action=`. `press:<Key>` also presses any key by name (`Tab`, `I`, `Escape`...), logging `INPUT panels after <key>: ...`. |
+| `click:<left\|right>[+shift][+ctrl][+cmd][+alt][@x,y]` | Send a mouse click (screen pixels, default near the centre) through the same handlers as a real click; logs `INPUT world-click ... action=`. `press:<Key>` also presses any key by name (`Tab`, `I`, `Escape`...), logging `INPUT panels after <key>: ...`. |
 | `say:bindkey <Event> <Key>` | Rebind a key and save it to `config.json` (as Configure Controls does). |
 | `skill:use=left\|right` | Cast the active left/right skill through the normal skill pipeline (as a click would). |
 | `skill:spend=<name>` / `skill:nospend=<name>` | Put an unused skill point into a skill (skills.txt reqlevel/reqskill1-3 apply) / pass only if the point is refused. Console: `levelup <n>` grants level-ups (1 skill point and 5 stat points each). |

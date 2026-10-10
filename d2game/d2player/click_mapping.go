@@ -42,9 +42,10 @@ func IsBasicAttackSkill(id int) bool {
 // macOS a trackpad has one button: Control+click is the right button (as the
 // system itself treats it); a two-finger click already arrives as the right
 // button. Other systems pass the button through. The Control key stays down, so
-// callers must not also read it as "run" for that click.
+// callers must not also read it as "run" for that click. Command+click is the
+// right button as well (Command is not otherwise a modifier of the game).
 func EffectiveButton(b d2enum.MouseButton, mod d2enum.KeyMod, goos string) d2enum.MouseButton {
-	if goos == "darwin" && b == d2enum.MouseButtonLeft && mod&d2enum.KeyModControl != 0 {
+	if goos == "darwin" && b == d2enum.MouseButtonLeft && mod&(d2enum.KeyModControl|d2enum.KeyModSuper) != 0 {
 		return d2enum.MouseButtonRight
 	}
 
@@ -65,9 +66,12 @@ type WorldClickInput struct {
 	LeftSkillInTown bool
 }
 
-// ResolveWorldClick decides what a click on the world does, following the
-// original's rules: left = the left skill (the plain Attack walks, or attacks a
-// monster), Shift+left = use the left skill standing still, right = the right skill.
+// ResolveWorldClick decides what a click on the world does (Mac controls):
+// a left click on the ground ALWAYS walks, whatever the left skill; a left
+// click on a monster uses the left skill (Attack walks up and swings, a spell
+// casts); Shift+left uses the left skill standing still at the clicked spot
+// (how ground-targeted spells such as Fire Wall are cast); right (two-finger,
+// Control+click or Command+click) = the right skill.
 func ResolveWorldClick(in WorldClickInput) WorldAction {
 	switch in.Button {
 	case d2enum.MouseButtonRight:
@@ -81,12 +85,12 @@ func ResolveWorldClick(in WorldClickInput) WorldAction {
 		return WorldStandStill
 	}
 
-	if IsBasicAttackSkill(in.LeftSkillID) {
-		if in.OverMonster {
-			return WorldAttack
-		}
-
+	if !in.OverMonster {
 		return WorldMove
+	}
+
+	if IsBasicAttackSkill(in.LeftSkillID) {
+		return WorldAttack
 	}
 
 	if in.InTown && !in.LeftSkillInTown {
