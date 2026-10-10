@@ -39,7 +39,7 @@ const (
 )
 
 const (
-	partyPanelCloseButtonX, partyPanelCloseButtonY = 358, 450 // 32x32 standing at y 482 (UI_DrawPartyScreenCloseButton 0x496dd0)
+	partyPanelCloseButtonX, partyPanelCloseButtonY = 358, 449 // 32x32 standing at y 481 (UI_DrawPartyScreenCloseButton 0x496dd0)
 	partyPanelHeroNameX, partyPanelHeroNameY       = 180, 80 + panelShiftY
 )
 
@@ -49,14 +49,14 @@ const (
 
 const (
 	barX, baseBarY                                   = 90, 134 + panelShiftY
-	relationshipSwitcherX, baseRelationshipSwitcherY = 95, 150 + panelShiftY
-	listeningSwitcherX, baseListeningSwitcherY       = 342, 140 + panelShiftY
-	seeingSwitcherX, baseSeeingSwitcherY             = 365, 140 + panelShiftY
+	relationshipSwitcherX, baseRelationshipSwitcherY = 80 + partyRowRelationX, 150 + panelShiftY
+	listeningSwitcherX, baseListeningSwitcherY       = 80 + partyRowListenX, 140 + panelShiftY
+	seeingSwitcherX, baseSeeingSwitcherY             = 80 + partyRowSeeX, 140 + panelShiftY
 	nameLabelX, baseNameLabelY                       = 115, 144 + panelShiftY
 	nameTooltipX, baseNameTooltipY                   = 100, 120 + panelShiftY
 	classLabelX, baseClassLabelY                     = 115, 158 + panelShiftY
 	levelLabelX, baseLevelLabelY                     = 386, 160 + panelShiftY
-	inviteAcceptButtonX, baseInviteAcceptButtonY     = 265, 147 + panelShiftY
+	inviteAcceptButtonX, baseInviteAcceptButtonY     = 80 + partyRowInviteX, 147 + panelShiftY
 	indexOffset                                      = 0x26 // the row pitch of the original (UI_DrawPartyScreen 0x496540; up to 8 rows from panel y 0x5a)
 )
 
