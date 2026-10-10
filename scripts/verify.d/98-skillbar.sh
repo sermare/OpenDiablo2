@@ -1,3 +1,4 @@
+scenario_realtime=1
 scenario_name="skill bar (popup grid, F-key hotkeys while hovering, select + click, skill points with prerequisites, level-up, d2s header round trip)"
 sb=$tmp/skillbar
 wb=$tmp/writeback-skillbar
