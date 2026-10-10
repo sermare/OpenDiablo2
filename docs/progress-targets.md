@@ -44,12 +44,11 @@ full verify yet.
 | 6 + 2 | Monster AI archetypes ported faithfully + implemented |
 | 6 | Item generation gaps closed vs the exe |
 | 6 | In-game UI panels matching the original layout |
-| 6 | Sound and music confirmed by a human listen |
 | 6 | Real full verify green (scenario sections per job) |
 | 4 | Multiplayer playable through the game screen |
 | 4 | Mac app: build, Finder launch with real maps, disk image |
 | 4 + 4 + 4 | Level generator proven, .d2s save verified, NPC interaction features |
 
-New bars (all start honest): *Sound and music confirmed by a human listen* (0/5: only a person can confirm
+New bars (all start honest): *Sound and music confirmed by a human listen* (0/5; moved out of v1 on 2026-10-10 by the project owner, tracked under v2: only a person can confirm
 menu music, NPC voices, footsteps, spell sounds, ambient), *Multiplayer playable through the game screen* (0/4),
 *Mac app* (2/3), *Acts played start to finish by a human tester* (0/5): moved out of v1 on 2026-10-10 by the project owner; it is tracked under v2 in `docs/progress.json`.

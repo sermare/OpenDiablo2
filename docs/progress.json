@@ -119,14 +119,6 @@
       "color": "#f2c94c"
     },
     {
-      "label": "Sound and music confirmed by a human listen",
-      "done": 0,
-      "total": 5,
-      "pending": 0,
-      "note": "menu music, NPC voices, footsteps, spell/combat sounds, ambient: each needs a person to listen (I can only check logs)",
-      "color": "#6fd3ff"
-    },
-    {
       "label": "Multiplayer playable through the game screen",
       "done": 3,
       "total": 4,
@@ -153,7 +145,7 @@
   ],
   "v1": {
     "title": "Game v1 complete",
-    "definition": "v1 = a person double-clicks the Mac app, makes or loads a character and can play Acts 1-5 single player (quests, items, skills, monsters, saves, sound) without hitting a blocker; multiplayer through the game screen and Hell-difficulty polish count too. The percentage is a weighted average of the measurable bars below; dashed = on branches, not yet verified.",
+    "definition": "v1 = a person double-clicks the Mac app, makes or loads a character and can play Acts 1-5 single player (quests, items, skills, monsters, saves, without hitting a blocker; multiplayer through the game screen and Hell-difficulty polish count too. The percentage is a weighted average of the measurable bars below; dashed = on branches, not yet verified.",
     "weights": {
       "Acts playable end to end (scripted play)": 14,
       "Levels walked by a verify scenario": 6,
@@ -163,7 +155,6 @@
       "Monster AI archetypes implemented": 2,
       "Item generation gaps closed vs the exe": 6,
       "In-game UI panels matching the original layout": 6,
-      "Sound and music confirmed by a human listen": 6,
       "Multiplayer playable through the game screen": 4,
       "Mac app: build, Finder launch with real maps, disk image": 4,
       "Level generator proven equal to the real game": 4,
@@ -180,6 +171,12 @@
         "done": 0,
         "total": 5,
         "note": "a human plays each act start to finish; moved out of v1 by the project owner on 2026-10-10"
+      },
+      {
+        "label": "Sound and music confirmed by a human listen",
+        "done": 0,
+        "total": 5,
+        "note": "a human listens to menu music, NPC voices, footsteps, spell sounds and ambience; moved out of v1 by the project owner on 2026-10-10 (sound is implemented and scripted-checked; the human confirmation is v2)"
       }
     ]
   }
