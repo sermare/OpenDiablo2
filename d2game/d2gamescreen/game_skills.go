@@ -10,6 +10,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2skills"
@@ -459,8 +460,17 @@ func (v *Game) autoCast(elapsed float64) {
 
 	if !eng.CastAt(v.localPlayer, it.id, aimX, aimY) {
 		t.refused++
+
+		// the nearest zombie wandered off behind a wall (they wander unless they chase): a line-of-sight
+		// refusal would repeat at the same aim until the retries run out, so walk the hero to it
+		if refusalNeedsHero(eng.LastRefusal()) {
+			v.putHeroNear(aimX, aimY)
+		}
 	}
 }
+
+// refusalNeedsHero is whether a refused scenario cast is cured by standing next to the target.
+func refusalNeedsHero(reason string) bool { return reason == d2skill.ReasonLOS }
 
 // corpseForCast finds the corpse nearest to the hero; with none lying around it
 // kills the given monster so one appears, and asks the caller to wait.

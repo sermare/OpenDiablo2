@@ -3,8 +3,17 @@ package d2gamescreen
 import (
 	"testing"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2skills"
 )
+
+func TestRefusalNeedsHero(t *testing.T) {
+	for reason, want := range map[string]bool{d2skill.ReasonLOS: true, d2skill.ReasonMana: false, d2skill.ReasonCooldown: false, "": false} {
+		if got := refusalNeedsHero(reason); got != want {
+			t.Errorf("refusalNeedsHero(%q) = %v, want %v", reason, got, want)
+		}
+	}
+}
 
 func TestParseCastPart(t *testing.T) {
 	for _, c := range []struct {
