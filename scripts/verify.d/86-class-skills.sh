@@ -5,16 +5,17 @@ scenario_name="class skills (one or more skills of every class: damage, kills, s
 # everything the other skills are meant to hit, curses before the kills, corpse skills after kills
 # (a corpse is made when none lies around). The hero's own minions (Valkyrie, Necroskeleton, Raven) kill the
 # zombies during a cast animation, so a swing or missile can hit nobody: Bash, Chain Lightning and Holy Fire (its aura pulses count as area hits) carry a "!"
+# (a trailing "!!" counts only the skill's own strike hits, Bash and Sacrifice: other skills' area pulses must not hide a miss)
 # (the engine casts them again until one hit landed; a to-hit miss counts as no hit, too).
 scenario_env() {
   # Amazon / Barbarian / Assassin skills with an own do function (docs/skills-coverage-abc.md) come first:
   # the corpse skills make their own corpses; Grim Ward is the very last cast (it consumes a corpse and
   # scares the zombies for 8 s, which would spoil every skill that needs them close)
   local list="Dopplezon,3;Valkyrie,3;Blade Fury,3;Dragon Flight,2;Whirlwind,3;Blade Shield,3;Find Potion,5;Find Item,5"
-  list+=";Bash,1!;War Cry,3;Battle Orders,1"
+  list+=";Bash,1!!;War Cry,3;Battle Orders,1"
   list+=";Poison Javelin,4;Multiple Shot,1"
   list+=";Amplify Damage,2;Iron Maiden,1;Poison Dagger,1;Bone Armor,1;Corpse Explosion,1;Raise Skeleton,1"
-  list+=";Sacrifice,2;Might,1"
+  list+=";Sacrifice,2!!;Might,1"
   list+=";Fire Ball,1;Frost Nova,1;Chain Lightning,2!;Teleport,1;Energy Shield,1;Blizzard,1"
   list+=";Raven,1;Firestorm,1"
   # feat/skills-npsd: AI curses, Poison Nova, Hydra, Plague Poppy, Telekinesis, Conversion, Hunger
