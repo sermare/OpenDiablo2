@@ -2,12 +2,15 @@ package d2dcc
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2datautils"
 )
 
 const dccFileSignature = 0x74
 const directionOffsetMultiplier = 8
+
+const maxFramesPerDirection = 1024 // real files have at most a few dozen
 
 // DCC represents a DCC file.
 type DCC struct {
@@ -21,7 +24,10 @@ type DCC struct {
 }
 
 // Load loads a DCC file.
-func Load(fileData []byte) (*DCC, error) {
+func Load(fileData []byte) (dcc *DCC, err error) {
+	// the bit reader and the cell decoder panic on truncated or corrupt data
+	defer d2datautils.RecoverError("dcc", &err)
+
 	result := &DCC{
 		fileData: fileData,
 	}
@@ -37,6 +43,12 @@ func Load(fileData []byte) (*DCC, error) {
 	result.Version = int(bm.GetByte())
 	result.NumberOfDirections = int(bm.GetByte())
 	result.FramesPerDirection = int(bm.GetInt32())
+
+	if result.NumberOfDirections == 0 || result.FramesPerDirection <= 0 ||
+		result.FramesPerDirection > maxFramesPerDirection || result.FramesPerDirection > len(fileData) {
+		return nil, fmt.Errorf("dcc: %d directions of %d frames is out of range",
+			result.NumberOfDirections, result.FramesPerDirection)
+	}
 
 	result.Directions = make([]*DCCDirection, result.NumberOfDirections)
 

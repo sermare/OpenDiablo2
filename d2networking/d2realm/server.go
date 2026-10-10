@@ -99,6 +99,10 @@ func New(cfg Config) *Server {
 		cfg.MaxGames = 128
 	}
 
+	if cfg.Store == nil { // a nil Store used to panic on the first character message
+		cfg.Store = NewMemStore()
+	}
+
 	if cfg.Rand == nil {
 		cfg.Rand = rand.Uint32
 	}

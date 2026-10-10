@@ -2,19 +2,17 @@ package d2mpq
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"strings"
+	"sync"
 )
 
 var cryptoBuffer [0x500]uint32 //nolint:gochecknoglobals // will fix later..
-var cryptoBufferReady bool     //nolint:gochecknoglobals // will fix later..
+var cryptoOnce sync.Once       //nolint:gochecknoglobals // guards the lazy build: archives are opened from several goroutines
 
 func cryptoLookup(index uint32) uint32 {
-	if !cryptoBufferReady {
-		cryptoInitialize()
-
-		cryptoBufferReady = true
-	}
+	cryptoOnce.Do(cryptoInitialize)
 
 	return cryptoBuffer[index]
 }
@@ -75,6 +73,11 @@ func decryptTable(r io.Reader, size uint32, name string) ([]uint32, error) {
 
 	seed := hashString(name, 3)
 	seed2 := uint32(0xEEEEEEEE)
+	// a table entry is four words; a hostile header must not make this allocate gigabytes
+	if size > maxTableEntries {
+		return nil, fmt.Errorf("%s has %d entries", name, size)
+	}
+
 	size *= 4
 
 	table := make([]uint32, size)
@@ -136,3 +139,6 @@ func encrypt(data []uint32, seed uint32) {
 		data[i] = result
 	}
 }
+
+// maxTableEntries bounds the hash and block tables (16 bytes an entry); real archives have under 100k.
+const maxTableEntries = 1 << 22

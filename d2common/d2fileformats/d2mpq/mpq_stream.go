@@ -40,6 +40,10 @@ func CreateStream(mpq *MPQ, block *Block, fileName string) (*Stream, error) {
 		s.Block.calculateEncryptionSeed(fileName)
 	}
 
+	if err := mpq.checkBlock(block); err != nil {
+		return nil, err
+	}
+
 	s.Size = 0x200 << s.MPQ.header.BlockSize //nolint:gomnd // MPQ magic
 
 	if s.Block.HasFlag(FilePatchFile) {
@@ -57,10 +61,23 @@ func CreateStream(mpq *MPQ, block *Block, fileName string) (*Stream, error) {
 
 func (v *Stream) loadBlockOffsets() error {
 	blockPositionCount := ((v.Block.UncompressedFileSize + v.Size - 1) / v.Size) + 1
+	// one offset per sector must fit in the archive: a hostile size would allocate gigabytes
+	if v.MPQ.fileSize > 0 && int64(blockPositionCount)*4 > v.MPQ.fileSize {
+		return errors.New("sector offset table is larger than the archive")
+	}
+
 	v.Positions = make([]uint32, blockPositionCount)
 
 	if err := binary.Read(io.NewSectionReader(v.MPQ.file, int64(v.Block.FilePosition), 1<<32), binary.LittleEndian, &v.Positions); err != nil {
 		return err
+	}
+
+	// the sector data cannot lie beyond the archive
+	if v.MPQ.fileSize > 0 {
+		if last := int64(v.Positions[len(v.Positions)-1]); !v.Block.HasFlag(FileEncrypted) &&
+			int64(v.Block.FilePosition)+last > v.MPQ.fileSize {
+			return errors.New("sectors extend beyond the end of the archive")
+		}
 	}
 
 	if v.Block.HasFlag(FileEncrypted) {
@@ -125,6 +142,10 @@ func (v *Stream) readInternal(buffer []byte, offset, count uint32) (uint32, erro
 }
 
 func (v *Stream) copy(buffer []byte, offset, pos, count uint32) (uint32, error) {
+	if pos > uint32(len(v.Data)) || uint64(offset)+uint64(count) > uint64(len(buffer)) {
+		return 0, io.EOF
+	}
+
 	bytesToCopy := d2math.Min(uint32(len(v.Data))-pos, count)
 	if bytesToCopy <= 0 {
 		return 0, io.EOF
@@ -137,6 +158,10 @@ func (v *Stream) copy(buffer []byte, offset, pos, count uint32) (uint32, error) 
 }
 
 func (v *Stream) bufferData() (err error) {
+	if v.Position >= v.Block.UncompressedFileSize {
+		return io.EOF
+	}
+
 	blockIndex := v.Position / v.Size
 
 	if blockIndex == v.Index {
@@ -154,6 +179,11 @@ func (v *Stream) bufferData() (err error) {
 }
 
 func (v *Stream) loadSingleUnit() (err error) {
+	// the stored size of a single unit is its (compressed) size; the sector size is not a bound
+	if v.Block.CompressedFileSize > maxFileSize {
+		return errors.New("single unit is too large")
+	}
+
 	fileData := make([]byte, v.Size)
 
 	// ReadAt, not Seek+Read: streams of one archive are read from several goroutines (sound loading)
@@ -210,11 +240,25 @@ func (v *Stream) loadBlock(blockIndex, expectedLength uint32) ([]byte, error) {
 	)
 
 	if v.Block.HasFlag(FileCompress) || v.Block.HasFlag(FileImplode) {
+		if int(blockIndex)+1 >= len(v.Positions) {
+			return nil, errors.New("sector index beyond the offset table")
+		}
+
 		offset = v.Positions[blockIndex]
+		if v.Positions[blockIndex+1] < offset {
+			return nil, errors.New("sector offsets are not increasing")
+		}
+
 		toRead = v.Positions[blockIndex+1] - offset
 	} else {
 		offset = blockIndex * v.Size
 		toRead = expectedLength
+	}
+
+	// a stored sector is never larger than the sector size (compression is dropped when it does not
+	// shrink the sector); this bounds the allocation made from the offset table
+	if toRead > 2*v.Size || expectedLength > v.Size {
+		return nil, errors.New("sector is larger than the sector size")
 	}
 
 	offset += v.Block.FilePosition
@@ -249,6 +293,10 @@ func (v *Stream) loadBlock(blockIndex, expectedLength uint32) ([]byte, error) {
 
 //nolint:gomnd,funlen,gocyclo // Will fix enum values later, can't help function length
 func decompressMulti(data []byte, expectedLength uint32) ([]byte, error) {
+	if len(data) == 0 {
+		return nil, errors.New("empty compressed sector")
+	}
+
 	compressionType := data[0]
 
 	switch compressionType {
@@ -274,7 +322,12 @@ func decompressMulti(data []byte, expectedLength uint32) ([]byte, error) {
 		// sparse then bzip2
 		return []byte{}, errors.New("sparse decompression + bzip2 decompression not supported")
 	case 0x41:
-		sinput, err := d2compression.WavDecompress(d2compression.HuffmanDecompress(data[1:]), 1)
+		huff, err := d2compression.HuffmanDecompress(data[1:])
+		if err != nil {
+			return nil, err
+		}
+
+		sinput, err := d2compression.WavDecompress(huff, 1)
 		if err != nil {
 			return nil, err
 		}
@@ -289,7 +342,12 @@ func decompressMulti(data []byte, expectedLength uint32) ([]byte, error) {
 		// return MpqWavCompression.Decompress(new MemoryStream(result), 1);
 		return []byte{}, errors.New("pk + mpqwav decompression not supported")
 	case 0x81:
-		sinput, err := d2compression.WavDecompress(d2compression.HuffmanDecompress(data[1:]), 2)
+		huff, err := d2compression.HuffmanDecompress(data[1:])
+		if err != nil {
+			return nil, err
+		}
+
+		sinput, err := d2compression.WavDecompress(huff, 2)
 		if err != nil {
 			return nil, err
 		}

@@ -1,12 +1,21 @@
 package d2compression
 
 import (
+	"errors"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2datautils"
 )
 
 // WavDecompress decompresses wav files
+//
 //nolint:gomnd // binary decode magic
-func WavDecompress(data []byte, channelCount int) ([]byte, error) { //nolint:funlen,gocognit,gocyclo // can't reduce
+func WavDecompress(data []byte, channelCount int) (result []byte, err error) { //nolint:funlen,gocognit,gocyclo // can't reduce
+	defer d2datautils.RecoverError("wav", &err)
+
+	if channelCount < 1 || channelCount > 2 {
+		return nil, errors.New("wav: channel count must be 1 or 2")
+	}
+
 	Array1 := []int{0x2c, 0x2c}
 	Array2 := make([]int, channelCount)
 
@@ -35,7 +44,7 @@ func WavDecompress(data []byte, channelCount int) ([]byte, error) { //nolint:fun
 	input := d2datautils.CreateStreamReader(data)
 	output := d2datautils.CreateStreamWriter()
 
-	_, err := input.ReadByte()
+	_, err = input.ReadByte()
 	if err != nil {
 		return nil, err
 	}

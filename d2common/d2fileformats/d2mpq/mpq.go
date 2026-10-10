@@ -23,6 +23,7 @@ type MPQ struct {
 	hashes   map[uint64]*Hash
 	blocks   []*Block
 	header   Header
+	fileSize int64 // size of the archive on disk, to reject offsets and sizes beyond it
 }
 
 // PatchInfo represents patch info for the MPQ.
@@ -48,7 +49,13 @@ func New(fileName string) (*MPQ, error) {
 		return nil, err
 	}
 
+	if st, serr := mpq.file.Stat(); serr == nil {
+		mpq.fileSize = st.Size()
+	}
+
 	if err := mpq.readHeader(); err != nil {
+		mpq.file.Close()
+
 		return nil, fmt.Errorf("failed to read reader: %v", err)
 	}
 
@@ -63,10 +70,12 @@ func FromFile(fileName string) (*MPQ, error) {
 	}
 
 	if err := mpq.readHashTable(); err != nil {
+		mpq.file.Close()
 		return nil, fmt.Errorf("failed to read hash table: %v", err)
 	}
 
 	if err := mpq.readBlockTable(); err != nil {
+		mpq.file.Close()
 		return nil, fmt.Errorf("failed to read block table: %v", err)
 	}
 
@@ -210,4 +219,26 @@ func openIgnoreCase(mpqPath string) (*os.File, error) {
 	}
 
 	return mpqFile, err
+}
+
+// maxFileSize bounds the size of one file read into memory (the largest game file is far smaller).
+const maxFileSize = 1 << 28
+
+// checkBlock rejects block table entries whose sizes cannot be real, before anything is allocated
+// from them.
+func (mpq *MPQ) checkBlock(b *Block) error {
+	if b.UncompressedFileSize > maxFileSize {
+		return fmt.Errorf("file size %d is too large", b.UncompressedFileSize)
+	}
+
+	if mpq.fileSize > 0 && int64(b.FilePosition) > mpq.fileSize {
+		return errors.New("file starts beyond the end of the archive")
+	}
+
+	if !b.HasFlag(FileCompress) && !b.HasFlag(FileImplode) && mpq.fileSize > 0 &&
+		int64(b.FilePosition)+int64(b.UncompressedFileSize) > mpq.fileSize {
+		return errors.New("file extends beyond the end of the archive")
+	}
+
+	return nil
 }

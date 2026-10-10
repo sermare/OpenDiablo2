@@ -11,7 +11,7 @@ import (
 
 // buildBody appends valid quest, waypoint, NPC, stats and skill sections to a
 // header-only save and fixes up its size and checksum.
-func buildBody(t *testing.T, stats map[int]uint64, skills [numSkills]byte) []byte {
+func buildBody(t testing.TB, stats map[int]uint64, skills [numSkills]byte) []byte {
 	t.Helper()
 
 	data := buildSave("Body", Sorceress, 5, StatusExpansion)

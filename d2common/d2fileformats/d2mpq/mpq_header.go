@@ -32,5 +32,13 @@ func (mpq *MPQ) readHeader() error {
 		return errors.New("invalid mpq header")
 	}
 
+	// the sector size is 0x200<<BlockSize: a shift past 31 would give a zero sector size (division by zero)
+	if mpq.header.BlockSize > maxBlockSizeShift {
+		return errors.New("invalid mpq block size")
+	}
+
 	return nil
 }
+
+// maxBlockSizeShift limits the sector size to 0x200<<15 = 16 MiB (Diablo II uses 3, 4 KiB).
+const maxBlockSizeShift = 15

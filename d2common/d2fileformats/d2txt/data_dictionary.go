@@ -92,7 +92,9 @@ func LoadDataDictionary(buf []byte) *DataDictionary {
 
 	fieldNames, err := cr.Read()
 	if err != nil {
-		panic(err)
+		// an empty or unreadable table: no columns and no rows, with the cause in Err. This used
+		// to panic, which crashed the engine on a truncated or empty .txt.
+		return &DataDictionary{lookup: map[string]int{}, r: cr, Err: err}
 	}
 
 	data := &DataDictionary{
@@ -110,21 +112,25 @@ func LoadDataDictionary(buf []byte) *DataDictionary {
 // Next reads the next row, skips Expansion lines or
 // returns false when the end of a file is reached or an error occurred
 func (d *DataDictionary) Next() bool {
-	var err error
-	d.record, err = d.r.Read()
+	for {
+		var err error
 
-	if err == io.EOF {
-		return false
-	} else if err != nil {
-		d.Err = err
-		return false
+		d.record, err = d.r.Read()
+
+		if err == io.EOF {
+			return false
+		} else if err != nil {
+			d.Err = err
+			return false
+		}
+
+		// a loop rather than recursion: a file of nothing but Expansion lines must not grow the stack
+		if len(d.record) > 0 && d.record[0] == "Expansion" {
+			continue
+		}
+
+		return true
 	}
-
-	if d.record[0] == "Expansion" {
-		return d.Next()
-	}
-
-	return true
 }
 
 // String gets a string from the given column
@@ -155,10 +161,6 @@ func (d *DataDictionary) List(field string) []string {
 
 // Bool gets a bool value for the given column
 func (d *DataDictionary) Bool(field string) bool {
-	n := d.Number(field)
-	if n > 1 {
-		log.Panic("Bool on non-bool field ", field)
-	}
-
-	return n == 1
+	// a column holding a number other than 0/1 used to panic here; any positive value counts as true
+	return d.Number(field) > 0
 }

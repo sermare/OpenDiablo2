@@ -39,6 +39,17 @@ type DS1 struct {
 	unknown2         uint32
 }
 
+// limits for untrusted files
+const (
+	maxDimension = 4096 // tiles per side; real maps are well below 300
+	maxWalls     = 4    // the format has four wall layers (and four orientation layers)
+	maxFloors    = 2
+
+	objectSize            = 20 // bytes of one object record
+	substitutionGroupSize = 20
+	npcSize               = 12
+)
+
 const (
 	defaultNumFloors        = 1
 	defaultNumShadows       = maxShadowLayers
@@ -51,7 +62,10 @@ func Unmarshal(fileData []byte) (*DS1, error) {
 }
 
 // Unmarshal the given bytes to a DS1 struct
-func (ds1 *DS1) Unmarshal(fileData []byte) (*DS1, error) {
+func (ds1 *DS1) Unmarshal(fileData []byte) (result *DS1, err error) {
+	// layer and tile accessors index by values read from the file
+	defer d2datautils.RecoverError("ds1", &err)
+
 	ds1.ds1Layers = &ds1Layers{}
 
 	stream := d2datautils.CreateStreamReader(fileData)
@@ -91,6 +105,10 @@ func (ds1 *DS1) loadHeader(br *d2datautils.StreamReader) error {
 
 	width++
 	height++
+
+	if width < 1 || height < 1 || width > maxDimension || height > maxDimension {
+		return fmt.Errorf("size %dx%d tiles is out of range", width, height)
+	}
 
 	ds1.SetSize(int(width), int(height))
 
@@ -157,6 +175,16 @@ func (ds1 *DS1) loadBody(stream *d2datautils.StreamReader) error {
 		}
 	}
 
+	if numWalls < 0 || numWalls > maxWalls || numFloors < 0 || numFloors > maxFloors {
+		return fmt.Errorf("%d walls and %d floors are out of range", numWalls, numFloors)
+	}
+
+	// every layer is stored whole, one dword per tile (walls also have an orientation layer)
+	layers := int64(numWalls)*2 + int64(numFloors) + int64(numShadows) + int64(numSubstitutions)
+	if err := d2datautils.CheckCount("layers", int64(ds1.width)*int64(ds1.height)*layers, 4, stream.Remaining()); err != nil { //nolint:gomnd
+		return err
+	}
+
 	for ; numWalls > 0; numWalls-- {
 		ds1.PushWall(&Layer{})
 	}
@@ -205,6 +233,10 @@ func (ds1 *DS1) loadFileList(br *d2datautils.StreamReader) error {
 		return fmt.Errorf("reading number of Files: %w", err)
 	}
 
+	if err = d2datautils.CheckCount("number of files", int64(numberOfFiles), 1, br.Remaining()); err != nil {
+		return err
+	}
+
 	ds1.Files = make([]string, numberOfFiles)
 
 	for i := 0; i < int(numberOfFiles); i++ {
@@ -236,6 +268,10 @@ func (ds1 *DS1) loadObjects(br *d2datautils.StreamReader) error {
 	numObjects, err := br.ReadInt32()
 	if err != nil {
 		return fmt.Errorf("reading number of Objects: %w", err)
+	}
+
+	if err = d2datautils.CheckCount("number of objects", int64(numObjects), objectSize, br.Remaining()); err != nil {
+		return err
 	}
 
 	ds1.Objects = make([]Object, numObjects)
@@ -301,6 +337,11 @@ func (ds1 *DS1) loadSubstitutions(br *d2datautils.StreamReader) error {
 	numberOfSubGroups, err := br.ReadInt32()
 	if err != nil {
 		return fmt.Errorf("reading number of sub groups: %w", err)
+	}
+
+	if err = d2datautils.CheckCount("number of substitution groups", int64(numberOfSubGroups),
+		substitutionGroupSize, br.Remaining()); err != nil {
+		return err
 	}
 
 	ds1.SubstitutionGroups = make([]SubstitutionGroup, numberOfSubGroups)
@@ -402,10 +443,19 @@ func (ds1 *DS1) loadNPCs(br *d2datautils.StreamReader) error {
 		return fmt.Errorf("reading number of npcs: %w", err)
 	}
 
+	if err = d2datautils.CheckCount("number of npcs", int64(numberOfNpcs), npcSize, br.Remaining()); err != nil {
+		return err
+	}
+
 	for npcIdx := 0; npcIdx < int(numberOfNpcs); npcIdx++ {
 		numPaths, err := br.ReadInt32() // nolint:govet // I want to re-use this error variable
 		if err != nil {
 			return fmt.Errorf("reading number of paths for npc %d: %v", npcIdx, err)
+		}
+
+		// a negative count would move the stream backwards (endless loop), a huge one allocates
+		if err = d2datautils.CheckCount("number of npc paths", int64(numPaths), 2, br.Remaining()); err != nil { //nolint:gomnd,govet
+			return err
 		}
 
 		npcX, err := br.ReadInt32()
