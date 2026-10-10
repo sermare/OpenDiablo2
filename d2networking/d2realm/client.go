@@ -119,6 +119,14 @@ func (c *Client) dispatch(asm *d2gs.TunnelAssembler, p []byte) {
 		if m, err := d2gs.ParseAssignPlayer(p); err == nil {
 			c.push(m)
 		}
+	case d2gs.S2CPlayerMove:
+		if m, err := d2gs.ParsePlayerMove(p); err == nil {
+			c.push(m)
+		}
+	case d2gs.S2CUnitSkillOnLoc:
+		if m, err := d2gs.ParseUnitSkillOnLocation(p); err == nil {
+			c.push(m)
+		}
 	case d2gs.S2CPlayerLeave:
 		if m, err := d2gs.ParsePlayerLeave(p); err == nil {
 			c.push(m)
