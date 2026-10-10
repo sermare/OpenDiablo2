@@ -16,6 +16,9 @@ import (
 type ExactTile struct {
 	File  string
 	Index int
+	// Flags are the record flags of the generator's tile record; the
+	// collision relevant ones (0x40, 0x80, 0x2) are applied to the sub-tiles.
+	Flags uint32
 }
 
 // exactComponent resolves an ExactTile in the engine's DT1 set. The DT1 file is
@@ -115,6 +118,8 @@ func (m *MapEngine) SetExactTiles(x, y int, region d2enum.RegionIdType, keepMark
 			for i := range t.SubTiles {
 				t.SubTiles[i].Combine(dt.SubTileFlags[i])
 			}
+
+			applyRecordFlags(&t.SubTiles, e.Flags)
 		}
 	}
 
