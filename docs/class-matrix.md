@@ -5,13 +5,13 @@ Act 1 to 5 chain one scenario at a time through `scripts/verify.sh` with `OD2_HE
 `d2core/d2hero/herogen` (`scripts/verify.d/lib/hero.sh`), except 9b, which starts a brand new level 1 hero of the class.
 The scripted fights cast the class' left skill (`d2game/d2gamescreen/fightskill.go`), real combat, no god mode.
 
-Last update 2026-10-10 03:48, commit `421fb94b`, 7 run(s) in the table. A cell is *result runtime deaths*:
+Last update 2026-10-10 04:24, commit `f0bbab53`, 10 run(s) in the table. A cell is *result runtime deaths*:
 `PASS` / `PASS*` (passed on the second attempt that verify.sh makes) / `FAIL`, wall clock, deaths of the hero (`d`).
 
 | class | 9b Act 1 (fresh) | 9e Act 2 | 9g Act 3 | 9h Acts 4+5 | 9i Act 5 caves | total | deaths | passed |
 |---|---|---|---|---|---|---|---|---|
 | amazon | - | - | - | - | - | - | 0 | 0/5 |
-| sorc | PASS 4m11s d0 | PASS 3m51s d0 | - | - | - | 8m02s | 0 | 2/5 |
+| sorc | PASS 4m11s d0 | PASS 3m51s d0 | PASS 10m28s d0 | PASS* 17m55s d0 | PASS 7m41s d0 | 44m06s | 0 | 5/5 |
 | necro | - | - | - | - | - | - | 0 | 0/5 |
 | paladin | - | - | - | - | - | - | 0 | 0/5 |
 | barb | PASS 4m13s d0 | PASS 3m26s d0 | PASS 8m28s d0 | PASS 5m42s d0 | PASS 6m14s d0 | 28m03s | 0 | 5/5 |
@@ -24,6 +24,9 @@ Last update 2026-10-10 03:48, commit `421fb94b`, 7 run(s) in the table. A cell i
 |---|---|---|---|---|---|
 | sorc | 9b-act1-playthrough | PASS | 4m11s | 0 | [Game Server][WARNING] D2S export: container item "clb" (page 1) not written: quality 6 of clb cannot be written (rare/crafted names are not modelled) |
 | sorc | 9e-act2-playthrough | PASS | 3m51s | 0 | [Game Server][WARNING] D2S export: container item "ywn": 2 stat(s) the save cannot hold were left out |
+| sorc | 9g-act3-playthrough | PASS | 10m28s | 0 | none |
+| sorc | 9h-act45-playthrough | PASS* | 17m55s | 0 | FAIL: the Act 4/5 playthrough did not pass |
+| sorc | 9i-act5-caves-playthrough | PASS | 7m41s | 0 | none |
 | barb | 9b-act1-playthrough | PASS | 4m13s | 0 | [Game Server][WARNING] D2S export: container item "sbw": 4 stat(s) the save cannot hold were left out |
 | barb | 9e-act2-playthrough | PASS | 3m26s | 0 | [Game Server][WARNING] D2S export: container item "ba1": 1 stat(s) the save cannot hold were left out |
 | barb | 9g-act3-playthrough | PASS | 8m28s | 0 | none |
