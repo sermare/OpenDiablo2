@@ -119,7 +119,7 @@ func (d *Director) TeleportDest(b *d2monster.Brain) (d2monster.Point, bool) {
 // jumps to the point. Other skills are not simulated and report false.
 func (d *Director) CastSkillAt(b *d2monster.Brain, skill int, _ d2monster.Mode, p d2monster.Point) bool {
 	u := d.unitOf(b)
-	if u == nil || skill != teleportSkill {
+	if u == nil || (skill != teleportSkill && skill != d2monster.SkillBaalTeleport) {
 		return false
 	}
 

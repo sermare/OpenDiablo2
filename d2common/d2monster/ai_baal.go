@@ -736,7 +736,7 @@ func baalAct(c *Ctx, act int) {
 	case baalBuff:
 		cast(slot6)
 	case baalTeleport:
-		cast(slot5)
+		baalTeleportAway(c)
 	case baalClone:
 		if cl, ok := c.W.(Cloner); ok && cl.SpawnBaalClone(b) {
 			c.Sleep(5)

@@ -69,6 +69,8 @@ func TestClassifyEffect(t *testing.T) {
 		{"Amplify Damage curse", 30, false, EffectNone, "Amplify Damage"},
 		{"Resurrect", 97, false, EffectNone, "Resurrect"},
 		{"Teleport", 98, false, EffectNone, "MonTeleport"},
+		{"Jump", 89, false, EffectMelee, "Jump"},
+		{"DiabRun", 103, false, EffectMelee, "DiabRun"},
 		{"MinionSpawner", 135, false, EffectNone, "MinionSpawner"},
 		{"SkeletonRaise", 0, false, EffectNone, "SkeletonRaise"},
 	}

@@ -99,6 +99,8 @@ func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 		return
 	}
 
+	d.closeIn(u)
+
 	atk, ok := d.attackOf(u, mode)
 	if !ok {
 		return

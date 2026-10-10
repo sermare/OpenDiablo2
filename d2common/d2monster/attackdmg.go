@@ -69,7 +69,7 @@ const (
 // MONSTER_SetupLevelScaledStats (VERIFIED callers: Jab 7, Charge 67, Smite
 // 150, FireHit 83 via its start func, Leap start 77/78) plus the generic
 // Attack (1) and Bash-like (2) handlers (UNVERIFIED: shared with players).
-var meleeDoFuncs = map[int]bool{1: true, 2: true, 7: true, 67: true, 77: true, 78: true, 83: true, 150: true}
+var meleeDoFuncs = map[int]bool{1: true, 2: true, 7: true, 67: true, 77: true, 78: true, 83: true, 89: true, 103: true, 150: true}
 
 // areaDoFuncs are srvdofunc values of damaging ground/nova skills in
 // skills.txt used by monsters (UNVERIFIED mapping, from the row layout: nova
