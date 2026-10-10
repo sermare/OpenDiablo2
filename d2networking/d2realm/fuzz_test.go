@@ -13,7 +13,15 @@ import (
 // All seeds are generated here (synthetic messages and a synthetic new-character header).
 
 func sampleMessages() []interface{} {
+	hero, _ := d2s.NewCharacter("Hero", d2s.Amazon, d2s.NewCharacterFlags{Expansion: true, Created: time.Unix(1700000000, 0)},
+		d2s.DefaultAppearance(d2s.Amazon))
+
 	return []interface{}{
+		Hello{Version: 1, Account: "alice"},
+		UploadChar{Data: hero},
+		SelectChar{Name: "Hero"},
+		CreateGame{Name: "g0", Difficulty: 0, MaxPlayers: 8, MinLevel: 1, MaxLevel: 99},
+		JoinGame{Name: "g0"},
 		Hello{Version: 1, Account: "alice"},
 		ListGamesReq{},
 		CreateGame{Name: "g1", Password: "pw", Description: "d", Difficulty: 1, MaxPlayers: 4, MinLevel: 1, MaxLevel: 99},
@@ -129,9 +137,12 @@ func FuzzServerPackets(f *testing.F) {
 				continue
 			}
 
-			srv.mu.Lock()
-			srv.packet(sess[i%2], p)
-			srv.mu.Unlock()
+			func() {
+				srv.mu.Lock()
+				defer srv.mu.Unlock() // also when the dispatcher panics, so the failure is reported
+
+				srv.packet(sess[i%2], p)
+			}()
 		}
 
 		for _, s := range sess {
