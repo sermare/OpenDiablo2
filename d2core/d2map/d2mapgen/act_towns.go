@@ -150,6 +150,11 @@ func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, diff d2drlg.Dif
 			rects = act23Rects(tb, levelID, seed, diff)
 		}
 	}
+
+	// Kurast Docks has one preset; its rectangle is the town of the Act 3 world (Spider Forest lies north)
+	if RealMapsEnabled() && levelID == d2level.KurastDocks {
+		rects = act23Rects(tb, levelID, seed, diff)
+	}
 	path := drlgoutdoor.NormalizePrestFile(files[idx])
 	region := d2enum.RegionIdType(rec.LevelType)
 

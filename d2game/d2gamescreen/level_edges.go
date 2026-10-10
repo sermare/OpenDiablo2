@@ -59,6 +59,12 @@ func (v *Game) advanceEdges() {
 		return
 	}
 
+	// a scripted walk to an exit crosses the border it walks to only: the Great Marsh touches Spider Forest
+	// and Flayer Jungle, and a hero walking to the north one must not leave through the west border
+	if e := v.levels.exitWalk; e != nil && !edgeWanted(e.level, to) {
+		return
+	}
+
 	if !v.gameClient.CanLoadLevel(to) {
 		v.levels.edgeArmed = false
 
@@ -76,6 +82,10 @@ func (v *Game) advanceEdges() {
 		v.levels.trans.edgeWX, v.levels.trans.edgeWY = wx, wy
 	}
 }
+
+// edgeWanted says whether the border towards level to may be crossed while a scripted walk heads for level
+// want (want 0: no walk, every border counts).
+func edgeWanted(want, to int) bool { return want == 0 || want == to }
 
 // edgeArrival places the hero at the world position he left the old level at.
 func edgeArrival(from, to int, wx, wy float64) d2client.ArrivalFunc {
