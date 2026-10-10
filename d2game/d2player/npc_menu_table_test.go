@@ -16,6 +16,7 @@ func TestNPCMenuFor(t *testing.T) {
 		{244, []NPCMenuAction{NPCActionTalk, NPCActionIdentify}},               // Cain
 		{175, []NPCMenuAction{NPCActionTalk, NPCActionTravelWest}},             // Warriv2
 		{150, []NPCMenuAction{NPCActionTalk, NPCActionHire}},                   // Kashya
+		{367, []NPCMenuAction{NPCActionTalk}},                                  // Tyrael2: Talk only in Game.exe 0x725d60
 	}
 
 	for _, c := range cases {
