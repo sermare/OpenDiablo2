@@ -630,7 +630,7 @@ func doChargedStrikeFn(c *cast) {
 
 		cc := *c
 		cc.tgt = tg
-		cc.castM(c.sk.SrvMissileA, castOpts{hasStart: true, startX: float64(x) + 0.5, startY: float64(y) + 0.5})
+		cc.castM(c.missileName(), castOpts{hasStart: true, startX: float64(x) + 0.5, startY: float64(y) + 0.5})
 	}
 }
 
@@ -1209,45 +1209,26 @@ func doAuraFn(c *cast) {
 
 // ---- storms and rains ----
 
-// doRainFn is SRVDO_028 (Meteor, Blizzard). Meteor: one strike on the aim
-// point after 12 frames, radius aurarangecalc (hit function 14 reads skills
-// record +0x64 when sHitPar1 is empty, minimum 1; verified 0x5a8680). Blizzard: calc2 frames apart,
-// shards fall at random points within calc1 of the aim for 100 frames (the
-// blizzardcenter lifetime), each hitting a radius of 2. All U: the missiles'
-// own do functions (10 / meteorcenter hit function 14) were not read.
+// doRainFn is SRVDO_028 (Meteor, Blizzard, Eruption; 0x5c8560, VERIFIED): the
+// skill's srvmissilea is created at the aim point when the cell is free of
+// walk and wall bits for the missile's size (SKILL_IsSkillTargetCellWalkable);
+// everything else happens in the missile. Meteor: meteorcenter lives its Range
+// and ends in hit function 14 (area damage, then meteorfire on the ground).
+// Blizzard: blizzardcenter (SrvDoFunc 10) drops a blizzard1 every calc2 frames
+// at a random cell within calc1 of itself. Eruption: erruption center (SrvDoFunc
+// 25) likewise with another cell mask.
 func doRainFn(c *cast) {
 	ax, ay := c.aim()
-	d := c.desc()
 
-	if c.sk.SrvMissileA == "meteorcenter" || c.sk.Name == "Meteor" {
-		c.effect(Effect{Kind: "strikes", Origin: "aim", Desc: d, Strikes: []Strike{
-			{Delay: 12, X: ax, Y: ay, Radius: maxInt(c.env.eval(c.sk.AuraRangeCalc), 1)},
-		}})
-
+	if c.p.Walkable != nil && !c.p.Walkable(ax, ay) {
+		c.fail(ReasonLOS)
 		return
 	}
 
-	radius := c.calc(1)
-	step := c.calc(2)
-
-	if radius < 1 {
-		radius = 7
+	if c.castM(c.missileName(), castOpts{hasStart: true, startX: float64(ax) + 0.5, startY: float64(ay) + 0.5,
+		stationary: true}) == nil {
+		c.fail(ReasonMissile)
 	}
-
-	if step < 1 {
-		step = 4
-	}
-
-	var strikes []Strike
-
-	for f := 0; f < 100; f += step {
-		a := float64(c.rollN(360)) * math.Pi / 180
-		r := math.Sqrt(float64(c.rollN(1000))/1000) * float64(radius)
-		strikes = append(strikes, Strike{Delay: f + 6, X: ax + int(math.Round(math.Cos(a)*r)),
-			Y: ay + int(math.Round(math.Sin(a)*r)), Radius: 2})
-	}
-
-	c.effect(Effect{Kind: "strikes", Origin: "aim", Desc: d, Strikes: strikes})
 }
 
 func maxInt(a, b int) int {
@@ -1283,23 +1264,24 @@ func doFirestormFn(c *cast) {
 	c.effect(Effect{Kind: "strikes", Origin: "self", Desc: desc, Strikes: strikes})
 }
 
-// doVolcanoFn is SRVDO_123_Volcano (Fissure, U): eruptions at random points
-// within aurarangecalc of the aim for ~3 seconds.
+// doVolcanoFn is SRVDO_123_Volcano (0x5c60c0, VERIFIED): the skill's srvmissile
+// ("volcano") is created at the aim point if the cell is free for its size,
+// with a random byte from the caster's seed stored in the missile's data field
+// 0x28; the missile (SrvDoFunc 28) then lobs debris around itself.
 func doVolcanoFn(c *cast) {
 	ax, ay := c.aim()
-	radius := maxInt(c.env.eval(c.sk.AuraRangeCalc), 4)
-	desc := c.desc()
 
-	var strikes []Strike
-
-	for i := 0; i < 8; i++ {
-		a := float64(c.rollN(360)) * math.Pi / 180
-		r := math.Sqrt(float64(c.rollN(1000))/1000) * float64(radius)
-		strikes = append(strikes, Strike{Delay: 8 + i*8, X: ax + int(math.Round(math.Cos(a)*r)),
-			Y: ay + int(math.Round(math.Sin(a)*r)), Radius: 3})
+	if c.p.Walkable != nil && !c.p.Walkable(ax, ay) {
+		c.fail(ReasonLOS)
+		return
 	}
 
-	c.effect(Effect{Kind: "strikes", Origin: "aim", Desc: desc, Strikes: strikes})
+	seed := uint32(c.rollN(256))
+
+	if c.castM(c.missileName(), castOpts{hasStart: true, startX: float64(ax) + 0.5, startY: float64(ay) + 0.5,
+		stationary: true, data28: seed}) == nil {
+		c.fail(ReasonMissile)
+	}
 }
 
 // doStormFn handles the long lasting damage fields: Thunder Storm (do 29: a

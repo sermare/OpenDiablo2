@@ -53,6 +53,6 @@ func (s *Sim) orbRing(m *Missile) {
 
 func (s *Sim) orbShoot(m *Missile, sub *Spec, angle float64) {
 	dmg := m.childDamage
-	_, _ = s.Create(CreateParams{Spec: sub, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level, Damage: dmg,
+	_, _ = s.Create(CreateParams{Spec: sub, Parent: m, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level, Damage: dmg,
 		X: m.X, Y: m.Y, DestX: m.X + 1, DestY: m.Y, Angle: angle})
 }

@@ -16,9 +16,9 @@ Every row is cast through `d2skill.Pipeline` (Start + Do) at skill levels 1 and 
 | with a registered do handler | 162 |
 | generic srvmissile path | 22 |
 | unresolved table references (missile, state, overlay, skilldesc, summon, prereq, synergy, sumskill) | 0 |
-| skills whose missile closure has a movement/hit function the sim lacks | 26 |
+| skills whose missile closure has a movement/hit function the sim lacks | 11 |
 
-Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points); delay = cooldown frames L1 / L20; dmg20 = damage at L20 in points (elem = elemental min-max with synergies at zero, phys = min-max with a 10-20 weapon); elen = elemental length frames; missile = first srvmissile, vel L1->L20 and range; aura = aura length frames L20; pet = summon monster and petmax L20; syn = distinct synergy skill references in the calc columns; req = reqlevel / maxlvl / prerequisites; cast = result at L1/L20 (m missiles, e effect kinds, s strike); gaps = missile functions in the closure the sim does not model (do3/do5 are flown as plain flight).
+Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points); delay = cooldown frames L1 / L20; dmg20 = damage at L20 in points (elem = elemental min-max with synergies at zero, phys = min-max with a 10-20 weapon); elen = elemental length frames; missile = first srvmissile, vel L1->L20 and range; aura = aura length frames L20; pet = summon monster and petmax L20; syn = distinct synergy skill references in the calc columns; req = reqlevel / maxlvl / prerequisites; cast = result at L1/L20 (m missiles, e effect kinds, s strike); gaps = missile functions in the closure the sim does not model .
 
 ## Amazon
 
@@ -33,7 +33,7 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 12 | Multiple Shot | 4/8 | handler | 4.0 / 23.0 | 0 / 0 | phys 7.0-15.0 | - | multipleshotarrow (24->24, 50) | - | - | 0 | 6/20 Magic Arrow | 2m/21m |  |
 | 13 | Dodge | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 6/20  | stats 1/1 |  |
 | 14 | Power Strike | 6/2 | handler | 2.0 / 6.8 | 0 / 0 | elem 1.0-646.0 | - | - | - | - | 4 | 6/20 Jab | s/s |  |
-| 15 | Poison Javelin | 4/0 | generic | 4.0 / 8.8 | 15 / 15 | elem 2.3-2.6 | 1150 | poisonjav (24->24, 25) | - | - | 1 | 6/20  | 1m/1m | poisonjavcloud:do3 |
+| 15 | Poison Javelin | 4/0 | generic | 4.0 / 8.8 | 15 / 15 | elem 2.3-2.6 | 1150 | poisonjav (24->24, 25) | - | - | 1 | 6/20  | 1m/1m |  |
 | 16 | Exploding Arrow | 4/0 | generic | 5.0 / 14.5 | 0 / 0 | elem 129.0-149.0 | - | explodingarrow (24->24, 40) | - | - | 1 | 12/20 Fire Arrow+Multiple Shot | 1m/1m |  |
 | 17 | Slow Missiles | 0/6 | handler | 5.0 / 5.0 | 0 / 0 | - | - | - | 3150 | - | 0 | 12/20 Inner Sight | 1e/1e |  |
 | 18 | Avoid | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 12/20 Dodge | stats 1/1 |  |
@@ -43,9 +43,9 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 22 | Guided Arrow | 4/10 | handler | 8.0 / 3.2 | 0 / 0 | phys 10.0-20.0 | - | guidedarrow (24->24, 128) | - | - | 0 | 18/20 Cold Arrow+Multiple Shot | 1m/1m |  |
 | 23 | Penetrate | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 18/20 Critical Strike | stats 1/1 |  |
 | 24 | Charged Strike | 6/11 | handler | 4.0 / 8.8 | 0 / 0 | elem 1.0-322.0 | - | chargedstrikebolt (12->12, 98) | - | - | 4 | 18/20 Power Strike+Lightning Bolt | 3ms/7ms |  |
-| 25 | Plague Javelin | 4/0 | generic | 7.0 / 16.5 | 100 / 100 | elem 7.1-7.3 | 265 | plaguejavelin (24->24, 15) | - | - | 1 | 18/20 Lightning Bolt | 1m/1m | plaguejavcloud:do3 plaguejavelin:do3 |
+| 25 | Plague Javelin | 4/0 | generic | 7.0 / 16.5 | 100 / 100 | elem 7.1-7.3 | 265 | plaguejavelin (24->24, 15) | - | - | 1 | 18/20 Lightning Bolt | 1m/1m |  |
 | 26 | Strafe | 8/12 | handler | 11.0 / 11.0 | 0 / 0 | phys 7.0-15.0 | - | strafearrow (24->24, 50) | - | - | 0 | 24/20 Guided Arrow | 4m/10m |  |
-| 27 | Immolation Arrow | 4/0 | generic | 6.0 / 15.5 | 25 / 25 | elem 416.0-427.0 | - | immolationarrow (24->24, 40) | - | - | 1 | 24/20 Exploding Arrow | 1m/1m | immolationarrow:hit9 immolationfire:do5 |
+| 27 | Immolation Arrow | 4/0 | generic | 6.0 / 15.5 | 25 / 25 | elem 416.0-427.0 | - | immolationarrow (24->24, 40) | - | - | 1 | 24/20 Exploding Arrow | 1m/1m |  |
 | 28 | Dopplezon | 0/15 | handler | 19.0 / 4.8 | 0 / 0 | - | - | - | - | dopplezon x1 | 0 | 24/20 Slow Missiles | 1e/1e |  |
 | 29 | Evade | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 24/20 Avoid | stats 1/1 |  |
 | 30 | Fend | 9/13 | handler | 5.0 / 5.0 | 0 / 0 | phys 10.0-20.0 | - | - | - | - | 0 | 24/20 Impale | s/s |  |
@@ -69,20 +69,20 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 43 | Telekinesis | 12/21 | handler | 7.0 / 7.0 | 0 / 0 | elem 20.0-21.0 | - | - | - | - | 0 | 6/20  | 1e/1e |  |
 | 44 | Frost Nova | 0/22 | handler | 9.0 / 28.0 | 0 / 0 | elem 56.0-67.5 | 675 | frostnova (24->24, 14) | - | - | 2 | 6/20  | 64m/64m |  |
 | 45 | Ice Blast | 0/0 | generic | 6.0 / 15.5 | 0 / 0 | elem 253.0-266.5 | 170 | iceblast (12->12, 50) | - | - | 4 | 6/20 Ice Bolt | 1m/1m |  |
-| 46 | Blaze | 0/23 | handler | 11.0 / 20.5 | 0 / 0 | elem 3.6-3.9 | - | blaze (0->0, 90) | 428 | - | 2 | 12/20 Inferno | 1e/1e | blaze:do5 blaze:hit8 |
+| 46 | Blaze | 0/23 | handler | 11.0 / 20.5 | 0 / 0 | elem 3.6-3.9 | - | blaze (0->0, 90) | 428 | - | 2 | 12/20 Inferno | 1e/1e |  |
 | 47 | Fire Ball | 0/0 | generic | 5.0 / 14.5 | 0 / 0 | elem 199.5-226.5 | - | fireball (20->20, 50) | - | - | 2 | 12/20 Fire Bolt | 1m/1m |  |
 | 48 | Nova | 0/22 | handler | 15.0 / 34.0 | 0 / 0 | elem 131.0-188.0 | - | nova (24->24, 13) | - | - | 0 | 12/20 Static Field | 64m/64m |  |
 | 49 | Lightning | 0/0 | generic | 8.0 / 17.5 | 0 / 0 | elem 1.0-272.0 | - | lightningbolt (30->30, 25) | - | - | 3 | 12/20 Charged Bolt | 1m/1m |  |
 | 50 | Shiver Armor | 0/18 | handler | 11.0 / 11.0 | 0 / 0 | elem 60.0-71.5 | 500 | - | 8700 | - | 2 | 12/20 Ice Blast+Frozen Armor | 1e/1e |  |
-| 51 | Fire Wall | 0/24 | handler | 22.0 / 41.0 | 35 / 35 | elem 17.1-17.4 | - | firewallmaker (12->12, 7) | - | - | 2 | 18/20 Blaze | 5m/15m | firewall:do5 |
+| 51 | Fire Wall | 0/24 | handler | 22.0 / 41.0 | 35 / 35 | elem 17.1-17.4 | - | firewallmaker (12->12, 7) | - | - | 2 | 18/20 Blaze | 5m/15m |  |
 | 52 | Enchant | 0/25 | handler | 25.0 / 44.0 | 0 / 0 | elem 68.5-89.5 | - | - | 15000 | - | 1 | 18/20 Warmth+Fire Ball | 1e/1e |  |
 | 53 | Chain Lightning | 0/26 | handler | 9.0 / 28.0 | 0 / 0 | elem 1.0-281.0 | - | chainlightning (30->30, 25) | - | - | 3 | 18/20 Lightning | 1m/1m |  |
 | 54 | Teleport | 0/27 | handler | 24.0 / 5.0 | 0 / 0 | - | - | - | - | - | 0 | 18/20 Telekinesis | 1e/1e |  |
 | 55 | Glacial Spike | 0/0 | generic | 10.0 / 19.5 | 0 / 0 | elem 225.0-242.5 | - | glacialspike (16->16, 40) | 107 | - | 4 | 18/20 Ice Blast | 1m/1m | STAND-IN hit13 splash radius Param1+Param2*(lvl-1), area hit of fn 1 |
-| 56 | Meteor | 0/28 | handler | 17.0 / 26.5 | 30 / 30 | elem 869.0-927.0 | - | meteorcenter (0->0, 60) | - | - | 2 | 24/20 Fire Ball+Fire Wall | 1e/1e | meteorfire:do5 |
-| 57 | Thunder Storm | 13/29 | handler | 19.0 / 19.0 | 0 / 0 | elem 195.0-294.0 | - | thunderstorm1 (2->2, 9) | 4600 | - | 0 | 24/20 Nova+Chain Lightning | 1e/1e | thunderstorm1:do3 |
+| 56 | Meteor | 0/28 | handler | 17.0 / 26.5 | 30 / 30 | elem 869.0-927.0 | - | meteorcenter (0->0, 60) | - | - | 2 | 24/20 Fire Ball+Fire Wall | 1m/1m |  |
+| 57 | Thunder Storm | 13/29 | handler | 19.0 / 19.0 | 0 / 0 | elem 195.0-294.0 | - | thunderstorm1 (2->2, 9) | 4600 | - | 0 | 24/20 Nova+Chain Lightning | 1e/1e |  |
 | 58 | Energy Shield | 0/23 | handler | 5.0 / 5.0 | 0 / 0 | - | - | - | 32100 | - | 1 | 24/20 Teleport+Chain Lightning | 1e/1e |  |
-| 59 | Blizzard | 0/28 | handler | 23.0 / 42.0 | 45 / 45 | elem 570.0-619.0 | 100 | blizzardcenter (0->0, 100) | - | - | 3 | 24/20 Frost Nova+Glacial Spike | 1e/1e | blizzard1:do3 blizzardcenter:do10 |
+| 59 | Blizzard | 0/28 | handler | 23.0 / 42.0 | 45 / 45 | elem 570.0-619.0 | 100 | blizzardcenter (0->0, 100) | - | - | 3 | 24/20 Frost Nova+Glacial Spike | 1m/1m |  |
 | 60 | Chilling Armor | 0/18 | handler | 17.0 / 17.0 | 0 / 0 | elem 39.0-50.5 | 400 | chillingarmorbolt (18->18, 25) | 6450 | - | 2 | 24/20 Shiver Armor | 1e/1e |  |
 | 61 | Fire Mastery | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | elem 0.0-0.0 | - | - | - | - | 0 | 30/20  | stats 1/1 |  |
 | 62 | Hydra | 14/144 | handler | 20.0 / 29.5 | 40 / 40 | elem 150.5-175.0 | - | - | - | hydra1 x99 | 2 | 30/20 Enchant | 1e/1e |  |
@@ -111,7 +111,7 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 80 | Raise Skeletal Mage | 15/31 | handler | 8.0 / 27.0 | 0 / 0 | - | - | - | - | necromage x8 | 1 | 12/20 Raise Skeleton | 1e/1e |  |
 | 81 | Confuse | 0/61 | handler | 13.0 / 13.0 | 0 / 0 | - | - | - | 1200 | - | 0 | 18/20 Dim Vision | 1e/1e |  |
 | 82 | Life Tap | 0/30 | handler | 9.0 / 9.0 | 0 / 0 | - | - | - | 1540 | - | 0 | 18/20 Iron Maiden | 1e/1e |  |
-| 83 | Poison Explosion | 17/63 | handler | 8.0 / 8.0 | 0 / 0 | elem 4.9-5.9 | 240 | poisonexplosioncloud (0->0, 60) | - | - | 2 | 18/20 Poison Dagger+Corpse Explosion | 1e/1e | poisonexplosioncloud:do3 |
+| 83 | Poison Explosion | 17/63 | handler | 8.0 / 8.0 | 0 / 0 | elem 4.9-5.9 | 240 | poisonexplosioncloud (0->0, 60) | - | - | 2 | 18/20 Poison Dagger+Corpse Explosion | 1e/1e |  |
 | 84 | Bone Spear | 0/0 | generic | 7.0 / 11.8 | 0 / 0 | elem 192.0-204.0 | - | bonespear (24->24, 40) | - | - | 4 | 18/20 Corpse Explosion | 1m/1m |  |
 | 85 | BloodGolem | 0/56 | handler | 25.0 / 101.0 | 0 / 0 | - | - | - | - | BloodGolem x1 | 4 | 18/20 Clay Golem | 1e/1e |  |
 | 86 | Attract | 18/59 | handler | 17.0 / 17.0 | 0 / 0 | - | - | - | 2010 | - | 0 | 24/20 Confuse | 1e/1e |  |
@@ -188,7 +188,7 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 147 | Frenzy | 0/9 | handler | 1.5 / 1.5 | 0 / 0 | elem 0.0-0.0 | - | - | 150 | - | 3 | 24/20 Double Throw | 1es/1es |  |
 | 148 | Increased Speed | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 24/20 Increased Stamina | stats 1/1 |  |
 | 149 | Battle Orders | 0/68 | handler | 7.0 / 7.0 | 0 / 0 | - | - | battleorders (30->30, 15) | 5500 | - | 2 | 24/20 Shout | 1e/1e | battleorders:hit18 |
-| 150 | Grim Ward | 33/75 | handler | 4.0 / 4.0 | 0 / 0 | - | - | grimwardmediumstart (0->0, 8) | 60 | - | 0 | 24/20 Find Item | 1e/1e | grimwardlarge:do14 grimwardlarge:hit27 grimwardlargestart:hit26 grimwardmedium:do14 grimwardmedium:hit27 grimwardmediumstart:hit26 grimwardsmall:do14 grimwardsmall:hit27 grimwardsmallstart:hit26 |
+| 150 | Grim Ward | 33/75 | handler | 4.0 / 4.0 | 0 / 0 | - | - | grimwardmediumstart (0->0, 8) | 60 | - | 0 | 24/20 Find Item | 1e/1e |  |
 | 151 | Whirlwind | 38/76 | handler | 12.5 / 22.0 | 0 / 0 | phys 10.0-20.0 | - | - | - | - | 0 | 30/20 Leap Attack+Concentrate | 1e/1e |  |
 | 152 | Berserk | 39/2 | handler | 4.0 / 4.0 | 0 / 0 | elem 0.0-0.0 | - | - | 33 | - | 2 | 30/20 Concentrate | s/s |  |
 | 153 | Natural Resistance | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 30/20 Iron Skin | stats 4/4 |  |
@@ -203,16 +203,16 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 222 | Plague Poppy | 0/115 | handler | 8.0 / 8.0 | 0 / 0 | elem 0.8-0.9 | 100 | - | - | plaguepoppy x1 | 0 | 1/20  | 1e/1e |  |
 | 223 | Wearwolf | 0/116 | handler | 15.0 / 15.0 | 25 / 25 | phys 10.0-20.0 | - | - | 1000 | - | 1 | 1/20  | 1e/1e |  |
 | 224 | Shape Shifting | 0/0 | passive | 0.0 / 0.0 | 0 / 0 | - | - | - | - | - | 0 | 1/20 Wearwolf | stats 0/0 |  |
-| 225 | Firestorm | 0/117 | handler | 4.0 / 4.0 | 15 / 15 | elem 1.4-1.7 | - | firestormmaker (8->8, 40) | - | - | 2 | 1/20  | 1e/1e | firestormmaker:do23 |
+| 225 | Firestorm | 0/117 | handler | 4.0 / 4.0 | 15 / 15 | elem 1.4-1.7 | - | firestormmaker (8->8, 40) | - | - | 2 | 1/20  | 1e/1e |  |
 | 226 | Oak Sage | 0/119 | handler | 15.0 / 34.0 | 0 / 0 | - | - | - | - | oaksage x1 | 0 | 6/20  | 1e/1e |  |
 | 227 | Summon Spirit Wolf | 0/119 | handler | 15.0 / 15.0 | 0 / 0 | phys 41.0-45.0 | - | - | - | spiritwolf x5 | 2 | 6/20 Raven | 1e/1e |  |
 | 228 | Wearbear | 0/116 | handler | 15.0 / 15.0 | 25 / 25 | phys 10.0-20.0 | - | - | 1000 | - | 1 | 6/20  | 1e/1e |  |
-| 229 | Molten Boulder | 0/0 | generic | 10.0 / 19.5 | 50 / 50 | elem 130.0-155.0 | - | moltenboulderemerge (3->3, 5) | - | - | 2 | 6/20 Firestorm | 1m/1m | moltenboulder:hit47 moltenboulderemerge:hit48 moltenboulderfirepath:do5 |
+| 229 | Molten Boulder | 0/0 | generic | 10.0 / 19.5 | 50 / 50 | elem 130.0-155.0 | - | moltenboulderemerge (3->3, 5) | - | - | 2 | 6/20 Firestorm | 1m/1m |  |
 | 230 | Arctic Blast | 11/19 | handler | 0.4 / 0.7 | 0 / 0 | elem 5.6-6.1 | 385 | arcticblast1 (12->12, 30) | - | - | 2 | 6/20  | 1m/1m |  |
 | 231 | Cycle of Life | 0/115 | handler | 10.0 / 10.0 | 0 / 0 | - | - | - | - | cycleoflife x1 | 0 | 12/20 Plague Poppy | 1e/1e |  |
 | 232 | Feral Rage | 56/120 | handler | 3.0 / 3.0 | 0 / 0 | phys 10.0-20.0 | - | - | 500 | - | 0 | 12/20 Wearwolf | 1es/1es |  |
 | 233 | Maul | 56/120 | handler | 3.0 / 3.0 | 0 / 0 | phys 10.0-20.0 | - | - | 500 | - | 0 | 12/20 Wearbear | 1es/1es |  |
-| 234 | Eruption | 0/28 | handler | 15.0 / 15.0 | 50 / 50 | elem 217.0-227.0 | - | erruption center (0->0, 80) | - | - | 2 | 12/20 Molten Boulder | 1e/1e | erruption center:do25 |
+| 234 | Eruption | 0/28 | handler | 15.0 / 15.0 | 50 / 50 | elem 217.0-227.0 | - | erruption center (0->0, 80) | - | - | 2 | 12/20 Molten Boulder | 1m/1m |  |
 | 235 | Cyclone Armor | 0/18 | handler | 5.0 / 24.0 | 0 / 0 | - | - | - | - | - | 3 | 12/20 Arctic Blast | 1e/1e |  |
 | 236 | Heart of Wolverine | 0/119 | handler | 20.0 / 39.0 | 0 / 0 | - | - | - | - | heartofwolverine x1 | 0 | 18/20 Oak Sage | 1e/1e |  |
 | 237 | Summon Fenris | 0/119 | handler | 20.0 / 20.0 | 0 / 0 | phys 69.0-74.0 | - | - | - | fenris x3 | 2 | 18/20 Oak Sage+Summon Spirit Wolf | 1e/1e |  |
@@ -222,12 +222,12 @@ Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points
 | 241 | Vines | 0/115 | handler | 14.0 / 33.0 | 0 / 0 | - | - | - | - | vinecreature x1 | 0 | 24/20 Cycle of Life | 1e/1e |  |
 | 242 | Hunger | 0/122 | handler | 3.0 / 3.0 | 0 / 0 | phys 10.0-20.0 | - | - | - | - | 0 | 24/20 Fire Claws | s/s |  |
 | 243 | Shock Wave | 0/8 | handler | 7.0 / 7.0 | 0 / 0 | phys 99.0-109.0 | - | shockwave (20->20, 14) | - | - | 1 | 24/20 Maul | 5m/5m |  |
-| 244 | Volcano | 0/123 | handler | 25.0 / 25.0 | 100 / 100 | elem 78.0-80.0 | - | volcano (0->0, 150) | - | - | 3 | 24/20 Eruption | 1e/1e | volcano debris 2:hit51 volcano:do28 |
+| 244 | Volcano | 0/123 | handler | 25.0 / 25.0 | 100 / 100 | elem 78.0-80.0 | - | volcano (0->0, 150) | - | - | 3 | 24/20 Eruption | 1m/1m |  |
 | 245 | Tornado | 0/118 | handler | 10.0 / 10.0 | 0 / 0 | phys 273.0-295.0 | - | tornado (8->8, 75) | - | - | 3 | 24/20 Twister | 1m/1m |  |
 | 246 | Spirit of Barbs | 0/119 | handler | 25.0 / 44.0 | 0 / 0 | - | - | - | - | spiritofbarbs x1 | 0 | 30/20 Heart of Wolverine | 1e/1e |  |
 | 247 | Summon Grizzly | 0/119 | handler | 40.0 / 40.0 | 0 / 0 | phys 300.0-330.0 | - | - | - | druidbear x1 | 2 | 30/20 Summon Fenris | 1e/1e |  |
 | 248 | Fury | 37/13 | handler | 4.0 / 4.0 | 0 / 0 | phys 10.0-20.0 | - | - | - | - | 0 | 30/20 Rabies | s/s |  |
-| 249 | Armageddon | 0/124 | handler | 35.0 / 35.0 | 150 / 150 | elem 390.0-471.0 | - | armageddoncontrol (0->0, 25) | 250 | - | 4 | 30/20 Volcano+Hurricane | 1e/1e | armageddoncontrol:hit56 |
+| 249 | Armageddon | 0/124 | handler | 35.0 / 35.0 | 150 / 150 | elem 390.0-471.0 | - | armageddoncontrol (0->0, 25) | 250 | - | 4 | 30/20 Volcano+Hurricane | 1e/1e |  |
 | 250 | Hurricane | 0/124 | handler | 30.0 / 30.0 | 150 / 150 | elem 202.0-227.0 | 50 | - | 250 | - | 3 | 30/20 Tornado | 1e/1e |  |
 
 ## Assassin
@@ -348,31 +348,16 @@ Monster, item and scroll skills run through the monster AI / item code rather th
 
 | function | modelled | skills |
 |---|---|---|
-| do3 | plain flight | 15 25 57 59 83 |
-| do5 | plain flight | 27 46 51 56 229 |
-| do10 | no | 59 |
 | do13 | no | 78 |
-| do14 | no | 150 |
 | do16 | no | 64 |
 | do20 | no | 257 |
-| do23 | no | 225 |
-| do25 | no | 234 |
-| do28 | no | 244 |
 | do30 | no | 238 |
 | do35 | no | 280 |
-| hit8 | no | 46 |
-| hit9 | no | 27 |
 | hit17 | no | 130 |
 | hit18 | no | 138 149 155 |
 | hit21 | no | 146 |
 | hit22 | no | 121 |
-| hit26 | no | 150 |
-| hit27 | no | 150 |
 | hit37 | no | 257 |
-| hit47 | no | 229 |
-| hit48 | no | 229 |
-| hit51 | no | 244 |
 | hit53 | no | 238 |
-| hit56 | no | 249 |
 
-Modelled by the sim: movement 1 2 6 7 15 27; hit 1 2 3 4 7 10 12 13 14 20 29 36.
+Modelled by the sim: movement 1 2 3 5 6 7 10 14 15 23 24 25 27 28; hit 1 2 3 4 7 8 9 10 12 13 14 20 26 27 29 36 47 48 51 56.

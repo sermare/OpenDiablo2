@@ -144,32 +144,15 @@ func TestAuditLoaderAndManaMatchTable(t *testing.T) {
 // functions in the skill's missile closure that the sim does not model (see
 // docs/skills-coverage.md). Fixing one means deleting its entry here.
 var knownMissileGaps = map[int][]string{
-	15:  {"poisonjavcloud:do3"}, // approximated (plain flight)
-	25:  {"plaguejavcloud:do3", "plaguejavelin:do3"},
-	27:  {"immolationarrow:hit9", "immolationfire:do5"},
-	46:  {"blaze:do5", "blaze:hit8"},
-	51:  {"firewall:do5"},
-	56:  {"meteorfire:do5"},
-	57:  {"thunderstorm1:do3"},
-	59:  {"blizzard1:do3", "blizzardcenter:do10"},
 	64:  {"frozenorbnova:do16"},
 	78:  {"bonewallmaker:do13"},
-	83:  {"poisonexplosioncloud:do3"},
 	121: {"fistoftheheavensdelay:hit22"},
 	130: {"howl:hit17"},
 	138: {"shout:hit18"},
 	146: {"battlecry:hit21"},
 	149: {"battleorders:hit18"},
-	150: {"grimwardlarge:do14", "grimwardlarge:hit27", "grimwardlargestart:hit26", "grimwardmedium:do14",
-		"grimwardmedium:hit27", "grimwardmediumstart:hit26", "grimwardsmall:do14", "grimwardsmall:hit27",
-		"grimwardsmallstart:hit26"},
 	155: {"battlecommand:hit18"},
-	225: {"firestormmaker:do23"},
-	229: {"moltenboulder:hit47", "moltenboulderemerge:hit48", "moltenboulderfirepath:do5"},
-	234: {"erruption center:do25"},
 	238: {"rabiescontagion:hit53", "rabiesplague:do30"},
-	244: {"volcano debris 2:hit51", "volcano:do28"},
-	249: {"armageddoncontrol:hit56"},
 	257: {"blade creeper:do20", "blade creeper:hit37"},
 	280: {"royalstrikechaosice:do35"},
 }
@@ -178,7 +161,6 @@ func TestAuditMissileGapsArePinned(t *testing.T) {
 	rows, _ := buildAudit(t)
 
 	for _, a := range playerRows(rows) {
-		// do 3 and 5 are flown as plain flight (approximation, not a hole)
 		var got []string
 
 		for _, g := range a.ClosureGaps {
@@ -237,7 +219,7 @@ func TestWriteSkillsCoverage(t *testing.T) {
 	fmt.Fprintf(&b, "| with a registered do handler | %d |\n| generic srvmissile path | %d |\n| unresolved table references (missile, state, overlay, skilldesc, summon, prereq, synergy, sumskill) | 0 |\n", count["handler"], count["generic"])
 	fmt.Fprintf(&b, "| skills whose missile closure has a movement/hit function the sim lacks | %d |\n\n", withGaps)
 
-	b.WriteString("Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points); delay = cooldown frames L1 / L20; dmg20 = damage at L20 in points (elem = elemental min-max with synergies at zero, phys = min-max with a 10-20 weapon); elen = elemental length frames; missile = first srvmissile, vel L1->L20 and range; aura = aura length frames L20; pet = summon monster and petmax L20; syn = distinct synergy skill references in the calc columns; req = reqlevel / maxlvl / prerequisites; cast = result at L1/L20 (m missiles, e effect kinds, s strike); gaps = missile functions in the closure the sim does not model (do3/do5 are flown as plain flight).\n\n")
+	b.WriteString("Columns: st/do = srvstfunc/srvdofunc; mana = mana cost at L1 / L20 (whole points); delay = cooldown frames L1 / L20; dmg20 = damage at L20 in points (elem = elemental min-max with synergies at zero, phys = min-max with a 10-20 weapon); elen = elemental length frames; missile = first srvmissile, vel L1->L20 and range; aura = aura length frames L20; pet = summon monster and petmax L20; syn = distinct synergy skill references in the calc columns; req = reqlevel / maxlvl / prerequisites; cast = result at L1/L20 (m missiles, e effect kinds, s strike); gaps = missile functions in the closure the sim does not model .\n\n")
 
 	classes := []string{"ama", "sor", "nec", "pal", "bar", "dru", "ass"}
 	cname := map[string]string{"ama": "Amazon", "sor": "Sorceress", "nec": "Necromancer", "pal": "Paladin",
@@ -364,12 +346,7 @@ func TestWriteSkillsCoverage(t *testing.T) {
 			strs[i] = strconv.Itoa(id)
 		}
 
-		state := "no"
-		if f == "do3" || f == "do5" {
-			state = "plain flight"
-		}
-
-		fmt.Fprintf(&b, "| %s | %s | %s |\n", f, state, strings.Join(strs, " "))
+		fmt.Fprintf(&b, "| %s | no | %s |\n", f, strings.Join(strs, " "))
 	}
 
 	_ = mt

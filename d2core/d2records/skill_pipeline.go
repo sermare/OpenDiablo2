@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calc"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2calculation"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2missile"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 )
@@ -82,6 +83,27 @@ func (m *MissileRecord) PipelineSpec() *d2missile.Spec {
 		ExplosionMissile: m.ExplosionMissile, SubMissile: m.SubMissile, HitSubMissile: m.HitSubMissile,
 		SkillName: m.SkillName, HitClass: m.HitClass, SrcDam: m.SourceDamage, ResultFlags: m.ResultFlags, HitFlags: m.HitFlags,
 		SrvCalc1: m.ServerMovementCalc.Program, DmgCalc1: m.ServerDamageCalc.Program,
+	}
+
+	sp.SHitCalc1 = m.ServerCollisionCalc.Program
+	sp.ApplyMastery = m.ApplyMastery
+
+	// A missile without a Skill column but with damage columns carries damage
+	// of its own (burning ground: meteorfire, immolationfire, molten boulder
+	// path): the pipeline builds it from these columns.
+	if m.SkillName == "" && (m.ElementalDamage.ElementType != "" || m.Damage.MinDamage > 0 || m.Damage.MaxDamage > 0) {
+		ed, pd := m.ElementalDamage.Damage, m.Damage
+		sym := func(c d2calculation.CalcString) *d2calc.Program { return d2calc.Compile(string(c), d2calc.KindSkill) }
+
+		sp.Own = &d2skill.DamageSpec{
+			HitShift: m.HitShift, SrcDam: m.SourceDamage,
+			MinDam: pd.MinDamage, MaxDam: pd.MaxDamage, MinLevDam: pd.MinLevelDamage, MaxLevDam: pd.MaxLevelDamage,
+			DmgSymPer: sym(pd.DamageSynergyPerCalc),
+			EType:     strings.ToLower(m.ElementalDamage.ElementType),
+			EMin:      ed.MinDamage, EMax: ed.MaxDamage, EMinLev: ed.MinLevelDamage, EMaxLev: ed.MaxLevelDamage,
+			EDmgSymPer: sym(ed.DamageSynergyPerCalc),
+			ELen:       m.ElementalDamage.Duration, ELevLen: m.ElementalDamage.LevelDuration,
+		}
 	}
 
 	for i, p := range m.ServerMovementCalc.Params {

@@ -40,10 +40,20 @@ type Spec struct {
 	HitSubMissile      [4]string
 	SkillName          string // missiles.txt Skill: damage comes from that skill
 	SrvCalc1, DmgCalc1 *d2calc.Program
-	Param              [5]int // Param1..5
-	SHitPar            [3]int // sHitPar1..3
-	DParam             [2]int // dParam1..2
-	HitClass           int
+	// SHitCalc1 is the SHitCalc1 column (record +0x88): hit function 9 reads it
+	// as the lifetime of its ground fire.
+	SHitCalc1 *d2calc.Program
+	// Own holds the damage columns of the missile record (EType, EMin.., HitShift)
+	// as a *d2skill.DamageSpec when the missile carries damage of its own
+	// instead of a Skill column; the pipeline builds ChildDamage from it.
+	Own interface{}
+	// ApplyMastery is the missiles.txt ApplyMastery column: the caster's
+	// elemental mastery applies to the missile's own damage.
+	ApplyMastery bool
+	Param        [5]int // Param1..5
+	SHitPar      [3]int // sHitPar1..3
+	DParam       [2]int // dParam1..2
+	HitClass     int
 	// SrcDam is the missiles.txt SrcDamage column (byte +0x12d of the record):
 	// -1 (0xff) turns the skill's SrcDam off for this missile, which also
 	// turns off its critical strike roll (0x64cbde, verified).
@@ -68,6 +78,9 @@ type Owner struct {
 	// Gone, when set, reports that the owner is dead or gone; SrvDoFunc 7
 	// (Guided Arrow) destroys its missile then (0x5ac2c0, verified).
 	Gone func() bool
+	// HasState reports whether the owner has a state (id of States.txt); hit
+	// function 8 (Blaze) tests state 13 (blaze) on the owner (0x5a7c20, verified).
+	HasState func(state int) bool
 }
 
 // Target is a unit a missile can hit.
@@ -91,6 +104,18 @@ type World interface {
 	// Frame is the current game frame (25 Hz).
 	Frame() int
 }
+
+// CellMarker is optionally implemented by a World: SrvDoFunc 3 and 5 OR the
+// "missile here" bit 0x40 into the collision cell under the missile
+// (0x5abfb0 / 0x5ac050 -> 0x64fdd0, verified); size is the missile's Size
+// column, which picks the footprint (1 one cell, 3 the 3x3 block around it,
+// 2 the shape of 0x64ef40, UNVERIFIED).
+type CellMarker interface {
+	MarkCell(x, y, size int, flag uint16)
+}
+
+// MissileCellBit is the collision bit SrvDoFunc 3 and 5 stamp.
+const MissileCellBit uint16 = 0x40
 
 // Finder is optionally implemented by a World to let hit function 10 (Guided
 // Arrow, 0x5a8100 -> 0x5a8060) look for a new target where the arrow ran out.
@@ -126,6 +151,10 @@ const (
 	EventArea EventKind = "area"
 	// EventHeal: Holy Bolt healed an ally (Event.Heal, 8.8 fixed point).
 	EventHeal EventKind = "heal"
+	// EventPeriodic: SrvDoFunc 14 (Grim Ward) dispatched the periodic skill
+	// helper Event.Helper (the missile's Param2) for the missile's skill and
+	// level (0x5acb00 -> 0x56b580, verified).
+	EventPeriodic EventKind = "periodic"
 )
 
 // Event is one thing that happened to a missile.
@@ -140,4 +169,5 @@ type Event struct {
 	Name   string // explosion missile name (EventExplode)
 	Heal   int    // EventHeal: life healed, 8.8 fixed point
 	Radius int    // EventArea: radius in subtiles
+	Helper int    // EventPeriodic: index of the periodic helper (missile Param2)
 }
