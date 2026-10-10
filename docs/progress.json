@@ -147,7 +147,7 @@
       "done": 259,
       "total": 259,
       "pending": 0,
-      "note": "batch 3 and batch 4 full verify_parallel.sh 6 runs both ALL JOBS PASSED (193 and 194 scenarios; batch 4 with no retry at all); batch 6a: 5 of 6 jobs green, the 6th red only on a scenario that crossed the new level quest gates (fixed in the scenario, passed alone)",
+      "note": "batch 3 and batch 4 full verify_parallel.sh 6 runs both ALL JOBS PASSED (193 and 194 scenarios; batch 4 with no retry at all); batch 6a: 5 of 6 jobs green, the 6th red only on a scenario that crossed the new level quest gates (fixed in the scenario, passed alone); batches 6b, 7, 8 and 9 landed as 4 consecutive clean full verifies, 9 clean full verifies in a row (per the README log; the batch 8 and 9 runs are not itemised there)",
       "color": "#3ddc84"
     },
     {
