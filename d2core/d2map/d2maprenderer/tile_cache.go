@@ -29,6 +29,7 @@ func (mr *MapRenderer) resetLevelCaches() {
 	// (Act-1 looking green tiles in later acts).
 	mr.imageCacheRecords = nil
 	mr.blankShadows = nil
+	mr.blankWalls = nil
 	mr.light.resetFades()
 }
 
@@ -221,6 +222,12 @@ func (mr *MapRenderer) generateWallCache(tile *d2ds1.Tile) {
 		// graphic-less collision placeholders exist in the DT1 files (e.g. barracks pillars 9/25 and 9/26,
 		// type 12): they only carry sub-tile flags, so there is nothing to draw
 		mr.Debugf("wall tile [%d %d %d] has no graphic", tile.Style, tile.Sequence, tile.Type)
+
+		if mr.blankWalls == nil {
+			mr.blankWalls = map[uint32]bool{}
+		}
+
+		mr.blankWalls[blankWallKey(tile)] = true
 		return
 	}
 
@@ -239,4 +246,8 @@ func (mr *MapRenderer) generateWallCache(tile *d2ds1.Tile) {
 	image.ReplacePixels(pixels)
 
 	mr.setImageCacheRecord(tile.Style, tile.Sequence, tile.Type, tile.RandomIndex, image)
+}
+
+func blankWallKey(tile *d2ds1.Tile) uint32 {
+	return uint32(tile.Style)<<24 | uint32(tile.Sequence)<<16 | uint32(tile.Type)<<8 | uint32(tile.RandomIndex)
 }

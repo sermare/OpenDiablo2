@@ -22,6 +22,10 @@ func (v *Game) logDrawStats() {
 	}
 
 	st := v.mapRenderer.DrawStats()
+	if v.mapRenderer.LightingEnabled() && !st.Lit {
+		return // the first frames come before the hero's light input
+	}
+
 	if st.Floors == 0 && st.Walls == 0 && st.Entities == 0 {
 		return // nothing drawn yet (level still loading)
 	}

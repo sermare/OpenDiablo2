@@ -59,6 +59,7 @@ type MapRenderer struct {
 	viewport            *Viewport              // Used for rendering offsets
 	Camera              Camera                 // Used to determine where on the map we are rendering
 	imageCacheRecords   map[uint32]d2interface.Surface
+	blankWalls          map[uint32]bool // wall tiles without graphics (marker DT1 files, collision placeholders)
 	blankShadows        map[uint32]bool // shadow tiles without graphics (never cached, never drawn)
 	mapDebugVisLevel    int             // Map debug visibility index (0=none, 1=tiles, 2=sub-tiles)
 	entityDebugVisLevel int             // Entity Debug visibility index (0=none, 1=vectors)
@@ -467,7 +468,10 @@ func (mr *MapRenderer) renderWall(tile d2ds1.Tile, viewport *Viewport, target d2
 	tileX, tileY, idx int, upper bool) {
 	img := mr.getImageCacheRecord(tile.Style, tile.Sequence, tile.Type, tile.RandomIndex)
 	if img == nil {
-		mr.Warningf("Render called on uncached wall {%v,%v,%v}", tile.Style, tile.Sequence, tile.Type)
+		if !mr.blankWalls[blankWallKey(&tile)] {
+			mr.Warningf("Render called on uncached wall {%v,%v,%v}", tile.Style, tile.Sequence, tile.Type)
+		}
+
 		return
 	}
 
