@@ -373,3 +373,80 @@ OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOGAME=hero.d2s OD2_AUTOEXIT=1 \
 ## Quest rewards through the NPCs (scenario 9k)
 
 Branch `feat/reward-npc-ui`. Larzuk (sockets), Anya (personalise) and Charsi (imbue) take the item the hero holds on the cursor when the hero clicks them (`OnItemDropOnNPC`; scripts use `say:pickitem <code>` then `move:npc=`); while a reward is owed their menu also gets a row (Add Sockets / Personalize / Imbue) that opens the inventory (a row of this fork, UNVERIFIED against the exe). Akara gets the "Reset Stat/Skill Points" row (string 0x2ba0, gated by quest slot 41). Debug aids: `questpending <act> <quest>`, `giveitemq`, `pickitem`, `putitem`, `freeinv`. Not persisted: the owed sockets/personalisation (only the imbue and the reset follow the quest record). Hratli and Jerhyn have no travel rows in the exe table; act travel stays Warriv, Meshif, the Mephisto portal and Tyrael talk.
+
+
+# Quest walkthroughs (Acts 2-5 in the real world)
+
+Branch `feat/quest-walkthroughs`. The Acts 2-5 quest logic (`d2common/d2quest`) was verified only by `OD2_AUTOQUEST`,
+which injects events. These scenarios play the first real steps of quests through the real game: the level 94 sample
+hero (a revived copy, quests reset to the start of the act with `say:resetquests`, Normal monsters) talks to the NPCs,
+walks through the real exits, opens the quest objects, kills the quest monsters, picks up and uses the quest items, and
+the checks read the quest bits, the NPC speech lines (message id, Sounds.txt row, text), the quest log panel
+(`questpanel <act> <quest>` opens the real panel on that quest and logs the title and the page text), the rewards and the
+quest slots of the exported `.d2s`. The helpers are in `scripts/quest_walk_lib.zsh`.
+
+| Scenario | What it plays | Quests, speech |
+|---|---|---|
+| `9j-quest-radament.sh` | Lut Gholein, Atma, the manhole into the Sewers 1-3, Radament, the Book of Skill (pick up, read: +1 skill point), Atma's reward | A2Q1, msg 304 and 334, slot 9 |
+| `9j-quest-staff.sh` | the staff chest (Maggot Lair 3), the cube chest (Halls of the Dead 3), the scroll chest (Sewers 3), Deckard Cain, the cube makes the staff | A2Q2, msg 335-339, slot 10 |
+| `9j-quest-taintedsun.sh` | Lost City (the sun darkens), Drognan, Valley of Snakes, Claw Viper Temple, the Tainted Sun altar gives the Amulet of the Viper | A2Q3, msg 348, slot 11 |
+| `9k-quest-lamesen.sh` | Alkor, Kurast Bazaar, the temple entrance, the Ruined Temple, the tome on its altar, Alkor's +5 stat points | A3Q1, msg 549 and 564, slot 17 |
+| `9k-quest-blade.sh` | Hratli, Flayer Jungle (Gidbinn), Flayer Dungeon, Ormus, Asheara, Ormus again (Iron Wolves) | A3Q3, msg 571 587 589 593, slot 19 |
+| `9k-quest-izual.sh` | Tyrael, Outer Steppes, Plains of Despair, kill Izual, Tyrael's +2 skill points | A4Q1, msg 664 670 676 681, slot 25 |
+| `9k-quest-siege.sh` | Larzuk, Bloody Foothills, kill Shenk the Overseer, Larzuk's reward (the socket dialog itself is not played) | A5Q1, msg 20077 and 20090, slot 35 |
+| `9k-quest-rescue.sh` | Qual-Kehk (Rite of Passage line first, then Rescue), Bloody Foothills, Frigid Highlands with its three cages | A5Q2, msg 20153 and 20096, slot 36 (first steps only) |
+
+New script/console pieces: `kill:name=<text>[,<s>]` (the monsters of that name anywhere in the level, also destroyable props),
+console `useitem <code>` (right click on an inventory item), `cubeput <code>`, `lootquest [tiles] [s]` (only quest items),
+`clearinv`, `questpanel <act> <quest>`; `loot:` now goes on when an item does not fit (it puts it back) and takes quest items
+first; `resetquests` rebuilds the quest runtime; `LEVEL objects:` / `LEVEL npcs:` / `LEVEL quest object` log lines at every
+level build.
+
+## Bugs found by playing the quests, and their fixes
+
+| # | What a player saw | Root cause | Fix | Regression test |
+|---|---|---|---|---|
+| 34 | The manhole and the dock of Lut Gholein do nothing: the sewers (Radament) cannot be entered | the Act 2 town special tiles (style 2 manhole, style 3 dock stairs) are not LvlWarp ids | `townTileDestinations` in `d2level/links.go` (observed in screenshots of the tiles) | `TestLutGholeinSewerTiles`; 9j-quest-radament |
+| 35 | Sewers Level 1 and 2: the stairs down lead nowhere, the dock end does not lead back | the slot rule gives the wrong tile for the sewer rooms | `mazeRoomExit`: `SewSDown` leads to the next sewer level, `SewNSDock` to the town | `TestSewerRoomExits`; 9j-quest-radament |
+| 36 | After `resetquests` Atma still said nothing / quests kept their old state | the quest runtime held its own states and heard lines | `resetquests` builds the runtime again from the cleared record | 9j-quest-* |
+| 37 | The quest chests, the Tainted Sun altar, Lam Esen's tome, Gidbinn... did nothing when clicked: the quest never saw them | `IsQuestObject` knew the Act 1 objects only, so only those were walked to as quest objects | all Act 2-4 quest objects; chests, altar, tome and Gidbinn open once (`questObjectOperated`) | `TestLaterQuestObjectsAreQuestObjects`; 9j-quest-staff, 9j-quest-taintedsun |
+| 38 | Many quest lines are heard but show no subtitle (Qual-Kehk and Cain of Act 3, Cain's Staff lines, Greiz, intros of Tyrael, Hratli, the Ancients, Act 3 Khalim lines ...) | `TextKey` derived the string.tbl key from the sound handle and got `Qualkehk` / `Cain` / `SuccessfulCain` ... wrong | the spelling rules and a table of the exceptions in `d2quest/speech.go`; the lines that really have no key are listed in the test | `TestTextKeysExist` (needs `D2_STRINGTBL`: the game's `string.tbl` files concatenated) |
+| 39 | The Horadric Staff log said "Take the artifacts to Cain" after Cain had confirmed the finished staff, and page 4 after the third report | the page was the number of reports + 1 | page 2 searching, 3 all parts reported (use the cube), 4 staff assembled, 5 parts carried but not reported | `TestHoradricStaffLogPageAfterAssembly`; 9j-quest-staff |
+| 40 | Lam Esen's tome: the object stands in the Ruined Temple and gives nothing | the quest only listened for the item pick-up | operating object 193 spawns the item | `TestLamEsenTomeObjectGivesTheItem`; 9k-quest-lamesen |
+| 41 | The Ruined Temple (and levels 90, 91, 93, 95-99): "the engine cannot load that level yet" | the preset provider only knew the Act 1 caves and Acts 4/5 | `isAct3Preset` (Levels.txt gives the rectangle, LvlPrest the DS1) | 9k-quest-lamesen |
+| 42 | Kurast Bazaar, Upper Kurast, the Causeway: the temple entrances are not exits | two links with the same LvlWarp id (61) | `TempleEntranceByPreset`: `BurbsTemple2.ds1` (tile style 2) is the first temple link, `BurbsTemple3.ds1` (style 3) the second. UNVERIFIED which temple is which in the original | `TestTempleEntranceByPreset` |
+| 43 | The way out of a temple (and Spider Cavern, dungeons, sewers, Durance up stairs) leads nowhere | no Act 3 "up" LvlWarp ids in `upWarps` | 52, 55, 58, 59, 62, 63, 65, 66 | `TestTempleUpStairsLeadBack` |
+| 44 | The cave entrances of Flayer Jungle and Spider Forest lead nowhere | their presets (`PygW.ds1`, `PygW2.ds1`) carry the styles 0 and 1 of the slot order | slot rule for levels 76 and 78 | `TestJungleCaveEntranceStyles` |
+| 45 | The Blade of the Old Religion cannot be played: no Gidbinn; the log said "Look for the Gidbinn" to the end | no item from the Gidbinn objects (251 altar, 252 blade), pages followed the first area change only | the objects spawn `g33`; `logPage` follows the state (pages 1-5 of `qstsa3q31..35`) | `TestGidbinnObjectsGiveTheBlade`; 9k-quest-blade |
+| 46 | Shenk the Overseer (and every DS1 super unique) is a plain "Overseer": no name, no followers, so "kill Shenk" never fired | `placeMonsters` turned a super unique marker into a plain monster of the class | the NPC placement keeps the SuperUniques.txt key; the director spawns the boss with followers and its own name | `TestNPCSuperUniqueKey`; 9k-quest-siege |
+| 47 | Harrogath has no Larzuk with real maps: the Siege quest cannot be taken | the legacy act town provider adds the NPCs the DS1 lacks, the preset provider did not | `placeTownExtras` also for preset towns | 9k-quest-siege |
+| 48 | The prison doors of Rescue on Mount Arreat cannot be attacked | AI "Idle" so not hostile, so never adopted by the director | `IsDestructibleProp` (prison and barricade doors/towers) are adopted and attackable by name | `TestIsDestructibleProp` |
+| 49 | The quest log shows `Rescue %d more Soldiers ...` | a printf token in the string table | `fillCount` (15 soldiers, 4 seals: the counts are not kept by the quest system yet, UNVERIFIED) | `TestFillCount`; 9k-quest-rescue |
+| 50 | A script check placed after `kill:all,200` ran in the middle of the fight | the runner stopped waiting for a busy host after 120 s | `BusyTimeout = 400` | `TestBusyTimeoutCoversLongKills` |
+| 51 | `loot:` stopped at the first item that did not fit in the inventory, quest items could stay on the floor | no room = end of the step | the item is put back and the step goes on; quest items first; `lootquest` | 9j-quest-staff |
+
+| 52 | `scripts/verify_parallel.sh` printed "ALL JOBS PASSED" in a minute: no game scenario ran | it passes scenario names without `.sh`, `verify.sh` matched `OD2_VERIFY_ONLY` against the file name with `.sh`, so every scenario was skipped | match with and without the suffix | the 9j/9k scenarios appear in the parallel logs |
+
+| 53 | Durance of Hate Level 2: "level 101 has no exit towards level 102" (the Act 3 gate scenario 9g stops there, also on `fork/integration`) | the stairs down carry the style 3 in the generated level, the style rules know 4 and up | `observedTileDestinations` {101, 3} -> 102. The walk then stops 18 tiles short of the stairs: that part of the generated level 101 is not reachable from the arrival (a generation/walkability problem, not fixed; 9g still fails there) | `TestDuranceLevel2StairsDown` |
+
+## Scenarios that fail on `fork/integration` itself (not caused by this branch)
+
+Run with `scripts/verify.sh` one scenario at a time on an archive of `fork/integration`, and on this branch: `98-skillbar` (the skill tree hover/F6 and the
+skill points: "Charged Bolt not learned" ...), `99-act-travel` (the NPC menus of Fara and Malah do not open in time) and
+`9g-act3-durance` (above) fail in both. The scenarios `9b/9c/9d` (Act 1), `9e`, `9h`, `9i`, `87`, `97` pass here one at a time; under six
+parallel jobs on a loaded machine many scenarios (gamble, performance, AI states, ...) fail by timing, which the one retry does not always cure.
+
+## Limits found, not fixed
+
+* A walk from the Gidbinn altar of the Flayer Jungle back to its waypoint finds no way (the hero walks west and gives up), a walk from the
+  dungeon hole to the waypoint works once the monsters of the level are dead; the Blade scenario fights first (`kill:all`) and keeps that order.
+* The prison doors (class 434) of Rescue on Mount Arreat are not in the DS1 monster lists of the generated Frigid Highlands
+  (no `place_prisondoor`-like marker; 3 `Cage` objects exist), so the kill step of that quest cannot be played; the quest
+  moves to its "entered the area" state and shows its pages, nothing more. The count on the log page is a fixed number.
+* Outdoor levels of Acts 2 and 3 (Far Oasis, Lost City, Valley of Snakes, ...) have no waypoint object when the hero walks
+  in; the panel lists them and travel there works (the hero lands at the map centre), but the way back needs a walk.
+* The Act 3 temple entrances map by preset name, the Flayer Jungle caves by slot order (both UNVERIFIED); Gidbinn lies in
+  the Flayer Jungle (the decoy object) and an altar object stands in Kurast Docktown, the DS1 object placement is taken as it is.
+* The Siege on Harrogath log page has no text: the game's string table has no `qstsa5q1x` keys.
+* Khalim's Will, the Golden Bird, Terror's End, the Hellforge, Prison of Ice, Betrayal and Rite of Passage were not played;
+  Larzuk, Anya and Malah reward dialogs are another branch's work.
