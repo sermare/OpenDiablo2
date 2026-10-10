@@ -88,6 +88,9 @@ func (d *Director) minionStat(key string) *d2records.MonStatRecord {
 // that are not noRatio/boss (0 = unknown: the monstats level is used).
 func (d *Director) SetAreaLevel(level int) { d.areaLevel = level }
 
+// SetAreaID names the levels.txt area new spawns belong to (0 = unknown).
+func (d *Director) SetAreaID(id int) { d.areaID = id }
+
 // AreaLevelOf is the MonLvl of a levels.txt area for the director's
 // difficulty (the Ex columns for the expansion), or 0 when unknown.
 func (d *Director) AreaLevelOf(levelID int) int {
@@ -296,6 +299,7 @@ func (d *Director) PopulateRoom(room Room, levelID int) ([]*PackResult, error) {
 	}
 
 	d.SetAreaLevel(d.AreaLevelOf(levelID))
+	d.areaID = levelID
 
 	types, ok := d.levelTypes[levelID]
 	if !ok {

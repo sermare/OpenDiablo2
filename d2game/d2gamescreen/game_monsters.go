@@ -292,6 +292,7 @@ func (v *Game) spawnMonsterTest(t *monsterTest) {
 
 	if area, err := strconv.Atoi(os.Getenv("OD2_AUTOMONSTER_AREA")); err == nil && area > 0 {
 		v.monsters.SetAreaLevel(v.monsters.AreaLevelOf(area))
+		v.monsters.SetAreaID(area)
 	}
 
 	if t.pack {

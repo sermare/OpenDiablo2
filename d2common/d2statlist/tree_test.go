@@ -53,8 +53,8 @@ func TestTreeAttachDetachSkip(t *testing.T) {
 
 func TestTreeNested(t *testing.T) {
 	root := NewTree(Owner{ID: 1}, FlagBaseUnit)
-	mid := NewTree(Owner{Type: 4}, 0)
-	leaf := NewTree(Owner{Type: 4}, FlagSetState)
+	mid := NewTree(Owner{Type: 4}, FlagBaseUnit)
+	leaf := NewTree(Owner{Type: 4}, 0)
 
 	leaf.Add(3, 0, 4)
 	leaf.Attach(mid, nil)
@@ -106,5 +106,77 @@ func TestComputeSetTiers(t *testing.T) {
 		if tot.SetPieces[set] != n && !(n == 0 && tot.SetPieces[set] == 0) {
 			t.Errorf("%d pieces: SetPieces = %d", n, tot.SetPieces[set])
 		}
+	}
+}
+
+// Exe rules of STATS_AttachStatList: set bonus lists stay on the second child
+// list and pass nothing up; moving a list re-attaches it; cycles are refused;
+// a stat that does not apply to the parent still travels up to the first
+// parent that is itself attached when it changes later.
+func TestTreeExeAttachRules(t *testing.T) {
+	root := NewTree(Owner{ID: 1}, FlagBaseUnit)
+	other := NewTree(Owner{ID: 2}, FlagBaseUnit)
+	bonus := NewTree(Owner{Type: 4}, FlagSetState)
+	bonus.Add(3, 0, 50)
+	bonus.Attach(root, nil)
+
+	if root.Get(3) != 0 || root.Children() != 0 || root.SecondChildren() != 1 {
+		t.Errorf("set list: stat %d children %d second %d", root.Get(3), root.Children(), root.SecondChildren())
+	}
+
+	bonus.Add(3, 0, 1)
+
+	if root.Get(3) != 0 {
+		t.Error("a change in a set list reached the parent")
+	}
+
+	item := NewTree(Owner{Type: 4}, 0)
+	item.Add(3, 0, 7)
+	item.Attach(root, nil)
+	item.Attach(other, nil) // moves it
+
+	if root.Get(3) != 0 || other.Get(3) != 7 || root.Children() != 0 || other.Children() != 1 {
+		t.Errorf("move: root %d other %d", root.Get(3), other.Get(3))
+	}
+
+	// cycle: the root cannot go under its own child
+	root.Attach(item, nil)
+	other.Attach(root, nil)
+	root.Attach(other, nil)
+
+	if root.Children() != 1 || other.Children() != 1 {
+		t.Errorf("cycle accepted: %d %d", root.Children(), other.Children())
+	}
+
+	// a non-unit parent is refused
+	plain := NewTree(Owner{}, 0)
+	x := NewTree(Owner{}, 0)
+	x.Attach(plain, nil)
+
+	if plain.Children() != 0 {
+		t.Error("attached under a list that is not a unit list")
+	}
+}
+
+func TestTreeSkipStatDeltaStopsAtAttachedParent(t *testing.T) {
+	const skipID = 9
+
+	skip := func(id int) bool { return id == skipID }
+	grand := NewTree(Owner{ID: 1}, FlagBaseUnit)
+	mid := NewTree(Owner{ID: 2}, FlagBaseUnit)
+	mid.Attach(grand, skip) // mid is now attached
+	item := NewTree(Owner{Type: 4}, 0)
+	item.Attach(mid, skip)
+
+	item.Add(skipID, 0, 4)
+
+	if mid.Get(skipID) != 4 || grand.Get(skipID) != 0 {
+		t.Errorf("mid %d grand %d, want 4 and 0", mid.Get(skipID), grand.Get(skipID))
+	}
+
+	item.Add(1, 0, 4)
+
+	if grand.Get(1) != 4 {
+		t.Errorf("an ordinary stat did not reach the top: %d", grand.Get(1))
 	}
 }

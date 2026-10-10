@@ -19,7 +19,7 @@ const (
 	holeMinionClass     = 0x13  // Fallen, EvilHole BaseId 0x141
 	demonHoleMinion     = 0x2c8 // for caster class 0x2c7
 	demonHoleClass      = 0x2c7
-	invisoClass         = 0x60 // before the level tier scaling of 0x63fcb0 (not ported)
+	invisoClass         = 0x60 // before the level tier scaling of 0x63fcb0 (ScaleSpawnClass)
 	genericDefaultClass = 0x1c5
 	genericFallback     = 0x1f0
 	invisoSearchRadius  = 8
@@ -79,14 +79,15 @@ func (d *Director) SpawnHoleMinion(b *d2monster.Brain) bool {
 // SpawnRoomUnit implements d2monster.SpawnerHost for InvisoSpawner. The exe
 // draws the point from the room's own generator (20 tries) inside the room;
 // here the spawner's Aux generator picks a point within invisoSearchRadius
-// subtiles (UNVERIFIED simplification) and the class is the unscaled 0x60.
+// subtiles (UNVERIFIED simplification). The class 0x60 is scaled to the area
+// like the exe does (0x63fcb0, d2monster.ScaleSpawnClass) when the area is known.
 func (d *Director) SpawnRoomUnit(b *d2monster.Brain) bool {
 	u := d.unitOf(b)
 	if u == nil {
 		return false
 	}
 
-	st := d.spawnClassOf(u, invisoClass)
+	st := d.scaledSpawnClass(u, invisoClass)
 
 	for try := 0; try < 20; try++ {
 		x := b.X + int(b.Aux.Roll(2*invisoSearchRadius+1)) - invisoSearchRadius
@@ -148,4 +149,79 @@ func (d *Director) woundedAlly(b *d2monster.Brain, q d2monster.FBXScanQuery) d2m
 	}
 
 	return res
+}
+
+// monScale adapts the monstats records to d2monster.ScaleTable.
+type monScale struct{ d *Director }
+
+func (m monScale) rec(c int) *d2records.MonStatRecord { return m.d.statByID[c] }
+
+func (m monScale) Known(c int) bool { return m.rec(c) != nil }
+
+func (m monScale) idOf(key string) int {
+	if st := m.d.FindStat(key); st != nil {
+		return st.ID
+	}
+
+	return -1
+}
+
+func (m monScale) BaseID(c int) int { return m.idOf(m.rec(c).BaseKey) }
+
+func (m monScale) NextInClass(c int) int {
+	if m.rec(c).NextKey == "" {
+		return -1
+	}
+
+	return m.idOf(m.rec(c).NextKey)
+}
+
+func (m monScale) Level(c int) int { return m.rec(c).LevelNormal }
+
+// ChainSteps counts the NextInClass links behind the class (UNVERIFIED stand
+// in for the load-time byte +0x4a of the exe record).
+func (m monScale) ChainSteps(c int) int {
+	n := 0
+
+	for next := m.NextInClass(c); m.Known(next) && n < 64; next = m.NextInClass(next) {
+		n++
+	}
+
+	return n
+}
+
+// scaledSpawnClass resolves class id to a record and scales it to the current
+// area with the level's monster types (0x63fcb0). Without a known area, or
+// when the class is missing, it behaves as spawnClassOf.
+func (d *Director) scaledSpawnClass(u *unit, id int) *d2records.MonStatRecord {
+	st := d.spawnClassOf(u, id)
+	if st == nil || d.areaID <= 0 {
+		return st
+	}
+
+	det := d.asset.Records.GetLevelDetails(d.areaID)
+	if det == nil {
+		return st
+	}
+
+	var mons []int
+
+	for _, key := range []string{det.MonsterID1Normal, det.MonsterID2Normal, det.MonsterID3Normal, det.MonsterID4Normal,
+		det.MonsterID5Normal, det.MonsterID6Normal, det.MonsterID7Normal, det.MonsterID8Normal, det.MonsterID9Normal,
+		det.MonsterID10Normal} {
+		if key == "" {
+			continue
+		}
+
+		if ms := d.FindStat(key); ms != nil {
+			mons = append(mons, ms.ID)
+		}
+	}
+
+	got := d2monster.ScaleSpawnClass(monScale{d}, st.ID, mons, det.MonsterLevelNormalEx)
+	if r := d.statByID[got]; r != nil {
+		return r
+	}
+
+	return st
 }

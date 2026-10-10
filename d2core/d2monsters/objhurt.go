@@ -75,6 +75,7 @@ func (d *Director) LevelMonster(levelID int) *d2records.MonStatRecord {
 	}
 
 	d.SetAreaLevel(d.AreaLevelOf(levelID))
+	d.areaID = levelID
 
 	types, ok := d.levelTypes[levelID]
 	if !ok {
