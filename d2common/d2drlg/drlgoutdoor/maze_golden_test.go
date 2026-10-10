@@ -97,7 +97,10 @@ func buildMazeRooms(env *Env, level int, seed uint32) ([]*RoomTiles, error) {
 
 	base, _ := d2rand.DrlgBaseSeed(seed)
 
-	res, err := drlgmaze.Generate(tb, drlgmaze.Params{LevelID: level, Difficulty: d2drlg.Normal, BaseSeed: base})
+	ex := d2drlg.DrawActExtras(seed, 1)
+
+	res, err := drlgmaze.Generate(tb, drlgmaze.Params{LevelID: level, Difficulty: d2drlg.Normal, BaseSeed: base,
+		GateSteps: oracleGateSteps, TombA: ex.TombA, TombB: ex.TombB})
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +115,9 @@ func buildMazeRooms(env *Env, level int, seed uint32) ([]*RoomTiles, error) {
 
 // TestMazeTilesGolden checks the maze tile build against the committed numbers
 // (D2_TABLES and D2_DS1_ROOT needed). MAZE_WRITE_GOLDEN=<file> together with
-// ORACLE_TILES_DIR rewrites the golden from the emulator dumps.
+// ORACLE_TILES_DIR rewrites the golden from the emulator dumps (o_*.json; the
+// levels found there replace the same levels of the committed file, the others
+// are kept).
 func TestMazeTilesGolden(t *testing.T) {
 	env := testEnv(t)
 	path := filepath.Join("..", "testdata", "tiles_maze.json")
@@ -168,10 +173,12 @@ func TestMazeTilesGolden(t *testing.T) {
 func writeMazeGolden(t *testing.T, env *Env, out string) {
 	t.Helper()
 
-	files, _ := filepath.Glob(filepath.Join(os.Getenv("ORACLE_TILES_DIR"), "o_0_*.json"))
+	files, _ := filepath.Glob(filepath.Join(os.Getenv("ORACLE_TILES_DIR"), "o_*.json"))
 	sort.Strings(files)
 
 	var all []mazeGoldenLevel
+
+	have := map[int]bool{}
 
 	for _, f := range files {
 		b, _ := os.ReadFile(f)
@@ -203,11 +210,50 @@ func writeMazeGolden(t *testing.T, env *Env, out string) {
 			}
 
 			all = append(all, lv)
+			have[g.Level] = true
 		}
 	}
+
+	if old, err := os.ReadFile(filepath.Join("..", "testdata", "tiles_maze.json")); err == nil {
+		var prev []mazeGoldenLevel
+		if json.Unmarshal(old, &prev) == nil {
+			for _, p := range prev {
+				if !have[p.Level] {
+					all = append(all, p)
+				}
+			}
+		}
+	}
+
+	sort.Slice(all, func(i, j int) bool { return all[i].Level < all[j].Level })
 
 	b, _ := json.Marshal(all)
 	if err := os.WriteFile(out, b, 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestMazeTilesSeeds builds every maze level of the committed golden for more
+// game seeds: it only checks that the build does
+// not stop with an error (no emulator numbers for these seeds).
+func TestMazeTilesSeeds(t *testing.T) {
+	env := testEnv(t)
+
+	b, err := os.ReadFile(filepath.Join("..", "testdata", "tiles_maze.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var gold []mazeGoldenLevel
+	if err := json.Unmarshal(b, &gold); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, seed := range []uint32{1, 2, 0xdeadbeef, 0x12345678, 0x101d574a, 777, 31337, 99999} {
+		for _, lv := range gold {
+			if _, err := buildMazeRooms(env, lv.Level, seed); err != nil {
+				t.Errorf("seed %#x level %d: %v", seed, lv.Level, err)
+			}
+		}
 	}
 }
