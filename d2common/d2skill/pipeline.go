@@ -338,6 +338,26 @@ type SummonOrder struct {
 	// OwnerHPPct, when > 0, sets the minion's life to that percent of the
 	// owner's maximum life (Dopplezon, SRVDO_015).
 	OwnerHPPct int
+	// Makers, set on the first wall of Bone Wall (SrvDoFunc 60), asks the
+	// consumer to launch the two perpendicular wall-maker missiles once the
+	// first piece stands (see WallMakers).
+	Makers *WallMakers
+}
+
+// WallMakers is the second half of Bone Wall (SRVDO_060, 0x5c37a0, read): the
+// first wall stands at the target and two bonewallmaker missiles (SrvDoFunc
+// 13) leave it, one each way perpendicular to the cast line, summoning one
+// wall per newly entered subtile, PerMaker (calc2/2) walls each, linked to the
+// first wall (the missile's Mark).
+type WallMakers struct {
+	// Missile is the maker missile (the skill's srvmissilea).
+	Missile string
+	// PerMaker is the number of walls each maker places (calc2 / 2).
+	PerMaker int
+	// FromX, FromY is the first wall's subtile; Dirs the two headings (unit
+	// steps scaled to whole subtiles) of the makers.
+	FromX, FromY int
+	Dirs         [2][2]int
 }
 
 // MeleeResult is a resolved melee strike.
@@ -909,6 +929,22 @@ func (p *Pipeline) CastTrap(u Unit, skillID int, missile string, fromX, fromY in
 
 	return p.castMissile(u, sk, lvl, p.env(sk, lvl, u), missile, tgt,
 		castOpts{hasStart: true, startX: float64(fromX) + 0.5, startY: float64(fromY) + 0.5})
+}
+
+// CastWallMaker launches one bonewallmaker missile (SrvDoFunc 13) from the
+// subtile (fromX, fromY) towards (fromX+dx, fromY+dy). It will summon walls
+// walls (data field 0x2c), each linked to leader (Mark, data field 0x28).
+func (p *Pipeline) CastWallMaker(u Unit, skillID int, missile string, fromX, fromY, dx, dy, walls int,
+	leader d2missile.Target) *d2missile.Missile {
+	sk := p.Skills.ByID(skillID)
+	if sk == nil {
+		return nil
+	}
+
+	lvl := u.SkillLevel(skillID)
+
+	return p.castMissile(u, sk, lvl, p.env(sk, lvl, u), missile, Target{X: fromX + dx, Y: fromY + dy},
+		castOpts{hasStart: true, startX: float64(fromX) + 0.5, startY: float64(fromY) + 0.5, data2C: uint32(walls), mark: leader})
 }
 
 // ownDamages builds the damage of the sub missiles of a cast that carry
