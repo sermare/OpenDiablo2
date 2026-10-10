@@ -30,7 +30,7 @@ func isOutdoorLevel(id int) bool {
 		return true
 	case id >= 2 && id <= 7, id == 0x11, id == 0x27:
 		return true
-	case id >= 104 && id <= 106, id == 108, id >= 110 && id <= 112, id == 117:
+	case id >= 104 && id <= 106, id == 108, id >= 110 && id <= 112, id == 117, id == 134: // 134 runs the Act 2 desert program
 		return true
 	}
 
@@ -65,7 +65,17 @@ func isAct3Preset(id int) bool {
 // small cave levels Cave Level 2 .. Underground Passage Level 2 (Hole/Pit 2,
 // ids 13..16) and Catacombs Level 4 (37, Andariel). GeneratePreset is proven
 // equal to the real game for them (TestOraclePresetAct1).
-func isAct1Preset(id int) bool { return (id >= 13 && id <= 16) || id == 37 }
+//
+// Also Tower Cellar 5 (25), Monastery Gate (26), Outer Cloister (27), Inner Cloister (32), Cathedral (33),
+// Tristram (38) and Duriel's Lair (73, Act 2), proven equal to the emulator by TestOraclePresetAct1More.
+func isAct1Preset(id int) bool {
+	switch id {
+	case 25, 26, 27, 32, 33, 38, 73:
+		return true
+	}
+
+	return (id >= 13 && id <= 16) || id == 37
+}
 
 // levelParams runs the world placement of the level's act and derives the
 // generator inputs (rectangle, od.flags, vis/warp, neighbour list).
@@ -81,7 +91,7 @@ func levelParams(tb *d2drlg.Tables, levelID int, seed uint32, diff d2drlg.Diffic
 	}
 
 	if isAct1Preset(levelID) {
-		p, err := drlgoutdoor.ParamsPreset(tb, levelID, seed, diff)
+		p, err := drlgoutdoor.ParamsPresetWorld(tb, levelID, seed, diff)
 
 		return p, nil, err
 	}
@@ -294,7 +304,7 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 
 	// the real tile records of every room (DT1 library of the room, rarity pick with
 	// the room seed), grouped per map cell
-	plain, exact := g.placeExactTiles(lv, p.Rect, region)
+	plain, exact := g.placeExactTiles(lv, p.Rect, region, pop)
 
 	g.Infof("TILESTATS level=%d exact=%v %s", levelID, strings.Contains(exact, "exact"), g.engine.TileStats())
 
@@ -353,7 +363,7 @@ func (g *MapGenerator) logBossObjects(levelID int) {
 // rooms fall back to the old dword lookup and the presets keep their stamped
 // tiles. The first result is the number of plain rooms, the second a note for
 // the log.
-func (g *MapGenerator) placeExactTiles(lv *drlgoutdoor.Level, rect drlgoutdoor.Rect, region d2enum.RegionIdType) (int, string) {
+func (g *MapGenerator) placeExactTiles(lv *drlgoutdoor.Level, rect drlgoutdoor.Rect, region d2enum.RegionIdType, pop *popLevel) (int, string) {
 	tiles, err := lv.BuildTiles()
 	if err != nil {
 		g.Infof("real outdoor: exact tiles unavailable for this level type (%v); plain rooms use the grid lookup, presets keep the stamped tiles", err)
@@ -361,6 +371,10 @@ func (g *MapGenerator) placeExactTiles(lv *drlgoutdoor.Level, rect drlgoutdoor.R
 	}
 
 	plain, presets := g.applyExactTiles(tiles, rect, region, false)
+
+	if pop != nil {
+		pop.useLogic(tiles, nil)
+	}
 
 	return plain, fmt.Sprintf(", exact tiles incl. %d preset rooms", presets)
 }
@@ -481,7 +495,16 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 		return err
 	}
 
-	pl, err := drlgoutdoor.GeneratePreset(env, p, -1)
+	// the Act 1 world search forces the exit side of the Outer Cloister as its file
+	override := -1
+
+	if levelID == 27 {
+		if wl, err := drlgworld.Generate(tb, seed, diff); err == nil {
+			override = drlgoutdoor.PresetFileOverride(wl, levelID)
+		}
+	}
+
+	pl, err := drlgoutdoor.GeneratePreset(env, p, override)
 	if err != nil {
 		return err
 	}
@@ -550,6 +573,10 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 	} else {
 		_, n := g.applyExactTiles(tiles, pl.Rect, region, false)
 		exact = fmt.Sprintf(", exact tiles for %d rooms", n)
+
+		if pop != nil {
+			pop.useLogic(tiles, nil)
+		}
 	}
 
 	g.Infof("TILESTATS level=%d exact=%v %s", levelID, exact != "", g.engine.TileStats())
