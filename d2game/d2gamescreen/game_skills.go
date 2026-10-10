@@ -100,8 +100,8 @@ func (v *Game) skillEngine() *d2skills.Engine {
 
 			return 1
 		},
-		Act:          v.currentAct,
-		Difficulty:   int(v.gameClient.Difficulty),
+		Act:        v.currentAct,
+		Difficulty: int(v.gameClient.Difficulty),
 	})
 	v.skills.Rivals = v.skillRivals
 	v.skills.OnPvPHit = v.sendSkillPvP

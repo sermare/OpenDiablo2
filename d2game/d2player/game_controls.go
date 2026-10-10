@@ -834,7 +834,6 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 			return true
 		}
 
-		// clicking the world with an item on the cursor drops it (packet 0x17)
 		item := g.inventory.CursorItem()
 		g.inventory.SetCursorItem(nil)
 		g.inputListener.OnPlayerDropItem(item)

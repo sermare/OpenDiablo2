@@ -227,7 +227,7 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"completequest", "marks quest <act> <quest> done for the hero (debug)",
 			[]string{"act", "quest"}, v.commandCompleteQuest},
 		{"restorevitals", "fills the hero's life and mana (debug)", nil, v.commandRestoreVitals},
-		{"resetquests","clears the hero's quest record in memory (debug)", nil, v.commandResetQuests},
+		{"resetquests", "clears the hero's quest record in memory (debug)", nil, v.commandResetQuests},
 		{"travelfree", "1 lets act travel skip the quest and NPC rules (debug), 0 restores them",
 			[]string{"0|1"}, v.commandTravelFree},
 		{"travel", "travels to the town of an act through the act travel rules",
