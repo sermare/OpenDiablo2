@@ -1,3 +1,4 @@
+scenario_timeout=1200
 scenario_name="Act 3 playthrough (level 94 sample hero: Kurast Docks NPCs, jungle, Kurast, Travincal, the dungeon entrances and a town portal)"
 a3=$tmp/act3
 # The start of Act 3 played by OD2_AUTOSCRIPT (see docs/PLAYTEST.md): the hero sails east (the quest flags of
@@ -35,7 +36,7 @@ scenario_env() {
     hop 83
     s+=";say:completequest 3 2"; hop 100; hop 83
     s+=";wait:8;say:spawnportal 75;use:Portal;expect:level=75;wait:3;say:capframe $tmp/act3-portal.png"
-    echo "export OD2_AUTOGAME=\"$a3/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a3/wb94\" OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0"
+    echo "export OD2_AUTOGAME=\"$a3/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a3/wb94\" OD2_POPULATE_DENSITY=25 OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0"
     echo "export OD2_AUTOSCRIPT='$s;exit'"
   else
     echo "# no revived sample (D2_TABLES unset or the tool failed)" >&2

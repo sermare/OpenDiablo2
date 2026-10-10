@@ -1,3 +1,4 @@
+scenario_timeout=1200
 scenario_name="Act 5 caves playthrough (level 94 sample hero: Crystalline Passage to the Throne of Destruction, waypoints on the way)"
 a5=$tmp/act5deep
 # The second half of Act 5 played by OD2_AUTOSCRIPT (see docs/PLAYTEST.md, "Act 4 and 5"): the hero travels to
@@ -21,7 +22,7 @@ scenario_env() {
     s+=";walkto:exit=120;expect:level=120;wait:3;walkto:exit=128;expect:level=128;wait:3;walkto:exit=129;expect:level=129;wait:3"
     s+=";walkto:exit=130;expect:level=130;wait:3"
     s+=";walkto:exit=131;expect:level=131;wait:3;say:capframe $tmp/act5-throne.png;exit"
-    echo "export OD2_AUTOGAME=\"$a5/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a5/wb94\" OD2_REALMAPS=1 OD2_AUTOSPEED=4 OD2_AUTOMONSTER_DIFF=0"
+    echo "export OD2_AUTOGAME=\"$a5/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a5/wb94\" OD2_POPULATE_DENSITY=25 OD2_REALMAPS=1 OD2_AUTOSPEED=4 OD2_AUTOMONSTER_DIFF=0"
     echo "export OD2_AUTOSCRIPT='$s'"
   else
     echo "# no revived sample (D2_TABLES unset or the tool failed)" >&2
