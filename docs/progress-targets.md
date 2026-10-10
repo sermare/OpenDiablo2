@@ -7,6 +7,7 @@ verify yet; it is not counted in the percentage. Numbers marked `~` are estimate
 | Bar | Denominator | Numerator / how to count it |
 |---|---|---|
 | Game.exe functions named in Ghidra | all functions Ghidra finds in `Game.exe` (11,257) | `GET :8089/find_functions?has_custom_name=true` count; the last 22 are the anti-cheat module, skipped on purpose |
+| Hedged exe names re-verified against the decompile | ~1,633 names flagged unverified in `d2-re-notes/naming-*.md` (estimate) | names reviewed in `names-verified-logic.md` and `names-verified-ui-net.md` (confirmed or corrected) |
 | Original source files indexed | 277 assert-string source paths | paths mapped to modules and functions |
 | Source files studied in depth | 277 | files with notes in `d2-re-notes` |
 | Level generator proven equal to the real game | records in the goldens | sum of oracle golden records that match (mazes, outdoors, presets, tiles) |
