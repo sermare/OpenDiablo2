@@ -52,36 +52,38 @@ const (
 	manaGlobe
 )
 
+// Hit areas of the always visible interface, as the original tests them (uilayout.go: HUDRects, with the
+// functions they were read from). Left, top, width, height in pixels at 800x600.
 const (
 	leftSkillX,
 	leftSkillY,
 	leftSkillWidth,
-	leftSkillHeight = 117, 550, 50, 50
+	leftSkillHeight = 117, 552, 49, 49
 
 	xpX,
 	xpY,
 	xpWidth,
-	xpHeight = 253, 560, 125, 5
+	xpHeight = 254, 557, 124, 10
 
 	staminaX,
 	staminaY,
 	staminaWidth,
-	staminaHeight = 273, 573, 105, 20
+	staminaHeight = 273, 573, 103, 19
 
 	rightSkillX,
 	rightSkillY,
 	rightSkillWidth,
-	rightSkillHeight = 635, 550, 50, 50
+	rightSkillHeight = 635, 552, 49, 49
 
 	hpGlobeX,
 	hpGlobeY,
 	hpGlobeWidth,
-	hpGlobeHeight = 30, 525, 80, 60
+	hpGlobeHeight = 30, 525, 81, 61
 
 	manaGlobeX,
 	manaGlobeY,
 	manaGlobeWidth,
-	manaGlobeHeight = 695, 525, 80, 60
+	manaGlobeHeight = 689, 525, 81, 61
 )
 
 const (

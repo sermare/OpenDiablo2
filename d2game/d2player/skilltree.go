@@ -17,18 +17,18 @@ import (
 )
 
 const (
-	tabButtonX  = 628
-	tabButton0Y = 385
-	tabButton1Y = 277
-	tabButton2Y = 170
+	tabButtonX  = 628 + panelShiftX
+	tabButton0Y = 385 + panelShiftY
+	tabButton1Y = 277 + panelShiftY
+	tabButton2Y = 170 + panelShiftY
 
-	availSPLabelX = 677
-	availSPLabelY = 72
+	availSPLabelX = 677 + panelShiftX
+	availSPLabelY = 72 + panelShiftY
 
-	skillCloseButtonXLeft   = 416
-	skillCloseButtonXMiddle = 501
-	skillCloseButtonXRight  = 572
-	skillCloseButtonY       = 449
+	skillCloseButtonXLeft   = 416 + panelShiftX
+	skillCloseButtonXMiddle = 501 + panelShiftX
+	skillCloseButtonXRight  = 572 + panelShiftX
+	skillCloseButtonY       = 449 + panelShiftY
 )
 
 const (
@@ -60,12 +60,12 @@ const (
 )
 
 const (
-	remainingPointsLabelX, remainingPointsLabelY = 677, 128
+	remainingPointsLabelX, remainingPointsLabelY = 677 + panelShiftX, 128 + panelShiftY
 )
 
 const (
-	skillTreePanelX = 401
-	skillTreePanelY = 64
+	skillTreePanelX = 400 // Mode800.RightPanelX()
+	skillTreePanelY = 60  // Mode800.PanelTop()
 )
 
 const (

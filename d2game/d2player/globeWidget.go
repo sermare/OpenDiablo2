@@ -25,11 +25,11 @@ const (
 	globeSpriteOffsetX = 28
 	globeSpriteOffsetY = -5
 
-	healthStatusOffsetX = 30
+	healthStatusOffsetX = 29
 	healthStatusOffsetY = -13
 
-	manaStatusOffsetX = 7
-	manaStatusOffsetY = -12
+	manaStatusOffsetX = 6
+	manaStatusOffsetY = -13
 
 	manaGlobeScreenOffsetX = 117
 

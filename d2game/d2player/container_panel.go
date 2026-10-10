@@ -21,10 +21,10 @@ import (
 // cursor, which the inventory owns.
 
 const (
-	panelArtTop      = 64 // the 4 quadrant pictures start this far below the screen top, like invchar6
-	panelCloseOffset = 208
-	panelCloseY      = 453
-	panelTitleY      = 84
+	panelArtTop      = 60  // the 4 quadrant pictures start this far below the screen top (Mode800.PanelTop())
+	panelCloseOffset = 256 // x = panel + 0x110 (FUN_0048b150 0x48b150)
+	panelCloseY      = 448
+	panelTitleY      = 84 + panelShiftY
 
 	cubeItemCode = "box"
 )
@@ -324,7 +324,7 @@ func (p *ContainerPanel) Render(target d2interface.Surface) {
 
 	if p.art != nil {
 		// quadrants: top-left, top-right, bottom-right, bottom-left (frames 0, 1, 3, 2)
-		x, y := p.originX+1, panelArtTop
+		x, y := p.originX, panelArtTop
 
 		for _, frame := range []int{0, 1, 3, 2} {
 			if err := p.art.SetCurrentFrame(frame); err != nil {
@@ -342,7 +342,7 @@ func (p *ContainerPanel) Render(target d2interface.Surface) {
 			case 1:
 				y += h
 			case 3:
-				x = p.originX + 1
+				x = p.originX
 			}
 		}
 	}

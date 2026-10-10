@@ -35,12 +35,12 @@ const ( // for bar's dc6 frames
 )
 
 const (
-	partyPanelOffsetX, partyPanelOffsetY = 80, 64
+	partyPanelOffsetX, partyPanelOffsetY = 80, 60 // art top: Mode800.PanelTop()
 )
 
 const (
-	partyPanelCloseButtonX, partyPanelCloseButtonY = 358, 453
-	partyPanelHeroNameX, partyPanelHeroNameY       = 180, 80
+	partyPanelCloseButtonX, partyPanelCloseButtonY = 358, 450 // 32x32 standing at y 482 (UI_DrawPartyScreenCloseButton 0x496dd0)
+	partyPanelHeroNameX, partyPanelHeroNameY       = 180, 80 + panelShiftY
 )
 
 const (
@@ -48,15 +48,15 @@ const (
 )
 
 const (
-	barX, baseBarY                                   = 90, 134
-	relationshipSwitcherX, baseRelationshipSwitcherY = 95, 150
-	listeningSwitcherX, baseListeningSwitcherY       = 342, 140
-	seeingSwitcherX, baseSeeingSwitcherY             = 365, 140
-	nameLabelX, baseNameLabelY                       = 115, 144
-	nameTooltipX, baseNameTooltipY                   = 100, 120
-	classLabelX, baseClassLabelY                     = 115, 158
-	levelLabelX, baseLevelLabelY                     = 386, 160
-	inviteAcceptButtonX, baseInviteAcceptButtonY     = 265, 147
+	barX, baseBarY                                   = 90, 134 + panelShiftY
+	relationshipSwitcherX, baseRelationshipSwitcherY = 95, 150 + panelShiftY
+	listeningSwitcherX, baseListeningSwitcherY       = 342, 140 + panelShiftY
+	seeingSwitcherX, baseSeeingSwitcherY             = 365, 140 + panelShiftY
+	nameLabelX, baseNameLabelY                       = 115, 144 + panelShiftY
+	nameTooltipX, baseNameTooltipY                   = 100, 120 + panelShiftY
+	classLabelX, baseClassLabelY                     = 115, 158 + panelShiftY
+	levelLabelX, baseLevelLabelY                     = 386, 160 + panelShiftY
+	inviteAcceptButtonX, baseInviteAcceptButtonY     = 265, 147 + panelShiftY
 	indexOffset                                      = 52
 )
 

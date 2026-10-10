@@ -23,9 +23,13 @@ const (
 )
 
 const (
-	invCloseButtonX, invCloseButtonY = 419, 449
-	invGoldButtonX, invGoldButtonY   = 485, 455
-	invGoldLabelX, invGoldLabelY     = 510, 455
+	invCloseButtonX, invCloseButtonY = 419 + panelShiftX, 449 + panelShiftY
+	invGoldButtonX, invGoldButtonY   = 485 + panelShiftX, 455 + panelShiftY
+	invGoldLabelX, invGoldLabelY     = 510 + panelShiftX, 455 + panelShiftY
+
+	// the pictures of the panel stand at (Mode800.RightPanelX(), Mode800.PanelTop()) = (400, 60): the panel record
+	// of Inventory.txt has the 800x600 rectangle (400..720, 60..501), whose slot rectangles lie on these pictures
+	inventoryArtTop = 60
 )
 
 // NewInventory creates an inventory instance and returns a pointer to it
@@ -300,8 +304,8 @@ func (g *Inventory) renderFrame(target d2interface.Surface) {
 		frameInventoryBottomLeft,
 	}
 
-	x, y := g.originX+1, g.originY
-	y += 64
+	x, y := g.originX, g.originY
+	y += inventoryArtTop
 
 	for _, frame := range frames {
 		if err := g.panel.SetCurrentFrame(frame); err != nil {
@@ -320,7 +324,7 @@ func (g *Inventory) renderFrame(target d2interface.Surface) {
 		case frameInventoryTopRight:
 			y += h
 		case frameInventoryBottomRight:
-			x = g.originX + 1
+			x = g.originX
 		}
 	}
 }

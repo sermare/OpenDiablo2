@@ -24,32 +24,37 @@ const ( // for the dc6 frames
 )
 
 const (
-	questLogOffsetX, questLogOffsetY = 80, 64
+	questLogOffsetX, questLogOffsetY = 80, 60 // art top: Mode800.PanelTop()
 )
 
 const (
 	iconOffsetY                = 88
 	questOffsetX, questOffsetY = 4, 4
-	socket1X                   = 100
-	socket2X                   = 200
-	socket3X                   = 300
-	socketUpY                  = 95
-	socketDownY                = 190
+	// the quest picture slots of UI_DrawQuestLogPanel 0x49fc00: x = 26, 123, 220 and y = 121, 218 of the panel
+	// (table at 0x7231a8, 16 bytes each) plus the panel offset (80, 60); the pictures stand on y. The slot
+	// is drawn at y+iconOffsetY+questOffsetY, so y here is that bottom minus 92.
+	socket1X    = 106
+	socket2X    = 203
+	socket3X    = 300
+	socketUpY   = 89
+	socketDownY = 186
 )
 
 const (
-	questLogCloseButtonX, questLogCloseButtonY = 358, 455
-	questLogDescrButtonX, questLogDescrButtonY = 308, 457
-	questNameLabelX, questNameLabelY           = 240, 297
-	questDescrLabelX, questDescrLabelY         = 90, 317
+	questLogCloseButtonX, questLogCloseButtonY = 358, 450 // 32x32 standing at y 482 (0x49fc00)
+	questLogDescrButtonX, questLogDescrButtonY = 306, 450
+	questNameLabelX, questNameLabelY           = 240, 297 + panelShiftY
+	questDescrLabelX, questDescrLabelY         = 90, 317 + panelShiftY
 )
 
+// The act tabs of the expansion (UI_DrawQuestLogPanel 0x49fc00): x = 5, 0x43, 0x81, 0xbf, 0xfd of the panel plus 80; the
+// pictures stand on y = H - 60 - 0x1c0 + 1 = 93.
 const (
-	questTabY       = 66
+	questTabY       = 62
 	questTabYOffset = 31
-	questTabBaseX   = 86
-	questTabXOffset = 61
 )
+
+var questTabX = [5]int{85, 147, 209, 271, 333} //nolint:gochecknoglobals // constant table
 
 const questCompleteAnimationDuration = 3
 
@@ -262,10 +267,10 @@ func (s *QuestLog) loadTabs() {
 			s.Errorf("Tabs sprite (%s) hasn't frame %d. %s", tabsResource, frame, err.Error())
 		}
 
-		s.tab[i].sprite.SetPosition(questTabBaseX+i*questTabXOffset, questTabY+questTabYOffset)
+		s.tab[i].sprite.SetPosition(questTabX[i], questTabY+questTabYOffset)
 
 		s.tab[i].invisibleButton = s.uiManager.NewButton(d2ui.ButtonTypeTabBlank, "")
-		s.tab[i].invisibleButton.SetPosition(questTabBaseX+i*questTabXOffset, questTabY)
+		s.tab[i].invisibleButton.SetPosition(questTabX[i], questTabY)
 		s.tab[i].invisibleButton.OnActivated(func() { s.setTab(currentValue) })
 
 		s.panelGroup.AddWidget(s.tab[i].sprite)
