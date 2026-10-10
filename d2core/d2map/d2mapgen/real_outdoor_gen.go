@@ -681,6 +681,10 @@ func (g *MapGenerator) markWarpTiles(stamp *d2mapstamp.Stamp, path string, ox, o
 					dest = d
 				}
 
+				if d, ok := d2level.TempleEntranceByPreset(levelID, path, int(w.Style)); ok {
+					dest = d
+				}
+
 				if dest != 0 {
 					g.engine.SetWarpDestination(ox+x, oy+y, dest)
 				}

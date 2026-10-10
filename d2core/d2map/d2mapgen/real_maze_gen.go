@@ -271,8 +271,18 @@ func (g *MapGenerator) findEntry(res *drlgmaze.Result, entries []roomRect, margi
 // 16 (UNVERIFIED which of the six the original uses; all lead to the same level). The south room
 // (WarpMesa.ds1, style 0) goes back to the City of the Damned by the slot rule of d2level.TileDestination.
 func mazeRoomExit(levelID int, file string) int {
-	if levelID == 107 && strings.Contains(strings.ToLower(file), "bridgelava") {
+	low := strings.ToLower(file)
+
+	switch {
+	case levelID == 107 && strings.Contains(low, "bridgelava"):
 		return 108
+	case levelID >= 47 && levelID <= 48 && strings.Contains(low, "sewsdown"):
+		// the stairs down of the Sewers (OBSERVED: Act2/Sewer/SewSDown.ds1 carries the one tile with the
+		// style 2; the slot rule of TileDestination takes style 2 for an exit that is not there)
+		return levelID + 1
+	case levelID == 47 && strings.Contains(low, "sewnsdock"):
+		// the dock end of Sewers Level 1 leads back to Lut Gholein (Levels.txt Vis1 of level 47, LvlWarp 21)
+		return 40
 	}
 
 	return 0
@@ -423,6 +433,11 @@ func (g *MapGenerator) placeMonsters(stamp *d2mapstamp.Stamp, levelID int, diff 
 
 		if stat == nil {
 			st.skipped++
+
+			if os.Getenv("OD2_DEBUG_MARKERS") != "" {
+				g.Infof("MARKER skipped %s at (%d,%d) level %d", name, x, y, levelID)
+			}
+
 			continue
 		}
 
@@ -437,6 +452,10 @@ func (g *MapGenerator) placeMonsters(stamp *d2mapstamp.Stamp, levelID int, diff 
 			if err != nil {
 				g.Warningf("real maze: could not place %s: %v", stat.Key, err)
 				continue
+			}
+
+			if i == 0 && rec.Monster.Unique.Super[name] != nil {
+				npc.SetSuperUnique(name) // the director spawns the boss of that name, with its followers
 			}
 
 			g.engine.AddEntity(npc)
