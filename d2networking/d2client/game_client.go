@@ -28,6 +28,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client/d2clientconnectiontype"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client/d2localclient"
+	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client/d2realmclient"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client/d2remoteclient"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket/d2netpackettype"
@@ -38,6 +39,8 @@ const logPrefix = "Game Client"
 
 const (
 	numSubtilesPerTile = 5
+	// realmStartOffset puts a hero in the middle of its start tile (the game server's offset).
+	realmStartOffset = 3
 )
 
 // GameClient manages a connection to d2server.GameServer
@@ -87,6 +90,9 @@ type GameClient struct {
 	OnRoster  func(notice string)
 	// OnPortals receives the server's list of open town portal pairs.
 	OnPortals func(pairs []d2portal.Pair, notice string)
+	// OnRealmUnit receives the monsters of a game played through the realm
+	// (on the game loop, like the other hooks).
+	OnRealmUnit func(d2netpacket.RealmUnitPacket)
 
 	*d2util.Logger
 }
@@ -121,12 +127,15 @@ func Create(connectionType d2clientconnectiontype.ClientConnectionType,
 
 	result.mapGen = mapGen
 
-	switch connectionType {
-	case d2clientconnectiontype.LANClient:
+	switch {
+	case connectionType != d2clientconnectiontype.Local && d2realmclient.Enabled():
+		// network games run on the authoritative realm (OD2_PROTO=d2gs or json: the older direct connection)
+		result.clientConnection, err = d2realmclient.Create(l, asset, connectionType == d2clientconnectiontype.LANServer)
+	case connectionType == d2clientconnectiontype.LANClient:
 		result.clientConnection, err = d2remoteclient.Create(l, asset)
-	case d2clientconnectiontype.LANServer:
+	case connectionType == d2clientconnectiontype.LANServer:
 		result.clientConnection, err = d2localclient.Create(asset, l, true)
-	case d2clientconnectiontype.Local:
+	case connectionType == d2clientconnectiontype.Local:
 		result.clientConnection, err = d2localclient.Create(asset, l, false)
 	default:
 		err = fmt.Errorf("unknown client connection type specified: %d", connectionType)
@@ -158,6 +167,10 @@ func (g *GameClient) Open(connectionString, saveFilePath string) error {
 		g.pktMu.Lock()
 		g.queueing = true
 		g.pktMu.Unlock()
+	}
+
+	if r, ok := g.clientConnection.(interface{ Resume() }); ok && err == nil {
+		r.Resume() // the realm connection delivers its events from now on
 	}
 
 	return err
@@ -326,6 +339,8 @@ func (g *GameClient) handlePacket(packet d2netpacket.NetPacket) error {
 		if err := g.handleChatPacket(packet); err != nil {
 			return err
 		}
+	case d2netpackettype.RealmUnit:
+		return g.handleRealmUnitPacket(packet)
 	case d2netpackettype.RosterUpdate:
 		return g.handleRosterPacket(packet)
 	case d2netpackettype.TradeUpdate:
@@ -422,6 +437,11 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 	}
 
 	d2hero.HydrateSkills(player.Skills, g.asset)
+
+	if player.X < 0 || player.Y < 0 { // the realm connection: "where the engine starts its heroes"
+		sx, sy := g.MapEngine.GetStartPosition()
+		player.X, player.Y = int(sx*numSubtilesPerTile)+realmStartOffset, int(sy*numSubtilesPerTile)+realmStartOffset
+	}
 
 	newPlayer := g.MapEngine.NewPlayer(player.ID, player.Name, player.X, player.Y, 0,
 		player.HeroType, player.Stats, player.Skills, &player.Equipment, player.LeftSkill, player.RightSkill, player.Gold)

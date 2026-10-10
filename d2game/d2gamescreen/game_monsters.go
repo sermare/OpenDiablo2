@@ -73,6 +73,7 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 	v.monsters = d2monsters.NewDirector(v.asset, v.gameClient.MapEngine, v.playerList, v.logLevel, opt)
 	v.monsters.ExpBonusPct = v.experienceBonusPct
 	v.monsters.PartyXP = v.partyXP
+	v.monsters.OnMirrorHit = v.onMirrorHit
 
 	return v.monsters
 }
@@ -95,6 +96,7 @@ func (v *Game) advanceMonsters(elapsed float64) {
 	}
 
 	d.Advance(elapsed)
+	v.advanceRealm(elapsed)
 	v.populateLevel()
 	v.advanceKill(elapsed)
 	v.advanceLoot(elapsed)

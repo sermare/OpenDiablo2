@@ -19,6 +19,8 @@ import (
 // on. (OD2_AUTOMENU already belongs to the NPC menu test, hence the name.)
 //
 //	single                       main menu: Single Player
+//	host                         main menu: Multiplayer, TCP/IP, Host Game
+//	join:Address                 main menu: Multiplayer, TCP/IP, Join Game, type the address, OK
 //	new                          character select: Create New Character
 //	create:Class:Name[:hardcore][:classic]
 //	                             hero creation: pick the class, type the name, set the
@@ -176,7 +178,7 @@ func (v *CharacterSelect) advanceFlow(elapsed float64) {
 
 // advanceFlow performs the steps that belong to the main menu.
 func (v *MainMenu) advanceFlow(elapsed float64) {
-	args, ok := autoFlowNext(elapsed, "single", "exit")
+	args, ok := autoFlowNext(elapsed, "single", "host", "join", "exit")
 	if !ok {
 		return
 	}
@@ -187,13 +189,39 @@ func (v *MainMenu) advanceFlow(elapsed float64) {
 		return
 	}
 
-	if args[0] == "exit" {
+	switch args[0] {
+	case "exit":
 		autoFlowExit(0)
-		return
+	case "host", "join":
+		v.advanceMultiplayerFlow(args)
+	default:
+		autoFlowDone()
+		v.onSinglePlayerClicked()
 	}
+}
 
-	autoFlowDone()
-	v.onSinglePlayerClicked()
+// advanceMultiplayerFlow clicks through Multiplayer, TCP/IP, then Host Game or
+// (typing the address of the host) Join Game, one screen per frame.
+func (v *MainMenu) advanceMultiplayerFlow(args []string) {
+	switch v.screenMode {
+	case ScreenModeMainMenu:
+		v.onMultiplayerClicked()
+	case ScreenModeMultiplayer:
+		v.onNetworkTCPIPClicked()
+	case ScreenModeTCPIP:
+		if args[0] == "host" {
+			autoFlowDone()
+			v.onTCPIPHostGameClicked()
+
+			return
+		}
+
+		v.onTCPIPJoinGameClicked()
+	case ScreenModeServerIP:
+		autoFlowDone()
+		v.tcpJoinGameEntry.SetText(strings.Join(args[1:], ":"))
+		v.onBtnTCPIPOkClicked()
+	}
 }
 
 // advanceFlow performs the create step of the hero creation screen.

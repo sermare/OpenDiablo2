@@ -113,6 +113,11 @@ func (v *Game) initAutoScript() {
 
 	capture := &logCapture{}
 	v.Logger.Writer = io.MultiWriter(v.Logger.Writer, capture)
+
+	// the game client's lines (players joining, chat, casts) are what a network scenario waits for
+	if v.gameClient != nil && v.gameClient.Logger != nil {
+		v.gameClient.Logger.Writer = io.MultiWriter(v.gameClient.Logger.Writer, capture)
+	}
 	v.autoScript = &autoScriptState{log: capture}
 	v.autoScript.runner = d2autoscript.NewRunner(steps, autoScriptHost{v})
 }

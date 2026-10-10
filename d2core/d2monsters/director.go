@@ -136,6 +136,7 @@ type unit struct {
 	lastLabel           string    // the AI state last traced (forced.go)
 	raising             bool      // a corpse a shaman is raising (corpses.go)
 	skill               *monSkill // the monstats skill of the attack in progress (skilldmg.go), nil = plain attack
+	mirror              bool      // a realm unit drawn here: no AI, no local damage (mirror.go)
 }
 
 type moveIntent struct {
@@ -234,6 +235,9 @@ type Director struct {
 	// treasure class (see d2drop.MonsterTreasureInput.QuestStates) for a
 	// class's TCQuestId / TCQuestCP. Without it the quest class never drops.
 	QuestStates func(questID, questCP int) [3]bool
+	// OnMirrorHit, if set, receives the blows that hit a mirror monster (see
+	// mirror.go): the realm resolves them, nothing is applied locally.
+	OnMirrorHit func(m *d2mapentity.Monster, src *d2mapentity.Player)
 }
 
 // KillEvent describes a monster death for OnKill.
@@ -455,6 +459,15 @@ func (d *Director) step() {
 		d.footprint(u)
 		d.handleEvents(u)
 		d.ambientSounds(u)
+
+		if u.mirror {
+			if !u.m.Alive() && u.m.CorpseAge() > corpseSeconds { // the realm drives the rest
+				d.engine.RemoveEntity(u.m)
+				d.forget(u)
+			}
+
+			continue
+		}
 
 		if u.merc != nil {
 			d.stepMerc(u)

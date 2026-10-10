@@ -246,10 +246,45 @@ Not synced (not modelled): equipment and stats beyond life, skills' real
 effects (Rules decides), player versus player, mercenaries and summons,
 quests and NPC dialogues, level generation from the game's DRLG (the engine
 client keeps generating its own map from the seed; the headless layout is a
-placeholder grid), per-difficulty scaling. The engine's game screen is not yet
-connected to the realm (`d2realm.Player` is the client API for it).
+placeholder grid), per-difficulty scaling. The engine's game screen is connected through
+`d2client/d2realmclient` (next section).
 
 Tests: `go test ./d2networking/d2mp ./d2networking/d2realm` (in-process, several
 clients on the loopback, no windows). `scripts/mp-realm-scenario.sh [n]` hosts
 a game with `cmd/od2server` and runs n `cmd/od2mpbot` processes through a
 party, an exit portal and a fight, then compares their worlds.
+
+## The game screen on the realm
+
+Network games started from the menu (Multiplayer, TCP/IP, Host Game / Join Game)
+play on the realm unless `OD2_PROTO=d2gs` or `json` selects the older direct
+connection (`OD2_PROTO=realm` or unset = realm). `OD2_HOST=1` / `OD2_JOIN=host`
+with `OD2_AUTOGAME` behave the same.
+
+- The **host** process runs a `d2realm.Server` inside itself (port `OD2_PORT`,
+  default 6669, bind `OD2_BIND` or 0.0.0.0), connects to it like any client and
+  creates the game `od2`. A **joiner** dials the host (retrying for
+  `OD2_JOIN_RETRY` seconds) and joins `od2`. `d2realmclient.Connection` is the
+  game client's `ServerConnection`; `Bridge` does the translation.
+- Rules: `d2mp.EngineRules`, an open arena in the engine's own tile
+  coordinates with the spawn on the engine's start tile, so heroes agree with the
+  engine about positions. Town holds `OD2_REALM_DUMMIES` (default 3) passive
+  training dummies. All numbers are the DefaultRules placeholders (unverified).
+- Heroes: the engine keeps walking its own map. Remote heroes arrive as the
+  engine's AddPlayer / MovePlayer / CastSkill / Chat / disconnect packets built
+  from World events (movement is released at its server time plus the 100 ms
+  interpolation delay). The hero's `.d2s` is uploaded when the in-process realm
+  accepts it, else a new character of the class stands in for it.
+- Monsters: `RealmUnit` packets create **mirror monsters** (`d2monsters`
+  `SpawnMirror`): normal entities with no AI and no local damage. A blow of the
+  local hero is sent as 0x13 Interact; Hit and Death events come back
+  (`MirrorHP`, `MirrorKill`: death animation and sound, no local XP or loot).
+- Console: `mpkill` (fight the nearest realm monster), `mpworld` (log
+  `REALM WORLD ... digest=`; equal digests = equal worlds).
+- Not wired: level changes (the realm game stays in the starting town), party
+  and trade windows, per-difficulty monsters, monster types beyond the
+  placeholder list, a dedicated `od2server` with engine rules (it uses
+  DefaultRules, whose spawn differs from the engine's).
+- Scenario `scripts/verify.d/9j-realm-multiplayer.sh`: two windows, both started
+  at the main menu through `OD2_AUTOFLOW` (`host`, `join:<addr>`), numeric
+  checks at four checkpoints (digests, dead counts, kill units and killers).
