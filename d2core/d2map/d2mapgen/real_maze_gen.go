@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgmaze"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
@@ -58,7 +59,15 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 
 	base, _ := d2rand.DrlgBaseSeed(seed)
 
-	res, err := drlgmaze.Generate(tb, drlgmaze.Params{LevelID: levelID, Difficulty: diff, BaseSeed: base})
+	// the two special tombs of Act 2 are drawn from the game seed (the real Tal Rasha's tomb gets the
+	// chamber with the orifice, see d2drlg.RealTomb)
+	params := drlgmaze.Params{LevelID: levelID, Difficulty: diff, BaseSeed: base}
+	if levelID >= 40 && levelID <= 74 {
+		ex := d2drlg.DrawActExtras(seed, 1)
+		params.TombA, params.TombB = ex.TombA, ex.TombB
+	}
+
+	res, err := drlgmaze.Generate(tb, params)
 	if err != nil {
 		return err
 	}
@@ -144,6 +153,31 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 	g.Infof("real maze: hero entry at tile (%.1f,%.1f) %s", sx, sy, how)
 	if os.Getenv("OD2_AUTOMAP_ASCII") != "" {
 		g.logWalkMap(sx, sy)
+	}
+
+	if levelID >= d2level.FirstTalRashaTomb && levelID <= d2level.LastTalRashaTomb {
+		orifices := 0
+
+		for _, e := range g.engine.Entities() {
+			if o, ok := e.(*d2mapentity.Object); ok && o.Record().Index == 152 { // the Horadric staff orifice
+				orifices++
+			}
+		}
+
+		g.Infof("real maze: Tal Rasha's tomb level %d: real=%v (game seed %d draws %d) orifice objects=%d",
+			levelID, levelID == params.TombA, seed, params.TombA, orifices)
+	}
+
+	if levelID == 74 {
+		pads := map[int]int{}
+
+		for _, e := range g.engine.Entities() {
+			if o, ok := e.(*d2mapentity.Object); ok && o.Record().OperateFn == 27 {
+				pads[o.Record().Index]++
+			}
+		}
+
+		g.Infof("real maze: Arcane Sanctuary teleport pads by objects.txt row: %v", pads)
 	}
 
 	g.Infof("real maze: DS1 monsters: %d direct, %d place_* markers resolved, %d super uniques, %d groups, %d skipped",
