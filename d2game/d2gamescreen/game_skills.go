@@ -91,7 +91,7 @@ func (v *Game) skillEngine() *d2skills.Engine {
 	scenario := os.Getenv("OD2_AUTOCAST") != ""
 	v.skills = d2skills.New(v.asset, v.gameClient.MapEngine, md, v.logLevel, d2skills.Options{
 		Seed:         uint32(v.gameClient.MapEngine.Seed()),
-		IgnoreTown:   scenario || os.Getenv("OD2_AUTOMONSTER") != "",
+		IgnoreTown:   scenario || os.Getenv("OD2_AUTOMONSTER") != "" || os.Getenv("OD2_AUTOMERC") != "",
 		InfiniteAmmo: scenario,
 	})
 	v.skills.Rivals = v.skillRivals

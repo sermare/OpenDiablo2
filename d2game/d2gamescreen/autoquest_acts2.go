@@ -115,6 +115,11 @@ func (a *autoQuest) stageTombs() {
 	})
 	a.once("tombs: the town and Meshif", func(h autoHost, a *autoQuest) {
 		a.says(h, "Atma comments", d2quest.NPCAtma, 445)
+		a.says(h, "Warriv comments", d2quest.NPCWarriv2, 446)
+		a.says(h, "Drognan comments", d2quest.NPCDrognan, 449)
+		a.says(h, "Lysander comments", d2quest.NPCLysander, 444)
+		a.says(h, "Cain comments", d2quest.NPCCain2, 452)
+		a.says(h, "Fara comments", d2quest.NPCFara, 447)
 		a.says(h, "Jerhyn's thanks", d2quest.NPCJerhyn, 442)
 		a.expect(h, "ENTERAREA set, LEAVETOWN cleared, state 5", a.bit(h, id, d2quest.FlagEnterArea) &&
 			!a.bit(h, id, d2quest.FlagLeaveTown) && a.quest(h, id).State == 5)

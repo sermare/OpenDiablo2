@@ -13,6 +13,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2config"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2input/d2gamepad"
 )
 
 const (
@@ -39,17 +40,22 @@ type Renderer struct {
 	renderCallback
 	*d2util.GlyphPrinter
 	lastRenderError error
+	fullscreenHook  func(bool)
 }
 
 // Update calls the game's logical update function (the `Advance` method)
 func (r *Renderer) Update() error {
+	if err := r.handleWindowShortcuts(); err != nil {
+		return err
+	}
+
 	if r.updateCallback == nil {
 		return errors.New("no update callback defined for ebiten renderer")
 	}
 
 	// Cmd+Enter (macOS) or Alt+Enter toggles fullscreen, like the original game
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) &&
-		(commandKeyDown() || ebiten.IsKeyPressed(ebiten.KeyAlt)) {
+		(commandHeld() || ebiten.IsKeyPressed(ebiten.KeyAlt)) {
 		ebiten.SetFullscreen(!ebiten.IsFullscreen())
 	}
 
@@ -121,7 +127,12 @@ func (r *Renderer) Run(f renderCallback, u updateCallback, width, height int, ti
 	ebiten.SetWindowResizable(true)
 	ebiten.SetWindowSize(width, height)
 
-	return ebiten.RunGame(r)
+	err := ebiten.RunGame(r)
+	if errors.Is(err, errQuit) {
+		return nil
+	}
+
+	return err
 }
 
 // CreateSurface creates a renderer surface from an existing surface
@@ -171,6 +182,10 @@ func (r *Renderer) GetVSyncEnabled() bool {
 
 // GetCursorPos returns the current cursor position x,y coordinates
 func (r *Renderer) GetCursorPos() (x, y int) {
+	if vx, vy, ok := d2gamepad.Default().Cursor(); ok {
+		return vx, vy // a gamepad is in use: its virtual cursor
+	}
+
 	return ebiten.CursorPosition()
 }
 
@@ -187,4 +202,14 @@ func (r *Renderer) ShowPanicScreen(message string) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// SetWindowScale resizes the window to scale times the 800x600 game screen (the
+// game keeps its logical size, so the interface grows with the window).
+func (r *Renderer) SetWindowScale(scale int) {
+	if scale < 1 || ebiten.IsFullscreen() {
+		return
+	}
+
+	ebiten.SetWindowSize(screenWidth*scale, screenHeight*scale)
 }

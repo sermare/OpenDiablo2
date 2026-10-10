@@ -131,3 +131,84 @@ func Scan(g d2path.Grid, owner d2path.Point, x, y float64, radius int, cs []Cand
 
 	return out
 }
+
+// ChainNext is the target pick of SKILL_ScanRadiusForTargets (callback
+// 0x569a40 with the excluded id set to the unit just hit), used by Chain
+// Lightning's hit function 12 (0x5a81c0). VERIFIED against the exe in the
+// emulator (golden chain_golden.json, 4000 cases): of the scanned candidates it
+// returns the one with the smallest unit id GREATER than the id of the unit just
+// hit; when there is none it wraps to the smallest id of all (ties: the later
+// candidate). The unit just hit is never returned (the exe does not spawn a
+// bolt then). Guided Arrow passes no hit unit (id -1), which gives the plain
+// lowest id (see lowestSerial). Targets without a Serial count as id 0.
+func ChainNext(cs []Target, hit Target) Target {
+	hitID := uint32(0xffffffff)
+	if hit != nil {
+		hitID = uint32(targetSerial(hit))
+	}
+
+	var best1, best2 Target
+
+	best1ID, best2ID := uint32(0xffffffff), hitID
+
+	for _, t := range cs {
+		if t == nil || !t.Alive() {
+			continue
+		}
+
+		id := uint32(targetSerial(t))
+
+		if id > hitID {
+			if id < best1ID {
+				best1, best1ID = t, id
+			}
+
+			continue
+		}
+
+		if id <= best2ID {
+			best2, best2ID = t, id
+		}
+	}
+
+	pick := best1
+	if pick == nil {
+		pick = best2
+	}
+
+	if pick == nil || (hit != nil && sameUnit(pick, hit)) {
+		return nil
+	}
+
+	return pick
+}
+
+func sameUnit(a, b Target) bool {
+	if a == b {
+		return true
+	}
+
+	sa, oka := a.(Serial)
+	sb, okb := b.(Serial)
+
+	return oka && okb && sa.Serial() != 0 && sa.Serial() == sb.Serial()
+}
+
+func targetSerial(t Target) int {
+	if sr, ok := t.(Serial); ok {
+		return sr.Serial()
+	}
+
+	return 0
+}
+
+// ChainSpawn is the jump rule of hit function 12: the missile's data field 0x28
+// holds the bolts still allowed (calc1 at the cast); with less than 2 no further
+// bolt is spawned, otherwise the child gets one less.
+func ChainSpawn(remaining int) (spawn bool, child int) {
+	if remaining < 2 {
+		return false, remaining
+	}
+
+	return true, remaining - 1
+}

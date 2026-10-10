@@ -72,6 +72,7 @@ func CreateGame(
 	}
 
 	keyMap := d2player.GetDefaultKeyMap(asset)
+	keyMap.LoadSavedBindings()
 
 	game := &Game{
 		asset:                asset,
@@ -267,6 +268,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 
 // OnUnload releases the resources of Gameplay screen
 func (v *Game) OnUnload() error {
+	v.gameControls.UnbindGamepad()
+
 	if err := v.gameControls.UnbindTerminalCommands(v.terminal); err != nil {
 		return err
 	}
@@ -341,9 +344,28 @@ func (v *Game) Render(screen d2interface.Surface) {
 // Advance runs the update logic on the Gameplay screen
 // nolint:gocyclo // not need to change
 func (v *Game) Advance(elapsed float64) error {
-	d2util.PerfMark("game-playable")
+	// OD2_AUTOSPEED: a fast scripted run takes several update steps per frame. Every step is at most one
+	// 25 Hz tick long (the simulations clamp a call to 0.25 s and the hero's walking and collision were
+	// made for short steps), so no simulation time is lost however fast the clock runs. The harness
+	// (script, autotests, screenshots) runs once per rendered frame with the whole span.
+	total := elapsed * autoTimeScale()
+	steps := autoSubsteps(total)
+	per := total / float64(steps)
 
-	elapsed *= autoTimeScale()
+	for i := 0; i < steps; i++ {
+		if err := v.advanceStep(per, total, i == steps-1); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// advanceStep is one update step of the Gameplay screen; the harness (autoscript, autotests) only runs
+// when last is set, with the span total of the whole frame.
+// nolint:gocyclo // not need to change
+func (v *Game) advanceStep(elapsed, total float64, last bool) error {
+	d2util.PerfMark("game-playable")
 
 	v.gameClient.Drain()
 
@@ -352,18 +374,30 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceLighting()
 
 	v.advanceNPCInteraction(elapsed)
-	v.advanceAutoSound(elapsed)
-	v.advanceAutoTest(elapsed)
-	v.advanceFlow(elapsed)
-	v.advanceAutoScript(elapsed)
+	if last {
+		v.advanceAutoSound(total)
+	}
+	if last {
+		v.advanceAutoTest(total)
+	}
+	if last {
+		v.advanceFlow(total)
+	}
+	if last {
+		v.advanceAutoScript(total)
+	}
 	v.advanceQuests(elapsed)
 	v.advanceAutosave(elapsed)
 	v.advanceGroundInteraction(elapsed)
 	v.advanceObjects(elapsed)
-	v.advanceAutoObject(elapsed)
+	if last {
+		v.advanceAutoObject(total)
+	}
 	v.advanceLevels(elapsed)
 	v.advanceSavedAct()
-	v.advanceAutoGround(elapsed)
+	if last {
+		v.advanceAutoGround(total)
+	}
 	v.advanceSound(elapsed)
 	v.advanceAutoAmbient(elapsed)
 	v.advanceAutoPanel(elapsed)
@@ -466,6 +500,7 @@ func (v *Game) bindGameControls() error {
 
 		v.gameControls.Load()
 		v.gameControls.SetCubePortalHandler(v.cubePortal)
+		v.gameControls.BindGamepad()
 		v.gameControls.Automap().SetLevelSource(v.currentLevel, v.levelName)
 		v.gameControls.SetEquipSound(v.playHeroUISound)
 		v.gameControls.SetQuestItemUse(v.useQuestItem)

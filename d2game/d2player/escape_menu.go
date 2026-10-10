@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2input/d2gamepad"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client/d2clientconnectiontype"
 )
@@ -35,6 +36,9 @@ const (
 	videoOptionsLayoutID
 	automapOptionsLayoutID
 	configureControlsLayoutID
+	accessibilityLayoutID
+	gamepadLayoutID
+	gamepad2LayoutID
 
 	// audio
 	optAudioSoundVolume optionID = iota
@@ -56,6 +60,10 @@ const (
 	optAutomapCenterWhenCleared
 	optAutomapShowParty
 	optAutomapShowNames
+	// accessibility
+	optUIScale
+	optColorblind
+	optSubtitleLog
 )
 
 const (
@@ -90,6 +98,9 @@ func NewEscapeMenu(navigator d2interface.Navigator,
 	m.layouts[soundOptionsLayoutID] = m.newSoundOptionsLayout()
 	m.layouts[videoOptionsLayoutID] = m.newVideoOptionsLayout()
 	m.layouts[automapOptionsLayoutID] = m.newAutomapOptionsLayout()
+	m.layouts[accessibilityLayoutID] = m.newAccessibilityLayout()
+	m.layouts[gamepadLayoutID] = m.newGamepadLayout("GAMEPAD BUTTONS", 0, 8, gamepad2LayoutID)
+	m.layouts[gamepad2LayoutID] = m.newGamepadLayout("GAMEPAD BUTTONS 2", 8, d2gamepad.NumButtons, gamepadLayoutID)
 
 	m.Logger = d2util.NewLogger()
 	m.Logger.SetLevel(l)
@@ -189,6 +200,8 @@ func (m *EscapeMenu) newOptionsLayout() *layout {
 		m.addBigSelectionLabel(l, "VIDEO OPTIONS", videoOptionsLayoutID)
 		m.addBigSelectionLabel(l, "AUTOMAP OPTIONS", automapOptionsLayoutID)
 		m.addBigSelectionLabel(l, "CONFIGURE CONTROLS", configureControlsLayoutID)
+		m.addBigSelectionLabel(l, "GAMEPAD CONTROLS", gamepadLayoutID)
+		m.addBigSelectionLabel(l, "ACCESSIBILITY", accessibilityLayoutID)
 		m.addBigSelectionLabel(l, "PREVIOUS MENU", mainLayoutID)
 	})
 }
@@ -318,14 +331,19 @@ func (m *EscapeMenu) addBigSelectionLabel(l *layout, text string, targetLayout l
 }
 
 func (m *EscapeMenu) addPreviousMenuLabel(l *layout) {
+	m.addSmallLinkLabel(l, "PREVIOUS MENU", optionsLayoutID)
+}
+
+// addSmallLinkLabel adds a small row that opens another page of the menu.
+func (m *EscapeMenu) addSmallLinkLabel(l *layout, text string, target layoutID) {
 	l.AddSpacerStatic(spacerWidth, labelGutter)
 
-	guiLabel, err := l.AddLabel("PREVIOUS MENU", d2gui.FontStyle30Units)
+	guiLabel, err := l.AddLabel(text, d2gui.FontStyle30Units)
 	if err != nil {
 		m.Error(err.Error())
 	}
 
-	label := &showLayoutLabel{Label: guiLabel, target: optionsLayoutID, showLayout: m.showLayout}
+	label := &showLayoutLabel{Label: guiLabel, target: target, showLayout: m.showLayout}
 	label.SetMouseClickHandler(func(_ d2interface.MouseEvent) {
 		label.Trigger()
 	})

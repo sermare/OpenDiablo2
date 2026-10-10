@@ -1,15 +1,16 @@
 package ebiten
 
 /*
-#cgo darwin LDFLAGS: -framework CoreGraphics
-#include <CoreGraphics/CoreGraphics.h>
+#cgo LDFLAGS: -framework ApplicationServices
+#include <ApplicationServices/ApplicationServices.h>
 
-static int od2CommandDown(void) {
-	return (CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState) & kCGEventFlagMaskCommand) != 0;
+static int cmdHeld(void) {
+	return (CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState) & kCGEventFlagMaskCommand) ? 1 : 0;
 }
 */
 import "C"
 
-// commandKeyDown reports whether a Command key is held (ebiten v2.0.2 has no
-// key constant for it).
-func commandKeyDown() bool { return C.od2CommandDown() != 0 }
+// commandHeld reports whether a Command key is down. ebiten 2.0 has no key for it
+// (GLFW's super key), so the system's modifier state is read directly; this is
+// safe from any thread.
+func commandHeld() bool { return C.cmdHeld() != 0 }

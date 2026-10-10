@@ -21,7 +21,7 @@ scenario_env() {
   s+=";move:npc=Hratli;wait:12;expect:log=class=253 known=true rows=[talk trade/repair cancel]"
   s+=";say:completequest 3 6;travel:4;expect:level=103;wait:2"
   # act 4: Pandemonium Fortress
-  s+=";refuse:5;move:npc=Tyrael;wait:10;expect:log=class=367 known=true rows=[talk cancel]"
+  s+=";refuse:5;move:npc=Tyrael;wait:10;expect:log=class=367 known=true rows=[talk hire cancel]"
   s+=";move:npc=Halbu;wait:12;expect:log=class=257 known=true rows=[trade/repair cancel]"
   s+=";say:completequest 4 2;travel:5;expect:level=109;wait:2"
   # act 5: Harrogath

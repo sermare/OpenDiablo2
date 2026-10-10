@@ -1,3 +1,4 @@
+scenario_realtime=1
 scenario_name="positional monster sounds (near and far ring, volume and pan per sound)"
 scenario_env() { echo 'export OD2_AUTOMONSTER="fallen1,4" OD2_AUTOMONSTER_FAR=40 OD2_AUTOMONSTER_SECONDS=20'; }
 scenario_check() {

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
@@ -17,6 +18,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 )
 
 var colorToken = regexp.MustCompile(`\[[a-z]+\]`)
@@ -374,6 +376,7 @@ func (d *Director) HeroStrike(p *d2mapentity.Player, m *d2mapentity.Monster) boo
 
 	d.emit("herohit", "HERO swing target=%s hit=true chance=%d roll=%d dmg=%d crit=%v ar=%d", m.Label(), chance, roll, dmg,
 		crit, ar)
+	d.heroLeech(p, m, dmg)
 	d.damage(u, p, dmg)
 
 	if d.opt.OnHeroStrike != nil {
@@ -381,6 +384,70 @@ func (d *Director) HeroStrike(p *d2mapentity.Player, m *d2mapentity.Monster) boo
 	}
 
 	return true
+}
+
+// heroLeech transfers life and mana from a melee hit to the hero (VERIFIED
+// 0x57a3b0, d2combat.ApplyLeech, emulator golden leech_golden): a percent of the
+// physical damage actually dealt (capped at the monster's life), scaled by the
+// monster's Drain column for the difficulty (0 = immune), divided by the
+// difficulty's steal divisors, and the hero's 8.8 life and mana are kept with
+// their fractions. One generator step is spent when life and mana both leech.
+func (d *Director) heroLeech(p *d2mapentity.Player, m *d2mapentity.Monster, dmg int) {
+	t := p.Stats.Totals
+	if t == nil || (t.LifeSteal == 0 && t.ManaSteal == 0) || m.Stat == nil {
+		return
+	}
+
+	if dmg > m.Vitals.HP {
+		dmg = m.Vitals.HP
+	}
+
+	drain := m.Stat.LeechSensitivityNormal
+
+	var rec *d2records.DifficultyLevelRecord
+
+	key := d2enum.DifficultyNormal
+
+	switch d.opt.Difficulty {
+	case d2monster.Nightmare:
+		drain, key = m.Stat.LeechSensitivityNightmare, d2enum.DifficultyNightmare
+	case d2monster.Hell:
+		drain, key = m.Stat.LeechSensitivityHell, d2enum.DifficultyHell
+	}
+
+	if d.asset != nil && d.asset.Records != nil {
+		rec = d.asset.Records.DifficultyLevels[key]
+	}
+
+	var divL, divM int32
+
+	if rec != nil {
+		divL, divM = int32(rec.LifeStealDivisor), int32(rec.ManaStealDivisor)
+	}
+
+	if d.leechFrac == nil {
+		d.leechFrac = map[string][2]int32{}
+	}
+
+	fr := d.leechFrac[p.ID()]
+	o := d2combat.ApplyLeech(d.heroRoller(), d2combat.LeechIn{
+		Total: int32(dmg) << d2combat.FixedShift, LifeLeech: int32(t.LifeSteal), ManaLeech: int32(t.ManaSteal),
+		HasAttacker: true, AttackerKind: 0,
+		Life: int32(p.Stats.Health)<<d2combat.FixedShift | fr[0], MaxLife: int32(p.Stats.MaxHealth) << d2combat.FixedShift,
+		Mana: int32(p.Stats.Mana)<<d2combat.FixedShift | fr[1], MaxMana: int32(p.Stats.MaxMana) << d2combat.FixedShift,
+		DefenderIsMonster: true, DefenderDrain: int32(drain), DiffLifeDiv: divL, DiffManaDiv: divM,
+	})
+
+	if p.Stats.Health <= 0 {
+		return
+	}
+
+	d.leechFrac[p.ID()] = [2]int32{o.Life & 0xff, o.Mana & 0xff}
+
+	if h, mn := int(o.Life>>d2combat.FixedShift), int(o.Mana>>d2combat.FixedShift); h != p.Stats.Health || mn != p.Stats.Mana {
+		d.emit("leech", "HERO leech target=%s life=%d->%d mana=%d->%d", m.Label(), p.Stats.Health, h, p.Stats.Mana, mn)
+		p.Stats.Health, p.Stats.Mana = h, mn
+	}
 }
 
 // PvPStrike is the result of a hero's melee swing at another hero.
@@ -506,6 +573,17 @@ func (d *Director) Damage(m *d2mapentity.Monster, dmg int, src *d2mapentity.Play
 	}
 }
 
+// staggerSuppressed runs the exe's hit recovery gate for a hit of dmg whole hit
+// points on a monster.
+func (d *Director) staggerSuppressed(u *unit, dmg int) bool {
+	if d.staggerRNG == nil {
+		d.staggerRNG = d2rand.New(d.opt.Seed ^ 0x53544147)
+	}
+
+	return d2combat.StaggerGate(d.staggerRNG.Step, false, 0, int32(dmg)<<d2combat.FixedShift, 0,
+		int32(u.m.Vitals.MaxHP)<<d2combat.FixedShift, true, u.m.HasMode(d2monster.ModeGetHit))
+}
+
 // DamageOverTime applies poison or burn damage: like Damage but the monster is
 // not interrupted (hit recovery) by the tick.
 func (d *Director) DamageOverTime(m *d2mapentity.Monster, dmg int, src *d2mapentity.Player) {
@@ -537,8 +615,14 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 
 		// hit recovery: the monster drops what it was doing (a blow that was
 		// winding up is lost), plays GH and thinks again when it ends. Aggro
-		// is not otherwise changed. Whether every hit interrupts, and how long
-		// the recovery lasts (monstats2 / aidel), is UNVERIFIED: every hit does.
+		// is not otherwise changed. Only hits large enough relative to max
+		// life interrupt (VERIFIED gate 0x57aa60, d2combat.StaggerGate, oracle
+		// react_golden); the hit class is UNVERIFIED (0 = the default divisor)
+		// and a frozen monster is not told apart from a stunned one here.
+		if d.staggerSuppressed(u, dmg) {
+			return
+		}
+
 		u.m.StopMoving()
 		u.m.DropHitEvents()
 		u.mv = nil

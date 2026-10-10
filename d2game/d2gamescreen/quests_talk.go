@@ -132,6 +132,7 @@ func (v *Game) questSpeak(npc questNPC, s d2quest.Speech) {
 		npc.label, npc.class, s.Msg, s.Mode, s.Quest, snd.Index, snd.Handle, snd.File, key, shorten(text, 60))
 
 	r.spoken = append(r.spoken, s.Msg)
+	v.logSubtitle(npc.label, s.Msg, text)
 
 	if hasSound && os.Getenv("OD2_AUTOTEST_MUTE") == "" {
 		if v.playSpeech(snd.Index) == nil && v.speechAudio() {

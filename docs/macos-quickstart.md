@@ -91,6 +91,37 @@ folder with the archives and list the MPQs in `MpqLoadOrder` (patch first):
 "MpqPath": "/Users/you/.wine-d2/drive_c/Program Files (x86)/Diablo II/"
 ```
 
+## Controls (mouse, trackpad, keyboard)
+
+The controls follow the original game. A trackpad has one button, so the right
+button is a two-finger click or Control+click.
+
+| Input | Action |
+|---|---|
+| Click (left) | Use the left skill. With the plain Attack skill: walk to the spot, attack a monster under the cursor. With any other skill (a spell): cast it at the cursor. NPCs, objects and ground items under the cursor are talked to, opened or picked up. |
+| Right click, two-finger click, **Control+click** | Use the right skill at the cursor. (With an item on the cursor, Control+click still drops it.) |
+| Shift+click | Stand still: use the left skill (Attack swings) without walking. |
+| Option (Alt) held | Show the names of all items lying on the ground. |
+| Control held | Run (the original's "hold run"), `R` toggles run/walk. |
+| `Tab` | Automap. |
+| `F1`-`F8` | Skill hotkeys (hover a skill in the skill popup or tree and press F-key to assign). |
+| `Esc` | Close panels / game menu. |
+| `I` or `B` | Inventory. `C` or `A` character. `T` skill tree. `S` right skill list. `Q` quest log. `P` party. `H` help. `O` hireling. `M` message log. `W` swap weapons. |
+| `` ` `` / `1`-`4` | Belt / belt potions. |
+| Cmd+Enter or Option+Enter | Toggle full screen (saved in `config.json`). |
+| Cmd+Q or Cmd+W | Quit (the hero is saved). |
+| Resize the window | The 800x600 picture is scaled to the window (Retina included) and stays centred with its aspect ratio. `WindowScale` in `config.json` (1-4) sets the start size. |
+
+**Rebinding keys:** Esc, Options, Configure Controls: click a key box, press the
+new key, then Accept (Default restores the original layout). The bindings are saved
+in `config.json` under `KeyBindings` (event name -> primary and secondary key
+names, e.g. `"ToggleInventoryPanel": ["B", "I"]`) and loaded at the next start.
+The console command `bindkey <Event> <Key>` does the same by hand.
+
+The rules live in `d2game/d2player/click_mapping.go` (pure, unit tested) and
+`d2core/d2input/window_shortcut.go`. Scenario `scripts/verify.d/8e-mac-input.sh`
+drives them with the `click:` and `press:` steps of `OD2_AUTOSCRIPT`.
+
 ## Testing without the UI
 
 Some environment variables make changes testable without clicking through the
@@ -148,6 +179,7 @@ a semicolon-separated list of steps, run a few seconds after the game starts:
 | `say:<command>` | Run an in-game console command. |
 | `expect:log=<substring>` | Fail the run unless the game log already contains it. |
 | `shot:<file>.png` | Save a screenshot of the window now (no spaces in the path). |
+| `pad:<op>` | Virtual gamepad: `connect`, `disconnect`, `press=A` (tap), `hold=A`, `release=A`, `stick=left\|right,x,y`, `state` (logs panels, automap and skills). See `docs/gamepad.md`. |
 | `exit` | Finish; with `OD2_AUTOEXIT=1` the process exits 0 on PASS, 1 on FAIL. |
 
 Opening a panel with `panel:` also logs the values it shows, so an imported hero can be checked without a
@@ -167,6 +199,8 @@ Debug console commands for act travel (use with `say:`): `completequest <act> <q
 | `skill:popup=left\|right\|close` | Open the skill popup of a button (logs the grid: `SKILLBAR popup ... [Fire Ball@r1c1(lvl20) ...]`, row/column per skilldesc page/row/column). |
 | `skill:hover=<name>` / `skill:click=<name>` | Put the mouse on an icon of the open popup (or skill tree) / click it (selects, plays the click, closes the popup). |
 | `hotkey:F1=<name>[@left]` / `press:F1` | Assign a skill to a hotkey slot / press the key. `press` takes the same path as the keyboard: while an icon is hovered it assigns it, otherwise it selects the assigned skill (`SKILLBAR hotkey`, `SKILLBAR press`). |
+| `click:<left\|right>[+shift][+ctrl][+alt][@x,y]` | Send a mouse click (screen pixels, default near the centre) through the same handlers as a real click; logs `INPUT world-click ... action=`. `press:<Key>` also presses any key by name (`Tab`, `I`, `Escape`...), logging `INPUT panels after <key>: ...`. |
+| `say:bindkey <Event> <Key>` | Rebind a key and save it to `config.json` (as Configure Controls does). |
 | `skill:use=left\|right` | Cast the active left/right skill through the normal skill pipeline (as a click would). |
 | `skill:spend=<name>` / `skill:nospend=<name>` | Put an unused skill point into a skill (skills.txt reqlevel/reqskill1-3 apply) / pass only if the point is refused. Console: `levelup <n>` grants level-ups (1 skill point and 5 stat points each). |
 | `walkto:exit=<level>` | Walk to the exit that leads to that level (the shared border of two outdoor levels, a cave entrance or stair tile) and through it. Needs `OD2_REALMAPS=1`. The hero fights what attacks him on the way. Waits until the walk and the level change are over. |

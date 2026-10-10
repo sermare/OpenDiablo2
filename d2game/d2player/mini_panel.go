@@ -11,16 +11,18 @@ const (
 	miniPanelX = 325
 	miniPanelY = 526
 
-	panelOffsetLeft  = 130
-	panelOffsetRight = 130
+	// distances the strip moves when a panel opens (FUN_0047b510/FUN_0047a6a0): to the right when a left panel is
+	// open, to the left when a right one is; single player (7 buttons) and multiplayer (8) differ
+	panelOffsetLeftSingle, panelOffsetRightSingle = 128, 131
+	panelOffsetLeftMulti, panelOffsetRightMulti   = 118, 120
 )
 
 const (
-	containerOffsetX = -75
-	containerOffsetY = -49
+	containerOffsetX = -77 // single player strip W/2-0x4a-3 (FUN_0047b510); multiplayer: 10 more
+	containerOffsetY = -47 // standing at y = H-0x2f
 
-	buttonOffsetX = -72
-	buttonOffsetY = -52
+	buttonOffsetX = -74 // first button W/2-0x4a (FUN_0047a6a0); multiplayer: 10 more
+	buttonOffsetY = -50 // buttons stand at y = H-0x32
 )
 
 type miniPanelContent struct {
@@ -74,6 +76,7 @@ type miniPanel struct {
 	panelGroup       *d2ui.WidgetGroup
 	groupAlwaysVis   *d2ui.WidgetGroup
 	tooltipGroup     *d2ui.WidgetGroup
+	buttons          []*d2ui.Button // the strip's buttons, for the layout audit
 
 	*d2util.Logger
 }
@@ -118,7 +121,7 @@ func (m *miniPanel) createWidgets(actions *miniPanelActions) {
 	}
 
 	// nolint:golint,gomnd // divide by 2 does not need a magic number
-	x, y := screenWidth/2+containerOffsetX, screenHeight+containerOffsetY
+	x, y := screenWidth/2+containerOffsetX-m.multiExtra(), screenHeight+containerOffsetY
 	m.container.SetPosition(x, y)
 	m.panelGroup.AddWidget(m.container)
 
@@ -139,7 +142,7 @@ func (m *miniPanel) createButtons(actions *miniPanelActions) {
 	buttonWidth++
 
 	// nolint:golint,gomnd // divide by 2 does not need a magic number
-	x, y = screenWidth/2+buttonOffsetX, screenHeight+buttonOffsetY-buttonHeight
+	x, y = screenWidth/2+buttonOffsetX-m.multiExtra(), screenHeight+buttonOffsetY-buttonHeight
 	buttonsFirst := []miniPanelContent{
 		{d2ui.ButtonTypeMinipanelCharacter,
 			actions.characterToggle,
@@ -230,6 +233,7 @@ func (m *miniPanel) createButton(content miniPanelContent, x, y, buttonHeight in
 	btn.OnActivated(content.onActivate)
 	btn.SetTooltip(tt)
 	btn.SetRenderPriority(d2ui.RenderPriorityForeground)
+	m.buttons = append(m.buttons, btn)
 
 	return btn
 }
@@ -290,23 +294,23 @@ func (m *miniPanel) IsInRect(px, py int) bool {
 }
 
 func (m *miniPanel) moveRight() {
-	m.panelGroup.OffsetPosition(panelOffsetRight, 0)
-	m.tooltipGroup.OffsetPosition(panelOffsetRight, 0)
+	m.panelGroup.OffsetPosition(m.shiftRight(), 0)
+	m.tooltipGroup.OffsetPosition(m.shiftRight(), 0)
 }
 
 func (m *miniPanel) undoMoveRight() {
-	m.panelGroup.OffsetPosition(-panelOffsetRight, 0)
-	m.tooltipGroup.OffsetPosition(-panelOffsetRight, 0)
+	m.panelGroup.OffsetPosition(-m.shiftRight(), 0)
+	m.tooltipGroup.OffsetPosition(-m.shiftRight(), 0)
 }
 
 func (m *miniPanel) moveLeft() {
-	m.panelGroup.OffsetPosition(-panelOffsetLeft, 0)
-	m.tooltipGroup.OffsetPosition(-panelOffsetLeft, 0)
+	m.panelGroup.OffsetPosition(-m.shiftLeft(), 0)
+	m.tooltipGroup.OffsetPosition(-m.shiftLeft(), 0)
 }
 
 func (m *miniPanel) undoMoveLeft() {
-	m.panelGroup.OffsetPosition(panelOffsetLeft, 0)
-	m.tooltipGroup.OffsetPosition(panelOffsetLeft, 0)
+	m.panelGroup.OffsetPosition(m.shiftLeft(), 0)
+	m.tooltipGroup.OffsetPosition(m.shiftLeft(), 0)
 }
 
 func (m *miniPanel) SetMovedLeft(moveLeft bool) {
@@ -413,4 +417,31 @@ func (m *miniPanel) restoreDisabled() {
 	} else {
 		m.Close()
 	}
+}
+
+// multiExtra is how much further left the 8 button strip of a multiplayer game starts (W/2-0x54 against W/2-0x4a).
+func (m *miniPanel) multiExtra() int {
+	if m.isSinglePlayer {
+		return 0
+	}
+
+	return 10
+}
+
+// shiftRight is the distance the strip moves right when a panel on the left is open.
+func (m *miniPanel) shiftRight() int {
+	if m.isSinglePlayer {
+		return panelOffsetRightSingle
+	}
+
+	return panelOffsetRightMulti
+}
+
+// shiftLeft is the distance the strip moves left when a panel on the right is open.
+func (m *miniPanel) shiftLeft() int {
+	if m.isSinglePlayer {
+		return panelOffsetLeftSingle
+	}
+
+	return panelOffsetLeftMulti
 }

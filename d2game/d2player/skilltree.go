@@ -17,18 +17,18 @@ import (
 )
 
 const (
-	tabButtonX  = 628
-	tabButton0Y = 385
-	tabButton1Y = 277
-	tabButton2Y = 170
+	tabButtonX  = 628 + panelShiftX
+	tabButton0Y = 385 + panelShiftY
+	tabButton1Y = 277 + panelShiftY
+	tabButton2Y = 170 + panelShiftY
 
-	availSPLabelX = 677
-	availSPLabelY = 72
+	availSPLabelX = 677 + panelShiftX
+	availSPLabelY = 72 + panelShiftY
 
-	skillCloseButtonXLeft   = 416
-	skillCloseButtonXMiddle = 501
-	skillCloseButtonXRight  = 572
-	skillCloseButtonY       = 449
+	skillCloseButtonXLeft   = 416 + panelShiftX
+	skillCloseButtonXMiddle = 501 + panelShiftX
+	skillCloseButtonXRight  = 572 + panelShiftX
+	skillCloseButtonY       = 449 + panelShiftY
 )
 
 const (
@@ -60,12 +60,12 @@ const (
 )
 
 const (
-	remainingPointsLabelX, remainingPointsLabelY = 677, 128
+	remainingPointsLabelX, remainingPointsLabelY = 677 + panelShiftX, 128 + panelShiftY
 )
 
 const (
-	skillTreePanelX = 401
-	skillTreePanelY = 64
+	skillTreePanelX = 400 // Mode800.RightPanelX()
+	skillTreePanelY = 60  // Mode800.PanelTop()
 )
 
 const (
@@ -144,6 +144,7 @@ type skillTree struct {
 	stats           *d2hero.HeroStatsState
 	tooltip         *d2ui.Tooltip
 	hovered         *skillIcon
+	pinned          bool
 	// tooltipText builds the tooltip of an icon (set by the game controls: it knows the hotkeys).
 	tooltipText func(*d2hero.HeroSkill) string
 
@@ -454,6 +455,10 @@ func (s *skillTree) iconAt(mx, my int) *skillIcon {
 
 // OnMouseMove tracks the icon under the mouse (for its tooltip and for hotkey assignment).
 func (s *skillTree) OnMouseMove(mx, my int) {
+	if s.pinned {
+		return
+	}
+
 	s.setHovered(s.iconAt(mx, my))
 }
 
@@ -488,6 +493,8 @@ func (s *skillTree) HoverSkill(id int) bool {
 	for _, si := range s.skillIcons {
 		if si.skill.ID == id && si.GetVisible() {
 			s.setHovered(si)
+			s.pinned = true // a scripted hover stays until the tab changes
+
 			return true
 		}
 	}
@@ -542,7 +549,7 @@ func (s *skillTree) Summary() string {
 }
 
 func (s *skillTree) setTab(tab int) {
-	s.hovered = nil
+	s.hovered, s.pinned = nil, false
 	s.selectedTab = tab
 	s.closeButton.SetPosition(s.tab[tab].closeButtonPosX, skillCloseButtonY)
 

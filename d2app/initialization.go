@@ -46,6 +46,8 @@ func (a *App) initialize() error {
 	a.audio.SetVolumes(a.config.BgmVolume, a.config.SfxVolume)
 	a.applySpeechOption()
 	d2player.SetOptionsBackend(optionsBackend{a})
+	a.loadGamepadProfiles()
+	a.applyAccessibility("")
 
 	if err := a.loadStrings(); err != nil {
 		return err

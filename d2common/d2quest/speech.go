@@ -183,6 +183,7 @@ var textKeys = map[int]string{
 	59: "RogueSignpostGossip1", 60: "RogueSignpostGossip2", 61: "RogueSignpostGossip3",
 	62: "RogueSignpostGossip4", 63: "RogueSignpostGossip5",
 	253: "JerhynActIntroGossip1",
+	302: "TyraelActIntroGossip1",
 }
 
 // TextKey returns the string.tbl key of a message's text ("" when unknown).
@@ -238,6 +239,17 @@ func textKeyFromHandle(handle string) string {
 		name = "Cain"
 	}
 
+	if act == "2" && q == "2" {
+		// The Horadric Staff: Cain's four early-return lines are named by the part and the end line by the staff
+		// (A2Q2EarlyReturnScrollCain ... A2Q2SuccessfulStaffCain)
+		switch kind {
+		case "EARLY_SCROLL", "EARLY_CAP", "EARLY_STAVE", "EARLY_CUBE":
+			return "A2Q2EarlyReturn" + strings.ToUpper(kind[6:7]) + strings.ToLower(kind[7:]) + name
+		case "SUCCESS":
+			return "A2Q2SuccessfulStaff" + name
+		}
+	}
+
 	infix, ok := textKeyKinds[kind]
 	if !ok {
 		return ""
@@ -254,6 +266,8 @@ func textKeyFromHandle(handle string) string {
 		key = "A1Q4QuestSuccessful" + name
 	case "A1Q4AfterInitGheed":
 		key = "A1Q4AfterInitScrollGheed"
+	case "A2Q4SuccessfulGreiz":
+		key = "A2Q4SuccessfulGriez" // misspelt in string.tbl
 	case "A1Q6EarlyReturnKashya":
 		key = "A1Q6EarlyReturn2Kashya"
 	}

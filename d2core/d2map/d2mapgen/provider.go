@@ -124,6 +124,10 @@ func (p *mazeProvider) CanLoad(levelID int) bool {
 		return false
 	}
 
+	if _, preset := actPresetPrest[levelID]; preset { // the Harem and Duriel's lair are preset levels
+		return false
+	}
+
 	if v, seen := p.ok[levelID]; seen {
 		return v
 	}

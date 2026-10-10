@@ -225,7 +225,8 @@ func New(rec *d2s.QuestRecord, npc *d2s.NPCBlock, difficulty int) *Game {
 
 	for _, init := range []func() *Quest{
 		newA1Prologue, newDenOfEvil, newBurialGrounds, newToolsOfTheTrade, newSearchForCain,
-		newForgottenTower, newSistersToTheSlaughter, newA2Prologue, newRadament, newNavi,
+		newForgottenTower, newSistersToTheSlaughter, newA2Prologue, newRadament,
+		newNavi,
 		newA1Intro,
 		newHoradricStaff, newTaintedSun, newArcaneSanctuary, newSummoner, newSevenTombs,
 		newA3Prologue, newLamEsen, newKhalim, newBlade, newGoldenBird, newBlackenedTemple, newGuardian,

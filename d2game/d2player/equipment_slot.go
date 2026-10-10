@@ -35,7 +35,7 @@ func genEquipmentSlotsMap(record *d2records.InventoryRecord) map[d2enum.Equipped
 		equipmentSlot := EquipmentSlot{
 			nil,
 			box.Left,
-			box.Bottom + cellPadding,
+			box.Bottom,
 			box.Width,
 			box.Height,
 		}

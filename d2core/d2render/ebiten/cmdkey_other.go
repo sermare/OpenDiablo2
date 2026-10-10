@@ -1,5 +1,7 @@
 //go:build !darwin
+// +build !darwin
 
 package ebiten
 
-func commandKeyDown() bool { return false }
+// commandHeld: there is no Command key outside macOS.
+func commandHeld() bool { return false }

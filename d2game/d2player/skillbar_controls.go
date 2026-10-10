@@ -439,6 +439,13 @@ func (g *GameControls) AutoHotkey(key, name string) error {
 func (g *GameControls) AutoPress(key string) error {
 	slot := g.slotOfKeyName(key)
 	if slot < 0 {
+		// not a skill hotkey: press the key like the keyboard would (Tab, I, Escape...)
+		if _, ok := KeyByName(key); ok {
+			g.Infof("INPUT key %s", key)
+
+			return g.AutoKey(key)
+		}
+
 		return fmt.Errorf("no hotkey is bound to %q", key)
 	}
 

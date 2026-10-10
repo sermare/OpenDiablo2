@@ -329,6 +329,36 @@ func isOutdoor(level int) bool { return ActOfLevel(level) <= 2 && len(EdgeNeighb
 //     ones). The LvlWarp id is NOT the style there (style 4 leads down,
 //     LvlWarp 4 is "Cave Up").
 func TileDestination(level, style int) (int, bool) {
+	// the Act 2 files: the style of a special tile is the Vis slot of Levels.txt
+	if to, ok := Act2VisDestination(level, style); ok {
+		return to, true
+	}
+
+	if level == LevelCanyonOfTheMagi {
+		return 0, false
+	}
+
+	// the Durance of Hate (100..102): like the Act 2 files, the style of a special tile is the Levels.txt Vis slot
+	// (observed in the generated level 101: the tiles carry the styles 0 and 3 for slots {102, 102, 100, 100}).
+	// UNVERIFIED against the exe like the other tile rules.
+	if level >= 100 && level <= 102 {
+		slot := 0
+
+		for _, l := range allLinks {
+			if l.From != level || l.Kind != KindTile {
+				continue
+			}
+
+			if slot == style {
+				return l.To, true
+			}
+
+			slot++
+		}
+
+		return 0, false
+	}
+
 	if isOutdoor(level) {
 		if to, ok := Destination(level, style); ok {
 			return to, true

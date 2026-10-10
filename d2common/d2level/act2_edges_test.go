@@ -67,3 +67,30 @@ func TestAct2SingleTileDestination(t *testing.T) {
 		t.Errorf("Halls of the Dead 1 down stairs: %d %v", to, ok)
 	}
 }
+
+// Each of the seven King Tomb entrances of the Canyon of the Magi (tile styles 1-7) leads to a different tomb 66-72,
+// and every tomb leads back to the canyon.
+func TestCanyonTombEntrances(t *testing.T) {
+	seen := map[int]bool{}
+
+	for style := 1; style <= 7; style++ {
+		to, ok := TileDestination(46, style)
+		if !ok || to < 66 || to > 72 || seen[to] {
+			t.Fatalf("style %d leads to %d %v (seen %v)", style, to, ok, seen)
+		}
+
+		seen[to] = true
+	}
+
+	for _, style := range []int{0, 8, -1} {
+		if to, ok := TileDestination(46, style); ok {
+			t.Errorf("style %d must not lead anywhere, got %d", style, to)
+		}
+	}
+
+	for tomb := 66; tomb <= 72; tomb++ {
+		if to, ok := TileDestination(tomb, 0); !ok || to != 46 {
+			t.Errorf("tomb %d: the way up leads to %d %v, want the canyon", tomb, to, ok)
+		}
+	}
+}

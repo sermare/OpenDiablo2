@@ -123,7 +123,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
         # muted unless OD2_VERIFY_SOUND=1 or the scenario sets scenario_unmuted=1 (real audio, uses the sound device)
         [ -n "${OD2_VERIFY_SOUND:-}" ] || [ -n "$scenario_unmuted" ] || echo "export OD2_AUTOTEST_MUTE=1"
         # game clock x4 (OD2_AUTOSPEED) unless the scenario needs real time (perf, multiplayer); OD2_VERIFY_SPEED=1 turns it off
-        [ -n "$scenario_realtime" ] || [ "${OD2_VERIFY_SPEED:-4}" = 1 ] || echo "export OD2_AUTOSPEED=${OD2_VERIFY_SPEED:-4}"
+        [ -n "$scenario_realtime" ] || [ "${OD2_VERIFY_SPEED:-8}" = 1 ] || echo "export OD2_AUTOSPEED=${OD2_VERIFY_SPEED:-8}"
         scenario_env
         echo "$tmp/od2 2>&1 | tee $log"
       } > $cmd

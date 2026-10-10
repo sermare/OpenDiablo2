@@ -178,17 +178,20 @@ func TestExplosionFlagClearsDamageOnlyWithoutHitFunc(t *testing.T) {
 	}
 }
 
+// The pierce charges are a fixed function of the chance (private generator,
+// emulator oracle in d2combat): a chance of 66 or less never gives a charge,
+// 100 or more always gives all four.
 func TestPierceChargesRoll(t *testing.T) {
 	for _, tc := range []struct {
-		chance, roll, want int
-	}{{0, 0, 0}, {50, 49, 4}, {50, 50, 0}, {100, 99, 4}, {1, 0, 4}} {
-		if got := PierceCharges(tc.chance, fakeRoller{uint32(tc.roll)}); got != tc.want {
-			t.Errorf("chance %d roll %d: %d charges, want %d", tc.chance, tc.roll, got, tc.want)
+		chance, want int
+	}{{0, 0}, {50, 0}, {66, 0}, {100, 4}, {150, 4}} {
+		if got := PierceCharges(tc.chance, fakeRoller{0}); got != tc.want {
+			t.Errorf("chance %d: %d charges, want %d", tc.chance, got, tc.want)
 		}
 	}
 
-	if PierceCharges(100, nil) != 0 {
-		t.Error("nil roller")
+	if PierceCharges(100, nil) != 4 {
+		t.Error("nil roller must not matter")
 	}
 }
 
@@ -205,7 +208,7 @@ func TestPierceChanceGrantsChargesAtCreation(t *testing.T) {
 	sp := fireBolt()
 	sp.Pierce = true
 	s := NewSim(w, nil)
-	m, _ := s.Create(CreateParams{Spec: sp, Level: 1, DestX: 60, PierceChance: 50,
+	m, _ := s.Create(CreateParams{Spec: sp, Level: 1, DestX: 60, PierceChance: 100,
 		Owner: Owner{Roller: fakeRoller{0}}})
 
 	if m.Pierce != 4 {

@@ -101,15 +101,38 @@ OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOGAME=hero.d2s OD2_AUTOEXIT=1 \
 | 22 | The way back from the far side of Dry Hills: "EXIT gave up walking towards level 41 ... after 60 s" although the hero walked all the time | the exit walk's time-out counted seconds, not progress (the Act 1 fix of bug 5 covered stairs, items and chests only) | `exitWalk.progress`: the 60 s run only while the hero does not get closer | `TestExitWalkProgressRestartsTheClock`, 9e (`EXIT gave up` fails it) |
 | 23 | A hero who ends the session in Lut Gholein is saved as an Act 1 hero (`act=1` in the exported `.d2s`, so the next load starts in the Rogue Encampment) | the server took the act from the client's save packet; the client's player entity never learns the act and always says 1, while `onChangeLevel` tracks it correctly | the server ignores the client's act | 9e checks the last `D2S EXPORT reparse` for `act=2` |
 
+## Act 2 finish (branch `feat/act2-finish`)
+
+| Scenario | What it plays |
+|---|---|
+| `scripts/verify.d/9i-act2-full.sh` | Dry Hills -> Far Oasis (43) -> Lost City (44) -> Valley of Snakes (45) over the seamless borders; Maggot Lair 1-3 (62-64), Ancient Tunnels (65), Claw Viper Temple 1-2 (58, 61) and back |
+| `scripts/verify.d/9j-act2-dungeons.sh` | Lut Gholein -> Sewers 1-3 (47-49), Harem (50) -> Harem 2 -> Palace Cellar 1 (51-52), portals to Palace Cellar 3 (54) and the Arcane Sanctuary (74) with a teleport pad, the Canyon of the Magi (46, by portal) and its seven tomb entrances (66-72) |
+| `scripts/verify.d/9k-act2-quests.sh` | `OD2_AUTOQUEST=act2` (also `sun`, `staff`, `arcane`, `summoner`, `tombs`): Radament, Tainted Sun, Horadric Staff, Arcane Sanctuary, Summoner, Seven Tombs through the real speech tables, Sounds.txt rows and string.tbl text; Fara, Drognan, Greiz, Jerhyn, Lysander, Warriv, Cain, Meshif and Tyrael speak |
+
+Log lines: `real maze: Tal Rasha's tomb level N: real=... orifice objects=...`, `act town: exit tile style=...`, `OBJECT teleport pad ...`.
+
+### Bugs found by playing the rest of Act 2
+
+| # | What a player saw | Root cause | Fix | Regression test |
+|---|---|---|---|---|
+| 24 | Lut Gholein: `walkto:exit=47` / `=50`: "level 40 does not border level 47"; no way into the sewers or the palace | the town DS1 special tiles carry the styles 2, 3, 4 (Vis slots of Levels.txt), which no rule resolved | `d2level.Act2VisDestination`: the style of a special tile of an Act 2 file is the Vis slot of Levels.txt (UNVERIFIED rule; every style seen in the files fits; table `vis_act2.go`) | `TestPresetTileDestinations`, `TestAct2VisSlotsMatchLevelsTxt` (D2_TABLES), 9j |
+| 25 | Harem Level 1 (50): "the engine cannot load that level yet" | Levels.txt DrlgType 2 (one preset file, `Harem2.ds1`); the maze provider rejects it and no provider took it | `actPresetPrest` in `act_towns.go` builds it like a town | 9j |
+| 26 | Sewers 1: "level 47 has no exit towards level 48" | the down stairs carry style 2, the dungeon stair rule knew only 0, 1 and 4+ | the Vis slot rule | `TestAct2VisSlotsMatchLevelsTxt`, 9j |
+| 27 | Canyon of the Magi: entrances to the tombs 70-72 unreachable ("level 46 does not border level 70"), 66-69 only by accident (styles 4-7) | the seven King Tomb tiles carry the styles 1-7 = Vis1..Vis7 of level 46 (Vis0 is empty) | `CanyonTombDestination`; `markWarpTiles` records the destinations | `TestCanyonTombEntrances`, 9j (all seven tombs entered and left) |
+| 28 | No tomb had Tal Rasha's chamber or the Horadric orifice; the special tombs were not enlarged | `drlgmaze.Params.TombA/TombB` were never passed by the engine | `GenerateRealMaze` passes `DrawActExtras`; `d2drlg.RealTomb(gameSeed)` = TombA (the maze finisher stamps `Talrasha` on TombA) | `TestRealTomb`, `TestAct2MazeLevelsGenerate` (D2_TABLES), 9j log |
+| 29 | Arcane Sanctuary teleport pads, the sanctuary portal and Duriel's portal did nothing | stubs in `d2object` | fn 27: the hero lands next to the nearest other pad (`PadPartner`; the original uses the same or an adjacent room); fn 34: Palace Cellar 3 <-> sanctuary; fn 43: Duriel's lair | `TestPadPartner`, 9j |
+| 30 | Warriv, Fara, Drognan, Greiz, Jerhyn, Elzix, Lysander, Cain had no quest speech after Radament | quests A2Q2-A2Q6 had no nodes (Seven Tombs only the Duriel kill) | `d2quest/a2_later.go`: Horadric Staff, Tainted Sun, Arcane Sanctuary, Summoner and the speech chain of the Seven Tombs; `CubeHoradricStaff`, orifice, `TravelToAct3` | `TestAct2QuestChain`, `TestHoradricStaffCain`, autoquest stages, 9k |
+| 31 | Cain's lines 335-339, Tyrael 302 and Greiz 397 showed no text | the handle -> string.tbl key rule does not fit them | `TextKey` special cases | `TestTextKeysAct2`, `TestTextKeysExistInStringTbl` (D2_STRING_TBL) |
+
+Which tomb is real: the game seed draws two tomb levels (`DrawActExtras`); the first (TombA) gets the Talrasha chamber with the orifice (object 152), the second a Kaa chamber, the other five a chest. The entrance does not tell which tomb is real. Quest objects: Tainted Sun altar 149, orifice 152, Horazon's journal 357.
+
 ## What Act 2 does not do yet
 
-* Warriv, Fara, Drognan and Greiz have a greeting voice and their menu rows (talk, trade/repair, hire, "go west"),
-  but no quest speech: the quests of Act 2 start from Atma (Radament, message 304) and the palace; the rest of the
-  Act 2 quest line needs the Sewers, the Palace, the Arcane Sanctuary and the tombs, which are generated but not played.
-* Far Oasis (43), Lost City (44) and Valley of Snakes (45) are generated and have borders and entrances (the unit
-  tests cover them), but 9e stops at Dry Hills: the monsters take a long time at the speed of a scripted hour.
-* The Canyon of the Magi (46) has no seamless neighbour and seven tomb entrances (which tomb is the real one is
-  not decided); its entrance tiles stay unresolved.
+* The Vis slot rule for special tiles (bug 24), the string.tbl keys of the palace guard barks (voice only), the object id of
+  Horazon's journal (357, "Tome") and all A2Q2-A2Q6 handlers except the speech tables are UNVERIFIED against the binary.
+* The Horadric Cube panel does not call `CubeHoradricStaff` (the recipe is in the quest layer); quest effects such as the
+  darkened sun, the harem blocker, Tyrael's portal and the Duriel portal delay are logged (`QUEST EFFECT ... [not simulated]`) only.
+* Lut Gholein: the special tiles of the styles 31-34 are not used.
 * The desert tiles are the same approximation as the Act 1 outdoors (`drlgoutdoor/doc.go`, exact tiles unavailable for
   the level type): the ground of Rocky Waste has patches of the wrong tile set, and the town is dark at night.
 * A few monsters of the desert stand on islands the hero cannot reach (5-9 per level) and are removed; the walkable
