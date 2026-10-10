@@ -340,34 +340,17 @@ func TileDestination(level, style int) (int, bool) {
 		return 0, false
 	}
 
-	// the Durance of Hate (100..102): OBSERVED in the generated levels, the special tiles carry the styles 0 and 1
-	// (the "WarpU"/"Warp" rooms: stairs up to the previous level) and 3 (the "WarpD" room: stairs down). They are
-	// NOT the Levels.txt Vis slots (slot order is {down, down, up, up}, which would send the arrival stairs of
-	// level 100, style 1, down). Before, level 100 resolved only style 4 as "down", so its north stairs (style 3)
-	// led nowhere and the Act 3 gate scenario never reached level 101. UNVERIFIED against the exe like the
-	// other tile rules.
+	// the Durance of Hate (100..102): the style of a special tile is the Levels.txt Vis slot (VERIFIED against the exe
+	// with the DRLG oracle, see durance_test.go: a room whose preset has a special tile of style k gets the room flag
+	// 0x10<<k, DRLG_BuildRoomNeighborLinks (0x66f030) links every flag bit k through DRLG_LinkRoomToAdjacentLevel
+	// (0x66eed0) to Vis[k] with LvlWarp id Warp[k]). The Next files (WarpD) carry the styles 0/1, the Prev files
+	// (WarpU) 2/3, MephComp 3: slots {101, 101, 83, 83} in level 100, {102, 102, 100, 100} in 101 and
+	// {0, 0, 101, 101} in 102.
+	if to, ok := duranceVisDestination(level, style); ok {
+		return to, true
+	}
+
 	if level >= 100 && level <= 102 {
-		var ups, downs []int
-
-		for _, l := range allLinks {
-			if l.From != level || l.Kind != KindTile || l.Warp < 0 {
-				continue
-			}
-
-			if upWarps[l.Warp] {
-				ups = append(ups, l.To)
-			} else {
-				downs = append(downs, l.To)
-			}
-		}
-
-		switch {
-		case (style == 0 || style == 1) && len(ups) > 0:
-			return ups[0], true
-		case (style == duranceDownStyle || style == downStyleBase) && len(downs) > 0:
-			return downs[0], true
-		}
-
 		return 0, false
 	}
 
@@ -445,9 +428,6 @@ var presetExitStyle = map[int]int{13: 1, 14: 1, 15: 1, 16: 1, 37: 0}
 
 func hasPresetExit(level int) bool { _, ok := presetExitStyle[level]; return ok }
 
-// duranceDownStyle is the tile style of the "WarpD" stairs room of the Durance of Hate levels (observed).
-const duranceDownStyle = 3
-
 // downStyleBase is the tile style of the first "down" exit of a dungeon level.
 const downStyleBase = 4
 
@@ -516,4 +496,21 @@ func OutdoorExitByPreset(level int, path string) (int, bool) {
 	}
 
 	return 0, false
+}
+
+// duranceVis are the Vis0..Vis3 slots of Levels.txt for the Durance of Hate (0 = no level).
+var duranceVis = map[int][4]int{
+	100: {101, 101, 83, 83},
+	101: {102, 102, 100, 100},
+	102: {0, 0, 101, 101},
+}
+
+// duranceVisDestination is the level behind the special tile of a Durance of Hate file with the given style.
+func duranceVisDestination(level, style int) (int, bool) {
+	v, ok := duranceVis[level]
+	if !ok || style < 0 || style >= len(v) || v[style] == 0 {
+		return 0, false
+	}
+
+	return v[style], true
 }
