@@ -231,3 +231,22 @@ func (d *Director) landSummon(u *unit) bool {
 
 	return true
 }
+
+// SummonStats counts the living units made by monster-cast summons: the total
+// and the largest number any one caster has alive (test/diagnostic only).
+func (d *Director) SummonStats() (live, maxPerCaster int) {
+	per := map[uint32]int{}
+
+	for _, u := range d.units {
+		if u.summoner != 0 && u.m.Alive() {
+			live++
+			per[u.summoner]++
+
+			if per[u.summoner] > maxPerCaster {
+				maxPerCaster = per[u.summoner]
+			}
+		}
+	}
+
+	return live, maxPerCaster
+}
