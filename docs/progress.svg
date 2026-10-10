@@ -31,9 +31,9 @@
 <text x="36" y="114" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Game v1 complete</text>
 <text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">58%</text>
 <rect x="36" y="128" width="808" height="26" rx="13" fill="#ffffff" fill-opacity="0.08"/>
-<rect x="36" y="128" width="517.5" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
+<rect x="36" y="128" width="528.2" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
 <rect x="36" y="128" width="468.4" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
-<text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +6% on branches, not yet verified</text>
+<text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +7% on branches, not yet verified</text>
 <text x="36" y="192" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#8c8eb0">v1 = double-click the Mac app, make or load a character, play Acts 1-5 single player without a blocker</text>
 <text x="36" y="226" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Game.exe functions named in Ghidra</text>
 <text x="844" y="226" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11,257 / 11,257</text>
@@ -63,8 +63,9 @@
 <text x="844" y="538" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">8,708 / 8,768</text>
 <rect x="36" y="550" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
 <rect x="36" y="550" width="732.9" height="18" rx="9" fill="url(#g4)" filter="url(#glow)"/>
+<rect x="768.9" y="550" width="5.1" height="18" rx="9" fill="#22c1c3" fill-opacity="0.28" stroke="#22c1c3" stroke-opacity="0.6" stroke-dasharray="4 3"/>
 <text x="844" y="564" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#22c1c3">99.3%</text>
-<text x="36" y="585" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">mazes + Act 1 outdoors + exact Act 1 tiles + Acts 2-5 outdoor/preset generators all proven in Go against the emulator; on branches: all 70 maze levels (2,696 rooms) and presets 26/27/32/33/37/94/97 now match the emulator record for record (427 levels, 30,129 rooms, 0 mismatches), not yet landed</text>
+<text x="36" y="585" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+1% done on branches, not yet verified (dashed) · mazes + Act 1 outdoors + exact Act 1 tiles + Acts 2-5 outdoor/preset generators all proven in Go against the emulator; on branches: all 70 maze levels (2,696 rooms) and presets 26/27/32/33/37/94/97 now match the emulator record for record (427 levels, 30,129 rooms, 0 mismatches), not yet landed</text>
 <text x="36" y="616" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real .d2s save: read and write verified</text>
 <text x="844" y="616" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">9 / 10</text>
 <rect x="36" y="628" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -119,9 +120,9 @@
 <text x="36" y="1240" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">In-game UI panels matching the original layout</text>
 <text x="844" y="1240" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">0 / 14</text>
 <rect x="36" y="1252" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36.0" y="1252" width="263.6" height="18" rx="9" fill="#c58bff" fill-opacity="0.28" stroke="#c58bff" stroke-opacity="0.6" stroke-dasharray="4 3"/>
+<rect x="36.0" y="1252" width="421.7" height="18" rx="9" fill="#c58bff" fill-opacity="0.28" stroke="#c58bff" stroke-opacity="0.6" stroke-dasharray="4 3"/>
 <text x="844" y="1266" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#c58bff">0%</text>
-<text x="36" y="1287" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+36% done on branches, not yet verified (dashed) · 14 panels; a layout audit covering 5 is on a branch, never run in a game; update: the layout was then run in a real game window on a branch (150 rectangles checked, 0 deviating) but that branch is not landed</text>
+<text x="36" y="1287" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+57% done on branches, not yet verified (dashed) · 14 panels; a layout audit covering 5 is on a branch, never run in a game; update: the layout was then run in a real game window on a branch (150 rectangles checked, 0 deviating) but that branch is not landed</text>
 <text x="36" y="1318" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Item generation gaps closed vs the exe</text>
 <text x="844" y="1318" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11 / 12</text>
 <rect x="36" y="1330" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>

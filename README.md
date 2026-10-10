@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/progress.svg?v=1791605826" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
+<p align="center"><img src="docs/progress.svg?v=1791606802" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
 <p align="center"><img src="https://raw.githubusercontent.com/sermare/OpenDiablo2/progress-history/docs/progress-history.svg" alt="Progress over time: one line per part, snapshot every 10 minutes" width="880"></p>
 
 [![CI](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml/badge.svg)](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml)
