@@ -1,6 +1,9 @@
 package d2missile
 
-import "math"
+import (
+	"math"
+	"sort"
+)
 
 // meteorOffsets are the subtile offsets (x, y) at which hit function 14
 // (Meteor, 0x5a8680) spawns HitSubMissile1: two parallel 18 entry int tables
@@ -61,11 +64,15 @@ func (s *Sim) hitFunc(m *Missile, t Target) (ret int, ok bool) {
 		return s.holyBoltHit(m, t), true
 	case 10:
 		return s.guidedHit(m, t), true
+	case 12:
+		return s.chainHit(m, t), true
 	case 14:
 		s.areaDamage(m)
 		s.meteorFire(m)
 
 		return 0, true
+	case 20:
+		return s.furyHit(m), true
 	}
 
 	return 0, false
@@ -368,4 +375,118 @@ func (s *Sim) tornadoPulse(m *Missile) {
 	}
 
 	s.emit(Event{Kind: EventArea, Missile: m, Damage: m.Damage.Roll(m.Owner.Roller), Radius: r})
+}
+
+// chainHit is hit function 12 (Chain Lightning, Lightning Strike; 0x5a81c0,
+// VERIFIED by decompiling it and by the emulator golden of its target pick):
+// with no target, or with ChainLeft (data field 0x28) below 2, nothing more
+// happens. Otherwise the scan around the BOLT (radius sHitPar1, else the
+// skill's aurarangecalc, min 1) picks the next victim with ChainNext (next
+// higher unit id, wrapping), unless it is the unit just hit, and a bolt of the
+// same missile, owner, skill and level flies from the bolt to it with
+// ChainLeft - 1. The function returns 3 (damage and destroy). Line of sight
+// and the other scan filters are the World Finder's business.
+func (s *Sim) chainHit(m *Missile, t Target) int {
+	const ret = resKill | resDamage
+
+	if t == nil || (m.Owner.Gone != nil && m.Owner.Gone()) {
+		return ret
+	}
+
+	spawn, child := ChainSpawn(m.ChainLeft)
+	if !spawn {
+		return ret
+	}
+
+	f, ok := s.World.(Finder)
+	if !ok {
+		return ret
+	}
+
+	radius := m.Spec.SHitPar[0]
+	if radius < 1 {
+		radius = m.AreaRadius
+	}
+
+	if radius < 1 {
+		radius = 1
+	}
+
+	next := ChainNext(f.EnemiesWithin(m.Owner, m.X, m.Y, radius), t)
+
+	pt, ok := next.(Positioned)
+	if next == nil || !ok {
+		return ret
+	}
+
+	tx, ty := pt.SubPos()
+
+	_, _ = s.Create(CreateParams{Spec: m.Spec, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level, Damage: m.Damage,
+		AreaRadius: m.AreaRadius, ChainLeft: child, X: m.X, Y: m.Y, DestX: tx, DestY: ty})
+
+	return ret
+}
+
+// furyHit is hit function 20 (Lightning Fury; 0x5a8e60 with the callback
+// 0x5a8d90, VERIFIED by decompiling): with HitSubMissile1 set and an owner, the
+// enemies within sHitPar1 (else aurarangecalc, min 1) of the missile each get
+// one HitSubMissile1 bolt aimed at them, at most sHitPar2 (else calc1, min 1)
+// of them, and the function returns 3. The exe starts the bolts with create
+// flag 0x20 and the parent missile; that they start at the parent's position,
+// and the order the units are visited in (the room unit lists), are
+// UNVERIFIED: the sim visits them by unit id.
+func (s *Sim) furyHit(m *Missile) int {
+	sub := s.lookup(m.Spec.HitSubMissile[0])
+	if sub == nil {
+		return resKill
+	}
+
+	if m.Owner.Gone != nil && m.Owner.Gone() {
+		return resKill
+	}
+
+	f, ok := s.World.(Finder)
+	if !ok {
+		return resKill | resDamage
+	}
+
+	radius := m.Spec.SHitPar[0]
+	if radius < 1 {
+		radius = m.AreaRadius
+	}
+
+	if radius < 1 {
+		radius = 1
+	}
+
+	count := m.Spec.SHitPar[1]
+	if count < 1 {
+		count = m.FuryCount
+	}
+
+	if count < 1 {
+		count = 1
+	}
+
+	cands := f.EnemiesWithin(m.Owner, m.X, m.Y, radius)
+	sort.SliceStable(cands, func(i, j int) bool { return targetSerial(cands[i]) < targetSerial(cands[j]) })
+
+	for _, c := range cands {
+		if count == 0 {
+			break
+		}
+
+		pt, ok := c.(Positioned)
+		if !ok || !c.Alive() {
+			continue
+		}
+
+		tx, ty := pt.SubPos()
+		count--
+
+		_, _ = s.Create(CreateParams{Spec: sub, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level, Damage: m.Damage,
+			X: m.X, Y: m.Y, DestX: tx, DestY: ty})
+	}
+
+	return resKill | resDamage
 }

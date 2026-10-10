@@ -181,6 +181,17 @@ var modeFallback = map[d2monster.Mode][]d2enum.MonsterAnimationMode{
 	d2monster.ModeSpecialCast: {d2enum.MonsterAnimationModeCast, d2enum.MonsterAnimationModeSkill1, d2enum.MonsterAnimationModeAttack1},
 }
 
+// HasMode reports whether the class has an animation for the mode itself (not a
+// fallback). Without class data it reports true.
+func (m *Monster) HasMode(mode d2monster.Mode) bool {
+	fb := modeFallback[mode]
+	if m.StatEx == nil || len(fb) == 0 {
+		return true
+	}
+
+	return m.StatEx.HasAnimationMode[fb[0]]
+}
+
 // SetMode switches the unit to a mode and starts its animation. It returns
 // false if the class has no animation for the mode or any fallback.
 func (m *Monster) SetMode(mode d2monster.Mode) bool {

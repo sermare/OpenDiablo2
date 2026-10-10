@@ -38,6 +38,19 @@ type MeleeIn struct {
 	// SkillOverride is the third stack argument (disables the weapon strike roll).
 	SkillOverride bool
 	Phys          int32 // physical damage rolled by 0x579120 (already scaled)
+	// Weapon, when non-nil, makes BuildAttackerDamage roll the physical damage
+	// itself with RollPhysical (the real call 0x579120(unit, true, 0, 0, 0,
+	// struct pct, struct physical, scale)); Phys is then ignored. Get, PctAdd,
+	// Flat and Scale of the value are filled in here.
+	Weapon *WeaponRollIn
+	// ActiveWeapon is helper 0x5335c0 (a weapon is wielded) and WeaponStrike
+	// the weapon deadly strike chance 0x646bc0(mode 2); both only matter with
+	// SkillOverride false.
+	ActiveWeapon bool
+	// UndeadBlunt: the wielded weapon is of item type 0x39 (0x629d70), worth
+	// +50 percent damage against undead (0x579380).
+	UndeadBlunt  bool
+	WeaponStrike int32
 	// Damage is the struct as the caller prepared it (Flags).
 	Damage Damage
 	// ConvClass is the byte at struct +0x65 and ConvPct the dword at +0x68.
@@ -131,7 +144,13 @@ func BuildAttackerDamage(r Roller, in MeleeIn) MeleeOut {
 		}
 
 		if in.DefenderUndead {
-			if v := get(statUndeadPct); v > 0 {
+			// helper 0x579380: +50 for a wielded weapon of item type 0x39 (blunt)
+			v := get(statUndeadPct)
+			if in.UndeadBlunt {
+				v += 50
+			}
+
+			if v > 0 {
 				d.DamagePct += v
 			}
 		}
@@ -140,7 +159,21 @@ func BuildAttackerDamage(r Roller, in MeleeIn) MeleeOut {
 	if d.Flags&DamageFlagNoPhysical == 0 {
 		d.Physical = in.Phys
 
-		d.ApplyStrike(r, StrikeInput{SkipWeapon: true, CriticalChance: int(get(statStrikeCrit)), DeadlyChance: int(get(statDeadly))})
+		if in.Weapon != nil {
+			// the exe passes the struct's existing physical value (a5) into the roll
+			d.Physical = in.Damage.Physical
+			w := *in.Weapon
+			w.Get, w.UseWeapon, w.Weapon = get, true, false
+			w.PctAdd, w.Flat, w.Scale = d.DamagePct, d.Physical, scale
+			w.Min, w.Max = 0, 0
+			w.ActiveWeapon = in.ActiveWeapon
+			d.Physical = RollPhysical(r, w)
+		}
+
+		d.ApplyStrike(r, StrikeInput{
+			SkipWeapon: in.SkillOverride || !in.ActiveWeapon, WeaponChance: int(in.WeaponStrike),
+			CriticalChance: int(get(statStrikeCrit)), DeadlyChance: int(get(statDeadly)),
+		})
 	}
 
 	sc := func(v int32) int32 {

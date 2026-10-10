@@ -162,23 +162,25 @@ type Director struct {
 	adoptAcc float64
 	nextID   uint32
 
-	units     map[uint32]*unit // by brain id
-	byEntity  map[string]*unit
-	seenNPC   map[string]bool
-	statByID  map[int]*d2records.MonStatRecord
-	targets   map[uint32]*d2mapentity.Player
-	grid      mapGrid // static map flags (line of sight)
-	fp        *footprints
-	fpPlayer  map[uint32]bool
-	launcher  Launcher
-	hero      *d2rand.Seed
-	hire      *d2hireling.Table
-	mercs     map[*d2mapentity.Player]*unit
-	killer    *unit // the merc whose hit is being resolved (kill credit)
-	mercHooks MercSkillHooks
-	snd       *rand.Rand
-	packRNG   *d2rand.Seed
-	regionRNG *d2rand.Seed // region seed of the teleport destination search
+	units      map[uint32]*unit // by brain id
+	byEntity   map[string]*unit
+	seenNPC    map[string]bool
+	statByID   map[int]*d2records.MonStatRecord
+	targets    map[uint32]*d2mapentity.Player
+	grid       mapGrid // static map flags (line of sight)
+	fp         *footprints
+	fpPlayer   map[uint32]bool
+	launcher   Launcher
+	hero       *d2rand.Seed
+	hire       *d2hireling.Table
+	mercs      map[*d2mapentity.Player]*unit
+	killer     *unit // the merc whose hit is being resolved (kill credit)
+	mercHooks  MercSkillHooks
+	snd        *rand.Rand
+	packRNG    *d2rand.Seed
+	leechFrac  map[string][2]int32 // hero id -> 8.8 fractions of life and mana kept by leech
+	staggerRNG *d2rand.Seed        // generator of the hit recovery gate
+	regionRNG  *d2rand.Seed        // region seed of the teleport destination search
 
 	boss BossHooks // the boss AIs' encounter hooks (bosshooks.go)
 

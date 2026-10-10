@@ -926,7 +926,7 @@ func (e *Engine) onSim(ev d2missile.Event) {
 		e.emit("hit", "MISSILE hit name=%s id=%d target=%s chance=%d roll=%d %s", name, m.ID, tname, ev.Chance, ev.Roll,
 			describe(&ev.Damage))
 
-		if mt != nil && ev.Damage.SumTotal(true) > 0 {
+		if mt != nil && ev.Damage.SumTotal(false) > 0 {
 			e.hurt(mt.m, e.owner(m), &ev.Damage, e.skillName(m.SkillID))
 
 			// event 6 (missile): only hits with physical damage dispatch the item events here (UNVERIFIED rule)

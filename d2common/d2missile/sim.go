@@ -65,6 +65,12 @@ type Missile struct {
 	// Home, 2 = aimed at the ground, 4 = already re-targeted once (5 / 6 are
 	// the re-targeted homing / ground legs).
 	HomeMode int
+	// ChainLeft is the missile data field +0x28 of a Chain Lightning bolt: the
+	// number of bolts still allowed, this one included (hit function 12).
+	ChainLeft int
+	// FuryCount is the number of bolts hit function 20 (Lightning Fury) may
+	// spawn when sHitPar2 is empty (the skill's calc1).
+	FuryCount int
 	// AreaRadius is the radius in subtiles of the area hit functions when the
 	// table's sHitPar1 is empty (the exe evaluates a skill calc then).
 	AreaRadius int
@@ -141,6 +147,8 @@ type CreateParams struct {
 	PierceChance int
 	// AreaRadius, HitSubRange: see Missile.
 	AreaRadius, HitSubRange int
+	// ChainLeft and FuryCount: see Missile.
+	ChainLeft, FuryCount int
 	// HealMin, HealMax, PulseEvery: see Missile.
 	HealMin, HealMax, PulseEvery int
 	// HomeMode overrides the Guided Arrow mode (default: 1 when Home is set
@@ -236,6 +244,7 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 	m.pathVel = d2combat.MissileStep(vel)
 	m.accel = sp.Accel
 	m.AreaRadius, m.HitSubRange = p.AreaRadius, p.HitSubRange
+	m.ChainLeft, m.FuryCount = p.ChainLeft, p.FuryCount
 	m.HealMin, m.HealMax, m.PulseEvery = p.HealMin, p.HealMax, p.PulseEvery
 	m.legX, m.legY = dx, dy
 
@@ -808,18 +817,14 @@ func (s *Sim) finish(m *Missile, kind EventKind) bool {
 	return false
 }
 
-// PierceCharges rolls the pierce charges a missile with the Pierce flag
-// starts with (0x59d4e0, verified): up to 4 times a percent roll below
-// chance (owner's skill_pierce + item_pierce) adds a charge; the first failed
-// roll stops it.
-func PierceCharges(chance int, r d2combat.Roller) int {
-	n := 0
-
-	for r != nil && n < 4 && int(r.Roll(100)) < chance {
-		n++
-	}
-
-	return n
+// PierceCharges is the number of pierce charges a missile with the Pierce flag
+// starts with (0x59d4e0, VERIFIED against the exe in the emulator, see
+// d2combat.RollPierceCharges): up to 4 attempts with a PRIVATE generator that
+// does not depend on the owner's, so the result is a fixed function of chance
+// (owner's skill_pierce + item_pierce): chance <= 66 gives 0 charges. The
+// roller argument is ignored and only kept for the callers.
+func PierceCharges(chance int, _ d2combat.Roller) int {
+	return int(d2combat.RollPierceCharges(int32(chance), 0, 3, true, 0, 0))
 }
 
 // String describes a missile for logs.

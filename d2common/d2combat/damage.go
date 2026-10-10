@@ -60,11 +60,14 @@ const (
 )
 
 // SumTotal adds the damage components the game sums into Total: physical,
-// fire, lightning, magic, cold and poison (notes, from 579ef0/57bc00), plus
-// the [14] field when the defender is a monster (notes, not re-checked).
-func (d *Damage) SumTotal(defenderIsMonster bool) int32 {
+// fire, lightning, magic, cold and poison (0x579ef0, verified against the exe),
+// plus the [14] field (+0x38, the leech value) only when the ATTACKER is a plain
+// monster (a monster that is not special, helper 0x63fed0): its life leech is
+// then paid as damage. Hero attackers pass false. (Earlier versions of this
+// function took the DEFENDER kind, which was wrong.)
+func (d *Damage) SumTotal(attackerPlainMonster bool) int32 {
 	t := d.Physical + d.Fire + d.Lightning + d.Magic + d.Cold + d.Poison
-	if defenderIsMonster {
+	if attackerPlainMonster {
 		t += d.LifeLeech
 	}
 
