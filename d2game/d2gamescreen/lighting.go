@@ -7,6 +7,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2daynight"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2lightmap"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2maprenderer"
 )
 
@@ -15,6 +16,9 @@ const (
 	act5MaxIntensity = 0xaa // ENVIRON_UpdateAmbientIntensity caps Act 5 at 0xaa
 	levelFixedLight  = 0x78 // level 0x78 has a fixed intensity 200
 	levelFixedValue  = 200
+
+	// warm flame colour of object lights (U: not in the notes)
+	objectLightR, objectLightG, objectLightB = 255, 200, 130
 )
 
 // parseAutoTime parses OD2_AUTOTIME: a phase number 0..5 or a name (night,
@@ -137,7 +141,39 @@ func (v *Game) advanceLighting() {
 		v.Infof("LIGHT level=%d base intensity=%d rgb=%d,%d,%d", id, cell.Intensity, cell.R, cell.G, cell.B)
 	}
 
-	v.mapRenderer.SetLightInput(d2maprenderer.LightInput{HeroX: pos.X(), HeroY: pos.Y(), Base: cell})
+	v.mapRenderer.SetLightInput(d2maprenderer.LightInput{HeroX: pos.X(), HeroY: pos.Y(), Base: cell, Extra: v.objectLights(pos.X(), pos.Y())})
+}
+
+// objectLights collects the lights of objects (torches, fires, shrines...) within the light map window of the hero.
+func (v *Game) objectLights(hx, hy float64) []d2maprenderer.LightPoint {
+	if v.gameClient == nil || v.gameClient.MapEngine == nil {
+		return nil
+	}
+
+	var out []d2maprenderer.LightPoint
+
+	const window = 14.0 // tiles; the light map covers 48 subtiles, objects farther out still reach into it
+
+	for _, e := range v.gameClient.MapEngine.Entities() {
+		ob, ok := e.(*d2mapentity.Object)
+		if !ok {
+			continue
+		}
+
+		r := ob.LightRadius()
+		if r <= 0 {
+			continue
+		}
+
+		x, y := ob.GetPositionF()
+		if x < hx-window || x > hx+window || y < hy-window || y > hy+window {
+			continue
+		}
+
+		out = append(out, d2maprenderer.LightPoint{X: x, Y: y, Radius: r, R: objectLightR, G: objectLightG, B: objectLightB})
+	}
+
+	return out
 }
 
 func (v *Game) currentDayClock() *dayClock {
