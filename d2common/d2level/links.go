@@ -307,7 +307,10 @@ func CaveEntranceDestination(level int) (int, bool) {
 var upWarps = map[int]bool{4: true, 8: true, 11: true, 13: true, 16: true, 17: true,
 	// Act 2: sewers 21/22, palace 25..27, arcane 30/31, tombs and the Valley of
 	// the Kings exits 45, maggot lair 48 (the "up" slots of Levels.txt rows 47..72)
-	21: true, 22: true, 25: true, 26: true, 27: true, 30: true, 31: true, 45: true, 48: true}
+	21: true, 22: true, 25: true, 26: true, 27: true, 30: true, 31: true, 45: true, 48: true,
+	// Act 3: spider cavern/dungeon/sewer/temple/Durance "up" slots (52 Spider to Jungle, 55 Dungeon Up, 58/59 Sewer Up,
+	// 62/63 Temple Up, 65/66 Mephisto Up). The temples had no up slot, so the way out of the Ruined Temple led nowhere.
+	52: true, 55: true, 58: true, 59: true, 62: true, 63: true, 65: true, 66: true}
 
 // isOutdoor reports a level that borders others on seamless edges. Only Acts 1
 // and 2 count: the TileDestination rules below were observed there, and the Act

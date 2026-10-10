@@ -52,3 +52,20 @@ func TestLaterQuestObjectsAreQuestObjects(t *testing.T) {
 		t.Error("object 1 must not be a quest object")
 	}
 }
+
+// Lam Esen's Tome: operating the tome object on the altar of the Ruined Temple gives the item; picking it up is the goal.
+func TestLamEsenTomeObjectGivesTheItem(t *testing.T) {
+	g, _ := newGame(t)
+	q := g.Quest(QuestLamEsen)
+
+	eff := obj(g, ObjectLamEsenTome, LevelRuinedTemple)
+	if !effectCode(eff, EffectSpawn, ItemLamEsenTome) {
+		t.Fatalf("tome object: %+v", eff)
+	}
+
+	pickup(g, ItemLamEsenTome)
+
+	if !g.get(q, FlagPrimaryGoal) {
+		t.Errorf("taking the tome is not the goal: %s", g.Describe(q))
+	}
+}

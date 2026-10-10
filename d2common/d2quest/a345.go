@@ -83,6 +83,16 @@ func newLamEsen() *Quest {
 		steps: []step{{from: 1, npc: NPCAlkor, msg: 549, to: 2}},
 		trigs: []trig{
 			{ev: EvAreaChanged, level: LevelRuinedTemple, max: 3, to: 3},
+			// the tome lies on the altar of the Ruined Temple (object 193): operating it gives the item; taking the item
+			// is the goal (found by playing: the object was never operated as a quest object, so no tome appeared)
+			{ev: EvObjectOperated, object: ObjectLamEsenTome, min: -1, max: 3, bit: -1,
+				fx: func(g *Game, q *Quest) []Effect {
+					if g.hasItem(ItemLamEsenTome) {
+						return nil
+					}
+
+					return []Effect{{Kind: EffectSpawn, Quest: q.ID, Code: ItemLamEsenTome, Note: "Lam Esen's Tome on the altar"}}
+				}},
 			{ev: EvItemPickedUp, item: ItemLamEsenTome, goal: true},
 		},
 		claimFx: func(g *Game, q *Quest) []Effect {

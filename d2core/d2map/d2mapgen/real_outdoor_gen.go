@@ -52,7 +52,13 @@ func isPresetLevel(id int) bool {
 // small cave levels Cave Level 2 .. Underground Passage Level 2 (Hole/Pit 2,
 // ids 13..16) and Catacombs Level 4 (37, Andariel). GeneratePreset is proven
 // equal to the real game for them (TestOraclePresetAct1).
-func isAct1Preset(id int) bool { return (id >= 13 && id <= 16) || id == 37 }
+func isAct1Preset(id int) bool { return (id >= 13 && id <= 16) || id == 37 || isAct3Preset(id) }
+
+// isAct3Preset reports the Act 3 DrlgType 2 levels outside the world layout: the two treasure levels of the Flayer
+// Dungeon (90, 91), the second Kurast sewer (93) and the six temples (94..99, Ruined Temple, Disused Fane ...).
+// They are built the way the small Act 1 caves are: Levels.txt gives the rectangle, the LvlPrest Def the DS1.
+// (Durance 3, 102, is built by the maze provider.) Found by playing: the Ruined Temple "cannot be loaded yet".
+func isAct3Preset(id int) bool { return id == 90 || id == 91 || (id >= 93 && id <= 99) }
 
 // levelParams runs the world placement of the level's act and derives the
 // generator inputs (rectangle, od.flags, vis/warp, neighbour list).
@@ -515,6 +521,10 @@ func (g *MapGenerator) markWarpTiles(stamp *d2mapstamp.Stamp, path string, ox, o
 				}
 
 				if d, ok := d2level.OutdoorExitByPreset(levelID, path); ok {
+					dest = d
+				}
+
+				if d, ok := d2level.TempleEntranceByPreset(levelID, path, int(w.Style)); ok {
 					dest = d
 				}
 
