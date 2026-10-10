@@ -12,10 +12,10 @@
     },
     {
       "label": "Hedged exe names re-verified against the decompile",
-      "done": 1278,
+      "done": 1398,
       "total": 1633,
       "pending": 0,
-      "note": "1,187 confirmed, 71 corrected, ~20 unclear; ~355 left (server/client helpers, library thunks, game-logic rows) (~ estimate of the total)",
+      "note": "1,296 confirmed, 82 corrected, ~20 unclear; ~235 left (server/client network and session helpers, library thunks, remaining game-logic rows); batch 2 covered the missile/CLTDO/CLTST block (~ estimate of the total)",
       "color": "#8f7cff"
     },
     {
