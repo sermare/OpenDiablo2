@@ -11,8 +11,8 @@ a5=$tmp/act5deep
 # The sample character is a dead hardcore Sorceress; scripts/d2s-revive.go makes a living copy (needs D2_TABLES).
 scenario_warnings_ok=1
 scenario_env() {
-  mkdir -p $a5/s94 $a5/wb94; rm -f $a5/s94/Hero.d2s $a5/wb94/NokkaSorc.d2s
-  if [ -n "${D2_TABLES:-}" ] && go run scripts/d2s-revive.go "$D2S_SAMPLE_BODY" $a5/s94/Hero.d2s "$D2_TABLES" >/dev/null 2>&1; then
+  mkdir -p $a5/s94 $a5/wb94; rm -f $a5/s94/Hero.d2s $a5/wb94/*.d2s(N)
+  if [ -n "${D2_TABLES:-}" ] && make_hero $a5/s94/Hero.d2s; then
     local s="wait:1;say:resetquests;say:completequest 1 6;travel:2;expect:level=40;say:completequest 2 6;travel:3;expect:level=75;say:completequest 3 6;travel:4;expect:level=103;wait:2;say:completequest 4 2;travel:5;expect:level=109"
     s+=";wait:11;use:Waypoint;waypoint:113;expect:level=113;wait:3;say:restorevitals;say:capframe $tmp/act5-crystal.png"
     s+=";walkto:exit=115;expect:level=115;wait:3;say:restorevitals"

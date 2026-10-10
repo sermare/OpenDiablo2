@@ -308,6 +308,20 @@ every scenario instead of muting; a scenario can also set `scenario_unmuted=1`);
 instead of a copy of the sample); `OD2_VERIFY_LAUNCH` (command prefix used to start the generated `.command` file, for
 example `launchctl asuser 501 /bin/zsh`). It picks a random free port for `OD2_PORT` per run.
 
+**`OD2_HERO`** picks the hero of the long playthrough scenarios (`9d`, `9e`, `9f`, `9g`, `9h`, `9i`, `9j`, `9l`; the
+`make_hero` helper in `scripts/verify.d/lib/hero.sh`). Unset or `sorc`: the sample Sorceress, revived by
+`scripts/d2s-revive.go`; she runs out of mana (no natural mana regeneration yet) and fights with a worn flail. `barb`: a
+level 94 Barbarian generated at run time by `scripts/d2s-make-hero.go` (package `d2core/d2hero/herogen`, needs `D2_TABLES`):
+Strength 189 / Dexterity 110 / Vitality 246, Frenzy, Whirlwind, Sword Mastery and Battle Orders at 20, The Grandfather
+(unique two-hand sword), Arreat's Face, Arkaine's Valor, Dracul's Grasp, Verdugo's Hearty Cord, Sandstorm Trek, Mara's
+Kaleidoscope, Bul-Kathos' and Raven Frost rings, Annihilus, 16 belt potions. Items are created by the `d2drop` generator
+with the unique row forced (fixed seed, so the file is the same every run); life, mana and stamina follow CharStats; the
+quests, waypoints, difficulty, map seed and mercenary are copied from `D2S_SAMPLE_BODY`, so the scenario plays the same
+game. Scripted fights (`kill:near=...`) are weapon melee, so they need no spell. The save is written under the
+scenario's scratch folder and is never committed. `go run scripts/d2s-make-hero.go -template $D2S_SAMPLE_BODY out.d2s
+$D2_TABLES` makes one by hand; `go test ./d2core/d2hero/herogen/` (with `D2_TABLES`) checks it parses, round-trips
+byte for byte, meets every item and skill requirement and has current life equal to the totals with the gear.
+
 ### 5.1 Scenario file format
 
 A scenario is one small zsh file in `scripts/verify.d/`, named `NN-title.sh` (the number orders the run). The runner

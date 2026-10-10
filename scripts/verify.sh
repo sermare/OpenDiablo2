@@ -109,6 +109,8 @@ fi
 if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   save="${OD2_VERIFY_SAVE:-$tmp/save.d2s}"
   [ -f "$save" ] || cp "$D2S_SAMPLE_BODY" "$save"
+  # make_hero <out.d2s> for the level 94 playthroughs; OD2_HERO=barb picks the generated Barbarian (default: the Sorceress)
+  source scripts/verify.d/lib/hero.sh
 
   for f in scripts/verify.d/*.sh(N); do
     unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""; scenario_realtime=""; scenario_timeout=""
@@ -132,6 +134,9 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
         [ -n "${OD2_VERIFY_SOUND:-}" ] || [ -n "$scenario_unmuted" ] || echo "export OD2_AUTOTEST_MUTE=1"
         # game clock x4 (OD2_AUTOSPEED) unless the scenario needs real time (perf, multiplayer); OD2_VERIFY_SPEED=1 turns it off
         [ -n "$scenario_realtime" ] || [ "${OD2_VERIFY_SPEED:-8}" = 1 ] || echo "export OD2_AUTOSPEED=${OD2_VERIFY_SPEED:-8}"
+        # OD2_VERIFY_CONFIG_DIR: a private config folder (a copy of a valid config.json) instead of the user's own;
+        # a scenario that needs its own OD2_CONFIG_DIR overrides it below
+        [ -n "${OD2_VERIFY_CONFIG_DIR:-}" ] && echo "export OD2_CONFIG_DIR=\"$OD2_VERIFY_CONFIG_DIR\""
         scenario_env
         echo "$tmp/od2 2>&1 | tee $log"
       } > $cmd
