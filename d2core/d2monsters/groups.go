@@ -297,15 +297,25 @@ func (d *Director) PopulateRoom(room Room, levelID int) ([]*PackResult, error) {
 
 	d.SetAreaLevel(d.AreaLevelOf(levelID))
 
-	var list []d2monster.ClassInfo
+	types, ok := d.levelTypes[levelID]
+	if !ok {
+		var list []d2monster.ClassInfo
 
-	for _, name := range levelMonsterNames(det, d.opt.Difficulty) {
-		if st := d.minionStat(name); st != nil {
-			list = append(list, d.classInfo(st))
+		for _, name := range levelMonsterNames(det, d.opt.Difficulty) {
+			if st := d.minionStat(name); st != nil {
+				list = append(list, d.classInfo(st))
+			}
 		}
+
+		types = d2monster.PickLevelTypes(d.packRNG, list, det.NumMonsterTypes, det.MonsterPreferRanged)
+
+		if d.levelTypes == nil {
+			d.levelTypes = map[int][]d2monster.ClassInfo{}
+		}
+
+		d.levelTypes[levelID] = types
 	}
 
-	types := d2monster.PickLevelTypes(d.packRNG, list, det.NumMonsterTypes, det.MonsterPreferRanged)
 	density := [3]int{det.MonsterDensityNormal, det.MonsterDensityNightmare, det.MonsterDensityHell}[d.opt.Difficulty]
 	tiles := room.W * room.H / (subtilesPerTile * subtilesPerTile)
 	if room.WalkTiles > 0 && room.WalkTiles < tiles {
