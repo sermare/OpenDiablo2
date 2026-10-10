@@ -152,16 +152,12 @@ func (mr *MapRenderer) commandEntityDebugVis(args []string) error {
 
 // RegenerateTileCache calls MapRenderer.generateTileCache().
 func (mr *MapRenderer) RegenerateTileCache() {
-	// the cache key is (style, sequence, type, index) without the DT1 file or the palette of the
-	// level, so images of the previous level would be drawn for the new one
-	mr.InvalidateImageCache()
 	mr.generateTileCache()
 }
 
 // SetMapEngine sets the MapEngine this renderer is rendering.
 func (mr *MapRenderer) SetMapEngine(mapEngine *d2mapengine.MapEngine) {
 	mr.mapEngine = mapEngine
-	mr.InvalidateImageCache()
 	mr.generateTileCache()
 }
 

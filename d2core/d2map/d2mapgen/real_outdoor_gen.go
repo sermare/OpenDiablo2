@@ -424,6 +424,8 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 		exact = fmt.Sprintf(", exact tiles for %d rooms", n)
 	}
 
+	g.Infof("TILESTATS level=%d exact=%v %s", levelID, exact != "", g.engine.TileStats())
+
 	var mon monsterStats
 
 	levelSeed := d2rand.LevelSeed(p.BaseSeed, uint32(levelID))

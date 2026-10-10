@@ -178,7 +178,7 @@ func (g *MapGenerator) GenerateActTown(levelID int, seed uint32, diff d2drlg.Dif
 	if levelID != d2level.LutGholein || RealMapsEnabled() {
 		g.applyExactTown(levelID, seed, diff, region)
 	} else {
-		g.Infof("DRAWSTATS level=%d exact=false %s", levelID, g.engine.TileStats())
+		g.Infof("TILESTATS level=%d exact=false %s", levelID, g.engine.TileStats())
 	}
 
 	g.engine.BlockEmptyTiles()

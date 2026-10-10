@@ -102,7 +102,7 @@ func (g *MapGenerator) exactTownTiles(levelID int, seed uint32, diff d2drlg.Diff
 
 // applyExactTown replaces the stamped DS1 tiles of the town (the stamp keeps
 // providing the NPCs, objects and marker walls) by the exact records and logs
-// the draw statistics (DRAWSTATS). On failure the stamped tiles stay.
+// the draw statistics (TILESTATS). On failure the stamped tiles stay.
 func (g *MapGenerator) applyExactTown(levelID int, seed uint32, diff d2drlg.Difficulty, region d2enum.RegionIdType) {
 	var (
 		tiles []*drlgoutdoor.RoomTiles
@@ -123,5 +123,5 @@ func (g *MapGenerator) applyExactTown(levelID int, seed uint32, diff d2drlg.Diff
 		g.Infof("town tiles: level %d: exact records for %d rooms (rect %dx%d)", levelID, n, rect.W, rect.H)
 	}
 
-	g.Infof("DRAWSTATS level=%d exact=%v %s", levelID, err == nil, g.engine.TileStats())
+	g.Infof("TILESTATS level=%d exact=%v %s", levelID, err == nil, g.engine.TileStats())
 }
