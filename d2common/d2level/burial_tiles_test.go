@@ -73,7 +73,7 @@ func TestBurialAndTempleVisMatchLevelsTxt(t *testing.T) {
 				continue // 6 and 7 are LvlWarp ids of the cave rule, not DS1 styles (see level_test.go)
 			}
 
-			vis, _ :=strconv.Atoi(f[col["Vis"+strconv.Itoa(slot)]])
+			vis, _ := strconv.Atoi(f[col["Vis"+strconv.Itoa(slot)]])
 			got, ok := TileDestination(level, slot)
 
 			if ok != (vis != 0) || got != vis {
