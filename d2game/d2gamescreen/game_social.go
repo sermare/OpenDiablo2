@@ -407,7 +407,7 @@ func (v *Game) onPvPHit(p d2netpacket.PvPHitPacket) {
 	taken := d2combat.PvPReceive(p.Damage, physResist, reduce)
 
 	if parts, ok := d2combat.PvPPartsFromSlice(p.Parts); ok {
-		taken = d2combat.PvPReceiveParts(parts, def)
+		taken = v.pvpDefend.ReceiveParts(parts, def)
 	}
 
 	before := st.Health

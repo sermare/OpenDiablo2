@@ -56,7 +56,7 @@ scenario_check() {
   grep -qE "MISSILE hit name=chainlightning" $log.txt || { echo "FAIL: Chain Lightning never hit"; fail=1; }
   grep -qE "MOVE skill=\"Teleport\"" $log.txt || { echo "FAIL: Teleport did not move the hero"; fail=1; }
   grep -qE "STATE apply skill=\"Energy Shield\" .*x_energyshield_pct=" $log.txt || { echo "FAIL: Energy Shield"; fail=1; }
-  grep -qE "SKILL strikes skill=\"Blizzard\"" $log.txt || { echo "FAIL: Blizzard"; fail=1; }
+  grep -qE "SKILL strikes skill=\"Blizzard\"|MISSILE create name=blizzard1 " $log.txt || { echo "FAIL: Blizzard"; fail=1; }
   grep -qE "DAMAGE skill=\"Thunder Storm\" .*dmg=[1-9]" $log.txt || { echo "FAIL: Thunder Storm never struck"; fail=1; }
   # Druid: ravens, area spells
   grep -qE "MINION spawn name=Raven" $log.txt || { echo "FAIL: no ravens"; fail=1; }

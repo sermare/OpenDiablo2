@@ -249,7 +249,7 @@ func missilesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 						d.Number("MinELev4"),
 						d.Number("MinELev5"),
 					},
-					MaxDamage: d.Number("EMax"),
+					MaxDamage: d.Number("Emax"), // the missiles.txt header is "Emax" (skills.txt has "EMax")
 					MaxLevelDamage: [5]int{
 						d.Number("MaxELev1"),
 						d.Number("MaxELev2"),

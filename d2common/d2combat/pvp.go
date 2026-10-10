@@ -89,3 +89,61 @@ func PvPReceiveParts(p PvPParts, d PvPDefender) int {
 
 	return total
 }
+
+// PvPCarry keeps the fraction of a point that the PvP scale cuts off a hit, per
+// damage type, for one defender. Life is 8.8 fixed point in the exe, so a
+// burning ground tick of 4.88 fire at 17 percent takes 0.83 life and the ticks
+// add up; scaling every tick to whole points first throws all of it away (the
+// 5 point ticks of Meteor's burning ground scaled to 0). The remainder of one
+// hit is added to the next hit on the same defender.
+type PvPCarry [5]int
+
+// Scale scales a hit given in 8.8 fixed point per type (physical, fire,
+// lightning, magic, cold) to whole points, carrying the fraction over. The
+// result never exceeds the running total of the exact scaled damage.
+func (c *PvPCarry) Scale(raw [5]int32, pct int) PvPParts {
+	var out [5]int
+
+	for i, v := range raw {
+		if v <= 0 {
+			continue
+		}
+
+		sum := int(v)*pct/100 + c[i]
+		out[i], c[i] = sum>>8, sum&0xff
+	}
+
+	return PvPParts{out[0], out[1], out[2], out[3], out[4]}
+}
+
+// PvPDefendCarry keeps the fraction of a point that the defender's elemental
+// resist cuts off a hit, per element (fire, lightning, cold), in hundredths.
+// A burning ground tick of one scaled point against 75 percent resist is 0.25
+// life; whole points would throw every such tick away (9f-pvp-skills-ear: the
+// Meteor ground ticks were "scaled=1 taken=0").
+type PvPDefendCarry [3]int
+
+// ReceiveParts is PvPReceiveParts with the elemental fractions carried to the
+// next hit on the same defender.
+func (c *PvPDefendCarry) ReceiveParts(p PvPParts, d PvPDefender) int {
+	total := PvPReceive(p.Phys, d.PhysResist, d.Reduce)
+	total += PvPReceive(p.Magic, d.MagicResist, d.MagicReduce)
+
+	el := [3]struct{ v, resist int }{{p.Fire, d.FireResist}, {p.Light, d.LightResist}, {p.Cold, d.ColdResist}}
+	for i, e := range el {
+		if e.v <= 0 {
+			continue
+		}
+
+		m := 100 - e.resist
+		if m < 0 {
+			m = 0
+		}
+
+		sum := e.v*m + c[i]
+		total += sum / 100
+		c[i] = sum % 100
+	}
+
+	return total
+}
