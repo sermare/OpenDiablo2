@@ -88,6 +88,8 @@ type TradeWindow struct {
 	goldLabel  *d2ui.Label
 	repairBtn  *d2ui.Button
 	closeBtn   *d2ui.Button
+	tabSprite  *d2ui.Sprite // buyselltabs.dc6: frames 0..3 selected, 4..7 other
+	tabLabels  [vendorTabs]*d2ui.Label
 
 	isOpen  bool
 	vendor  d2vendor.Vendor
@@ -182,6 +184,16 @@ func (t *TradeWindow) Load() {
 	t.goldLabel.Alignment = d2ui.HorizontalAlignLeft
 	t.goldLabel.SetPosition(left, tradeGoldY)
 	t.panelGroup.AddWidget(t.goldLabel)
+
+	if sp, err := t.ui.NewSprite(vendorTabsSprite, d2resource.PaletteSky); err == nil {
+		t.tabSprite = sp
+	}
+
+	for i, key := range vendorTabKeys {
+		l := t.ui.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
+		l.SetText(t.text(key, vendorTabFallback[i]))
+		t.tabLabels[i] = l
+	}
 
 	t.tooltip = t.ui.NewTooltip(d2resource.FontFormal11, d2resource.PaletteStatic, d2ui.TooltipXCenter, d2ui.TooltipYBottom)
 
@@ -629,4 +641,63 @@ func (t *TradeWindow) Render(target d2interface.Surface) {
 	target.Pop()
 
 	t.grid.Render(target)
+	t.renderTabs(target)
+}
+
+// The item tabs of a vendor window (UI_DrawNpcShopPanelAndTabs 0x484570, verified unless said otherwise): four tabs
+// of buyselltabs.dc6 standing on y 91 (H + oy - 0x1c1) at x = 80 + 0x50*i, frame i for the selected tab and i+4 for
+// the others, captioned with the strings 0xfc4..0xfc7 (Armor, Weapons, Magic, Misc: the static table repeats 0xfc5 for
+// the third entry, which is UNVERIFIED and read as Magic); the caption stands at y 80 (UNVERIFIED anchor: bottom of
+// the text). The tabs are drawn with the first selected; the engine's stock is not split into pages (UNVERIFIED).
+const (
+	vendorTabs       = 4
+	vendorTabsSprite = "/data/global/ui/panel/buyselltabs.dc6"
+	vendorTabX       = 80
+	vendorTabPitch   = 0x50
+	vendorTabBottom  = 91
+	vendorTabTextY   = 80
+)
+
+//nolint:gochecknoglobals // tables
+var (
+	vendorTabKeys     = [vendorTabs]string{"strBSArmor", "strBSWeapons", "strBSMagic", "strBSMisc"}
+	vendorTabFallback = [vendorTabs]string{"Armor", "Weapons", "Magic", "Misc"}
+)
+
+// tabBox is the box of vendor tab i.
+func (t *TradeWindow) tabBox(i int) (x, top, w, h int) {
+	w, h = vendorTabPitch, 0
+
+	if t.tabSprite != nil {
+		if fw, fh, err := t.tabSprite.GetFrameSize(i); err == nil {
+			w, h = fw, fh
+		}
+	}
+
+	return vendorTabX + vendorTabPitch*i, vendorTabBottom - h, w, h
+}
+
+func (t *TradeWindow) renderTabs(target d2interface.Surface) {
+	if t.tabSprite == nil || t.gamble {
+		return
+	}
+
+	for i := 0; i < vendorTabs; i++ {
+		frame := i + vendorTabs
+		if i == 0 {
+			frame = i
+		}
+
+		x, top, w, h := t.tabBox(i)
+
+		if t.tabSprite.SetCurrentFrame(frame) == nil {
+			t.tabSprite.SetPosition(x, top+h)
+			t.tabSprite.Render(target)
+		}
+
+		l := t.tabLabels[i]
+		tw, th := l.GetTextMetrics(l.GetText())
+		l.SetPosition(x+(w-tw)/2, vendorTabTextY-th)
+		l.Render(target)
+	}
 }

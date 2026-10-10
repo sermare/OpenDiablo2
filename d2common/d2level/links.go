@@ -340,25 +340,16 @@ func TileDestination(level, style int) (int, bool) {
 		return 0, false
 	}
 
-	// the Durance of Hate (100..102): like the Act 2 files, the style of a special tile is the Levels.txt Vis slot
-	// (observed in the generated level 101: the tiles carry the styles 0 and 3 for slots {102, 102, 100, 100}).
-	// UNVERIFIED against the exe like the other tile rules.
-	// Level 100 keeps the up/down rule below (TestAct3DungeonTileDestination: style 0 up to Travincal, 4 down).
-	if level >= 101 && level <= 102 {
-		slot := 0
+	// the Durance of Hate (100..102): like the Act 2 files, the style of a special tile is the Levels.txt Vis slot.
+	// Measured in the DS1 files of Levels.txt's LvlPrest rows (Act3/Travincal/Meph*Warp*.ds1, MephComp.ds1): the "Next"
+	// files (WarpD) carry the styles 0 (E, N) and 1 (S, W), the "Prev" files (WarpU) the styles 2 (E, N) and 3 (S, W),
+	// MephComp carries 3 - the Next files lead through Vis0/1, the Prev files through Vis2/3 (TestDuranceTileStyles).
+	// The slot->level mapping is UNVERIFIED against the exe like the other tile rules, but fits all measured styles.
+	if to, ok := duranceVisDestination(level, style); ok {
+		return to, true
+	}
 
-		for _, l := range allLinks {
-			if l.From != level || l.Kind != KindTile {
-				continue
-			}
-
-			if slot == style {
-				return l.To, true
-			}
-
-			slot++
-		}
-
+	if level >= 100 && level <= 102 {
 		return 0, false
 	}
 
@@ -504,4 +495,21 @@ func OutdoorExitByPreset(level int, path string) (int, bool) {
 	}
 
 	return 0, false
+}
+
+// duranceVis are the Vis0..Vis3 slots of Levels.txt for the Durance of Hate (0 = no level).
+var duranceVis = map[int][4]int{
+	100: {101, 101, 83, 83},
+	101: {102, 102, 100, 100},
+	102: {0, 0, 101, 101},
+}
+
+// duranceVisDestination is the level behind the special tile of a Durance of Hate file with the given style.
+func duranceVisDestination(level, style int) (int, bool) {
+	v, ok := duranceVis[level]
+	if !ok || style < 0 || style >= len(v) || v[style] == 0 {
+		return 0, false
+	}
+
+	return v[style], true
 }

@@ -17,10 +17,17 @@ import (
 )
 
 const (
-	tabButtonX  = 628 + panelShiftX
-	tabButton0Y = 385 + panelShiftY
-	tabButton1Y = 277 + panelShiftY
-	tabButton2Y = 170 + panelShiftY
+	tabButtonX = 628 + panelShiftX
+	// the tab hit areas stand on the original's rows: UI_HandleSkillTreeTabHover 0x4a7a60 (verified) splits the
+	// strip into [H+oy-0x174, -0x108, -0x9c, -0x30] = 168, 276, 384, 492 (800x600); the tab buttons start at the
+	// top of each span. The labels stay where they were (tabLabelDY0..2 undo the move).
+	tabButton0Y = 384
+	tabButton1Y = 276
+	tabButton2Y = 168
+
+	tabLabelDY0 = -(tabButton0Y - (385 + panelShiftY))
+	tabLabelDY1 = -(tabButton1Y - (277 + panelShiftY))
+	tabLabelDY2 = -(tabButton2Y - (170 + panelShiftY))
 
 	availSPLabelX = 677 + panelShiftX
 	availSPLabelY = 72 + panelShiftY
@@ -79,8 +86,8 @@ type skillTreeTab struct {
 	closeButtonPosX int
 }
 
-func (st *skillTreeTab) createButton(uiManager *d2ui.UIManager, x, y int) {
-	st.button = uiManager.NewButton(d2ui.ButtonTypeSkillTreeTab, st.buttonText)
+func (st *skillTreeTab) createButton(uiManager *d2ui.UIManager, x, y, labelDY int) {
+	st.button = uiManager.NewButtonTextOffset(d2ui.ButtonTypeSkillTreeTab, st.buttonText, labelDY)
 	st.button.SetPosition(x, y)
 }
 
@@ -223,15 +230,15 @@ func (s *skillTree) loadForHeroType() {
 
 	s.resources.skillSprite = si
 
-	s.tab[firstTab].createButton(s.uiManager, tabButtonX, tabButton0Y)
+	s.tab[firstTab].createButton(s.uiManager, tabButtonX, tabButton0Y, tabLabelDY0)
 	s.tab[firstTab].button.OnActivated(func() { s.setTab(firstTab) })
 	s.panelGroup.AddWidget(s.tab[firstTab].button)
 
-	s.tab[secondTab].createButton(s.uiManager, tabButtonX, tabButton1Y)
+	s.tab[secondTab].createButton(s.uiManager, tabButtonX, tabButton1Y, tabLabelDY1)
 	s.tab[secondTab].button.OnActivated(func() { s.setTab(secondTab) })
 	s.panelGroup.AddWidget(s.tab[secondTab].button)
 
-	s.tab[thirdTab].createButton(s.uiManager, tabButtonX, tabButton2Y)
+	s.tab[thirdTab].createButton(s.uiManager, tabButtonX, tabButton2Y, tabLabelDY2)
 	s.tab[thirdTab].button.OnActivated(func() { s.setTab(thirdTab) })
 	s.panelGroup.AddWidget(s.tab[thirdTab].button)
 

@@ -38,8 +38,8 @@ func TestAct3DungeonTileDestination(t *testing.T) {
 		{86, 0, 78},   // Swampy Pit 1: up to Flayer Jungle
 		{86, 1, 87},   // the next stairs
 		{92, 0, 80},   // Sewers 1 up
-		{100, 0, 83},  // Durance 1 up to Travincal
-		{100, 4, 101}, // and down
+		{100, 3, 83},  // Durance 1 up to Travincal (Prev files carry the styles 2/3)
+		{100, 0, 101}, // and down (Next files carry 0/1)
 		{94, 0, 80},   // a temple returns to the Kurast level that leads there
 	} {
 		if got, ok := TileDestination(c.level, c.style); !ok || got != c.want {
@@ -92,5 +92,31 @@ func TestAct3SlotsMatchLevelsTxt(t *testing.T) {
 				t.Errorf("level %d slot %d is in the table but empty in Levels.txt", id, k)
 			}
 		}
+	}
+}
+
+// Numeric golden for the Durance of Hate tile rule: the special tile styles measured in the DS1 files (oracle copy of
+// the game's d2data, wall layers of the Special tile types) against the Levels.txt Vis slots. Level 100 (Durance 1)
+// has Prev (styles 2/3) and Next (0/1) files; level 101 the same plus a waypoint file with no special tile; MephComp
+// (level 102) carries style 3.
+func TestDuranceTileStyles(t *testing.T) {
+	for _, c := range []struct {
+		file         string
+		level, style int
+		want         int
+	}{
+		{"mephnwarpd", 100, 0, 101}, {"mephewarpd", 100, 0, 101}, {"mephswarpd", 100, 1, 101}, {"mephwwarpd", 100, 1, 101},
+		{"mephnwarpu", 100, 2, 83}, {"mephewarpu", 100, 2, 83}, {"mephswarpu", 100, 3, 83}, {"mephwwarpu", 100, 3, 83},
+		{"mephnwarpd", 101, 0, 102}, {"mephswarpd", 101, 1, 102},
+		{"mephnwarpu", 101, 2, 100}, {"mephwwarpu", 101, 3, 100},
+		{"mephcomp", 102, 3, 101},
+	} {
+		if got, ok := TileDestination(c.level, c.style); !ok || got != c.want {
+			t.Errorf("%s in level %d: style %d -> %d %v, want %d", c.file, c.level, c.style, got, ok, c.want)
+		}
+	}
+
+	if _, ok := TileDestination(102, 0); ok {
+		t.Error("level 102 has no Vis0")
 	}
 }
