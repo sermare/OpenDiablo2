@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks the population lines of a game log against the real tables, for any level.
 
-usage: pop_check.py <log.txt> <level id> [<min monsters>]
+usage: pop_check.py <log.txt> <level id> [<min monsters> | auto]
 
 Reads from the log (written by the game, OD2_REALMAPS=1 OD2_AUTOLEVEL=<id> OD2_POPULATE=1):
   "POPULATE types level N: key:count ..."   the natural monsters that survived the reachability filter
@@ -18,7 +18,8 @@ Checks, against D2_TABLES (drlg/patch_d2/Levels.txt, monsters/patch_d2/monstats.
   - super uniques are legal on any level (superuniques.txt places them from presets, not from the level's drawn
     types): only checked to be known classes, at least one of them a superuniques.txt Class, and left out of every
     count below (their extras, e.g. Shenk's Enslaved, are hard-coded in the exe);
-  - MonDen = 0 spawns no natural monster; otherwise at least <min monsters> (default 1) spawn;
+  - MonDen = 0 spawns no natural monster; otherwise at least <min monsters> (default 1) spawn. "auto" derives the
+    minimum from the density rolls instead of a number measured on an older roll count (see AUTO_SIGMA below);
   - density (when the log has the roll count): the groups made stay within a few standard deviations of
     rolls * MonDen / 100000 (each roll passes with that chance; a roll makes at most one group), and not far below
     that expectation for the rolls that land on walkable ground (sparse classes and crowded placements lose some);
@@ -39,9 +40,20 @@ def table(path):
     return rows[0], rows[1:]
 
 
+# "auto" minimum of natural monsters. Every roll that lands on ground a monster fits on starts a group with the chance
+# MonDen / 100000, so the groups made are about binomial(walkable rolls, p): mean W = walkable * p, sd sqrt(W * (1 - p)).
+# Each group has at least MinGrp monsters of its class, so with G_lo = floor(W - AUTO_SIGMA * sd) the level must have
+#     natural monsters >= max(G_lo, 0) * (smallest MinGrp of the classes that were drawn, at least 1).
+# 3 sigma never flags a correct run (the maze levels 58-60 of the sample seed place 70-83% of W, 1.2-1.4 sigma below it:
+# a roll that falls in a logic region cell without an open spot, 20 random tries, makes no group, as in the original);
+# a plan that is empty, or that lost most of its rolls, still falls below it on the larger levels.
+AUTO_SIGMA = 3.0
+
+
 def main():
     log, level = sys.argv[1], sys.argv[2]
-    min_mon = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+    auto_min = len(sys.argv) > 3 and sys.argv[3] == "auto"
+    min_mon = 1 if auto_min or len(sys.argv) <= 3 else int(sys.argv[3])
     root = os.environ.get("D2_TABLES")
     tag = os.environ.get("POPCHECK_TAG", "POPCHECK")
     if not root:
@@ -147,8 +159,17 @@ def main():
     else:
         if not listed or nmon == 0:
             problems.append("MonDen %d but the row lists no monster type (NumMon %d)" % (den, nmon))
+        if auto_min:
+            if walk_trials is None:
+                min_mon = 1
+            else:
+                p = min(den, 10000) / 100000.0
+                w = walk_trials * p
+                g_lo = max(0, int(math.floor(w - AUTO_SIGMA * math.sqrt(w * (1 - p)))))
+                grp = min([int(stats[k][mc["MinGrp"]] or 1) for k in counts if k in stats and "MinGrp" in mc] or [1])
+                min_mon = max(1, g_lo * max(1, grp))
         if total + packs_total < min_mon:
-            problems.append("only %d natural monsters (need %d)" % (total + packs_total, min_mon))
+            problems.append("only %d natural monsters (need %d%s)" % (total + packs_total, min_mon, ", auto" if auto_min else ""))
     if counts and nmon:
         uniq = sorted(set(listed))
         ok = any(set(counts) <= set().union(*(reach(k) for k in sub))
