@@ -147,7 +147,9 @@ func (l *Level) placePresetRooms(def, file, tx, ty int, gB uint32) {
 
 	gateSeed, gateSteps := *l.Seed, 0
 
-	if file >= 0 && file < len(rec.File) {
+	// the town levels (presetSize set) take no gate steps: the town tile goldens of the real game (tiles_towns.json,
+	// Lut Gholein's lutn/lutw.ds1 are in the gate table with 2 steps) only match without them
+	if file >= 0 && file < len(rec.File) && l.presetSize == ([2]int{}) {
 		// DS1 object RNG gate (0x66a230): some files cost level-seed steps
 		// when they are loaded, before the chunk rooms are allocated.
 		gateSteps = ds1GateSteps(rec.File[file])
