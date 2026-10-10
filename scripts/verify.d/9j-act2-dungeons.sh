@@ -8,7 +8,8 @@ scenario_warnings_ok=1
 scenario_env() {
   mkdir -p $a2/s94 $a2/wb94; rm -f $a2/s94/*.d2s $a2/wb94/*.d2s
   if [ -n "${D2_TABLES:-}" ] && go run scripts/d2s-revive.go "$D2S_SAMPLE_BODY" $a2/s94/Hero.d2s "$D2_TABLES" >/dev/null 2>&1; then
-    local s="wait:1;say:resetquests;say:completequest 1 6;travel:2;expect:level=40"
+    local s="wait:1;say:resetquests;say:completequest 1 6;travel:2;expect:level=40;say:completequest 2 5"
+    # Levels.txt QuestFlag 13 (the Summoner, quest record slot 13) gates the Canyon of the Magi, the tombs and Duriel's lair (CheckLevelGate)
     s+=";walkto:exit=47;expect:level=47;wait:2;walkto:exit=48;expect:level=48;walkto:exit=49;expect:level=49"
     s+=";say:spawnportal 40;wait:6;use:Portal;expect:level=40"
     s+=";walkto:exit=50;expect:level=50;wait:2;say:capframe $tmp/act2-harem.png;walkto:exit=51;expect:level=51;walkto:exit=52;expect:level=52"
