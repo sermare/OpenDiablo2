@@ -468,7 +468,8 @@ func (v *Game) castLeftSkill(k *killState, eng *d2skills.Engine, pick fightPick,
 
 	if k.castFails++; k.castFails >= castFailLimit {
 		k.dropped[pick.ID] = true
-		v.Warningf("KILL left skill %q refused %d times (%s): swinging instead for the rest of this fight",
+		// an Infof, not a warning: the hero swings instead and the fight goes on (scripts/verify_classes.sh lists it)
+		v.Infof("KILL left skill %q refused %d times (%s): swinging instead for the rest of this fight",
 			v.skillName(pick.ID), k.castFails, reason)
 	}
 }

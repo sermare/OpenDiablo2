@@ -41,6 +41,8 @@ wait_run() {
 }
 # every run gets its own scratch folder and server port, so parallel runs (e.g. several agents) do not collide
 tmp=$(mktemp -d /tmp/od2-verify.XXXXXX)
+# OD2_VERIFY_TMPFILE: write the scratch folder's path there (scripts/verify_classes.sh reads the game logs from it)
+[ -n "${OD2_VERIFY_TMPFILE:-}" ] && echo "$tmp" > "$OD2_VERIFY_TMPFILE"
 cleanup_games() { pkill -f "$tmp/od2" 2>/dev/null; pkill -f "$tmp/[0-9a-z-]*\.command" 2>/dev/null; }
 trap cleanup_games EXIT
 trap 'cleanup_games; exit 130' INT
