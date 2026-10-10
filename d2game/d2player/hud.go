@@ -709,8 +709,12 @@ func (h *HUD) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 	h.lastMouseX = mx
 	h.lastMouseY = my
 
-	h.skillSelectMenu.LeftPanel.HandleMouseMove(mx, my)
-	h.skillSelectMenu.RightPanel.HandleMouseMove(mx, my)
+	// a scripted run moves the "pointer" by itself (skill:hover=...): the physical cursor of the test machine
+	// (the user's mouse, other game windows opening under it) must not clear that hover again
+	if !scriptDrivesPointer() {
+		h.skillSelectMenu.LeftPanel.HandleMouseMove(mx, my)
+		h.skillSelectMenu.RightPanel.HandleMouseMove(mx, my)
+	}
 
 	return false
 }

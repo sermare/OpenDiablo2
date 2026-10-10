@@ -4,7 +4,10 @@ sb=$tmp/skillbar
 wb=$tmp/writeback-skillbar
 scenario_env() {
   mkdir -p $wb   # keeps the exported .d2s out of the Saves folder
-  echo "export OD2_D2S_WRITEBACK=\"$wb\" OD2_AUTOMONSTER=\"zombie1,1\" OD2_AUTOMONSTER_PASSIVE=1 OD2_AUTOMONSTER_SECONDS=300"
+  # OD2_AUTOMONSTER_HOLD: the monster test quits the game a few game seconds after its last monster died, and the scripted
+  # Fire Ball kills the zombie; on a loaded machine (a long frame at the x4 clock) that ended the game in the middle of
+  # the script, before the skill tree steps. With HOLD the script ends the run itself with its exit step.
+  echo "export OD2_D2S_WRITEBACK=\"$wb\" OD2_AUTOMONSTER=\"zombie1,1\" OD2_AUTOMONSTER_PASSIVE=1 OD2_AUTOMONSTER_HOLD=1"
   # right popup: look at it, hover Fire Wall, F8 assigns it; click Meteor (right skill); left popup: click Ice Bolt;
   # F8 / F2 select the hotkeyed skills; use=right casts the right skill through the skill pipeline; the skill tree:
   # hover + F6 assigns, level-up grants points, spending needs the prerequisites (Thunder Storm is refused)

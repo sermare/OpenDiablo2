@@ -236,6 +236,13 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 		return
 	}
 
+	// OD2_AUTOMONSTER_HOLD=1: the monsters are only scenery for an OD2_AUTOSCRIPT run, which ends the game itself
+	// (its exit step). Without this the summary quit the game a moment after the scripted skill killed the monster,
+	// in the middle of a script that is slow on a loaded machine.
+	if os.Getenv("OD2_AUTOMONSTER_HOLD") != "" && os.Getenv("OD2_AUTOSCRIPT") != "" {
+		return
+	}
+
 	c := v.monsters.Counters
 	v.Infof("AUTOMONSTER summary spawned=%d aggro=%d attacks=%d attack_hits=%d hero_swings=%d hero_hits=%d "+
 		"deaths=%d drops=%d hero_deaths=%d hero_hp=%d/%d %s", c.Spawned, c.Aggro, c.Attacks, c.AttackHits,
