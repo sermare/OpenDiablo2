@@ -1,8 +1,14 @@
 package d2player
 
 import (
+	"os"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 )
+
+// noNaturalRegen is OD2_NOREGEN=1: the natural regeneration is off (a debug
+// switch to compare scripted runs with and without it).
+var noNaturalRegen = os.Getenv("OD2_NOREGEN") == "1"
 
 // advanceNaturalRegen runs the exe's per-frame vitals routines on the hero
 // (d2herostats/regen.go): mana comes back on its own with the class ManaRegen
@@ -11,7 +17,7 @@ import (
 // part is separate (advancePotions). A dead hero does not regenerate.
 func (g *GameControls) advanceNaturalRegen(elapsed float64) {
 	st := g.hero.Stats
-	if st == nil || st.Health <= 0 {
+	if noNaturalRegen || st == nil || st.Health <= 0 {
 		return
 	}
 
