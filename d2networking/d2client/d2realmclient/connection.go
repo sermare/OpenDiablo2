@@ -231,7 +231,9 @@ func (c *Connection) openJoin(addr string) error {
 
 	j, err := c.bridge.Join(DefaultGame, retry)
 	if err != nil {
-		return err
+		c.Errorf("JOIN refused: %s", Explain(err))
+
+		return fmt.Errorf("%s: %w", Explain(err), err)
 	}
 
 	c.Infof("PLAYER JOIN name=%q id=%s level=%d proto=realm unit=%d seed=%#x", c.state.HeroName, c.uniqueID,

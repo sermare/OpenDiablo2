@@ -281,8 +281,14 @@ with `OD2_AUTOGAME` behave the same.
   (`MirrorHP`, `MirrorKill`: death animation and sound, no local XP or loot).
 - Console: `mpkill` (fight the nearest realm monster), `mpworld` (log
   `REALM WORLD ... digest=`; equal digests = equal worlds).
-- Not wired: level changes (the realm game stays in the starting town), party
-  and trade windows, per-difficulty monsters, monster types beyond the
+- Level changes and party (code and unit tests, not yet seen in two game windows): the engine's ChangeLevel
+  packet becomes the realm's LevelChange (act numbered from 0), `PlayerLevel` is kept per hero
+  (`Bridge.PeerLevel`, `SameLevel`) and the party commands invite / accept / leave become `d2mp.Command`s
+  (decline and hostility have no realm command and are logged). Party ids from the simulation come back to the
+  engine as a `RosterUpdate` packet (`d2realmclient/social.go`). A refused join is explained in the log
+  (`JOIN refused: ...`); only "game not found" is retried. The realm world itself is still one arena, so heroes in
+  different levels share the town's units until per-level worlds exist.
+- Not wired: per-level worlds in the realm, the trade window, per-difficulty monsters, monster types beyond the
   placeholder list, a dedicated `od2server` with engine rules (it uses
   DefaultRules, whose spawn differs from the engine's).
 - Scenario `scripts/verify.d/9j-realm-multiplayer.sh`: two windows, both started

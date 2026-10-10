@@ -108,6 +108,36 @@ ice cave walls and floors that do not match.
 * Quit with Cmd+Q and start again with the same hero. Are your gold, level, items and waypoints still there? (Items
   picked up in the game may not be written back to the original `.d2s`; see KNOWN_GAPS.)
 
+### What changed since batch 6b: check these next
+
+Landed in batches 6b to 11 and so far only checked by scripted runs, never by a human. Write down only what looks wrong.
+
+* **Mouse and click controls (Mac).** A left click on open ground always walks, even with a spell on the left button;
+  Cmd+click uses the right skill; holding the left button repeats the walk smoothly, also past NPCs and objects.
+  Try it in town (many blockers): does the hero stop dead, jitter, or take a long pause on a blocked click?
+* **Town walking speed.** Path search for blocked clicks was made about four times faster. Click behind a building or
+  into a crowd of NPCs and watch for a hitch.
+* **Summons and monster spells.** Foul Crow Nests lay crows, Stygian Hags and Flesh Spawners lay their brood, Sand
+  Maggot Queens lay eggs, Bone Wall and Rabies work (rabies spreads to other monsters), a necromancer's or summoner's
+  minions vanish when the owner dies, and a host cap stops monsters from summoning without limit. Does a long fight
+  stay playable (no flood of minions, no frame drop)?
+* **New monster AI.** Evil hole spawners, high priests, generic and invisible spawners now follow the original
+  program. Look at the Den of Evil, Arcane Sanctuary and Act 4 priests: do they behave sensibly or stand still?
+* **Portal shrine.** It opens a town portal (no level change) and it teleports to the act start where relevant.
+* **Exit walks.** After a defensive fight the hero resumes walking to a level exit; take stairs after a fight and see
+  that the walk finishes.
+* **Trade.** Offer edits that are refused keep both windows in step. Two windows: trade, change an offer twice, accept.
+* **Monster counts.** The population checks were recalibrated. River of Flame and the Chaos Sanctuary still look
+  sparse (known, KNOWN_GAPS / open items): say if they feel empty.
+* **Multiplayer (two machines or two windows).** Menu Multiplayer, TCP/IP, Host Game on one, Join Game on the other:
+  both heroes visible, walking, chatting, killing a dummy in town. New: change level on one side (the other should see
+  that hero leave or arrive in its roster, not a ghost standing in town), invite to a party and accept (party panel shows
+  both), and a join to a host that has not started yet should keep retrying, while a wrong or full game shows a clear
+  message in the log (`JOIN refused: ...`) instead of a hang.
+* **Disk image.** On a Mac that did not build it: open `OpenDiablo2-<version>-macos-arm64.dmg` from Downloads, drag
+  the app to Applications, right-click Open, pick your Diablo II folder. Does the window look right, does it launch,
+  and is the log at `~/Library/Logs/OpenDiablo2/OpenDiablo2.log`? This is the one step no script can do.
+
 ## How to report
 
 Write one short entry per finding. Use this shape (words only, no game files, no screenshots of game data):
