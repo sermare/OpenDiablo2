@@ -114,6 +114,8 @@ func (v *Game) skillEngine() *d2skills.Engine {
 		}
 	}
 
+	v.skills.OnSound = v.onSkillSound
+
 	return v.skills
 }
 

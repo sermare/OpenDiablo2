@@ -22,5 +22,19 @@ func (o optionsBackend) Change(key string, index int) error {
 		o.a.audio.SetVolumes(o.a.config.BgmVolume, o.a.config.SfxVolume)
 	}
 
+	if key == d2config.OptNpcSpeech {
+		o.a.applySpeechOption()
+	}
+
 	return o.a.config.Save()
+}
+
+// applySpeechOption tells the audio provider whether NPC speech is played
+// (the NPC SPEECH option: AUDIO AND TEXT, AUDIO ONLY or TEXT ONLY).
+func (a *App) applySpeechOption() {
+	if sp, ok := a.audio.(interface{ SetSpeechAudio(bool) }); ok {
+		const textOnly = 2
+
+		sp.SetSpeechAudio(a.config.OptionIndex(d2config.OptNpcSpeech) != textOnly)
+	}
 }

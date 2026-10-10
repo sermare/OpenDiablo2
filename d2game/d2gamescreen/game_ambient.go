@@ -59,6 +59,31 @@ func (v *Game) soundEnvForRegion(region d2enum.RegionIdType, fallback int) int {
 	return fallback
 }
 
+// soundEnvForHero is the SoundEnviron row for the hero's position: the
+// SoundEnv column of the Levels.txt row of the level the hero is in once a
+// level change has happened, else the one of the map region under the hero.
+func (v *Game) soundEnvForHero(region d2enum.RegionIdType, fallback int) int {
+	if id := v.gameClient.Level; id != 0 {
+		if rec := v.asset.Records.Level.Details[id]; rec != nil {
+			return rec.SoundEnvironmentID
+		}
+	}
+
+	return v.soundEnvForRegion(region, fallback)
+}
+
+// enterSoundEnv switches the music and ambience to the level just entered
+// (the old sounds fade out through their Fade Out column, the new ones fade
+// in) and logs the choice.
+func (v *Game) enterSoundEnv(level int) {
+	rec := v.asset.Records.Level.Details[level]
+	if rec == nil || v.ambientTest != nil {
+		return
+	}
+
+	v.soundEnv.SetEnv(rec.SoundEnvironmentID)
+}
+
 // ambientSpeed scales the ambient event timers (OD2_AUTOAMBIENT_SPEED).
 func (v *Game) ambientSpeed() float64 {
 	if v.ambientTest != nil && v.ambientTest.started {

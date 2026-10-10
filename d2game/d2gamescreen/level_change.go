@@ -317,6 +317,7 @@ func (v *Game) afterLevelBuilt(from, to int, via string) {
 	v.scanWarps()
 	v.questArea(to) // the quest system follows the hero between areas
 	v.uberEnter(to)
+	v.enterSoundEnv(to)
 	v.restoreCorpse()
 	v.restoreLevel(to)
 	v.portal.ents = nil // the objects went with the old map

@@ -102,6 +102,11 @@ type Engine struct {
 	// OnEvent receives every log line as a structured event (kind cast, mana,
 	// missile, hit, damage, state...).
 	OnEvent func(kind, line string)
+	// OnSound plays a skill or missile sound; it returns a function that stops
+	// it again (looping travel sounds), or nil.
+	OnSound func(SoundEvent) (stop func())
+
+	travel map[uint32]func() // missile id -> stop of its travel sound
 }
 
 // New creates an engine for a map. monsters supplies targets and the grid.
@@ -112,6 +117,7 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 		heroes: map[string]*heroUnit{}, targets: map[string]*monsterTarget{},
 		visuals: map[uint32]*d2mapentity.Missile{}, fx: map[*d2mapentity.Missile]int{},
 		sets: map[string]*d2state.Set{}, auras: map[string]*auraRun{}, pets: map[string][]*d2mapentity.Monster{}, dots: map[string]dotTotal{},
+		travel: map[uint32]func(){},
 	}
 
 	e.Logger.SetLevel(l)
@@ -300,9 +306,19 @@ func (e *Engine) CastAt(p *d2mapentity.Player, skillID, sx, sy int) bool {
 
 	e.castOverlay(p, e.asset.Records.Skill.Details[skillID])
 
-	run := func() { e.runDo(p, u, sk, tg) }
-
 	rec := e.asset.Records.Skill.Details[skillID]
+	if rec != nil {
+		e.skillSound(p, "skill-start", rec.Stsound, sk.Name)
+	}
+
+	run := func() {
+		if rec != nil {
+			e.skillSound(p, "skill-do", rec.Dosound, sk.Name)
+		}
+
+		e.runDo(p, u, sk, tg)
+	}
+
 	if rec == nil || rec.Anim == d2enum.PlayerAnimationModeNone {
 		run()
 		return true
@@ -915,6 +931,8 @@ func (e *Engine) runTimers() {
 }
 
 func (e *Engine) onSim(ev d2missile.Event) {
+	e.missileSound(ev)
+
 	m := ev.Missile
 	name := m.Spec.Name
 
