@@ -88,7 +88,7 @@ type Request struct {
 	Hero         bool    // emitter is the local hero: priority += 0x50
 	FixedVariant bool    // do not pick a Group Size variant (verified flag bit 0)
 	NoFade       bool    // skip Fade In (verified flag bit 1)
-	Volume       int     // 0 = the Sounds.txt Volume column; else 1..255 overrides it (MonSounds.txt Wea1Vol)
+	Volume       int     // 0 = none; else 1..255 scales the level (MonSounds.txt Wea1Vol; unverified in the original)
 }
 
 // Report describes a decision, for logs and tests.
@@ -263,11 +263,15 @@ func (b *Bank) Play(req Request) *Instance {
 
 	inst.report.Handle, inst.report.File = row.Handle, row.FileName
 
-	// FUN_004b6350 returns when the row byte at +0x3c is 0. That byte is NOT the
-	// Priority column (+0x4e, copied to the instance afterwards): footstep rows
-	// have Priority 0 and still play, as the lowest priority. +0x3c sits before
-	// Group Size and is most likely a "has a file" flag (UNVERIFIED which).
+	// FUN_004b6350 returns when the row byte at +0x3c (the Volume column) is 0.
+	// Priority (+0x4e) is separate: footstep rows have Priority 0 and still play.
 	if row.FileName == "" {
+		return b.reject(inst, DecisionNoFile)
+	}
+
+	// Volume column (+0x3c, verified by column order: it follows FileName and
+	// precedes Group Size): FUN_004b6350 returns when it is 0 (the none.wav rows).
+	if row.Volume == 0 {
 		return b.reject(inst, DecisionNoFile)
 	}
 
@@ -699,25 +703,30 @@ func (b *Bank) oldestOfIndex(index int) *Instance {
 	return best
 }
 
-// Mix computes the player volume and pan for an instance: vol/255 * row.Volume/255
-// * master (music master for MusicVol rows) * solo duck (non-Solo rows) * distance
-// gain. The row.Volume factor, the distance gain and the pan model approximate the
-// original's 3D positional audio (unverified); the 0.003125 position scale and the
-// z of 640 are verified.
+// Mix computes the player volume and pan for an instance, following
+// SOUND_UpdateChannelPanVolume (Game.exe 0x4dcb30): level = envelope (0..255),
+// then * music/100 for MusicVol rows, then * sound/100 for EVERY row (music
+// included), then the duck factors; amplitude = level/255. The Sounds.txt Volume
+// column does not scale the level (it only gates playback, see Play). Master
+// volumes are whole percents and each step truncates like the original's integer
+// math. The distance gain and pan model approximate the original's 3D positional
+// audio (unverified); the 0.003125 position scale and the z of 640 are verified.
 func (b *Bank) Mix(q *Instance) (vol, pan float64) {
 	row := q.row
-	master := b.sfxVol
+	level := q.vol
 
 	if row.MusicVol {
-		master = b.musicVol
+		level = level * percent(b.musicVol) / 100
 	}
 
-	rowVol := row.Volume
+	level = level * percent(b.sfxVol) / 100
+	vol = float64(level) / 255
+
+	// A per-request volume (MonSounds weapon volume) is not a parameter of the
+	// original request function (unverified where it applies); kept as a 0..255 scale.
 	if q.req.Volume > 0 {
-		rowVol = q.req.Volume
+		vol *= float64(q.req.Volume) / 255
 	}
-
-	vol = float64(q.vol) / 255 * float64(rowVol) / 255 * master
 
 	if !row.Solo {
 		vol *= float64(b.duck) / duckMax
@@ -735,6 +744,20 @@ func (b *Bank) Mix(q *Instance) (vol, pan float64) {
 	}
 
 	return vol, pan
+}
+
+// percent converts a 0..1 master volume to the original's whole 0..100 scale.
+func percent(v float64) int {
+	p := int(v*100 + 0.5)
+	if p < 0 {
+		return 0
+	}
+
+	if p > 100 {
+		return 100
+	}
+
+	return p
 }
 
 // DistanceGain is a linear roll-off to the Falloff radius (unverified).
