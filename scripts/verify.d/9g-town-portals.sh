@@ -1,3 +1,4 @@
+scenario_realtime=1
 scenario_name="town portals (two processes over TCP: a portal pair opens in the field and in town, outsiders are refused, party members and the owner use it, it survives level changes, recasting replaces it, leaving closes it)"
 # The runner starts the host with $save (a real level 94 hero); this scenario starts the joiner itself, with a copy
 # of the same save under another hero name. Both scripts run in step with `waitlog:` and chat markers:

@@ -1,3 +1,4 @@
+scenario_realtime=1
 scenario_name="PvP skills and the hardcore ear (two processes over TCP: a hostile hero's Fire Ball, Meteor and Blizzard hurt a hero at 17 percent; a hardcore kill drops an ear that is picked up and saved in the .d2s)"
 # Host = the killer (softcore real save), joiner = the victim (a hardcore copy of the same save under another name).
 # Both walk through a spawned portal to the Cold Plains first: skills do not work in town. Steps:
