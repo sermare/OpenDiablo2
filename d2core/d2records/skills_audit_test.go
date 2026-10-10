@@ -118,10 +118,13 @@ func (u *auditUnit) ConsumeAmmo() bool           { return true }
 func (u *auditUnit) Cooldown(id int) int         { return u.cd[id] }
 func (u *auditUnit) SetCooldown(id, until int)   { u.cd[id] = until }
 
-type auditFoe struct{ x, y int }
+type auditFoe struct {
+	x, y   int
+	player bool // a hostile hero (PvP) instead of a monster
+}
 
 func (f *auditFoe) ID() string       { return "foe" }
-func (f *auditFoe) IsPlayer() bool   { return false }
+func (f *auditFoe) IsPlayer() bool   { return f.player }
 func (f *auditFoe) Alive() bool      { return true }
 func (f *auditFoe) Level() int       { return 20 }
 func (f *auditFoe) Defense(bool) int { return 0 }

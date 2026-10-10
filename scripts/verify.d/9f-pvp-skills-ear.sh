@@ -6,6 +6,8 @@ scenario_name="PvP skills and the hardcore ear (two processes over TCP: a hostil
 #   2 host declares hostility, walks away and casts Fire Ball (missile + splash), Meteor (area) and Blizzard (storm)
 #   3 the host keeps casting Fire Balls until the joiner (a full-life hero) dies: hardcore death, kill report, ear on the ground
 #   4 the host picks the ear up and leaves; the exported .d2s has the ear
+# Meteor's burning ground ticks (3.5 fire, under one point at 17 percent) hurt through the carried fraction
+# (d2combat.PvPCarry), so the victim burns down while it stands in the fire.
 # UNVERIFIED rules: the 17 percent scale (pvp.go), the defender applies its own resists after the scale, the ear
 # drops where the victim fell. Curses and auras are in the same code path (d2core/d2skills/pvp.go) but need a
 # paladin or necromancer hero; this scenario covers missiles, area hits and storms.
@@ -54,7 +56,9 @@ scenario_env() {
   hscript+=";waitlog:PVP EAR dropped;wait:1;loot:8,15;wait:2;say:chat eartaken;wait:2;exit"
 
   local jscript="wait:1;waitlog:SOCIAL roster n=2;say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3"
-  jscript+=";waitlog:PVP HIT attacker;waitlog:PVP KILLED;wait:3;exit"
+  # the victim may die before the host's last Fire Ball (Meteor's burning ground keeps hurting): it stays in the
+  # game until the host has picked the ear up, so the host's casts and the loot still find it
+  jscript+=";waitlog:PVP HIT attacker;waitlog:PVP KILLED;waitlog:eartaken;wait:2;exit"
 
   {
     echo '#!/bin/zsh'
@@ -97,7 +101,7 @@ scenario_check() {
   done
 
   local bad
-  bad=$(sed -nE 's/.*PVP SKILL target="[^"]*" skill="[^"]*" raw=([0-9]+) scaled=([0-9]+) pct=([0-9]+).*/\1 \2 \3/p' $log.txt | awk '$3 != 17 || $2 * 100 > $1 * 17 {n++} END {print n + 0}')
+  bad=$(sed -nE 's/.*PVP SKILL target="[^"]*" skill="[^"]*" raw=([0-9]+) scaled=([0-9]+) pct=([0-9]+).*/\1 \2 \3/p' $log.txt | awk '$3 != 17 || $2 * 100 > $1 * 17 + 100 {n++} END {print n + 0}')  # + 100: the fraction a burning ground tick left (PvPCarry) pays out in one later hit
   [ "$bad" -eq 0 ] || { echo "FAIL: $bad skill hits are not scaled to 17 percent"; fail=1; }
   bad=$(sed -nE 's/.*PVP HIT attacker="[^"]*" raw=([0-9]+) scaled=([0-9]+) taken=([0-9]+).*skill="[^"]+".*/\2 \3/p' $j | awk '$2 > $1 {n++} END {print n + 0}')
   [ "$bad" -eq 0 ] || { echo "FAIL: $bad hits took more than the scaled damage"; fail=1; }

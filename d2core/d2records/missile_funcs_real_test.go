@@ -28,7 +28,11 @@ type simRun struct {
 	u      d2skill.Unit
 }
 
-func realCast(t *testing.T, skill string, lvl int) *simRun {
+func realCast(t *testing.T, skill string, lvl int) *simRun { return realCastFoe(t, skill, lvl, false) }
+
+// realCastFoe is realCast with the target at (55, 50) being a hostile hero (PvP)
+// or a monster.
+func realCastFoe(t *testing.T, skill string, lvl int, player bool) *simRun {
 	t.Helper()
 
 	rm := loadRealRecords(t)
@@ -40,7 +44,7 @@ func realCast(t *testing.T, skill string, lvl int) *simRun {
 	}
 
 	r := &simRun{t: t}
-	r.w = &auditWorld{grid: d2path.NewCellGrid(-50, -50, 300, 200), foe: &auditFoe{x: 55, y: 50}}
+	r.w = &auditWorld{grid: d2path.NewCellGrid(-50, -50, 300, 200), foe: &auditFoe{x: 55, y: 50, player: player}}
 	r.sim = d2missile.NewSim(r.w, mt)
 	r.sim.OnEvent = func(e d2missile.Event) { r.evs = append(r.evs, e) }
 
