@@ -41,7 +41,7 @@ Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The 
 
 ## Status board
 
-_Last updated: 2026-10-10 (after the pass6 landing; Game v1 complete 69%, 70% with held branches; fourth full verify run 77399: all jobs passed, no retry; earlier run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
+_Last updated: 2026-10-10 (after batches 6b and 7 (integration 5732ca55; seven clean full verifies in a row); earlier, after the pass6 landing; Game v1 complete 69%, 70% with held branches; fourth full verify run 77399: all jobs passed, no retry; earlier run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
 
 ### ✅ Working now (each one verified, not assumed)
 
@@ -151,6 +151,7 @@ Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>
 
 | Date | Success |
 |---|---|
+| 2026-10-10 | **Batches 6b and 7 landed** (`integration` = 5732ca55, seven clean full verifies in a row): batch 6b monster summons, Bone Wall and Rabies hooks, and the Stygian Hag brood fix; batch 7 summoner `HostSummonCap` safety caps (MinionSpawner 10, Hydra 9, Overseer Whip/Impregnate 6, DiabPrison 4; the cap values are UNVERIFIED against the exe) and the party-trade refusal sequence fix. |
 | 2026-10-10 | **Batch 6a landed** (`integration` and `master` = 4e1824e3): the exact PvP damage bound in the PvP scenario (no drift found across four batches), level quest gates enforced in the engine (Canyon, tombs, Palace, Arcane Sanctuary, Durance and the Worldstone levels, from the exe's rules), and exe-derived object behaviour: barrels explode with damage, chests are locked or trapped (keys consumed, trap monsters), wells have two pulses and refill, racks create a random base item, shrines act (Storm, Exploding, Poison, Warping, Gem Upgrade). Full verify: five of six jobs green; the sixth crossed the new gates with a scenario that had not completed the gating quests (fixed in the scenario). Next: batch 5 (quests, all eight scenarios green alone), batch 6b (monster summons, Bone Wall, Rabies) and the seven-class playthrough matrix |
 | 2026-10-10 | **Batch 4 landed, second fully green full verify in a row** (`integration` and `master` = 5510c7b4, no flake and no retry): all 26 skill missile gaps closed with real function bodies from the exe (Meteor, Blizzard, Volcano, Frozen Orb, Bone Wall, the Barbarian shouts, Rabies and more), burning ground now hurts players through a fractional damage carry, and the trade window race is closed in the client, protocol and server with an offer sequence number. Barbarian passes all five acts with real combat (28 min, no deaths). Next: quests (Siege and Blade), the seven-class playthrough matrix, and your play-test |
 | 2026-10-10 | **Batch 3 landed, first fully green full verify** (`integration` and `master` = 697ecb6c): the whole Act 3 chain with real combat (Docks to Travincal, the Council, Khalim's Flail, the Orb, Durance, Mephisto and the red portal), the multiplayer game screen (host and join through the menus, two windows synced through the realm) and the real Act 2 wall fade. Run 63179: all six jobs passed, 193 scenarios, one retried flake. Next: batch 4 (skills missiles incl. Meteor/Blizzard PvP, the trade offer race fix, quest walkthroughs), the all-classes playthrough matrix and your play-test |

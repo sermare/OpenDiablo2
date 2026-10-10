@@ -27,7 +27,7 @@
 <rect x="1" y="1" width="878" height="1798" rx="17" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
 <text x="36" y="46" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#ffffff">Native macOS Diablo II — progress</text>
 <text x="36" y="72" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#b8b9d6">driven by Claude · counts come from code, tests and Ghidra; estimates are marked with ~ · dashed = on branches, not yet verified</text>
-<text x="844" y="46" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">updated 2026-10-09</text>
+<text x="844" y="46" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">updated 2026-10-10</text>
 <text x="36" y="114" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Game v1 complete</text>
 <text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">69%</text>
 <rect x="36" y="128" width="808" height="26" rx="13" fill="#ffffff" fill-opacity="0.08"/>
