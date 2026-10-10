@@ -36,9 +36,47 @@ The bundle is arm64, ad-hoc signed and contains no game files. The
 `Package macOS app` GitHub Actions workflow runs the same command and keeps the
 zip as a workflow artifact only (Actions tab, run, Artifacts; kept 14 days); no
 release is published. Unzip it, right-click the app and choose Open the first
-time (it is not notarised), then point it at your own Diablo II folder when it
+time (it is not notarised, see below), then point it at your own Diablo II folder when it
 asks (or set `MpqPath` as in step 3). Crash logs go to
 `~/Library/Logs/OpenDiablo2/OpenDiablo2.log`.
+
+### Install from the disk image, first launch, Gatekeeper
+
+```sh
+scripts/make-app.sh && scripts/check_app_bundle.sh && scripts/make-dmg.sh   # dist/OpenDiablo2-<version>-macos-arm64.dmg
+```
+
+Open the image and drag OpenDiablo2 to Applications. The app is only ad-hoc
+signed (no Apple Developer ID, not notarised), so Gatekeeper blocks a plain
+double-click once: **right-click (or Control-click) the app, choose Open, then
+Open again**. If macOS still refuses, use System Settings > Privacy & Security >
+"Open Anyway". If a downloaded copy is reported as damaged, clear the
+quarantine flag: `xattr -dr com.apple.quarantine /Applications/OpenDiablo2.app`.
+
+First run: the app looks for your Diablo II folder (Wine/CrossOver/Whisky
+prefixes such as `~/.wine*/drive_c/Program Files (x86)/Diablo II`, `/Applications/Diablo II`,
+Steam and Battle.net locations) and offers it, otherwise it asks you to pick the folder with
+`d2data.mpq`, `d2exp.mpq`, `patch_d2.mpq` and the other archives
+(`d2char`, `d2music`, `d2sfx`, `d2speech`, `d2video`, `d2xmusic`, `d2xtalk`,
+`d2xvideo`). Picking the parent of `Diablo II` works too. If files are missing it
+shows a dialog listing them; nothing crashes, and your files are only read.
+
+Where things live: settings and saves in `~/Library/Application Support/OpenDiablo2`
+(override with `OD2_CONFIG_DIR`), log in `~/Library/Logs/OpenDiablo2/OpenDiablo2.log`
+(previous run in `OpenDiablo2.previous.log`). Retina: the app is high-resolution
+capable and scales the 800x600 game to the window (`WindowScale` in config.json
+or `windowscale` in the console sets the start size).
+
+Keys: **Cmd+Enter** (or Alt+Enter) toggles full screen, **Cmd+Q** quits (the hero is saved).
+
+App Nap: macOS may throttle a window that is hidden or fully covered. If the
+game stutters after switching away, turn it off for the app:
+`defaults write io.github.sermare.OpenDiablo2 NSAppSleepDisabled -bool YES`.
+
+Checks: `scripts/check_app_bundle.sh` (structure, Info.plist, arm64, `codesign -v`,
+no game files; runs in the `Package macOS app` workflow) and
+`scripts/test_app_launch.sh` (launches the bundle like Finder does against a
+temporary config, needs a GUI session and your own game folder).
 
 ## 3. Configure
 
