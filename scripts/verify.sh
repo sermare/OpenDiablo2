@@ -153,6 +153,8 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
         # OD2_VERIFY_CONFIG_DIR: a private config folder (a copy of a valid config.json) instead of the user's own;
         # a scenario that needs its own OD2_CONFIG_DIR overrides it below
         [ -n "${OD2_VERIFY_CONFIG_DIR:-}" ] && echo "export OD2_CONFIG_DIR=\"$OD2_VERIFY_CONFIG_DIR\""
+        # OD2_TURBO=1: virtual 25 Hz clock, many ticks per frame, draw every Nth frame (see d2common/d2util/turbo.go)
+        [ -n "${OD2_TURBO:-}" ] && [ -z "$scenario_realtime" ] && echo "export OD2_TURBO=$OD2_TURBO"
         scenario_env
         echo "$tmp/od2 2>&1 | tee $log"
       } > $cmd

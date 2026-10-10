@@ -488,10 +488,6 @@ func (a *App) advance() error {
 
 	a.advanceAutoShot(elapsedUnscaled)
 
-	if d2util.TurboEnabled() && a.captureState != captureStateNone {
-		d2util.TurboRequestDraw() // OD2_TURBO draws only some frames; a capture needs this one
-	}
-
 	elapsedLastScreenAdvance := (current - a.lastScreenAdvance) * a.timeScale
 	a.lastScreenAdvance = current
 
@@ -511,6 +507,10 @@ func (a *App) advance() error {
 
 	if err := a.terminal.Advance(elapsedUnscaled); err != nil {
 		return err
+	}
+
+	if d2util.TurboEnabled() && a.captureState != captureStateNone {
+		d2util.TurboRequestDraw() // OD2_TURBO draws only some frames; a capture needs this one
 	}
 
 	return nil
