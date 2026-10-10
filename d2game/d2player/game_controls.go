@@ -782,8 +782,14 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	}
 
 	if event.Button() == d2enum.MouseButtonLeft && !g.isInActiveMenusRect(mx, my) && g.inventory.CursorItem() != nil {
-		// clicking the world with an item on the cursor drops it (packet 0x17)
 		g.lastLeftBtnActionTime = d2util.Now()
+
+		// an NPC that is owed a reward on an item (Larzuk, Anya, Charsi) takes it
+		if g.dropOnNPC(g.hoveredNPC()) {
+			return true
+		}
+
+		// clicking the world with an item on the cursor drops it (packet 0x17)
 		item := g.inventory.CursorItem()
 		g.inventory.SetCursorItem(nil)
 		g.inputListener.OnPlayerDropItem(item)

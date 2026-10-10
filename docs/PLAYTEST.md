@@ -160,3 +160,7 @@ and need no fix, they only need the 10 s since the last level change that the or
   Drifter Cavern (116), Icy Cellar (119), the Worldstone Chamber (132) and Forgotten Sands (134) are generated but not
   walked by a script; the Throne of Destruction's link to the Worldstone Chamber is a portal in the original, not a tile.
 * The level names come from the game's Levels.txt strings (`Rigid Highlands`, `Crystalized Cavern Level 1`, ...).
+
+## Quest rewards through the NPCs (scenario 9k)
+
+Branch `feat/reward-npc-ui`. Larzuk (sockets), Anya (personalise) and Charsi (imbue) take the item the hero holds on the cursor when the hero clicks them (`OnItemDropOnNPC`; scripts use `say:pickitem <code>` then `move:npc=`); while a reward is owed their menu also gets a row (Add Sockets / Personalize / Imbue) that opens the inventory (a row of this fork, UNVERIFIED against the exe). Akara gets the "Reset Stat/Skill Points" row (string 0x2ba0, gated by quest slot 41). Debug aids: `questpending <act> <quest>`, `giveitemq`, `pickitem`, `putitem`, `freeinv`. Not persisted: the owed sockets/personalisation (only the imbue and the reset follow the quest record). Hratli and Jerhyn have no travel rows in the exe table; act travel stays Warriv, Meshif, the Mephisto portal and Tyrael talk.

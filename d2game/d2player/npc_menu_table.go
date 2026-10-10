@@ -26,13 +26,20 @@ const (
 	// (not of the class table): one per offered mercenary, and the revive row.
 	NPCActionHireOffer
 	NPCActionReviveMerc
+	// NPCActionReward is a row this fork adds to Larzuk, Anya and Charsi while
+	// a quest reward on an item is owed ("Add Sockets", "Personalize", "Imbue"):
+	// it opens the inventory and asks for the item (the original has no row,
+	// the player drops an item on the NPC). NPCActionRespec is Akara's
+	// "Reset Stat/Skill Points" (string 0x2ba0, gated by quest slot 41).
+	NPCActionReward
+	NPCActionRespec
 )
 
 // String names the action for logs.
 func (a NPCMenuAction) String() string {
 	names := [...]string{
 		"Talk", "Trade", "TradeRepair", "Gamble", "Hire", "Identify", "TravelWest", "SailWest", "TravelEast", "SailEast", "Cancel",
-		"Topic", "HireOffer", "ReviveMerc",
+		"Topic", "HireOffer", "ReviveMerc", "Reward", "Respec",
 	}
 
 	if int(a) < 0 || int(a) >= len(names) {
@@ -69,6 +76,8 @@ const (
 	strIDGoEast   = 0xd36
 	strIDSailEast = 0xd38
 	strIDCancel   = 0xd48
+	// strIDRespec is the patch string of Akara's reset row (ui-npc.md: 0x2ba0, "Reset Stat/Skill Points").
+	strIDRespec = 0x2ba0
 )
 
 //nolint:gochecknoglobals // static lookup data
@@ -86,6 +95,10 @@ var (
 	RowGoEast   = NPCMenuRow{strIDGoEast, "WarrivMenu1b", "Go East", NPCActionTravelEast}
 	RowSailEast = NPCMenuRow{strIDSailEast, "MeshifMenuEast", "Sail East", NPCActionSailEast}
 
+	// RowRespec is Akara's reset row; its key is UNVERIFIED (the patch string table is not loaded), so the
+	// English fallback is shown.
+	RowRespec = NPCMenuRow{strIDRespec, "ResetStatSkillPoints", "Reset Stat/Skill Points", NPCActionRespec}
+
 	// RowCancel is the implicit last row of every NPC menu.
 	RowCancel = NPCMenuRow{strIDCancel, "Back", "Cancel", NPCActionCancel}
 )
@@ -98,21 +111,21 @@ var (
 //nolint:gochecknoglobals // static lookup data
 var npcMenuTable = map[int][]NPCMenuRow{
 	// Talk only
-	176: {rowTalk}, // Atma
-	146: {rowTalk}, // Cain1
-	200: {rowTalk}, // Geglash
-	201: {rowTalk}, // Jerhyn
-	155: {rowTalk}, // Warriv1
-	210: {rowTalk}, // Meshif1
-	251: {rowTalk}, // Tyrael1
+	176: {rowTalk},          // Atma
+	146: {rowTalk},          // Cain1
+	200: {rowTalk},          // Geglash
+	201: {rowTalk},          // Jerhyn
+	155: {rowTalk},          // Warriv1
+	210: {rowTalk},          // Meshif1
+	251: {rowTalk},          // Tyrael1
 	367: {rowTalk, rowHire}, // 0x16f Tyrael2: Hire opens only the merc revive (0x577a10 allow-list)
-	297: {rowTalk}, // Natalya
-	266: {rowTalk}, // Navi
-	331: {rowTalk}, // 0x14b act 2 guard
-	377: {rowTalk}, // 0x179 act 2 guard
-	378: {rowTalk}, // 0x17a act 2 guard
-	406: {rowTalk}, // Izual ghost
-	408: {rowTalk}, // Malachai
+	297: {rowTalk},          // Natalya
+	266: {rowTalk},          // Navi
+	331: {rowTalk},          // 0x14b act 2 guard
+	377: {rowTalk},          // 0x179 act 2 guard
+	378: {rowTalk},          // 0x17a act 2 guard
+	406: {rowTalk},          // Izual ghost
+	408: {rowTalk},          // Malachai
 
 	// Talk + Trade
 	148: {rowTalk, rowTrade}, // Akara
