@@ -4,7 +4,7 @@ scenario_name="class skills (one or more skills of every class: damage, kills, s
 # long lasting damage fields (Holy Fire, Hurricane, Thunder Storm) come last, because they kill
 # everything the other skills are meant to hit, curses before the kills, corpse skills after kills
 # (a corpse is made when none lies around). The hero's own minions (Valkyrie, Necroskeleton, Raven) kill the
-# zombies during a cast animation, so a swing or missile can hit nobody: Bash and Chain Lightning carry a "!"
+# zombies during a cast animation, so a swing or missile can hit nobody: Bash, Chain Lightning and Holy Fire (its aura pulses count as area hits) carry a "!"
 # (the engine casts them again until one hit landed; a to-hit miss counts as no hit, too).
 scenario_env() {
   # Amazon / Barbarian / Assassin skills with an own do function (docs/skills-coverage-abc.md) come first:
@@ -20,7 +20,7 @@ scenario_env() {
   # feat/skills-npsd: AI curses, Poison Nova, Hydra, Plague Poppy, Telekinesis, Conversion, Hunger
   list+=";Dim Vision,2;Confuse,2;Attract,2;Poison Nova,1;Hydra,1;Plague Poppy,1;Telekinesis,2;Conversion,8;Hunger,2"
   list+=";Fists of Fire,2;Dragon Talon,1;Lightning Sentry,1;Shadow Warrior,1"
-  list+=";Thunder Storm,1;Hurricane,1;Holy Fire,1;Grim Ward,2"
+  list+=";Thunder Storm,1;Hurricane,1;Holy Fire,1!;Grim Ward,2"
   echo "export OD2_AUTOCAST_CLASS=necromancer OD2_AUTOCAST_MANA=500 OD2_AUTOMONSTER=\"zombie1,5\" OD2_AUTOMONSTER_SECONDS=900"
   echo "export OD2_AUTOCAST=\"$list\""
 }
