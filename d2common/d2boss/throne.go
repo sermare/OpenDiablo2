@@ -15,7 +15,9 @@ import "fmt"
 //
 // VERIFIED wave composition (SuperUniques.txt "Baal Subject 1..5", rows 62..66):
 // the leader is the super unique of the row, followed by its group of the same
-// class: classes 62 (5), 105 (3), 121 (5), 122 (8), 135 (5); the exe throne
+// class: classes 62 (5), 105 (3), 557 (5), 558 (8), 571 (5) (the Class column resolved
+// to the hcIdx of MonStats.txt; an earlier version had 121/122/135, which are
+// unrelated rows); the exe throne
 // uses the wave counter as the index.
 //
 // VERIFIED after the last wave: the throne turns into class 0x22f (row 560
@@ -63,9 +65,9 @@ type Wave struct {
 var Waves = [5]Wave{
 	{SuperBaalWave + 0, 62, 5, "Baal Subject 1 (WarpedShaman)"},
 	{SuperBaalWave + 1, 105, 3, "Baal Subject 2 (BaalMummy)"},
-	{SuperBaalWave + 2, 121, 5, "Baal Subject 3 (BlackSoul)"},
-	{SuperBaalWave + 3, 122, 8, "Baal Subject 4 (Arach)"},
-	{SuperBaalWave + 4, 135, 5, "Baal Subject 5 (Banished)"},
+	{SuperBaalWave + 2, 557, 5, "Baal Subject 3 (BaalHighPriest)"},
+	{SuperBaalWave + 3, 558, 8, "Baal Subject 4 (VenomLord)"},
+	{SuperBaalWave + 4, 571, 5, "Baal Subject 5 (BaalMinion1)"},
 }
 
 // Throne steps (the values of d2monster.ThroneStep).
