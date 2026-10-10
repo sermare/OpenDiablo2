@@ -296,6 +296,8 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 	// the room seed), grouped per map cell
 	plain, exact := g.placeExactTiles(lv, p.Rect, region)
 
+	g.Infof("TILESTATS level=%d exact=%v %s", levelID, strings.Contains(exact, "exact"), g.engine.TileStats())
+
 	g.engine.BlockEmptyTiles()
 	g.engine.UseCollisionPaths(true)
 
