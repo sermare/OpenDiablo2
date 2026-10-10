@@ -221,6 +221,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"0|1"}, v.commandTravelFree},
 		{"travel", "travels to the town of an act through the act travel rules",
 			[]string{"act"}, v.commandTravel},
+		{"walkprobe", "logs how many lava/water tiles of the level the hero can walk to and whether a walk order onto lava ends on it (debug)",
+			nil, v.commandWalkProbe},
 		{"players", "logs the players of the game with their positions", []string{}, v.commandPlayers},
 		{"chat", "sends a chat line to all players (_ for a space)", []string{"text"}, v.commandChat},
 		{"party", "party invite|accept|decline|leave|list <name or ->", []string{"op", "name"}, v.commandParty},

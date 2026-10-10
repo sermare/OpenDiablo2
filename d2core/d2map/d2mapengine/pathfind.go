@@ -140,3 +140,55 @@ func (m *MapEngine) CanWalkTo(fromX, fromY, toX, toY int) bool {
 
 	return ok && !route.Partial
 }
+
+// Reachable is the set of sub-tiles connected to a start sub-tile by walking
+// (4-neighbour flood fill over the player collision mask).
+type Reachable struct {
+	w, h int
+	ok   []bool
+}
+
+// At reports whether the sub-tile can be reached.
+func (r *Reachable) At(x, y int) bool {
+	if r == nil || x < 0 || y < 0 || x >= r.w || y >= r.h {
+		return false
+	}
+
+	return r.ok[y*r.w+x]
+}
+
+// ReachableFrom flood fills the sub-tiles a hero standing on (subX, subY) can
+// walk to. It returns nil when the start itself is blocked. Closed doors are
+// not obstacles (like CanWalkTo, only the tile flags count).
+func (m *MapEngine) ReachableFrom(subX, subY int) *Reachable {
+	w, h := m.size.Width*subtilesPerTile, m.size.Height*subtilesPerTile
+	grid := collisionGrid{m}
+
+	open := func(x, y int) bool {
+		return x >= 0 && y >= 0 && x < w && y < h && grid.Flags(x, y)&d2path.MaskPlayer == 0
+	}
+
+	if !open(subX, subY) {
+		return nil
+	}
+
+	r := &Reachable{w: w, h: h, ok: make([]bool, w*h)}
+	r.ok[subY*w+subX] = true
+	queue := []int{subY*w + subX}
+
+	for len(queue) > 0 {
+		i := queue[0]
+		queue = queue[1:]
+		x, y := i%w, i/w
+
+		for _, d := range [4][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+			nx, ny := x+d[0], y+d[1]
+			if open(nx, ny) && !r.ok[ny*w+nx] {
+				r.ok[ny*w+nx] = true
+				queue = append(queue, ny*w+nx)
+			}
+		}
+	}
+
+	return r
+}
