@@ -31,9 +31,9 @@
 <text x="36" y="114" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Game v1 complete</text>
 <text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">64%</text>
 <rect x="36" y="128" width="808" height="26" rx="13" fill="#ffffff" fill-opacity="0.08"/>
-<rect x="36" y="128" width="540.9" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
-<rect x="36" y="128" width="520.1" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
-<text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +3% on branches, not yet verified</text>
+<rect x="36" y="128" width="539.6" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
+<rect x="36" y="128" width="519.6" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
+<text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +2% on branches, not yet verified</text>
 <text x="36" y="192" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#8c8eb0">v1 = double-click the Mac app, make or load a character, play Acts 1-5 single player without a blocker</text>
 <text x="36" y="226" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Game.exe functions named in Ghidra</text>
 <text x="844" y="226" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11,257 / 11,257</text>
@@ -102,7 +102,7 @@
 <rect x="36" y="1018" width="456.9" height="18" rx="9" fill="url(#g10)" filter="url(#glow)"/>
 <rect x="492.9" y="1018" width="38.7" height="18" rx="9" fill="#5fd0a5" fill-opacity="0.28" stroke="#5fd0a5" stroke-opacity="0.6" stroke-dasharray="4 3"/>
 <text x="844" y="1032" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#5fd0a5">62%</text>
-<text x="36" y="1053" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+5% done on branches, not yet verified (dashed) · ~130 of 7 classes x 30 skills; Necromancer/Paladin/Sorceress/Druid gaps closed on a branch (+11), Amazon/Barbarian/Assassin in progress</text>
+<text x="36" y="1053" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+5% done on branches, not yet verified (dashed) · ~130 of 7 classes x 30 skills; Necromancer/Paladin/Sorceress/Druid gaps closed on a branch (+11), Amazon/Barbarian/Assassin in progress; natural mana regeneration (exe-derived 25 Hz) landed</text>
 <text x="36" y="1084" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Monster AI archetypes implemented</text>
 <text x="844" y="1084" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">145 / 148</text>
 <rect x="36" y="1096" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -145,12 +145,11 @@
 <text x="844" y="1578" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#9be564">67%</text>
 <text x="36" y="1599" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+33% done on branches, not yet verified (dashed) · app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image has not been opened by a human; the desktop app was rebuilt from the landed tree</text>
 <text x="36" y="1630" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real full verify green (scenario sections per job, real parallel log)</text>
-<text x="844" y="1630" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">177 / 180</text>
+<text x="844" y="1630" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">180 / 185</text>
 <rect x="36" y="1642" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="1642" width="725.7" height="18" rx="9" fill="url(#g18)" filter="url(#glow)"/>
-<rect x="761.7" y="1642" width="12.3" height="18" rx="9" fill="#3ddc84" fill-opacity="0.28" stroke="#3ddc84" stroke-opacity="0.6" stroke-dasharray="4 3"/>
-<text x="844" y="1656" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#3ddc84">98%</text>
-<text x="36" y="1677" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+2% done on branches, not yet verified (dashed) · full verify_parallel.sh 6 run 50637 on 179e61b7: 6 jobs x 30 scenarios, 177 green; the 3 reds (86-class-skills, Act 3 playthrough, Act 5 caves playthrough) were fixed and re-run alone green; the final tree has no second full run; batch 1 (Mac release, stamina, objects) landed after a second full run: 4 of 6 jobs green, 2 load/timing reds passed alone after fixes</text>
+<rect x="36" y="1642" width="718.1" height="18" rx="9" fill="url(#g18)" filter="url(#glow)"/>
+<text x="844" y="1656" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#3ddc84">97%</text>
+<text x="36" y="1677" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">second and third full verify_parallel.sh 6 runs (batch 1: 4/6 jobs green; batch 2: 6 jobs x 31-32 scenarios, all playthroughs pass); reds were load/timing/expectation issues re-run alone green; no second full run on a final tree</text>
 <text x="36" y="1708" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Acts played start to finish by a human tester</text>
 <text x="844" y="1708" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">0 / 5</text>
 <rect x="36" y="1720" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
