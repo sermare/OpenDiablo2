@@ -514,6 +514,7 @@ type castOpts struct {
 	scalePct   int
 	home       d2missile.Target
 	rangeLife  int
+	chainLeft  int // bolts allowed for a Chain Lightning cast (hit function 12)
 }
 
 func (p *Pipeline) owner(u Unit) d2missile.Owner {
@@ -578,9 +579,16 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		switch ms.SrvHitFunc {
 		case 1:
 			areaRadius = env.eval(sk.Calc[1])
-		case 3, 14, 36:
+		case 3, 12, 14, 20, 36:
+			// hit function 12 (Chain Lightning, 0x5a81c0) and 20 (Lightning Fury,
+			// 0x5a8e60) take their scan radius from aurarangecalc (verified)
 			areaRadius = env.eval(sk.AuraRangeCalc)
 		}
+	}
+
+	furyCount := 0
+	if ms.SrvHitFunc == 20 {
+		furyCount = env.eval(sk.Calc[1])
 	}
 
 	// SrvDoFunc 27 (Tornado, 0x5ad590, verified): period = Param1 else calc4,
@@ -612,6 +620,7 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 	m, err := p.Sim.Create(d2missile.CreateParams{
 		Spec: ms, Owner: p.owner(u), SkillID: sk.ID, Level: lvl, Damage: desc,
 		AreaRadius: areaRadius, HitSubRange: hitSubRange, HealMin: healMin, HealMax: healMax, PulseEvery: pulse,
+		ChainLeft: o.chainLeft, FuryCount: furyCount,
 		X: sx, Y: sy, DestX: dx, DestY: dy, Angle: o.angle, Velocity: o.velocity, ClampToDest: o.clamp || sk.Lob,
 		// the missile rolls its pierce charges (stat 0x148) from skill_pierce +
 		// item_pierce at creation (0x59d4e0, verified)

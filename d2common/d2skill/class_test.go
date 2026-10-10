@@ -90,6 +90,7 @@ func classMissiles() missileTable {
 
 	m["multipleshotarrow"] = std(200, "multipleshotarrow", 24, 50)
 	m["chainlightning"] = std(201, "chainlightning", 30, 25)
+	m["chainlightning"].SrvHitFunc = 12
 	m["guidedarrow"] = std(202, "guidedarrow", 24, 128)
 	m["firewall"] = &d2missile.Spec{ID: 203, Name: "firewall", SrvDoFunc: 5, Range: 90, CollideType: 3}
 	m["fistsoffirefirewall"] = std(204, "fistsoffirefirewall", 12, 20)
@@ -127,7 +128,7 @@ func newClassFixture(levels map[string]int) *classFixture {
 }
 
 func (cf *classFixture) addFoe(id string, x, y int) *testTarget {
-	t := &testTarget{id: id, alive: true, level: 10, defense: 0, x: x, y: y}
+	t := &testTarget{id: id, alive: true, level: 10, defense: 0, x: x, y: y, serial: len(cf.foes) + 1}
 	cf.foes = append(cf.foes, t)
 	cf.w.targets = append(cf.w.targets, t)
 
@@ -452,6 +453,44 @@ func TestChainLightningJumps(t *testing.T) {
 
 	if !hit["a"] || !hit["b"] || !hit["c"] {
 		t.Errorf("the bolt must chain a -> b -> c, hit %v", hit)
+	}
+}
+
+// The chain follows unit ids (next higher, wrapping), not distance, and the
+// first bolt counts: calc1 bolts in all (VERIFIED in 0x5a81c0 / 0x5c8320).
+func TestChainLightningFollowsUnitIDs(t *testing.T) {
+	cf := newClassFixture(map[string]int{"Chain Lightning": 1})
+	cf.u.x, cf.u.y = 0, 0
+	cf.u.ar = 100000
+	cf.u.roller = &seq{vals: make([]uint32, 500)}
+
+	// ids: far=1 is hit first; the next higher id is "high"(3) although "near"(2)... both near
+	// enough; a bolt to the lowest id must only happen after wrapping
+	a := cf.addFoe("a", 8, 0)
+	b := cf.addFoe("b", 8, 6)
+	c := cf.addFoe("c", 8, 3)
+	a.serial, b.serial, c.serial = 2, 9, 5
+
+	_, r := cf.castOn("Chain Lightning", a)
+	if !r.OK {
+		t.Fatalf("cast: %+v", r)
+	}
+
+	order := []string{}
+
+	for i := 0; i < 80; i++ {
+		cf.w.frame++
+		cf.sim.Step()
+	}
+
+	for _, e := range cf.evs {
+		if e.Kind == d2missile.EventHit && (len(order) == 0 || order[len(order)-1] != e.Target.ID()) {
+			order = append(order, e.Target.ID())
+		}
+	}
+
+	if len(order) != 3 || order[0] != "a" || order[1] != "c" || order[2] != "b" {
+		t.Errorf("hit order %v, want a then c (next higher unit id 5, not the nearest)", order)
 	}
 }
 

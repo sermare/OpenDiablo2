@@ -243,8 +243,10 @@ type testTarget struct {
 	level   int
 	defense int
 	x, y    int
+	serial  int // unit id (d2missile.Serial); 0 when not set
 }
 
+func (t *testTarget) Serial() int      { return t.serial }
 func (t *testTarget) ID() string       { return t.id }
 func (t *testTarget) IsPlayer() bool   { return false }
 func (t *testTarget) Alive() bool      { return t.alive }
@@ -265,6 +267,21 @@ func (w *testWorld) Targets(x, y int) []d2missile.Target {
 
 	for _, t := range w.targets {
 		if t.alive && x >= t.x-1 && x <= t.x+1 && y >= t.y-1 && y <= t.y+1 {
+			out = append(out, t)
+		}
+	}
+
+	return out
+}
+
+// EnemiesWithin implements d2missile.Finder (scan around a point, euclidean).
+func (w *testWorld) EnemiesWithin(_ d2missile.Owner, x, y float64, radius int) []d2missile.Target {
+	var out []d2missile.Target
+
+	cx, cy := int(x), int(y)
+
+	for _, t := range w.targets {
+		if t.alive && (t.x-cx)*(t.x-cx)+(t.y-cy)*(t.y-cy) <= radius*radius {
 			out = append(out, t)
 		}
 	}

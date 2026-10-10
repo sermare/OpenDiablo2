@@ -65,6 +65,12 @@ type Missile struct {
 	// Home, 2 = aimed at the ground, 4 = already re-targeted once (5 / 6 are
 	// the re-targeted homing / ground legs).
 	HomeMode int
+	// ChainLeft is the missile data field +0x28 of a Chain Lightning bolt: the
+	// number of bolts still allowed, this one included (hit function 12).
+	ChainLeft int
+	// FuryCount is the number of bolts hit function 20 (Lightning Fury) may
+	// spawn when sHitPar2 is empty (the skill's calc1).
+	FuryCount int
 	// AreaRadius is the radius in subtiles of the area hit functions when the
 	// table's sHitPar1 is empty (the exe evaluates a skill calc then).
 	AreaRadius int
@@ -141,6 +147,8 @@ type CreateParams struct {
 	PierceChance int
 	// AreaRadius, HitSubRange: see Missile.
 	AreaRadius, HitSubRange int
+	// ChainLeft and FuryCount: see Missile.
+	ChainLeft, FuryCount int
 	// HealMin, HealMax, PulseEvery: see Missile.
 	HealMin, HealMax, PulseEvery int
 	// HomeMode overrides the Guided Arrow mode (default: 1 when Home is set
@@ -236,6 +244,7 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 	m.pathVel = d2combat.MissileStep(vel)
 	m.accel = sp.Accel
 	m.AreaRadius, m.HitSubRange = p.AreaRadius, p.HitSubRange
+	m.ChainLeft, m.FuryCount = p.ChainLeft, p.FuryCount
 	m.HealMin, m.HealMax, m.PulseEvery = p.HealMin, p.HealMax, p.PulseEvery
 	m.legX, m.legY = dx, dy
 

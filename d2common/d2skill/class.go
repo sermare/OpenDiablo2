@@ -721,34 +721,14 @@ func doStrafeFn(c *cast) {
 	}
 }
 
-// doChainFn is SRVDO_026_ChainLightning: the bolt jumps to up to calc1 more
-// enemies within aurarangecalc of the previous victim (hit function 12, U).
+// doChainFn is SRVDO_026_ChainLightning (0x5c8320, VERIFIED): the cast stores
+// calc1 in the bolt's data field 0x28 (the number of bolts allowed, this one
+// included). The jumps themselves are hit function 12 of the missile, run by the
+// missile simulation (d2missile chainHit, target pick verified by an emulator
+// golden): the bolt scans around itself, picks the next higher unit id and
+// spawns the next bolt with the field decremented.
 func doChainFn(c *cast) {
-	jumps := c.calc(1)
-	rng := c.env.eval(c.sk.AuraRangeCalc)
-	name := c.missileName()
-	hit := map[string]bool{}
-
-	var hook func(m *d2missile.Missile, t d2missile.Target)
-
-	hook = func(m *d2missile.Missile, t d2missile.Target) {
-		if hit[t.ID()] {
-			return
-		}
-
-		hit[t.ID()] = true
-
-		if len(hit) > jumps {
-			return
-		}
-
-		if pt, ok := t.(d2missile.Positioned); ok {
-			x, y := pt.SubPos()
-			c.chainStep(int(x), int(y), hit, name, rng, hook)
-		}
-	}
-
-	if c.castM(name, castOpts{onHit: hook}) == nil {
+	if c.castM(c.missileName(), castOpts{chainLeft: c.calc(1)}) == nil {
 		c.fail(ReasonMissile)
 	}
 }
