@@ -134,13 +134,17 @@ const warpChaseRadius = warpClickRadius + 1.5
 func (v *Game) nearWarpTile(x, y float64) bool {
 	// dungeons: the warp tiles are stairs the fight may pass; the exits of the Act 4 and 5 mazes (the bridge
 	// of the River of Flame, the Worldstone Keep stairs) are areas of floor tiles and are left alone too
+	radius := warpChaseRadius
 	if v.gameClient.MapEngine.World().Level == 0 && d2level.ActOfLevel(v.currentLevel()) < 4 {
-		return false
+		// a fight in a dungeon may pass the stairs, but not stand on them: with the tougher natural
+		// monsters (packs, skill hits) the Halls of the Dead fight chased a monster on the arrival stairs
+		// and the order to walk there took the hero back up (Act 2 playthrough, pass5)
+		radius = warpClickRadius + 0.5
 	}
 
 	for i := range v.levels.warps {
 		w := &v.levels.warps[i]
-		if math.Hypot(float64(w.TileX)+0.5-x, float64(w.TileY)+0.5-y) <= warpChaseRadius {
+		if math.Hypot(float64(w.TileX)+0.5-x, float64(w.TileY)+0.5-y) <= radius {
 			return true
 		}
 	}
@@ -408,6 +412,7 @@ type lootState struct {
 func (h autoScriptHost) Loot(radius, seconds float64) error {
 	h.v.levels.loot = &lootState{radius: radius, deadline: seconds, tried: map[*d2mapentity.Item]bool{}}
 	h.v.Infof("LOOT start radius=%.0f seconds=%.0f items=%d", radius, seconds, len(h.v.lootCandidates(h.v.levels.loot)))
+	h.v.lootDiagnose(radius)
 
 	return nil
 }
@@ -423,7 +428,7 @@ func (v *Game) lootCandidates(l *lootState) []*d2mapentity.Item {
 			continue
 		}
 
-		if x, y := it.GetPositionF(); math.Hypot(x-hx, y-hy) <= l.radius && !v.nearWarpTile(x, y) {
+		if x, y := it.GetPositionF(); math.Hypot(x-hx, y-hy) <= l.radius && (!v.nearWarpTile(x, y) || v.lootClickSafe(x, y, hx, hy)) {
 			out = append(out, it)
 		}
 	}
@@ -512,6 +517,52 @@ func autoPlayPopulate() bool {
 
 	if spec := os.Getenv("OD2_AUTOSCRIPT"); spec != "" {
 		return strings.Contains(spec, "kill:") || strings.Contains(spec, "walkto:")
+	}
+
+	return true
+}
+
+// lootDiagnose logs the ground items near the hero and why a loot might ignore them (a loot that found
+// nothing is the first thing to look at when a scripted pickup fails).
+func (v *Game) lootDiagnose(radius float64) {
+	hx, hy := v.heroTilePos()
+	total, near, warp := 0, 0, 0
+
+	for _, e := range v.gameClient.MapEngine.Entities() {
+		it, ok := e.(*d2mapentity.Item)
+		if !ok {
+			continue
+		}
+
+		total++
+
+		x, y := it.GetPositionF()
+		if math.Hypot(x-hx, y-hy) <= radius {
+			near++
+
+			if v.nearWarpTile(x, y) {
+				warp++
+			}
+		}
+	}
+
+	v.Infof("LOOT ground items=%d within radius=%d, of those near a warp tile=%d; hero at (%.1f,%.1f) level=%d", total, near, warp, hx, hy, v.currentLevel())
+}
+
+// lootClickSafe says whether an item next to a warp tile can still be picked up by a scripted loot: it lies within
+// the hero's reach and farther from every warp tile than a click targets one (targetWarpAt), so the walk to it
+// is a step and takes no gate. The hero of the item export scenario stands at the town gate of the Rogue
+// Encampment and drops items at his feet.
+func (v *Game) lootClickSafe(x, y, hx, hy float64) bool {
+	if math.Hypot(x-hx, y-hy) > 1.5 {
+		return false
+	}
+
+	for i := range v.levels.warps {
+		w := &v.levels.warps[i]
+		if math.Hypot(float64(w.TileX)+0.5-x, float64(w.TileY)+0.5-y) <= warpClickRadius+0.25 {
+			return false
+		}
 	}
 
 	return true
