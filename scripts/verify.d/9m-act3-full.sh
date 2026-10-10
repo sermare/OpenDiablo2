@@ -44,7 +44,6 @@ scenario_check() {
   done
   # the Council: three named super uniques, followers, Flail, the quest counts the members
   for n in "Ismail Vilehand" "Geleb Flamefinger" "Toorc Icefist"; do
-    grep -q "MONSTER death name=$n \|super unique .*$n" $log.txt || { echo "FAIL: $n was not built as a super unique"; fail=1; }
     grep -q "MONSTER death name=$n " $log.txt || { echo "FAIL: $n was not killed"; fail=1; }
   done
   grep -q "ACT3 .* drops Khalim's Flail" $log.txt || { echo "FAIL: no Khalim's Flail"; fail=1; }

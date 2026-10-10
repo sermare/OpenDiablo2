@@ -194,6 +194,14 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 
 		applyPlannedRank(mon, pm)
 
+		// the boss shows (and reports in kill events) its own name, "Ismail Vilehand": the Council quest scenarios
+		// and the Flail drop read it. The director path (groups.go recordRank) does the same.
+		if pm.SuperKey != "" {
+			if rec := v.asset.Records.Monster.Unique.Super[pm.SuperKey]; rec != nil && rec.Name != "" {
+				mon.SetLabel(rec.Name)
+			}
+		}
+
 		if pm.Leader >= 0 && pm.Leader < len(made) && made[pm.Leader] != nil {
 			v.monsters.Group(made[pm.Leader], mon)
 		}
