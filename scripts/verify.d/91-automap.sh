@@ -2,7 +2,6 @@ scenario_name="automap (Tab map reveals as the hero walks: Rogue Encampment, the
 scenario_warnings_ok=1   # the maze renderer logs tile messages of its own; only a crash counts here
 am=$tmp/automap
 scenario_env() {
-  echo 'export OD2_REALMAPS=1'
   # town: map on (full), walk to Akara, look; waypoint to Jail Level 1, walk, look at full and mini; map off
   echo "export OD2_AUTOSCRIPT='wait:1;automap:full;wait:1;automap:stats;say:capframe $am-town0.png;move:npc=Akara;wait:12;automap:stats;say:capframe $am-town1.png;use:Waypoint;waypoint:29;expect:level=29;wait:2;automap:stats;move:30,34;wait:10;automap:stats;say:capframe $am-jail1.png;move:12,45;wait:16;automap:stats;say:capframe $am-jail2.png;automap:mini;wait:1;say:capframe $am-jail3.png;automap:off;wait:1;automap:stats;say:capframe $am-off.png;exit'"
 }

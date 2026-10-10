@@ -12,7 +12,7 @@ scenario_env() {
     s+=";use:Waypoint;waypoint:83;expect:level=83;wait:3"
     s+=";say:completequest 3 2;walkto:exit=100;expect:level=100;wait:3"
     s+=";walkto:exit=101;expect:level=101;wait:3;walkto:exit=102;expect:level=102;wait:3;exit"
-    echo "export OD2_AUTOGAME=\"$a3/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a3/wb94\" OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0 OD2_NOPOPULATE=1"
+    echo "export OD2_AUTOGAME=\"$a3/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a3/wb94\" OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0 OD2_NOPOPULATE=1"
     echo "export OD2_AUTOSCRIPT='$s'"
   else
     echo "# no revived sample (D2_TABLES unset or the tool failed)" >&2

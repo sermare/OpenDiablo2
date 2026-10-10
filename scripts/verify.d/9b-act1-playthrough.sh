@@ -13,7 +13,7 @@ scenario_env() {
     echo "$tmp/od2 > $a1/newchar.log 2>&1"
   } > $a1/newchar.command
   chmod +x $a1/newchar.command; launch_game $a1/newchar.command; wait_run
-  echo "export OD2_AUTOGAME=\"$a1/new/Playtest.d2s\" OD2_D2S_WRITEBACK=\"$a1/wb\" OD2_REALMAPS=1 OD2_AUTOSPEED=3"
+  echo "export OD2_AUTOGAME=\"$a1/new/Playtest.d2s\" OD2_D2S_WRITEBACK=\"$a1/wb\" OD2_AUTOSPEED=3"
   echo "export OD2_AUTOSCRIPT='wait:1;say:capframe $tmp/act1-town.png;move:npc=Akara;until:NPC menu opened: npc=\"Akara\",60;menu:Talk;until:QUEST intro flag set,10;move:npc=Akara;until:NPC menu opened: npc=\"Akara\",30;menu:Talk;until:A1Q1 slot=1 bits 0x0000->0x0004,10;move:npc=Akara;until:NPC menu opened: npc=\"Akara\",30;menu:Talk;until:QUEST TOPICS,10;say:capframe $tmp/act1-topics.png;menu:Den of Evil;until:msg=65 mode=2,10;walkto:exit=2;expect:level=2;say:capframe $tmp/act1-bloodmoor.png;kill:near=30,45;loot:30,40;walkto:exit=8;expect:level=8;kill:all,200;until:Den of Evil cleared,10;say:capframe $tmp/act1-den.png;loot:40,40;walkto:exit=2;expect:level=2;walkto:exit=1;expect:level=1;move:npc=Akara;until:NPC menu opened: npc=\"Akara\",60;menu:Talk;until:QUEST EFFECT skill-point,15;say:capframe $tmp/act1-reward.png;exit'"
 }
 scenario_check() {

@@ -126,7 +126,7 @@ Huffman coder, blob framing, `Tunnel`). **It is wired in as an option**: `d2netw
 | `d2monsters` | Engine glue for hostile monsters and mercenaries: builds `d2monster` brains from monstats, implements `d2monster.World`, resolves attacks with `d2combat`, applies hero damage, rolls loot with `d2drop`, plays monster sounds. `Director` owns the 25 Hz loop. | simplifications listed in the package comment (hero defence is dexterity/4 only at the time of writing, no champion/unique modifiers, no forced AI states) |
 | `d2skills` | Engine glue for the skill pipeline: hero as a `d2skill.Unit`, monsters as missile targets, map flags as collision grid, drawing entities that follow missiles. `Engine.Cast`, `Engine.Advance`. | simplifications listed in the package comment (local only, no mana regeneration, no stun/freeze simulation) |
 | `d2map/d2mapengine`, `d2mapentity`, `d2mapstamp`, `d2maprenderer`, `d2lightmap` | Map engine and entities (player, monster, NPC, object, item, missile), preset stamps from DS1, isometric renderer, the real 48x48 sub-tile light map. | engine/upstream, light map binary-read |
-| `d2map/d2mapgen` | `MapGenerator` with a list of `LevelProvider`s. Town provider (Rogue Encampment) is always installed. With `OD2_REALMAPS=1` the maze provider (levels 2..37 that generate) and the outdoor provider (2-7, 17, 39) are added; they run `drlgmaze` / `drlgoutdoor` from the hero's map seed (`HeroMapSeed`), stamp DS1 rooms, place DS1 monsters and choose an arrival point. | glue; correctness of the layout comes from the DRLG packages |
+| `d2map/d2mapgen` | `MapGenerator` with a list of `LevelProvider`s. Town provider (Rogue Encampment) is always installed. By default (opt out with `OD2_REALMAPS=0`) the maze provider (levels 2..37 that generate) and the outdoor provider (2-7, 17, 39) are added; they run `drlgmaze` / `drlgoutdoor` from the hero's map seed (`HeroMapSeed`), stamp DS1 rooms, place DS1 monsters and choose an arrival point. | glue; correctness of the layout comes from the DRLG packages |
 | `d2playertrade` | Player-to-player trade: the `Session` both players negotiate (request, offers, accept, cancel) and `Commit`, which moves items and gold between two heroes' containers atomically. Owned by the server. | modelled on visible behaviour (`PlrTrade.cpp` not analysed): `UNVERIFIED` |
 | `d2audio`, `d2audio/d2sfx`, `d2audio/ebiten` | Sound engine and the pure voice-allocation model (`d2sfx.Bank`); positional sound; ambient and music. | `d2sfx` binary-read |
 
@@ -187,7 +187,7 @@ flowchart TD
     E --> F["d2level.PlanTransition<br/>(same act? new act? town? start type)"]
     E --> G["GameClient.ChangeLevel"]
     G --> H["MapGenerator.LoadLevel -> LevelProvider<br/>town: preset stamp<br/>maze: drlgmaze.Generate + DS1 stamps<br/>outdoor: drlgoutdoor.Generate + room grids"]
-    H --> I["players re-added at the arrival point<br/>CanLoad: town always; maze/outdoor only with OD2_REALMAPS=1"]
+    H --> I["players re-added at the arrival point<br/>CanLoad: town always; maze/outdoor unless OD2_REALMAPS=0"]
     I --> J["ChangeLevel packet -> GameServer.onChangeLevel<br/>(records position)"]
     J --> K["resetLevelState, scanWarps, log 'LEVEL CHANGE from= to= ...'"]
 ```
@@ -349,7 +349,7 @@ flowchart TD
   the original; a missing or extra draw changes the final level seed, which is what the oracle goldens check
   (TESTING.md section 3).
 * `d2mapgen` (`provider.go`) holds the `LevelProvider` list: `actTownProvider` and `townProvider` always, and with
-  `OD2_REALMAPS=1` also `mazeProvider`, `outdoorProvider` and `presetProvider`. Providers registered later are asked first.
+  unless `OD2_REALMAPS=0` also `mazeProvider`, `outdoorProvider` and `presetProvider`. Providers registered later are asked first.
   `real_maze_gen.go`, `real_outdoor_gen.go` and `real_town_gen.go` convert generator output into engine tiles and entities
   (DS1 objects and monsters are stamped from the preset files).
 * `d2level.PlanTransition` decides which act has to be (re)built when a hero changes level; the same seed makes a level

@@ -1,7 +1,7 @@
 scenario_name="visual fidelity (outdoor at night: Blood Moor lit by the day/night ambient and the hero light, logged draw statistics)"
 shot=$tmp/outdoor-night.png
 scenario_env() {
-  echo "export OD2_REALMAPS=1 OD2_AUTOLEVEL=2 OD2_AUTOTIME=night OD2_DRAWSTATS=1"
+  echo "export OD2_AUTOLEVEL=2 OD2_AUTOTIME=night OD2_DRAWSTATS=1"
   echo "export OD2_AUTOSCRIPT='wait:4;say:capframe $shot;wait:1;exit'"
 }
 scenario_check() {

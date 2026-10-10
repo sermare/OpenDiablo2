@@ -5,7 +5,7 @@ scenario_env() {
   for m in fallen1 fallen1 fallen1 fallen1 fallen1 fallen1 zombie1 skeleton1 andariel duriel mephisto diablo andariel duriel mephisto diablo; do
     s+=";say:spawnmon $m;wait:1;say:killnear;wait:1"
   done
-  echo 'export OD2_REALMAPS=1 OD2_AUTOLEVEL=9'
+  echo 'export OD2_AUTOLEVEL=9'
   echo "export OD2_AUTOSCRIPT='$s;exit'"
 }
 scenario_check() {

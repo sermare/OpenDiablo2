@@ -1,7 +1,7 @@
 scenario_name="real outdoor (DRLG Blood Moor: generated from the layout, presets stamped, plain rooms built, screenshot)"
 shot=$tmp/realoutdoor.png
 scenario_env() {
-  echo 'export OD2_REALMAPS=1 OD2_AUTOLEVEL=2'
+  echo 'export OD2_AUTOLEVEL=2'
   echo "export OD2_AUTOSCRIPT='wait:1;say:capframe $shot;wait:1;exit'"
 }
 scenario_check() {

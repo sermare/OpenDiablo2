@@ -5,7 +5,7 @@ scenario_name="cave stairs chain + level persistence (Cave Level 1 -> Cave Level
 # one POPULATE line for level 9; the 8 s wait is the portal cooldown). Level 37 is entered by the stairs of level 36.
 scenario_warnings_ok=1   # the renderers log tile messages of their own; only a crash counts here
 scenario_env() {
-  echo 'export OD2_REALMAPS=1 OD2_AUTOLEVEL=9 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0'
+  echo 'export OD2_AUTOLEVEL=9 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0'
   echo "export OD2_AUTOSCRIPT='wait:2;say:killnear;say:killnear;say:killnear;wait:1;walkto:exit=13;expect:level=13;wait:1;walkto:exit=9;expect:level=9;wait:8;say:spawnportal 36;use:Portal;expect:level=36;walkto:exit=37;expect:level=37;wait:6;walkto:exit=36;expect:level=36;exit'"
 }
 scenario_check() {

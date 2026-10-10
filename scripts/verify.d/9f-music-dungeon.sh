@@ -1,7 +1,7 @@
 scenario_name="dungeon music and footsteps (unmuted: Den of Evil on real maps plays its music, the hero's footsteps and monster sounds; no load errors)"
 scenario_unmuted=1
 scenario_env() {
-  echo 'export OD2_SOUNDLOG=1 OD2_REALMAPS=1 OD2_AUTOLEVEL=9'
+  echo 'export OD2_SOUNDLOG=1 OD2_AUTOLEVEL=9'
   echo "export OD2_AUTOSCRIPT='wait:3;move:33,56;wait:32;exit'"
 }
 scenario_check() {

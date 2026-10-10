@@ -79,7 +79,8 @@ func TestRealLevel(t *testing.T) {
 		realmaps, autolevel, autom string
 		want                       int
 	}{
-		{"off without OD2_REALMAPS", "", "9", "34", 0},
+		{"off with OD2_REALMAPS=0", "0", "9", "34", 0},
+		{"default on", "", "9", "34", 9},
 		{"autolevel wins", "1", "18", "34", 18},
 		{"falls back to automap", "1", "", "34", 34},
 		{"nothing selected", "1", "", "", 0},

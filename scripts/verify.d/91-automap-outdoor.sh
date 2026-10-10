@@ -2,7 +2,7 @@ scenario_name="automap outdoors (DRLG Blood Moor: cells accumulate with the walk
 scenario_warnings_ok=1
 am=$tmp/amout
 scenario_env() {
-  echo 'export OD2_REALMAPS=1 OD2_AUTOLEVEL=2'
+  echo 'export OD2_AUTOLEVEL=2'
   echo "export OD2_AUTOSCRIPT='wait:1;automap:full;automap:names;automap:party;wait:2;automap:stats;say:capframe $am-0.png;move:30,40;wait:14;automap:stats;say:capframe $am-1.png;automap:fade;wait:1;say:capframe $am-fade.png;automap:mini;wait:1;say:capframe $am-mini.png;exit'"
 }
 scenario_check() {

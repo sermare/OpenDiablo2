@@ -2,7 +2,6 @@ scenario_name="automap fidelity (fade, names, markers, per-level persistence: to
 scenario_warnings_ok=1
 am=$tmp/amfid
 scenario_env() {
-  echo 'export OD2_REALMAPS=1'
   # town with names+party markers on (stash label, NPC names), fade on; cave (Jail 1) with fade, then mini (flat fade);
   # back to the town: the revealed cells of the town must still be there
   echo "export OD2_AUTOSCRIPT='wait:1;automap:full;automap:names;automap:party;wait:1;move:npc=Akara;wait:12;automap:stats;say:capframe $am-town-names.png;automap:fade;wait:1;say:capframe $am-town-fade.png;automap:nofade;automap:stats;use:Waypoint;waypoint:29;expect:level=29;wait:2;automap:fade;move:30,34;wait:10;automap:stats;say:capframe $am-cave-fade.png;automap:mini;wait:1;say:capframe $am-cave-mini.png;automap:full;automap:nofade;use:Waypoint;waypoint:1;expect:level=1;wait:3;automap:stats;say:capframe $am-town-back.png;exit'"

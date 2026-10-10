@@ -22,7 +22,7 @@ scenario_env() {
     s+=";walkto:exit=56;expect:level=56;wait:4;say:capframe $tmp/act2-halls.png;kill:near=20,30"
     s+=";walkto:exit=57;expect:level=57;kill:near=20,30;walkto:exit=56;expect:level=56"
     s+=";walkto:exit=42;expect:level=42;walkto:exit=41;expect:level=41;walkto:exit=40;expect:level=40;exit"
-    echo "export OD2_AUTOGAME=\"$a2/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a2/wb94\" OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0"
+    echo "export OD2_AUTOGAME=\"$a2/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a2/wb94\" OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0"
     echo "export OD2_AUTOSCRIPT='$s'"
   else
     echo "# no revived sample (D2_TABLES unset or the tool failed)" >&2
