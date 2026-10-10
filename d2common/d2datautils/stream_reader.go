@@ -61,7 +61,7 @@ func (v *StreamReader) ReadInt32() (int32, error) {
 }
 
 // ReadUInt32 returns a uint32 dword from the stream
-//nolint
+// nolint
 func (v *StreamReader) ReadUInt32() (uint32, error) {
 	b, err := v.ReadBytes(bytesPerint32)
 	if err != nil {
@@ -78,7 +78,7 @@ func (v *StreamReader) ReadInt64() (int64, error) {
 }
 
 // ReadUInt64 returns a uint64 qword from the stream
-//nolint
+// nolint
 func (v *StreamReader) ReadUInt64() (uint64, error) {
 	b, err := v.ReadBytes(bytesPerint64)
 	if err != nil {
