@@ -99,3 +99,15 @@ func ResolveWorldClick(in WorldClickInput) WorldAction {
 
 	return WorldCastLeft
 }
+
+// leftHoldInterval is how often a held left button re-sends its order (seconds): short, so the
+// hero follows the cursor smoothly like the original.
+const leftHoldInterval = 0.1
+
+// LeftHoldRepeats decides whether a held left button repeats its world order now. It does only when
+// the click began as a plain world click (startedAsWorldClick: not on an NPC, object or item, which
+// interact once, whatever is under the cursor later), no item is on the cursor, and the repeat
+// interval has passed since the last order.
+func LeftHoldRepeats(startedAsWorldClick, itemOnCursor bool, sinceLastOrder float64) bool {
+	return startedAsWorldClick && !itemOnCursor && sinceLastOrder >= leftHoldInterval
+}

@@ -257,3 +257,25 @@ func TestEveryEventHasAName(t *testing.T) {
 		}
 	}
 }
+
+func TestLeftHoldRepeats(t *testing.T) {
+	tests := []struct {
+		name         string
+		started, itm bool
+		since        float64
+		want         bool
+	}{
+		{"ground walk, interval passed", true, false, 0.2, true},
+		{"ground walk, too soon", true, false, 0.01, false},
+		{"started on NPC/object: no repeat", false, false, 5, false},
+		{"item on cursor: no repeat", true, true, 5, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := LeftHoldRepeats(tt.started, tt.itm, tt.since); got != tt.want {
+				t.Fatalf("got %v want %v", got, tt.want)
+			}
+		})
+	}
+}

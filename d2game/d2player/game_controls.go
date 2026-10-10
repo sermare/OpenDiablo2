@@ -339,34 +339,38 @@ type GameControls struct {
 	Trade             *TradeWindow
 	Identify          *IdentifyWindow
 	// OnTownPortal is called when a scroll or tome of town portal is right clicked.
-	OnTownPortal           func(src *diablo2item.Item)
-	PTrade                 *PlayerTradeWindow // trade with another player
-	relation               func(p *d2mapentity.Player) d2enum.PlayersRelationships
-	stash                  *ContainerPanel
-	cube                   *ContainerPanel
-	cubeData               *cubeData
-	cubePortal             func(kind string) error
-	cubeRNG                *d2rand.Seed
-	cubeClassic            bool
-	cubeLadder             bool
-	cubeLast               *TransmuteResult
-	belt                   *BeltPanel
-	itemOrigin             map[InventoryItem]*d2s.Item
-	equipSound             func(handle string)
-	equipTouched           bool
-	equipNoSave            bool // the equip autotest saves once at the end
-	mercHost               MercGearHost
-	equipRand              *rand.Rand
-	equipStatus            map[d2equip.Loc]d2hero.EquipStatus
-	regen                  d2inventory.Regen
-	regenHP, regenMana     float64           // fractions of points not yet applied
-	vitals                 d2herostats.Regen // natural life/mana regeneration (natural_regen.go)
-	bottomMenuRect         *d2geom.Rectangle
-	leftMenuRect           *d2geom.Rectangle
-	rightMenuRect          *d2geom.Rectangle
-	lastMouseX             int
-	lastMouseY             int
-	lastLeftBtnActionTime  float64
+	OnTownPortal          func(src *diablo2item.Item)
+	PTrade                *PlayerTradeWindow // trade with another player
+	relation              func(p *d2mapentity.Player) d2enum.PlayersRelationships
+	stash                 *ContainerPanel
+	cube                  *ContainerPanel
+	cubeData              *cubeData
+	cubePortal            func(kind string) error
+	cubeRNG               *d2rand.Seed
+	cubeClassic           bool
+	cubeLadder            bool
+	cubeLast              *TransmuteResult
+	belt                  *BeltPanel
+	itemOrigin            map[InventoryItem]*d2s.Item
+	equipSound            func(handle string)
+	equipTouched          bool
+	equipNoSave           bool // the equip autotest saves once at the end
+	mercHost              MercGearHost
+	equipRand             *rand.Rand
+	equipStatus           map[d2equip.Loc]d2hero.EquipStatus
+	regen                 d2inventory.Regen
+	regenHP, regenMana    float64           // fractions of points not yet applied
+	vitals                d2herostats.Regen // natural life/mana regeneration (natural_regen.go)
+	bottomMenuRect        *d2geom.Rectangle
+	leftMenuRect          *d2geom.Rectangle
+	rightMenuRect         *d2geom.Rectangle
+	lastMouseX            int
+	lastMouseY            int
+	lastLeftBtnActionTime float64
+	// heldLeftWalk is true while the left button is held down on a click that began as a plain
+	// ground click (a walk or a skill use). Only such a hold repeats; a click that began on an NPC,
+	// object or item interacts once.
+	heldLeftWalk           bool
 	lastRightBtnActionTime float64
 	FreeCam                bool
 	isSinglePlayer         bool
@@ -583,19 +587,13 @@ func (g *GameControls) OnMouseButtonRepeat(event d2interface.MouseEvent) bool {
 	lastLeft := now - g.lastLeftBtnActionTime
 	lastRight := now - g.lastRightBtnActionTime
 	inRect := !g.isInActiveMenusRect(event.X(), event.Y())
-	shouldDoLeft := lastLeft >= mouseBtnActionsThreshold
 	shouldDoRight := lastRight >= mouseBtnActionsThreshold
-	standStill := event.KeyMod()&d2enum.KeyModShift != 0
 
-	if isLeft && (g.hoveredNPC() != nil || g.hoveredWorldThing() != nil) && !standStill {
+	if isLeft && !LeftHoldRepeats(g.heldLeftWalk, g.inventory.CursorItem() != nil, lastLeft) {
 		return true
 	}
 
-	if isLeft && g.inventory.CursorItem() != nil {
-		return true
-	}
-
-	if isLeft && shouldDoLeft && inRect && !g.hero.IsCasting() {
+	if isLeft && inRect && !g.hero.IsCasting() {
 		g.lastLeftBtnActionTime = now
 
 		g.worldClick(button, event.KeyMod(), px, py)
@@ -702,6 +700,10 @@ func (g *GameControls) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 
 // OnMouseButtonUp handles mouse button presses
 func (g *GameControls) OnMouseButtonUp(event d2interface.MouseEvent) bool {
+	if event.Button() == d2enum.MouseButtonLeft {
+		g.heldLeftWalk = false
+	}
+
 	return false
 }
 
@@ -780,6 +782,10 @@ func (g *GameControls) InventoryItemCount() int { return len(g.inventory.grid.it
 // OnMouseButtonDown handles mouse button presses
 func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	mx, my := event.X(), event.Y()
+
+	if event.Button() == d2enum.MouseButtonLeft {
+		g.heldLeftWalk = false
+	}
 
 	if g.Waypoints.OnMouseButtonDown(event) {
 		return true
@@ -864,6 +870,7 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 
 	if button == d2enum.MouseButtonLeft && !g.isInActiveMenusRect(mx, my) && !g.hero.IsCasting() {
 		g.lastLeftBtnActionTime = d2util.Now()
+		g.heldLeftWalk = false
 
 		if npc := g.hoveredNPC(); npc != nil && !standStill {
 			g.inputListener.OnPlayerInteract(npc)
@@ -874,6 +881,8 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 			g.inputListener.OnPlayerInteract(thing)
 			return true
 		}
+
+		g.heldLeftWalk = true
 
 		g.worldClick(button, event.KeyMod(), px, py)
 
