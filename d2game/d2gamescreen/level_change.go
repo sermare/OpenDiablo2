@@ -220,9 +220,31 @@ func (v *Game) startLevelChange(level int, start d2level.StartType, via string) 
 		return false
 	}
 
+	if err := v.levelGate(v.currentLevel(), level, via); err != nil {
+		v.Infof("LEVEL change to %d (%s) refused: %v", level, v.levelName(level), err)
+		return false
+	}
+
 	v.levels.trans = &levelTransition{target: level, start: start, via: via}
 
 	return true
+}
+
+// levelGate applies the Levels.txt QuestFlag / QuestFlagEx rule (d2level.CheckLevelGate) to a warp, waypoint or
+// portal change; other ways (act travel, loading a save, outdoor edges) are not gated here. A game without a
+// quest record (no hero progress) or with the travelfree debug switch on is not gated.
+func (v *Game) levelGate(from, to int, via string) error {
+	q := v.heroQuests()
+	if q == nil || v.travel.free {
+		return nil
+	}
+
+	switch d2level.GateVia(via) {
+	case d2level.GateWarp, d2level.GateWaypoint, d2level.GatePortal:
+		return d2level.CheckLevelGate(from, to, d2level.GateVia(via), v.heroExpansion(), q)
+	}
+
+	return nil
 }
 
 // performLevelChange rebuilds the map for the target level and puts the hero in
