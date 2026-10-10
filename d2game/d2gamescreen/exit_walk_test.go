@@ -41,3 +41,33 @@ func TestExitWalkProgressRestartsTheClock(t *testing.T) {
 		t.Errorf("elapsed = %v best = %v cand = %d after switching candidate", e.elapsed, e.best, e.bestCand)
 	}
 }
+
+// Act 4/5 playthrough: "EXIT gave up walking towards level 106/112 ... after 60 s" in crowded levels. The
+// defensive fights drag the hero back from the best distance he had reached; the walk that follows has to beat
+// that old mark again and all that time counted as time without progress. A resumed walk measures anew.
+func TestExitWalkResumeForgetsTheDistanceBeforeTheFight(t *testing.T) {
+	walkBack := func(e *exitWalk) {
+		for d := 110.0; d >= 80; d -= 4 {
+			e.progress(d)
+			e.elapsed += 10
+		}
+	}
+
+	e := &exitWalk{candidates: [][2]float64{{0, 0}}}
+	e.progress(76) // the best mark before the fight
+	e.resume()     // the fight dragged the hero back to 100 and is over
+	walkBack(e)
+
+	if e.elapsed > exitTimeout {
+		t.Errorf("elapsed = %v: the walk back to the old mark counted as time without progress", e.elapsed)
+	}
+
+	// control: without resume the same walk gives up
+	o := &exitWalk{candidates: [][2]float64{{0, 0}}}
+	o.progress(76)
+	walkBack(o)
+
+	if o.elapsed <= exitTimeout {
+		t.Errorf("control elapsed = %v, want more than %v", o.elapsed, exitTimeout)
+	}
+}

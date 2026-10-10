@@ -257,6 +257,14 @@ func (e *exitWalk) progress(dist float64) {
 	}
 }
 
+// resume starts the give-up clock afresh after a defensive fight. The fight chases monsters away from the
+// way and a knockback or a pack drags the hero back, so the best distance measured before it is no longer
+// a fair mark: the hero would need a long time to beat it again, all counted as time without progress
+// (Act 4/5 playthrough: "EXIT gave up walking" after 60 s in crowded levels, although the hero was
+// walking again; best is measured anew by the next progress call). UNVERIFIED against a failing log: the
+// failing runs were not kept, this is the best explanation of the 46 s counts seen in passing ones.
+func (e *exitWalk) resume() { e.best, e.elapsed = 0, 0 }
+
 // threatRadius is the distance (tiles) at which a hostile monster makes the
 // walking hero turn round and fight, like a player who is attacked on the way.
 const threatRadius = 5.0
@@ -276,6 +284,8 @@ func (v *Game) defendOnTheWay(e *exitWalk) bool {
 	if e.paused {
 		e.paused = false
 		e.standStill = 0
+		e.resume()
+
 		hx, hy := v.heroTilePos()
 		e.lastX, e.lastY = hx, hy
 		v.stepExitWalk(e)
