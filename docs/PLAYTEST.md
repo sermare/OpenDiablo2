@@ -115,7 +115,6 @@ OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOGAME=hero.d2s OD2_AUTOEXIT=1 \
 * A few monsters of the desert stand on islands the hero cannot reach (5-9 per level) and are removed; the walkable
   area of the generated levels differs from the original's.
 
-<<<<<<< HEAD
 
 # Act 3 playthrough log
 
@@ -154,7 +153,6 @@ OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOGAME=hero.d2s OD2_AUTOEXIT=1 \
 * Durance of Hate 2 (101) is generated but not walked; level 102 (Durance 3, Mephisto) is a preset level that nothing enters yet, and the red portal to the Pandemonium Fortress is only the act-travel rule.
 * Sewers 1 has two entrances in each of Kurast Bazaar and Upper Kurast (slots 0 and 1); coming back up, the hero arrives at the first one (which one the original uses is UNVERIFIED).
 * The Great Marsh and the jungle lose a third of their monsters to the "hero cannot walk there" filter (islands of floor between water and undergrowth).
-=======
 # Act 4 and the start of Act 5 playthrough
 
 Branch `feat/act45-playthrough`. `scripts/verify.d/9h-act45-playthrough.sh` plays Act 4 (Pandemonium Fortress, Outer
@@ -200,4 +198,3 @@ and need no fix, they only need the 10 s since the last level change that the or
   Drifter Cavern (116), Icy Cellar (119), the Worldstone Chamber (132) and Forgotten Sands (134) are generated but not
   walked by a script; the Throne of Destruction's link to the Worldstone Chamber is a portal in the original, not a tile.
 * The level names come from the game's Levels.txt strings (`Rigid Highlands`, `Crystalized Cavern Level 1`, ...).
->>>>>>> fork/integration
