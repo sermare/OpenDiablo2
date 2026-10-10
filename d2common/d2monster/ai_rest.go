@@ -26,10 +26,10 @@ const (
 var genericAIs = map[string]genericKind{
 	// melee chasers
 	"Baboon": kindMelee, "ClawViper": kindMelee, "ClawViperEx": kindMelee, "Arach": kindMelee,
-	"MaggotLarva": kindMelee, 
-	"DeathMauler": kindMelee, 
-	"BloodLord": kindMelee,
-	"FrozenHorror": kindMelee, "Ancient": kindMelee, 
+	"MaggotLarva":  kindMelee,
+	"DeathMauler":  kindMelee,
+	"BloodLord":    kindMelee,
+	"FrozenHorror": kindMelee, "Ancient": kindMelee,
 	"CorruptLancer": kindMelee, "ElementalBeast": kindMelee, "DarkWanderer": kindMelee,
 	"7TIllusion": kindMelee, "FlyingScimitar": kindFlyer,
 
@@ -39,21 +39,21 @@ var genericAIs = map[string]genericKind{
 	"Hydra": kindTurret,
 
 	// flyers
-	"BloodHawk": kindFlyer, "Mosquito": kindFlyer, 
+	"BloodHawk": kindFlyer, "Mosquito": kindFlyer,
 	"BladeCreeper": kindFlyer, "MaggotEgg": kindInert,
 
 	// stationary shooters
-	"GargoyleTrap": kindTurret, "EvilHole": kindTurret, 
-	"DesertTurret": kindTurret, "ArcaneTower": kindTurret, 
+	"GargoyleTrap": kindTurret, "EvilHole": kindTurret,
+	"DesertTurret": kindTurret, "ArcaneTower": kindTurret,
 	"Catapult": kindTurret, "CatapultSpotter": kindTurret, "AssassinSentry": kindTurret,
-	"DeathSentry": kindTurret, 
+	"DeathSentry": kindTurret,
 
 	// summoned pets: follow the owner like a mercenary
 	"DruidWolf": kindPet, "DruidBear": kindPet,
 
 	// non-combat by design
-	"GoodNpcRanged": kindInert, 
-	"JarJar": kindInert, "Buffy": kindInert,
+	"GoodNpcRanged": kindInert,
+	"JarJar":        kindInert, "Buffy": kindInert,
 	"HellMeteor": kindInert, "FoulCrowNest": kindInert, "MosquitoNest": kindInert,
 	"InvisoSpawner": kindInert, "GenericSpawner": kindInert, "BoneWall": kindInert, "InvisoPet": kindInert,
 	"CycleOfLife": kindInert, "AncientStatue": kindInert,
