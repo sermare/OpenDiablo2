@@ -413,6 +413,9 @@ func (r *RecordManager) initObjectRecords(lookups []ObjectLookupRecord) {
 	r.Object.Lookup = records
 }
 
+// FindObject is LookupObject without the fatal error: nil for a DS1 object the table has no row for.
+func (r *RecordManager) FindObject(act, typ, id int) *ObjectLookupRecord { return r.lookupObject(act, typ, id) }
+
 // LookupObject looks up an object record
 func (r *RecordManager) LookupObject(act, typ, id int) *ObjectLookupRecord {
 	object := r.lookupObject(act, typ, id)
@@ -424,15 +427,15 @@ func (r *RecordManager) LookupObject(act, typ, id int) *ObjectLookupRecord {
 }
 
 func (r *RecordManager) lookupObject(act, typ, id int) *ObjectLookupRecord {
-	if len(r.Object.Lookup) < act {
+	if act < 0 || typ < 0 || id < 0 || len(r.Object.Lookup) <= act {
 		return nil
 	}
 
-	if len(r.Object.Lookup[act]) < typ {
+	if len(r.Object.Lookup[act]) <= typ {
 		return nil
 	}
 
-	if len(r.Object.Lookup[act][typ]) < id {
+	if len(r.Object.Lookup[act][typ]) <= id {
 		return nil
 	}
 

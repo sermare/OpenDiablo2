@@ -34,7 +34,7 @@ var actTownPrest = map[int]int{
 
 // actPresetPrest are the single-file preset levels of Act 2 that are no town: the Harem (50, LvlPrest Def 353,
 // Act2/Palace/Harem2.ds1). Built like a town, without the town extras.
-var actPresetPrest = map[int]int{50: 353, 73: 481} // the Harem and Duriel's lair (Act2/Tomb/Duriel.ds1)
+var actPresetPrest = map[int]int{50: 353, 73: 481, 102: 796} // the Harem, Duriel's lair (Act2/Tomb/Duriel.ds1) and Durance of Hate 3 (Act3/Travincal/MephComp.ds1)
 
 // IsActTown reports whether the level is the town of act 2-5.
 func IsActTown(levelID int) bool { _, ok := actTownPrest[levelID]; return ok }

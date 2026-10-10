@@ -144,7 +144,7 @@ func (mr *Stamp) Entities(tileOffsetX, tileOffsetY int) []d2interface.MapEntity 
 		if object.Type == int(d2enum.ObjectTypeItem) {
 			// For objects the DS1 ID to objectID is hardcoded in the game
 			// use the lookup table
-			lookup := mr.factory.asset.Records.LookupObject(int(mr.ds1.Act), object.Type, object.ID)
+			lookup := mr.factory.asset.Records.FindObject(int(mr.ds1.Act), object.Type, object.ID)
 
 			if lookup == nil {
 				continue
