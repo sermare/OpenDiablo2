@@ -4,7 +4,7 @@ a1=$tmp/act1
 # Normal difficulty monsters (OD2_AUTOMONSTER_DIFF=0): the level 94 hero is not built for the Hell monsters of his save.
 scenario_env() {
   mkdir -p $a1/s94 $a1/wb94; rm -f $a1/s94/*.d2s(N) $a1/wb94/*.d2s(N)
-  if [ -n "${D2_TABLES:-}" ] && go run scripts/d2s-revive.go "$D2S_SAMPLE_BODY" $a1/s94/Hero.d2s "$D2_TABLES" >/dev/null 2>&1; then
+  if [ -n "${D2_TABLES:-}" ] && make_hero $a1/s94/Hero.d2s; then
     echo "export OD2_AUTOGAME=\"$a1/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a1/wb94\" OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0"
     echo "export OD2_AUTOSCRIPT='wait:1;say:capframe $tmp/act1-94-town.png;move:npc=Akara;until:NPC menu opened: npc=\"Akara\",60;menu:Talk;wait:3;walkto:exit=2;expect:level=2;kill:near=30,45;loot:30,40;walkto:exit=8;expect:level=8;kill:all,200;say:capframe $tmp/act1-94-den.png;walkto:exit=2;expect:level=2;walkto:exit=1;expect:level=1;exit'"
   else

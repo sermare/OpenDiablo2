@@ -109,6 +109,8 @@ fi
 if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   save="${OD2_VERIFY_SAVE:-$tmp/save.d2s}"
   [ -f "$save" ] || cp "$D2S_SAMPLE_BODY" "$save"
+  # make_hero <out.d2s> for the level 94 playthroughs; OD2_HERO=barb picks the generated Barbarian (default: the Sorceress)
+  source scripts/verify.d/lib/hero.sh
 
   for f in scripts/verify.d/*.sh(N); do
     unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""; scenario_realtime=""; scenario_timeout=""
