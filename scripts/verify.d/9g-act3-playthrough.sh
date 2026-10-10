@@ -34,9 +34,9 @@ scenario_env() {
     hop 96; hop 81
     hop 82
     hop 83
-    hop 100; hop 83
+    s+=";say:completequest 3 2"; hop 100; hop 83
     s+=";wait:8;say:spawnportal 75;use:Portal;expect:level=75;wait:3;say:capframe $tmp/act3-portal.png"
-    echo "export OD2_AUTOGAME=\"$a3/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a3/wb94\" OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0"
+    echo "export OD2_AUTOGAME=\"$a3/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a3/wb94\" OD2_POPULATE_DENSITY=25 OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0"
     echo "export OD2_AUTOSCRIPT='$s;exit'"
   else
     echo "# no revived sample (D2_TABLES unset or the tool failed)" >&2
@@ -66,7 +66,7 @@ scenario_check() {
     grep -qE "NPC menu: Talk with \"$npc\"" $log.txt || { echo "FAIL: the hero did not talk to $npc"; fail=1; }
   done
   # the levels were populated from Levels.txt and the hero fought
-  for lvl in 76 77 78 79 80 81 83 92 100; do
+  for lvl in 76 77 78 79 80 81 82 83 92 100; do
     grep -E "POPULATE level $lvl " $log.txt | grep -qE "[1-9][0-9]* monsters" || { echo "FAIL: level $lvl got no monsters"; fail=1; }
   done
   # Spider Cavern (a super unique), the Swampy Pit and the Flayer Dungeon carry their monsters in the DS1 (the natural groups can skip those blocks)

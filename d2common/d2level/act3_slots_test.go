@@ -41,6 +41,9 @@ func TestAct3DungeonTileDestination(t *testing.T) {
 		{100, 3, 83},  // Durance 1 up to Travincal (Prev files carry the styles 2/3, verified with the oracle)
 		{100, 0, 101}, // and down (Next files carry 0/1)
 		{94, 0, 80},   // a temple returns to the Kurast level that leads there
+		// the Durance of Hate (100..102) follows the Vis slot rule of durance_test.go (emulator verified), not the
+		// up-then-down order of the maze stamps; the order rule below only serves Sewers 1
+		{92, 2, 81}, {92, 3, 81}, {92, 4, 93}, // Sewers 1: four ways up (80, 80, 81, 81), one down
 	} {
 		if got, ok := TileDestination(c.level, c.style); !ok || got != c.want {
 			t.Errorf("TileDestination(%d, %d) = %d %v, want %d", c.level, c.style, got, ok, c.want)

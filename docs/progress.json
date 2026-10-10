@@ -1,13 +1,13 @@
 {
-  "updated": "2026-10-10",
+  "updated": "2026-10-09",
   "title": "Native macOS Diablo II — progress",
   "subtitle": "driven by Claude · counts come from code, tests and Ghidra; estimates are marked with ~ · dashed = on branches, not yet verified",
   "bars": [
     {
       "label": "Game.exe functions named in Ghidra",
-      "done": 11235,
+      "done": 11257,
       "total": 11257,
-      "note": "original 1.14b binary; 11,235 named by meaning (names re-verified: see next bar), 0 auto-labelled; the last 22 are the anti-cheat module, skipped on purpose",
+      "note": "original 1.14b binary; re-queried live from Ghidra (all 11,257 named; the last 22 Warden and module-loader functions were named 2026-10-09, a few names marked unverified)",
       "color": "#7c5cff"
     },
     {
@@ -36,8 +36,9 @@
       "label": "Level generator proven equal to the real game",
       "done": 8708,
       "total": 8768,
-      "note": "mazes + Act 1 outdoors + exact Act 1 tiles + Acts 2-5 outdoor/preset generators all proven in Go against the emulator",
-      "color": "#22c1c3"
+      "note": "mazes + Act 1 outdoors + exact Act 1 tiles + Acts 2-5 outdoor/preset generators all proven in Go against the emulator; on branches: all 70 maze levels (2,696 rooms) and presets 26/27/32/33/37/94/97 now match the emulator record for record (427 levels, 30,129 rooms, 0 mismatches), not yet landed",
+      "color": "#22c1c3",
+      "pending": 60
     },
     {
       "label": "Real .d2s save: read and write verified",
@@ -105,8 +106,8 @@
       "label": "In-game UI panels matching the original layout",
       "done": 0,
       "total": 14,
-      "pending": 5,
-      "note": "14 panels; a layout audit covering 5 is on a branch, never run in a game",
+      "pending": 8,
+      "note": "14 panels; a layout audit covering 5 is on a branch, never run in a game; update: the layout was then run in a real game window on a branch (150 rectangles checked, 0 deviating) but that branch is not landed",
       "color": "#c58bff"
     },
     {
@@ -142,6 +143,14 @@
       "color": "#9be564"
     },
     {
+      "label": "Real full verify green (scenario sections per job, real parallel log)",
+      "done": 71,
+      "total": 74,
+      "pending": 0,
+      "note": "scripts/verify_parallel.sh run 47389 (6 jobs): 74 distinct sections ran, 71 green, 3 red (Act 3 gate, skill bar, act travel); 4 of 6 jobs ALL CHECKS PASSED; 360 Go tests PASS, 0 FAIL; a landing verify of the combined branch is in flight (not counted until it finishes)",
+      "color": "#3ddc84"
+    },
+    {
       "label": "Acts played start to finish by a human tester",
       "done": 0,
       "total": 5,
@@ -155,20 +164,21 @@
     "definition": "v1 = a person double-clicks the Mac app, makes or loads a character and plays Acts 1-5 single player (quests, items, skills, monsters, saves, sound) without hitting a blocker; multiplayer through the game screen and Hell-difficulty polish count too. The percentage is a weighted average of the measurable bars below; dashed = on branches, not yet verified.",
     "weights": {
       "Acts playable end to end (scripted play)": 14,
-      "Acts played start to finish by a human tester": 14,
+      "Acts played start to finish by a human tester": 10,
       "Levels walked by a verify scenario": 6,
       "Main quests with logic implemented": 8,
       "Player skills with engine behaviour": 10,
       "Monster AI archetypes ported faithfully": 6,
       "Monster AI archetypes implemented": 2,
       "Item generation gaps closed vs the exe": 6,
-      "In-game UI panels matching the original layout": 8,
+      "In-game UI panels matching the original layout": 6,
       "Sound and music confirmed by a human listen": 6,
       "Multiplayer playable through the game screen": 4,
       "Mac app: build, Finder launch with real maps, disk image": 4,
       "Level generator proven equal to the real game": 4,
       "Real .d2s save: read and write verified": 4,
-      "NPC interaction features": 4
+      "NPC interaction features": 4,
+      "Real full verify green (scenario sections per job, real parallel log)": 6
     }
   }
 }

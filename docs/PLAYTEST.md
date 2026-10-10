@@ -373,3 +373,35 @@ OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOGAME=hero.d2s OD2_AUTOEXIT=1 \
 ## Quest rewards through the NPCs (scenario 9k)
 
 Branch `feat/reward-npc-ui`. Larzuk (sockets), Anya (personalise) and Charsi (imbue) take the item the hero holds on the cursor when the hero clicks them (`OnItemDropOnNPC`; scripts use `say:pickitem <code>` then `move:npc=`); while a reward is owed their menu also gets a row (Add Sockets / Personalize / Imbue) that opens the inventory (a row of this fork, UNVERIFIED against the exe). Akara gets the "Reset Stat/Skill Points" row (string 0x2ba0, gated by quest slot 41). Debug aids: `questpending <act> <quest>`, `giveitemq`, `pickitem`, `putitem`, `freeinv`. Not persisted: the owed sockets/personalisation (only the imbue and the reset follow the quest record). Hratli and Jerhyn have no travel rows in the exe table; act travel stays Warriv, Meshif, the Mephisto portal and Tyrael talk.
+
+# Act 3 in depth
+
+Branch `feat/act3-depth` (on `feat/act3-playthrough`). What the first levels of Act 3 lacked to be a complete act: the unvisited levels, the Council and Mephisto as bosses, the quest objects and the way on to Act 4.
+
+| Scenario | What it plays |
+|---|---|
+| `scripts/verify.d/9m-act3-full.sh` | `OD2_AUTOSPEED=8`, one window, natural monsters off (`OD2_POPULATE=0`, the DS1 bosses stay): Kurast Docks, the borders 76..83 to Travincal, the Council of Travincal (Toorc Icefist, Geleb Flamefinger, Ismail Vilehand with their packs), Khalim's Flail picked up (`pickground`), the three organs given, `cubeput` + the cube recipe make Khalim's Will, the Compelling Orb is smashed, the stairs 83 -> 100 -> 101 -> 102, Mephisto killed (quest bits, Soulstone), the red portal (`walkto:object=342`) to the Pandemonium Fortress; the exported `.d2s` is an Act 4 save. `scenario_timeout=470` (new in `verify.sh`, default 420: the reaper kills games at 8 minutes) |
+| `scripts/verify.d/9n-act3-dungeons.sh` | town portals into the levels 9g and 9m do not walk: Swampy Pit 2 + 3 (87, 90), Flayer Dungeon 2 + 3 (89, 91), and the quest objects by walking to them: Khalim's Eye (Spider Cavern), Brain (Flayer Dungeon 3), the lever of Sewers 1 and Khalim's Heart (Sewers 2), Lam Esen's Tome (Ruined Temple) |
+| `scripts/verify.d/9g-act3-playthrough.sh` | now sets Khalim's Will done (`say:completequest 3 2`) before `hop 100`: the stairs are sealed until the Orb is smashed |
+
+New console commands for scripts: `cubeput <codes>` (inventory items into the Horadric Cube, then `transmute`), `pickground <code>` (walk to and pick up one ground item).
+
+## Bugs found by playing Act 3 in depth, and their fixes
+
+| # | What a player saw | Root cause | Fix | Regression test |
+|---|---|---|---|---|
+| 42 | Entering Durance of Hate 3 (Mephisto's lair) killed the game: `[FATAL] Failed to look up object Act: 3, Type: 2, ID: 104` | the Act 3 row of the hellgate portal in the object lookup carried its objects.txt id (342) instead of its position (104) | `Id: 104` | `TestObjectLookupIdsAreContiguous` (every group counts up without gaps) |
+| 43 | Durance of Hate 1 and 2: `walkto:exit=101` "no exit"; the down stairs (tile style 3) lead nowhere; Sewers 1 had two unresolved ways up | the maze tile styles of Act 3 list the exits up first, then down (observed: Durance up 0,1 / down 2,3; Sewers 1 up 0..3 / down 4); only style 4 was a "down" | `TileDestination`: for Act 3 mazes style k < len(ups) is `ups[k]`, then the downs | `TestAct3DungeonTileDestination` (100/101/92 rows) |
+| 44 | The Council of Travincal and the guards of Mephisto were plain "Council Member" monsters without followers, names or treasure class | the population placed the DS1's super unique as its base class only | `NPC.SuperKey` keeps the SuperUniques.txt key; `adoptPlacements` builds the boss with `SpawnSuperUnique` (pack, modifiers, name); kills report the super unique | `TestAct3CouncilPlacementsCarryTheirSuperUniques` (real data, `D2_GAME_DIR`) |
+| 45 | The Blackened Temple counted the followers of the Council as members | followers have the Council classes 345..347 too | `d2act3.QuestKillClass`: only the leaders count | `TestCouncilKillsCountOnlyTheMembers` |
+| 46 | No Khalim's Flail, no Compelling Orb: nothing in Travincal led to the Durance | the quest objects of Act 3 were not operable (the click code knew the Act 1 quest objects only) and no DS1 carries the Orb | `d2act3` + `act3_live.go`: the chests, Lam Esen's Tome, Gidbinn, the lever and the Orb are operable; the Orb stands on the dummy 386 of the Travincal preset; the first Council member killed drops the Flail | `TestQuestObjectsGiveTheirItems`, `TestFlailDropsOnceFromTheCouncil`, `TestOrbNeedsTheWill`, 9m, 9n |
+| 47 | Mephisto's death left the lair without a way out; the portal object 342 stood open from the start and led nowhere | the portal is shown after the kill and its destination (the Fortress) was never set | the DS1 portal is hidden on arrival, opens `HellgateDelayFrames` after Mephisto's death (at once when the quest is done), leads to the Fortress through the act travel rule | 9m (`ACT3 the red portal ... opens`, `from=102 to=103 via=act:portal`) |
+| 48 | A scripted fight in Durance 3 (or next to the sealed stairs of Travincal) walked the hero over the up stairs / ignored the Council | `nearLevelBorder` returned before the warp test in dungeons; the warp-tile test did not know that Travincal's stairs are sealed | `nearWarpTile` guards the stairs of Act 3 dungeons too and ignores a stair the rules refuse (`warpRefused`) | 9m |
+| 49 | `resetquests` left every quest that was done at the start deaf to its events (Mephisto's death did nothing) | the quest engine keeps `Active=false` for quests done at load | `restartQuests` rebuilds the engine on the cleared record | 9m (`QUEST A3Q6 ... exe boss kill bit`) |
+| 50 | The stairs of Sewers 1 to Sewers 2 were always open | objects.txt calls the lever (367) and the stairs (366) "for act 3 sewer quest" | the stairs are refused until the lever is pulled (`d2act3.CheckSewerStairs`, UNVERIFIED rule) | `TestSewerStairsWaitForTheLever`, 9n |
+
+## What is playable in Act 3 now
+
+Kurast Docks to Travincal over the borders, all dungeons (Spider Cave/Cavern, Swampy Pit 1-3, Flayer Dungeon 1-3, Sewers 1-2, the six temples, Durance of Hate 1-3), the Kurast Causeway with its natural monsters, the Council with their packs and Khalim's Flail, the Khalim chests, Lam Esen's Tome, Gidbinn (an object of the jungle presets), the cube recipe for Khalim's Will, the Compelling Orb and the stairs it seals, Mephisto with his guards, the Soulstone, the red portal and the Pandemonium Fortress.
+
+Still open: the cutscenes (the Mephisto bridge 341 is only an object), Gidbinn's altar placement is whatever the DS1 presets carry, Hratli's place, the exact Flail carrier and the lever rule are UNVERIFIED.
