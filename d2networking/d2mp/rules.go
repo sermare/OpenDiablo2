@@ -97,7 +97,10 @@ type Rules interface {
 // DefaultRules is a self-contained rule set for headless games and tests. All
 // of its numbers are placeholders (UNVERIFIED): it exists so that the netcode
 // can be exercised without game files.
-type DefaultRules struct{}
+type DefaultRules struct {
+	// HeroLife, if set, replaces the life formula (scripted scenarios use sturdy heroes).
+	HeroLife int32
+}
 
 var defaultMonsters = []MonsterDef{
 	{}, // 0 unused
@@ -137,7 +140,11 @@ func (DefaultRules) Skill(id uint16) (SkillDef, bool) {
 }
 
 // Hero implements Rules.
-func (DefaultRules) Hero(class uint8, level uint8) (int32, int, int) {
+func (r DefaultRules) Hero(class uint8, level uint8) (int32, int, int) {
+	if r.HeroLife > 0 {
+		return r.HeroLife, 20, 30
+	}
+
 	l := int(level)
 	if l < 1 {
 		l = 1

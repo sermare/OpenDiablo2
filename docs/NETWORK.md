@@ -44,8 +44,8 @@ packets with `d2gs.SplitServer`. Packets used:
 | S2C | 0x59 | a player is in the game | d2gs `PlayerInGame` |
 | S2C | 0x5c | a player left the game | d2gs `PlayerLeave` |
 
-Gameplay packets (movement, skills, items) are not relayed by the realm; it is
-a lobby and session service. The game simulation is out of scope here.
+Gameplay packets are handled by the game simulation of the realm (see
+"Gameplay" below); the realm does not relay them between clients.
 
 ### Tunnel
 
@@ -84,7 +84,8 @@ Client to server (carried in 0x6c):
 | 0x84 | UploadChar | blob .d2s |
 | 0x85 | ListChars | empty |
 | 0x86 | SelectChar | str name |
-| 0x87 | LevelChange | u8 act, u16 level |
+| 0x87 | LevelChange | u8 act, u16 level (legacy: the simulation now moves heroes itself) |
+| 0x88 | Command | blob d2mp.Command (party, trade, waypoint, respawn) |
 
 Server to client (carried in 0xAE):
 
@@ -98,6 +99,7 @@ Server to client (carried in 0xAE):
 | 0x95 | Presence | u8 joined, str name (lobby arrival/departure) |
 | 0x96 | PlayerLevel | u32 unit id, u8 act, u16 level |
 | 0x97 | GameJoined | GameInfo, u32 unit id, u32 game seed |
+| 0x98 | World | blob: u16 count + d2mp events (first is a Tick with the server clock) |
 
 `GameInfo`: str name, str description, str creator, u8 difficulty (0 normal,
 1 nightmare, 2 hell), u8 players, u8 maxPlayers, u8 minLevel, u8 maxLevel
@@ -200,3 +202,54 @@ and returns its file in `CharData`, so a client can play without a local save.
 
 The tests in `d2networking/d2realm` use the real level-94 save and tables
 when `D2S_SAMPLE_BODY` and `D2_TABLES` are set, and skip otherwise.
+
+## Gameplay (package d2networking/d2mp)
+
+Every game owns an authoritative simulation that the realm steps at 25 Hz in
+real time. Clients send intent, the realm decides, every member receives the
+events of its own level. Nothing here is verified against the original server;
+the numbers in `d2mp.DefaultRules` (speeds, damage, monsters, drops) are
+placeholders so that the netcode can run without game files, and an engine host
+supplies real rules through `Config.Rules`.
+
+Client to server, d2gs packets (ids and layouts verified in `d2gs`):
+0x01/0x03 walk/run, 0x05/0x0c cast left/right skill on a location, 0x3c select
+skill, 0x13 interact (attack a monster, use an object), 0x16 pick up, 0x17 drop.
+Everything else is `Command` (0x88, EXTENSION): respawn, waypoint, party
+invite/accept/leave, trade request/respond/offer/accept/cancel.
+
+Server to client: `World` (0x98, EXTENSION) batches of events: Tick (server
+ms), Spawn, Seg (a movement segment: from, to, speed, start time), Attack,
+Hit, Death, Remove, Object, Level (your hero changed level), Vitals, XP, Party,
+Trade, Inv, Msg. For the other heroes the realm also sends the native 0x0f
+PlayerMove and 0x4d UnitSkillOnLocation packets (informational).
+
+Movement is a segment, never a stream of positions: the server and every
+replica evaluate the same `Seg.PosAt`, so they agree exactly. Remote units are
+drawn `InterpMs` (100) behind a server clock estimated from the fastest recent
+packets; the local hero walks at once (prediction) and a matching server
+segment is ignored, a different one is blended in over 200 ms (beyond 3 tiles
+it snaps). Obstacles are walked around by chaining segments (A*).
+
+Level seeds: `d2realm.LevelSeed(gameSeed, level)` feeds `Rules.Level`, so every
+client builds the same layout; the monsters and objects of a level are created
+by the server when the first hero enters, from that layout.
+
+What is synced: heroes (position, walk/run, skill casts, life, death, respawn
+in town, level, party), monsters (spawn, chase, attack, hit, death, corpse
+removal), missiles (spawn, flight, impact, splash), ground items (monster and
+chest drops, pick-up, drop), chests, town portals, level exits, waypoints,
+party experience split (`d2party.ShareKillXP`), trade (items and gold, accept
+lock, cancel on move/death/leave), drop-in and drop-out.
+
+Not synced (not modelled): equipment and stats beyond life, skills' real
+effects (Rules decides), player versus player, mercenaries and summons,
+quests and NPC dialogues, level generation from the game's DRLG (the engine
+client keeps generating its own map from the seed; the headless layout is a
+placeholder grid), per-difficulty scaling. The engine's game screen is not yet
+connected to the realm (`d2realm.Player` is the client API for it).
+
+Tests: `go test ./d2networking/d2mp ./d2networking/d2realm` (in-process, several
+clients on the loopback, no windows). `scripts/mp-realm-scenario.sh [n]` hosts
+a game with `cmd/od2server` and runs n `cmd/od2mpbot` processes through a
+party, an exit portal and a fight, then compares their worlds.
