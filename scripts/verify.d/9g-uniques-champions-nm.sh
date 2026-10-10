@@ -1,8 +1,9 @@
-scenario_name="uniques and champions (Dark Wood, Nightmare: MonUMin(N)..MonUMax(N) packs, leaders from the type list, ranks applied)"
-# Level 4 in Nightmare (MonUMin(N) 4 MonUMax(N) 6; the leaders come from the level's nmon type list, not umon).
+scenario_name="uniques and champions (Stony Field, Nightmare: MonUMin(N)..MonUMax(N) packs, leaders from the type list, ranks applied)"
+# Level 4 in Nightmare (MonUMin(N) 4 MonUMax(N) 6; the leaders come from the level's nmon type list, not umon). The hero
+# starts in the Nightmare town (OD2_AUTODIFFICULTY=1; the sample save has Nightmare unlocked) and takes the waypoint to level 4.
 scenario_env() {
-  echo "export OD2_REALMAPS=1 OD2_AUTOLEVEL=4 OD2_POPULATE=1 OD2_AUTODIFFICULTY=1"
-  echo "export OD2_AUTOSCRIPT='wait:2;exit'"
+  echo "export OD2_REALMAPS=1 OD2_POPULATE=1 OD2_AUTODIFFICULTY=1"
+  echo "export OD2_AUTOSCRIPT='wait:1;use:Waypoint;waypoint:4;expect:level=4;wait:3;exit'"
 }
 scenario_check() {
   grep -E "population ranks|POPULATE (level|ranks|rank leaders)|AUTOSCRIPT RESULT|DIFFICULTY chosen" $log.txt | cut -c1-260

@@ -1,4 +1,4 @@
-scenario_name="uniques and champions (Dark Wood, Normal: pack counts and leader classes legal for the Levels.txt row, ranks applied to the monsters)"
+scenario_name="uniques and champions (Stony Field, Normal: pack counts and leader classes legal for the Levels.txt row, ranks applied to the monsters)"
 # Level 4 (Act 1 Wilderness 3: umon skeleton1 / zombie2, MonUMin 1 MonUMax 2). The game starts in the level with the
 # real-map population forced on; scripts/unique_pop_check.py compares the log with the tables (needs D2_TABLES).
 scenario_env() {
