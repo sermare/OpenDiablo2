@@ -439,6 +439,13 @@ func weaponDamage(active []Item, list *List, str, dex int) (min, max int) {
 	}
 
 	bonus := int64(str*strB/100+dex*dexB/100) + list.Get(StatDamagePct)
+	if w == nil {
+		bonus += int64(str) // bare hands: strength counts as percent (VERIFIED 0x579120)
+	}
+
+	if bonus < -90 { // VERIFIED 0x579120: the percent is floored at -90
+		bonus = -90
+	}
 	min = int((int64(baseMin)*(100+edMin)/100 + list.Get(StatMinDamage)) * (100 + bonus) / 100)
 	max = int((int64(baseMax)*(100+edMax)/100 + list.Get(StatMaxDamage)) * (100 + bonus) / 100)
 
