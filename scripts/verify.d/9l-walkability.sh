@@ -8,8 +8,8 @@ w9=$tmp/walk
 # River of Flame is crossed (walkto:exit=108 passes).
 scenario_warnings_ok=1
 scenario_env() {
-  mkdir -p $w9/s94 $w9/wb94; rm -f $w9/s94/Hero.d2s $w9/wb94/NokkaSorc.d2s
-  if [ -n "${D2_TABLES:-}" ] && go run scripts/d2s-revive.go "$D2S_SAMPLE_BODY" $w9/s94/Hero.d2s "$D2_TABLES" >/dev/null 2>&1; then
+  mkdir -p $w9/s94 $w9/wb94; rm -f $w9/s94/Hero.d2s $w9/wb94/*.d2s(N)
+  if [ -n "${D2_TABLES:-}" ] && make_hero $w9/s94/Hero.d2s; then
     local s="wait:1;say:resetquests;say:completequest 1 6;walkto:exit=2;expect:level=2;wait:2;say:walkprobe;say:capframe $tmp/walk-bloodmoor.png"
     s+=";say:completequest 2 6;say:completequest 3 6;say:travelfree 1;travel:4;expect:level=103;wait:3"
     s+=";walkto:exit=104;expect:level=104;walkto:exit=105;expect:level=105;walkto:exit=106;expect:level=106"

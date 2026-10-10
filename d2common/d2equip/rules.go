@@ -107,6 +107,21 @@ func (r Rules) IsQuiver(itemType string) bool {
 	return r.Types.find(itemType, func(t *Type) string { return t.Quiver }, 0) != ""
 }
 
+// Shoots returns the quiver type a weapon type needs ("" for weapons that do not shoot).
+func (r Rules) Shoots(itemType string) string { return r.shoots(itemType) }
+
+// IsThrowable reports whether the item type (or an ancestor) is a throwing weapon: javelins, throwing
+// knives and throwing axes, which are their own ammunition.
+func (r Rules) IsThrowable(itemType string) bool {
+	return r.Types.find(itemType, func(t *Type) string {
+		if t.Throwable {
+			return "1"
+		}
+
+		return ""
+	}, 0) != ""
+}
+
 // shoots returns the quiver type a weapon type needs ("" for non shooting weapons).
 func (r Rules) shoots(itemType string) string {
 	return r.Types.find(itemType, func(t *Type) string { return t.Shoots }, 0)

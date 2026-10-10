@@ -7,7 +7,6 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
-	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client"
 )
 
@@ -293,7 +292,7 @@ func (v *Game) defendOnTheWay(e *exitWalk) bool {
 		return false
 	}
 
-	k := &killState{radius: threatRadius, deadline: defendSeconds, skip: map[*d2mapentity.Monster]float64{}, defend: true}
+	k := newKillState(threatRadius, defendSeconds, true)
 	if k.start = len(v.killCandidates(k)); k.start == 0 {
 		return false
 	}

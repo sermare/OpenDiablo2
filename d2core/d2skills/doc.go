@@ -24,6 +24,6 @@
 //   - Area missiles splash (hit functions 1 and 13) but have no special do
 //     function movement (Blessed Hammer's spiral, Tornado's wander...).
 //   - Weapon damage is the right hand weapon's min/max, or 1-2 bare handed;
-//     the quiver is not modelled (arrow skills need OD2_AUTOCAST or the
-//     Options.InfiniteAmmo switch to find "ammo").
+//     ammunition comes from the game (Options.AmmoLeft / UseAmmo: the quiver
+//     of a bow, or the stack of a thrown weapon; scenarios use Options.InfiniteAmmo).
 package d2skills

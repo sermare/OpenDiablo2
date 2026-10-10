@@ -38,6 +38,12 @@ type Options struct {
 	// InfiniteAmmo makes arrow skills find ammunition (the quiver is not
 	// modelled).
 	InfiniteAmmo bool
+	// AmmoLeft and UseAmmo model the hero's ammunition outside scenarios: AmmoLeft is the number of
+	// arrows, bolts or javelins the worn weapon can still shoot or throw (the quiver in the other hand of
+	// a bow, or the thrown weapon's own stack), UseAmmo takes one. Both nil (and InfiniteAmmo false):
+	// ranged skills that check ammunition are refused, as before the game wired them.
+	AmmoLeft func() int
+	UseAmmo  func() bool
 	// TeleportFlag returns the levels.txt Teleport column of the hero's level
 	// (0 / 1 / 2, see d2skill.Pipeline.TeleportFlag); nil means always 1.
 	TeleportFlag func() int
@@ -81,6 +87,8 @@ type Engine struct {
 
 	frame int
 	acc   float64
+
+	lastRefusal string // d2skill.Reason* of the last refused CastAt, "" after an accepted one
 
 	lastDealt int // whole life points the last hurt() removed (leech)
 
@@ -307,6 +315,22 @@ func (e *Engine) Cast(p *d2mapentity.Player, skillID int, tileX, tileY float64) 
 	return e.CastAt(p, skillID, int(math.Floor(tileX*subtilesPerTile)), int(math.Floor(tileY*subtilesPerTile)))
 }
 
+// LastRefusal is the reason (a d2skill.Reason* value) the last CastAt was refused, "" when it was accepted.
+func (e *Engine) LastRefusal() string { return e.lastRefusal }
+
+// CanAfford reports whether the hero has the mana for the skill at its current level (a skill without
+// a mana cost, or one the hero does not have, is not refused for mana here).
+func (e *Engine) CanAfford(p *d2mapentity.Player, skillID int) bool {
+	sk := e.pipe.Skills.ByID(skillID)
+	if sk == nil {
+		return true
+	}
+
+	u := e.hero(p)
+
+	return sk.ManaCost(u.SkillLevel(skillID)) <= u.Mana()
+}
+
 // CastAt is Cast with a subtile aim point.
 func (e *Engine) CastAt(p *d2mapentity.Player, skillID, sx, sy int) bool {
 	sk := e.pipe.Skills.ByID(skillID)
@@ -324,8 +348,12 @@ func (e *Engine) CastAt(p *d2mapentity.Player, skillID, sx, sy int) bool {
 
 	if !st.OK {
 		e.Counters.Refused++
+		e.lastRefusal = st.Reason
+
 		return false
 	}
+
+	e.lastRefusal = ""
 
 	e.Counters.ManaSpent += st.ManaPaid
 	p.SetDirection(p.Position.DirectionTo(*d2vector.NewVector(float64(sx), float64(sy))))
