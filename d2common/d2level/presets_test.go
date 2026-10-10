@@ -90,3 +90,14 @@ func TestBurialGroundsEntrances(t *testing.T) {
 		t.Error("style 5 of the Burial Grounds must not lead anywhere")
 	}
 }
+
+// The stairs of Nihlathak's Temple (style 1 tiles) lead on to the Halls of Anguish; the style 9 doors lead nowhere.
+func TestNihlathakTempleStairs(t *testing.T) {
+	if got, ok := TileDestination(121, 1); !ok || got != 122 {
+		t.Errorf("style 1: %d %v, want 122", got, ok)
+	}
+
+	if got, ok := TileDestination(121, 9); ok {
+		t.Errorf("style 9 must not lead anywhere, got %d", got)
+	}
+}
