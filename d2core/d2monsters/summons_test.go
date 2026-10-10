@@ -15,7 +15,8 @@ import (
 
 func TestPlanSummonTable(t *testing.T) {
 	crow := &d2records.MonStatRecord{Key: "crownest1", SpawnKey: "foulcrow1", SpawnOffsetX: 0, SpawnOffsetY: 3,
-		SpawnAnimationKey: "NU"}
+		SpawnAnimationKey: "NU", AiKey: "FoulCrowNest"}
+	gen := &d2records.MonStatRecord{Key: "generic", SpawnKey: "foulcrow1", AiKey: "HighPriest"}
 
 	tests := []struct {
 		name    string
@@ -30,18 +31,22 @@ func TestPlanSummonTable(t *testing.T) {
 		wantMod string
 	}{
 		{"Nest uses the caster spawn column and offset", &d2records.SkillRecord{Srvdofunc: 91}, crow, true,
-			"foulcrow1", [][2]int{{0, 3}}, true, 0, 0, "NU"},
-		{"MinionSpawner", &d2records.SkillRecord{Srvdofunc: 135}, &d2records.MonStatRecord{SpawnKey: "minion1", SpawnOffsetY: 3}, true,
-			"minion1", [][2]int{{0, 3}}, true, 0, 0, ""},
-		{"Impregnate summon column", &d2records.SkillRecord{Srvdofunc: 133, Summon: "painworm1", Summode: "NU"}, crow, true,
-			"painworm1", [][2]int{{0, 0}}, false, 0, 0, "NU"},
-		{"Overseer Whip", &d2records.SkillRecord{Srvdofunc: 131, Summon: "suicideminion1", Summode: "S1", Sumumod: 33}, crow, true,
-			"suicideminion1", [][2]int{{0, 0}}, false, 0, 0, "S1"},
+			"foulcrow1", [][2]int{{0, 3}}, true, selfLimitedSummonCap, 0, "NU"},
+		{"MinionSpawner", &d2records.SkillRecord{Srvdofunc: 135}, &d2records.MonStatRecord{SpawnKey: "minion1", SpawnOffsetY: 3, AiKey: "MinionSpawner"}, true,
+			"minion1", [][2]int{{0, 3}}, true, selfLimitedSummonCap, 0, ""},
+		{"Impregnate summon column", &d2records.SkillRecord{Srvdofunc: 133, Summon: "painworm1", Summode: "NU"}, gen, true,
+			"painworm1", [][2]int{{0, 0}}, false, wormSummonCap, 0, "NU"},
+		{"Overseer Whip", &d2records.SkillRecord{Srvdofunc: 131, Summon: "suicideminion1", Summode: "S1", Sumumod: 33}, gen, true,
+			"suicideminion1", [][2]int{{0, 0}}, false, whipSummonCap, 0, "S1"},
 		{"Hydra: three, Param1 lifetime, petmax 99",
 			&d2records.SkillRecord{Srvdofunc: 144, Summon: "hydra1", Pettype: "hydra", Petmax: d2calc.Compile("99", d2calc.KindSkill), Param1: 250},
-			crow, true, "hydra1", [][2]int{{-1, -1}, {0, 0}, {1, -1}}, false, 99, 250, ""},
-		{"DiabPrison none pettype", &d2records.SkillRecord{Srvdofunc: 104, Summon: "boneprison1", Pettype: "none"}, crow, true,
-			"boneprison1", [][2]int{{0, 0}}, false, 0, 0, ""},
+			gen, true, "hydra1", [][2]int{{-1, -1}, {0, 0}, {1, -1}}, false, hydraSummonCap, 250, ""},
+		{"DiabPrison none pettype", &d2records.SkillRecord{Srvdofunc: 104, Summon: "boneprison1", Pettype: "none"}, gen, true,
+			"boneprison1", [][2]int{{0, 0}}, false, prisonSummonCap, 0, ""},
+		{"Nest of a generic AI (EvilHole stand-in) is held to the host cap", &d2records.SkillRecord{Srvdofunc: 91}, gen, true,
+			"foulcrow1", [][2]int{{0, 0}}, true, nestSummonCap, 0, ""},
+		{"a table petmax below the host cap wins", &d2records.SkillRecord{Srvdofunc: 144, Summon: "hydra1", Pettype: "hydra",
+			Petmax: d2calc.Compile("2", d2calc.KindSkill)}, gen, true, "hydra1", [][2]int{{-1, -1}, {0, 0}, {1, -1}}, false, 2, 0, ""},
 		{"Nest without spawn column summons nothing", &d2records.SkillRecord{Srvdofunc: 91}, &d2records.MonStatRecord{}, false, "", nil, false, 0, 0, ""},
 		{"Resurrect is not a summon", &d2records.SkillRecord{Srvdofunc: 97}, crow, false, "", nil, false, 0, 0, ""},
 		{"nil row", nil, crow, false, "", nil, false, 0, 0, ""},
@@ -194,6 +199,31 @@ func TestRealMonsterSummonSlots(t *testing.T) {
 			}
 
 			seen[p.Kind]++
+
+			// the host cap: every summoning slot is bounded, and a self-limited AI's own live
+			// limit (any difficulty) never reaches the safety net
+			if p.MaxAlive <= 0 || p.MaxAlive > selfLimitedSummonCap {
+				t.Errorf("%s/%s: unbounded or oversized cap %d", st.Key, name, p.MaxAlive)
+			}
+
+			if !selfLimitedSummoners[strings.ToLower(st.AiKey)] && p.MaxAlive > nestSummonCap && p.Kind != SummonHydra {
+				t.Errorf("%s/%s (%s): generic AI cap %d", st.Key, name, st.AiKey, p.MaxAlive)
+			}
+
+			own := 0
+
+			switch strings.ToLower(st.AiKey) {
+			case "foulcrownest", "sarcophagus":
+				own = max3(st.AiParameterNormal3, st.AiParameterNightmare3, st.AiParameterHell3)
+			case "mosquitonest":
+				own = max3(st.AiParameterNormal1, st.AiParameterNightmare1, st.AiParameterHell1)
+			case "minionspawner", "vilemother":
+				own = max3(st.AiParameterNormal2, st.AiParameterNightmare2, st.AiParameterHell2)
+			}
+
+			if own > p.MaxAlive {
+				t.Errorf("%s/%s: the AI's own limit %d is above the host cap %d", st.Key, name, own, p.MaxAlive)
+			}
 		}
 	}
 
@@ -204,4 +234,16 @@ func TestRealMonsterSummonSlots(t *testing.T) {
 	}
 
 	t.Logf("%d summoning slots, by kind %v", slots, seen)
+}
+
+func max3(a, b, c int) int {
+	if b > a {
+		a = b
+	}
+
+	if c > a {
+		a = c
+	}
+
+	return a
 }

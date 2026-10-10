@@ -111,7 +111,56 @@ func PlanSummon(rec *d2records.SkillRecord, caster *d2records.MonStatRecord) (Su
 		p.MaxAlive = rec.Petmax.Eval(d2calc.ZeroEnv{})
 	}
 
+	if c := HostSummonCap(k, caster.AiKey); p.MaxAlive <= 0 || p.MaxAlive > c {
+		p.MaxAlive = c
+	}
+
 	return p, true
+}
+
+// selfLimitedSummoners are the AI ports whose think function bounds the
+// casts itself (cast counters against aip limits, and for the VileMother and
+// MinionSpawner a live-brood count the Director answers): FoulCrowNest aip3,
+// MosquitoNest aip1, Sarcophagus aip3, MinionSpawner aip1/aip2, VileMother
+// aip1/aip2 (all ported VERIFIED in d2common/d2monster). Lower-case names.
+var selfLimitedSummoners = map[string]bool{"foulcrownest": true, "mosquitonest": true, "sarcophagus": true,
+	"minionspawner": true, "vilemother": true}
+
+// Host safety net (UNVERIFIED numbers, a bound and not a rule from the
+// exe): the most live summons of one caster. A self-limited AI never gets
+// near it (largest aip live limit in the 1.14b tables is 27); any other AI
+// that casts a summoning skill (EvilHole and HighPriest run on generic
+// stand-in thinks that cast every few ticks, Overseer, Nihlathak, Diablo ...)
+// is held to a few units, so a bug or a missing host interface can never make
+// a caster lay units without end (the City of the Damned Stygian Hags did).
+const (
+	selfLimitedSummonCap = 40
+	nestSummonCap        = 10 // EvilHole aip1 is 10
+	whipSummonCap        = 6
+	wormSummonCap        = 6
+	hydraSummonCap       = 9 // three casts of three
+	prisonSummonCap      = 4
+)
+
+// HostSummonCap is the most live units of one caster's summoning skill the
+// Director allows, from the skill kind and the caster's monstats AI.
+func HostSummonCap(k SummonKind, ai string) int {
+	if selfLimitedSummoners[strings.ToLower(ai)] {
+		return selfLimitedSummonCap
+	}
+
+	switch k {
+	case SummonWhip:
+		return whipSummonCap
+	case SummonWorm:
+		return wormSummonCap
+	case SummonHydra:
+		return hydraSummonCap
+	case SummonPrison:
+		return prisonSummonCap
+	default:
+		return nestSummonCap
+	}
 }
 
 // summonRoom is how many of the plan's units a caster with alive live
@@ -172,6 +221,20 @@ func (d *Director) SpawnerCellsFree(b *d2monster.Brain) bool {
 	return ok
 }
 
+// FBXSpawnCellsFree implements d2monster.FBXSpawnCells (Sarcophagus): the same
+// room test as the nests.
+func (d *Director) FBXSpawnCellsFree(b *d2monster.Brain) bool { return d.SpawnerCellsFree(b) }
+
+// SpawnCellsFree implements d2monster.FB1Spawn (Nihlathak's summon).
+func (d *Director) SpawnCellsFree(b *d2monster.Brain) bool { return d.SpawnerCellsFree(b) }
+
+// summonBudget is how many units a cast of plan by the caster may create now:
+// the plan size, trimmed so the caster's live summons of the class stay within
+// plan.MaxAlive (the table's petmax or the host cap, see HostSummonCap).
+func (d *Director) summonBudget(casterID uint32, plan SummonPlan) int {
+	return plan.summonRoom(d.liveSummons(casterID, plan.Class))
+}
+
 // landSummon creates the units of a summoning cast at its hit frame. It
 // returns false when the skill is not a summon.
 func (d *Director) landSummon(u *unit) bool {
@@ -191,7 +254,7 @@ func (d *Director) landSummon(u *unit) bool {
 		return true
 	}
 
-	room := plan.summonRoom(d.liveSummons(u.b.ID, plan.Class))
+	room := d.summonBudget(u.b.ID, plan)
 	if room == 0 {
 		d.emit("summon", "SUMMON refused caster=%s skill=%s class=%s: limit %d", u.m.Label(), u.skill.name, plan.Class,
 			plan.MaxAlive)
