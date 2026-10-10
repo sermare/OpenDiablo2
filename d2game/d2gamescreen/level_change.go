@@ -280,6 +280,7 @@ func (v *Game) performLevelChange(t *levelTransition) {
 		}
 	}
 
+	v.takePets(plan.ActChange)
 	v.saveLevel(from)
 
 	arrival, err := v.gameClient.ChangeLevelAct(t.target, prefer, t.actFinished)
@@ -292,6 +293,7 @@ func (v *Game) performLevelChange(t *levelTransition) {
 
 		v.resetLevelState()
 		v.restoreLevel(from)
+		v.adoptPets()
 
 		return
 	}
@@ -351,6 +353,7 @@ func (v *Game) afterLevelBuilt(from, to int, via string) {
 	v.chaosEnter(to)
 	v.restoreCorpse()
 	v.restoreLevel(to)
+	v.adoptPets()
 	v.portal.ents = nil // the objects went with the old map
 	v.spawnPortals()
 

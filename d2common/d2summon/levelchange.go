@@ -53,3 +53,32 @@ func LevelChangeFate(f PetFlags, distSq int) Fate {
 
 	return FateDrop
 }
+
+// PetRef is what the carry-over planner needs to know about one pet.
+type PetRef struct {
+	Flags  PetFlags
+	DistSq int // squared subtile distance to the owner before the move
+}
+
+// CarryOverList plans a level change for a list of pets and returns the
+// indices (into pets, in order) of those that travel with the owner. On an act
+// change nothing travels (PETS_ReleaseAllPetsOnActChange 0x573980). Inside an
+// act only FateFollow pets travel. A FateStay pet (range type within 40
+// subtiles) keeps its place in the exe's list, but the engine rebuilds the map
+// and does not park pets, so it cannot stay: it is released like a dropped
+// one (engine limitation, not exe behaviour).
+func CarryOverList(pets []PetRef, actChange bool) []int {
+	if actChange {
+		return nil
+	}
+
+	var out []int
+
+	for i, p := range pets {
+		if LevelChangeFate(p.Flags, p.DistSq) == FateFollow {
+			out = append(out, i)
+		}
+	}
+
+	return out
+}

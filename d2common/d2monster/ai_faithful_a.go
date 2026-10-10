@@ -1667,7 +1667,8 @@ func thinkAncientStatue(c *Ctx) {
 
 // thinkGargoyleTrap is MONAI_Think_GargoyleTrap 0x5f8600 (VERIFIED from the
 // disassembly). Scratch[0] is a pending pause in frames. The exe also turns the
-// statue to face the target along the larger axis (cosmetic, not ported).
+// statue to face the target along the larger axis (ported as the Facer hook,
+// see GargoyleFacePoint; ai-faithful-batch4.md follow-ups, VERIFIED).
 // aip1 range, aip2 fire %, aip3 pause after firing, aip4 stall. It fires only
 // when the target is within 5 subtiles on one axis.
 func thinkGargoyleTrap(c *Ctx) {
@@ -1690,6 +1691,8 @@ func thinkGargoyleTrap(c *Ctx) {
 	if ady < 0 {
 		ady = -ady
 	}
+
+	c.gargoyleFace(t)
 
 	if (adx < 6 || ady < 6) && c.skill(slotA) && c.Dist < b.AIP(1) && b.Chance(b.AIP(2)) {
 		c.Cast(slotA, t)

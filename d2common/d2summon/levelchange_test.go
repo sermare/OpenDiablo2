@@ -29,3 +29,34 @@ func TestLevelChangeFate(t *testing.T) {
 		}
 	}
 }
+
+func TestCarryOverList(t *testing.T) {
+	warp, rng, none := PetFlags{Warp: true}, PetFlags{Range: true}, PetFlags{}
+
+	tests := []struct {
+		name string
+		pets []PetRef
+		act  bool
+		want []int
+	}{
+		{"empty", nil, false, nil},
+		{"warp follows at any distance", []PetRef{{warp, 0}, {warp, 99999}}, false, []int{0, 1}},
+		{"range near stays behind, far dropped", []PetRef{{rng, 1600}, {rng, 1601}}, false, nil},
+		{"neither released", []PetRef{{none, 0}}, false, nil},
+		{"mixed keeps order", []PetRef{{none, 1}, {warp, 5}, {rng, 2}, {warp, 7}}, false, []int{1, 3}},
+		{"act change releases all", []PetRef{{warp, 0}, {warp, 4}}, true, nil},
+	}
+
+	for _, tc := range tests {
+		got := CarryOverList(tc.pets, tc.act)
+		if len(got) != len(tc.want) {
+			t.Fatalf("%s: got %v want %v", tc.name, got, tc.want)
+		}
+
+		for i := range got {
+			if got[i] != tc.want[i] {
+				t.Fatalf("%s: got %v want %v", tc.name, got, tc.want)
+			}
+		}
+	}
+}

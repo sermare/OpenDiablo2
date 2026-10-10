@@ -171,6 +171,7 @@ type Game struct {
 	autoObject           autoObject
 	autoGround           autoGround
 	monsters             *d2monsters.Director
+	petCarry             *d2monsters.CarriedPets // pets travelling to the next level of the act (pet_levelchange.go)
 	rankLeader           *d2mapentity.Monster // leader of the last spawnrank pack
 	realm                *realmState          // the monsters of a game played through the realm (realm_sync.go)
 	monsterTest          *monsterTest
