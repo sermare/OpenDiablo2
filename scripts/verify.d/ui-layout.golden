@@ -170,3 +170,15 @@ waypoint text.row5 * 319 0 0
 waypoint text.row6 * 354 0 0
 waypoint text.row7 * 389 0 0
 waypoint text.row8 * 424 0 0
+# skill tree tab hit areas: the strip splits at H+oy-{0x174,0x108,0x9c} = 168, 276, 384 (UI_HandleSkillTreeTabHover 0x4a7a60); labels unmoved
+skills tab1 627 384 93 107
+skills tab2 627 276 93 107
+skills tab3 627 168 93 107
+# vendor item tabs (UI_DrawNpcShopPanelAndTabs 0x484570): x 80 + 0x50*i, bottom y 91; frame 0 of buyselltabs.dc6 is 79x31
+trade tab0 80 60 79 31
+trade tab1 160 60 79 31
+trade tab2 240 60 79 31
+trade tab3 320 60 79 31
+# waypoint act tab 1 (x 5 + 80, bottom 94, expwaygatetabs frame 0 63x31) and the 32x32 close button (0x111 + 80, bottom 0x1a1 + 60)
+waypoint tab1 85 63 63 31
+waypoint close 353 445 32 32

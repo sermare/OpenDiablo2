@@ -99,6 +99,7 @@ type ButtonLayout struct {
 	DisabledFrame    int
 	DisabledColor    uint32
 	TextOffset       int
+	TextOffsetY      int // added to the vertical centring of the label (the skill tree tabs move up to the original's hit area)
 	FixedWidth       int
 	FixedHeight      int
 	LabelColor       uint32
@@ -816,6 +817,15 @@ func (ui *UIManager) NewButton(buttonType ButtonType, text string) *Button {
 	return btn
 }
 
+// NewButtonTextOffset creates a button of a standard type whose label is moved textDY pixels vertically
+// (the button itself keeps its box).
+func (ui *UIManager) NewButtonTextOffset(buttonType ButtonType, text string, textDY int) *Button {
+	l := *getButtonLayouts()[buttonType]
+	l.TextOffsetY = textDY
+
+	return ui.createButton(&l, text)
+}
+
 // NewDefaultButton creates a new button with default settings
 func (ui *UIManager) NewDefaultButton(path string, frame int) *Button {
 	layout := &ButtonLayout{
@@ -969,7 +979,7 @@ func (v *Button) prerenderStates(btnSprite *Sprite, btnLayout *ButtonLayout, lab
 	}
 
 	_, labelHeight := label.GetSize()
-	textY := half(v.height - labelHeight)
+	textY := half(v.height-labelHeight) + btnLayout.TextOffsetY
 	xOffset := half(v.width)
 
 	label.SetPosition(xOffset, textY)

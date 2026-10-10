@@ -27,12 +27,17 @@ const (
 	wpTextPitch          = 35
 	wpTextX              = 60 // UNVERIFIED: the text column
 	wpHeaderBottom       = 0x30
-	wpTabX, wpTabPitch   = 5, 62
+	wpTabX, wpTabPitch   = 5, 62 // wpTabPitch is only the fallback; the table wpTabXs is the original's
 	wpTabBottom          = 94
 	wpCloseX, wpCloseTop = 0x111, 0x1a1 - 32
 	screenW              = 800
 	screenH              = 600
 )
+
+// wpTabXs are the act tab x positions inside the panel (the table in UI_DrawWaygatePanel, expansion, verified).
+//
+//nolint:gochecknoglobals // table
+var wpTabXs = [5]int{5, 0x43, 0x81, 0xbf, 0xfd}
 
 //nolint:gochecknoglobals // colours
 var (
@@ -62,6 +67,8 @@ type WaypointPanel struct {
 	open     bool
 	hover    int
 	onChoose func(level int)
+	tabs     *d2ui.Sprite // expwaygatetabs.dc6: frame 2*act = selected, 2*act+1 = other
+	closeBtn *d2ui.Sprite // buysellbtn.dc6: frame 10 = close, 11 = pressed
 }
 
 // NewWaypointPanel creates a closed panel.
@@ -74,6 +81,8 @@ func NewWaypointPanel(asset *d2asset.AssetManager, ui *d2ui.UIManager) *Waypoint
 func (p *WaypointPanel) Open(act, current int, rows []WaypointRow, onChoose func(level int)) {
 	p.act, p.current, p.rows, p.onChoose = act, current, rows, onChoose
 	p.hover, p.open = -1, true
+
+	p.loadArt()
 
 	p.title = p.ui.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
 	p.title.SetText(fmt.Sprintf("Waypoints - Act %d", act))
@@ -99,6 +108,43 @@ func (p *WaypointPanel) Open(act, current int, rows []WaypointRow, onChoose func
 
 		p.labels = append(p.labels, l)
 	}
+}
+
+// loadArt loads the act tab and close button pictures once.
+func (p *WaypointPanel) loadArt() {
+	var err error
+
+	if p.tabs == nil {
+		if p.tabs, err = p.ui.NewSprite(d2resource.WPTabs, d2resource.PaletteSky); err != nil {
+			p.tabs = nil
+		}
+	}
+
+	if p.closeBtn == nil {
+		if p.closeBtn, err = p.ui.NewSprite(d2resource.BuySellButton, d2resource.PaletteSky); err != nil {
+			p.closeBtn = nil
+		}
+	}
+}
+
+// tabBox is the box of the act tab i (0..4): UI_DrawWaygatePanel 0x499190 draws frame 2*i of expwaygatetabs.dc6 at
+// x = panel + wpTabXs[i], bottom y 94 (expansion; verified).
+func (p *WaypointPanel) tabBox(i int) (x, top, w, h int) {
+	x = wpPanelX + wpTabXs[i]
+	w, h = 62, 33
+
+	if p.tabs != nil {
+		if fw, fh, err := p.tabs.GetFrameSize(2 * i); err == nil {
+			w, h = fw, fh
+		}
+	}
+
+	return x, wpTabBottom - h + 0, w, h
+}
+
+// closeBox is the 32x32 close button (frame 10 of buysellbtn.dc6): left panel x + 0x111, bottom 0x1a1 + 60 (verified).
+func closeBox() (x, y, w, h int) {
+	return wpPanelX + wpCloseX, wpPanelY + wpCloseTop, 32, 32
 }
 
 // Close hides the panel.
@@ -189,6 +235,12 @@ func (p *WaypointPanel) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	}
 
 	if event.Button() == d2enum.MouseButtonLeft {
+		if x, y, w, h := closeBox(); event.X() >= x && event.X() < x+w && event.Y() >= y && event.Y() < y+h {
+			p.Close()
+
+			return true
+		}
+
 		if i := p.rowAt(event.X(), event.Y()); i >= 0 && i < len(p.rows) && p.rows[i].Enabled() {
 			_ = p.Choose(p.rows[i].Level)
 		}
@@ -211,6 +263,7 @@ func (p *WaypointPanel) Render(target d2interface.Surface) {
 	target.DrawRect(wpPanelW, wpPanelH, wpBackground)
 	target.Pop()
 
+	p.renderArt(target)
 	p.title.Render(target)
 
 	for i, l := range p.labels {
@@ -222,6 +275,36 @@ func (p *WaypointPanel) Render(target d2interface.Surface) {
 		}
 
 		l.Render(target)
+	}
+}
+
+// renderArt draws the act tabs and the close button. The original draws a tab for every act whose quest flag is set
+// (flags 7, 0xf, 0x17, 0x1a for acts 2..5); the engine does not carry those flags here, so the tabs of the acts up to
+// the panel's own are drawn (UNVERIFIED approximation); the panel's act is the selected one (frame 2*i, else 2*i+1).
+func (p *WaypointPanel) renderArt(target d2interface.Surface) {
+	if p.tabs != nil {
+		for i := 0; i < p.act && i < len(wpTabXs); i++ {
+			frame := 2*i + 1
+			if i == p.act-1 {
+				frame = 2 * i
+			}
+
+			x, top, _, h := p.tabBox(i)
+
+			if p.tabs.SetCurrentFrame(frame) == nil {
+				p.tabs.SetPosition(x, top+h)
+				p.tabs.Render(target)
+			}
+		}
+	}
+
+	if p.closeBtn != nil {
+		x, y, _, h := closeBox()
+
+		if p.closeBtn.SetCurrentFrame(10) == nil {
+			p.closeBtn.SetPosition(x, y+h)
+			p.closeBtn.Render(target)
+		}
 	}
 }
 
@@ -237,7 +320,7 @@ func (p *WaypointPanel) place() {
 }
 
 // layoutRects returns the panel box, the header and row text anchors, the row hit boxes
-// (the act tab and the close button of the original are not drawn yet), for the layout log.
+// and the act tab and close button pictures, for the layout log.
 func (p *WaypointPanel) layoutRects() []UIRect {
 	p.place()
 
@@ -246,6 +329,14 @@ func (p *WaypointPanel) layoutRects() []UIRect {
 		{"waypoint", "panel", l, t, r - l, b - t},
 		textAnchor("waypoint", "text.header", p.title),
 	}
+
+	for i := 0; i < p.act && i < len(wpTabXs); i++ {
+		x, top, w, h := p.tabBox(i)
+		rs = append(rs, UIRect{"waypoint", fmt.Sprintf("tab%d", i+1), x, top, w, h})
+	}
+
+	cx, cy, cw, ch := closeBox()
+	rs = append(rs, UIRect{"waypoint", "close", cx, cy, cw, ch})
 
 	for i, lab := range p.labels {
 		x, y, w, h := rowBox(i)
