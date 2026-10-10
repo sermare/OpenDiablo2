@@ -283,6 +283,28 @@ func GroupsForRoom(tiles, density, avgGroup int) int {
 	return (monsters + avgGroup/2) / avgGroup
 }
 
+// GroupsForRoomFrac is GroupsForRoom that does not lose rooms to the rounding: where GroupsForRoom gives 0 but
+// the expected number of groups is above 0 (a 16x16 block of a level with MonDen 325 holds 0.83 monsters), a
+// roll decides whether the room gets one group, with the fraction as the chance. roll(n) returns 0..n-1.
+// Playtest bug: Lower Kurast, the Bazaar, Upper Kurast, the Causeway and Travincal had no monsters at all.
+func GroupsForRoomFrac(tiles, density, avgGroup int, roll func(n int) int) int {
+	if g := GroupsForRoom(tiles, density, avgGroup); g > 0 || tiles <= 0 || density <= 0 {
+		return g
+	}
+
+	if avgGroup < 1 {
+		avgGroup = 1
+	}
+
+	// expected groups = tiles*density/100000/avgGroup, in millionths
+	ppm := tiles * density * 10 / avgGroup
+	if ppm > 0 && roll(1000000) < ppm {
+		return 1
+	}
+
+	return 0
+}
+
 // AvgGroupSize is the mean MinGrp..MaxGrp size over the types, weighted by
 // rarity, floored at 1.
 func AvgGroupSize(types []ClassInfo) int {
