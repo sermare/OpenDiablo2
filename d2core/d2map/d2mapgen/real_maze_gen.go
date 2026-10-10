@@ -13,6 +13,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapstamp"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
@@ -68,6 +69,20 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 		params.TombA, params.TombB = ex.TombA, ex.TombB
 	}
 
+	// the Barracks hang off level 27 (DRLG_FinishBarracksLevel), whose rectangle and exit side come from the world
+	var monasteryRects map[int]d2level.Rect
+
+	if levelID == 28 {
+		rects, side, err := monasteryWorld(tb, seed, diff)
+		if err != nil {
+			return err
+		}
+
+		monasteryRects = rects
+		r27 := rects[27]
+		params.L27 = drlgmaze.Level27{X: r27.X, Y: r27.Y, W: r27.W, H: r27.H, Side: side}
+	}
+
 	res, err := drlgmaze.Generate(tb, params)
 	if err != nil {
 		return err
@@ -84,6 +99,12 @@ func (g *MapGenerator) GenerateRealMaze(levelID int, seed uint32, diff d2drlg.Di
 	h := res.MaxY - res.MinY + 2*realMazeMargin + 1
 
 	g.engine.ResetMap(region, w, h)
+
+	if monasteryRects != nil {
+		monasteryRects[28] = d2level.Rect{X: res.RectX, Y: res.RectY, W: res.RectW, H: res.RectH}
+		g.engine.SetWorld(d2mapengine.World{Level: 28, OriginX: res.MinX - realMazeMargin, OriginY: res.MinY - realMazeMargin,
+			Rects: monasteryRects})
+	}
 
 	var (
 		placed  int

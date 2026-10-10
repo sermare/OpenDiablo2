@@ -88,6 +88,12 @@ var drlgEdges = [][2]int{
 	{109, 110}, {110, 111}, {111, 112},
 }
 
+// monasteryEdges are the Levels.txt Vis links with Warp -1 inside the Monastery (Monastery Gate - Outer Cloister -
+// Barracks, Inner Cloister - Cathedral). They have no warp tile in either level: the levels sit next to each other in
+// the world (Depend offsets, the Barracks joint) and the hero walks into the neighbour's rooms, as on the wilderness
+// borders (D2MOO sub_6FD77BB0 links rooms by flag only when the warp id is -1; see monastery_edges_test.go).
+var monasteryEdges = [][2]int{{26, 27}, {27, 28}, {32, 33}}
+
 var allLinks []Link
 
 func init() {
@@ -99,7 +105,7 @@ func init() {
 		allLinks = append(allLinks, Link{From: e.From, To: e.To, Warp: -1, Kind: KindPortal, Source: SourceNotes})
 	}
 
-	for _, e := range drlgEdges {
+	for _, e := range append(append([][2]int(nil), drlgEdges...), monasteryEdges...) {
 		allLinks = append(allLinks,
 			Link{From: e[0], To: e[1], Warp: -1, Kind: KindEdge, Source: SourceDRLG},
 			Link{From: e[1], To: e[0], Warp: -1, Kind: KindEdge, Source: SourceDRLG})
@@ -314,7 +320,33 @@ var upWarps = map[int]bool{4: true, 8: true, 11: true, 13: true, 16: true, 17: t
 // isOutdoor reports a level that borders others on seamless edges. Only Acts 1
 // and 2 count: the TileDestination rules below were observed there, and the Act
 // 3..5 borders were added to the table for the level graph audit.
-func isOutdoor(level int) bool { return ActOfLevel(level) <= 2 && len(EdgeNeighbors(level)) > 0 }
+//
+// The Monastery borders (monasteryEdges) do not count: Courtyard 1, the Barracks, Courtyard 2 and the Cathedral are
+// dungeon levels whose warp tiles follow the dungeon rules below.
+func isOutdoor(level int) bool {
+	if ActOfLevel(level) > 2 {
+		return false
+	}
+
+	for _, n := range EdgeNeighbors(level) {
+		if !monasteryEdge(level, n) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// monasteryEdge says whether the border between two levels is one of the Warp -1 links of the Monastery.
+func monasteryEdge(a, b int) bool {
+	for _, e := range monasteryEdges {
+		if (e[0] == a && e[1] == b) || (e[0] == b && e[1] == a) {
+			return true
+		}
+	}
+
+	return false
+}
 
 // TileDestination is Destination for the special tile of a DS1 preset, by the
 // style the tile carries. UNVERIFIED (the exe resolves the tile through a table

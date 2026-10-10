@@ -524,6 +524,12 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 	g.engine.ResetMap(region, pl.Rect.W, pl.Rect.H)
 	if lay != nil {
 		g.engine.SetWorld(d2mapengine.World{Level: levelID, OriginX: pl.Rect.X, OriginY: pl.Rect.Y, Rects: worldRects(lay)})
+	} else if isMonasteryLevel(levelID) {
+		if rects, _, err := monasteryWorld(tb, seed, diff); err == nil {
+			g.engine.SetWorld(d2mapengine.World{Level: levelID, OriginX: pl.Rect.X, OriginY: pl.Rect.Y, Rects: rects})
+		} else {
+			g.Warningf("real preset: no Monastery world for level %d: %v", levelID, err)
+		}
 	}
 
 	path := drlgoutdoor.NormalizePrestFile(pr.File[pl.File])

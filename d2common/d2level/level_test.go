@@ -364,7 +364,7 @@ func TestLinks(t *testing.T) {
 		t.Error("acts are joined by waypoints/NPCs, not by Levels.txt links")
 	}
 
-	if len(Links()) != len(levelsTxtLinks)+2*len(drlgEdges)+len(portalLinks) {
+	if len(Links()) != len(levelsTxtLinks)+2*(len(drlgEdges)+len(monasteryEdges))+len(portalLinks) {
 		t.Error("Links() size mismatch")
 	}
 }
