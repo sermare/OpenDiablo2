@@ -98,6 +98,17 @@ func automapSizeOption() d2automap.Size {
 	return d2automap.SizeFull
 }
 
+// automapOptionOn reads one of the yes/no automap options of the options menu
+// (key: fade, center, party, names).
+func automapOptionOn(key string) bool {
+	id := map[string]string{
+		"fade": d2config.OptAutomapFade, "center": d2config.OptAutomapCenter,
+		"party": d2config.OptAutomapShowParty, "names": d2config.OptAutomapNames,
+	}[key]
+
+	return optionsBackend != nil && id != "" && optionsBackend.Config().OptionIndex(id) == 1
+}
+
 // RunOptionsAutoTest is the scripted run behind OD2_AUTOOPTIONS: it opens the
 // menu, walks the sound, video and automap pages, "clicks" rows until they
 // show chosen values, checks config.json on disk and the automap size, and
