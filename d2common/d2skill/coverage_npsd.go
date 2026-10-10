@@ -110,7 +110,7 @@ var CoverageNPSD = []CoverageRow{
 	{61, "Fire Mastery", "Sorceress", "-", "T", "T", ""},
 	{62, "Hydra", "Sorceress", "144", "M", "P", "do 144 added: 3 stationary fire shooters in the exe triangle; hydra AI timing U"},
 	{63, "Lightning Mastery", "Sorceress", "-", "T", "T", ""},
-	{64, "Frozen Orb", "Sorceress", "-", "P", "P", "orb missile; the nova of bolts every few frames is a hit/Do detail not simulated"},
+	{64, "Frozen Orb", "Sorceress", "-", "P", "P", "STAND-IN: do 15 bolt spiral + hit 29 16-way nova ring (d2missile/orb.go, bodies not read); frozenorbnova do 16 is plain flight"},
 	{65, "Cold Mastery", "Sorceress", "-", "T", "T", ""},
 	{221, "Raven", "Druid", "114", "P", "F", "summon level (calc2) now set through the order; stats from d2summon + MonLvl AC/AR (verified 0x5c2850)"},
 	{222, "Plague Poppy", "Druid", "115", "M", "P", "do 115 added: vine shooter with calc1 life, calc2 level"},

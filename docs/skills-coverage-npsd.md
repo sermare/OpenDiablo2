@@ -115,7 +115,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 61 | Fire Mastery | - | T | T |  |
 | 62 | Hydra | 144 | M | P | do 144 added: 3 stationary fire shooters in the exe triangle; hydra AI timing U |
 | 63 | Lightning Mastery | - | T | T |  |
-| 64 | Frozen Orb | - | P | P | orb missile; the nova of bolts every few frames is a hit/Do detail not simulated |
+| 64 | Frozen Orb | - | P | P | STAND-IN: do 15 bolt spiral + hit 29 16-way nova ring (d2missile/orb.go, bodies not read); frozenorbnova do 16 is plain flight |
 | 65 | Cold Mastery | - | T | T |  |
 
 ## Druid

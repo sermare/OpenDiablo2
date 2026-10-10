@@ -98,7 +98,8 @@ type Missile struct {
 	nextHit        map[string]int
 	dead           bool
 	explodes       bool
-	entered        bool // the previous step entered a new subtile (path flag 8)
+	childDamage    DamageDesc // damage the sub missiles of SrvDoFunc 15 carry
+	entered        bool       // the previous step entered a new subtile (path flag 8)
 }
 
 // Dead reports whether the missile has been destroyed.
@@ -247,6 +248,10 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 	m.ChainLeft, m.FuryCount = p.ChainLeft, p.FuryCount
 	m.HealMin, m.HealMax, m.PulseEvery = p.HealMin, p.HealMax, p.PulseEvery
 	m.legX, m.legY = dx, dy
+
+	if sp.SrvDoFunc == 15 { // Frozen Orb: the orb hurts nobody itself, its bolts carry the damage
+		m.childDamage, m.Damage = p.Damage, DamageDesc{}
+	}
 
 	if m.Pierce == 0 && sp.Pierce && p.PierceChance > 0 {
 		m.Pierce = PierceCharges(p.PierceChance, p.Owner.Roller)
@@ -424,6 +429,10 @@ func (s *Sim) stepOne(m *Missile) {
 
 	if sp.SrvDoFunc == 27 {
 		s.tornadoPulse(m)
+	}
+
+	if sp.SrvDoFunc == 15 {
+		s.orbEmit(m)
 	}
 
 	// displacement per frame in subtiles: step(8.8) * 16 / 65536 (verified scale)
