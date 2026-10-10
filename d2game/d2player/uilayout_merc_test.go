@@ -27,16 +27,18 @@ func TestMercPanelKeyRects(t *testing.T) {
 			"close":          {"merc", "close", 352, 445, 32, 32},
 			"slot_weapon":    {"merc", "slot_weapon", 100, 107, 55, 112},
 			"slot_head":      {"merc", "slot_head", 215, 68, 54, 51},
-			"name":           {"merc", "name", 80, 274, 160, 0},
+			"name":           {"merc", "name", 95, 274, 160, 0},
 			"value_strength": {"merc", "value_strength", 234, 342, 48, 0},
 			"value_fire":     {"merc", "value_fire", 389, 342, 48, 0},
-			"label_fire":     {"merc", "label_fire", 325, 341, 180, 0},
+			"label_fire":     {"merc", "label_fire", 260, 341, 65, 0},
+			"label_level":    {"merc", "label_level", 225, 296, 0, 0},
+			"label_life":     {"merc", "label_life", 260, 274, 0, 0},
 		},
 		Mode640: {
 			"art_upper_left": {"merc", "art_upper_left", 0, 0, 256, 256},
 			"close":          {"merc", "close", 272, 385, 32, 32},
 			"slot_shield":    {"merc", "slot_shield", 251, 47, 55, 112},
-			"name":           {"merc", "name", 0, 214, 160, 0},
+			"name":           {"merc", "name", 15, 214, 160, 0},
 		},
 	}
 

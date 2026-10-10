@@ -104,10 +104,10 @@
     },
     {
       "label": "In-game UI panels matching the original layout",
-      "done": 8,
+      "done": 11,
       "total": 14,
       "pending": 0,
-      "note": "8 of 14 panels checked in a real game window against the original numbers (150 rectangles, 0 deviating, scenario 9f-ui-layout); 6 panels still unchecked (hireling panel, hirelings list and a few others are on held branches)",
+      "note": "8 of 14 panels checked in a real game window against the original numbers (150 rectangles, 0 deviating, scenario 9f-ui-layout); 3 more (party screen rows, mercenary panel, help screen) have layouts read from the exe and unit tested against golden numbers, not yet seen in a running window; move-gold dialog and NPC menu still unchecked",
       "color": "#c58bff"
     },
     {

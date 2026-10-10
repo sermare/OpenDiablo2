@@ -107,16 +107,12 @@ func (p *MercPanel) Load() {
 			b.OnActivated(func() { p.Close() })
 			p.group.AddWidget(b)
 		case r.Name == "name":
-			p.name = p.label(d2resource.Font16, r.X+r.W/2, r.Y, true)
+			p.name = p.label(d2resource.Font16, r.X, r.Y, false) // left anchor (0x4869a0)
 		case len(r.Name) > 6 && r.Name[:6] == "label_":
 			// the static captions come from string.tbl by the id of the original's table
 			id, _ := MercLabelString(r.Name[6:])
-			x := r.X
-			if x < 0 {
-				x = m.LeftPanelX() + 10 // UNVERIFIED: the x of these captions is a register argument in the original
-			}
-
-			lb := p.label(d2resource.Font6, x, r.Y, false)
+			// x2 != 0: centred between x1 and x2 (UI_DrawTextLine); else left-anchored at x1
+			lb := p.label(d2resource.Font6, r.X+r.W/2, r.Y, r.W > 0)
 			lb.SetText(p.asset.TranslateString(id))
 		case len(r.Name) > 6 && r.Name[:6] == "value_":
 			p.values[r.Name[6:]] = p.label(d2resource.Font6, r.X, r.Y, false)

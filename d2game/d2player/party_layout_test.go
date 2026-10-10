@@ -30,3 +30,42 @@ func TestPartyLayout(t *testing.T) {
 		t.Errorf("640 close rect %v", r)
 	}
 }
+
+func TestPartyRowGeometry(t *testing.T) {
+	// row bottom: 0x5a + 0x26*i panel relative (UI_RebuildPartyList EDI), screen = + 60 at 800x600, widgets 20 high
+	exp := map[string]UIRect{
+		"invite":     {"party", "invite", 270, 130, 0x35, 20},
+		"hostile":    {"party", "hostile", 94, 137, 0x14, 20},
+		"bit01":      {"party", "bit01", 325, 130, 0x14, 20},
+		"listen":     {"party", "listen", 346, 130, 0x14, 20},
+		"mute":       {"party", "mute", 367, 130, 0x14, 20},
+		"name_hover": {"party", "name_hover", 116, 150 + 0xd - 0x1a, 0x8c - 0x24, 0x1a},
+	}
+
+	for _, g := range Mode800.PartyRowRects(0) {
+		if g != exp[g.Name] {
+			t.Errorf("row 0 %s: got %v want %v", g.Name, g, exp[g.Name])
+		}
+	}
+
+	if got := PartyRowBottom(7); got != 0x5a+0x26*7 {
+		t.Errorf("row 7 bottom %d", got)
+	}
+
+	if r := Mode800.PartyRowRects(3); r[0].Y != 130+3*38 || r[1].Y != 137+3*38 {
+		t.Errorf("row 3: %v", r)
+	}
+
+	if r := Mode640.PartyRowRects(0); r[0].X != 0xbe || r[0].Y != 0x5a-20 {
+		t.Errorf("640 row 0: %v", r[0])
+	}
+
+	if h := Mode800.PartyHeaderHover(); h.X != 80+0xe3 || h.Y != 60+0x18 || h.W != 0x118-0xe3 || h.H != 0xb {
+		t.Errorf("header hover %v", h)
+	}
+
+	// the Go widgets stand on the original's tops
+	if baseInviteAcceptButtonY != 130 || baseListeningSwitcherY != 130 || baseSeeingSwitcherY != 130 || baseRelationshipSwitcherY != 137 {
+		t.Errorf("go widget tops: %d %d %d %d", baseInviteAcceptButtonY, baseListeningSwitcherY, baseSeeingSwitcherY, baseRelationshipSwitcherY)
+	}
+}
