@@ -1,4 +1,5 @@
 scenario_timeout=1200
+scenario_turbo=1  # passed twice under OD2_TURBO=1, faster (numbers: ~/git/d2-re-notes/turbo-mode.md)
 scenario_name="Act 3 playthrough (level 94 sample hero: Kurast Docks NPCs, jungle, Kurast, Travincal, the dungeon entrances and a town portal)"
 a3=$tmp/act3
 # The start of Act 3 played by OD2_AUTOSCRIPT (see docs/PLAYTEST.md): the hero sails east (the quest flags of
