@@ -438,11 +438,17 @@ func (g *GameServer) onTradeCommand(client ClientConnection, packet d2netpacket.
 			return fail(d2playertrade.ErrState)
 		}
 
-		if err := s.SetOffer(me, p.Offer); err != nil {
+		err := s.SetOffer(me, p.Offer)
+		// A refused edit is consumed too: the client numbered it and keeps its
+		// local offer ahead of any update that does not echo that number, so the
+		// refusal update (which carries the offer the server really holds) must
+		// echo it or the window would show an offer the server never took.
+		s.SetOfferSeq(me, p.Seq)
+
+		if err != nil {
 			return fail(err)
 		}
 
-		s.SetOfferSeq(me, p.Seq)
 		g.Infof("TRADE offer name=%q items=%d gold=%d", myName, len(p.Offer.Items), p.Offer.Gold)
 		g.sendTrade(s, "", nil)
 	case d2netpacket.TradeAccept:
