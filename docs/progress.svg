@@ -36,11 +36,11 @@
 <text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +6% on branches, not yet verified</text>
 <text x="36" y="192" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#8c8eb0">v1 = double-click the Mac app, make or load a character, play Acts 1-5 single player without a blocker</text>
 <text x="36" y="226" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Game.exe functions named in Ghidra</text>
-<text x="844" y="226" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11,235 / 11,257</text>
+<text x="844" y="226" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11,257 / 11,257</text>
 <rect x="36" y="238" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="238" width="736.6" height="18" rx="9" fill="url(#g0)" filter="url(#glow)"/>
-<text x="844" y="252" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#7c5cff">99.8%</text>
-<text x="36" y="273" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">original 1.14b binary; re-queried live from Ghidra (find_functions has_custom_name=true: 11,235 named, false: 22 left); the last 22 are the anti-cheat module, skipped on purpose</text>
+<rect x="36" y="238" width="738.0" height="18" rx="9" fill="url(#g0)" filter="url(#glow)"/>
+<text x="844" y="252" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#7c5cff">100%</text>
+<text x="36" y="273" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">original 1.14b binary; re-queried live from Ghidra (all 11,257 named; the last 22 Warden and module-loader functions were named 2026-10-09, a few names marked unverified)</text>
 <text x="36" y="304" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Hedged exe names re-verified against the decompile</text>
 <text x="844" y="304" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">1,278 / 1,633</text>
 <rect x="36" y="316" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
