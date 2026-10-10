@@ -32,6 +32,7 @@ type aiAutoTest struct {
 	endAt    float64
 	counts   map[string]int
 	lastKind string
+	also     []*alsoSubject
 }
 
 // commandForceState is the debug console command
@@ -187,6 +188,8 @@ func (v *Game) advanceAITest(elapsed float64) {
 		v.monsters.Counters.Attacks, v.monsters.Counters.UnitFights, t.counts["skill"], v.monsters.Counters.Aggro,
 		v.monsters.Counters.Deaths)
 
+	v.summarizeAlso(t)
+
 	t.endAt = math.MaxFloat64
 
 	v.autoTestExit()
@@ -229,6 +232,8 @@ func (v *Game) spawnAITest(t *aiAutoTest) {
 
 	t.nextAt = t.elapsed + aiTestObserve
 	t.endAt = t.elapsed + seconds
+
+	v.spawnAlso(t)
 
 	v.Infof("AUTOAI start ref=%s monster=%s key=%s id=%d class=%d ai=%s implemented=%v states=%v hero=(%d,%d)",
 		t.ref, m.Label(), stat.Key, b.ID, stat.ID, b.Profile.AI, b.Def != nil && b.Def.Implemented, t.states, hx, hy)
