@@ -26,6 +26,7 @@ set -u
 cd "${0:A:h}/.." || exit 1
 
 classes=(amazon sorc necro paladin barb druid assassin)
+all_classes=($classes)
 [ -n "${OD2_CLASSES:-}" ] && classes=(${(s:,:)OD2_CLASSES})
 scenarios=(9b-act1-playthrough 9e-act2-playthrough 9g-act3-playthrough 9h-act45-playthrough 9i-act5-caves-playthrough)
 [ -n "${OD2_CLASS_SCENARIOS:-}" ] && scenarios=(${(s:,:)OD2_CLASS_SCENARIOS})
@@ -82,7 +83,7 @@ render_doc() {
       echo "\`PASS\` / \`PASS*\` (passed on the second attempt that verify.sh makes) / \`FAIL\`, wall clock, deaths of the hero (\`d\`)."
     fi
     echo
-    awk -F'\t' -v classes="${(j:,:)classes}" -v scns="${(j:,:)scenarios}" -v labels="$labels" '
+    awk -F'\t' -v classes="${(j:,:)all_classes}" -v scns="${(j:,:)scenarios}" -v labels="$labels" '
       function fmt(s,   h, m, sec) {
         if (s == "" || s == "-") return "-"
         h = int(s / 3600); m = int((s % 3600) / 60); sec = s % 60
