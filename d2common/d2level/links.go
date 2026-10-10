@@ -354,10 +354,17 @@ func TileDestination(level, style int) (int, bool) {
 		return 0, false
 	}
 
-	// the Burial Grounds preset (Act1/Graveyard/gravey.ds1) has two entrance tiles, styles 0 and 1: the Vis slots of
-	// Levels.txt (Crypt, Mausoleum), as in the Durance rule. OBSERVED styles, UNVERIFIED which tile is which in the exe.
+	// the Burial Grounds preset (Act1/Graveyard/gravey.ds1) has two entrance tiles: style 1 at (11,6), the north one,
+	// and style 0 at (12,27), the south one. The style is the Levels.txt Vis slot (D2MOO DRLGPRESET_BuildPresetArea
+	// and sub_6FD77BB0), Vis0 = 18 Crypt, Vis1 = 19 Mausoleum: VERIFIED from the DS1 and Levels.txt data.
+	// (styles 6 and 7 stay with the LvlWarp id rule below, which callers other than the DS1 tiles pass)
 	if to, ok := burialGroundsDestination(level, style); ok {
 		return to, true
+	}
+
+	// Nihlathak's Temple: only Vis1 is set (see SlotDestination), no other slot leads anywhere
+	if level == 121 {
+		return SlotDestination(level, style)
 	}
 
 	if isOutdoor(level) {
@@ -474,11 +481,16 @@ func SingleTileDestination(level int) (int, bool) {
 // Keep), the Worldstone Keep (128..131: up 81, down 82) and the River of Flame (107: south room, style 0).
 // UNVERIFIED against the exe (the tile id to warp id table is not decoded).
 func SlotDestination(level, style int) (int, bool) {
-	// Nihlathak's Temple (121, Expansion/wildtemple/tempEnter.ds1) has one link (to the Halls of Anguish) but its
-	// stairs tiles carry style 1 (the way back to Harrogath is the red portal, not a tile); the doors are style 9.
-	// OBSERVED, UNVERIFIED against the exe. Found by walkto:exit=122 in the 9s-walk-act5-ice scenario.
-	if level == 121 && style == 1 {
-		return 122, true
+	// Nihlathak's Temple (121, Expansion/wildtemple/tempEnter.ds1): Levels.txt Vis0 = 0, Vis1 = 122 and the two stair
+	// tiles (x 11 and 12, y 6) carry style 1, so the Vis slot rule gives the Halls of Anguish. The doors (style 9) and
+	// the style 30 tile are not exits (a style >= 8 never raises a room warp flag). VERIFIED against D2MOO
+	// (DRLGPRESET_BuildPresetArea: style k -> room flag 0x10<<k -> Vis[k]) and the DS1/Levels.txt data.
+	if level == 121 {
+		if style == 1 {
+			return 122, true
+		}
+
+		return 0, false
 	}
 
 	var dests []int
@@ -537,7 +549,8 @@ func duranceVisDestination(level, style int) (int, bool) {
 	return v[style], true
 }
 
-// burialGroundsDestination: style 0 of the Burial Grounds (17) leads to the Crypt (18), style 1 to the Mausoleum (19).
+// burialGroundsDestination: style 0 of the Burial Grounds (17) leads to the Crypt (18), style 1 to the Mausoleum (19)
+// (Levels.txt Vis0 and Vis1; the tile of style 0 is the south one, (12,27) of gravey.ds1, style 1 the north one).
 func burialGroundsDestination(level, style int) (int, bool) {
 	if level != 17 || style < 0 || style > 1 {
 		return 0, false

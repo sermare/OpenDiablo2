@@ -40,3 +40,37 @@ func GameMenuPentFrames(tick int) (left, right int) {
 
 	return gameMenuPentFrames - t, t
 }
+
+// GameMenuPlacement is where one row of the escape menu and its two pentagrams sit.
+type GameMenuPlacement struct {
+	RowTop, LeftX, RightX, PentY int
+}
+
+// GameMenuPlan returns the placement of the n visible rows of a menu with total entries (hidden ones count for
+// the centring), for a pentagram picture whose widest frame is skullW. Pure: the numbers of the functions above.
+func (m Mode) GameMenuPlan(total, n, skullW int) []GameMenuPlacement {
+	plan := make([]GameMenuPlacement, n)
+
+	for i := range plan {
+		top := m.GameMenuRowTop(total, i)
+		l, r, y := m.GameMenuPentagrams(top, skullW)
+		plan[i] = GameMenuPlacement{RowTop: top, LeftX: l, RightX: r, PentY: y}
+	}
+
+	return plan
+}
+
+// escapeMenuPentY is the y of the pentagrams of the Go menu for the row whose gui element is at elementY
+// (the behaviour before the exe layout: the row offset plus the spacer).
+func escapeMenuPentY(elementY int) int {
+	return elementY + spacerWidth
+}
+
+// escapeMenuModeFor picks the mode of the original that matches a render target of the given size.
+func escapeMenuModeFor(w, h int) Mode {
+	if w > 0 && h > 0 && w < Mode800.W && h < Mode800.H {
+		return Mode640
+	}
+
+	return Mode800
+}

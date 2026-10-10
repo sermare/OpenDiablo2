@@ -1,6 +1,7 @@
 package d2player
 
 import (
+	"os"
 	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -87,6 +88,7 @@ func NewEscapeMenu(navigator d2interface.Navigator,
 		guiManager:    guiManager,
 		assetManager:  assetManager,
 		keyMap:        keyMap,
+		exeLayout:     os.Getenv("OD2_EXE_MENU_LAYOUT") == "1",
 	}
 
 	keyBindingMenu := NewKeyBindingMenu(assetManager, renderer, uiManager, guiManager, keyMap, l, m)
@@ -129,6 +131,12 @@ type EscapeMenu struct {
 	keyBindingMenu *KeyBindingMenu
 
 	onCloseCb func()
+
+	// exeLayout (OD2_EXE_MENU_LAYOUT=1) puts the pentagrams where the original puts them (GameMenuPlan: row pitch
+	// 50, centred in H-0x50) instead of beside the gui element; off by default, the rows stay with the gui engine.
+	exeLayout bool
+	screenW   int
+	screenH   int
 
 	*d2util.Logger
 }
@@ -479,11 +487,34 @@ func (m *EscapeMenu) onHoverElement(id int) {
 	_, y := m.layouts[m.currentLayout].actionableElements[id].GetOffset()
 	m.layouts[m.currentLayout].currentEl = id
 
+	if m.exeLayout {
+		m.placePentagramsExe(id)
+		return
+	}
+
 	x, _ := m.leftPent.GetPosition()
-	m.leftPent.SetPosition(x, y+spacerWidth)
+	m.leftPent.SetPosition(x, escapeMenuPentY(y))
 
 	x, _ = m.rightPent.GetPosition()
-	m.rightPent.SetPosition(x, y+spacerWidth)
+	m.rightPent.SetPosition(x, escapeMenuPentY(y))
+}
+
+// placePentagramsExe positions the pentagrams of row id from the pure plan of the original's layout.
+func (m *EscapeMenu) placePentagramsExe(id int) {
+	n := len(m.layouts[m.currentLayout].actionableElements)
+
+	w, h := m.screenW, m.screenH
+	if w == 0 {
+		w, h = Mode800.W, Mode800.H
+	}
+
+	plan := escapeMenuModeFor(w, h).GameMenuPlan(n, n, pentSize)
+	if id < 0 || id >= len(plan) {
+		return
+	}
+
+	m.leftPent.SetPosition(plan[id].LeftX, plan[id].PentY)
+	m.rightPent.SetPosition(plan[id].RightX, plan[id].PentY)
 }
 
 func (m *EscapeMenu) onUpdateValue(optID optionID, value string) {
@@ -584,6 +615,8 @@ func (m *EscapeMenu) Advance(elapsed float64) error {
 
 // Render will render the escape menu on the target surface
 func (m *EscapeMenu) Render(target d2interface.Surface) error {
+	m.screenW, m.screenH = target.GetSize()
+
 	if m.isOpen {
 		if err := m.keyBindingMenu.Render(target); err != nil {
 			return err
