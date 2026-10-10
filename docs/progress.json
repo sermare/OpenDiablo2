@@ -75,7 +75,7 @@
       "done": 27,
       "total": 27,
       "pending": 0,
-      "note": "all 27 main quests: states, triggers, rewards (Act 1, Radament and nine more driven in scenarios)",
+      "note": "all 27 main quests: states, triggers, rewards (Act 1, Radament and nine more driven in scenarios); level quest gates now enforced in the engine (Canyon, tombs, Palace, Durance, Worldstone levels)",
       "color": "#e86fa6"
     },
     {
@@ -144,10 +144,10 @@
     },
     {
       "label": "Real full verify green (scenario sections per job, real parallel log)",
-      "done": 258,
-      "total": 258,
+      "done": 259,
+      "total": 259,
       "pending": 0,
-      "note": "batch 3 and batch 4 full verify_parallel.sh 6 runs both ALL JOBS PASSED (193 and 194 scenarios; batch 4 with no retry at all)",
+      "note": "batch 3 and batch 4 full verify_parallel.sh 6 runs both ALL JOBS PASSED (193 and 194 scenarios; batch 4 with no retry at all); batch 6a: 5 of 6 jobs green, the 6th red only on a scenario that crossed the new level quest gates (fixed in the scenario, passed alone)",
       "color": "#3ddc84"
     },
     {
