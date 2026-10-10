@@ -22,6 +22,8 @@ const (
 	numUnknownHeaderBytes = 260
 	knownMajorVersion     = 7
 	knownMinorVersion     = 6
+	tileHeaderSize        = 96 // bytes of one tile header in the file
+	blockHeaderSize       = 20 // bytes of one block header in the file
 	numUnknownTileBytes1  = 4
 	numUnknownTileBytes2  = 4
 	numUnknownTileBytes3  = 7
@@ -49,12 +51,13 @@ func New() *DT1 {
 }
 
 // LoadDT1 loads a DT1 record
+//
 //nolint:funlen,gocognit,gocyclo // Can't reduce
-func LoadDT1(fileData []byte) (*DT1, error) {
+func LoadDT1(fileData []byte) (dt1 *DT1, err error) {
+	defer d2datautils.RecoverError("dt1", &err)
+
 	result := &DT1{}
 	br := d2datautils.CreateStreamReader(fileData)
-
-	var err error
 
 	result.majorVersion, err = br.ReadInt32()
 	if err != nil {
@@ -85,7 +88,13 @@ func LoadDT1(fileData []byte) (*DT1, error) {
 
 	br.SetPosition(uint64(result.bodyPosition))
 
+	// a tile header is 96 bytes; a hostile count must not allocate more than the file can hold
+	if err = d2datautils.CheckCount("dt1 tiles", int64(result.numberOfTiles), tileHeaderSize, br.Remaining()); err != nil {
+		return nil, err
+	}
+
 	result.Tiles = make([]Tile, result.numberOfTiles)
+	blocksLeft := br.Size() / blockHeaderSize // all blocks of all tiles together
 
 	for tileIdx := range result.Tiles {
 		tile := Tile{}
@@ -176,6 +185,11 @@ func LoadDT1(fileData []byte) (*DT1, error) {
 			return nil, err
 		}
 
+		if numBlocks < 0 || uint64(numBlocks) > blocksLeft {
+			return nil, fmt.Errorf("dt1: %d blocks in tile %d exceed the file", numBlocks, tileIdx)
+		}
+
+		blocksLeft -= uint64(numBlocks)
 		tile.Blocks = make([]Block, numBlocks)
 
 		br.SkipBytes(numUnknownTileBytes4)
@@ -230,6 +244,10 @@ func LoadDT1(fileData []byte) (*DT1, error) {
 
 		for blockIndex, block := range tile.Blocks {
 			br.SetPosition(uint64(tile.blockHeaderPointer + block.FileOffset))
+
+			if block.Length < 0 {
+				return nil, fmt.Errorf("dt1: negative block length %d", block.Length)
+			}
 
 			encodedData, err := br.ReadBytes(int(block.Length))
 			if err != nil {

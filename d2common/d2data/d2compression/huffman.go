@@ -31,6 +31,8 @@ package d2compression
 //
 
 import (
+	"errors"
+	"fmt"
 	"log"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2datautils"
@@ -205,7 +207,8 @@ func decode(input *d2datautils.BitStream, head *linkedNode) *linkedNode {
 	for node.child0 != nil {
 		bit := input.ReadBits(1)
 		if bit == -1 {
-			log.Fatal("unexpected end of file")
+			// not log.Fatal: truncated data in an archive must not kill the process
+			panic(errHuffmanEOF)
 		}
 
 		if bit == 0 {
@@ -374,17 +377,33 @@ func buildTree(tail *linkedNode) *linkedNode {
 }
 
 // HuffmanDecompress decompresses huffman-compressed data
+//
 //nolint:gomnd // binary decode magic
-func HuffmanDecompress(data []byte) []byte {
+func HuffmanDecompress(data []byte) (result []byte, err error) {
+	// the tree walk panics on corrupt data (nil children, truncated input)
+	defer d2datautils.RecoverError("huffman", &err)
+
+	if len(data) == 0 {
+		return nil, errHuffmanEOF
+	}
+
 	comptype := data[0]
 	primes := getPrimes()
 
 	if comptype == 0 {
-		log.Panic("compression type 0 is not currently supported")
+		return nil, errors.New("huffman compression type 0 is not supported")
+	}
+
+	if int(comptype) >= len(primes) {
+		return nil, fmt.Errorf("huffman compression type %d is unknown", comptype)
 	}
 
 	tail := buildList(primes[comptype])
 	head := buildTree(tail)
+
+	if head == nil || head.child0 == nil {
+		return nil, errors.New("huffman tree is empty") // would decode without consuming input
+	}
 
 	outputstream := d2datautils.CreateStreamWriter()
 	bitstream := d2datautils.CreateBitStream(data[1:])
@@ -400,6 +419,9 @@ Loop:
 			break Loop
 		case 257:
 			newvalue := bitstream.ReadBits(8)
+			if newvalue < 0 {
+				return nil, errHuffmanEOF
+			}
 
 			outputstream.PushBytes(byte(newvalue))
 			tail = insertNode(tail, newvalue)
@@ -408,5 +430,7 @@ Loop:
 		}
 	}
 
-	return outputstream.GetBytes()
+	return outputstream.GetBytes(), nil
 }
+
+var errHuffmanEOF = errors.New("huffman: unexpected end of data")

@@ -1,6 +1,8 @@
 package d2dat
 
 import (
+	"fmt"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 )
 
@@ -14,6 +16,12 @@ const (
 
 // Load loads a DAT file.
 func Load(data []byte) (d2interface.Palette, error) {
+	const need = 256 * 3
+
+	if len(data) < need {
+		return nil, fmt.Errorf("palette data is %d bytes, need %d", len(data), need)
+	}
+
 	palette := &DATPalette{}
 
 	for i := 0; i < 256; i++ {

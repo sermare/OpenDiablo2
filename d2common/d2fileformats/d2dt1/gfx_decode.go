@@ -24,8 +24,11 @@ func DecodeTileGfxData(blocks []Block, pixels *[]byte, tileYOffset, tileWidth in
 				length -= n
 
 				for n > 0 {
-					offset := ((blockY + y + tileYOffset) * tileWidth) + (blockX + x)
-					(*pixels)[offset] = block.EncodedData[idx]
+					if idx >= len(block.EncodedData) {
+						break // truncated block
+					}
+
+					putPixel(pixels, ((blockY+y+tileYOffset)*tileWidth)+(blockX+x), block.EncodedData[idx])
 					x++
 					n--
 					idx++
@@ -44,6 +47,10 @@ func DecodeTileGfxData(blocks []Block, pixels *[]byte, tileYOffset, tileWidth in
 		length := block.Length
 
 		for length > 0 {
+			if idx+1 >= len(block.EncodedData) {
+				break // truncated block
+			}
+
 			b1 := block.EncodedData[idx]
 			b2 := block.EncodedData[idx+1]
 			idx += 2
@@ -60,12 +67,23 @@ func DecodeTileGfxData(blocks []Block, pixels *[]byte, tileYOffset, tileWidth in
 			length -= int32(b2)
 
 			for b2 > 0 {
-				offset := ((blockY + y + tileYOffset) * tileWidth) + (blockX + x)
-				(*pixels)[offset] = block.EncodedData[idx]
+				if idx >= len(block.EncodedData) {
+					break // truncated block
+				}
+
+				putPixel(pixels, ((blockY+y+tileYOffset)*tileWidth)+(blockX+x), block.EncodedData[idx])
 				idx++
 				x++
 				b2--
 			}
 		}
+	}
+}
+
+// putPixel stores one decoded pixel, ignoring writes outside the buffer: the offsets come from
+// the (untrusted) block headers.
+func putPixel(pixels *[]byte, offset int32, value byte) {
+	if offset >= 0 && int(offset) < len(*pixels) {
+		(*pixels)[offset] = value
 	}
 }

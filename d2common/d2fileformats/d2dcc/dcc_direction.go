@@ -1,7 +1,8 @@
 package d2dcc
 
 import (
-	"log"
+	"errors"
+	"fmt"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2datautils"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2geom"
@@ -17,6 +18,13 @@ const (
 )
 
 const cellsPerRow = 4
+
+// Limits for untrusted files (real DCCs are far below them): a direction box is at most this wide or
+// high, and frames*width*height at most maxDirectionPixels bytes.
+const (
+	maxDirectionDim    = 4096
+	maxDirectionPixels = 1 << 26
+)
 
 // DCCDirection represents a DCCDirection file.
 type DCCDirection struct {
@@ -78,8 +86,16 @@ func CreateDCCDirection(bm *d2datautils.BitMuncher, file *DCC) *DCCDirection {
 
 	result.Box = d2geom.Rectangle{Left: minx, Top: miny, Width: maxx - minx, Height: maxy - miny}
 
+	// hostile headers: bound the pixel buffers (one per frame, box sized) before allocating them
+	if result.Box.Width < 0 || result.Box.Height < 0 || result.Box.Width > maxDirectionDim ||
+		result.Box.Height > maxDirectionDim ||
+		(result.Box.Width+1)*(result.Box.Height+1)*(len(result.Frames)+1) > maxDirectionPixels {
+		panic(fmt.Errorf("dcc direction box %dx%d with %d frames is out of range",
+			result.Box.Width, result.Box.Height, len(result.Frames)))
+	}
+
 	if result.OptionalDataBits > 0 {
-		log.Panic("Optional bits in DCC data is not currently supported.")
+		panic(errors.New("optional bits in DCC data are not supported"))
 	}
 
 	// nolint:gomnd // byte operation
@@ -157,19 +173,19 @@ func (v *DCCDirection) verify(
 	rawPixelCodesBitstream *d2datautils.BitMuncher,
 ) {
 	if equalCellsBitstream.BitsRead() != v.EqualCellsBitstreamSize {
-		log.Panic("Did not read the correct number of bits!")
+		panic(errors.New("dcc: did not read the correct number of bits"))
 	}
 
 	if pixelMaskBitstream.BitsRead() != v.PixelMaskBitstreamSize {
-		log.Panic("Did not read the correct number of bits!")
+		panic(errors.New("dcc: did not read the correct number of bits"))
 	}
 
 	if encodingTypeBitstream.BitsRead() != v.EncodingTypeBitsreamSize {
-		log.Panic("Did not read the correct number of bits!")
+		panic(errors.New("dcc: did not read the correct number of bits"))
 	}
 
 	if rawPixelCodesBitstream.BitsRead() != v.RawPixelCodesBitstreamSize {
-		log.Panic("Did not read the correct number of bits!")
+		panic(errors.New("dcc: did not read the correct number of bits"))
 	}
 }
 

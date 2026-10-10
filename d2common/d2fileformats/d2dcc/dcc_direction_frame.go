@@ -1,7 +1,8 @@
 package d2dcc
 
 import (
-	"log"
+	"errors"
+	"fmt"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2datautils"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2geom"
@@ -38,8 +39,12 @@ func CreateDCCDirectionFrame(bits *d2datautils.BitMuncher, direction *DCCDirecti
 	result.NumberOfCodedBytes = int(bits.GetBits(direction.CodedBytesBits))
 	result.FrameIsBottomUp = bits.GetBit() == 1
 
+	if result.Width > maxDirectionDim || result.Height > maxDirectionDim {
+		panic(fmt.Errorf("dcc frame %dx%d is out of range", result.Width, result.Height))
+	}
+
 	if result.FrameIsBottomUp {
-		log.Panic("Bottom up frames are not implemented.")
+		panic(errors.New("dcc: bottom up frames are not implemented"))
 	} else {
 		result.Box = d2geom.Rectangle{
 			Left:   result.XOffset,

@@ -104,6 +104,15 @@ func (v *StreamReader) Size() uint64 {
 	return uint64(len(v.data))
 }
 
+// Remaining returns the number of bytes left after the current position (0 past the end)
+func (v *StreamReader) Remaining() uint64 {
+	if v.position >= v.Size() {
+		return 0
+	}
+
+	return v.Size() - v.position
+}
+
 // ReadBytes reads multiple bytes
 func (v *StreamReader) ReadBytes(count int) ([]byte, error) {
 	if count <= 0 {
