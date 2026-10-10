@@ -41,6 +41,38 @@ func TestRedeemRoll(t *testing.T) {
 	}
 }
 
+func TestFalloffPhysical(t *testing.T) {
+	cases := []struct {
+		phys          int32
+		distSq, limit int
+		want          int32
+	}{{500, 0, 36, 500}, {500, 36, 36, 500}, {500, 37, 36, 0}, {0, 100, 36, 0}}
+
+	for _, c := range cases {
+		if got := falloffPhysical(c.phys, c.distSq, c.limit); got != c.want {
+			t.Errorf("falloffPhysical(%d,%d,%d) = %d, want %d", c.phys, c.distSq, c.limit, got, c.want)
+		}
+	}
+}
+
+func TestMonsterTargetHeal(t *testing.T) {
+	m := monAt(1, 1)
+	m.Vitals.HP, m.Vitals.MaxHP = 40, 100
+	tg := &monsterTarget{m: m}
+
+	tg.Heal(25 << 8)
+
+	if m.Vitals.HP != 65 {
+		t.Errorf("hp %d, want 65", m.Vitals.HP)
+	}
+
+	tg.Heal(500 << 8) // clamped to the maximum life
+
+	if m.Vitals.HP != 100 {
+		t.Errorf("hp %d, want 100", m.Vitals.HP)
+	}
+}
+
 func TestMonsterKnockClass(t *testing.T) {
 	m := monAt(1, 1)
 	if got := (&monsterTarget{m: m}).KnockClass(); got != 0 {

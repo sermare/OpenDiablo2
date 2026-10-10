@@ -497,3 +497,24 @@ func (d *Director) friendlyStrike(u *unit, mode d2monster.Mode) {
 
 	d.allyStrike(u, mode)
 }
+
+// Allies returns the living units on the heroes' side: minions, mercenaries and
+// converted monsters (Holy Bolt heals them).
+func (d *Director) Allies() []*d2mapentity.Monster {
+	var out []*d2mapentity.Monster
+
+	for _, u := range d.sortedUnits() {
+		if (u.friendly() || u.b.Allied) && u.m.Alive() {
+			out = append(out, u.m)
+		}
+	}
+
+	return out
+}
+
+// IsAlly reports whether a monster fights on the heroes' side.
+func (d *Director) IsAlly(m *d2mapentity.Monster) bool {
+	u := d.byEntity[m.ID()]
+
+	return u != nil && (u.friendly() || u.b.Allied)
+}

@@ -294,6 +294,20 @@ type Effect struct {
 	Loot  *LootOrder
 	Ward  *WardOrder
 	Whirl *WhirlOrder
+
+	// Cost is the mana an aura pulse pays when it did its work, 8.8 fixed
+	// point (Redemption: SKILL_GetAuraParamAtLevel, VERIFIED 0x645ed0).
+	Cost int
+	// Falloff / FalloffSq: area_hit only. Units farther than sqrt(FalloffSq)
+	// subtiles from the centre lose the physical part of the damage and keep
+	// the elemental one (Corpse Explosion, VERIFIED 0x5c2b90).
+	Falloff   bool
+	FalloffSq int
+	// Overlay names an overlay.txt row shown on Target / at (X, Y) ("overlay").
+	Overlay string
+	// Knock makes a damage aura knock back the units it hurts (Sanctuary:
+	// result flag 8 of the skill row).
+	Knock bool
 }
 
 // Strike is one delayed hit of a "strikes" effect.

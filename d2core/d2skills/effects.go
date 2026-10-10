@@ -80,6 +80,22 @@ func (e *Engine) monstersNear(x, y, r int) []*d2mapentity.Monster {
 	return out
 }
 
+// monstersWithin is monstersNear with the exe's circle: a unit is in range when
+// its squared distance is within radius squared (SKILL_ForEachUnitInRadius
+// 0x569510, VERIFIED), not the square monstersNear uses.
+func (e *Engine) monstersWithin(x, y, r int) []*d2mapentity.Monster {
+	var out []*d2mapentity.Monster
+
+	for _, m := range e.monstersNear(x, y, r) {
+		mx, my := m.SubtilePos()
+		if (mx-x)*(mx-x)+(my-y)*(my-y) <= r*r {
+			out = append(out, m)
+		}
+	}
+
+	return out
+}
+
 // near implements d2skill.Pipeline.Near.
 func (e *Engine) near(x, y, r int) []d2skill.Foe {
 	var out []d2skill.Foe
@@ -166,6 +182,8 @@ func (e *Engine) effect(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		e.unitState(p, sk, ef)
 	case "knockback":
 		e.knockback(p, u, sk, ef)
+	case "overlay":
+		e.overlayOn(ef)
 	case "shield":
 		e.shield(p, u, sk, ef)
 	case "loot":
@@ -324,7 +342,7 @@ func (e *Engine) areaHit(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, 
 		cx, cy = u.Pos()
 	}
 
-	run := func() { e.hitArea(p, u, sk.Name, cx, cy, ef.Radius, ef.Desc, ef.CorpseID) }
+	run := func() { e.hitAreaEx(p, u, sk.Name, cx, cy, ef.Radius, ef.Desc, ef.CorpseID, ef.Falloff, ef.FalloffSq) }
 
 	if ef.Delay > 0 {
 		e.after(ef.Delay, run)
@@ -338,6 +356,14 @@ func (e *Engine) areaHit(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, 
 // hitArea damages every monster within radius of a point.
 func (e *Engine) hitArea(p *d2mapentity.Player, u *heroUnit, name string, cx, cy, radius int, d *d2missile.DamageDesc,
 	corpseID string) int {
+	return e.hitAreaEx(p, u, name, cx, cy, radius, d, corpseID, false, 0)
+}
+
+// hitAreaEx is hitArea with the Corpse Explosion falloff: a unit farther than
+// sqrt(fallSq) subtiles (squared Euclidean distance, 0x5c2b90) from the centre
+// loses the physical part of the damage.
+func (e *Engine) hitAreaEx(p *d2mapentity.Player, u *heroUnit, name string, cx, cy, radius int, d *d2missile.DamageDesc,
+	corpseID string, falloff bool, fallSq int) int {
 	if corpseID != "" {
 		for _, c := range e.monsters.Corpses() {
 			if c.ID() == corpseID {
@@ -350,9 +376,19 @@ func (e *Engine) hitArea(p *d2mapentity.Player, u *heroUnit, name string, cx, cy
 	n := 0
 
 	if d != nil {
-		for _, m := range e.monstersNear(cx, cy, radius) {
+		in := e.monstersNear
+		if falloff { // Corpse Explosion: the exe's circle
+			in = e.monstersWithin
+		}
+
+		for _, m := range in(cx, cy, radius) {
 			dmg := e.rollDesc(u, d)
 			n++
+
+			if falloff {
+				mx, my := m.SubtilePos()
+				dmg.Physical = falloffPhysical(dmg.Physical, (mx-cx)*(mx-cx)+(my-cy)*(my-cy), fallSq)
+			}
 
 			e.target(m)
 			e.hurt(m, p, &dmg, name)
@@ -531,7 +567,14 @@ func (e *Engine) pulseAura(a *auraRun) {
 
 	switch ef.Mode {
 	case "enemy", "damage":
-		for _, m := range e.monstersNear(hx, hy, ef.Radius) {
+		for _, m := range e.monstersWithin(hx, hy, ef.Radius) {
+			// VERIFIED filter bits (0x569100): Sanctuary's 59270 lets in only
+			// undead monsters that are not bosses; Holy Fire's does not.
+			mt := e.target(m)
+			if !d2skill.FilterAllowsMonster(ef.Filter, mt.IsUndead(), mt.KnockClass() == d2skill.KnockBoss) {
+				continue
+			}
+
 			if ef.TargetState != "" {
 				e.applyMonsterState(m, d2state.Instance{Name: ef.TargetState, Until: until, Mods: statMods(ef.TargetStats),
 					Source: a.p.ID(), SkillID: ef.SkillID, Level: ef.Level})
@@ -541,7 +584,15 @@ func (e *Engine) pulseAura(a *auraRun) {
 				dmg := e.rollDesc(u, ef.Desc)
 				e.target(m)
 				e.hurt(m, a.p, &dmg, ef.SkillName)
+
+				if ef.Knock && m.Alive() {
+					e.pushAway(u, m, d2skill.KnockDistance, ef.SkillName)
+				}
 			}
+		}
+
+		if !d2skill.FilterAllowsPlayer(ef.Filter) {
+			break
 		}
 
 		for _, rv := range e.rivalsNear(hx, hy, ef.Radius) {
@@ -557,21 +608,32 @@ func (e *Engine) pulseAura(a *auraRun) {
 		}
 	case "redemption":
 		// VERIFIED (SRVDO_RedemptionApplyToCorpse 0x5cf2e0): every corpse in range
-		// rolls on its own, a success heals calc2 life and calc3 mana (capped at
-		// the maximum) and consumes the corpse.
+		// (squared distance within the radius squared, 0x569510) rolls on its
+		// own, a success heals calc2 life and calc3 mana (capped at the maximum)
+		// and consumes the corpse. VERIFIED (0x5cf410): a pulse that redeemed
+		// anything then pays the aura cost (0 for the shipped row), one that
+		// redeemed nothing pays nothing.
+		redeemed := 0
+
 		for _, c := range e.monsters.Corpses() {
 			cx, cy := c.SubtilePos()
-			if chebyshev(cx-hx, cy-hy) > ef.Radius {
+			if (cx-hx)*(cx-hx)+(cy-hy)*(cy-hy) > ef.Radius*ef.Radius {
 				continue
 			}
 
 			if redeemRoll(int(u.seed.Roll(100)), ef.Stack) {
 				e.monsters.RemoveCorpse(c)
+				redeemed++
 				a.p.Stats.Health = minInt(a.p.Stats.Health+ef.Heal, a.p.Stats.MaxHealth)
 				a.p.Stats.Mana = minInt(a.p.Stats.Mana+ef.Dist, a.p.Stats.MaxMana)
 				e.emit("state", "STATE redemption hero=%s life+%d mana+%d hero_hp=%d/%d", a.p.Name(), ef.Heal, ef.Dist,
 					a.p.Stats.Health, a.p.Stats.MaxHealth)
 			}
+		}
+
+		if cost := ef.Cost >> 8; redeemed > 0 && cost > 0 && u.merc == nil {
+			a.p.Stats.Mana = maxInt(a.p.Stats.Mana-cost, 0)
+			e.emit("state", "STATE redemption cost hero=%s mana-%d mana=%d", a.p.Name(), cost, a.p.Stats.Mana)
 		}
 	}
 }
@@ -724,7 +786,7 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		e.pets[p.ID()] = append(e.pets[p.ID()], m)
 
 		if o.UseCorpseType {
-			reviveCap(m, corpseLevel, p.Stats.Level)
+			e.reviveLife(m, stat, corpseLevel, p.Stats.Level, u)
 		}
 		e.target(m)
 
@@ -1105,21 +1167,23 @@ func (e *Engine) heroDefense(p *d2mapentity.Player, attacker *d2mapentity.Monste
 		note += fmt.Sprintf(" absorbed_by_armor=%d", taken)
 	}
 
-	// Energy Shield: x_energyshield_pct of the damage costs mana instead (U ratio)
+	// Energy Shield (aurafunc 24, 0x5c8840, VERIFIED): pct percent of the damage
+	// is absorbed, limited by mana*16/ratio, and costs absorbed*ratio/16 mana;
+	// with no mana left the shield ends. U: applied to the summed damage, the
+	// exe walks the damage types one by one (and skips three of them for
+	// player attackers).
 	if pct := set.Stat(e.frame, "x_energyshield_pct"); pct > 0 && dmg > 0 {
-		absorb := dmg * pct / 100
-		ratio := maxInt(set.Stat(e.frame, "x_energyshield_ratio"), 1)
-		cost := absorb * ratio / 16
-		have := p.Stats.Mana
-
-		if cost > have {
-			absorb = absorb * have / maxInt(cost, 1)
-			cost = have
-		}
-
+		ratio := set.Stat(e.frame, "x_energyshield_ratio")
+		absorb, cost := d2skill.EnergyShieldAbsorb(dmg, pct, ratio, p.Stats.Mana)
 		p.Stats.Mana -= cost
 		dmg -= absorb
 		note += fmt.Sprintf(" absorbed_by_shield=%d mana=%d", absorb, cost)
+
+		if p.Stats.Mana <= 0 {
+			p.Stats.Mana = 0
+			set.Remove("energyshield")
+			note += " shield_ended"
+		}
 	}
 
 	if pct := set.ThornsPct(e.frame); pct > 0 && melee && dmg > 0 {
@@ -1257,4 +1321,28 @@ func (e *Engine) splashAt(m *d2missile.Missile) {
 		e.Counters.AreaHits += n
 		e.emit("hit", "SKILL splash skill=%q at=(%d,%d) radius=%d targets=%d", e.skillName(m.SkillID), int(m.X), int(m.Y), r, n)
 	}
+}
+
+// falloffPhysical is the Corpse Explosion falloff (0x5c2b90, VERIFIED): the
+// physical damage is zeroed when the squared distance to the corpse is above
+// the limit.
+func falloffPhysical(phys int32, distSq, limitSq int) int32 {
+	if distSq > limitSq {
+		return 0
+	}
+
+	return phys
+}
+
+// overlayOn shows an overlay.txt animation on the effect's target (or at its
+// point): Charge's bash mark. A missing overlay or map engine is skipped.
+func (e *Engine) overlayOn(ef *d2skill.Effect) {
+	x, y := ef.X, ef.Y
+
+	if mt, _ := ef.Target.(*monsterTarget); mt != nil {
+		x, y = mt.m.SubtilePos()
+	}
+
+	e.overlayAt(ef.Overlay, x, y)
+	e.emit("state", "OVERLAY name=%s at=(%d,%d)", ef.Overlay, x, y)
 }

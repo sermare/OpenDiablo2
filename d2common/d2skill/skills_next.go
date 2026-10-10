@@ -39,9 +39,42 @@ type ShieldDamager interface {
 	ShieldDamage() (min, max int, ok bool)
 }
 
-// KnockDistance is how far a knockback pushes, in subtiles (U: the exe sends
-// the victim into the knockback mode, the distance is the engine's choice).
-const KnockDistance = 2
+// KnockDistance is how far a knockback pushes a monster, in path steps. VERIFIED
+// (0x5a51e0, the monster mode 0xd handler reached through MONAI_ExecuteAiCommand
+// from COMBAT_ServerHandleUnitHit 0x57ae50): it switches the path to type 8 and
+// sets the step counter (path byte 0x90) to 10, or to 5 for monster base class
+// 78; the path is then computed away from the attacker. U: one step is one
+// subtile (the path-type table 0x6ecc40 was not decoded).
+const KnockDistance = 10
+
+// KnockDistanceSmall is the step count for monster base class 78 (VERIFIED the
+// branch at 0x5a5264; which monster that class is, was not looked up).
+const KnockDistanceSmall = 5
+
+// KnockDistanceFor picks the knockback step count by the monster's base class
+// id (monstats baseid), 78 getting the short one.
+func KnockDistanceFor(baseClass int) int {
+	if baseClass == 78 {
+		return KnockDistanceSmall
+	}
+
+	return KnockDistance
+}
+
+// StateSkiller is optionally implemented by a Unit: the skill id and level
+// that put a timed state on it (the stat list's skill fields, STATS_GetStatListSkill
+// and ...SkillLevel), ok false when the state is not active.
+type StateSkiller interface {
+	StateSkill(state string) (skillID, level int, ok bool)
+}
+
+// holyShieldState is the state name of Holy Shield (state 0x65 in the exe).
+const holyShieldState = "holyshield"
+
+// OverlayBash is the overlay.txt name of overlay 147 (BABash), the mark Charge
+// shows on its target (UNIT_AddOverlayEffectStat(target, 0x93) at 0x5cde00,
+// VERIFIED).
+const OverlayBash = "bash"
 
 // Diminishing is SKILL_CalcDiminishingReturn (0x646ed0, VERIFIED): the
 // skills.txt dm56 / dm34 style curve, lo + (lvl*110/(lvl+6)) * (hi-lo) / 100,
@@ -227,7 +260,21 @@ func doSmiteFn(c *cast) {
 		return
 	}
 
-	ph := rollRange(c.u.Roller(), int32(lo)<<8, int32(hi)<<8)
+	lo8, hi8 := int32(lo)<<8, int32(hi)<<8
+
+	// VERIFIED (0x5ccdd0): with the Holy Shield state on, the damage range of
+	// the skill that made the state (at its level) is added to the shield's.
+	if ss, has := c.u.(StateSkiller); has {
+		if id, lvl, on := ss.StateSkill(holyShieldState); on && c.p.Skills != nil {
+			if hs := c.p.Skills.ByID(id); hs != nil {
+				he := c.env.sub(hs, lvl)
+				lo8 += hs.PhysMin(he, lvl, 0, false)
+				hi8 += hs.PhysMax(he, lvl, 0, false)
+			}
+		}
+	}
+
+	ph := rollRange(c.u.Roller(), lo8, hi8)
 	ph += int32(mulDiv(int(ph), c.calc(1)+c.u.Stat("damagepercent"), 100))
 	dmg := d2combat.Damage{Result: d2combat.ResultHit, HitClass: int32(c.sk.HitClass), Physical: ph, StunLen: int32(c.calc(2))}
 	c.addMelee(&MeleeResult{Target: c.tgt.Unit, Hit: true, Chance: 100, Damage: dmg, Total: dmg.SumTotal(false)})
@@ -263,7 +310,12 @@ func doChargeFn(c *cast) {
 
 	o := c.meleeOpt()
 	o.pct = c.calc(1)
-	c.addMelee(c.p.strike(c.u, c.sk, c.lvl, t, c.env, o))
+	m := c.p.strike(c.u, c.sk, c.lvl, t, c.env, o)
+	c.addMelee(m)
+
+	// VERIFIED: the strike is followed by overlay 147 on the target (only when
+	// the rush ended in melee range, i.e. the blow was made).
+	c.effect(Effect{Kind: "overlay", Overlay: OverlayBash, Target: t, X: tx, Y: ty})
 }
 
 func sgn(v int) int {

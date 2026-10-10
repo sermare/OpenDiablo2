@@ -1204,6 +1204,9 @@ func doAuraFn(c *cast) {
 		if sk.SrvDoFunc == 66 && sk.EType != "" {
 			e.Mode = "damage"
 			e.Desc = c.desc()
+			// VERIFIED: the hit carries the skill's result flags (0x5cd880); bit 8
+			// is the knockback (Sanctuary has ResultFlags 11).
+			e.Knock = sk.ResultFlags&resultKnock != 0
 		}
 	} else {
 		e.Stats = stats
@@ -1216,6 +1219,9 @@ func doAuraFn(c *cast) {
 		e.Mode = "redemption"
 		e.Heal, e.Dist = c.calc(2), c.calc(3)
 		e.Stack = c.calc(1)
+		// VERIFIED 0x5cf410: a pulse that redeemed something pays the aura
+		// parameter (lvlmana*(lvl-1)+mana) << manashift; 0 for the shipped row.
+		e.Cost = int(sk.calcMana(c.lvl, false))
 	}
 
 	c.effect(e)
@@ -1577,15 +1583,17 @@ func doCorpseExplosionFn(c *cast) {
 		return
 	}
 
-	lo, hi := c.calc(1), c.calc(2)
-	pct := lo
+	// VERIFIED (0x5c2c60): both bounds are percents of the corpse's life, and
+	// the roll is taken over the life range lo..hi-1 (RAND_RollSeedModulo(hi-lo)).
+	lo := mulDiv(c.tgt.CorpseHP, c.calc(1), 100)
+	hi := mulDiv(c.tgt.CorpseHP, c.calc(2), 100)
+	v := int32(lo)
 
 	if hi > lo {
-		pct = lo + c.rollN(int32(hi-lo+1))
+		v += int32(c.rollN(int32(hi - lo)))
 	}
 
 	d := &d2missile.DamageDesc{}
-	v := int32(mulDiv(c.tgt.CorpseHP, pct, 100))
 
 	// VERIFIED (SRVDO_055 0x5c2c60): a corpse above the caster's level deals
 	// its damage scaled by caster level / corpse level.
@@ -1609,5 +1617,9 @@ func doCorpseExplosionFn(c *cast) {
 	}
 
 	e.Desc = d
+	// VERIFIED 0x5c2b90: beyond (aurarange/2)^2 squared subtiles from the
+	// corpse the physical part is zeroed (the elemental part stays).
+	r := c.env.eval(c.sk.AuraRangeCalc)
+	e.Falloff, e.FalloffSq = true, (r/2)*(r/2)
 	c.effect(e)
 }

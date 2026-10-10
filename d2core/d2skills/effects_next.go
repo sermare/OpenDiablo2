@@ -1,6 +1,7 @@
 package d2skills
 
 import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2missile"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2state"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
@@ -43,25 +44,31 @@ func (e *Engine) hitUnit(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, 
 }
 
 // knockback pushes a surviving monster ef.Dist subtiles straight away from the
-// hero, stopping at the first cell that cannot be walked on. U: the exe
-// puts the victim into its knockback mode; the distance travelled there was
-// not read.
+// hero, stopping at the first cell that cannot be walked on. The exe puts the
+// victim into its knockback mode (0xd) whose path covers 10 steps (5 for base
+// class 78, skills-batch-next2.md); U: a step is a subtile.
 func (e *Engine) knockback(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, ef *d2skill.Effect) {
 	mt, _ := ef.Target.(*monsterTarget)
 	if mt == nil || !mt.m.Alive() {
 		return
 	}
 
+	e.pushAway(u, mt.m, ef.Dist, sk.Name)
+}
+
+// pushAway moves a monster dist subtiles straight away from the hero, stopping
+// at the first cell that cannot be walked on.
+func (e *Engine) pushAway(u *heroUnit, m *d2mapentity.Monster, dist int, name string) {
 	hx, hy := u.Pos()
-	x, y := mt.m.SubtilePos()
-	nx, ny := knockDest(hx, hy, x, y, ef.Dist, e.pipe.Walkable)
+	x, y := m.SubtilePos()
+	nx, ny := knockDest(hx, hy, x, y, dist, e.pipe.Walkable)
 
 	if nx == x && ny == y {
 		return
 	}
 
-	mt.m.TeleportTo(nx, ny)
-	e.emit("state", "KNOCKBACK skill=%q unit=%s from=(%d,%d) to=(%d,%d)", sk.Name, mt.m.Label(), x, y, nx, ny)
+	m.TeleportTo(nx, ny)
+	e.emit("state", "KNOCKBACK skill=%q unit=%s from=(%d,%d) to=(%d,%d)", name, m.Label(), x, y, nx, ny)
 }
 
 // knockDest walks away from (hx, hy) one subtile at a time, up to dist steps,
@@ -112,3 +119,26 @@ func (h *heroUnit) ShieldDamage() (min, max int, ok bool) {
 // redeemRoll is the per-corpse roll of Redemption (0x5cf2e0, VERIFIED): the
 // 0..99 roll must be below calc1.
 func redeemRoll(roll, chance int) bool { return roll < chance }
+
+// StateSkill implements d2skill.StateSkiller: the skill and level behind an
+// active state of the hero (Smite reads Holy Shield's).
+func (h *heroUnit) StateSkill(state string) (skillID, level int, ok bool) {
+	in := h.e.setOf(h.ID()).Get(h.e.frame, state)
+	if in == nil || in.SkillID <= 0 {
+		return 0, 0, false
+	}
+
+	return in.SkillID, maxInt(in.Level, 1), true
+}
+
+var _ d2skill.StateSkiller = (*heroUnit)(nil)
+
+// Heal implements d2missile.Healer for an allied unit (Holy Bolt,
+// MISSILE_HealTargetFromSkillCalc 0x5a7a40, VERIFIED): the amount arrives in
+// 8.8 fixed point and the life is clamped to the maximum.
+func (t *monsterTarget) Heal(amount int) {
+	v := &t.m.Vitals
+	v.HP = minInt(v.HP+amount>>8, v.MaxHP)
+}
+
+var _ d2missile.Healer = (*monsterTarget)(nil)

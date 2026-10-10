@@ -6,6 +6,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2state"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 )
 
 // Engine side of the Necromancer / Paladin / Sorceress / Druid skills that
@@ -149,6 +150,19 @@ func (t *monsterTarget) CanConvert() bool {
 	}
 
 	return !t.e.setOf(t.m.ID()).Active(t.e.frame, "conversion")
+}
+
+// reviveLife is the life of a revived monster (SRVDO_058 0x5c35a0, VERIFIED):
+// a roll between the level-scaled minimum and maximum life of the corpse's
+// class at the corpse's level, then reviveCap for a corpse above the caster.
+func (e *Engine) reviveLife(m *d2mapentity.Monster, stat *d2records.MonStatRecord, corpseLevel, casterLevel int, u *heroUnit) {
+	if corpseLevel > 0 && stat != nil {
+		lo, hi := e.monsters.LifeRangeAt(stat, corpseLevel)
+		hp := d2skill.ReviveLife(lo, hi, func(n int) int { return int(u.seed.Roll(int32(n))) })
+		m.Vitals.Level, m.Vitals.MaxHP, m.Vitals.HP = corpseLevel, hp, hp
+	}
+
+	reviveCap(m, corpseLevel, casterLevel)
 }
 
 // reviveCap limits a revived monster to the caster's level: VERIFIED

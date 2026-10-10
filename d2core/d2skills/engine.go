@@ -503,12 +503,21 @@ func (e *Engine) castOverlay(p *d2mapentity.Player, rec *d2records.SkillRecord) 
 		return
 	}
 
-	ov := e.asset.Records.Layout.Overlays[rec.Castoverlay]
+	e.overlayAt(rec.Castoverlay, int(p.Position.X()), int(p.Position.Y()))
+}
+
+// overlayAt plays an overlay.txt animation once at a subtile.
+func (e *Engine) overlayAt(name string, x, y int) {
+	if e.asset == nil || e.mapEngine == nil {
+		return
+	}
+
+	ov := e.asset.Records.Layout.Overlays[name]
 	if ov == nil {
 		return
 	}
 
-	ent, err := e.mapEngine.NewCastOverlay(int(p.Position.X()), int(p.Position.Y()), ov)
+	ent, err := e.mapEngine.NewCastOverlay(x, y, ov)
 	if err != nil {
 		return
 	}
