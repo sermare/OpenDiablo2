@@ -130,6 +130,7 @@ func (v *Game) commandGiveItem(args []string) error {
 	}
 
 	v.Infof("GIVEITEM code=%s name=%q", args[0], name)
+	v.questItemPickedUp(args[0]) // an item that arrives in the inventory counts as picked up for the quest system
 
 	return nil
 }

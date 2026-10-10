@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2quest"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
@@ -345,6 +346,14 @@ func (v *Game) scanWarps() {
 	v.levels.warpSeen = map[[2]int]bool{}
 
 	v.Infof("LEVEL %d: %d warp tile(s)", v.currentLevel(), len(v.levels.warps))
+
+	for _, e := range v.gameClient.MapEngine.Entities() {
+		if ob, ok := e.(*d2mapentity.Object); ok && d2quest.IsQuestObject(ob.Record().Index) {
+			x, y := ob.GetPositionF()
+			v.Infof("LEVEL quest object id=%d name=%q at (%.1f,%.1f)", ob.Record().Index, ob.Label(), x, y)
+		}
+	}
+
 	for _, w := range v.levels.warps {
 		v.Infof("LEVEL warp tile at (%d,%d) style=%d", w.TileX, w.TileY, w.Style)
 	}

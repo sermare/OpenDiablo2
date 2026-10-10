@@ -83,3 +83,25 @@ func (g *GameControls) ClearInventoryGrid() int {
 
 	return n
 }
+
+// MoveInventoryItemToCube takes the first inventory item with this base code and puts it into the Horadric Cube
+// (what dragging it onto the open cube does); it reports whether it was moved.
+func (g *GameControls) MoveInventoryItemToCube(code string) bool {
+	for _, it := range g.inventory.grid.Items() {
+		if strings.TrimSpace(it.GetItemCode()) != code {
+			continue
+		}
+
+		g.inventory.grid.Remove(it)
+
+		if g.CubePut(it) {
+			return true
+		}
+
+		g.inventory.grid.AutoPlace(it, true)
+
+		return false
+	}
+
+	return false
+}

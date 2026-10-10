@@ -183,6 +183,17 @@ var textKeys = map[int]string{
 	59: "RogueSignpostGossip1", 60: "RogueSignpostGossip2", 61: "RogueSignpostGossip3",
 	62: "RogueSignpostGossip4", 63: "RogueSignpostGossip5",
 	253: "JerhynActIntroGossip1",
+	// keys found by playing the quests (TestTextKeysExist): the handles of these lines do not follow the
+	// NPC_ACT_Q_KIND rule
+	302: "TyraelActIntroGossip1", 465: "HratliActIntroGossip1", 466: "HratliActIntroSorGossip1",
+	664: "TyraelAct4Gossip1", 20002: "AncientsAct5IntroGossip1",
+	336: "A2Q2EarlyReturnCapCain", 337: "A2Q2EarlyReturnStaveCain", 338: "A2Q2EarlyReturnCubeCain",
+	544: "A3Q2EarlyReturnHeartCain", 545: "A3Q2EarlyReturnEyeCain", 546: "A3Q2EarlyReturnBrainCain",
+	547: "A3Q2EarlyReturnFlailCain", 548: "A3Q2SuccessfulCain",
+	678: "A4Q3InitHasStoneCain", 679: "A4Q3InitNoStoneCain",
+	20000: "A4Q2ExpansionSuccessTyrael", 20001: "A4Q2ExpansionSuccessCain",
+	20127: "A5Q3FoundAnyaMalah", 20128: "A5Q3FoundAnyaCain", 20129: "A5Q3FoundAnyaLarzuk",
+	20130: "A5Q3FoundAnyaQualKehk", 20131: "A5Q3FoundAnyaAnya",
 }
 
 // TextKey returns the string.tbl key of a message's text ("" when unknown).
@@ -236,6 +247,14 @@ func textKeyFromHandle(handle string) string {
 		name = "Meshif"
 	case "Cain1", "Cain2", "Cain3", "Cain4", "Cain5", "Cain6":
 		name = "Cain"
+	case "Qualkehk":
+		name = "QualKehk" // the Act 5 keys spell it so (A5Q2InitQualKehk)
+	}
+
+	// Act 3 keys of the two NPCs that also exist in other acts carry an "Act3" suffix (A3Q1AfterInitCainAct3; the Khalim's Will
+	// keys, A3Q2, do not)
+	if act == "3" && q != "2" && (name == "Cain" || name == "Meshif") {
+		name += "Act3"
 	}
 
 	infix, ok := textKeyKinds[kind]
@@ -256,6 +275,12 @@ func textKeyFromHandle(handle string) string {
 		key = "A1Q4AfterInitScrollGheed"
 	case "A1Q6EarlyReturnKashya":
 		key = "A1Q6EarlyReturn2Kashya"
+	case "A2Q2EarlyReturnSCain":
+		key = "A2Q2EarlyReturnScrollCain"
+	case "A2Q2SuccessfulCain":
+		key = "A2Q2SuccessfulStaffCain"
+	case "A2Q4SuccessfulGreiz":
+		key = "A2Q4SuccessfulGriez" // (sic) the table spells it so
 	}
 
 	return key

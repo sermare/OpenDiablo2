@@ -181,6 +181,12 @@ func newHoradricStaff() *Quest {
 			return 0
 		}
 
+		// the staff is assembled: "Take the Staff into Tal Rasha's Tomb" (qstsa2q24). Found by playing: the log said
+		// "Take the artifacts to Cain" (page 5) after Cain had confirmed the finished staff.
+		if assembled(g, q) {
+			return 4
+		}
+
 		n := 0
 
 		for i := range reports {

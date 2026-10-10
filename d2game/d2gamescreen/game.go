@@ -217,6 +217,7 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"completequest", "marks quest <act> <quest> done for the hero (debug)",
 			[]string{"act", "quest"}, v.commandCompleteQuest},
 		{"useitem", "uses the inventory item with this base code like a right click (debug)", []string{"code"}, v.commandUseItem},
+		{"cubeput", "moves the inventory item with this base code into the Horadric Cube (debug)", []string{"code"}, v.commandCubePut},
 		{"clearinv", "empties the inventory grid (debug)", nil, v.commandClearInv},
 		{"questpanel", "opens the quest log on a quest and logs its title and page text", []string{"act", "quest"}, v.commandQuestPanel},
 		{"resetquests", "clears the hero's quest record in memory (debug)", nil, v.commandResetQuests},
