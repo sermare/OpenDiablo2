@@ -23,6 +23,8 @@ func TestEffectiveButton(t *testing.T) {
 		{"mac ctrl+click is right", "darwin", l, ctrl, r},
 		{"mac ctrl+shift+click is right", "darwin", l, ctrl | d2enum.KeyModShift, r},
 		{"mac two-finger click is right", "darwin", r, 0, r},
+		{"mac cmd+click is right", "darwin", l, d2enum.KeyModSuper, r},
+		{"other os cmd(super)+click stays left", "linux", l, d2enum.KeyModSuper, l},
 		{"mac shift+click stays left", "darwin", l, d2enum.KeyModShift, l},
 		{"mac ctrl+right stays right", "darwin", r, ctrl, r},
 		{"linux ctrl+click stays left", "linux", l, ctrl, l},
@@ -53,10 +55,10 @@ func TestResolveWorldClick(t *testing.T) {
 		{"attack skill, ground: walk", WorldClickInput{Button: l, LeftSkillID: skillIDAttack}, WorldMove},
 		{"attack skill, monster: attack", WorldClickInput{Button: l, OverMonster: true, LeftSkillID: skillIDAttack}, WorldAttack},
 		{"left hand swing walks too", WorldClickInput{Button: l, LeftSkillID: skillIDLeftHandSwing}, WorldMove},
-		{"spell, ground: cast it (not walk)", WorldClickInput{Button: l, LeftSkillID: fireBolt}, WorldCastLeft},
-		{"town, spell that cannot be used there: walk", WorldClickInput{Button: l, LeftSkillID: fireBolt, InTown: true}, WorldMove},
-		{"town, spell usable in town: cast it", WorldClickInput{Button: l, LeftSkillID: fireBolt, InTown: true, LeftSkillInTown: true}, WorldCastLeft},
-		{"outside town the spell casts as before", WorldClickInput{Button: l, LeftSkillID: fireBolt, LeftSkillInTown: false}, WorldCastLeft},
+		{"spell, ground: walk (never cast)", WorldClickInput{Button: l, LeftSkillID: fireBolt}, WorldMove},
+		{"town, spell, ground: walk", WorldClickInput{Button: l, LeftSkillID: fireBolt, InTown: true, LeftSkillInTown: true}, WorldMove},
+		{"town, spell that cannot be used there, monster: walk", WorldClickInput{Button: l, OverMonster: true, LeftSkillID: fireBolt, InTown: true}, WorldMove},
+		{"town, spell usable in town, monster: cast it", WorldClickInput{Button: l, OverMonster: true, LeftSkillID: fireBolt, InTown: true, LeftSkillInTown: true}, WorldCastLeft},
 		{"spell, monster: cast it", WorldClickInput{Button: l, OverMonster: true, LeftSkillID: fireBolt}, WorldCastLeft},
 		{"shift+click, spell: cast standing", WorldClickInput{Button: l, Mod: shift, LeftSkillID: fireBolt}, WorldStandStill},
 		{"shift+click, attack on ground: swing in place", WorldClickInput{Button: l, Mod: shift, LeftSkillID: skillIDAttack}, WorldStandStill},
@@ -85,8 +87,10 @@ func TestMacClickChain(t *testing.T) {
 		mod  d2enum.KeyMod
 		want WorldAction
 	}{
-		{"click", d2enum.MouseButtonLeft, 0, WorldCastLeft},
+		{"click on ground, spell on left: walk", d2enum.MouseButtonLeft, 0, WorldMove},
 		{"ctrl+click", d2enum.MouseButtonLeft, d2enum.KeyModControl, WorldCastRight},
+		{"cmd+click", d2enum.MouseButtonLeft, d2enum.KeyModSuper, WorldCastRight},
+		{"cmd+shift+click", d2enum.MouseButtonLeft, d2enum.KeyModSuper | d2enum.KeyModShift, WorldCastRight},
 		{"two-finger click", d2enum.MouseButtonRight, 0, WorldCastRight},
 		{"shift+click", d2enum.MouseButtonLeft, d2enum.KeyModShift, WorldStandStill},
 	}
@@ -114,7 +118,8 @@ func TestParseClickSpec(t *testing.T) {
 		{"Left+Shift@400,300", d2enum.MouseButtonLeft, d2enum.KeyModShift, 400, 300, false},
 		{"left+ctrl+alt", d2enum.MouseButtonLeft, d2enum.KeyModControl | d2enum.KeyModAlt, 400, 280, false},
 		{"middle", 0, 0, 0, 0, true},
-		{"left+meta", 0, 0, 0, 0, true},
+		{"left+cmd", d2enum.MouseButtonLeft, d2enum.KeyModSuper, 400, 280, false},
+		{"left+hyper", 0, 0, 0, 0, true},
 		{"left@x", 0, 0, 0, 0, true},
 	}
 
@@ -250,5 +255,27 @@ func TestEveryEventHasAName(t *testing.T) {
 		if gameEventNames[ev] == "" {
 			t.Errorf("event %d has no config name", ev)
 		}
+	}
+}
+
+func TestLeftHoldRepeats(t *testing.T) {
+	tests := []struct {
+		name         string
+		started, itm bool
+		since        float64
+		want         bool
+	}{
+		{"ground walk, interval passed", true, false, 0.2, true},
+		{"ground walk, too soon", true, false, 0.01, false},
+		{"started on NPC/object: no repeat", false, false, 5, false},
+		{"item on cursor: no repeat", true, true, 5, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := LeftHoldRepeats(tt.started, tt.itm, tt.since); got != tt.want {
+				t.Fatalf("got %v want %v", got, tt.want)
+			}
+		})
 	}
 }

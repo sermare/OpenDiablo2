@@ -111,9 +111,12 @@ const (
 	KeyMouse5
 	KeyMouseWheelUp
 	KeyMouseWheelDown
+	// KeyMeta is the Command key on macOS (the Super/Windows key elsewhere); it has no ebiten key and is
+	// read from the system's modifier state.
+	KeyMeta
 
 	KeyMin = Key0
-	KeyMax = KeyMouseWheelDown
+	KeyMax = KeyMeta
 )
 
 // KeyMod represents a "modified" key action. This could mean, for example, ctrl-S
@@ -126,4 +129,6 @@ const (
 	KeyModControl
 	// KeyModShift is the Shift key modifier
 	KeyModShift
+	// KeyModSuper is the Command key on macOS (Super/Meta elsewhere)
+	KeyModSuper
 )

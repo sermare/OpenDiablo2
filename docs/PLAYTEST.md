@@ -17,7 +17,7 @@ developers' playthrough log, kept for reference; skip it if you are only testing
   saves are only read, never changed.
 
 Useful keys: `Tab` automap, `I` inventory, `C` character, `T` skill tree, `Q` quest log, `Esc` menu, Cmd+Enter full screen,
-Cmd+Q quit. A trackpad right click is a two-finger click or Control+click. Full list in the quickstart.
+Cmd+Q quit. A trackpad right click is a two-finger click, Control+click or Command+click. A left click on the ground always walks; a left click on a monster uses the left skill; Shift+click uses the left skill standing still (ground spells). Full list in the quickstart.
 
 Helper commands (press `` ` `` to open the console, type, press Enter) so you do not need to play for hours to reach later acts:
 

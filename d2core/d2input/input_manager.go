@@ -75,6 +75,10 @@ func (im *inputManager) updateKeyMod() {
 	if im.inputService.IsKeyPressed(d2enum.KeyShift) {
 		im.keyMod |= d2enum.KeyModShift
 	}
+
+	if im.inputService.IsKeyPressed(d2enum.KeyMeta) {
+		im.keyMod |= d2enum.KeyModSuper
+	}
 }
 
 func (im *inputManager) updateButtonMod() {
