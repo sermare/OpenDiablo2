@@ -166,6 +166,7 @@ type Game struct {
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	rankLeader           *d2mapentity.Monster // leader of the last spawnrank pack
+	realm                *realmState          // the monsters of a game played through the realm (realm_sync.go)
 	monsterTest          *monsterTest
 	aiTest               *aiAutoTest
 	bossTest             *bossAutoTest
@@ -238,6 +239,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			nil, v.commandWalkProbe},
 		{"players", "logs the players of the game with their positions", []string{}, v.commandPlayers},
 		{"chat", "sends a chat line to all players (_ for a space)", []string{"text"}, v.commandChat},
+		{"mpkill", "realm games: fight the nearest monster of the realm", nil, v.commandMPKill},
+		{"mpworld", "realm games: logs the simulation as this client sees it (digest, monsters)", nil, v.commandMPWorld},
 		{"party", "party invite|accept|decline|leave|list <name or ->", []string{"op", "name"}, v.commandParty},
 		{"hostile", "declares (1) or withdraws (0) hostility toward a player", []string{"name", "0|1"}, v.commandHostile},
 		{"roster", "logs the roster and the party panel", []string{}, v.commandRoster},

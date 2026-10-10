@@ -5,7 +5,7 @@
 # Exit 0 only if every job printed ALL CHECKS PASSED.
 jobs=${1:-6}
 cd "${0:A:h}/.." || exit 1
-slow=(9b-act1-playthrough 9e-act2-playthrough 9g-act3-durance 9h-act45-playthrough 9i-act5-caves-playthrough 99-act-travel 96-multiplayer 9d-party-trade 9f-pvp-skills-ear 9g-town-portals 83-cave-chain-persist 9f-act2-lutn 86-class-skills 94-perf-real-levels 9e-cube 9g-quest-rewards-uber 9c-act1-reload 98-skillbar)
+slow=(9b-act1-playthrough 9e-act2-playthrough 9g-act3-durance 9h-act45-playthrough 9i-act5-caves-playthrough 99-act-travel 96-multiplayer 9j-realm-multiplayer 9d-party-trade 9f-pvp-skills-ear 9g-town-portals 83-cave-chain-persist 9f-act2-lutn 86-class-skills 94-perf-real-levels 9e-cube 9g-quest-rewards-uber 9c-act1-reload 98-skillbar)
 all=(${${(f)"$(ls scripts/verify.d/*.sh | sed 's#.*/##; s#\.sh$##')"}})
 ordered=($slow ${all:|slow})
 typeset -A grp
@@ -27,7 +27,7 @@ rc=0
 for k in {1..${#pids}}; do wait ${pids[$k]} || rc=1; done
 for l in $logs; do
   cnt=$(grep -c '^SCENARIOS RUN:' $l); nsec=$(grep -c '^== ' $l); run=$(grep '^SCENARIOS RUN:' $l | tail -1 | sed 's/.*: //')
-  echo "$l: scenarios run=${run:-0} sections('== ')=$nsec"
+  echo "$l: scenarios run=${run:-0} sections('== ')=$nsec $(grep -E '^SCENARIOS run=' $l | tail -1)"
   if [ "${run:-0}" -eq 0 ]; then echo "FAIL: job ran 0 scenarios ($l)"; rc=1; fi
   printf '%s: ' $l; grep -E "ALL CHECKS PASSED|SOME CHECKS FAILED" $l | tail -1; grep -E "^FAIL" $l | sort -u | head -5; done
 [ $rc -eq 0 ] && echo "PARALLEL VERIFY: ALL JOBS PASSED" || echo "PARALLEL VERIFY: FAILED"

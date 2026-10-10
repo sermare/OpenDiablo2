@@ -137,6 +137,9 @@ func (v *Game) advanceMerc(elapsed float64) {
 	// the OD2_AUTOMONSTER scenarios test the hero alone: the save's merc stays home
 	soloTest := (os.Getenv("OD2_AUTOMONSTER") != "" || os.Getenv("OD2_AUTOAI") != "" || os.Getenv("OD2_AUTOBOSS") != "") && os.Getenv("OD2_AUTOMERC") == ""
 
+	// OD2_NOMERC=1 leaves the merc home (the realm scenario counts the kills of the hero alone)
+	soloTest = soloTest || os.Getenv("OD2_NOMERC") != ""
+
 	if v.merc.spawnedFor != d && p.Merc != nil && d.Hirelings() != nil && !soloTest {
 		v.merc.spawnedFor = v.monsters
 		v.arriveMerc(d, p)
