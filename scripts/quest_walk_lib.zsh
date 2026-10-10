@@ -15,7 +15,8 @@ qw_talk() { printf 'move:npc=%s;until:NPC menu opened: npc="%s",60;menu:Talk;wai
 qw_go() { local l; for l in "$@"; do printf 'walkto:exit=%s;expect:level=%s;wait:2;' "$l" "$l"; done; }
 qw_wp() { printf 'use:Waypoint;waypoint:%s;expect:level=%s;wait:3;' "$1" "$1"; }
 qw_chest() { printf 'walkto:object=%s;wait:3;say:lootquest 15 %s;' "$1" "${2:-30}"; }
-qw_panel() { printf 'say:questpanel %s %s;' "$1" "$2"; }
+# (a second of game time first: a quest timer such as Radament's "return to Atma" page fires a few frames after the kill)
+qw_panel() { printf 'wait:1;say:questpanel %s %s;' "$1" "$2"; }
 qw_begin() {
   printf 'wait:1;say:resetquests;say:clearinv;'
   case "${1:-2}" in
@@ -30,7 +31,7 @@ qw_env() {
   local name=$1 script=$2 d=$tmp/$1
   mkdir -p $d/s $d/wb; rm -f $d/s/*.d2s(N) $d/wb/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && go run scripts/d2s-revive.go "$D2S_SAMPLE_BODY" $d/s/Hero.d2s "$D2_TABLES" >/dev/null 2>&1; then
-    echo "export OD2_AUTOGAME=\"$d/s/Hero.d2s\" OD2_D2S_WRITEBACK=\"$d/wb\" OD2_REALMAPS=1 OD2_AUTOSPEED=8 OD2_AUTOMONSTER_DIFF=0"
+    echo "export OD2_AUTOGAME=\"$d/s/Hero.d2s\" OD2_D2S_WRITEBACK=\"$d/wb\" OD2_REALMAPS=1 OD2_AUTOMONSTER_DIFF=0"
     echo "export OD2_AUTOSCRIPT='$script'"
   else
     echo "# no revived sample (D2_TABLES unset or the tool failed)" >&2
@@ -38,6 +39,7 @@ qw_env() {
   fi
 }
 
+# (the game clock speed is the one of verify.sh, 4: at 8 the walks of a loaded machine ran out of their time-outs)
 # qw_sample <name>: succeeds when the scenario had a revived hero (else the check skips)
 qw_sample() { [ -s $tmp/$1/s/Hero.d2s ]; }
 

@@ -15,3 +15,10 @@ func TestLutGholeinSewerTiles(t *testing.T) {
 		t.Errorf("style 13 must not lead to the sewers")
 	}
 }
+
+// Durance of Hate Level 2: the stairs down to level 3 carry the style 3 (the Act 3 gate scenario could not leave level 2).
+func TestDuranceLevel2StairsDown(t *testing.T) {
+	if to, ok := TileDestination(101, 3); !ok || to != 102 {
+		t.Errorf("TileDestination(101, 3) = %d, %v; want 102", to, ok)
+	}
+}

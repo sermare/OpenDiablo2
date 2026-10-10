@@ -17,7 +17,7 @@ func TestTempleEntranceByPreset(t *testing.T) {
 		{81, "Act3/Kurast/BurbsTemple3.ds1", 3, 97},
 		{82, "Act3/Kurast/BurbsTemple2.ds1", 2, 98},
 		{82, "Act3/Kurast/BurbsTemple3.ds1", 3, 99},
-		{80, "Act3/Kurast/BurbsTemple2.ds1", 8, 0},  // a door of the preset, not the entrance
+		{80, "Act3/Kurast/BurbsTemple2.ds1", 8, 0}, // a door of the preset, not the entrance
 		{80, "Act3/Kurast/Burbs16x16_2.ds1", 2, 0}, // not a temple preset
 		{79, "Act3/Kurast/BurbsTemple2.ds1", 2, 0}, // Lower Kurast has no temple
 	}

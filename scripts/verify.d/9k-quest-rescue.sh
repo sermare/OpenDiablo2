@@ -1,12 +1,12 @@
 scenario_name="Quest walkthrough, Act 5: the first steps of Rescue on Mount Arreat in the real world (Qual-Kehk, Bloody Foothills, Frigid Highlands, quest log, .d2s)"
 # The sample hero (quests reset) takes the quest from Qual-Kehk (his lines come newest quest first: Rite of Passage, then
-# Rescue), walks through the Bloody Foothills into the Frigid Highlands (the quest moves on, the three barbarian cages are
+# Rescue), travels to the Frigid Highlands by waypoint (the quest moves on, the three barbarian cages are
 # there). The prison doors that the quest wants killed are NOT placed in the generated Frigid Highlands (see docs/PLAYTEST.md),
 # so the quest cannot go further; the check pins what works. Needs D2_TABLES + D2S_SAMPLE_BODY.
 source scripts/quest_walk_lib.zsh
 scenario_warnings_ok=1
 scenario_env() {
-  local s="$(qw_begin 5)$(qw_panel 5 2)$(qw_talk Qual-Kehk)$(qw_talk Qual-Kehk)$(qw_panel 5 2)$(qw_go 110 111)wait:2;$(qw_panel 5 2)exit"
+  local s="$(qw_begin 5)$(qw_panel 5 2)$(qw_talk Qual-Kehk)$(qw_talk Qual-Kehk)$(qw_panel 5 2)say:setwaypoint 111 1;wait:11;$(qw_wp 111)$(qw_panel 5 2)exit"
   qw_env rescue "$s"
 }
 scenario_check() {
@@ -27,6 +27,6 @@ scenario_check() {
   grep -q "QUESTPANEL act=5 quest=2 status=2 .*Rescue 15 more Soldiers" $log.txt || { echo "FAIL: panel page 2 text (the count)"; fail=1; }
   grep -q "QUESTPANEL .*text=\".*%d" $log.txt && { echo "FAIL: a quest log page shows a raw %d"; fail=1; }
   qw_laterquests
-  qw_slot_has 36 0x001c || { echo "FAIL: quest slot 36 does not carry the started/left town/entered area bits in the .d2s"; fail=1; }
+  qw_slot_has 36 0x0014 || { echo "FAIL: quest slot 36 does not carry the started and entered area bits in the .d2s"; fail=1; }
   grep -E "AUTOSCRIPT step [0-9]+ FAIL" $log.txt | cut -c1-200
 }

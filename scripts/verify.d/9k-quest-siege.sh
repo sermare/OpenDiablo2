@@ -6,6 +6,7 @@ scenario_name="Quest walkthrough, Act 5: Siege on Harrogath in the real world (L
 source scripts/quest_walk_lib.zsh
 scenario_warnings_ok=1
 scenario_env() {
+  # (the Bloody Foothills are no waypoint level: the hero walks across the border and back)
   local s="$(qw_begin 5)$(qw_panel 5 1)$(qw_talk Larzuk)$(qw_panel 5 1)$(qw_go 110)kill:name=Shenk,300;$(qw_panel 5 1)"
   s+="$(qw_go 109)$(qw_talk Larzuk)$(qw_panel 5 1)exit"
   qw_env siege "$s"
