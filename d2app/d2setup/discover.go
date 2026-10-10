@@ -125,12 +125,18 @@ func gameDirCandidates(home string) []string {
 		filepath.Join(home, "Library", "Application Support", "Diablo II"),
 		filepath.Join(home, "Library", "Application Support", "Blizzard", "Diablo II"),
 		filepath.Join(home, "Games", "Diablo II"),
+		// Steam and Battle.net (Mac) installs, when they hold the classic files
+		filepath.Join(home, "Library", "Application Support", "Steam", "steamapps", "common", "Diablo II"),
+		filepath.Join(home, "Library", "Application Support", "Steam", "steamapps", "common", "Diablo II Classic"),
+		filepath.Join("/Applications", "Battle.net", "Diablo II"),
 	}
 
 	for _, drive := range []string{
 		filepath.Join(home, ".wine*", "drive_c"),
 		filepath.Join(home, "Library", "Application Support", "CrossOver", "Bottles", "*", "drive_c"),
 		filepath.Join(home, "Library", "Application Support", "Battle.net", "drive_c"),
+		filepath.Join(home, "Library", "Containers", "com.isaacmarovitz.Whisky", "Bottles", "*", "drive_c"),
+		filepath.Join(home, "Library", "Application Support", "Steam", "steamapps", "compatdata", "*", "pfx", "drive_c"),
 	} {
 		for _, pf := range []string{"Program Files (x86)", "Program Files"} {
 			out = append(out, glob(filepath.Join(drive, pf, "Diablo II"))...)
