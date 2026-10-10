@@ -26,7 +26,7 @@ func IsQuestObject(id int) bool {
 func isLaterQuestObject(id int) bool {
 	switch id {
 	case ObjectTaintedSunAltar, ObjectOrifice, ObjectCubeChest, ObjectScrollChest, ObjectStaffChest,
-		ObjectHorazonJournal, ObjectLamEsenTome, ObjectCompellingOrb, ObjectHellforge:
+		ObjectHorazonJournal, ObjectLamEsenTome, ObjectCompellingOrb, ObjectHellforge, ObjectGidbinnAltar, ObjectGidbinn:
 		return true
 	}
 

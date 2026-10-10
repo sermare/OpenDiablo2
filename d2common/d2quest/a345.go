@@ -12,6 +12,8 @@ const (
 	ObjectLamEsenTome   = 193
 	ObjectCompellingOrb = 404
 	ObjectHellforge     = 376
+	ObjectGidbinnAltar  = 251 // "gidbinn altar" (objects.txt): the blade of the Old Religion lies on it
+	ObjectGidbinn       = 252 // "gidbinn" (the decoy: the blade on the altar; the Flayer Jungle has one)
 )
 
 // ---- prologues ----
@@ -256,6 +258,14 @@ func newKhalim() *Quest {
 // Flayer Dungeon, hand it to Ormus, then Asheara; Ormus's last line pays out.
 // UNVERIFIED: the levels (88, 89, 91) and the reward (Iron Wolf mercenaries).
 func newBlade() *Quest {
+	gidbinn := func(g *Game, q *Quest) []Effect {
+		if g.hasItem(ItemGidbinn) {
+			return nil
+		}
+
+		return []Effect{{Kind: EffectSpawn, Quest: q.ID, Code: ItemGidbinn, Note: "Gidbinn on the altar"}}
+	}
+
 	return newSpecQuest(&spec{
 		id: QuestBlade, slot: 19, act: 2, logIndex: 3, name: "The Blade of the Old Religion", label: "A3Q3",
 		start: 1, goal: 6, tbl: map[int]int{1: 0, 2: 1, 3: 2, 4: 3, 5: 5}, rp: 6, done: 7,
@@ -272,7 +282,34 @@ func newBlade() *Quest {
 			{ev: EvAreaChanged, level: LevelFlayerDungeon1, max: 3, to: 3},
 			{ev: EvAreaChanged, level: LevelFlayerDungeon2, max: 3, to: 3},
 			{ev: EvAreaChanged, level: LevelFlayerDungeon3, max: 3, to: 3},
+			// operating the altar of the Flayer Dungeon gives Gidbinn (found by playing: nothing did, so the blade could
+			// not be had in the real world)
+			{ev: EvObjectOperated, object: ObjectGidbinnAltar, min: -1, max: 3, bit: -1, fx: gidbinn},
+			{ev: EvObjectOperated, object: ObjectGidbinn, min: -1, max: 3, bit: -1, fx: gidbinn},
 			{ev: EvItemPickedUp, item: ItemGidbinn, max: 3, to: 4},
+		},
+		// the log pages (qstsa3q31..35): 1 look for Gidbinn in the Flayer Jungle, 2 pick it up, 3 return it to Ormus,
+		// 4 talk to Asheara, 5 talk to Ormus (the reward). The pages followed the first area change only, so the log
+		// kept showing page 1 until the end (found by playing). UNVERIFIED order of the original's status bytes.
+		logPage: func(g *Game, q *Quest) int {
+			if g.get(q, FlagRewardGranted) {
+				return 0
+			}
+
+			switch q.State {
+			case 2:
+				return 1
+			case 3:
+				return 2
+			case 4:
+				return 3
+			case 5:
+				return 4
+			case 6:
+				return 5
+			}
+
+			return 0
 		},
 		claimFx: fxs(reward("hire-ironwolves", 0, "Asheara's Iron Wolf mercenaries become hirable")),
 	})

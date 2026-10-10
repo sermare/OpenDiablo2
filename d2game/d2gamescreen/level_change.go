@@ -3,6 +3,7 @@ package d2gamescreen
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -347,11 +348,27 @@ func (v *Game) scanWarps() {
 
 	v.Infof("LEVEL %d: %d warp tile(s)", v.currentLevel(), len(v.levels.warps))
 
+	names := map[string]int{}
+
 	for _, e := range v.gameClient.MapEngine.Entities() {
-		if ob, ok := e.(*d2mapentity.Object); ok && d2quest.IsQuestObject(ob.Record().Index) {
-			x, y := ob.GetPositionF()
-			v.Infof("LEVEL quest object id=%d name=%q at (%.1f,%.1f)", ob.Record().Index, ob.Label(), x, y)
+		if ob, ok := e.(*d2mapentity.Object); ok {
+			names[ob.Label()]++
+
+			if d2quest.IsQuestObject(ob.Record().Index) {
+				x, y := ob.GetPositionF()
+				v.Infof("LEVEL quest object id=%d name=%q at (%.1f,%.1f)", ob.Record().Index, ob.Label(), x, y)
+			}
 		}
+	}
+
+	if len(names) > 0 {
+		keys := make([]string, 0, len(names))
+		for k := range names {
+			keys = append(keys, fmt.Sprintf("%s x%d", k, names[k]))
+		}
+
+		sort.Strings(keys)
+		v.Infof("LEVEL objects: %s", strings.Join(keys, ", "))
 	}
 
 	for _, w := range v.levels.warps {
