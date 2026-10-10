@@ -26,45 +26,43 @@ const (
 var genericAIs = map[string]genericKind{
 	// melee chasers
 	"Baboon": kindMelee, "ClawViper": kindMelee, "ClawViperEx": kindMelee, "Arach": kindMelee,
-	"ThornHulk": kindMelee, "PinHead": kindMelee, "MaggotLarva": kindMelee, "Regurgitator": kindMelee,
-	"VileDog": kindMelee, "VileMother": kindMelee, "DeathMauler": kindMelee, "PutridDefiler": kindMelee,
-	"ReanimatedHorde": kindMelee, "SiegeBeast": kindMelee, "Overseer": kindMelee, "BloodLord": kindMelee,
-	"FrozenHorror": kindMelee, "QuillMother": kindMelee, "Ancient": kindMelee, "ZakarumZealot": kindMelee,
+	"MaggotLarva": kindMelee, 
+	"DeathMauler": kindMelee, 
+	"BloodLord": kindMelee,
+	"FrozenHorror": kindMelee, "Ancient": kindMelee, 
 	"CorruptLancer": kindMelee, "ElementalBeast": kindMelee, "DarkWanderer": kindMelee,
-	"7TIllusion": kindMelee, "Trap-Melee": kindMelee, "SuicideMinion": kindMelee, "FlyingScimitar": kindFlyer,
-	"UberBaal": kindMelee, "ShadowWarrior": kindMelee, "Spirit": kindMelee, "TrappedSoul": kindMelee,
+	"7TIllusion": kindMelee, "FlyingScimitar": kindFlyer,
 
 	// casters / ranged
-	"OblivionKnight": kindCaster, "Vampire": kindCaster, "SuccubusWitch": kindCaster, "FingerMage": kindCaster,
-	"ZakarumPriest": kindCaster, "HighPriest": kindCaster, "Imp": kindCaster, "MinionSpawner": kindCaster,
-	"Nihlathak": kindCaster, "ShadowMaster": kindCaster, "ShadowMasterNoInit": kindCaster, "Hydra": kindTurret,
+	"FingerMage": kindCaster,
+	"HighPriest": kindCaster, "Imp": kindCaster, "MinionSpawner": kindCaster,
+	"Hydra": kindTurret,
 
 	// flyers
-	"BloodHawk": kindFlyer, "Mosquito": kindFlyer, "WillOWisp": kindFlyer, "Raven": kindPet,
+	"BloodHawk": kindFlyer, "Mosquito": kindFlyer, 
 	"BladeCreeper": kindFlyer, "MaggotEgg": kindInert,
 
 	// stationary shooters
-	"GargoyleTrap": kindTurret, "EvilHole": kindTurret, "Trap-Missile": kindTurret,
-	"Trap-RightArrow": kindTurret, "Trap-LeftArrow": kindTurret, "Trap-Poison": kindTurret,
-	"Trap-Nova": kindTurret, "DesertTurret": kindTurret, "ArcaneTower": kindTurret, "SiegeTower": kindTurret,
+	"GargoyleTrap": kindTurret, "EvilHole": kindTurret, 
+	"DesertTurret": kindTurret, "ArcaneTower": kindTurret, 
 	"Catapult": kindTurret, "CatapultSpotter": kindTurret, "AssassinSentry": kindTurret,
-	"DeathSentry": kindTurret, "SandMaggotQueen": kindTurret,
+	"DeathSentry": kindTurret, 
 
 	// summoned pets: follow the owner like a mercenary
-	"NecroPet": kindPet, "DruidWolf": kindPet, "DruidBear": kindPet,
+	"DruidWolf": kindPet, "DruidBear": kindPet,
 
 	// non-combat by design
-	"Npc": kindInert, "NpcOutOfTown": kindInert, "NpcStationary": kindInert, "Towner": kindInert,
-	"Vendor": kindInert, "GoodNpcRanged": kindInert, "TownRogue": kindInert, "Navi": kindInert,
-	"JarJar": kindInert, "NpcBarb": kindInert, "Wussie": kindInert, "Buffy": kindInert,
-	"Sarcophagus": kindInert, "HellMeteor": kindInert, "FoulCrowNest": kindInert, "MosquitoNest": kindInert,
+	"GoodNpcRanged": kindInert, 
+	"JarJar": kindInert, "Buffy": kindInert,
+	"HellMeteor": kindInert, "FoulCrowNest": kindInert, "MosquitoNest": kindInert,
 	"InvisoSpawner": kindInert, "GenericSpawner": kindInert, "BoneWall": kindInert, "InvisoPet": kindInert,
-	"Totem": kindInert, "Vines": kindInert, "CycleOfLife": kindInert, "AncientStatue": kindInert,
+	"CycleOfLife": kindInert, "AncientStatue": kindInert,
 }
 
 // DeliberatelyUnported are monai names left to the "idle" stand-in because
-// other work owns them (the Baal-wave tentacles and the Frog Demon phases).
-var DeliberatelyUnported = []string{"Tentacle", "TentacleHead", "FrogDemon"}
+// other work owns them. Empty since Tentacle, TentacleHead and FrogDemon were
+// ported (ai_fb_3.go).
+var DeliberatelyUnported []string
 
 // GenericAIs lists the stand-in names, for tests and tooling.
 func GenericAIs() []string {
