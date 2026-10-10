@@ -259,7 +259,9 @@ var townExtras = map[int][]struct {
 	DX, DY int
 }{
 	d2level.KurastDocks: {{"hratli", 5, -4}},
-	d2level.Harrogath:   {{"larzuk", 4, 3}},
+	// Nihlathak (monstats "nihlathak", 514) is a town NPC of Harrogath too; the real townWest.ds1 does not carry him
+	// (the TOWN NPC list of the preset build has no class 514). His spot is a GUESS.
+	d2level.Harrogath: {{"larzuk", 4, 3}, {"nihlathak", -4, 5}},
 }
 
 func (g *MapGenerator) placeTownExtras(levelID, sx, sy int) {
