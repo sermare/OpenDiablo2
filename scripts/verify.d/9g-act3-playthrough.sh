@@ -37,7 +37,7 @@ scenario_env() {
     # the Travincal stairs stay sealed until the Compelling Orb is smashed (d2level.CheckActThreeWarp): Khalim's Will done
     s+=";say:completequest 3 2"; hop 100; hop 83
     s+=";wait:8;say:spawnportal 75;use:Portal;expect:level=75;wait:3;say:capframe $tmp/act3-portal.png"
-    echo "export OD2_AUTOGAME=\"$a3/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a3/wb94\" OD2_POPULATE_DENSITY=25 OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0"
+    echo "export OD2_AUTOGAME=\"$a3/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a3/wb94\" OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0"
     echo "export OD2_AUTOSCRIPT='$s;exit'"
   else
     echo "# no revived sample (D2_TABLES unset or the tool failed)" >&2
@@ -70,9 +70,10 @@ scenario_check() {
   for lvl in 76 77 78 79 80 81 82 83 92 100; do
     grep -E "POPULATE level $lvl " $log.txt | grep -qE "[1-9][0-9]* monsters" || { echo "FAIL: level $lvl got no monsters"; fail=1; }
   done
-  # Spider Cavern (a super unique), the Swampy Pit and the Flayer Dungeon carry their monsters in the DS1 (the natural groups can skip those blocks)
+  # Spider Cavern (a super unique), the Swampy Pit and the Flayer Dungeon carry their monsters in the DS1 (the natural groups can skip those blocks); since pass5 the DS1 monsters of mazes are created by the population plan, so a POPULATE line counts too
   for lvl in 85 86 88; do
-    grep -A3 "real maze: level $lvl " $log.txt | grep -qE "DS1 monsters: ([1-9][0-9]* direct|.* [1-9][0-9]* super uniques)" || { echo "FAIL: level $lvl got no monsters"; fail=1; }
+    { grep -A3 "real maze: level $lvl " $log.txt | grep -qE "DS1 monsters: ([1-9][0-9]* direct|.* [1-9][0-9]* super uniques)" \
+      || grep -E "POPULATE level $lvl " $log.txt | grep -qE "[1-9][0-9]* monsters"; } || { echo "FAIL: level $lvl got no monsters"; fail=1; }
   done
   grep -q "MONSTER death" $log.txt || { echo "FAIL: nothing was killed"; fail=1; }
   grep -q "DEATH hero=" $log.txt && { echo "FAIL: the level 94 hero died on the way"; fail=1; }
