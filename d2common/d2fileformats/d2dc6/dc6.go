@@ -1,6 +1,8 @@
 package d2dc6
 
 import (
+	"fmt"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2datautils"
 )
 
@@ -10,6 +12,11 @@ const (
 
 	terminationSize = 4
 	terminatorSize  = 3
+
+	// limits for untrusted files (real sprites are far below them)
+	maxDirections  = 64
+	maxFrameDim    = 4096
+	maxFramePixels = 1 << 24
 )
 
 type scanlineState int
@@ -69,6 +76,12 @@ func (d *DC6) Unmarshal(data []byte) error {
 	err = d.loadHeader(r)
 	if err != nil {
 		return err
+	}
+
+	// every frame has a 4 byte pointer and a 32 byte header: the counts must fit in the file
+	if d.Directions > maxDirections || uint64(d.Directions)*uint64(d.FramesPerDirection) > r.Remaining()/4 {
+		return fmt.Errorf("dc6: %d directions of %d frames do not fit in %d bytes",
+			d.Directions, d.FramesPerDirection, r.Remaining())
 	}
 
 	frameCount := int(d.Directions * d.FramesPerDirection)
@@ -209,15 +222,29 @@ func (d *DC6) Marshal() []byte {
 
 // DecodeFrame decodes the given frame to an indexed color texture
 func (d *DC6) DecodeFrame(frameIndex int) []byte {
+	if frameIndex < 0 || frameIndex >= len(d.Frames) || d.Frames[frameIndex] == nil {
+		return nil
+	}
+
 	frame := d.Frames[frameIndex]
+
+	// the dimensions come from the file: refuse sizes no sprite has
+	if frame.Width > maxFrameDim || frame.Height > maxFrameDim || frame.Width*frame.Height > maxFramePixels {
+		return nil
+	}
 
 	indexData := make([]byte, frame.Width*frame.Height)
 	x := 0
 	y := int(frame.Height) - 1
 	offset := 0
+	width := int(frame.Width)
 
 loop: // this is a label for the loop, so the switch can break the loop (and not the switch)
 	for {
+		if offset >= len(frame.FrameData) {
+			break // truncated frame
+		}
+
 		b := int(frame.FrameData[offset])
 		offset++
 
@@ -235,7 +262,15 @@ loop: // this is a label for the loop, so the switch can break the loop (and not
 			x += transparentPixels
 		case runOfOpaquePixels:
 			for i := 0; i < b; i++ {
-				indexData[x+y*int(frame.Width)+i] = frame.FrameData[offset]
+				if offset >= len(frame.FrameData) {
+					break loop // truncated frame
+				}
+
+				// runs that leave the row are clipped (a row never wraps into the next one)
+				if px := x + i; px < width && y >= 0 {
+					indexData[px+y*width] = frame.FrameData[offset]
+				}
+
 				offset++
 			}
 

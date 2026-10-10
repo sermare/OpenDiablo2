@@ -5,6 +5,7 @@ import "testing"
 // FuzzParse feeds arbitrary bytes to the key binding parser; it must never panic.
 func FuzzParse(f *testing.F) {
 	f.Add([]byte{})
+	f.Add(synthetic().Marshal())
 	f.Add(make([]byte, 8))
 	f.Add(make([]byte, 400))
 	f.Fuzz(func(t *testing.T, data []byte) {

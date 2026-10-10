@@ -70,7 +70,7 @@ const (
 	miniMisc      = "name\tcode\ttype\tstackable\tnodurability\nKey\tkey\tkey\t1\t1\nTome\ttbk\tbook\t1\t1\n"
 )
 
-func miniTables(t *testing.T) *ItemTables {
+func miniTables(t testing.TB) *ItemTables {
 	t.Helper()
 
 	tb, err := NewItemTables([]byte(miniStatCost), []byte(miniArmor), []byte(miniWeapons),

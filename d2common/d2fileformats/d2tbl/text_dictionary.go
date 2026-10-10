@@ -94,6 +94,10 @@ func (td TextDictionary) loadHashEntry(idx int, hashEntry *textDictionaryHashEnt
 		}
 
 		key += string(b)
+
+		if len(key) > maxKeyLength {
+			return fmt.Errorf("key of entry %d is longer than %d bytes", idx, maxKeyLength)
+		}
 	}
 
 	if key == "x" || key == "X" {
@@ -118,7 +122,9 @@ type textDictionaryHashEntry struct {
 }
 
 const (
-	crcByteCount = 2
+	hashEntrySize = 17  // bytes of one hash table entry
+	maxKeyLength  = 256 // longest key accepted; real keys are a few dozen bytes
+	crcByteCount  = 2
 )
 
 // LoadTextDictionary loads the text dictionary from the given data
@@ -170,6 +176,11 @@ func LoadTextDictionary(dictionaryData []byte) (TextDictionary, error) {
 		if err != nil {
 			return nil, fmt.Errorf("reading element index %d: %v", i, err)
 		}
+	}
+
+	// a hash table entry is 17 bytes in the file: a hostile size must not allocate gigabytes
+	if err = d2datautils.CheckCount("hash table", int64(hashTableSize), hashEntrySize, br.Remaining()); err != nil {
+		return nil, err
 	}
 
 	hashEntries := make([]*textDictionaryHashEntry, hashTableSize)
@@ -231,7 +242,7 @@ func (td *TextDictionary) Marshal() []byte {
 
 		sw.PushUint32(uint32(dataPos))
 
-		if key[0] == '#' {
+		if len(key) > 0 && key[0] == '#' {
 			// 1 for X, and 1 for separator
 			dataPos += 2
 		} else {
@@ -248,7 +259,7 @@ func (td *TextDictionary) Marshal() []byte {
 	for _, key := range keys {
 		value := (*td)[key]
 
-		if key[0] == '#' {
+		if len(key) > 0 && key[0] == '#' {
 			key = "x"
 		}
 
