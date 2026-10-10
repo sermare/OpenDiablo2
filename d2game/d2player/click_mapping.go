@@ -57,6 +57,12 @@ type WorldClickInput struct {
 	Mod         d2enum.KeyMod
 	OverMonster bool // a living monster is under the cursor
 	LeftSkillID int  // skills.txt id of the left skill
+
+	// InTown is true while the hero is in town, and LeftSkillInTown whether the left skill may be used there
+	// (skills.txt InTown). In town a left skill that cannot be used just walks, as in the original: a spell on
+	// the left button never leaves the hero unable to walk around the camp.
+	InTown          bool
+	LeftSkillInTown bool
 }
 
 // ResolveWorldClick decides what a click on the world does, following the
@@ -80,6 +86,10 @@ func ResolveWorldClick(in WorldClickInput) WorldAction {
 			return WorldAttack
 		}
 
+		return WorldMove
+	}
+
+	if in.InTown && !in.LeftSkillInTown {
 		return WorldMove
 	}
 

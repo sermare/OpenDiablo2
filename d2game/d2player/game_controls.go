@@ -642,7 +642,10 @@ func (g *GameControls) worldClick(button d2enum.MouseButton, mod d2enum.KeyMod, 
 	in := WorldClickInput{Button: button, Mod: mod, OverMonster: g.hoveredMonster() != nil}
 	if g.hero.LeftSkill != nil {
 		in.LeftSkillID = g.hero.LeftSkill.ID
+		in.LeftSkillInTown = g.hero.LeftSkill.SkillRecord != nil && g.hero.LeftSkill.SkillRecord.InTown
 	}
+
+	in.InTown = g.hero.IsInTown()
 
 	act := ResolveWorldClick(in)
 	if button == d2enum.MouseButtonLeft && act == WorldCastLeft && d2gamepad.Default().Walking() {
