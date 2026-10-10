@@ -5,7 +5,7 @@ Act 1 to 5 chain one scenario at a time through `scripts/verify.sh` with `OD2_HE
 `d2core/d2hero/herogen` (`scripts/verify.d/lib/hero.sh`), except 9b, which starts a brand new level 1 hero of the class.
 The scripted fights cast the class' left skill (`d2game/d2gamescreen/fightskill.go`), real combat, no god mode.
 
-Last update 2026-10-10 03:31, commit `513d1a03`, 7 run(s) in the table. A cell is *result runtime deaths*:
+Last update 2026-10-10 03:48, commit `421fb94b`, 7 run(s) in the table. A cell is *result runtime deaths*:
 `PASS` / `PASS*` (passed on the second attempt that verify.sh makes) / `FAIL`, wall clock, deaths of the hero (`d`).
 
 | class | 9b Act 1 (fresh) | 9e Act 2 | 9g Act 3 | 9h Acts 4+5 | 9i Act 5 caves | total | deaths | passed |
