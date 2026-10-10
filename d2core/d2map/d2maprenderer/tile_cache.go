@@ -21,8 +21,21 @@ const (
 	tileSurfaceHeight = 80
 )
 
+// resetLevelCaches drops everything cached for the previous level.
+func (mr *MapRenderer) resetLevelCaches() {
+	// The cached tile images are keyed by (style, sequence, type, variant) only, and the same key means a
+	// different graphic in every level type and palette. Without this reset a level change kept the
+	// previous level's images: Lut Gholein drew Rogue Encampment grass on the tiles both share
+	// (Act-1 looking green tiles in later acts).
+	mr.imageCacheRecords = nil
+	mr.blankShadows = nil
+	mr.light.resetFades()
+}
+
 func (mr *MapRenderer) generateTileCache() {
 	var err error
+
+	mr.resetLevelCaches()
 	mr.palette, err = mr.loadPaletteForAct(d2enum.RegionIdType(mr.mapEngine.LevelType().ID))
 
 	if err != nil {

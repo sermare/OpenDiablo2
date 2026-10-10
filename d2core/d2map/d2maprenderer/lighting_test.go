@@ -109,3 +109,23 @@ func TestAdvanceLightingRebuildsEachTick(t *testing.T) {
 		t.Errorf("far cell %v should be base", far)
 	}
 }
+
+// A level change must not keep the previous level's tile images or wall fades.
+func TestResetLevelCaches(t *testing.T) {
+	mr := &MapRenderer{light: newLighting()}
+	mr.setImageCacheRecord(0, 1, 0, 0, nil)
+	mr.blankShadows = map[uint32]bool{1: true}
+	mr.light.fades[wallKey{1, 2, 3}] = &wallFade{alpha: 0.5}
+
+	mr.resetLevelCaches()
+
+	if mr.getImageCacheRecord(0, 1, 0, 0) != nil || len(mr.imageCacheRecords) != 0 {
+		t.Error("image cache survived a level change")
+	}
+
+	if len(mr.blankShadows) != 0 || len(mr.light.fades) != 0 {
+		t.Error("shadow or fade state survived a level change")
+	}
+
+	(&MapRenderer{}).resetLevelCaches() // no lighting yet must not panic
+}

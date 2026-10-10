@@ -306,3 +306,14 @@ func (l *lighting) fadeFor(key wallKey, covering bool) float64 {
 
 	return f.alpha
 }
+
+// resetFades forgets the wall fades (on a level change).
+func (l *lighting) resetFades() {
+	if l == nil {
+		return
+	}
+
+	for k := range l.fades {
+		delete(l.fades, k)
+	}
+}
