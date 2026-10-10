@@ -168,6 +168,7 @@ type Game struct {
 	aiTest               *aiAutoTest
 	bossTest             *bossAutoTest
 	uber                 *uberRuntime
+	chaos                *chaosRuntime
 	uberTest             *uberAutoTest
 	merc                 mercGame
 	skills               *d2skills.Engine
@@ -223,7 +224,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"level", "0|1"}, v.commandSetWaypoint},
 		{"completequest", "marks quest <act> <quest> done for the hero (debug)",
 			[]string{"act", "quest"}, v.commandCompleteQuest},
-		{"resetquests", "clears the hero's quest record in memory (debug)", nil, v.commandResetQuests},
+		{"restorevitals", "fills the hero's life and mana (debug)", nil, v.commandRestoreVitals},
+		{"resetquests","clears the hero's quest record in memory (debug)", nil, v.commandResetQuests},
 		{"travelfree", "1 lets act travel skip the quest and NPC rules (debug), 0 restores them",
 			[]string{"0|1"}, v.commandTravelFree},
 		{"travel", "travels to the town of an act through the act travel rules",

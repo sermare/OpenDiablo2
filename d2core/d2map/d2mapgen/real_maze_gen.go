@@ -479,6 +479,8 @@ func (g *MapGenerator) logWalkMap(heroX, heroY float64) {
 		mon[[2]int{int(p.X()) / subtilesPerTile, int(p.Y()) / subtilesPerTile}] = true
 	}
 
+	reach := g.engine.ReachableFrom(int(heroX*subtilesPerTile), int(heroY*subtilesPerTile))
+
 	for y := 0; y < size.Height; y++ {
 		row := make([]byte, size.Width)
 
@@ -494,6 +496,8 @@ func (g *MapGenerator) logWalkMap(heroX, heroY float64) {
 				row[x] = '#'
 			case f.BlockWalk:
 				row[x] = 'x'
+			case reach != nil && !reach.At(x*subtilesPerTile+middleOfTile, y*subtilesPerTile+middleOfTile):
+				row[x] = 'o' // walkable but not connected to the hero's start
 			default:
 				row[x] = '.'
 			}

@@ -20,10 +20,21 @@ const (
 	packPerMember = 2  // extra radius per member
 	packMaxRadius = 24 // never search farther than this
 	roomFreeRing  = 8  // ring searched for a free centre cell inside a room
+	// roomCentreTries is how many centres a room draws while looking for reachable ground.
+	roomCentreTries = 12
 )
 
 // Room is a rectangle of subtiles that can be populated.
-type Room struct{ X0, Y0, W, H int }
+type Room struct {
+	X0, Y0, W, H int
+	// WalkTiles is the number of tiles of the room the hero can reach; the group
+	// count follows it instead of the whole rectangle (0 = the whole rectangle).
+	WalkTiles int
+	// Reach, when set, says whether a subtile is ground the hero can reach; group
+	// centres are drawn until one lies on such ground (a lava sea or a cliff top
+	// inside the rectangle must not take a pack).
+	Reach func(x, y int) bool
+}
 
 // PackResult is a spawned natural group.
 type PackResult struct {
@@ -296,7 +307,12 @@ func (d *Director) PopulateRoom(room Room, levelID int) ([]*PackResult, error) {
 
 	types := d2monster.PickLevelTypes(d.packRNG, list, det.NumMonsterTypes, det.MonsterPreferRanged)
 	density := [3]int{det.MonsterDensityNormal, det.MonsterDensityNightmare, det.MonsterDensityHell}[d.opt.Difficulty]
-	groups := d2monster.GroupsForRoomFrac(room.W*room.H/(subtilesPerTile*subtilesPerTile), density,
+	tiles := room.W * room.H / (subtilesPerTile * subtilesPerTile)
+	if room.WalkTiles > 0 && room.WalkTiles < tiles {
+		tiles = room.WalkTiles
+	}
+
+	groups := d2monster.GroupsForRoomFrac(tiles, density,
 		d2monster.AvgGroupSize(types), func(n int) int { return int(d.packRNG.Roll(int32(n))) })
 
 	var out []*PackResult
@@ -308,9 +324,23 @@ func (d *Director) PopulateRoom(room Room, levelID int) ([]*PackResult, error) {
 		}
 
 		stat := d.statByID[ci.Class]
-		centre := d2path.Point{X: room.X0 + int(d.packRNG.Roll(int32(room.W))), Y: room.Y0 + int(d.packRNG.Roll(int32(room.H)))}
+		var free d2path.Point
 
-		free, ok := d2path.NearestFree(d.fp, d2path.MaskMonster|d2path.MaskUnits, centre, roomFreeRing)
+		ok = false
+
+		for try := 0; try < roomCentreTries && !ok; try++ {
+			centre := d2path.Point{X: room.X0 + int(d.packRNG.Roll(int32(room.W))), Y: room.Y0 + int(d.packRNG.Roll(int32(room.H)))}
+
+			free, ok = d2path.NearestFree(d.fp, d2path.MaskMonster|d2path.MaskUnits, centre, roomFreeRing)
+			if ok && room.Reach != nil && !room.Reach(free.X, free.Y) {
+				ok = false
+			}
+
+			if room.Reach == nil {
+				break // one draw, as before
+			}
+		}
+
 		if !ok {
 			continue
 		}

@@ -169,9 +169,14 @@ and need no fix, they only need the 10 s since the last level change that the or
 
 ## What Acts 4 and 5 do not do yet
 
-* The Chaos Sanctuary is built from 25 preset stamps of its 225 rooms (the exact tile path stops at "animated preset
-  tiles (0x66ff50 / 0x6703e0)", the level has no plain rooms): only the entry area has a floor, the rest is black, and
-  about 170 of its 200 monsters are removed as unreachable. The seals, Diablo and the star are not playable.
+* The Chaos Sanctuary (108, 25 preset stamps) is walkable as the cross of its floor (star, four arms, entry); the lava
+  between is not ground (the exact tiles are in place, `OD2_AUTOMAP_ASCII=1` marks walkable-but-cut-off ground with
+  `o`). Populating now draws packs on ground the hero can reach (0 removed as unreachable, but only a dozen monsters:
+  Levels.txt density over the reachable area). The five seals are operable (`chaos.go`, `d2boss.Seals`): the seal
+  bosses appear at the exe's dummy offset, or on the nearest reachable ground when that falls behind a wall (the Grand
+  Vizier, Infector and De Seis dummies all do here, UNVERIFIED which is right), Diablo arrives at dummy 255 after the
+  last boss dies and can be killed. `9j-chaos-sanctuary.sh` plays all of it. Leaving and re-entering the level
+  rebuilds it without the seal state of the objects (the encounter state is kept).
 * The River of Flame has 25-50 unreachable monsters removed (the generated rooms are not all joined by floor), the
   Hellforge room is stamped but its objects are not played, and the bridge exit has six tiles of three styles
   (which one the original uses is not decided; all lead to 108).

@@ -61,6 +61,10 @@ func (v *Game) populateLevel() {
 	groups, blocks := 0, 0
 	natural := map[*d2mapentity.Monster]bool{}
 
+	// the ground the hero can reach from where he arrives: packs are drawn there only (a lava sea or the
+	// top of a cliff inside a block is no ground), and a block is judged by its reachable share
+	reach := m.ReachableFrom(int(hx*subtiles), int(hy*subtiles))
+
 	// a block that already holds a monster (DS1 markers) is left alone
 	occupied := map[[2]int]bool{}
 
@@ -83,13 +87,17 @@ func (v *Game) populateLevel() {
 				}
 
 				w, h := minInt(populateBlockTiles, size.Width-x0), minInt(populateBlockTiles, size.Height-y0)
-				if v.walkableShare(x0, y0, w, h) < minShare {
+				if v.walkableShare(x0, y0, w, h, reach) < minShare {
 					continue
 				}
 
 				blocks++
 
 				room := d2monsters.Room{X0: x0 * subtiles, Y0: y0 * subtiles, W: w * subtiles, H: h * subtiles}
+				if reach != nil {
+					room.Reach = reach.At
+					room.WalkTiles = int(v.walkableShare(x0, y0, w, h, reach)*float64(w*h) + 0.5)
+				}
 
 				res, err := v.monsters.PopulateRoom(room, level)
 				if err != nil {
@@ -222,7 +230,7 @@ func (v *Game) heroSubtile() [2]int {
 	return [2]int{int(x * subtiles), int(y * subtiles)}
 }
 
-func (v *Game) walkableShare(x0, y0, w, h int) float64 {
+func (v *Game) walkableShare(x0, y0, w, h int, reach *d2mapengine.Reachable) float64 {
 	m := v.gameClient.MapEngine
 	total, ok := 0, 0
 
@@ -230,7 +238,7 @@ func (v *Game) walkableShare(x0, y0, w, h int) float64 {
 		for sx := x0 * subtiles; sx < (x0+w)*subtiles; sx++ {
 			total++
 
-			if !m.WalkBlocked(sx, sy) {
+			if !m.WalkBlocked(sx, sy) && (reach == nil || reach.At(sx, sy)) {
 				ok++
 			}
 		}

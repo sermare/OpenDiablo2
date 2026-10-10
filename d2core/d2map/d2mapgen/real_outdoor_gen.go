@@ -14,6 +14,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapstamp"
 )
 
@@ -310,6 +311,8 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 		levelID, seed, len(lv.Rooms), plain, exact, presets, p.Rect.W, p.Rect.H)
 	g.Infof("real outdoor: hero entry at tile (%.1f,%.1f) %s", sx, sy, how)
 
+	g.logBossObjects(levelID)
+
 	if os.Getenv("OD2_AUTOMAP_ASCII") != "" {
 		g.logWalkMap(sx, sy)
 	}
@@ -318,6 +321,27 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 		mon.direct, mon.place, mon.super, mon.groups, mon.skipped)
 
 	return nil
+}
+
+// logBossObjects logs the quest objects of the Chaos Sanctuary the encounters
+// care about (seals 392..396, the Diablo start dummy 255, the seal dummies 131)
+// with their position.
+func (g *MapGenerator) logBossObjects(levelID int) {
+	if levelID != 108 {
+		return
+	}
+
+	for _, e := range g.engine.Entities() {
+		ob, ok := e.(*d2mapentity.Object)
+		if !ok {
+			continue
+		}
+
+		if id := ob.Record().Index; id >= 392 && id <= 396 || id == 255 || id == 131 {
+			x, y := ob.GetPositionF()
+			g.Infof("real outdoor: level %d object id=%d %q at subtile (%.1f,%.1f)", levelID, id, ob.Label(), x, y)
+		}
+	}
 }
 
 // placeExactTiles sets the map cells of all rooms from the exact tile records
