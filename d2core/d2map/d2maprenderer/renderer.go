@@ -68,6 +68,7 @@ type MapRenderer struct {
 	entBuckets          map[[2]int]*entityBucket // per-frame entity index, see indexEntities
 	entFree             []*entityBucket
 	shadeVals           []color.RGBA // scratch for renderShadedImage
+	roofCover           map[[2]int]bool // roof tiles fading out because the hero is under them
 
 	*d2util.Logger
 }
@@ -398,6 +399,8 @@ func (mr *MapRenderer) getEntitiesAboveWalls(tileX, tileY int) []d2interface.Map
 
 // Roof tiles.
 func (mr *MapRenderer) renderPass4(target d2interface.Surface, startX, startY, endX, endY int) {
+	mr.updateRoofCover()
+
 	for tileY := startY; tileY < endY; tileY++ {
 		for tileX := startX; tileX < endX; tileX++ {
 			tile := mr.mapEngine.TileAt(tileX, tileY)
@@ -497,11 +500,41 @@ func (mr *MapRenderer) renderRoof(tile d2ds1.Tile, viewport *Viewport, target d2
 	defer target.Pop()
 
 	if mr.light.active() {
-		target.PushColor(mr.light.ambientTint())
+		alpha := mr.light.roofAlpha(wallKey{tileX, tileY, idx}, mr.roofCover[[2]int{tileX, tileY}])
+		if alpha <= 0 {
+			return
+		}
+
+		target.PushColor(withAlpha(mr.light.ambientTint(), alpha))
 		defer target.Pop()
 	}
 
 	target.Render(img)
+}
+
+// updateRoofCover recomputes which roof tiles the hero is under (see roof_fade.go).
+func (mr *MapRenderer) updateRoofCover() {
+	mr.roofCover = nil
+	if !mr.light.active() {
+		return
+	}
+
+	hx, hy := int(mr.light.input.HeroX), int(mr.light.input.HeroY)
+	size := mr.mapEngine.Size()
+
+	mr.roofCover = roofRegion(func(x, y int) bool {
+		if x < 0 || y < 0 || x >= size.Width || y >= size.Height {
+			return false
+		}
+
+		for _, w := range mr.mapEngine.TileAt(x, y).Components.Walls {
+			if w.Type == d2enum.TileRoof && !w.Hidden() && w.Prop1 != 0 {
+				return true
+			}
+		}
+
+		return false
+	}, hx, hy)
 }
 
 // heroBehind reports whether the hero is hidden by the wall tile whose image is
