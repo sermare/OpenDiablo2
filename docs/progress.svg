@@ -29,11 +29,11 @@
 <text x="36" y="72" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#b8b9d6">driven by Claude · counts come from code, tests and Ghidra; estimates are marked with ~ · dashed = on branches, not yet verified</text>
 <text x="844" y="46" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">updated 2026-10-09</text>
 <text x="36" y="114" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Game v1 complete</text>
-<text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">58%</text>
+<text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">64%</text>
 <rect x="36" y="128" width="808" height="26" rx="13" fill="#ffffff" fill-opacity="0.08"/>
-<rect x="36" y="128" width="528.2" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
-<rect x="36" y="128" width="468.4" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
-<text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +7% on branches, not yet verified</text>
+<rect x="36" y="128" width="530.1" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
+<rect x="36" y="128" width="520.1" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
+<text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +1% on branches, not yet verified</text>
 <text x="36" y="192" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#8c8eb0">v1 = double-click the Mac app, make or load a character, play Acts 1-5 single player without a blocker</text>
 <text x="36" y="226" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Game.exe functions named in Ghidra</text>
 <text x="844" y="226" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11,257 / 11,257</text>
@@ -60,12 +60,11 @@
 <text x="844" y="486" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2f9bff">69%</text>
 <text x="36" y="507" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting</text>
 <text x="36" y="538" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Level generator proven equal to the real game</text>
-<text x="844" y="538" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">8,708 / 8,768</text>
+<text x="844" y="538" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">8,768 / 8,768</text>
 <rect x="36" y="550" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="550" width="732.9" height="18" rx="9" fill="url(#g4)" filter="url(#glow)"/>
-<rect x="768.9" y="550" width="5.1" height="18" rx="9" fill="#22c1c3" fill-opacity="0.28" stroke="#22c1c3" stroke-opacity="0.6" stroke-dasharray="4 3"/>
-<text x="844" y="564" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#22c1c3">99.3%</text>
-<text x="36" y="585" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+1% done on branches, not yet verified (dashed) · mazes + Act 1 outdoors + exact Act 1 tiles + Acts 2-5 outdoor/preset generators all proven in Go against the emulator; on branches: all 70 maze levels (2,696 rooms) and presets 26/27/32/33/37/94/97 now match the emulator record for record (427 levels, 30,129 rooms, 0 mismatches), not yet landed</text>
+<rect x="36" y="550" width="738.0" height="18" rx="9" fill="url(#g4)" filter="url(#glow)"/>
+<text x="844" y="564" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#22c1c3">100%</text>
+<text x="36" y="585" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">mazes, Act 1-5 outdoors and presets all match the emulator record for record (427 levels, 30,129 rooms, 0 mismatches), including the seven preset levels and exact maze tiles; landed</text>
 <text x="36" y="616" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real .d2s save: read and write verified</text>
 <text x="844" y="616" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">9 / 10</text>
 <rect x="36" y="628" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -79,12 +78,11 @@
 <text x="844" y="720" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ef5da8">100%</text>
 <text x="36" y="741" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">click-walk · greeting · menu · return greeting · vendors · gamble · identify · mercenary hire · quest dialogue ✓ (Act 1)</text>
 <text x="36" y="772" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Acts playable end to end (scripted play)</text>
-<text x="844" y="772" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">4 / 5</text>
+<text x="844" y="772" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">5 / 5</text>
 <rect x="36" y="784" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="784" width="590.4" height="18" rx="9" fill="url(#g7)" filter="url(#glow)"/>
-<rect x="626.4" y="784" width="147.6" height="18" rx="9" fill="#ff7a45" fill-opacity="0.28" stroke="#ff7a45" stroke-opacity="0.6" stroke-dasharray="4 3"/>
-<text x="844" y="798" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">80%</text>
-<text x="36" y="819" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+20% done on branches, not yet verified (dashed) · Acts 1, 2, 4 and the start of 5 pass a scripted walk; the Act 3 playthrough is on a branch</text>
+<rect x="36" y="784" width="738.0" height="18" rx="9" fill="url(#g7)" filter="url(#glow)"/>
+<text x="844" y="798" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">100%</text>
+<text x="36" y="819" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">Acts 1, 2, 3, 4 and 5 each pass a scripted real-combat playthrough on the landed tree (2e50f0e4): Act 1 752 s, Act 2 484 s, Act 3 874 s, Act 4 and the start of Act 5 in the full verify, Act 5 caves 574 s</text>
 <text x="36" y="850" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Levels walked by a verify scenario</text>
 <text x="844" y="850" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">38 / 136</text>
 <rect x="36" y="862" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -118,11 +116,11 @@
 <text x="844" y="1188" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#6c8cff">57%</text>
 <text x="36" y="1209" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">~85: implemented minus about 60 stand-ins (estimate)</text>
 <text x="36" y="1240" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">In-game UI panels matching the original layout</text>
-<text x="844" y="1240" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">0 / 14</text>
+<text x="844" y="1240" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">8 / 14</text>
 <rect x="36" y="1252" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36.0" y="1252" width="421.7" height="18" rx="9" fill="#c58bff" fill-opacity="0.28" stroke="#c58bff" stroke-opacity="0.6" stroke-dasharray="4 3"/>
-<text x="844" y="1266" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#c58bff">0%</text>
-<text x="36" y="1287" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+57% done on branches, not yet verified (dashed) · 14 panels; a layout audit covering 5 is on a branch, never run in a game; update: the layout was then run in a real game window on a branch (150 rectangles checked, 0 deviating) but that branch is not landed</text>
+<rect x="36" y="1252" width="421.7" height="18" rx="9" fill="url(#g13)" filter="url(#glow)"/>
+<text x="844" y="1266" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#c58bff">57%</text>
+<text x="36" y="1287" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">8 of 14 panels checked in a real game window against the original numbers (150 rectangles, 0 deviating, scenario 9f-ui-layout); 6 panels still unchecked (hireling panel, hirelings list and a few others are on held branches)</text>
 <text x="36" y="1318" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Item generation gaps closed vs the exe</text>
 <text x="844" y="1318" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11 / 12</text>
 <rect x="36" y="1330" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -146,11 +144,12 @@
 <text x="844" y="1578" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#9be564">67%</text>
 <text x="36" y="1599" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">app builds and launches with real maps (verified); disk image built but not tested by a human</text>
 <text x="36" y="1630" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real full verify green (scenario sections per job, real parallel log)</text>
-<text x="844" y="1630" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">71 / 74</text>
+<text x="844" y="1630" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">177 / 180</text>
 <rect x="36" y="1642" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="1642" width="708.1" height="18" rx="9" fill="url(#g18)" filter="url(#glow)"/>
-<text x="844" y="1656" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#3ddc84">96%</text>
-<text x="36" y="1677" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">scripts/verify_parallel.sh run 47389 (6 jobs): 74 distinct sections ran, 71 green, 3 red (Act 3 gate, skill bar, act travel); 4 of 6 jobs ALL CHECKS PASSED; 360 Go tests PASS, 0 FAIL; a landing verify of the combined branch is in flight (not counted until it finishes)</text>
+<rect x="36" y="1642" width="725.7" height="18" rx="9" fill="url(#g18)" filter="url(#glow)"/>
+<rect x="761.7" y="1642" width="12.3" height="18" rx="9" fill="#3ddc84" fill-opacity="0.28" stroke="#3ddc84" stroke-opacity="0.6" stroke-dasharray="4 3"/>
+<text x="844" y="1656" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#3ddc84">98%</text>
+<text x="36" y="1677" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+2% done on branches, not yet verified (dashed) · full verify_parallel.sh 6 run 50637 on 179e61b7: 6 jobs x 30 scenarios, 177 green; the 3 reds (86-class-skills, Act 3 playthrough, Act 5 caves playthrough) were fixed and re-run alone green; the final tree has no second full run</text>
 <text x="36" y="1708" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Acts played start to finish by a human tester</text>
 <text x="844" y="1708" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">0 / 5</text>
 <rect x="36" y="1720" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
