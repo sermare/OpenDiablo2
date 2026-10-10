@@ -52,6 +52,9 @@ type Counters struct {
 	// AreaHits are targets reached by area effects and splash, DotDamage the
 	// poison and burn damage dealt.
 	AreaHits, DotDamage int
+	// EmptyArea counts area states (curses) that landed on nobody: the target
+	// died or moved away between the aim and the effect.
+	EmptyArea int
 	// PvPHits are skill hits on hostile heroes.
 	PvPHits   int
 	ManaSpent int // 8.8
@@ -1165,3 +1168,7 @@ func (e *Engine) explosion(name string, x, y float64) {
 
 	e.fx[ent] = e.frame + life
 }
+
+// Wasted is the casts that did not do their job: refused ones and curses that
+// landed on an empty spot (the OD2_AUTOCAST scenario repeats those).
+func (c Counters) Wasted() int { return c.Refused + c.EmptyArea }
