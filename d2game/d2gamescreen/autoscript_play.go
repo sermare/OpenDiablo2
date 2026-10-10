@@ -53,9 +53,15 @@ type killState struct {
 	name       string  // only monsters whose name contains this (kill:name=), lower case
 }
 
-// matches says whether a monster is one the fight is about (every monster, or the named ones).
-func (k *killState) matches(m *d2mapentity.Monster) bool {
-	return k.name == "" || strings.Contains(strings.ToLower(m.Label()), k.name)
+// isTarget says whether a monster is one the fight is about: a hostile monster (every one, or the named ones); a fight
+// that names its target (kill:name=) may also go for a destructible prop of that name (a prison door).
+func (k *killState) isTarget(m *d2mapentity.Monster) bool {
+	if k.name == "" {
+		return d2monsters.IsHostile(m.Stat)
+	}
+
+	return (d2monsters.IsHostile(m.Stat) || d2monsters.IsDestructibleProp(m.Stat)) &&
+		strings.Contains(strings.ToLower(m.Label()), k.name)
 }
 
 // WalkToExit implements d2autoscript.PlayHost.
@@ -181,7 +187,7 @@ func (v *Game) killAlive(k *killState) int {
 	hx, hy := v.heroTilePos()
 
 	for _, m := range v.monsters.Monsters() {
-		if !m.Alive() || m.Stat == nil || !d2monsters.IsHostile(m.Stat) || !k.matches(m) {
+		if !m.Alive() || m.Stat == nil || !k.isTarget(m) {
 			continue
 		}
 
@@ -202,7 +208,7 @@ func (v *Game) killCandidates(k *killState) []*d2mapentity.Monster {
 	hx, hy := v.heroTilePos()
 
 	for _, m := range v.monsters.Monsters() {
-		if !m.Alive() || m.Stat == nil || !d2monsters.IsHostile(m.Stat) || !k.matches(m) {
+		if !m.Alive() || m.Stat == nil || !k.isTarget(m) {
 			continue
 		}
 

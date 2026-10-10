@@ -444,7 +444,7 @@ func (s *QuestLog) setQuestLabel() {
 		s.questDescr.SetText("")
 	default:
 		str := fmt.Sprintf("qstsa%dq%d%d", s.selectedTab+1, s.selectedQuest, status)
-		descr := s.asset.TranslateString(str)
+		descr := fillCount(str, s.asset.TranslateString(str))
 
 		// if description not found
 		if str == descr {

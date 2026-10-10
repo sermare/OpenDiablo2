@@ -438,6 +438,12 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 
 	g.engine.SetStartPosition(sx, sy)
 
+	// town NPCs the DS1 does not contain (Larzuk in Harrogath): the legacy act town provider places them, the preset
+	// provider did not, so with real maps Harrogath had no Larzuk and the Siege on Harrogath quest could not be taken
+	if _, ok := townExtras[levelID]; ok {
+		g.placeTownExtras(levelID, int(sx), int(sy))
+	}
+
 	g.Infof("real preset: level %d seed %#x: Def %d file %d (%s), %d rooms%s, map %dx%d tiles",
 		levelID, seed, pl.Def, pl.File, path, len(pl.Rooms), exact, pl.Rect.W, pl.Rect.H)
 	g.Infof("real preset: hero entry at tile (%.1f,%.1f) %s", sx, sy, how)

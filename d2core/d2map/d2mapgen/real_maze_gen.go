@@ -352,6 +352,11 @@ func (g *MapGenerator) placeMonsters(stamp *d2mapstamp.Stamp, levelID int, diff 
 
 		if stat == nil {
 			st.skipped++
+
+			if os.Getenv("OD2_DEBUG_MARKERS") != "" {
+				g.Infof("MARKER skipped %s at (%d,%d) level %d", name, x, y, levelID)
+			}
+
 			continue
 		}
 

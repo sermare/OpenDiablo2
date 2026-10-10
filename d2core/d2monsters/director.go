@@ -557,7 +557,7 @@ func (d *Director) adoptPlacements() {
 		npc := pl.npc
 
 		stat := d.statByID[npc.MonstatID()]
-		if stat == nil || !IsHostile(stat) {
+		if stat == nil || !(IsHostile(stat) || IsDestructibleProp(stat)) {
 			continue
 		}
 
@@ -602,6 +602,21 @@ func (d *Director) adoptSuperUnique(npc *d2mapentity.NPC, x, y int) bool {
 		len(res.Monsters)-1)
 
 	return true
+}
+
+// IsDestructibleProp says whether a monstats row is a stationary killable prop that a quest or a fight may destroy:
+// the prison doors of Rescue on Mount Arreat and the barricade doors and towers of Harrogath. They have the AI "Idle"
+// (so IsHostile is false, they never attack) but "killable" is set. Before they were left as plain NPC placements that
+// the hero could not attack, so the prison doors could not be broken.
+func IsDestructibleProp(st *d2records.MonStatRecord) bool {
+	if st == nil || !st.Enabled || st.IsNpc || st.IsInteractable || !st.IsKillable || st.Alignment != 0 {
+		return false
+	}
+
+	key := strings.ToLower(st.Key)
+
+	return strings.HasPrefix(key, "prisondoor") || strings.HasPrefix(key, "barricadedoor") ||
+		strings.HasPrefix(key, "barricadetower")
 }
 
 // IsHostile says whether a monstats row is an enemy the director should run.

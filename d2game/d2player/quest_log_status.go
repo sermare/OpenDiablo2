@@ -2,6 +2,8 @@ package d2player
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 )
@@ -110,8 +112,21 @@ func (s *QuestLog) DescriptionText(act, index int) string {
 
 	key := fmt.Sprintf("qstsa%dq%d%d", act, index, st)
 	if text := s.asset.TranslateString(key); text != key {
-		return text
+		return fillCount(key, text)
 	}
 
 	return ""
+}
+
+// pageCounts are the numbers the pages with a "%d" show ("Rescue %d more Soldiers in the Frigid Highlands",
+// "Break the remaining %d seals"): the quest system does not keep the counts yet, so the page shows the starting number
+// (three groups of five soldiers; four seals after the first). UNVERIFIED. The panel showed the raw "%d" before.
+var pageCounts = map[string]int{"qstsa5q22": 15, "qstsa4q23": 4}
+
+func fillCount(key, text string) string {
+	if !strings.Contains(text, "%d") {
+		return text
+	}
+
+	return strings.ReplaceAll(text, "%d", strconv.Itoa(pageCounts[key]))
 }
