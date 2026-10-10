@@ -21,4 +21,35 @@ scenario_check() {
   # function and the ported ground archetypes act (static tests, no game needed)
   grep -q "AUTOAI start ref=skeleton1 .*implemented=true" $log.txt || { echo "FAIL: subject AI not implemented"; fail=1; }
   go test ./d2common/d2monster/ -run 'TestMonaiTableCoverage|TestNoCommonMonsterIdles|TestMonsterAI4' -count=1 2>&1 | grep -v "ignoring duplicate libraries" | tail -5 | grep -q '^ok' || { echo "FAIL: monster AI archetype tests"; fail=1; }
+  # faithful ports (feat/ai-faithful-a, monsters A..M): one in-game subject per family. Each runs its own short
+  # game (one window at a time) and must start with the ported think function ("implemented=true" and the AI
+  # name) and run without errors; the Go table tests cover the decisions themselves.
+  local main_log=$log ref ai fam sub_cmd sub_slot
+  for fam in baboon1:Baboon fingermage1:FingerMage foulcrow1:BloodHawk gargoyletrap:GargoyleTrap suckernest1:MosquitoNest deathmauler1:DeathMauler cr_lancer1:CorruptLancer; do
+    ref=${fam%%:*}; ai=${fam##*:}
+    sub_cmd=$tmp/97-sub-$ref.command log=$tmp/97-sub-$ref.log; rm -f $log
+    {
+      echo '#!/bin/zsh'
+      echo "export OD2_PORT=$OD2_PORT"
+      echo "export OD2_AUTOGAME=\"$save\" OD2_AUTOEXIT=1 OD2_AUTOTEST_MUTE=1 OD2_AUTOSPEED=4"
+      echo "export OD2_AUTOAI=$ref OD2_AUTOAI_SECONDS=14"
+      echo "$tmp/od2 2>&1 | tee $log"
+    } > $sub_cmd
+    chmod +x $sub_cmd
+    sub_slot=$(./scripts/gameslot.sh acquire $$)
+    launch_game $sub_cmd
+    wait_run
+    ./scripts/gameslot.sh release $sub_slot
+    sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
+    grep -E "AUTOAI (start|summary)" $log.txt | cut -c1-200
+    grep -q "AUTOAI start ref=$ref .* ai=$ai implemented=true" $log.txt || { echo "FAIL: $ref did not start with the ported $ai AI"; fail=1; }
+    grep -q "AUTOAI summary" $log.txt || { echo "FAIL: no AUTOAI summary for $ref"; fail=1; }
+    # the fighters must have acted (attacks or skills in the summary); the nest and the statue are passive here
+    case $ref in gargoyletrap|suckernest1) ;; *)
+      grep "AUTOAI summary ref=$ref " $log.txt | grep -qE "attacks=[1-9]|skills=[1-9]" || { echo "FAIL: $ref never attacked or cast"; fail=1; } ;;
+    esac
+    grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing" | head -3 | grep -q . && { echo "FAIL: errors in the $ref log"; fail=1; }
+  done
+  log=$main_log
+  go test ./d2common/d2monster/ -run 'TestFaithfulA|TestAncientStatue' -count=1 2>&1 | grep -v "ignoring duplicate libraries" | tail -5 | grep -q '^ok' || { echo "FAIL: faithful AI port tests"; fail=1; }
 }
