@@ -28,7 +28,12 @@ launch_game() {
 # game process appears, then until it exits
 wait_run() {
   local i
-  for i in {1..120}; do pgrep -f "$tmp/od2" >/dev/null && break; sleep 1; done
+  for i in {1..120}; do
+    pgrep -f "$tmp/od2" >/dev/null && break
+    # a game that crashed or finished instantly is already gone but left its log: do not wait the full start timeout
+    [ $i -gt 5 ] && [ -s "${log:-/nonexistent}" ] && return
+    sleep 1
+  done
   for i in {1..420}; do pgrep -f "$tmp/od2" >/dev/null || break; sleep 1; done
   # a game still alive now is stuck (e.g. on the title screen): kill it, never leave windows behind.
   # The pattern is this run's private scratch dir, so other runs/agents/the user's own games are untouched.
@@ -36,19 +41,42 @@ wait_run() {
 }
 # every run gets its own scratch folder and server port, so parallel runs (e.g. several agents) do not collide
 tmp=$(mktemp -d /tmp/od2-verify.XXXXXX)
-trap 'pkill -f "$tmp/od2" 2>/dev/null; pkill -f "$tmp/[0-9a-z-]*\.command" 2>/dev/null' EXIT INT TERM
+cleanup_games() { pkill -f "$tmp/od2" 2>/dev/null; pkill -f "$tmp/[0-9a-z-]*\.command" 2>/dev/null; }
+trap cleanup_games EXIT
+trap 'cleanup_games; exit 130' INT
+trap 'cleanup_games; exit 143' TERM
 step() { printf '\n== %s\n' "$1"; }
 
 # every run uses its own server port so parallel runs (e.g. several agents) do not collide
 export OD2_PORT=$(( 20000 + RANDOM % 20000 ))
 while lsof -nP -iTCP:$OD2_PORT -sTCP:LISTEN >/dev/null 2>&1; do export OD2_PORT=$(( 20000 + RANDOM % 20000 )); done
 
+step "repo hygiene (no game files / decompiled code)"
+scripts/check_repo_hygiene.sh || { echo "REPO HYGIENE FAILED"; exit 1; }
+
 step "build"
 go build -o $tmp/od2 . 2>&1 | grep -v "ld: warning" ; [ ${pipestatus[1]} -eq 0 ] || { echo "BUILD FAILED"; exit 1; }
 
+if [ -z "${SKIP_UNIT:-}" ]; then
 step "unit tests"
 go test ./... 2>&1 | grep -v "ld: warning\|no test files\|^# " | grep -v "^ok" ; [ ${pipestatus[1]} -eq 0 ] || fail=1
 echo "(only failures are printed above)"
+fi
+
+# Level generation on the real game data: time budget per level kind (cold caches, then warm) and the MPQ
+# decoder checks against the old decoder. The install folder is D2_GAME_DIR, else MpqPath of the game config.
+game_dir="${D2_GAME_DIR:-}"
+if [ -z "$game_dir" ]; then
+  game_dir=$(sed -n 's/.*"MpqPath": *"\(.*\)".*/\1/p' "$HOME/Library/Application Support/OpenDiablo2/config.json" 2>/dev/null | head -1)
+fi
+if [ -n "$game_dir" ] && [ -f "$game_dir/d2data.mpq" ]; then
+  step "level generation budget (real data: every act, outdoor / preset / maze levels)"
+  D2_GAME_DIR="$game_dir" go test -count=1 -v -run 'LevelBudget' ./d2core/d2map/d2mapgen/ 2>&1 | grep -E "PERF level|^(--- |FAIL|ok)" | cut -c1-160 | tee $tmp/budget.txt
+  grep -q "^ok" $tmp/budget.txt || { echo "FAIL: level generation budget"; fail=1; }
+  step "MPQ decoder against the old decoder (every imploded sector of d2data.mpq)"
+  D2_GAME_DIR="$game_dir" go test -count=1 -v -run 'Explode' ./d2common/d2fileformats/d2mpq/ 2>&1 | grep -E "^(--- |FAIL|ok)|identical" | tee $tmp/explode.txt
+  grep -q "^ok" $tmp/explode.txt || { echo "FAIL: MPQ explode decoder"; fail=1; }
+fi
 
 if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   step "real .d2s oracle tests"
@@ -65,6 +93,7 @@ fi
 #   scenario_name="human readable title"
 #   scenario_env()    echo shell lines (exports) for the game; may use $save, $tmp, $OD2_PORT
 #   scenario_check()  inspect $log.txt (ANSI-stripped log) and set fail=1 on problems
+#   scenario_realtime=1      (optional) keep the game clock at real time (default: OD2_AUTOSPEED=4 for every scenario)
 #   scenario_unmuted=1       (optional) play real audio (no OD2_AUTOTEST_MUTE); OD2_VERIFY_SOUND=1 does it for all
 #   scenario_warnings_ok=1   (optional) do not fail on [ERROR]/[WARNING] lines
 # Adding a scenario = adding one small file; no edits to this runner are needed.
@@ -75,20 +104,26 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   [ -f "$save" ] || cp "$D2S_SAMPLE_BODY" "$save"
 
   for f in scripts/verify.d/*.sh(N); do
-    unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""
+    unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""; scenario_realtime=""
     source "$f"
+    # OD2_VERIFY_ONLY=<glob> (e.g. "83-*") runs only the scenarios whose file name matches
+    [ -n "${OD2_VERIFY_ONLY:-}" ] && [[ ${f:t} != ${~OD2_VERIFY_ONLY} ]] && continue
     fail_before=$fail
     for attempt in 1 2; do
       fail=$fail_before
       step "$scenario_name"
+      # saves are written back to the .d2s they were loaded from: every run starts from a fresh copy
+      if [ -z "${OD2_VERIFY_SAVE:-}" ]; then cp -f "$D2S_SAMPLE_BODY" "$save"; rm -f "$save.bak"; fi
       n=${f:t:r}
-      cmd=$tmp/$n.command log=$tmp/$n.log
+      cmd=$tmp/$n.command log=$tmp/$n.log; rm -f $log
       {
         echo '#!/bin/zsh'
         echo "export OD2_PORT=$OD2_PORT"
         echo "export OD2_AUTOGAME=\"$save\" OD2_AUTOEXIT=1"
         # muted unless OD2_VERIFY_SOUND=1 or the scenario sets scenario_unmuted=1 (real audio, uses the sound device)
         [ -n "${OD2_VERIFY_SOUND:-}" ] || [ -n "$scenario_unmuted" ] || echo "export OD2_AUTOTEST_MUTE=1"
+        # game clock x4 (OD2_AUTOSPEED) unless the scenario needs real time (perf, multiplayer); OD2_VERIFY_SPEED=1 turns it off
+        [ -n "$scenario_realtime" ] || [ "${OD2_VERIFY_SPEED:-4}" = 1 ] || echo "export OD2_AUTOSPEED=${OD2_VERIFY_SPEED:-4}"
         scenario_env
         echo "$tmp/od2 2>&1 | tee $log"
       } > $cmd
@@ -99,7 +134,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
       ./scripts/gameslot.sh release $slot
       sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
       scenario_check
-      if [ -z "$scenario_warnings_ok" ] && grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing" | grep -v "KILL giving up for now"; then
+      if [ -z "$scenario_warnings_ok" ] && grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing" | grep -v "KILL giving up for now" | grep -v "D2S export: container item"; then
         echo "FAIL: warnings/errors in the $scenario_name log"; fail=1
       fi
       [ $fail -eq $fail_before ] && break

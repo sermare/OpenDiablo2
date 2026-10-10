@@ -64,10 +64,19 @@ type Entry struct {
 	Code string // item code, treasure class name, or unique/set item name
 	Prob int
 	Kind EntryKind
+	// Base is the base item code of a unique or set row (Kind != EntryAuto):
+	// the item the game creates for that row. The loader fills it from
+	// UniqueItems/SetItems.
+	Base string
 	// Mods are the per-entry modifiers (cm, cr, cs, cu, ce, cg).
 	Mods QualityMods
 	// Mul is the gold multiplier of "gld,mul=N" entries (0 if absent).
 	Mul int
+	// Version is the version column of the item or of the unique/set row
+	// the entry names (0 classic, 100 expansion). Entries of version >= 100
+	// have no weight in a classic game. Loaders fill it; treasure class
+	// references are derived (see Dropper).
+	Version int
 }
 
 // TreasureClass is one row of TreasureClassEx.txt.
@@ -108,6 +117,7 @@ type ItemInfo struct {
 	Code          string
 	Level         int // qlvl, the base item's level
 	Rarity        int
+	TypeRarity    int      // ItemTypes.Rarity of the item's type: the weight in generated "armo3"-style classes
 	Types         []string // item type and all of its ancestors
 	Spawnable     bool
 	Quest         bool
@@ -118,6 +128,10 @@ type ItemInfo struct {
 	TypeNormal    bool // ItemTypes.Normal: always normal quality
 	TypeMagic     bool // ItemTypes.Magic: always magic quality
 	TypeRare      bool // ItemTypes.Rare: may be rare
+	Version       int  // 0 classic, 100 expansion
+	// Throwable is the Throwable column of the item's primary type. A classic
+	// game never drops such items (see Context.Classic).
+	Throwable bool
 }
 
 // HasType reports whether the item is of the type code (or descends from it).
@@ -150,6 +164,31 @@ type Ratio struct {
 // RatioSource selects the ItemRatio row for a kind of item.
 type RatioSource interface {
 	ItemRatio(classSpecific, uber bool) (*Ratio, bool)
+}
+
+// UberTier reports whether an item selects the "Uber" rows of ItemRatio.txt
+// (VERIFIED against the game's tier test, 62b650): an armor or weapon (it has
+// "armo" or "weap" among its types) that is the exceptional or elite version
+// of its base (its code equals its ubercode or ultracode), that is not a
+// missile potion ("tpot") and not a quest item. Items of the normal tier and
+// everything that is neither armor nor weapon use the plain rows.
+func UberTier(code, uberCode, ultraCode, primaryType string, types []string, quest bool) bool {
+	isGear := false
+
+	for _, t := range types {
+		if t == "armo" || t == "weap" {
+			isGear = true
+		}
+	}
+
+	switch {
+	case !isGear, code == "":
+		return false
+	case code != uberCode && code != ultraCode:
+		return false
+	}
+
+	return primaryType != "tpot" && !quest
 }
 
 func maxInt(a, b int) int {

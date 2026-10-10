@@ -21,6 +21,11 @@ type HeroState struct {
 	LeftSkill  int                            `json:"leftSkill"`
 	RightSkill int                            `json:"rightSkill"`
 	Gold       int                            `json:"Gold"`
+	// StashGold is the gold in the stash (.d2s stat 0x0f), capped at
+	// d2inventory.StashGoldLimit on load. nil for heroes whose stash gold is
+	// unknown (older hero files, heroes made in this engine): the exporter then
+	// keeps the value stored in D2SBase.
+	StashGold *int `json:"stashGold,omitempty"`
 	// SkillBar holds the 16 skill hotkeys and the swap-set skills (with the
 	// active left/right skill, which LeftSkill and RightSkill mirror); nil for
 	// heroes that never had any (older hero files omit it).
@@ -65,7 +70,7 @@ type ImportedInfo struct {
 	Dead      bool `json:"dead,omitempty"`
 	// WeaponSetII is set when the second weapon set was active when the game was saved.
 	WeaponSetII bool `json:"weaponSetII,omitempty"`
-	// Source is the .d2s path the hero was imported from (never written to).
+	// Source is the .d2s the hero lives in: imported from, and saved back to (see D2SPath).
 	Source string `json:"source,omitempty"`
 }
 
@@ -80,11 +85,17 @@ type MercState struct {
 	// Replaced is set when a new merc was hired over an imported one: the old
 	// merc's items are dropped on export.
 	Replaced bool `json:"replaced,omitempty"`
+	// Items is the merc's equipment (the .d2s 'jf' section): Page PageEquipped, X the
+	// body location (1 head, 3 torso, 4 right hand, 5 left hand).
+	Items []StoredItem `json:"items,omitempty"`
+	// ItemsDirty is set when the gear was changed in the game: only then is the
+	// 'jf' list of the original file replaced on export.
+	ItemsDirty bool `json:"itemsDirty,omitempty"`
 }
 
 // MercFromHeader converts the d2s header fields; nil when there is no merc.
 func MercFromHeader(m d2s.Mercenary) *MercState {
-	if m.ID == 0 {
+	if !m.Exists() {
 		return nil
 	}
 

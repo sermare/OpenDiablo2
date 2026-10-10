@@ -108,7 +108,11 @@ var ErrBadSlot = errors.New("skillbar: hotkey slot out of range")
 
 // Assign puts a skill on a hotkey. The hand says which button the skill goes to
 // when the key is pressed. A skill sits on one hotkey only: it moves from its
-// old key (UNVERIFIED: the duplicate rule was not read from the binary).
+// old key. UNVERIFIED: the server side was read (0x54a690 packet 0x51 accepts a
+// slot 0..15 and a skill the unit owns and stores it at client record +0x3dc +
+// 8*slot with NO duplicate removal, 0x5330d0/0x536af0); whether the client
+// sends a clearing packet for the old key was not found, so this keeps the
+// one-key-per-skill behaviour as the design choice.
 func (b *SkillBar) Assign(slot, skill int, left bool) error {
 	if slot < 0 || slot >= HotkeyCount {
 		return fmt.Errorf("%w: %d", ErrBadSlot, slot)

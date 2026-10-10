@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
@@ -16,56 +15,28 @@ import (
 // extracted game tables: armor.txt, weapons.txt, misc.txt, ItemTypes.txt and
 // itemgen/patch_d2/{TreasureClassEx,ItemRatio}.txt (1.14b versions).
 
-type tsv struct {
-	cols map[string]int
-	rows [][]string
-}
-
-func readTSV(t *testing.T, path string) *tsv {
-	t.Helper()
-
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Skipf("missing table: %v", err)
-	}
-
-	lines := strings.Split(strings.ReplaceAll(string(raw), "\r", ""), "\n")
-	out := &tsv{cols: map[string]int{}}
-
-	for i, h := range strings.Split(lines[0], "\t") {
-		if _, dup := out.cols[strings.ToLower(h)]; !dup {
-			out.cols[strings.ToLower(h)] = i
-		}
-	}
-
-	for _, l := range lines[1:] {
-		if l != "" {
-			out.rows = append(out.rows, strings.Split(l, "\t"))
-		}
-	}
-
-	return out
-}
-
-func (d *tsv) s(row []string, col string) string {
-	i, ok := d.cols[strings.ToLower(col)]
-	if !ok || i >= len(row) {
-		return ""
-	}
-
-	return strings.TrimSpace(row[i])
-}
-
-func (d *tsv) n(row []string, col string) int {
-	v, _ := strconv.Atoi(d.s(row, col))
-
-	return v
-}
-
 type realTables struct {
 	tcs    *TreasureTable
 	items  mapItems
 	ratios map[[2]bool]*Ratio
+	uniq   map[string]int // UniqueItems name -> row index
+	sets   map[string]int // SetItems name -> row index
+	base   map[string]string
+	ver    map[string]int // unique/set row version
+}
+
+// rowIndex is the row index of a unique or set item (-1 if unknown).
+func (r *realTables) rowIndex(q Quality, name string) int {
+	m := r.uniq
+	if q == QualitySet {
+		m = r.sets
+	}
+
+	if i, ok := m[name]; ok {
+		return i
+	}
+
+	return -1
 }
 
 func (r *realTables) ItemRatio(cs, uber bool) (*Ratio, bool) {
@@ -82,12 +53,41 @@ func loadReal(t *testing.T) *realTables {
 		t.Skip("D2_TABLES not set")
 	}
 
-	rt := &realTables{tcs: NewTreasureTable(), items: mapItems{}, ratios: map[[2]bool]*Ratio{}}
+	rt := &realTables{tcs: NewTreasureTable(), items: mapItems{}, ratios: map[[2]bool]*Ratio{},
+		uniq: map[string]int{}, sets: map[string]int{}}
+
+	rt.base = map[string]string{}
+	rt.ver = map[string]int{}
+
+	for _, tab := range []struct {
+		file, base string
+		dst        map[string]int
+	}{{"UniqueItems.txt", "code", rt.uniq}, {"SetItems.txt", "item", rt.sets}} {
+		tt := readTSV(t, filepath.Join(root, "itemgen", "patch_d2", tab.file))
+		n := 0
+
+		for _, r := range tt.rows {
+			name := tt.s(r, "index")
+			if name == "" || name == "Expansion" {
+				continue
+			}
+
+			if _, dup := tab.dst[name]; !dup {
+				tab.dst[name] = n
+				rt.base[name] = tt.s(r, tab.base)
+				rt.ver[name] = tt.n(r, "version")
+			}
+
+			n++
+		}
+	}
 
 	// Item types with their ancestors.
 	types := readTSV(t, filepath.Join(root, "ItemTypes.txt"))
 	parents := map[string][]string{}
 	flags := map[string][3]bool{} // normal, magic, rare
+	rarity := map[string]int{}
+	throw := map[string]bool{}
 	cls := map[string]bool{}
 
 	var typeCodes []string
@@ -101,6 +101,8 @@ func loadReal(t *testing.T) *realTables {
 		parents[c] = []string{types.s(r, "Equiv1"), types.s(r, "Equiv2")}
 		flags[c] = [3]bool{types.n(r, "Normal") == 1, types.n(r, "Magic") == 1, types.n(r, "Rare") == 1}
 		cls[c] = types.s(r, "Class") != ""
+		rarity[c] = types.n(r, "Rarity")
+		throw[c] = types.n(r, "Throwable") > 0
 
 		if types.n(r, "TreasureClass") == 1 {
 			typeCodes = append(typeCodes, c)
@@ -140,14 +142,18 @@ func loadReal(t *testing.T) *realTables {
 				Code: code, Level: tab.n(r, "level"), Rarity: tab.n(r, "rarity"),
 				Spawnable: tab.n(r, "spawnable") == 1, Quest: tab.n(r, "quest") != 0,
 				Unique: tab.n(r, "unique") == 1, MagicLevel: tab.n(r, "magic lvl"),
-				Uber: code != tab.s(r, "normcode"),
+				Version: tab.n(r, "version"), Throwable: throw[tab.s(r, "type")],
 			}
 
 			for c := range seen {
 				info.Types = append(info.Types, c)
-				info.ClassSpecific = info.ClassSpecific || cls[c]
 			}
 
+			info.ClassSpecific = cls[tab.s(r, "type")]
+			info.Uber = UberTier(code, tab.s(r, "ubercode"), tab.s(r, "ultracode"), tab.s(r, "type"),
+				info.Types, info.Quest)
+
+			info.TypeRarity = rarity[tab.s(r, "type")]
 			f := flags[tab.s(r, "type")]
 			info.TypeNormal, info.TypeMagic, info.TypeRare = f[0], f[1], f[2]
 
@@ -175,6 +181,19 @@ func loadReal(t *testing.T) *realTables {
 		for i := 1; i <= 10; i++ {
 			if code := tc.s(r, "Item"+strconv.Itoa(i)); code != "" {
 				c.Entries = append(c.Entries, ParseEntry(code, tc.n(r, "Prob"+strconv.Itoa(i))))
+			}
+		}
+
+		for i := range c.Entries {
+			e := &c.Entries[i]
+			if _, isItem := rt.items[e.Code]; isItem {
+				continue
+			}
+
+			if _, isUnique := rt.uniq[e.Code]; isUnique {
+				e.Kind, e.Base, e.Version = EntryUnique, rt.base[e.Code], rt.ver[e.Code]
+			} else if _, isSet := rt.sets[e.Code]; isSet {
+				e.Kind, e.Base, e.Version = EntrySet, rt.base[e.Code], rt.ver[e.Code]
 			}
 		}
 
@@ -419,11 +438,11 @@ func checkQualityFrequencies(t *testing.T, r *Ratio) {
 		want[QualitySuperior], rest = rest*pSup, rest*(1-pSup)
 
 		nm := float64((r.Normal.Base - d/r.Normal.Divisor) * 128)
-		pLow := 0.0
+		pNormal := 1.0
 		if nm > 0 {
-			pLow = math.Min(1, 128/nm)
+			pNormal = math.Min(1, 128/nm)
 		}
-		want[QualityLow], want[QualityNormal] = rest*pLow, rest*(1-pLow)
+		want[QualityNormal], want[QualityLow] = rest*pNormal, rest*(1-pNormal)
 
 		rng := d2rand.New(2024)
 		got := map[Quality]int{}

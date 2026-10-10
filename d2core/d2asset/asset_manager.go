@@ -75,6 +75,7 @@ type AssetManager struct {
 	palettes         d2interface.Cache
 	transforms       d2interface.Cache
 	Records          *d2records.RecordManager
+	handoff          fileHandoff
 	language         string
 	languageModifier int
 }
@@ -136,10 +137,21 @@ func (am *AssetManager) LoadLanguage(languagePath string) string {
 		return defaultLanguage
 	}
 
+	if len(languageByte) == 0 {
+		am.Debugf("Language file %s is empty", languagePath)
+		return defaultLanguage
+	}
+
 	languageCode := languageByte[0]
 	am.Debugf("Language code: %#02x", languageCode)
 
 	language := d2resource.GetLanguageLiteral(languageCode)
+	if language == "" {
+		// an unknown code would otherwise expand {LANG} to "" and break every table path
+		am.Warningf("Unknown language code %#02x, using %s", languageCode, defaultLanguage)
+
+		language = defaultLanguage
+	}
 	am.Infof("Language: %s", language)
 
 	am.language = language
@@ -298,6 +310,7 @@ func (am *AssetManager) TranslateString(input interface{}) string {
 	case fmt.Stringer:
 		key = s.String()
 	case int:
+		// BaseLabelNumbers returns -1 when the modified index is outside its table
 		key = fmt.Sprintf("#%d", d2enum.BaseLabelNumbers(s+am.languageModifier))
 	}
 
@@ -489,7 +502,7 @@ func (am *AssetManager) LoadDT1(dt1Path string) (*d2dt1.DT1, error) {
 		return dt1Value.(*d2dt1.DT1), nil
 	}
 
-	fileData, err := am.LoadFile("/data/global/tiles/" + dt1Path)
+	fileData, err := am.LoadFileHandoff("/data/global/tiles/" + dt1Path)
 	if err != nil {
 		return nil, fmt.Errorf("could not load /data/global/tiles/%s", dt1Path)
 	}
@@ -512,7 +525,7 @@ func (am *AssetManager) LoadDS1(ds1Path string) (*d2ds1.DS1, error) {
 		return ds1Value.(*d2ds1.DS1), nil
 	}
 
-	fileData, err := am.LoadFile("/data/global/tiles/" + ds1Path)
+	fileData, err := am.LoadFileHandoff("/data/global/tiles/" + ds1Path)
 	if err != nil {
 		return nil, err
 	}

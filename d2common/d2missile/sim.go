@@ -31,7 +31,7 @@ type Missile struct {
 
 	X, Y     float64 // subtile position
 	DX, DY   float64 // unit direction
-	Velocity int     // 8.8, current
+	Velocity int     // 8.8, current, before the exe's 75% path scale (display/API)
 	Life     int     // remaining frames
 	Total    int     // lifetime at creation
 	// CollideFrom: unit collisions are only tested once Life <= CollideFrom
@@ -48,9 +48,11 @@ type Missile struct {
 	// Tag is free for the caller.
 	Tag interface{}
 
-	// Home is the unit a homing missile (Guided Arrow, Bone Spirit) steers
-	// toward each frame (the original's SpecialSetup/homing do functions are
-	// not read; steering is instant, UNVERIFIED turn rate). HitEvery, when
+	// Home is the unit a homing missile steers toward. For SrvDoFunc 7
+	// (Guided Arrow) the exe's rule is modelled (re-aim every Param1 frames
+	// while 4..24 subtiles away, verified 0x5ac2c0); other missiles with Home
+	// (Bone Spirit) turn instantly every frame (UNVERIFIED, their do function
+	// was not read). HitEvery, when
 	// set, replaces the table's NextHit/NextDelay with a per-target interval
 	// (fire walls and other lingering missiles). ScalePct scales every rolled
 	// damage component (damage "per second" listings).
@@ -58,11 +60,39 @@ type Missile struct {
 	HitEvery int
 	ScalePct int
 
-	age      int
-	lastHit  string
-	nextHit  map[string]int
-	dead     bool
-	explodes bool
+	// HomeMode is the exe's missile data field +0x28 as used by Guided Arrow
+	// (SRVDO_010 0x5da2f0, SrvDoFunc 7, hit func 10; verified): 1 = homing on
+	// Home, 2 = aimed at the ground, 4 = already re-targeted once (5 / 6 are
+	// the re-targeted homing / ground legs).
+	HomeMode int
+	// AreaRadius is the radius in subtiles of the area hit functions when the
+	// table's sHitPar1 is empty (the exe evaluates a skill calc then).
+	AreaRadius int
+	// HitSubRange overrides the lifetime of the sub missiles of hit func 14
+	// (the exe passes the skill's linear value 0x150/0x154, flag 0x8000).
+	HitSubRange int
+	// HealMin, HealMax are Holy Bolt's calc1 / calc2 of the casting skill in
+	// 8.8 fixed point (hit function 7).
+	HealMin, HealMax int
+	// PulseEvery is the damage period of SrvDoFunc 27 (Tornado) when the
+	// table's Param1 is empty (the skill's calc4, minimum 1).
+	PulseEvery int
+
+	legX, legY float64 // dest - source at creation: the length of a ground leg
+	parked     bool    // arrived at its aim point but still alive (hit func 10)
+
+	// pathVel is the exe's path velocity: the creation velocity * 75/100
+	// (verified, 0x59d5d0). Accel is added to it every 5th frame (verified,
+	// PATH_ApplyAccelAndScaleStep 0x651750) and it is clamped to MaxVel<<8,
+	// which is NOT scaled by 75% (verified: CreateServerMissile passes the raw
+	// MaxVel byte << 8 to 0x649a90). accel is zeroed once the cap is hit.
+	pathVel, accel int
+	age            int
+	lastHit        string
+	nextHit        map[string]int
+	dead           bool
+	explodes       bool
+	entered        bool // the previous step entered a new subtile (path flag 8)
 }
 
 // Dead reports whether the missile has been destroyed.
@@ -103,6 +133,19 @@ type CreateParams struct {
 	Home     Target
 	HitEvery int
 	ScalePct int
+
+	// PierceChance is the owner's skill_pierce + item_pierce percent (stats
+	// 0xa6 and 0x9c). For a missile with the Pierce flag the exe rolls up to 4
+	// pierce charges from it at creation (0x59d4e0, verified). Ignored when
+	// Pierce is given.
+	PierceChance int
+	// AreaRadius, HitSubRange: see Missile.
+	AreaRadius, HitSubRange int
+	// HealMin, HealMax, PulseEvery: see Missile.
+	HealMin, HealMax, PulseEvery int
+	// HomeMode overrides the Guided Arrow mode (default: 1 when Home is set
+	// else 2, for SrvDoFunc 7 / hit func 10 missiles).
+	HomeMode int
 }
 
 // Positioned is implemented by targets that know where they are; homing
@@ -121,6 +164,9 @@ type Sim struct {
 	pending  []*Missile
 	stepping bool
 	nextID   uint32
+	// targetNext is the NextHit state 0x56: it lives on the target, so it is
+	// shared by every NextHit missile (verified 0x5ab5d0 / 0x5aba10).
+	targetNext map[string]int
 }
 
 // NewSim creates a simulation.
@@ -151,7 +197,9 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 
 	dist := math.Hypot(dx, dy)
 
-	ux, uy := 1.0, 0.0
+	// An aim point equal to the start becomes start+(1,1) (verified,
+	// 0x59d7aa), i.e. a diagonal direction.
+	ux, uy := math.Sqrt2/2, math.Sqrt2/2
 	if dist > 0 {
 		ux, uy = dx/dist, dy/dist
 	}
@@ -185,6 +233,26 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 		Home: p.Home, HitEvery: p.HitEvery, ScalePct: p.ScalePct, nextHit: map[string]int{},
 	}
 
+	m.pathVel = d2combat.MissileStep(vel)
+	m.accel = sp.Accel
+	m.AreaRadius, m.HitSubRange = p.AreaRadius, p.HitSubRange
+	m.HealMin, m.HealMax, m.PulseEvery = p.HealMin, p.HealMax, p.PulseEvery
+	m.legX, m.legY = dx, dy
+
+	if m.Pierce == 0 && sp.Pierce && p.PierceChance > 0 {
+		m.Pierce = PierceCharges(p.PierceChance, p.Owner.Roller)
+	}
+
+	if sp.SrvDoFunc == 7 || sp.SrvHitFunc == 10 {
+		m.HomeMode = p.HomeMode
+		if m.HomeMode == 0 {
+			m.HomeMode = 2
+			if p.Home != nil {
+				m.HomeMode = 1
+			}
+		}
+	}
+
 	if p.ClampToDest {
 		m.ClampDist = dist
 	}
@@ -200,8 +268,13 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 	return m, nil
 }
 
-// unitMask says which unit kinds a collide type hits (table 0x739948, mask
-// bits 0x80 players, 0x100 monsters).
+// unitMask says which unit kinds a collide type hits (table 0x739948 and its
+// unit predicates 0x5a6210 / 0x5a61d0 / 0x5a6270, verified): type 1 players
+// (the exe also accepts monsters that carry state 0x69 with stat 0xac == 2,
+// which the sim does not model), 2 and 5 monsters, 3 and 8 players and
+// monsters. Type 7 (predicate 0x5a62b0) hits other missiles that have a flag
+// bit set in the global byte at 0x6cf260; missile versus missile is not
+// modelled. 0, 4 and 6 hit no units.
 func unitMask(ct int) (players, monsters bool) {
 	switch ct {
 	case 1:
@@ -215,16 +288,64 @@ func unitMask(ct int) (players, monsters bool) {
 	return false, false
 }
 
-// wallMask is the cell flag set that destroys the missile. Types without a
-// unit predicate (0, 4, 6) use bits 0x1|0x4; the others the wall bit 0x4 of
-// their mask, plus 0x1 for type 8 (verified from the mask table).
-func wallMask(ct int) uint16 {
+// wallBlock is the terrain part of the block mask of a collide type (0x73994c
+// + 8*type: 1 0x84, 2 0x104, 3 0x184, 5 0x104, 6 0x4, 7 0x40, 8 0x185,
+// verified bytes). A missile cannot enter such a cell: the step stops at the
+// last free cell and the missile ends through ProcessHitOrExpire(0, 1), i.e.
+// the hit function runs (verified 0x6513e0: the per-cell test reads the cell
+// ANDed with the path block mask path+0x50, which CreateServerMissile sets from
+// this table at 0x59d92d; the step is blocked only when the masked flags
+// contain bit 0x1 or 0x4. A blocked step stops at the last free cell, the
+// path finishes, SERVER_AdvanceUnitPathFrame returns 2 and 0x5abd00 calls
+// ProcessHitOrExpire(0, 1). Bits outside the mask are not seen at all.)
+func wallBlock(ct int) uint16 {
 	switch ct {
-	case 0, 4, 6, 8:
+	case 1, 2, 3, 5, 6:
+		return d2path.FlagWall
+	case 8:
 		return d2path.FlagWalk | d2path.FlagWall
 	}
 
-	return d2path.FlagWall
+	return 0
+}
+
+// RemoveOwned ends every live missile fired by an owner without events (no
+// hit, no explosion) and returns them. UNVERIFIED whether the original ends
+// the missiles of a dead owner; nothing calls this for hero death.
+func (s *Sim) RemoveOwned(ownerID string) []*Missile {
+	return s.removeIf(func(m *Missile) bool { return m.Owner.ID == ownerID })
+}
+
+// Clear ends every live missile without events and returns them: the area
+// they flew in is gone (missiles are units of one level).
+func (s *Sim) Clear() []*Missile {
+	return s.removeIf(func(*Missile) bool { return true })
+}
+
+func (s *Sim) removeIf(match func(*Missile) bool) []*Missile {
+	var out []*Missile
+
+	filter := func(list []*Missile) []*Missile {
+		live := list[:0]
+
+		for _, m := range list {
+			switch {
+			case m.dead:
+			case match(m):
+				m.dead = true
+				out = append(out, m)
+			default:
+				live = append(live, m)
+			}
+		}
+
+		return live
+	}
+
+	s.missiles = filter(s.missiles)
+	s.pending = filter(s.pending)
+
+	return out
 }
 
 // Step advances every missile by one 25 Hz frame.
@@ -251,32 +372,56 @@ func (s *Sim) Step() {
 	s.pending = s.pending[:0]
 }
 
+func (s *Sim) vanish(m *Missile) {
+	m.dead = true
+	s.emit(Event{Kind: EventVanish, Missile: m})
+}
+
 func (s *Sim) stepOne(m *Missile) {
 	sp := m.Spec
 	m.age++
 
-	if sp.Accel != 0 && m.age%accelPeriod == 0 {
-		m.Velocity += sp.Accel // unit of Accel UNVERIFIED (8.8 per 5 frames assumed)
-		if m.Velocity < 0 {
-			m.Velocity = 0
+	if m.accel != 0 && m.age%accelPeriod == 0 {
+		m.pathVel += m.accel // verified: added to the 75%-scaled path velocity
+		if m.pathVel > sp.MaxVel<<8 {
+			m.pathVel = sp.MaxVel << 8
+			m.accel = 0
+		} else if m.pathVel < 0 {
+			m.pathVel = 0
 		}
 
-		if sp.MaxVel > 0 && m.Velocity > sp.MaxVel<<8 {
-			m.Velocity = sp.MaxVel << 8
+		m.Velocity = m.pathVel * 100 / 75
+	}
+
+	if sp.SrvDoFunc == 2 || sp.SrvDoFunc == 6 {
+		if !s.trailSub(m) {
+			return
 		}
 	}
 
-	if m.Home != nil && m.Home.Alive() {
+	switch {
+	case sp.SrvDoFunc == 7:
+		if !s.guidedTurn(m) {
+			return
+		}
+	case m.Home != nil && m.Home.Alive():
+		// legacy instant steering for callers that set Home on other missiles
+		// (Bone Spirit); the exe's turn rule is only known for SrvDoFunc 7.
 		if pt, ok := m.Home.(Positioned); ok {
 			hx, hy := pt.SubPos()
-			if d := math.Hypot(hx-m.X, hy-m.Y); d > 0.01 {
-				m.DX, m.DY = (hx-m.X)/d, (hy-m.Y)/d
-			}
+			aim(m, hx, hy)
 		}
+	}
+
+	if sp.SrvDoFunc == 27 {
+		s.tornadoPulse(m)
 	}
 
 	// displacement per frame in subtiles: step(8.8) * 16 / 65536 (verified scale)
-	stepSub := float64(d2combat.MissileStep(m.Velocity)) / 4096.0
+	stepSub := float64(m.pathVel) / 4096.0
+	if m.parked {
+		stepSub = 0
+	}
 
 	ox, oy := m.X, m.Y
 	arrived := false
@@ -289,26 +434,109 @@ func (s *Sim) stepOne(m *Missile) {
 	m.X += m.DX * stepSub
 	m.Y += m.DY * stepSub
 	m.Travel += stepSub
+	// path flag 8 (PATH_TestFlag08): the step entered at least one new subtile
+	m.entered = int(math.Floor(ox)) != int(math.Floor(m.X)) || int(math.Floor(oy)) != int(math.Floor(m.Y))
+
+	if arrived {
+		// the path is finished: the exe returns from the standard move right
+		// after ProcessHitOrExpire(0, 1), before the life is decremented.
+		m.ClampDist = 0
+
+		if s.finish(m, EventExpire) {
+			m.parked = true
+		}
+
+		return
+	}
 
 	m.Life--
-	if m.Life < 1 || arrived {
-		s.expire(m)
+	if m.Life < 1 {
+		s.finish(m, EventExpire)
 		return
 	}
 
-	if m.Life > m.CollideFrom {
-		return // still in the activation delay
-	}
-
-	if m.Velocity == 0 { // stationary: test the cell it stands on
-		s.testCell(m, int(math.Floor(m.X)), int(math.Floor(m.Y)))
+	if m.parked {
 		return
 	}
 
-	for _, c := range cellsBetween(ox, oy, m.X, m.Y) {
-		if s.testCell(m, c.x, c.y) {
+	units := m.Life <= m.CollideFrom // the Activate delay only disables unit hits
+
+	if m.pathVel == 0 { // stationary: the exe re-reads the cell it stands on
+		cx, cy := int(math.Floor(m.X)), int(math.Floor(m.Y))
+
+		if sp.CollideType != 0 && s.World.Flags(cx, cy)&(d2path.FlagWalk|d2path.FlagWall) != 0 {
+			s.vanish(m) // cached cell flags & 5 -> return 2, no hit function (verified)
 			return
 		}
+
+		if units {
+			s.testUnits(m, cx, cy)
+		}
+
+		return
+	}
+
+	prev := cell{int(math.Floor(ox)), int(math.Floor(oy))}
+
+	for _, c := range cellsBetween(ox, oy, m.X, m.Y) {
+		if s.testCell(m, c, prev, units) {
+			return
+		}
+
+		prev = c
+	}
+}
+
+// trailSub is the part of SrvDoFunc 2 (0x5abf30) and 6 (0x5ac1b0) that runs
+// before the standard move (verified): when the previous step entered a new
+// subtile (path flag 8, cleared at the start of every path advance, so the
+// spawn lags the move by a frame) the missile creates its SubMissile1 at its
+// own subtile, owned by the same owner with the same skill and level.
+//   - 2 (Poison Javelin trail; create flags 5: explicit source and an explicit
+//     velocity of 0, so the cloud stays put). VERIFIED (0x5abf30 -> 0x5a7170,
+//     arguments (game, missile, SubMissile1, lifetime, subloops)): the
+//     lifetime argument is the literal 0, so there is never a lifetime
+//     override (flag 0x8000) and the cloud lives its own Range (poisonjavcloud
+//     60 frames); the sub-loop argument is the missile's SrvCalc1 evaluated
+//     by 0x64c9b0 (the record's calc at +0x80): flag 8 is set only when it is
+//     positive (poisonjav: 0, so never; viper_poisjav: 3), and the count in
+//     the create struct is then overwritten with level*2-2. The effect of
+//     flag 8 inside 0x59d5d0 was not read (not modelled).
+//   - 6 (fire wall maker, molten boulder; create flags 0x21, explicit source
+//     and destination equal to it): needs an owner and a SubMissile1,
+//     otherwise the missile is destroyed at once without a hit function.
+//
+// It reports false when the missile vanished.
+func (s *Sim) trailSub(m *Missile) bool {
+	sp := m.Spec
+
+	if sp.SrvDoFunc == 6 {
+		if (m.Owner.Gone != nil && m.Owner.Gone()) || sp.SubMissile[0] == "" {
+			s.vanish(m)
+			return false
+		}
+	}
+
+	if !m.entered || sp.SubMissile[0] == "" {
+		return true
+	}
+
+	sub := s.lookup(sp.SubMissile[0])
+	if sub == nil {
+		return true
+	}
+
+	x, y := math.Floor(m.X)+0.5, math.Floor(m.Y)+0.5
+
+	_, _ = s.Create(CreateParams{Spec: sub, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level,
+		Damage: m.Damage, X: x, Y: y, DestX: x, DestY: y, Stationary: sp.SrvDoFunc == 2})
+
+	return true
+}
+
+func aim(m *Missile, x, y float64) {
+	if d := math.Hypot(x-m.X, y-m.Y); d > 0.01 {
+		m.DX, m.DY = (x-m.X)/d, (y-m.Y)/d
 	}
 }
 
@@ -340,36 +568,74 @@ func cellsBetween(ox, oy, nx, ny float64) []cell {
 	return out
 }
 
-// testCell runs the collision test of one subtile; true if the missile died.
-func (s *Sim) testCell(m *Missile, cx, cy int) bool {
+// testCell runs the collision test of one entered subtile; true if the
+// missile died (or was parked by a hit function). Collide type 0 skips
+// everything (0x5abd00 returns 1 first).
+func (s *Sim) testCell(m *Missile, c, prev cell, units bool) bool {
 	ct := m.Spec.CollideType
-	players, monsters := unitMask(ct)
-
-	if players || monsters {
-		for _, t := range s.World.Targets(cx, cy) {
-			if (t.IsPlayer() && !players) || (!t.IsPlayer() && !monsters) {
-				continue
-			}
-
-			s.process(m, t)
-
-			if m.dead {
-				return true
-			}
-		}
+	if ct == 0 {
+		return false
 	}
 
-	if s.World.Flags(cx, cy)&wallMask(ct) != 0 {
-		m.X, m.Y = float64(cx)+0.5, float64(cy)+0.5
-		m.dead = true
-		s.emit(Event{Kind: EventWall, Missile: m})
-		s.explode(m)
+	flags := s.World.Flags(c.x, c.y)
+
+	if flags&wallBlock(ct) != 0 {
+		// blocked step: the missile stays in the last free cell
+		m.X, m.Y = float64(prev.x)+0.5, float64(prev.y)+0.5
+
+		if s.finish(m, EventWall) {
+			m.parked = true
+			return true
+		}
 
 		return true
 	}
 
+	// a wall or walk bit that is not in the block mask is invisible to the
+	// moving missile: 0x6513e0 reads the cell through the mask (verified), so
+	// the cached flags that the standard move tests with & 5 never contain it
+	// and the missile flies on. (Only a stationary missile re-reads the cell
+	// with the full mask 0x7fff, see stepOne.)
+
+	if units {
+		return s.testUnits(m, c.x, c.y)
+	}
+
 	return false
 }
+
+func (s *Sim) testUnits(m *Missile, cx, cy int) bool {
+	players, monsters := unitMask(m.Spec.CollideType)
+	if !players && !monsters {
+		return false
+	}
+
+	for _, t := range s.World.Targets(cx, cy) {
+		if (t.IsPlayer() && !players) || (!t.IsPlayer() && !monsters) {
+			// CollideType 1 (0x5a6210, verified) also takes a monster whose
+			// alignment state 105 / stat 172 is 2 as if it were a player
+			if pa, ok := t.(PlayerAligned); !(m.Spec.CollideType == 1 && !t.IsPlayer() && ok && pa.PlayerAligned()) {
+				continue
+			}
+		}
+
+		s.process(m, t)
+
+		if m.dead {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Result bits of ProcessHitOrExpire's A value / of a hit function's return
+// (verified 0x5aba10): the hit function's return value REPLACES A.
+const (
+	resKill   = 1 // destroy (if B&1)
+	resDamage = 2 // apply the damage function to the target
+	resKeep   = 4 // the missile survives, nothing else happens
+)
 
 // process is MISSILE_ProcessHitOrExpire for a target.
 func (s *Sim) process(m *Missile, t Target) {
@@ -388,23 +654,48 @@ func (s *Sim) process(m *Missile, t Target) {
 		return
 	}
 
-	interval := 0
-
+	// NextHit: state 0x56 sits on the target for NextDelay frames and blocks
+	// every NextHit missile, not just this one (verified 0x5ab5d0). HitEvery is
+	// a per-missile interval of the sim's own.
 	switch {
 	case m.HitEvery > 0:
-		interval = m.HitEvery
-	case sp.NextHit:
-		interval = sp.NextDelay
-	}
+		if m.nextHit[t.ID()] > frame {
+			return
+		}
 
-	if (sp.NextHit || m.HitEvery > 0) && m.nextHit[t.ID()] > frame {
-		return
+		m.nextHit[t.ID()] = frame + m.HitEvery
+	case sp.NextHit:
+		if s.targetNext[t.ID()] > frame {
+			return
+		}
+
+		if s.targetNext == nil {
+			s.targetNext = map[string]int{}
+		}
+
+		s.targetNext[t.ID()] = frame + sp.NextDelay
 	}
 
 	m.lastHit = t.ID()
 
-	if sp.NextHit || m.HitEvery > 0 {
-		m.nextHit[t.ID()] = frame + interval
+	// B: bit 1 may destroy, bit 2 runs the hit function. A pierce charge
+	// (stat 0x148) turns B into 2 (0x5ab550, verified).
+	b := 3
+	pierced := false
+
+	if sp.Pierce && m.Pierce > 0 {
+		m.Pierce--
+		b = 2
+		pierced = true
+	}
+
+	a := resDamage
+	if sp.Explosion {
+		a = 0 // verified: the Explosion flag clears the damage bit
+	}
+
+	if sp.CollideKill {
+		a |= resKill
 	}
 
 	hit, chance, roll := true, 0, 0
@@ -427,8 +718,42 @@ func (s *Sim) process(m *Missile, t Target) {
 		hit, chance, roll = d2combat.RollToHit(m.Owner.Roller, in)
 	}
 
-	if hit {
+	if !hit {
+		s.emit(Event{Kind: EventMiss, Missile: m, Target: t, Chance: chance, Roll: roll})
+
+		// verified (0x5aba10): a missed to-hit roll destroys the missile
+		// (return 2), ignoring CollideKill and pierce; only AlwaysExplode runs
+		// the hit func, and a result with bit 4 keeps the missile.
+		if sp.AlwaysExplode {
+			if ret, ok := s.hitFunc(m, t); ok && ret&resKeep != 0 {
+				return
+			}
+
+			s.explode(m)
+		}
+
+		m.dead = true
+
+		return
+	}
+
+	if pierced {
+		s.emit(Event{Kind: EventPierce, Missile: m, Target: t})
+	}
+
+	if b&2 != 0 {
+		if ret, ok := s.hitFunc(m, t); ok {
+			a = ret
+
+			if a&resKeep != 0 {
+				return // passes through without damage
+			}
+		}
+	}
+
+	if a&resDamage != 0 {
 		dmg := m.Damage.Roll(m.Owner.Roller)
+
 		if m.ScalePct > 0 && m.ScalePct != 100 {
 			dmg.Physical = dmg.Physical * int32(m.ScalePct) / 100
 			dmg.Fire = dmg.Fire * int32(m.ScalePct) / 100
@@ -438,53 +763,15 @@ func (s *Sim) process(m *Missile, t Target) {
 		}
 
 		s.emit(Event{Kind: EventHit, Missile: m, Target: t, Damage: dmg, Chance: chance, Roll: roll})
-
-		if m.OnHit != nil {
-			m.OnHit(m, t)
-		}
-
-		s.spawnHitSubMissiles(m)
-	} else {
-		s.emit(Event{Kind: EventMiss, Missile: m, Target: t, Chance: chance, Roll: roll})
 	}
 
-	if sp.Pierce && m.Pierce > 0 {
-		m.Pierce--
-		s.emit(Event{Kind: EventPierce, Missile: m, Target: t})
-
-		return
+	if m.OnHit != nil {
+		m.OnHit(m, t)
 	}
 
-	if sp.CollideKill {
+	if a&resKill != 0 && b&1 != 0 {
 		m.dead = true
-
-		if hit || sp.AlwaysExplode {
-			s.explode(m)
-		}
-	}
-}
-
-// spawnHitSubMissiles runs pSrvHitFunc 2 (HitSubMissile1) and 4 (all four).
-func (s *Sim) spawnHitSubMissiles(m *Missile) {
-	var names []string
-
-	switch m.Spec.SrvHitFunc {
-	case 2:
-		names = m.Spec.HitSubMissile[:1]
-	case 4:
-		names = m.Spec.HitSubMissile[:]
-	default:
-		return
-	}
-
-	for _, n := range names {
-		sub := s.lookup(n)
-		if sub == nil {
-			continue
-		}
-
-		_, _ = s.Create(CreateParams{Spec: sub, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level,
-			Damage: m.Damage, X: m.X, Y: m.Y, DestX: m.X, DestY: m.Y})
+		s.explode(m)
 	}
 }
 
@@ -502,15 +789,37 @@ func (s *Sim) explode(m *Missile) {
 	}
 }
 
-// expire ends a missile whose lifetime ran out (or that reached its clamped
-// destination). It explodes only with AlwaysExplode.
-func (s *Sim) expire(m *Missile) {
-	m.dead = true
-	s.emit(Event{Kind: EventExpire, Missile: m})
+// finish is ProcessHitOrExpire(0, expire=1): the hit function runs with a null
+// target (also on a wall or at the end of the path; AlwaysExplode is not
+// needed for that, verified 0x5aba10) and the missile is destroyed unless the
+// hit function returned bit 4. It reports whether the missile survived.
+func (s *Sim) finish(m *Missile, kind EventKind) bool {
+	if ret, ok := s.hitFunc(m, nil); ok && ret&resKeep != 0 {
+		return true
+	}
 
-	if m.Spec.AlwaysExplode {
+	m.dead = true
+	s.emit(Event{Kind: kind, Missile: m})
+
+	if kind == EventWall || m.Spec.AlwaysExplode {
 		s.explode(m)
 	}
+
+	return false
+}
+
+// PierceCharges rolls the pierce charges a missile with the Pierce flag
+// starts with (0x59d4e0, verified): up to 4 times a percent roll below
+// chance (owner's skill_pierce + item_pierce) adds a charge; the first failed
+// roll stops it.
+func PierceCharges(chance int, r d2combat.Roller) int {
+	n := 0
+
+	for r != nil && n < 4 && int(r.Roll(100)) < chance {
+		n++
+	}
+
+	return n
 }
 
 // String describes a missile for logs.

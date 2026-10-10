@@ -2,6 +2,8 @@ package d2hero
 
 import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 )
 
 // Item pages of a .d2s file (d2s.Item.Page for stored items) plus the belt.
@@ -37,8 +39,22 @@ type StoredItem struct {
 	Identified bool `json:"identified,omitempty"`
 	Ethereal   bool `json:"ethereal,omitempty"`
 	Quantity   int  `json:"quantity,omitempty"`
+	// Personal is the name Anya's quest reward personalized the item with.
+	Personal string `json:"personal,omitempty"`
 	// Durability is the current durability; nil leaves the item's default.
 	Durability *int `json:"durability,omitempty"`
+	// Sockets is the rolled socket count and MaxDurability the maximum when it
+	// differs from the base item's (ethereal); both 0 when not applicable.
+	Sockets       int `json:"sockets,omitempty"`
+	MaxDurability int `json:"maxDurability,omitempty"`
+
+	// Horadric Cube and socketing state: the number of sockets, the codes of the
+	// gems, runes and jewels in them, the runeword the runes spell, the crafted
+	// flag, and the properties a cube recipe attached.
+	Socketed []string    `json:"socketed,omitempty"`
+	Runeword string      `json:"runeword,omitempty"`
+	Crafted  bool        `json:"crafted,omitempty"`
+	Mods     []StoredMod `json:"mods,omitempty"`
 
 	// Origin is set for an item imported from a .d2s: the item is created
 	// from Code, Quality, ILvl and Seed with the item generator, which is an
@@ -51,6 +67,28 @@ type StoredItem struct {
 	// D2S is the item exactly as the save held it, kept for writing the item
 	// back to a .d2s (ExportD2SItems). Items made in the game have none.
 	D2S *d2s.Item `json:"d2s,omitempty"`
+
+	// Spec is the whole item as the item creator rolled it (affixes,
+	// properties, sockets, runeword, ear): the item is rebuilt from it exactly.
+	// Stat is what the hero's stat list computes with (see
+	// diablo2item.Item.StatItem), so the worn item's properties and set pieces
+	// count without the item being rebuilt.
+	Spec *diablo2item.Spec `json:"spec,omitempty"`
+	Stat *d2statlist.Item  `json:"stat,omitempty"`
+
+	// Facts are the numbers the game rolled for the item (defense, durability,
+	// sockets, stats per source), kept so that an item made in the game can be
+	// written to a .d2s (D2SItemFromStored).
+	Facts *diablo2item.ItemFacts `json:"facts,omitempty"`
+}
+
+// StoredMod is a property a Horadric Cube recipe attached to an item.
+type StoredMod struct {
+	Code  string `json:"code"`
+	Param string `json:"param,omitempty"`
+	Min   int    `json:"min,omitempty"`
+	Max   int    `json:"max,omitempty"`
+	Value int    `json:"value"`
 }
 
 // HeroContainers is the hero's item storage besides the equipment. A hero file
@@ -170,6 +208,14 @@ func finishStored(it *d2s.Item, page int, known func(code string) bool) (s Store
 		s.Quantity = int(it.Quantity)
 	}
 
+	if it.Socketed {
+		s.Sockets = int(it.TotalSockets)
+
+		for i := range it.Children {
+			s.Socketed = append(s.Socketed, trimCode(it.Children[i].Code))
+		}
+	}
+
 	if it.MaxDurability > 0 {
 		d := int(it.Durability)
 		s.Durability = &d
@@ -191,9 +237,9 @@ func trimCode(code string) string {
 
 // ExportD2SItems returns the container items as .d2s items for the item list
 // of a save: the item exactly as imported, with its page, position and (for
-// the belt) cell updated from the stored item. Items made in the game have no
-// bit-exact form yet and are reported in skipped (the writer needs the item's
-// property list, which the item model does not keep).
+// the belt) cell updated from the stored item. Items made in the game are
+// reported in skipped: they are encoded by MergeContainerItems, which has the
+// item tables.
 func ExportD2SItems(c *HeroContainers) (out []d2s.Item, skipped []StoredItem) {
 	if c == nil {
 		return nil, nil

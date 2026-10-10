@@ -10,11 +10,14 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 )
 
-// EnvD2SWriteback names a folder (OD2_D2S_WRITEBACK=<dir>) that heroes
-// imported from a .d2s are saved into, as <dir>/<name>.d2s. Without it the
-// export goes next to the .od2 save, so the player's original is never
-// overwritten unless they opt in (by pointing this at its folder).
+// EnvD2SWriteback names a folder (OD2_D2S_WRITEBACK=<dir>) that heroes are
+// saved into, as <dir>/<name>.d2s, instead of their real .d2s. Tests and the
+// automation use it so they never touch a player's saves.
 const EnvD2SWriteback = "OD2_D2S_WRITEBACK"
+
+// BackupSuffix is appended to a .d2s name for the copy of the original that
+// SaveD2S makes before it first replaces the file ("Name.d2s.bak").
+const BackupSuffix = ".bak"
 
 // D2SExport describes a finished export, for logging.
 type D2SExport struct {
@@ -22,9 +25,58 @@ type D2SExport struct {
 	Warnings []string
 	// Summary is what a re-parse of the written file shows.
 	Summary string
+	// NewItems has one line per item made in the game (picked up, bought) that
+	// the hero holds, saying whether it is in the re-parsed file and as what.
+	NewItems []string
 }
 
-// D2SPath returns where SaveD2S writes the hero.
+// NewItemsInD2S re-parses an exported .d2s and looks up every container item of
+// the hero that was made in the game (no imported original).
+func NewItemsInD2S(state *HeroState, data []byte, tables *d2s.ItemTables) []string {
+	if state.Containers == nil {
+		return nil
+	}
+
+	c, err := d2s.Parse(data, tables)
+	if err != nil {
+		return []string{"re-parse failed: " + err.Error()}
+	}
+
+	var out []string
+
+	for i := range state.Containers.Items {
+		s := &state.Containers.Items[i]
+		if s.D2S != nil {
+			continue
+		}
+
+		line := fmt.Sprintf("code=%s page=%d x=%d y=%d", s.Code, s.Page, s.X, s.Y)
+		found := false
+
+		for j := range c.Items {
+			it := &c.Items[j]
+			if trimCode(it.Code) == s.Code && int(it.X) == s.X && int(it.Y) == s.Y && it.Location != d2s.LocationEquipped {
+				line += fmt.Sprintf(" found=true quality=%d ilvl=%d props=%d simple=%v ethereal=%v", it.Quality, it.Level,
+					len(it.Properties), it.Simple, it.Ethereal)
+				found = true
+
+				break
+			}
+		}
+
+		if !found {
+			line += " found=false"
+		}
+
+		out = append(out, line)
+	}
+
+	return out
+}
+
+// D2SPath returns where SaveD2S writes the hero: OD2_D2S_WRITEBACK when set,
+// else the .d2s the hero was imported from or created as, else (heroes that
+// have neither) next to the .od2 save.
 func D2SPath(state *HeroState) string {
 	name := state.HeroName + ".d2s"
 
@@ -32,7 +84,77 @@ func D2SPath(state *HeroState) string {
 		return filepath.Join(dir, name)
 	}
 
+	if state.Imported != nil && state.Imported.Source != "" {
+		return state.Imported.Source
+	}
+
 	return filepath.Join(filepath.Dir(state.FilePath), name)
+}
+
+// newD2SPath is where the .d2s of a character that is being created goes:
+// OD2_D2S_WRITEBACK, else the player's first save folder (the one the
+// character list is read from), else next to the .od2 save.
+func newD2SPath(state *HeroState) string {
+	if os.Getenv(EnvD2SWriteback) == "" {
+		if dirs := ImportDirs(); len(dirs) > 0 {
+			return filepath.Join(dirs[0], state.HeroName+".d2s")
+		}
+	}
+
+	return D2SPath(state)
+}
+
+// writeFileAtomic writes data to path through a temporary file in the same
+// folder (synced, then renamed over the target), so a crash or a full disk
+// never leaves half a save.
+func writeFileAtomic(path string, data []byte) error {
+	tmp := path + ".tmp"
+
+	file, err := os.OpenFile(filepath.Clean(tmp), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, writefilePermission)
+	if err != nil {
+		return err
+	}
+
+	if _, err = file.Write(data); err == nil {
+		err = file.Sync()
+	}
+
+	if cerr := file.Close(); err == nil {
+		err = cerr
+	}
+
+	if err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+
+	if err = os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+
+	return nil
+}
+
+// backupOriginal copies an existing file to path+BackupSuffix unless a backup
+// is there already, so the first backup stays the untouched original.
+func backupOriginal(path string) error {
+	bak := path + BackupSuffix
+
+	if _, err := os.Stat(bak); err == nil {
+		return nil
+	}
+
+	orig, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	return writeFileAtomic(bak, orig)
 }
 
 // SaveD2S exports an imported hero to a real .d2s file (see D2SPath). Heroes
@@ -55,6 +177,8 @@ func (f *HeroStateFactory) SaveD2S(state *HeroState) (*D2SExport, error) {
 
 	data, warnings, err := ExportD2SWithOptions(state, state.D2SBase, f.d2sTables, ExportOptions{
 		SkillIDs:   f.classSkillIDs(state.HeroType),
+		Affixes:    f.affixIDs(),
+		Known:      func(code string) bool { return f.asset.Records.Item.All[code] != nil },
 		LastPlayed: time.Now(),
 	})
 	res.Warnings = warnings
@@ -67,17 +191,16 @@ func (f *HeroStateFactory) SaveD2S(state *HeroState) (*D2SExport, error) {
 		return res, err
 	}
 
-	// write beside the target and rename, so a crash never leaves half a save
-	tmp := res.Path + ".tmp"
-	if err := os.WriteFile(tmp, data, writefilePermission); err != nil {
-		return res, err
+	if err := backupOriginal(res.Path); err != nil {
+		return res, fmt.Errorf("backup of %s: %w", res.Path, err)
 	}
 
-	if err := os.Rename(tmp, res.Path); err != nil {
+	if err := writeFileAtomic(res.Path, data); err != nil {
 		return res, err
 	}
 
 	res.Summary = SummarizeD2S(data, f.d2sTables)
+	res.NewItems = NewItemsInD2S(state, data, f.d2sTables)
 
 	return res, nil
 }

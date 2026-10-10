@@ -51,8 +51,9 @@ func realSave(t *testing.T) ([]byte, *d2s.ItemTables, *HeroState) {
 	}
 
 	a := c.Body.Attributes
+	stash := loadedStashGold(a.StashedGold)
 	state := &HeroState{
-		HeroName: c.Header.Name, Act: 1, MapSeed: c.Header.MapSeed, D2SBase: data, Gold: int(a.Gold),
+		HeroName: c.Header.Name, Act: 1, MapSeed: c.Header.MapSeed, D2SBase: data, Gold: int(a.Gold), StashGold: &stash,
 		Stats: &HeroStatsState{
 			Level: int(a.Level), Experience: int(a.Experience),
 			Strength: int(a.Strength), Energy: int(a.Energy), Dexterity: int(a.Dexterity), Vitality: int(a.Vitality),

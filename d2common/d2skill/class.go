@@ -210,7 +210,7 @@ func (c *cast) desc() *d2missile.DamageDesc {
 	}
 
 	d := c.sk.Descriptor(c.env, c.lvl, wmin, wmax, c.u.Stat(masteryStat[c.sk.EType]))
-	d.DamagePct = int32(c.u.Stat("damagepercent"))
+	d.DamagePct = int32(c.u.Stat("damagepercent") + missileMastery(c.u, c.sk))
 
 	return &d
 }
@@ -257,6 +257,12 @@ func rollRange(r d2combat.Roller, lo, hi int32) int32 {
 	return lo + int32(r.Roll(hi-lo))
 }
 
+// AROperandAdjuster is implemented by a Unit that applies the attack rating
+// operands of 0x57b8b0 (stats 0x73, 0x74, 0x7b, 0x7c) before the to-hit roll.
+type AROperandAdjuster interface {
+	AdjustAROperands(t d2missile.Target, ar, def int) (newAR, newDef int)
+}
+
 // strike resolves one melee strike of a skill against a target (the shared
 // core of SRVDO_Attack / SRVDO_MeleeSkillResolveHit, skills-2.md 4.1, 4.2,
 // 4.10, 4.14): to-hit roll, weapon damage plus percent, SrcDam scaling,
@@ -268,9 +274,14 @@ func (p *Pipeline) strike(u Unit, sk *Skill, lvl int, t d2missile.Target, env *E
 	if sk.Kick || o.autoHit {
 		mr.Hit, mr.Chance = true, 100
 	} else {
+		ar, def := u.AttackRating(), t.Defense(false)
+		if adj, ok := u.(AROperandAdjuster); ok {
+			ar, def = adj.AdjustAROperands(t, ar, def) // 0x57b8b0, player attackers only
+		}
+
 		mr.Hit, mr.Chance, mr.Roll = d2combat.RollToHit(u.Roller(), d2combat.ToHitInput{
-			AttackRating: u.AttackRating(), Defense: t.Defense(false),
-			AttackerLevel: u.Level(), DefenderLevel: t.Level(), AttackRatingPct: o.toHitPct + u.Stat("item_tohit_percent"),
+			AttackRating: ar, Defense: def,
+			AttackerLevel: u.Level(), DefenderLevel: t.Level(), AttackRatingPct: o.toHitPct + u.Stat("item_tohit_percent") + masteryOf(u, MasteryToHit, sk),
 		})
 	}
 
@@ -301,7 +312,7 @@ func (p *Pipeline) strike(u Unit, sk *Skill, lvl int, t d2missile.Target, env *E
 		}
 
 		ph := rollRange(r, lo, hi)
-		ph += int32(mulDiv(int(ph), o.pct+u.Stat("damagepercent"), 100))
+		ph += int32(mulDiv(int(ph), o.pct+u.Stat("damagepercent")+masteryOf(u, MasteryDamage, sk), 100))
 		ph = d2combat.ScaleBySrcDam(ph, uint8(sk.SrcDam))
 		ph += o.flat
 
@@ -357,7 +368,7 @@ func (p *Pipeline) strike(u Unit, sk *Skill, lvl int, t d2missile.Target, env *E
 
 	if !sk.Kick {
 		dmg.ApplyStrike(r, d2combat.StrikeInput{
-			CriticalChance: u.Stat("passive_critical_strike"), DeadlyChance: u.Stat("item_deadlystrike"),
+			WeaponChance: masteryOf(u, MasteryCrit, sk), CriticalChance: u.Stat("passive_critical_strike"), DeadlyChance: u.Stat("item_deadlystrike"),
 		})
 	}
 
@@ -1196,7 +1207,8 @@ func doAuraFn(c *cast) {
 // ---- storms and rains ----
 
 // doRainFn is SRVDO_028 (Meteor, Blizzard). Meteor: one strike on the aim
-// point after 12 frames, radius aurarangecalc. Blizzard: calc2 frames apart,
+// point after 12 frames, radius aurarangecalc (hit function 14 reads skills
+// record +0x64 when sHitPar1 is empty, minimum 1; verified 0x5a8680). Blizzard: calc2 frames apart,
 // shards fall at random points within calc1 of the aim for 100 frames (the
 // blizzardcenter lifetime), each hitting a radius of 2. All U: the missiles'
 // own do functions (10 / meteorcenter hit function 14) were not read.
@@ -1206,7 +1218,7 @@ func doRainFn(c *cast) {
 
 	if c.sk.SrvMissileA == "meteorcenter" || c.sk.Name == "Meteor" {
 		c.effect(Effect{Kind: "strikes", Origin: "aim", Desc: d, Strikes: []Strike{
-			{Delay: 12, X: ax, Y: ay, Radius: maxInt(c.env.eval(c.sk.AuraRangeCalc), 3)},
+			{Delay: 12, X: ax, Y: ay, Radius: maxInt(c.env.eval(c.sk.AuraRangeCalc), 1)},
 		}})
 
 		return

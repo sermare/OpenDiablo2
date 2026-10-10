@@ -309,6 +309,8 @@ func (a *App) Run() (err error) {
 		return err
 	}
 
+	d2util.PerfMark("renderer-created")
+
 	windowTitle := fmt.Sprintf("OpenDiablo2 (%s)", a.gitBranch)
 
 	// If we fail to initialize, we will show the error screen
@@ -324,6 +326,8 @@ func (a *App) Run() (err error) {
 
 		return err
 	}
+
+	d2util.PerfMark("assets-ready")
 
 	// OD2_AUTOGAME=<save file> skips the menus and starts that character directly.
 	// It exists so changes can be tested without clicking through the UI.
@@ -446,6 +450,7 @@ func (a *App) renderCapture(target d2interface.Surface) error {
 }
 
 func (a *App) render(target d2interface.Surface) {
+	d2util.PerfMark("first-frame")
 	a.screen.Render(target)
 	a.ui.Render(target)
 

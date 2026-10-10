@@ -68,7 +68,8 @@ func runewordLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 
 		for idx := 0; idx < numRunewordProperties; idx++ {
 			codeColumn := fmt.Sprintf(fmtRunewordPropCode, idx+1)
-			if code := codeColumn; code != "" {
+			// (the column's value, not its name: the old code stored "T1Code1" as the code)
+			if code := d.String(codeColumn); code != "" {
 				prop := &RunewordProperty{
 					code,
 					d.String(fmt.Sprintf(fmtRunewordPropParam, idx+1)),

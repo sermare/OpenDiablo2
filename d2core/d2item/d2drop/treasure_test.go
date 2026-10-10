@@ -153,9 +153,9 @@ func TestParseEntry(t *testing.T) {
 
 func TestBuildTypeTreasureClasses(t *testing.T) {
 	items := []*ItemInfo{
-		{Code: "lvl3", Level: 3, Types: []string{"armo"}, Spawnable: true, Rarity: 2},
+		{Code: "lvl3", Level: 3, Types: []string{"armo"}, Spawnable: true, TypeRarity: 2},
 		{Code: "lvl4", Level: 4, Types: []string{"armo"}, Spawnable: true},
-		{Code: "lvl6", Level: 6, Types: []string{"armo", "helm"}, Spawnable: true, Rarity: 5},
+		{Code: "lvl6", Level: 6, Types: []string{"armo", "helm"}, Spawnable: true, TypeRarity: 5},
 		{Code: "quest", Level: 5, Types: []string{"armo"}, Spawnable: true, Quest: true},
 		{Code: "nosp", Level: 5, Types: []string{"armo"}},
 		{Code: "wpn", Level: 5, Types: []string{"weap"}, Spawnable: true},

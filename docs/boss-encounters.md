@@ -50,7 +50,88 @@ De Seis 394, Infector 395+396).
 - Baal (0x58bce0): slot 0x28; spawns a class 0x271 unit at his corpse (U purpose).
 - Bits beyond those listed (primary goal + reward pending for Diablo/Baal, the Andariel convention) are U.
 
+## Pandemonium event and quest rewards (code: `d2common/d2uber`, `d2cube`, `d2reward`; scenario `9g-quest-rewards-uber.sh`)
+VERIFIED from the 1.14b patch_d2 tables: monstats rows ubermephisto/uberdiablo/uberizual/uberandariel (display name Lilith)/uberduriel/
+uberbaal = exe classes 704..709, level 110, AI names UberMephisto, UberDiablo, UberIzual, Andariel, Duriel, UberBaal (the last one reuses
+the BaalCrab think function, U); treasure classes "Uber Andariel/Duriel/Izual" drop dhn/bey/mbr; CubeMain rows pk1+pk2+pk3 ("Pandemonium
+Portal") and dhn+bey+mbr ("Pandemonium Finale Portal"); levels 133..135 (Pandemonium 1..3) and 136 (Finale). UNVERIFIED (community
+knowledge, nothing in the data): which area a key set opens (the engine walks them in order, the live game picks at random), the Hell
+bosses that drop the keys (Andariel pk1, Duriel pk2, Mephisto pk3), the arrival order/delays of the Tristram bosses, the Standard of
+Heroes (`std`, not in the tables), the red portal object. Quest rewards: Potion of Life and Malah's scroll change the hero (LifeBonus,
+ResistBonus); Larzuk's sockets and Anya's personalisation wait for an item (`rewarditem socket|personalize`); socket count and
+eligibility rules are U. The quest system now follows act changes (`TravelToAct2..5` on the NPC, portal and talk trips) and the portal to
+Act 4 / Act 5 opens in the Durance of Hate 3 / the Pandemonium Fortress once the quest is done.
+
 ## Other AIs
 - FallenShaman 0x5f04d0 (V, re-read): melee first (aip3), corpse scan for classes 19/58 within aip4, alert broadcast aip1, resurrect
   aip1, Skill2 fire aip2 within aip5, circle. The engine's Director has no corpse finder yet, so it does not resurrect in game.
 - State 13 (0x5e4be0): anchor guard, partly U. State 16 (0x5e1c60): imp after Imp Teleport (unit state 0x8f), partly U.
+
+## Oracle audit (feat/boss-oracle)
+Tests: `d2common/d2monster/boss_oracle_test.go` (real monstats via `D2_TABLES`, skipped when unset) pins Skill1-8 (name, mode,
+level), aip1-8, aidel, aidist, threat, Level and the six resists per difficulty for Andariel, Duriel, Mephisto, Diablo, Summoner,
+Izual, Blood Raven, Griswold, Radament and the Baal rows (throne, crab, clone, taunt, to-stairs, tentacles, minion);
+`d2common/d2quest/boss_oracle_test.go` pins the monster class constants of the quest nodes to the file's hcIdx column.
+
+Facts from the table (V = read from the file):
+- Andariel aip 30/10/30/50 (N), 35/8/32/55, 35/6/34/60; Skill1 AndrialSpray, Skill2 AndyPoisonBolt. No Skill3+.
+- Duriel aip1 5/5/6 (aura level), aip2 33 (Smite), aip3 50 (Jab); aip4 and aip5 are empty, so no A2 mix and no Charge ever; Skill4 Holy Freeze (NU).
+- Mephisto aip1 15/20/25, aip2/3 25/33/33 (unused by the ported think); aidist 0/40/46; six skills, all mode A2.
+- Diablo has no aip at all; seven skills (DiabLight SC, DiabCold S2, DiabFire S1, DiabWall S3, DiabRun seq, PrimeFirewall S3, DiabPrison S3).
+- Summoner aip 85/5/63/40/120/33/5/40 (N); 93/.../100/20/8 (NM); 98/.../80/10/11 (H); Skill5 Weaken.
+- Izual aip4 0/75/100 and aip5 20/5/0 vary by difficulty; one skill, Frost Nova.
+- Baal: throne aip1 25, taunt aip 3/10/20, to-stairs aip1 4, tentacles aip1 70..90 / aip2 24..16 / aip3 10; crab and clone carry 7
+  skills (clone: "Baal Clone Teleport" instead of "Baal Teleport"). Monster levels differ per difficulty (crab 60/75/99).
+- Immunities are plain resists >= 100: Griswold Hell poison 120, Baal Minion Hell fire 120, tentacles Hell cold 110..130. No boss
+  in the act list is fully immune otherwise. Resists are used as written (no difficulty penalty for non-merc monsters, verify-resist.md).
+- The hcIdx column already carries the exe numbering: baalthrone 543, baalcrab 544, baalcrabstairs 559, baalclone 570.
+
+Known divergence (not changed here to avoid touching tick.go/ai_baal.go, which feat/verify-monster-ai owns): Baal AI target
+modes. Exe: Throne 2, Crab 0, Taunt 1, ToStairs 1, Tentacle 1, Clone 0. This tree: TargetOnly for all but ToStairs (None).
+`TestBaalTargetModesDivergence` pins today's values and must change with that merge.
+
+## Verified in the bosses pass (feat/verify-bosses, details in d2-re-notes/verify-bosses.md)
+- VERIFIED Mephisto moat: his think (0x5f6950) has no teleport; the only teleport helper, MONAI_TryWoundedMonTeleport 0x5aedc0
+  (hard-coded skill 0xb8 = MonTeleport 184, not read from the monster's skills), needs AiGeneral flag 0x20, which no MONAI_SetAiFlag
+  site sets (sites set 0x1, 0x2, 0x10, 0x40). So Mephisto and the blood guards never teleport; the moat trick works.
+- VERIFIED seals: object 392..396 -> flag 0..4 in order (FUN_005b3240); the bosses are spawned by the dummy object 131 in level 108
+  (QUEST_OnObjectOperated -> 0x5b3360, position matched against three stored positions -> super unique id; a failed spawn retries
+  after 10 frames); group size = MinGrp/MaxGrp of the super unique row (9, 5, 9). Arrival 0x5b2e60 sends a mode-0 record to every
+  other living non-pet monster of level 108 (default; `Seals.LegacyNoPurge` removes it). The Diablo spawn itself is quest timer 1 (handler not traced).
+- VERIFIED Baal waves: skill 286 is cast with a missile (hit function 54 -> CCMD_Func_54c470 super unique spawn); the super unique
+  hcIdx come from the table 0x6e4ab8 = 61..65 = rows "Baal Subject 1..5". The think is gated: no step while a living monster that
+  is not hostile to the throne (the previous wave) is within edge distance 0x40 of it (a type-1 scan, callback 0x5db5f0), plus the
+  250/100 frame timers. Earlier note "hero within 0x40" was wrong.
+- VERIFIED kill bits: Mephisto 0x5b9d00 slot 22 bits 0xd, 0, 0xb; Diablo 0x5b2950 slot 26 bits 0xd, 0 (+6, 7 classic); Baal 0x58bae0
+  slot 40 bits 0xd, 0 and only in level 132. None sets reward pending. They are the default (`Game.LegacyBossBits` restores the old reward-pending flow). Baal's death also fires
+  missile 625 at the corpse (0x58bce0, effect not identified).
+- VERIFIED drops: Mephisto's kill stamps item code "mss " (soulstone) on the unit and drops it (0x557980); Mephistoq has none. The Hellforge
+  handler 0x5b4190 stamps "hfh " the same way (which monster is attached: not traced).
+- VERIFIED travel: Meshif (class 210) sets slot 15 (and slot 10 if open), Warriv (155) slot 7, class 367 slot 28 (expansion) in 0x5446e0.
+- VERIFIED Duriel lair gate: warp into level 73 is blocked while the Seven Tombs node is active and private byte +0xb is 0 (0x59b700);
+  the writer of +0xb was not found (`Tomb.LairWarpBlocked` assumes: staff placed).
+
+## Second pass (feat/verify-diablo-hellforge, details in d2-re-notes/verify-diablo-hellforge.md)
+- VERIFIED seal pairing: the boss seals 392/394/396 (OperateFn 54/55/56 = 0x5b4720/0x5b4770/0x5b4840) store the seal position plus an
+  offset ((-12,-52), (-39,+33), (+32,+16)) in the quest data (+0x24, +0x2c, +0x34), create a Dummy object (131) there and run the seal
+  code 0x5b3240. Operating the dummy matches its coordinates (0x5b3360) and spawns hcIdx 36 (seal 392, Infector of Souls), 37 (394, Lord
+  De Seis), 38 (396, Grand Vizier of Chaos); the root table +0xb28/2a/2c is the hcIdx->row array at +0xae0 (index 36..38). The earlier
+  model (392 = Vizier, 396 = Infector) was wrong. The plain seals 393/395 only set their flag. This is the default (`Seals.LegacyLayout` restores the old pairing).
+- VERIFIED Diablo's arrival: the Dummy object 255 (InitFn 55 = 0x5b31a0) records itself in the quest data (+6, +8 = unit id). When all five
+  flags are set and the kill counter is 3, 0x5b2e60 runs once and the quest timer callback 0x5b2830 is added with delay 1; it counts 10
+  frames, then spawns Diablo (class 0xf3, 0x5b27b0: exact subtile of dummy 255, else radius 5, else 10), ORs 0x3000000 into his unit flags
+  and sets +0x11. 11 frames in total (`ExeDiabloDelay`). No cutscene lock was found in this code; after the arrival the level no longer
+  populates itself (0x54ca00 -> 0x5b2e40). The Terror's End node is attached to the monsters by class (0x5af8c0: Diablo 0xf3) and to the
+  three seal bosses by hcIdx 36..38 (0x5a2480), so the kill counter counts those four.
+- VERIFIED Hellforge: the hammer quest node (24) is attached to class 0x199 = 409 "hephasto" in the monster-create hook 0x5af8c0; its kill
+  handler 0x5b4190 (node active) stamps "hfh " on the dying unit and drops it (0x557980 mode 7). The forge object 376 (InitFn 48 = 0x5b3630
+  sets the mode from the quest data, OperateFn 49 = 0x5b3820 needs the hammer; both are preset level objects, not created by quest code).
+  By default the quest package drops the hammer on Hephasto's kill.
+- VERIFIED Duriel lair byte +0xb: written (=1) at the end of the quest timer callback 0x59b450, which the staff placement event 0x59b960
+  adds; the callback animates the orifice, creates the portal object 100 at (X-13, Y+3) of the object in +0x20 and then sets +0xb. So the
+  lair opens when the portal appears (default; `Tomb.LegacyLairGate` restores the staff-time gate).
+
+## Defaults (feat/enable-exe-boss-layout)
+The verified behaviours are now the default: exe seal pairing/dummy offsets/11-frame arrival, arrival purge, lair gate at the portal,
+exe kill bits (Mephisto bit 11, Baal only in level 132, Diablo classic bits) and the Hephasto hammer. `OD2_LEGACY_BOSS=1` (or the
+Legacy* fields) restores the earlier model.

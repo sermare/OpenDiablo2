@@ -52,6 +52,7 @@ type trig struct {
 	page     int  // quest log page to store (0: derived)
 	bit      int  // record bit to set (-1: none; 0: mirror the state)
 	fx       func(g *Game, q *Quest) []Effect
+	exe      *exeKill // verified kill bits of the exe, used unless Game.LegacyBossBits is set (boss_exe.go)
 }
 
 // spec describes a table driven quest.
@@ -72,11 +73,13 @@ type spec struct {
 	extra                   func(g *Game, q *Quest, npc int) []Speech
 	setup                   func(q *Quest, s *spec)
 	logPage                 func(g *Game, q *Quest) int
+	kill                    *killSpeech // speech after an end-boss kill (boss_speech.go), unless Game.LegacyBossBits
 }
 
 type genData struct {
 	hits     []int
 	rewarded bool
+	cheered  bool // A3Q6: the hero heard the town cheers (the node's recently-rewarded list)
 }
 
 func (s *spec) rpTable(g *Game) int {
@@ -336,8 +339,12 @@ func newSpecQuest(s *spec) *Quest {
 	}
 
 	q.on[EvMessageHeard] = func(g *Game, q *Quest, e *Event) {
-		if !q.NotIntro {
+		if !q.NotIntro && !g.rewardOwed(q) {
 			return
+		}
+
+		if s.kill != nil && !g.LegacyBossBits {
+			s.kill.heard(g, q, d, e)
 		}
 
 		if g.get(q, FlagRewardPending) && !g.get(q, FlagRewardGranted) && s.isClaim(q, g, e.NPC, e.Msg) {
@@ -403,7 +410,21 @@ func newSpecQuest(s *spec) *Quest {
 				page = 2
 			}
 
-			apply(g, q, t.to, t.goal, t.direct, page, t.bit, false)
+			direct := t.direct
+
+			if !g.LegacyBossBits && t.exe != nil {
+				if !t.exe.applies(g, e) {
+					continue
+				}
+
+				direct = true
+			}
+
+			apply(g, q, t.to, t.goal, direct, page, t.bit, false)
+
+			if !g.LegacyBossBits && t.exe != nil {
+				t.exe.finish(g, q, s)
+			}
 
 			if t.fx != nil {
 				for _, f := range t.fx(g, q) {
@@ -426,7 +447,7 @@ func newSpecQuest(s *spec) *Quest {
 	}
 
 	q.activate = func(g *Game, q *Quest, npc int) []Speech {
-		if !q.NotIntro {
+		if !q.NotIntro && !g.rewardOwed(q) {
 			return nil
 		}
 
@@ -456,12 +477,16 @@ func newSpecQuest(s *spec) *Quest {
 			out = append(out, s.extra(g, q, npc)...)
 		}
 
+		if s.kill != nil && !g.LegacyBossBits {
+			out = append(out, s.kill.activate(g, q, d, npc)...)
+		}
+
 		return out
 	}
 
 	q.active = func(g *Game, q *Quest, npc int) bool {
 		switch {
-		case !q.NotIntro || g.get(q, FlagRewardGranted):
+		case (!q.NotIntro && !g.rewardOwed(q)) || g.get(q, FlagRewardGranted):
 			return false
 		case g.get(q, FlagRewardPending):
 			return q.hasGiverLine(npc, s.rpTable(g))

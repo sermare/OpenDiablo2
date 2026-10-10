@@ -1,6 +1,8 @@
 package d2vendor
 
 import (
+	"strings"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
@@ -36,10 +38,14 @@ const (
 	magicLevelExtraRoll = 3
 )
 
-// capByTier are the item level caps of FUN_005746a0, indexed by the per
-// vendor record byte at +0x22 (VERIFIED values 12, 20, 28, 36, 45). What that
-// byte counts (restock number? game progress?) is UNVERIFIED, so callers pass
-// Options.Tier = -1 (no cap) unless they know.
+// capByTier are the item level caps of FUN_005746a0 (Game.exe 1.14b
+// 0x5746a0), VERIFIED: 12, 20, 28, 36, 45. The index is the per-vendor record
+// byte at +0x22, which is the 0-based act of the vendor's town (the town
+// transition handler 0x534d40 -> 0x534c20 matches that byte against the act
+// it derives from the town level ids 1/40/75/103/109). The cap is applied
+// only on Normal difficulty (game byte +0x6d == 0) and only for an index
+// below 5; the result is min(playerLevel+5, cap). Callers pass
+// Options.Tier = ActIndex(vendor), or -1 for no cap.
 //
 //nolint:gochecknoglobals // constant table
 var capByTier = [...]int{0xc, 0x14, 0x1c, 0x24, 0x2d}
@@ -64,10 +70,23 @@ type Base struct {
 	// Gear marks armour and weapons; only those get quality rolls other
 	// than normal (UNVERIFIED for misc items, treated as always normal).
 	Gear bool
-	// CanBeMagic stands for FUN_00629e40 ("base item may be magic"). Its
-	// exact test is UNVERIFIED; the records adapter uses "not an always
-	// normal item type".
+	// CanBeMagic stands for ITEM_TestBitfield1Flag1 (0x629e40): bit 0 of the
+	// base record's load-time flag word at +0xdc (VERIFIED; a derived flag,
+	// not a txt column). Which item types set it is UNVERIFIED; the records
+	// adapter uses "not an always normal item type and armour or weapon" and
+	// the oracle test checks that every vendor magic column sits on such an
+	// item.
 	CanBeMagic bool
+	// Version is the items.txt version column (+0xf6): 0 classic, 100
+	// expansion. VERIFIED: an item with Version >= 100 is skipped (both the
+	// regular and the magic pass) unless the game is an expansion game
+	// (game word +0x78 >= 100), see Options.Classic.
+	Version int
+	// Uber, Ultra, NightmareUpgrade and HellUpgrade are the item's
+	// exceptional / elite versions and its per-difficulty replacements
+	// (+0x88, +0x8c, +0x19c, +0x1a0, VERIFIED use in FUN_00574110).
+	Uber, Ultra, NightmareUpgrade, HellUpgrade string
+
 	// Ammo is arrows and bolts ("aqv ", "cqv "): sold as a full stack.
 	Ammo     bool
 	MaxStack int
@@ -94,8 +113,23 @@ type Item struct {
 // Options are the inputs of Generate.
 type Options struct {
 	PlayerLevel int
-	// Tier is the index into the item level cap table; negative = no cap.
+	// Tier is the index into the item level cap table: the 0-based act of
+	// the vendor's town (see ActIndex); negative = no cap. Ignored (no cap)
+	// when Difficulty != 0.
 	Tier int
+	// Difficulty is 0 normal, 1 nightmare, 2 hell. VERIFIED effects: the cap
+	// table applies on normal only, and from player level 26 on nightmare
+	// and hell vendors upgrade items (see upgradeCode).
+	Difficulty int
+	// Classic marks a classic (non-expansion) game: items with Version >= 100
+	// are not stocked (VERIFIED). The zero value is an expansion game.
+	Classic bool
+	// EliteUpgrade is game field +0x70, which enables the hell-only
+	// elite (ultracode) upgrade (VERIFIED as a gate, its meaning is not).
+	EliteUpgrade bool
+	// Resolve returns the base data of an upgraded code (size, codes). When
+	// nil or when it does not know the code, an upgrade is skipped.
+	Resolve func(code string) (Base, bool)
 }
 
 // Stock is a vendor inventory.
@@ -185,20 +219,161 @@ func RollQuality(rng d2drop.RNG, ilvl int) d2drop.Quality {
 	return d2drop.QualityNormal
 }
 
+// upgradeRange is the modulus of the difficulty upgrade roll (VERIFIED:
+// 0x186a0 in FUN_00574110), upgradeMinPlayerLevel the first player level
+// with upgrades (VERIFIED: player level > 25).
+const (
+	upgradeRange          = 100000
+	upgradeMinPlayerLevel = 26
+)
+
+func validCode(c string) bool {
+	c = strings.TrimSpace(c)
+
+	return c != "" && c != "xxx" && c != "0"
+}
+
+// upgradeCode is the difficulty rule of FUN_00574110 (VERIFIED), applied to
+// every created vendor item when Difficulty > 0 and the player level is 26 or
+// more, with one Roll(100000) per created item:
+//
+//   - nightmare: roll < ilvl*64+4000 and an exceptional version exists:
+//     that; otherwise the NightmareUpgrade code if there is one;
+//   - hell: with EliteUpgrade set, roll < ilvl*16+1000 and an elite version
+//     exists: that; else roll < ilvl*128+5000 and an exceptional version
+//     exists: that; afterwards a HellUpgrade code, if any, replaces the
+//     result. This is how healing and mana potions of tier 4 / 5 appear:
+//     hp1..hp3 -> hp4 (NightmareUpgrade) -> hp5 (HellUpgrade).
+//
+// It returns the code to create (b.Code when nothing changes).
+func upgradeCode(rng d2drop.RNG, b *Base, opt Options, ilvl int) string {
+	if opt.Difficulty <= 0 || opt.PlayerLevel < upgradeMinPlayerLevel {
+		return b.Code
+	}
+
+	r := int(rng.Roll(upgradeRange))
+
+	if opt.Difficulty == 1 {
+		if r < ilvl*64+4000 && validCode(b.Uber) {
+			return b.Uber
+		}
+
+		if validCode(b.NightmareUpgrade) {
+			return b.NightmareUpgrade
+		}
+
+		return b.Code
+	}
+
+	code := b.Code
+
+	switch {
+	case opt.EliteUpgrade && r < ilvl*16+1000 && validCode(b.Ultra):
+		code = b.Ultra
+	case r < ilvl*128+5000 && validCode(b.Uber):
+		code = b.Uber
+	}
+
+	if validCode(b.HellUpgrade) {
+		code = b.HellUpgrade
+	}
+
+	return code
+}
+
+// rollRange is CTRL_Helper_4b8e00 (0x4b8e00): a number in [lo, hi); lo
+// without drawing when hi <= lo. VERIFIED.
+func rollRange(rng d2drop.RNG, lo, hi int) int {
+	if hi <= lo {
+		return lo
+	}
+
+	return lo + int(rng.Roll(int32(hi-lo)))
+}
+
+// extraMagic is the amount added to MagicMax (VERIFIED): 1 below item level
+// 25, else 2 or 3 (random(1..2)+1, one roll).
+func extraMagic(rng d2drop.RNG, ilvl int) int {
+	if ilvl < regularItemLevelLimit {
+		return 1
+	}
+
+	return rollRange(rng, 1, magicLevelExtraRoll) + 1
+}
+
+// VendorSells is TRADE_CheckVendorSellsItem (0x574cf0, VERIFIED): whether the
+// vendor counts as selling code, which the server's buy and sell paths use
+// (the vendor does not take such an item back). That is the vendor's
+// permanent list, and on any non-normal difficulty also the tier 4 and 5
+// potions hp4, hp5, mp4 and mp5 (which the difficulty upgrade can put on the
+// shelves, see upgradeCode).
+func VendorSells(difficulty int, code string, permanent []string) bool {
+	if difficulty != 0 {
+		switch code {
+		case "hp4", "hp5", "mp4", "mp5":
+			return true
+		}
+	}
+
+	for _, p := range permanent {
+		if p == code {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ActIndex is the 0-based act of a vendor's town, the index into the item
+// level cap table; -1 for a vendor of no modelled act.
+func ActIndex(v Vendor) int {
+	for i, l := range [][]Vendor{Act1, Act2, Act3, Act4, Act5} {
+		for _, o := range l {
+			if o.ClassID == v.ClassID {
+				return i
+			}
+		}
+	}
+
+	return -1
+}
+
 // Generate builds a stock. bases should be in a stable order (the original's
 // table order is UNVERIFIED; the records adapter sorts by code).
 //
-// UNVERIFIED simplifications: the Min and MagicMin columns are not read by
-// the decompiled code that was followed (only byte[1], the maximum, is);
-// permanent items are excluded from the regular and magic passes; permanent
-// items other than ammo get no quantity here.
+// VERIFIED against 0x574780 (see doc.go): both Min and Max columns are read,
+// the regular count is Min + random(Max+1-Min) (Min when Max < Min), the magic
+// count is MagicMin + random(MagicMax+extra-MagicMin) with extra 1 below item
+// level 25 and 2..3 from there on; the regular and the magic pass both need
+// ReqLevel <= ilvl and an item version the game accepts; the magic pass
+// additionally needs the may-be-magic flag and MagicLvl <= ilvl. All rolls use
+// the game's one shared generator.
+//
+// UNVERIFIED simplifications: permanent items are excluded from the regular
+// and magic passes (assumed to live in a separate list); permanent items other
+// than ammo get no quantity here; permanent items are created first (the
+// original creates them last) because the single 10x10 grid would otherwise
+// crowd them out.
 func Generate(rng d2drop.RNG, bases []Base, opt Options) *Stock {
 	s := NewStock()
-	ilvl := ItemLevel(opt.PlayerLevel, opt.Tier)
+
+	tier := opt.Tier
+	if opt.Difficulty != 0 {
+		tier = -1 // VERIFIED: the cap table only applies on normal difficulty
+	}
+
+	ilvl := ItemLevel(opt.PlayerLevel, tier)
 	failures := 0
 
 	create := func(b *Base, q d2drop.Quality, perm bool) bool {
 		it := &Item{Code: b.Code, Quality: q, ILvl: ilvl, W: b.W, H: b.H, Permanent: perm}
+
+		if code := upgradeCode(rng, b, opt, ilvl); code != b.Code && opt.Resolve != nil {
+			if nb, ok := opt.Resolve(code); ok {
+				it.Code, it.W, it.H = code, nb.W, nb.H
+				b = &nb
+			}
+		}
 
 		if perm && b.Ammo {
 			it.Quantity = b.MaxStack // VERIFIED: full stack
@@ -213,11 +388,6 @@ func Generate(rng d2drop.RNG, bases []Base, opt Options) *Stock {
 		return true
 	}
 
-	// The notes list the permanent items last. They go first here so that
-	// the always-for-sale goods are never crowded out of the single 10x10
-	// grid (the real window pages its stock by tab; that split is
-	// UNVERIFIED and not modelled). Permanent creation draws no random
-	// numbers, so the other rolls are unaffected.
 	for i := range bases {
 		b := &bases[i]
 		if b.Permanent && b.Vendor.Max > 0 {
@@ -229,12 +399,12 @@ func Generate(rng d2drop.RNG, bases []Base, opt Options) *Stock {
 
 	for i := range bases {
 		b := &bases[i]
-		if b.Permanent {
+		if b.Permanent || b.ReqLevel > ilvl || (opt.Classic && b.Version >= 100) {
 			continue
 		}
 
-		if b.ReqLevel <= ilvl && ilvl < regularItemLevelLimit {
-			n := int(rng.Roll(int32(b.Vendor.Max + 1)))
+		if ilvl < regularItemLevelLimit {
+			n := rollRange(rng, b.Vendor.Min, b.Vendor.Max+1)
 			for ; n > 0; n-- {
 				q := RollQuality(rng, ilvl)
 				if !b.Gear {
@@ -248,12 +418,7 @@ func Generate(rng d2drop.RNG, bases []Base, opt Options) *Stock {
 		}
 
 		if b.CanBeMagic && b.Vendor.MagicLevel <= ilvl {
-			extra := 1
-			if ilvl >= regularItemLevelLimit {
-				extra = int(rng.Roll(magicLevelExtraRoll)) + 1
-			}
-
-			n := int(rng.Roll(int32(b.Vendor.MagicMax + extra)))
+			n := rollRange(rng, b.Vendor.MagicMin, b.Vendor.MagicMax+extraMagic(rng, ilvl))
 			for ; n > 0; n-- {
 				if !create(b, d2drop.QualityMagic, false) {
 					return s
@@ -263,6 +428,30 @@ func Generate(rng d2drop.RNG, bases []Base, opt Options) *Stock {
 	}
 
 	return s
+}
+
+// StockSeed derives the generator seed of one vendor's stock from the game's
+// vendor seed, so that every vendor of a game has its own stream (previously
+// the same seed served all of them) and a restock with the same restock count
+// reproduces. restock is the number of restocks so far (0 for the first
+// stock), gamble selects the gamble stock of the same vendor. The original
+// seeds from the NPC unit / player record; how exactly is UNVERIFIED (see the
+// open addresses in the package notes), this is a deterministic stand-in.
+func StockSeed(gameSeed uint32, classID int, restock uint32, gamble bool) uint32 {
+	const (
+		classMix  = 0x9E3779B1
+		gambleMix = 0x5BD1E995
+	)
+
+	s := gameSeed ^ uint32(classID)*classMix
+	if gamble {
+		s ^= gambleMix
+	}
+
+	g := d2rand.New(s)
+	g.Step()
+
+	return g.Step() + restock
 }
 
 // GenerateSeeded is Generate with a fresh generator.

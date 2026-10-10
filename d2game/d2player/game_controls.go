@@ -14,6 +14,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2equip"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
@@ -256,6 +257,7 @@ func NewGameControls(
 	inventory.itemHook = gc.itemTooltipLines
 	gc.stash = NewContainerPanel(asset, ui, l, inventory, stashKind, gc.saveHero)
 	gc.cube = NewContainerPanel(asset, ui, l, inventory, cubeKind, gc.saveHero)
+	gc.cube.SetOnTransmute(gc.onTransmuteButton)
 	gc.belt = NewBeltPanel(asset, ui, l, inventory, gc.beltBoxes, gc.saveHero)
 
 	if !isSinglePlayer {
@@ -278,7 +280,7 @@ func NewGameControls(
 	// skill selection: the popups pick through SelectSkill, the icons show the hotkeys
 	hud.skillSelectMenu.SetCallbacks(gc.onSkillPopupPick, gc.hotkeyName)
 	gc.skilltree.tooltipText = func(s *d2hero.HeroSkill) string {
-		return skillTooltip(asset, s, gc.hero.SkillBar, gc.hotkeyName)
+		return skillTooltip(asset, s, d2hero.EffectiveSkillLevel(gc.hero.Stats, gc.hero.Class, s), gc.hero.SkillBar, gc.hotkeyName, gc.hero.Skills, gc.hero.Stats)
 	}
 
 	if audioProvider != nil {
@@ -316,6 +318,7 @@ type GameControls struct {
 	ui                     *d2ui.UIManager
 	inventory              *Inventory
 	hud                    *HUD
+	questItemUse           func(code string) bool // Book of Skill, Potion of Life, Scroll of Resistance
 	skilltree              *skillTree
 	heroStatsPanel         *HeroStatsPanel
 	PartyPanel             *PartyPanel
@@ -329,11 +332,18 @@ type GameControls struct {
 	relation               func(p *d2mapentity.Player) d2enum.PlayersRelationships
 	stash                  *ContainerPanel
 	cube                   *ContainerPanel
+	cubeData               *cubeData
+	cubePortal             func(kind string) error
+	cubeRNG                *d2rand.Seed
+	cubeClassic            bool
+	cubeLadder             bool
+	cubeLast               *TransmuteResult
 	belt                   *BeltPanel
 	itemOrigin             map[InventoryItem]*d2s.Item
 	equipSound             func(handle string)
 	equipTouched           bool
 	equipNoSave            bool // the equip autotest saves once at the end
+	mercHost               MercGearHost
 	equipRand              *rand.Rand
 	equipStatus            map[d2equip.Loc]d2hero.EquipStatus
 	regen                  d2inventory.Regen
@@ -689,6 +699,23 @@ func (g *GameControls) SetCursorItem(item InventoryItem) { g.inventory.SetCursor
 func (g *GameControls) AddGold(amount int) {
 	g.hero.Gold += amount
 	g.inventory.AddGold(amount)
+}
+
+// PickUpGold adds picked-up gold to the purse up to the carry cap of the
+// hero's level (d2inventory.InventoryGoldLimit, PLAYER_GetMaxGoldCarry
+// 0x623050) and returns the overflow, which the caller leaves on the ground
+// (0x558e40 drops it as piles; VERIFIED). Gameplay change: a pickup can no
+// longer take the purse past level*10000.
+func (g *GameControls) PickUpGold(amount int) (overflow int) {
+	level := 1
+	if g.hero.Stats != nil {
+		level = g.hero.Stats.Level
+	}
+
+	total, over := d2inventory.AddGold(g.hero.Gold, amount, d2inventory.InventoryGoldLimit(level))
+	g.AddGold(total - g.hero.Gold)
+
+	return over
 }
 
 // InventoryItemCount returns how many items are in the inventory grid.

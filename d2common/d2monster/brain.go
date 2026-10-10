@@ -41,12 +41,24 @@ type Brain struct {
 	Seed    *d2rand.Seed
 
 	// Unit state maintained by the owner.
-	X, Y       int // position in subtiles
-	Size       int // unit size used by the edge distance
-	Mode       Mode
-	HPPercent  int // 0..100
-	LevelID    int // levels.txt id of the area the monster is in
+	X, Y      int // position in subtiles
+	Size      int // unit size used by the edge distance
+	Mode      Mode
+	HPPercent int // 0..100
+	LevelID   int // levels.txt id of the area the monster is in
+	// Aggressive is FUN_005dbff0 (VERIFIED 0x5dbff0/0x571320): the monster's
+	// pUnitData+0x54 is 3 or 0x13 (1, i.e. false, for a non-monster or a unit
+	// without data). Which game events set 3/0x13 is not recorded.
 	Aggressive bool
+
+	// WakeShouted is AiGeneral flag 0x10, the one-shot Summoner wake-up
+	// (VERIFIED 0x5aed10).
+	WakeShouted bool
+
+	// CanTeleport is AiGeneral flag 0x20 (+8 ushort, test 0x5dbf60), the gate
+	// of the wounded MonTeleport (0x5aedc0, VERIFIED). Which code sets it is
+	// UNVERIFIED, so it stays false (feature off) unless the host sets it.
+	CanTeleport bool
 
 	// TargetID/HasTarget record the target of the last acquisition (AiGeneral
 	// +0x08); Tick keeps them current.

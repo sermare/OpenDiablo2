@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monstats"
 )
 
 // This file plans natural monster groups from monstats / levels / superuniques
@@ -28,8 +29,8 @@ import (
 //	           corruptrogue3; followers then copy the unique's class (UNVERIFIED
 //	           fallback). Real data also shows that only SetBoss classes carry
 //	           minions (fallen1: SetBoss BossXfer minion1=fallen1 Party 2..3).
-//	VERIFIED   monster level: noRatio or boss classes use the monstats Level of
-//	           the difficulty, all others the area's levels.txt MonLvl.
+//	VERIFIED   monster level: see ResolveLevel (expansion, Nightmare/Hell, neither
+//	           noRatio nor boss).
 //
 // What the notes explicitly do NOT cover (open question, "NOT covered in this
 // pass"): room activation, the preset population pass, champion / unique
@@ -77,6 +78,37 @@ type Pack struct {
 	Members []Member
 	// SuperUnique is the superuniques key when the leader is one.
 	SuperUnique string
+	// Kind is the natural pack kind (champion / unique); PackNormal for
+	// ordinary groups and super uniques (which use SuperUnique).
+	Kind PackKind
+}
+
+// PackKind says which type flags a natural pack's members get.
+type PackKind int
+
+// Pack kinds.
+const (
+	PackNormal   PackKind = iota
+	PackChampion          // every member is a champion
+	PackUnique            // the leader is a unique (rare), the others its minions
+)
+
+// PlanChampion plans a champion pack. The members and the RNG draws are
+// exactly those of PlanGroup; only Kind differs.
+func PlanChampion(r *d2rand.Seed, info ClassInfo) Pack {
+	p := PlanGroup(r, info)
+	p.Kind = PackChampion
+
+	return p
+}
+
+// PlanUnique plans a unique (rare) pack: same members and RNG draws as
+// PlanGroup, the leader being the unique.
+func PlanUnique(r *d2rand.Seed, info ClassInfo) Pack {
+	p := PlanGroup(r, info)
+	p.Kind = PackUnique
+
+	return p
 }
 
 // roll draws in [0,n) (n<=0 gives 0 without consuming the RNG, like
@@ -290,16 +322,28 @@ func AvgGroupSize(types []ClassInfo) int {
 	return sum / (2 * w)
 }
 
-// ResolveLevel is the monster level rule (VERIFIED, MONAI_InitMonsterStats):
-// noRatio and boss classes take the monstats Level of the difficulty, others
-// the area's MonLvl from levels.txt. A missing area level (0) falls back to
-// the monstats level.
-func ResolveLevel(info ClassInfo, statLevel, areaLevel int) int {
-	if info.NoRatio || info.Boss || areaLevel <= 0 {
-		return statLevel
+// ResolveLevel is the monster level rule (VERIFIED 0x00571c4f, see
+// d2monstats.Class.ResolveLevel, to which it delegates): the monstats Level
+// of the difficulty (statLevels, indexed normal/nightmare/hell) is the
+// default; the area's levels.txt MonLvl replaces it only in an expansion game,
+// in Nightmare or Hell, for classes with neither noRatio nor boss, when the
+// area level is known (> 0).
+func ResolveLevel(info ClassInfo, diff Difficulty, statLevels [3]int, areaLevel int, expansion bool) int {
+	c := d2monstats.Class{NoRatio: info.NoRatio, Boss: info.Boss, Level: statLevels}
+
+	return c.ResolveLevel(clampDiff(int(diff)), areaLevel, expansion)
+}
+
+func clampDiff(d int) int {
+	if d < 0 {
+		return 0
 	}
 
-	return areaLevel
+	if d > 2 {
+		return 2
+	}
+
+	return d
 }
 
 // LeaderSuccessor picks the new leader of a group when the leader died and

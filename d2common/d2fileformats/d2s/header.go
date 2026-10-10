@@ -99,8 +99,11 @@ type Header struct {
 	Raw [HeaderSize]byte
 }
 
-// Mercenary is the hired mercenary stored in the header. ID is zero when the
-// character has none.
+// Mercenary is the hired mercenary stored in the header. Dead is bit 0 of the
+// byte at 0xB1 (VERIFIED, MERC_LoadFromD2sHeader 0x568730 tests bit 16 of the
+// dword at 0xAF), not "any non-zero u16". A merc exists when the id, the
+// experience or the name id is non-zero (Exists); the type alone does not
+// count.
 type Mercenary struct {
 	Dead       bool
 	ID         uint32
@@ -108,6 +111,10 @@ type Mercenary struct {
 	Type       uint16
 	Experience uint32
 }
+
+// Exists reports whether the header holds a mercenary: the loader returns
+// "none" only when id, experience and name id are all zero (VERIFIED, 0x568730).
+func (m Mercenary) Exists() bool { return m.ID != 0 || m.Experience != 0 || m.NameID != 0 }
 
 // Checksum computes the save checksum: the file is summed byte by byte with
 // the checksum field treated as zero, rotating the running sum left by one
@@ -175,7 +182,7 @@ func ParseHeader(data []byte) (*Header, error) {
 	h.MapSeed = le.Uint32(data[mapSeedOffset:])
 
 	h.Mercenary = Mercenary{
-		Dead:       le.Uint16(data[mercDeadOffset:]) != 0,
+		Dead:       data[mercDeadOffset]&1 != 0,
 		ID:         le.Uint32(data[mercIDOffset:]),
 		NameID:     le.Uint16(data[mercNameOffset:]),
 		Type:       le.Uint16(data[mercTypeOffset:]),

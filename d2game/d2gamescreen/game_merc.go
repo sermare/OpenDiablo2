@@ -13,6 +13,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
@@ -39,6 +40,7 @@ type mercGame struct {
 	table      *d2hireling.Table
 	tried      bool
 	offers     map[int]*sellerOffers
+	geared     bool                 // the give/take path of the controls is wired to the director
 	spawnedFor *d2monsters.Director // the director the merc was spawned into: a new level has a new one, so the merc follows the hero
 	test       *mercTest
 }
@@ -117,10 +119,17 @@ func (v *Game) advanceMerc(elapsed float64) {
 	if v.merc.spawnedFor != d && p.Merc != nil && d.Hirelings() != nil && !soloTest {
 		v.merc.spawnedFor = v.monsters
 
-		if _, err := d.SpawnMerc(p, saveOf(p.Merc)); err != nil {
+		save := saveOf(p.Merc)
+		if v.gameControls != nil {
+			save.Gear = v.gameControls.MercStatItems() // the saved 'jf' items count from the first frame
+		}
+
+		if _, err := d.SpawnMerc(p, save); err != nil {
 			v.Errorf("MERC spawn: %v", err)
 		}
 	}
+
+	v.wireMercGear(p)
 
 	if info, ok := d.Merc(p); ok && p.Merc != nil {
 		p.Merc.Experience = info.Save.Experience
@@ -128,6 +137,38 @@ func (v *Game) advanceMerc(elapsed float64) {
 	}
 
 	v.advanceMercTest(elapsed)
+}
+
+// wireMercGear connects the give/take path of the game controls with the merc unit
+// (once): the rules need the merc's class and table stats, and every change of the
+// gear is applied to the unit. A dead merc takes nothing (UNVERIFIED: the exe's
+// distance and state checks of the packet handler were not traced).
+func (v *Game) wireMercGear(p *d2mapentity.Player) {
+	if v.merc.geared || v.gameControls == nil {
+		return
+	}
+
+	v.merc.geared = true
+
+	v.gameControls.SetMercGearHost(d2player.MercGearHost{
+		Ref: func() (d2hero.MercRef, bool) {
+			info, ok := v.monsters.Merc(p)
+			if !ok || info.Save.Dead || info.Rec == nil {
+				return d2hero.MercRef{}, false
+			}
+
+			return d2hero.MercRef{Class: info.Rec.Class, Base: info.Base}, true
+		},
+		Drink: func(e d2inventory.PotionEffect) { v.monsters.DrinkMerc(p, e) },
+		Changed: func() {
+			if v.monsters.SetMercItems(p, v.gameControls.MercStatItems()) {
+				if info, ok := v.monsters.Merc(p); ok {
+					v.Infof("MERC gear applied defense=%d hp=%d dmg=%d-%d ar=%d resist=%v", info.Stats.Defense, info.Stats.MaxHP,
+						info.Stats.DmgMin, info.Stats.DmgMax, info.Stats.AR, info.Gear.Resist)
+				}
+			}
+		},
+	})
 }
 
 func saveOf(m *d2hero.MercState) d2monsters.MercSave {
@@ -186,6 +227,13 @@ func (v *Game) offerLine(o d2hireling.Offer) string {
 func (v *Game) openHire(npc d2interface.MapEntity) {
 	seller := v.npcClassID(npc)
 
+	if seller == d2hireling.SellerTyrael && v.localPlayer != nil && v.monsters != nil {
+		// Tyrael (0x16f) is on the revive allow-list of 0x577a10 but sells no mercs
+		v.openRevive(npc)
+
+		return
+	}
+
 	o := v.offerTable(seller)
 	if o == nil || v.localPlayer == nil {
 		v.Infof("NPC menu: Hire at %q has no offers (class %d)", npc.Label(), seller)
@@ -227,9 +275,35 @@ func (v *Game) openHire(npc d2interface.MapEntity) {
 	}
 }
 
+// openRevive shows only the revive row (Tyrael).
+func (v *Game) openRevive(npc d2interface.MapEntity) {
+	info, ok := v.monsters.Merc(v.localPlayer)
+	if !ok || !info.Save.Dead {
+		v.Infof("NPC menu: %q has no dead mercenary to revive", npc.Label())
+
+		return
+	}
+
+	rows := []d2player.NPCMenuRow{{
+		Fallback: fmt.Sprintf("Revive %s  %dg", v.mercDisplayName(info.Rec, int(info.Save.NameID)), info.ReviveCost),
+		Action:   d2player.NPCActionReviveMerc,
+	}}
+
+	v.gameControls.NPCMenu.Open(npc.Label(), rows, 0, 0, func(row d2player.NPCMenuRow) {
+		v.onHireChoice(d2hireling.SellerTyrael, row)
+	})
+	v.anchorNPCMenu(v.gameControls.NPCMenu, npc)
+}
+
 func (v *Game) onHireChoice(seller int, row d2player.NPCMenuRow) {
 	switch row.Action {
 	case d2player.NPCActionHireOffer:
+		if !v.hireGateOpen(seller) {
+			v.Infof("MERC hire refused: quest gate of seller %d (HIRE_ProcessHireOffer)", seller)
+
+			break
+		}
+
 		if err := v.hireOffer(seller, row.StringID); err != nil {
 			v.Infof("MERC hire failed: %v", err)
 		}
@@ -243,6 +317,19 @@ func (v *Game) onHireChoice(seller int, row d2player.NPCMenuRow) {
 
 	v.gameControls.NPCMenu.Close()
 	v.npcTarget = nil
+}
+
+// hireGateOpen is the quest gate of HIRE_ProcessHireOffer (VERIFIED): Qual-Kehk
+// needs Rescue on Mount Arreat done, Kashya needs Sisters' Burial Grounds done
+// for heroes below level 8, both read from the quest record of the game
+// difficulty. The OD2_AUTOMERC scenario calls hireOffer directly and skips it.
+func (v *Game) hireGateOpen(seller int) bool {
+	p := v.localPlayer
+	rt := v.quests()
+
+	return d2hireling.HireAllowed(seller, v.mercDifficulty()-1, p.Stats.Level, func(slot int) bool {
+		return rt != nil && rt.g != nil && rt.g.Rec != nil && rt.g.Rec.Get(slot, 0)
+	})
 }
 
 // hireOffer pays for and spawns the merc of an offer slot (HIRE_ProcessHireOffer:

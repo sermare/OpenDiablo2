@@ -3,7 +3,6 @@ package d2monsters
 import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
-	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
 
 // Level persistence. The original keeps a level's units while the game lives:
@@ -99,13 +98,8 @@ func (d *Director) RestoreLevel(p *ParkedLevel) int {
 func (d *Director) DiscardPlacements() int {
 	n := 0
 
-	for id, e := range d.engine.Entities() {
-		npc, ok := e.(*d2mapentity.NPC)
-		if !ok || d.seenNPC[id] {
-			continue
-		}
-
-		d.seenNPC[id] = true
+	for _, pl := range d.freshPlacements() {
+		npc := pl.npc
 
 		stat := d.statByID[npc.MonstatID()]
 		if stat == nil || !IsHostile(stat) {

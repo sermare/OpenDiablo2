@@ -105,7 +105,7 @@ var npcMenuTable = map[int][]NPCMenuRow{
 	155: {rowTalk}, // Warriv1
 	210: {rowTalk}, // Meshif1
 	251: {rowTalk}, // Tyrael1
-	367: {rowTalk}, // 0x16f Tyrael2
+	367: {rowTalk, rowHire}, // 0x16f Tyrael2: Hire opens only the merc revive (0x577a10 allow-list)
 	297: {rowTalk}, // Natalya
 	266: {rowTalk}, // Navi
 	331: {rowTalk}, // 0x14b act 2 guard
@@ -137,6 +137,7 @@ var npcMenuTable = map[int][]NPCMenuRow{
 	150: {rowTalk, rowHire},           // Kashya (the notes list Talk only; the hire row is needed for the Act 1 rogues)
 	198: {rowTalk, rowHire},           // Greiz
 	252: {rowTalk, rowHire, rowTrade}, // Asheara
+	515: {rowTalk, rowHire},           // Qual-Kehk (quest-gated in HIRE_ProcessHireOffer)
 
 	// No Talk row
 	257: {rowTradeRepair},      // Halbu

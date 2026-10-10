@@ -18,7 +18,7 @@ const (
 	EpilogueLabel
 	SelectCinematicLabel
 
-	_
+	OpenBattleNetLabel
 	TCPIPGameLabel
 	TCPIPOptionsLabel
 	TCPIPHostGameLabel
@@ -127,6 +127,10 @@ func BaseLabelNumbers(idx int) int {
 		970, // EXIT
 		971, // OK
 		1612,
+	}
+
+	if idx < 0 || idx >= len(baseLabelNumbers) {
+		return -1
 	}
 
 	return baseLabelNumbers[idx]

@@ -55,9 +55,10 @@ type PropertyType int
 // Property types
 // Not all properties contain stats, some are just used to compute a value
 // examples are:
-//		min/max
-//		% damage
-//		indestructable and etheral flags
+//
+//	min/max
+//	% damage
+//	indestructable and etheral flags
 const (
 	PropertyComputeStats   = iota // for properties that do compute stats
 	PropertyComputeInteger        // for properties that compute an integer value

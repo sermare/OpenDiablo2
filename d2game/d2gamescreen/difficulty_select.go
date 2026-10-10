@@ -206,7 +206,9 @@ func (v *DifficultySelect) Render(screen d2interface.Surface) {
 }
 
 // Advance runs the OD2_AUTODIFFICULTY pick, if any.
-func (v *DifficultySelect) Advance(_ float64) error {
+func (v *DifficultySelect) Advance(elapsed float64) error {
+	v.advanceFlow(elapsed)
+
 	if v.autoSet {
 		v.autoSet = false
 		v.Choose(v.autoPick)

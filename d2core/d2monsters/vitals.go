@@ -1,6 +1,7 @@
 package d2monsters
 
 import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monstats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
@@ -18,6 +19,7 @@ func profileFromRecord(r *d2records.MonStatRecord, diff d2monster.Difficulty) *d
 		AIDel:  pick(r.AiDelayNormal, r.AiDelayNightmare, r.AiDelayHell),
 		AIDist: pick(r.AiDistanceNormal, r.AiDistanceNightmare, r.AiDistanceHell),
 		Threat: r.ThreatLevel,
+		Melee:  r.IsMelee,
 		Walk:   r.SpeedBase,
 		Run:    r.SpeedRun,
 	}
@@ -54,15 +56,19 @@ func profileFromRecord(r *d2records.MonStatRecord, diff d2monster.Difficulty) *d
 // values as they are. Which monlvl column set the game uses (L-* here, the
 // plain ones with Options.Classic) is UNVERIFIED.
 //
-// The monster level follows d2monster.ResolveLevel (VERIFIED): noRatio and
-// boss classes use the monstats Level of the difficulty, all others the
-// levels.txt MonLvl of the area set with SetAreaLevel (monstats Level when no
-// area is set).
+// The monster level follows d2monster.ResolveLevel (VERIFIED 0x00571c4f): the
+// monstats Level of the difficulty, except in an expansion game (Options.
+// Expansion) in Nightmare/Hell for classes with neither noRatio nor boss, which
+// take the levels.txt MonLvl of the area set with SetAreaLevel. Hit points and
+// experience get the player-count bonus (Director.PlayerCount: the live count or Options.Players, raised to the OD2_PLAYERS override; classes
+// with Align != 0 are exempt) and the hit points are capped at 0x7fffff
+// (VERIFIED 0x00571af0 / 0x00571760).
 func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain) d2mapentity.MonsterVitals {
 	diff := d.opt.Difficulty
 	pick := func(n, nm, h int) int { return [3]int{n, nm, h}[diff] }
 
-	level := d2monster.ResolveLevel(d.classInfo(r), pick(r.LevelNormal, r.LevelNightmare, r.LevelHell), d.areaLevel)
+	level := d2monster.ResolveLevel(d.classInfo(r), diff, [3]int{r.LevelNormal, r.LevelNightmare, r.LevelHell},
+		d.areaLevel, d.opt.Expansion)
 	if d.forceLevel > 0 { // summoned minions take their owner's level
 		level = d.forceLevel
 	}
@@ -77,7 +83,7 @@ func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain)
 		lv.hp, lv.ac, lv.th, lv.dm, lv.xp = 100, 100, 100, 100, 100 // raw values: ratio of 100%
 	}
 
-	scale := func(base, ratio int) int { return base * ratio / 100 }
+	scale := d2monstats.MulDiv100
 
 	hpMin := scale(lv.hp, pick(r.MinHPNormal, r.MinHPNightmare, r.MinHPHell))
 	hpMax := scale(lv.hp, pick(r.MaxHPNormal, r.MaxHPNightmare, r.MaxHPHell))
@@ -86,7 +92,14 @@ func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain)
 		hpMax = hpMin
 	}
 
+	hpPct, xpPct, _ := d2monstats.PlayerBonus(d.PlayerCount(), int(r.Alignment))
+
 	v.MaxHP = hpMin + b.Roll(hpMax-hpMin+1)
+	v.MaxHP += d2monstats.MulDiv(v.MaxHP, hpPct, 100) // the bonus comes before the cap
+	if v.MaxHP > d2monstats.MaxHP {
+		v.MaxHP = d2monstats.MaxHP
+	}
+
 	if v.MaxHP < 1 {
 		v.MaxHP = 1
 	}
@@ -94,6 +107,7 @@ func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain)
 	v.HP = v.MaxHP
 	v.Defense = scale(lv.ac, pick(r.ArmorClassNormal, r.ArmorClassNightmare, r.ArmorClassHell))
 	v.Experience = scale(lv.xp, pick(r.ExperienceNormal, r.ExperienceNightmare, r.ExperienceHell))
+	v.Experience += d2monstats.MulDiv(v.Experience, xpPct, 100)
 	v.TreasureClass = [3]string{r.TreasureClassNormal, r.TreasureClassNightmare, r.TreasureClassHell}[diff]
 
 	v.A1 = MonsterAttackFrom(scale(lv.th, pick(r.AttackRatingA1Normal, r.AttackRatingA1Nightmare, r.AttackRatingA1Hell)),

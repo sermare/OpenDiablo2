@@ -22,12 +22,12 @@ const (
 	ObjOrifice        = 152 // "Where you place the Horadric staff" (OperateFn 25)
 	ObjMephistoBridge = 341 // "mephisto bridge" (OperateFn 4), quest object 0x155 in QUEST_OnObjectOperated
 	ObjHellgate       = 342 // "hellgate" portal (OperateFn 46)
-	ObjSealVizier     = 392 // boss seal (OperateFn 54)
+	ObjSealVizier     = 392 // boss seal (OperateFn 54); the exe pairs it with the Infector (Seals.LegacyLayout restores the old pairing)
 	ObjSealPlainA     = 393 // plain seal (OperateFn 52)
 	ObjSealDeSeis     = 394 // boss seal (OperateFn 55)
 	ObjSealPlainB     = 395 // plain seal (OperateFn 52)
 	ObjSealInfector   = 396 // boss seal (OperateFn 56)
-	ObjDiabloStart    = 255 // "diablo start point"
+	ObjDiabloStart    = 255 // objects.txt "Dummy" (InitFn 55 = 0x5b31a0): Diablo spawns at its position, VERIFIED
 	ObjWorldstone     = 563 // "The Worldstone Chamber" portal (OperateFn 70)
 	ObjTownPortal     = 60  // permanent town portal (used for Duriel's exit, UNVERIFIED)
 )
@@ -57,7 +57,7 @@ const (
 	tombPortalDelay = 50  // staff placed -> portal appears
 	tyraelDelay     = 200 // Duriel dead -> Tyrael (the exe: QUEST_AddTimer(8), unit unknown)
 	hellgateDelay   = 300 // Mephisto dead -> red portal (QUEST_AddTimer(0xc), unit unknown)
-	diabloDelay     = 100 // last seal boss dead -> Diablo arrives
+	diabloDelay     = 100 // last seal boss dead -> Diablo arrives (the exe: 11 frames, ExeDiabloDelay)
 	baalPortalDelay = 100 // morph -> the Worldstone portal
 )
 
@@ -80,10 +80,16 @@ const (
 	ActWake
 	// ActPortal: a portal to Level opens (Class is its object).
 	ActPortal
+	// ActPurge: every other living, non-pet monster of Level goes into death
+	// mode (the record FUN_005b2e60 sends, mode 0; see Seals.LegacyNoPurge).
+	ActPurge
+	// ActDropItem: the item with the code Key drops at the encounter (Name
+	// says why).
+	ActDropItem
 )
 
 func (k ActionKind) String() string {
-	return [...]string{"spawn-monster", "spawn-npc", "spawn-object", "object-mode", "message", "wake", "portal"}[k]
+	return [...]string{"spawn-monster", "spawn-npc", "spawn-object", "object-mode", "message", "wake", "portal", "purge", "drop-item"}[k]
 }
 
 // Action is one request to the engine.
@@ -362,4 +368,21 @@ func (m *Manager) WaveSpawned(n int) {
 			m.logf("baal wave %d: %d monsters created", t.Wave, n)
 		}
 	}
+}
+
+// Emit queues an action for the engine on behalf of an encounter that lives
+// in another package (the Pandemonium event, d2common/d2uber).
+func (m *Manager) Emit(enc string, a Action) { m.emit(enc, a) }
+
+// After runs fn after the given number of frames.
+func (m *Manager) After(frames int, fn func()) { m.after(frames, fn) }
+
+// Logf writes a "BOSS ..." line.
+func (m *Manager) Logf(format string, args ...interface{}) { m.logf(format, args...) }
+
+// Do runs fn (which may Emit actions) and returns the actions it queued.
+func (m *Manager) Do(fn func()) []Action {
+	fn()
+
+	return m.take()
 }

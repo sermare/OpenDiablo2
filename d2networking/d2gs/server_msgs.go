@@ -32,7 +32,6 @@ const (
 	moveTypeWalk     byte = 1
 	moveTypeRun      byte = 2
 	unitTypePlayer   byte = 0
-	playerInGameSize      = 26
 	playerMoveSize        = 16
 	unitSkillOnLocSz      = 17
 	chatStringsOff        = 10
@@ -41,6 +40,9 @@ const (
 	loadActSize           = 12
 	playerLeaveSize       = 5
 	tunnelPayloadMax      = 0x1fd
+	// maxTunnelMessage bounds the reassembly buffer so a peer that never sends the
+	// "last" flag cannot grow memory without limit (our own limit, not the exe's).
+	maxTunnelMessage = 32 << 20
 )
 
 func putName(dst []byte, name string) {
@@ -125,39 +127,6 @@ func ParseLoadAct(b []byte) (LoadAct, error) {
 	return LoadAct{Act: b[1], Seed: r.u32(2), StartLevel: r.u16(6), Aux: r.u32(8)}, nil
 }
 
-// PlayerInGame (0x59, 26 bytes) announces a player. Layout unverified (public
-// docs): [1..4]=unit id, [5]=class, [6..21]=name, [22..23]=level, [24..25]=party id.
-type PlayerInGame struct {
-	UnitID uint32
-	Class  uint8
-	Name   string
-	Level  uint16
-	Party  uint16
-}
-
-// Marshal returns the packet.
-func (m PlayerInGame) Marshal() []byte {
-	b := newW(S2CPlayerInGame, playerInGameSize)
-	b.u32(1, m.UnitID)
-	b[5] = m.Class
-	putName(b[6:], m.Name)
-	b.u16(22, m.Level)
-	b.u16(24, m.Party)
-
-	return b
-}
-
-// ParsePlayerInGame decodes a 0x59 packet.
-func ParsePlayerInGame(b []byte) (PlayerInGame, error) {
-	if len(b) != playerInGameSize || b[0] != S2CPlayerInGame {
-		return PlayerInGame{}, ErrWrongSize
-	}
-
-	r := rbuf(b)
-
-	return PlayerInGame{UnitID: r.u32(1), Class: b[5], Name: getName(b[6:]), Level: r.u16(22), Party: r.u16(24)}, nil
-}
-
 // PlayerLeave (0x5c, 5 bytes): [1..4]=unit id of the player who left.
 type PlayerLeave struct{ UnitID uint32 }
 
@@ -178,9 +147,13 @@ func ParsePlayerLeave(b []byte) (PlayerLeave, error) {
 	return PlayerLeave{UnitID: rbuf(b).u32(1)}, nil
 }
 
-// PlayerMove (0x0f, 16 bytes). Layout unverified (public docs): [1]=unit type,
-// [2..5]=unit id, [6]=move type, [7..8]=target x, [9..10]=target y, [11]=0,
-// [12..13]=current x, [14..15]=current y. Coordinates are sub-tiles.
+// PlayerMove (0x0f, 16 bytes). Verified from the deferred handler 0x4584b0:
+// [6]=move mode byte (passed to 0x47ca50), [7..8]=target x, [9..10]=target y,
+// [11]=a byte copied into the move record (always 0 here, meaning UNVERIFIED),
+// [12..13]=current x, [14..15]=current y (passed to 0x47c320). UNVERIFIED: [1]
+// unit type and [2..5] unit id (consumed by the unit lookup in the
+// dispatcher through registers) and that mode 1/2 are walk/run. Coordinates
+// are sub-tiles.
 type PlayerMove struct {
 	UnitID           uint32
 	Run              bool
@@ -330,7 +303,9 @@ func ParseClientChat(b []byte) (string, error) {
 	}
 
 	n := strlen(b, 3)
-	if n < 0 {
+	// handler 0x5484a0 (verified): text shorter than 0x100 and the packet must be
+	// longer than strlen+4, i.e. the NUL-terminated recipient field must exist.
+	if n < 0 || n > maxChatText || len(b) <= n+4 {
 		return "", ErrBadLength
 	}
 
@@ -429,6 +404,12 @@ func (a *TunnelAssembler) Add(pkt []byte) (typ byte, data []byte, done bool, err
 		return 0, nil, false, fmt.Errorf("%w: tunnel chunk type %d inside message %d", ErrBadLength, pkt[3], a.typ)
 	}
 
+	if len(a.buf)+len(pkt)-5 > maxTunnelMessage {
+		a.buf = nil
+
+		return 0, nil, false, fmt.Errorf("%w: tunnel message exceeds %d bytes", ErrTooLarge, maxTunnelMessage)
+	}
+
 	a.buf = append(a.buf, pkt[5:]...)
 
 	if pkt[4]&tunnelFlagLast == 0 {
@@ -440,3 +421,7 @@ func (a *TunnelAssembler) Add(pkt []byte) (typ byte, data []byte, done bool, err
 
 	return typ, data, true, nil
 }
+
+// Pending returns the number of payload bytes buffered for the message that
+// is still being assembled (callers use it to bound uploads).
+func (a *TunnelAssembler) Pending() int { return len(a.buf) }

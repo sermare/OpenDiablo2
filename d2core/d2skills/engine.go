@@ -74,14 +74,17 @@ type Engine struct {
 	visuals map[uint32]*d2mapentity.Missile
 	fx      map[*d2mapentity.Missile]int // explosion entities and the frame they vanish at
 	sets    map[string]*d2state.Set      // unit id -> states and DoT streams
+	defs    d2state.Defs                 // states.txt rules shared by the sets
 	timers  []timer
 
-	auras   map[string]*auraRun // hero id -> the aura it keeps on
-	storms  []*stormRun
-	traps   []*trapRun
-	pets    map[string][]*d2mapentity.Monster // hero id -> summons by pet type (see summon.go)
-	watches []*watch
-	dots    map[string]dotTotal
+	auras  map[string]*auraRun // hero id -> the aura it keeps on
+	storms []*stormRun
+	traps  []*trapRun
+
+	fakeCaster trapCaster                        // tests only
+	pets       map[string][]*d2mapentity.Monster // hero id -> summons by pet type (see summon.go)
+	watches    []*watch
+	dots       map[string]dotTotal
 
 	// Counters are updated as events happen.
 	Counters Counters
@@ -115,9 +118,10 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 	e.pipe.Near = e.near
 	e.pipe.After = e.after
 	e.pipe.Walkable = func(x, y int) bool {
-		return monsters.Grid().Flags(x, y)&(d2path.FlagWalk|d2path.FlagWall) == 0
+		return e.monsters.Grid().Flags(x, y)&(d2path.FlagWalk|d2path.FlagWall) == 0
 	}
 	monsters.HeroDefense = e.heroDefense
+	monsters.HeroAvoid = e.heroAvoid
 
 	return e
 }
@@ -172,11 +176,75 @@ func (e *Engine) HasState(unitID, state string) bool {
 	return e.setOf(unitID).Active(e.frame, state)
 }
 
+// StateStats is the sum of the stat mods of the unit's active states, by
+// ItemStatCost name: the aurastat1..6 lists of its buffs and auras (each
+// statlist adds to the unit's stats, verified at 0x5c4c60). Passive skills
+// are not included.
+func (e *Engine) StateStats(unitID string) map[string]int {
+	st := e.sets[unitID]
+	if st == nil {
+		return nil
+	}
+
+	return st.StatMods(e.frame)
+}
+
+// PassiveTotals returns the stats a hero's true passives (passivestate set,
+// verified at 0x648130) add to its totals, ItemStatCost name -> value. Stats
+// keyed to a weapon type (passiveitype, the masteries) are left out: the exe
+// keys them by item type and they are not part of the plain totals.
+func (e *Engine) PassiveTotals(unitID string) map[string]int {
+	h := e.heroes[unitID]
+	if h == nil || h.inPassive {
+		return nil
+	}
+
+	out := map[string]int{}
+
+	h.inPassive = true
+	for id, s := range h.p.Skills {
+		if s == nil || s.SkillPoints < 1 {
+			continue
+		}
+
+		for _, m := range e.pipe.TruePassiveStats(h, id) {
+			if m.Param == "" && m.Value != 0 {
+				out[m.Stat] += m.Value
+			}
+		}
+	}
+	h.inPassive = false
+
+	return out
+}
+
+// stateDefs converts the states.txt records into the rules the state sets use
+// (cached; nil when the records have no states table).
+func (e *Engine) stateDefs() d2state.Defs {
+	if e.defs != nil || e.asset == nil || len(e.asset.Records.States) == 0 {
+		return e.defs
+	}
+
+	e.defs = d2state.Defs{}
+
+	for name, r := range e.asset.Records.States {
+		e.defs[name] = d2state.Def{
+			ID: r.ID, Name: name, Group: r.Group, Curse: r.Curse, RemHit: r.RemHit, Aura: r.Aura,
+			PlrStayDeath: r.PlrStayDeath, MonStayDeath: r.MonStayDeath, BossStayDeath: r.BossStayDeath,
+			Shatter: r.Shatter, Blue: r.Blue, ColorPri: r.ColorPri, ColorShift: r.ColorShift,
+			Overlay1: r.Overlay1, Stat: r.Stat,
+		}
+	}
+
+	return e.defs
+}
+
 // setOf returns the state set of a unit, creating it.
 func (e *Engine) setOf(id string) *d2state.Set {
 	st := e.sets[id]
 	if st == nil {
 		st = d2state.New()
+		st.SetDefs(e.stateDefs())
 		e.sets[id] = st
 	}
 
@@ -382,6 +450,7 @@ func (e *Engine) meleeResult(p *d2mapentity.Player, sk *d2skill.Skill, r *d2skil
 	if mt != nil {
 		e.Counters.Hits++
 		e.hurt(mt.m, p, &r.Damage, sk.Name)
+		e.itemEvents(mt.m, p, true) // crushing blow, open wounds: after the base damage
 	}
 }
 
@@ -413,8 +482,8 @@ func (e *Engine) staticField(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Ski
 			dmg = 0
 		}
 
-		res := e.resist(m, "ltng")
-		dmg = d2combat.ApplyResist(dmg, res)
+		res := e.resistFrom(m, p, "ltng")
+		dmg, _ = d2combat.ReduceComponent(dmg, 0, res, false, false, 0, 0)
 		n++
 
 		e.emit("damage", "SKILL static_field target=%s pct=%d floor=%d%% resist=%d dmg=%d hp=%d/%d", m.Label(), ef.Pct,
@@ -426,6 +495,7 @@ func (e *Engine) staticField(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Ski
 
 			if !m.Alive() {
 				e.Counters.Kills++
+				e.setOf(m.ID()).Death("monster")
 			}
 		}
 	}
@@ -450,6 +520,34 @@ func (e *Engine) applyMissileState(owner d2skill.Unit, t d2missile.Target, state
 
 // resistOf returns the monster's resist percent for a damage type.
 func (e *Engine) resist(m *d2mapentity.Monster, kind string) int {
+	return e.resistFrom(m, nil, kind)
+}
+
+// pierceOf is the attacker's pierce percent against a damage kind: the
+// passive pierce stats 333..336. VERIFIED (0x579b10 descriptor table at
+// 0x72ff38): each damage type names exactly one pierce stat, 333 fire, 334
+// lightning, 335 cold, 336 poison, and the function reads nothing else. The
+// item stats 305..308 are NOT added (they are never consulted there), so they
+// have no effect on resists here.
+func pierceOf(src *d2mapentity.Player, kind string) (pierce int, has bool) {
+	ids := map[string]int{"fire": 333, "ltng": 334, "cold": 335, "pois": 336}
+
+	id, ok := ids[kind]
+	if !ok {
+		return 0, false // physical and magic have no pierce stat
+	}
+
+	if src == nil || src.Stats == nil || src.Stats.Totals == nil || src.Stats.Totals.Stats == nil {
+		return 0, true
+	}
+
+	l := src.Stats.Totals.Stats
+
+	return int(l.Get(id)), true
+}
+
+// resistFrom is resist with the attacker's pierce (src may be nil).
+func (e *Engine) resistFrom(m *d2mapentity.Monster, src *d2mapentity.Player, kind string) int {
 	s := m.Stat
 	diff := int(m.Vitals.Difficulty)
 	pick := func(n, nm, h int) int { return [3]int{n, nm, h}[diff] }
@@ -482,7 +580,16 @@ func (e *Engine) resist(m *d2mapentity.Monster, kind string) int {
 	// curses and auras on the monster (Amplify Damage is damageresist -100)
 	res += e.setOf(m.ID()).ResistDelta(e.frame, kind)
 
-	return d2combat.EffectiveResist(d2combat.ResistInput{Resist: res, IsPhysical: phys, NoDifficultyPenalty: true})
+	pierce, hasPierce := pierceOf(src, kind)
+
+	// VERIFIED (0x579b10 ctx[5]): a non-mercenary monster defender sets the one
+	// ignore flag: no cap (a monstats resist of 100 is an immunity), no
+	// difficulty penalty, and pierce cannot lower a resist of 100 or more.
+	return d2combat.EffectiveResist(d2combat.ResistInput{
+		Resist: res, IsPhysical: phys, NoDifficultyPenalty: true, Ignore: true, Pierce: pierce, HasPierce: hasPierce,
+		// VERIFIED 0x579b10: attacker state 0x2f (sanctuary) vs an undead (lUndead/hUndead, helper 0x63f9e0) defender zeroes positive physical resist
+		ZeroPhysical: phys && e.physNullified(m, src),
+	})
 }
 
 // hurt applies a rolled damage struct to a monster: resists per type, then
@@ -497,11 +604,19 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 
 	for _, p := range parts {
 		if p.v > 0 {
-			total += d2combat.ApplyResist(int(p.v), e.resist(m, p.kind))
+			// per type: flat reduction, percent resist, absorb (0x579c90). Monsters
+			// have no stat 34/35 or absorb stats; components are not floored, the
+			// Total is (applied below).
+			out, _ := d2combat.ReduceComponent(int(p.v), 0, e.resistFrom(m, src, p.kind), false, false, 0, 0)
+			total += out
 		}
 	}
 
-	whole := (total + 128) >> 8
+	whole := 0
+	if d2combat.ApplicableTotal(int32(total)) {
+		whole = (total + 128) >> 8
+	}
+
 	if total > 0 && whole < 1 {
 		whole = 1
 	}
@@ -509,13 +624,18 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 	// poison and burn are damage over time: the Damage struct holds the
 	// per-frame 8.8 value, spread over the length
 	set := e.setOf(m.ID())
-	cannotCold := e.resist(m, "cold") >= d2combat.ImmuneResist
+	cannotCold := e.resistFrom(m, src, "cold") >= d2combat.ImmuneResist
 	h := d2state.Hit{
 		ColdLen: int(d.ColdLen), FreezeLen: int(d.FreezeLen), StunLen: int(d.StunLen), Source: e.sourceID(src),
-		Poison: d2combat.ApplyResist(int(d.Poison), e.resist(m, "pois")), PoisonLen: int(d.PoisonLen),
-		Burn: d2combat.ApplyResist(int(d.Burn), e.resist(m, "fire")), BurnLen: int(d.BurnLen),
+		Poison: d2combat.ApplyResist(int(d.Poison), e.resistFrom(m, src, "pois")), PoisonLen: int(d.PoisonLen),
+		Burn: d2combat.ApplyResist(int(d.Burn), e.resistFrom(m, src, "fire")), BurnLen: int(d.BurnLen),
 		CannotChill: cannotCold, CannotFreeze: cannotCold,
 	}
+	h.ColdEffect, h.HasColdEffect = coldEffect(m), true
+	h.ChillDiv, h.FreezeDiv = e.coldDivisors(m)
+
+	// a hit ends the states flagged remhit (states.txt)
+	set.Hit(e.frame)
 
 	hp0 := m.Vitals.HP
 	e.Counters.Damage += whole
@@ -528,6 +648,7 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 	}
 
 	if !m.Alive() {
+		set.Death("monster")
 		e.Counters.Kills++
 		e.emit("damage", "KILL skill=%q target=%s", what, m.Label())
 
@@ -539,6 +660,99 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 			what, m.Label(), applied, h.StunLen, h.FreezeLen, h.ColdLen, fixed(h.Poison), h.PoisonLen, fixed(h.Burn), h.BurnLen)
 		e.syncMonster(m)
 	}
+}
+
+// coldDivisors are the DifficultyLevels MonsterColdDivisor and
+// MonsterFreezeDivisor (record +0x18 and +0x14, verified) of the monster's
+// difficulty; 0 when the table is not loaded.
+func (e *Engine) coldDivisors(m *d2mapentity.Monster) (chill, freeze int) {
+	if e.asset == nil {
+		return 0, 0
+	}
+
+	return divisorsFor(e.asset.Records.DifficultyLevels, int(m.Vitals.Difficulty))
+}
+
+func divisorsFor(recs d2records.DifficultyLevels, diff int) (chill, freeze int) {
+	if rec := recs[d2enum.DifficultyType(diff)]; rec != nil {
+		return rec.MonsterColdDivisor, rec.MonsterFreezeDivisor
+	}
+
+	return 0, 0
+}
+
+// HeroDied clears the states of a dying hero: the statlists without
+// plrstaydeath end, and so do the DoT streams (verified, 0x57d310).
+//
+// An aura the hero keeps on stops pulsing when its state went with the
+// states; otherwise the next pulse would give the dead hero the state back
+// (an aura with plrstaydeath keeps running). What the original does with the
+// hero's summons, storms, traps and missiles at his death is UNVERIFIED and
+// left alone.
+func (e *Engine) HeroDied(id string) {
+	e.setOf(id).Death("player")
+
+	if a := e.auras[id]; a != nil && !e.setOf(id).Active(e.frame, a.ef.State) {
+		delete(e.auras, id)
+	}
+}
+
+// AreaChanged tells the engine the hero moved to another area, whose units
+// belong to md (nil in tests). Everything tied to units or missiles of the
+// old area is dropped: missiles in flight, storms, traps and totem pulses,
+// pending timers, summon bookkeeping, monster targets and the states of
+// monsters (their ids may be reused by the new area). The heroes keep their
+// states, auras, mana and cooldowns. Whether summons follow the hero through
+// a portal or stairs is UNVERIFIED (mercenaries do, see Director.SpawnMerc);
+// the new Director starts without them.
+func (e *Engine) AreaChanged(md *d2monsters.Director) {
+	if e.sim != nil {
+		e.sim.Clear()
+	}
+
+	for id, ent := range e.visuals {
+		if ent != nil && e.mapEngine != nil {
+			e.mapEngine.RemoveEntity(ent)
+		}
+
+		delete(e.visuals, id)
+	}
+
+	for ent := range e.fx {
+		if e.mapEngine != nil {
+			e.mapEngine.RemoveEntity(ent)
+		}
+
+		delete(e.fx, ent)
+	}
+
+	e.storms, e.traps, e.watches, e.timers = nil, nil, nil, nil
+	e.pets = map[string][]*d2mapentity.Monster{}
+	e.targets = map[string]*monsterTarget{}
+	e.dots = map[string]dotTotal{}
+
+	for id := range e.sets {
+		if e.heroes[id] == nil {
+			delete(e.sets, id)
+		}
+	}
+
+	if md != nil {
+		e.monsters = md
+		e.pipe.Grid = md.Grid()
+		md.HeroDefense = e.heroDefense
+	}
+}
+
+// Monsters returns the Director the engine is bound to.
+func (e *Engine) Monsters() *d2monsters.Director { return e.monsters }
+
+// coldEffect is the monstats ColdEffect of a monster for its difficulty
+// (negative = slow percent, 0 = cannot be chilled).
+func coldEffect(m *d2mapentity.Monster) int {
+	s := m.Stat
+
+	return [3]int{s.ColdSensitivityNormal, s.ColdSensitivityNightmare, s.ColdSensitivityHell}[int(m.Vitals.Difficulty)]
 }
 
 // afterHit runs the effects of curses on a monster that was hurt by the hero:
@@ -697,6 +911,11 @@ func (e *Engine) onSim(ev d2missile.Event) {
 
 		if mt != nil && ev.Damage.SumTotal(true) > 0 {
 			e.hurt(mt.m, e.owner(m), &ev.Damage, e.skillName(m.SkillID))
+
+			// event 6 (missile): only hits with physical damage dispatch the item events here (UNVERIFIED rule)
+			if ev.Damage.Physical > 0 {
+				e.itemEvents(mt.m, e.owner(m), false)
+			}
 		}
 
 		if mt != nil {
@@ -711,9 +930,17 @@ func (e *Engine) onSim(ev d2missile.Event) {
 		e.Counters.Walls++
 		e.emit("missile", "MISSILE end name=%s id=%d reason=wall at=(%.1f,%.1f)", name, m.ID, m.X, m.Y)
 		e.splashAt(m)
+	case d2missile.EventVanish:
+		// destroyed without running the hit function (0x5abd00 return 2)
+		e.emit("missile", "MISSILE end name=%s id=%d reason=vanish at=(%.1f,%.1f)", name, m.ID, m.X, m.Y)
+	case d2missile.EventArea:
+		e.areaDamage(ev)
 	case d2missile.EventExpire:
 		e.Counters.Expired++
 		e.emit("missile", "MISSILE end name=%s id=%d reason=expire at=(%.1f,%.1f)", name, m.ID, m.X, m.Y)
+		// verified (0x5aba10): expiry runs the hit func with a null target, so
+		// area damage (hit func 1) also fires where a missile runs out.
+		e.splashAt(m)
 	case d2missile.EventExplode:
 		e.explosion(ev.Name, m.X, m.Y)
 	}

@@ -11,7 +11,9 @@ func init() {
 // thinkPantherJavelin is MONAI_Think_PantherJavelin 0x5dfed0 (VERIFIED).
 // aip1 approach%, aip2 throw%, aip3 group distance, aip4 walk-away%, aip5
 // stall, aip6 throw distance. When the attack-target scan finds nothing the
-// tick's distance stands in for it (UNVERIFIED).
+// tick's distance stands in for it (VERIFIED: the out parameter of 0x5dc9e0
+// is preloaded with it). The regroup test is strictly "ally distance > aip3"
+// (VERIFIED 0x5dfed0 JLE skip).
 func thinkPantherJavelin(c *Ctx) {
 	b, pt := c.B, *c.Target
 

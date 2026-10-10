@@ -100,7 +100,15 @@ func (a *Automap) Render(target d2interface.Surface) {
 	hx, hy := a.hero.GetPositionF()
 	cx, cy := d2automap.WorldCell(hx, hy)
 	shift := a.panelShift()
-	lay := d2automap.ComputeLayout(a.size, w, h, cx, cy, shift, a.miniLeft)
+	left := shift == d2automap.PanelRight // a panel on the right moves the mini map to the left (mode 1)
+
+	if !a.miniSeen || ((left != a.lastLeft || shift != a.lastShift) && a.option("center")) {
+		a.miniD210, a.miniD214 = d2automap.MiniBoxOffsets(w, h, left)
+		a.miniSeen = true
+	}
+
+	a.lastLeft, a.lastShift = left, shift
+	lay := d2automap.ComputeLayoutOffsets(a.size, w, h, cx, cy, shift, left, a.miniD210, a.miniD214)
 
 	dest := target
 	ox, oy := 0, 0
@@ -116,7 +124,7 @@ func (a *Automap) Render(target d2interface.Surface) {
 		dest, ox, oy = a.offscr, lay.Clip.X0, lay.Clip.Y0
 	}
 
-	a.drawCells(dest, sp, lay, ox, oy, w, h)
+	a.drawCells(dest, sp, lay, ox, oy, w, h, shift)
 	a.drawMarkers(dest, lay, ox, oy, cx, cy)
 
 	if a.size == d2automap.SizeMini {
@@ -128,7 +136,19 @@ func (a *Automap) Render(target d2interface.Surface) {
 	a.drawText(target, w)
 }
 
-func (a *Automap) drawCells(dest d2interface.Surface, sp *d2ui.Sprite, lay d2automap.Layout, ox, oy, sw, sh int) {
+func (a *Automap) drawCells(dest d2interface.Surface, sp *d2ui.Sprite, lay d2automap.Layout, ox, oy, sw, sh int, shift d2automap.PanelShift) {
+	fade := a.option("fade")
+	shiftPx := 0
+
+	switch shift {
+	case d2automap.PanelRight:
+		shiftPx = -(sw / 4)
+	case d2automap.PanelLeft:
+		shiftPx = sw / 4
+	}
+
+	defer sp.SetColorMod(nil)
+
 	cw, ch := d2automap.CellW, d2automap.CellH
 	if a.size == d2automap.SizeMini {
 		cw, ch = cw/2, ch/2
@@ -145,6 +165,11 @@ func (a *Automap) drawCells(dest d2interface.Surface, sp *d2ui.Sprite, lay d2aut
 
 		if err := sp.SetCurrentFrame(c.Cel); err != nil {
 			continue
+		}
+
+		if fade {
+			t := d2automap.CellTransparency(true, a.size, x, y, sw, sh, shiftPx)
+			sp.SetColorMod(color.NRGBA{255, 255, 255, uint8(t.Alpha() * 255)})
 		}
 
 		sp.SetPosition(x-ox, y-oy)
@@ -177,8 +202,48 @@ func (a *Automap) playerColor(p *d2mapentity.Player) color.Color {
 	return automapColorOther
 }
 
+func (a *Automap) markerColor(c d2automap.ColorID) color.Color {
+	switch c {
+	case d2automap.ColorSelf:
+		return automapColorSelf
+	case d2automap.ColorParty:
+		return automapColorParty
+	case d2automap.ColorMinion:
+		return automapColorMinion
+	case d2automap.ColorNPC:
+		return automapColorNPC
+	case d2automap.ColorPortal:
+		return automapColorPortal
+	case d2automap.ColorBlack:
+		return color.RGBA{0, 0, 0, 255}
+	}
+
+	return automapColorOther
+}
+
+// unitFor describes an entity to the marker logic.
+func (a *Automap) unitFor(e d2interface.MapEntity, level int) (d2automap.Unit, bool) {
+	switch v := e.(type) {
+	case *d2mapentity.Player:
+		return d2automap.Unit{Kind: d2automap.UnitPlayer, Self: v == a.hero, Party: v != a.hero && a.gc.isPartyMember(v),
+			Dead: v.IsDead(), Level: level}, true
+	case *d2mapentity.NPC:
+		return d2automap.Unit{Kind: d2automap.UnitMonster, FriendlyNPC: true, Level: level}, true
+	case *d2mapentity.Object:
+		if rec := v.Record(); rec != nil {
+			return d2automap.Unit{Kind: d2automap.UnitObject, ObjectID: rec.Index, Level: level}, true
+		}
+	}
+
+	return d2automap.Unit{}, false
+}
+
 func (a *Automap) drawMarkers(dest d2interface.Surface, lay d2automap.Layout, ox, oy int, hcx, hcy float64) {
-	mark := func(tx, ty float64, c color.Color) {
+	opts := a.markerOptions()
+	level := a.currentLevel()
+	cdx, cdy := d2automap.CrossOffset(a.size)
+
+	mark := func(tx, ty float64, m d2automap.Marker, name string) {
 		cx, cy := d2automap.WorldCell(tx, ty)
 		x, y := lay.HeroScreen(cx, cy)
 		// the engine draws at (x+8, y-8)
@@ -188,11 +253,19 @@ func (a *Automap) drawMarkers(dest d2interface.Surface, lay d2automap.Layout, ox
 			return
 		}
 
-		drawAutomapCross(dest, x-ox, y-oy, c)
+		if m.Cross {
+			drawAutomapCross(dest, x-ox+cdx, y-oy+cdy, a.markerColor(m.Color))
+		}
+
+		switch m.Label {
+		case d2automap.LabelName:
+			a.drawMarkerText(dest, name, x-ox, y-oy+d2automap.NameOffsetY, a.markerColor(m.Color))
+		case d2automap.LabelStash:
+			a.drawMarkerText(dest, "Stash", x-ox, y-oy+d2automap.LabelOffsetY, automapColorTextGld)
+		}
 	}
 
-	// other units: players, friendly NPCs and portals; hostile monsters are not
-	// shown by the original either
+	// other units, in a stable order; hostile monsters are not shown by the original either
 	ids := make([]string, 0, len(a.eng.Entities()))
 	for id := range a.eng.Entities() {
 		ids = append(ids, id)
@@ -202,24 +275,50 @@ func (a *Automap) drawMarkers(dest d2interface.Surface, lay d2automap.Layout, ox
 
 	for _, id := range ids {
 		e := a.eng.Entities()[id]
+
+		u, ok := a.unitFor(e, level)
+		if !ok || u.Self {
+			continue
+		}
+
 		ex, ey := e.GetPositionF()
+
+		name := ""
 
 		switch v := e.(type) {
 		case *d2mapentity.Player:
-			if v != a.hero {
-				mark(ex, ey, a.playerColor(v))
-			}
+			name = v.Name()
 		case *d2mapentity.NPC:
-			mark(ex, ey, automapColorNPC)
-		case *d2mapentity.Object:
-			if rec := v.Record(); rec != nil && (rec.Index == 59 || rec.Index == 60) {
-				mark(ex, ey, automapColorPortal)
-			}
+			name = v.Label()
 		}
+
+		mark(ex, ey, d2automap.Classify(u, opts), name)
 	}
 
+	// the hero's own cross is drawn last, on top
 	hx, hy := a.hero.GetPositionF()
-	mark(hx, hy, automapColorSelf)
+	mark(hx, hy, d2automap.Classify(d2automap.Unit{Kind: d2automap.UnitPlayer, Self: true, Level: level}, opts), "")
+}
+
+// drawMarkerText draws centred text above a marker (AUTOMAP_DrawMarkerNameText).
+func (a *Automap) drawMarkerText(dest d2interface.Surface, text string, x, y int, c color.Color) {
+	if text == "" {
+		return
+	}
+
+	if a.nameLabel == nil {
+		a.nameLabel = a.ui.NewLabel(d2resource.Font8, d2resource.PaletteStatic)
+		if a.nameLabel == nil {
+			return
+		}
+
+		a.nameLabel.Alignment = d2ui.HorizontalAlignCenter
+	}
+
+	a.nameLabel.Color[0] = c
+	a.nameLabel.SetText(text)
+	a.nameLabel.SetPosition(x, y)
+	a.nameLabel.Render(dest)
 }
 
 func (a *Automap) drawText(target d2interface.Surface, w int) {

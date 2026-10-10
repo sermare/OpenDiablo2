@@ -21,6 +21,10 @@ const (
 	// KindEdge is a seamless border between two neighbouring outdoor levels:
 	// the player just walks across, no level change happens in the original.
 	KindEdge
+	// KindPortal is a level reached through a portal object or a script, not a
+	// warp tile or a border (cow portal, Tristram, Arcane Sanctuary, the portal
+	// out of the Summoner's lair, Anya's red portal). It has no LvlWarp id.
+	KindPortal
 )
 
 // Source records how well a link is known.
@@ -36,6 +40,9 @@ const (
 	// SourceDRLG links are the verified neighbours of the Act 1 world search
 	// (drlg2.md, cluster tables 0x6f1d00 and 0x6f1df0).
 	SourceDRLG
+	// SourceNotes links come from the quest/level notes and play rules, not
+	// from any table; portalLinks in gates.go states each one's confidence.
+	SourceNotes
 )
 
 // Link is a directed connection between two levels.
@@ -68,6 +75,14 @@ var drlgEdges = [][2]int{
 	// other at random, so every pair of 76..78 is a candidate: a border exists only where
 	// the world placement of the game seed makes the rectangles touch (SharedBorder).
 	{76, 75}, {77, 76}, {78, 77}, {78, 76}, {79, 78}, {80, 79}, {81, 80}, {82, 81}, {83, 82},
+	// Act 4 (drlg-act45-outdoor.md 2): pass 3 registers {level, ref} for the
+	// Outer Steppes (104, east of the Fortress), 105 and 106 (pinwheel placers
+	// next to their reference). 108 is joined to 107 by a Levels.txt warp (-1).
+	{104, 103}, {105, 104}, {106, 105},
+	// Act 5 (drlg-act45-outdoor.md 2): DRLG_LinkAdjacentLevelRange always registers
+	// Harrogath-Bloody Foothills, Foothills-Frigid Highlands and Highlands-Arreat
+	// Plateau; Frozen Tundra (117) has no outdoor neighbour.
+	{109, 110}, {110, 111}, {111, 112},
 }
 
 var allLinks []Link
@@ -75,6 +90,10 @@ var allLinks []Link
 func init() {
 	for _, e := range levelsTxtLinks {
 		allLinks = append(allLinks, Link{From: e[0], To: e[1], Warp: e[2], Kind: KindTile, Source: SourceLevelsTxt})
+	}
+
+	for _, e := range portalLinks {
+		allLinks = append(allLinks, Link{From: e.From, To: e.To, Warp: -1, Kind: KindPortal, Source: SourceNotes})
 	}
 
 	for _, e := range drlgEdges {
@@ -289,8 +308,10 @@ var upWarps = map[int]bool{4: true, 8: true, 11: true, 13: true, 16: true, 17: t
 	// Act 3: spider cave 52, dungeons 55, sewers 58/59, temples 62/63, Durance of Hate 65/66
 	52: true, 55: true, 58: true, 59: true, 62: true, 63: true, 65: true, 66: true}
 
-// isOutdoor reports a level that borders others on seamless edges.
-func isOutdoor(level int) bool { return len(EdgeNeighbors(level)) > 0 }
+// isOutdoor reports a level that borders others on seamless edges. Only Acts 1
+// and 2 count: the TileDestination rules below were observed there, and the Act
+// 3..5 borders were added to the table for the level graph audit.
+func isOutdoor(level int) bool { return ActOfLevel(level) <= 2 && len(EdgeNeighbors(level)) > 0 }
 
 // TileDestination is Destination for the special tile of a DS1 preset, by the
 // style the tile carries. UNVERIFIED (the exe resolves the tile through a table
@@ -327,6 +348,10 @@ func TileDestination(level, style int) (int, bool) {
 		}
 
 		return 0, false
+	}
+
+	if ActOfLevel(level) >= 4 {
+		return SlotDestination(level, style)
 	}
 
 	if style == presetExitStyle[level] && hasPresetExit(level) {
@@ -399,4 +424,50 @@ func SingleTileDestination(level int) (int, bool) {
 	}
 
 	return to, to != 0
+}
+
+// SlotDestination is the tile rule of the Act 4 and Act 5 dungeons: a special tile with style k leads to
+// the k-th link of the level in the order of the Levels.txt Vis slots (style 0 is the way back, 1 the
+// way on, 2 the third exit). Observed in the DS1 files of the ice caves (113..119: up / ahead / down
+// floor = LvlWarp 73 / 74 / 75), the Arreat Summit (120: down to the ice caves, then to the Worldstone
+// Keep), the Worldstone Keep (128..131: up 81, down 82) and the River of Flame (107: south room, style 0).
+// UNVERIFIED against the exe (the tile id to warp id table is not decoded).
+func SlotDestination(level, style int) (int, bool) {
+	var dests []int
+
+	for _, l := range allLinks {
+		if l.From != level || l.Kind != KindTile {
+			continue
+		}
+
+		if len(dests) == 0 || dests[len(dests)-1] != l.To {
+			dests = append(dests, l.To)
+		}
+	}
+
+	if style < 0 || style >= len(dests) {
+		return 0, false
+	}
+
+	return dests[style], true
+}
+
+// OutdoorExitByPreset resolves the exit presets of Frozen Tundra (117), which has two tile links: the
+// western cave (Expansion/IceCave/WestEntrance_Snow.ds1) leads back to the Glacial Trail (115), the
+// eastern one (WestExit_Snow.ds1) on to the Ancients' Way (118).
+func OutdoorExitByPreset(level int, path string) (int, bool) {
+	if level != 117 {
+		return 0, false
+	}
+
+	p := strings.ToLower(path)
+
+	switch {
+	case strings.Contains(p, "westentrance"):
+		return 115, true
+	case strings.Contains(p, "westexit"):
+		return 118, true
+	}
+
+	return 0, false
 }

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2gs"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket/d2netpackettype"
@@ -143,12 +144,44 @@ func (s *ServerSide) Encode(np d2netpacket.NetPacket) ([][]byte, error) {
 			return nil, err
 		}
 
-		in := d2gs.PlayerInGame{UnitID: s.IDs.Assign(p.ID), Class: uint8(p.HeroType), Name: p.Name}
+		// real 0x59 layout (verified): x, y at 22/24. Level and party are not in
+		// this packet; they reach other OD2 peers via the tunnelled AddPlayer.
+		in := d2gs.AssignPlayer{UnitID: s.IDs.Assign(p.ID), Class: uint8(p.HeroType), Name: p.Name,
+			X: toSub(float64(p.X)), Y: toSub(float64(p.Y))}
+
+		// The real 0x5b roster entry carries class, name, level and party id
+		// (verified, verify-roster-packets.md); the rest of the hero state is the
+		// documented OD2 extension in the tunnelled AddPlayer.
+		level := 0
 		if p.Stats != nil {
-			in.Level = uint16(p.Stats.Level)
+			level = p.Stats.Level
 		}
 
-		return append([][]byte{in.Marshal()}, tunnelNP(d2gs.S2CMetaAE, np)...), nil
+		re := d2gs.RosterEntry{UnitID: in.UnitID, Class: in.Class, Name: p.Name, Level: clampU16(level), PartyID: d2gs.NoParty}
+
+		return append([][]byte{in.Marshal(), re.Marshal()}, tunnelNP(d2gs.S2CMetaAE, np)...), nil
+	case d2netpackettype.RosterUpdate:
+		p, err := d2netpacket.UnmarshalRosterUpdate(np.PacketData)
+		if err != nil {
+			return nil, err
+		}
+
+		// Level and party id of every player go out as real 0x75 packets. The
+		// roster's hostility, invitations, area and notices have no verified real
+		// counterpart (0x8c flag bits and 0x8e are UNVERIFIED) and stay in the
+		// tunnelled packet.
+		var out [][]byte
+
+		for _, in := range p.Roster.Players {
+			party := d2gs.NoParty
+			if in.Party > 0 && in.Party < int(d2gs.NoParty) {
+				party = uint16(in.Party)
+			}
+
+			out = append(out, d2gs.RosterUpdate{UnitID: s.IDs.Assign(in.ID), PartyID: party, Level: clampU16(in.Level)}.Marshal())
+		}
+
+		return append(out, tunnelNP(d2gs.S2CMetaAE, np)...), nil
 	case d2netpackettype.MovePlayer:
 		p, err := d2netpacket.UnmarshalMovePlayer(np.PacketData)
 		if err != nil {
@@ -321,6 +354,9 @@ type ClientSide struct {
 	haveSkill  [2]bool
 	tun        d2gs.TunnelAssembler
 	lastInGame uint32
+
+	peerMu sync.Mutex
+	peers  map[uint32]PeerInfo
 }
 
 // Encode translates an engine packet for the server.
@@ -411,12 +447,42 @@ func (c *ClientSide) Decode(plain []byte) (out []d2netpacket.NetPacket, ignored 
 
 			out = append(out, gm)
 		case d2gs.S2CPlayerInGame:
-			in, perr := d2gs.ParsePlayerInGame(p)
+			in, perr := d2gs.ParseAssignPlayer(p)
 			if perr != nil {
 				return out, ignored, perr
 			}
 
 			c.lastInGame = in.UnitID
+		case d2gs.S2CRosterEntry:
+			re, perr := d2gs.ParseRosterEntry(p)
+			if perr != nil {
+				return out, ignored, perr
+			}
+
+			c.updatePeer(re.UnitID, func(pi *PeerInfo) {
+				pi.Class, pi.Name, pi.Level, pi.PartyID, pi.partyKnown = re.Class, re.Name, re.Level, re.PartyID, true
+			})
+		case d2gs.S2CRosterUpdate:
+			ru, perr := d2gs.ParseRosterUpdate(p)
+			if perr != nil {
+				return out, ignored, perr
+			}
+
+			c.updatePeer(ru.UnitID, func(pi *PeerInfo) { pi.Level, pi.PartyID, pi.partyKnown = ru.Level, ru.PartyID, true })
+		case d2gs.S2CRosterParty:
+			rp, perr := d2gs.ParseRosterParty(p)
+			if perr != nil {
+				return out, ignored, perr
+			}
+
+			c.updatePeer(rp.UnitID, func(pi *PeerInfo) { pi.PartyID, pi.partyKnown = rp.PartyID, true })
+		case d2gs.S2CRosterKills:
+			rk, perr := d2gs.ParseRosterKills(p)
+			if perr != nil {
+				return out, ignored, perr
+			}
+
+			c.updatePeer(rk.UnitID, func(pi *PeerInfo) { pi.Kills = rk.Kills })
 		case d2gs.S2CMetaAE:
 			typ, data, done, terr := c.tun.Add(p)
 			if terr != nil {
@@ -436,6 +502,16 @@ func (c *ClientSide) Decode(plain []byte) (out []d2netpacket.NetPacket, ignored 
 				}
 
 				c.IDs.Set(ap.ID, c.lastInGame)
+				np.PacketData = c.patchAddPlayer(&ap, np.PacketData)
+			}
+
+			if np.PacketType == d2netpackettype.RosterUpdate {
+				ru, uerr := d2netpacket.UnmarshalRosterUpdate(data)
+				if uerr != nil {
+					return out, ignored, uerr
+				}
+
+				np.PacketData = c.patchRoster(&ru, np.PacketData)
 			}
 
 			out = append(out, np)
@@ -520,6 +596,121 @@ func (c *ClientSide) Decode(plain []byte) (out []d2netpacket.NetPacket, ignored 
 	}
 
 	return out, ignored, nil
+}
+
+func clampU16(v int) uint16 {
+	switch {
+	case v < 0:
+		return 0
+	case v > math.MaxUint16:
+		return math.MaxUint16
+	}
+
+	return uint16(v)
+}
+
+// PeerInfo is what the real roster packets taught the client about a unit.
+type PeerInfo struct {
+	Class   uint8
+	Name    string
+	Level   uint16
+	PartyID uint16 // d2gs.NoParty when none
+	Kills   int16
+
+	partyKnown bool // a 0x75 or 0x8d told us the party id
+}
+
+// Peer returns the roster data the real packets (0x5b, 0x75, 0x8d, 0x65) gave
+// for a unit id.
+func (c *ClientSide) Peer(unit uint32) (PeerInfo, bool) {
+	c.peerMu.Lock()
+	defer c.peerMu.Unlock()
+
+	p, ok := c.peers[unit]
+
+	return p, ok
+}
+
+func (c *ClientSide) updatePeer(unit uint32, f func(*PeerInfo)) {
+	c.peerMu.Lock()
+	defer c.peerMu.Unlock()
+
+	if c.peers == nil {
+		c.peers = map[uint32]PeerInfo{}
+	}
+
+	p, ok := c.peers[unit]
+	if !ok {
+		p.PartyID = d2gs.NoParty
+	}
+
+	f(&p)
+	c.peers[unit] = p
+}
+
+// patchAddPlayer makes the verified level from the real 0x5b entry win over
+// the one in the tunnelled hero state; everything else in AddPlayer stays the
+// OD2 extension.
+func (c *ClientSide) patchAddPlayer(ap *d2netpacket.AddPlayerPacket, data []byte) []byte {
+	peer, ok := c.Peer(c.lastInGame)
+	if !ok || peer.Level == 0 {
+		return data
+	}
+
+	if ap.Stats == nil {
+		ap.Stats = &d2hero.HeroStatsState{}
+	}
+
+	ap.Stats.Level = int(peer.Level)
+
+	if b, err := json.Marshal(ap); err == nil {
+		return b
+	}
+
+	return data
+}
+
+// patchRoster applies the verified level and party id of the real packets to a
+// tunnelled roster snapshot.
+func (c *ClientSide) patchRoster(ru *d2netpacket.RosterUpdatePacket, data []byte) []byte {
+	changed := false
+
+	for i := range ru.Roster.Players {
+		unit, ok := c.IDs.Unit(ru.Roster.Players[i].ID)
+		if !ok {
+			continue
+		}
+
+		peer, ok := c.Peer(unit)
+		if !ok {
+			continue
+		}
+
+		in := &ru.Roster.Players[i]
+		if peer.Level != 0 {
+			in.Level = int(peer.Level)
+			changed = true
+		}
+
+		if peer.partyKnown {
+			in.Party = int(peer.PartyID)
+			if peer.PartyID == d2gs.NoParty {
+				in.Party = 0
+			}
+
+			changed = true
+		}
+	}
+
+	if !changed {
+		return data
+	}
+
+	if b, err := json.Marshal(ru); err == nil {
+		return b
+	}
+
+	return data
 }
 
 func regionFromAux(aux uint32) d2enum.RegionIdType { return d2enum.RegionIdType(aux) }

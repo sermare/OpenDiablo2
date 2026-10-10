@@ -18,6 +18,8 @@ type Type struct {
 	Shoots         string // quiver type a weapon of this type needs
 	Quiver         string // weapon type a quiver of this type belongs to
 	Class          string // "Class" column (ama, sor, ...) for class specific types
+	// MaxSock1/25/40: socket limits by item level, see sockets.go
+	MaxSock1, MaxSock25, MaxSock40 int
 }
 
 // Types is ItemTypes.txt keyed by code.
@@ -45,6 +47,7 @@ func ParseTypes(data []byte) (*Types, error) {
 			Body:     cell(r, col, "body") == "1",
 			BodyLoc1: LocFromCode(cell(r, col, "bodyloc1")), BodyLoc2: LocFromCode(cell(r, col, "bodyloc2")),
 			Shoots: cell(r, col, "shoots"), Quiver: cell(r, col, "quiver"), Class: cell(r, col, "class"),
+			MaxSock1: num(r, col, "maxsock1"), MaxSock25: num(r, col, "maxsock25"), MaxSock40: num(r, col, "maxsock40"),
 		}
 	}
 
@@ -155,6 +158,8 @@ type Base struct {
 	Durability    int
 	NoDurability  bool
 	TwoHandedKind string // 2handedwclass, informational
+	GemSockets    int    // gemsockets: the most sockets the base can have
+	GemApplyType  int    // gemapplytype: 0 weapon, 1 armor, 2 shield
 }
 
 // Bases maps item codes to Base rows.
@@ -188,6 +193,7 @@ func ParseBases(armor, weapons []byte, others ...[]byte) (Bases, error) {
 				ReqStr: num(r, col, "reqstr"), ReqDex: num(r, col, "reqdex"), ReqLevel: num(r, col, "levelreq"),
 				Durability: num(r, col, "durability"), NoDurability: cell(r, col, "nodurability") == "1",
 				TwoHandedKind: cell(r, col, "2handedwclass"),
+				GemSockets:    num(r, col, "gemsockets"), GemApplyType: num(r, col, "gemapplytype"),
 			}
 		}
 	}

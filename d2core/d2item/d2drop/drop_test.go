@@ -156,15 +156,15 @@ func TestQualityTail(t *testing.T) {
 		t.Errorf("want superior, got %d", q)
 	}
 
-	// HiQ passes (>=128), normal roll < 128 -> low.
+	// HiQ passes (>=128), normal roll < 128 -> normal.
 	rng = &scriptRNG{vals: []uint32{big, big, big, big, big, 5}}
-	if q := RollQuality(rng, testRatio, QualityInput{TypeRare: true, ILvl: 10, QLvl: 10}); q != QualityLow {
-		t.Errorf("want low, got %d", q)
+	if q := RollQuality(rng, testRatio, QualityInput{TypeRare: true, ILvl: 10, QLvl: 10}); q != QualityNormal {
+		t.Errorf("want normal, got %d", q)
 	}
 
 	rng = &scriptRNG{vals: []uint32{big, big, big, big, big, big}}
-	if q := RollQuality(rng, testRatio, QualityInput{TypeRare: true, ILvl: 10, QLvl: 10}); q != QualityNormal {
-		t.Errorf("want normal, got %d", q)
+	if q := RollQuality(rng, testRatio, QualityInput{TypeRare: true, ILvl: 10, QLvl: 10}); q != QualityLow {
+		t.Errorf("want low, got %d", q)
 	}
 
 	// MF below -99 skips straight to the tail.
@@ -178,7 +178,8 @@ func TestAffixLevel(t *testing.T) {
 	cases := []struct{ ilvl, qlvl, ml, want int }{
 		{50, 20, 0, 40},
 		{90, 40, 0, 81}, // 90 >= 99-20: 2*90-99
-		{1, 60, 0, 1},   // clamped up
+		{1, 60, 0, 30},  // ilvl raised to qlvl 60: 60-30
+		{40, 60, 0, 30}, // max(ilvl, qlvl) term (5bf2ed)
 		{99, 0, 0, 99},
 		{50, 20, 3, 53},
 		{99, 0, 10, 99}, // clamped down

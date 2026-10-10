@@ -10,6 +10,10 @@ import (
 // handleContainerClick gives a left click to the belt, the stash, the cube and
 // the inventory, in that order, and reports whether one of them took it.
 func (g *GameControls) handleContainerClick(mx, my int, ctrl bool) bool {
+	if g.trySocketClick(mx, my) {
+		return true
+	}
+
 	if g.belt.HandleClick(mx, my) {
 		return true
 	}
@@ -24,7 +28,7 @@ func (g *GameControls) handleContainerClick(mx, my int, ctrl bool) bool {
 
 	if g.inventory.HandleClick(mx, my, ctrl) {
 		switch g.inventory.lastClick {
-		case ClickPlace, ClickSwap, ClickAuto:
+		case ClickPlace, ClickSwap, ClickAuto, ClickMerge:
 			g.saveHero()
 		}
 
@@ -66,6 +70,11 @@ func (g *GameControls) handleContainerRightClick(mx, my int) bool {
 
 	if it, ok := item.(*diablo2item.Item); ok && from == g.inventory.grid && IsIdentifyScroll(it) {
 		g.Identify.Arm(it)
+		return true
+	}
+
+	if from == g.inventory.grid && g.useQuestItem(from, item) {
+		g.saveHero()
 		return true
 	}
 

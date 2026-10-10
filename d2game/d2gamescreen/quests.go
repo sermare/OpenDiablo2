@@ -8,10 +8,12 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2quest"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2reward"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapgen"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
 )
 
@@ -55,6 +57,10 @@ type questRuntime struct {
 	imbuePending bool
 	respec       bool
 	rogueHire    bool
+	// rewards is the state of the quest rewards (Larzuk, Anya, Malah...).
+	rewards d2reward.State
+	// actPortalLevel is the level in which the act portal was opened (0: none).
+	actPortalLevel int
 }
 
 // d2sClass converts the engine's hero enum to the .d2s class number.
@@ -201,6 +207,7 @@ func (v *Game) advanceQuests(elapsed float64) {
 	}
 
 	v.advanceBarks(elapsed)
+	v.advanceUber(elapsed)
 
 	if r.auto != nil {
 		r.auto.advance(engineHost{v}, elapsed)
@@ -218,6 +225,7 @@ func (v *Game) questDispatch(e d2quest.Event) {
 	v.applyQuestEffects(r.g.Dispatch(e))
 
 	r.dirty = true
+	v.maybeOpenActPortal()
 }
 
 // questArea tells the quest system the hero moved to another area.
@@ -261,6 +269,8 @@ func (v *Game) onMonsterKilled(ev d2monsters.KillEvent) {
 	}
 
 	v.questDispatch(d2quest.Event{Kind: d2quest.EvMonsterKilled, Monster: ev.Class, Super: super, Name: ev.Label, Level: r.area})
+	v.questKillDrops(ev.Label, ev.Class)
+	v.uberKilled(ev)
 }
 
 // questObjectOperated is a quest object (cairn stone, Malus chest...) used by the hero.
@@ -304,7 +314,7 @@ func (v *Game) applyQuestEffects(effects []d2quest.Effect) {
 			v.Infof("QUEST EFFECT imbue-available (%s)", e.Note)
 		case d2quest.EffectGiveItem:
 			v.Infof("QUEST EFFECT give-item code=%s quality=%d ilvl/count=%d (%s)", e.Code, e.Quality, e.Value, e.Note)
-			v.spawnQuestItem(e.Code)
+			v.spawnQuestItem(e.Code, questItemOptions(v.asset.Records.Item.All[e.Code], e.Quality, e.Value)...)
 		case d2quest.EffectDeleteItem:
 			ok := v.gameControls.RemoveItemByCode(e.Code)
 			v.Infof("QUEST EFFECT delete-item code=%s removed=%v", e.Code, ok)
@@ -321,7 +331,7 @@ func (v *Game) applyQuestEffects(effects []d2quest.Effect) {
 		case d2quest.EffectSound:
 			v.Infof("QUEST EFFECT sound id=%d quest=%d (%s) [not played: the attach-sound table is not decoded]", e.Value, e.Quest, e.Note)
 		case d2quest.EffectPortal:
-			v.Infof("QUEST EFFECT portal (%s) [not simulated]", e.Note)
+			v.questPortal(e)
 		case d2quest.EffectUnlockAct:
 			v.Infof("QUEST EFFECT unlock act %d", e.Value)
 		case d2quest.EffectBark:
@@ -332,30 +342,81 @@ func (v *Game) applyQuestEffects(effects []d2quest.Effect) {
 	}
 }
 
-// applyQuestReward does the rewards of the later acts the engine can: stat
-// points are added, the others are logged (no mercenary, socketing or
-// personalisation UI yet).
-func (v *Game) applyQuestReward(e d2quest.Effect) {
-	if e.Code == "stat-points" {
-		v.localPlayer.Stats.StatsPoints += e.Value
-		v.Infof("QUEST EFFECT reward stat-points +%d total=%d", e.Value, v.localPlayer.Stats.StatsPoints)
-
-		return
+// questItemEffects is what reading or drinking a quest item does: the quest game checks the reward bit and
+// returns the effects, or none when the item does nothing now (the item then stays in the inventory). The bool
+// says whether the code is one of the three usable quest items.
+func questItemEffects(g *d2quest.Game, code string) ([]d2quest.Effect, bool) {
+	switch strings.TrimSpace(code) {
+	case d2quest.ItemBookOfSkill:
+		return g.ReadBookOfSkill(), true
+	case d2quest.ItemPotionOfLife:
+		return g.DrinkPotionOfLife(), true
+	case d2quest.ItemMalahScroll:
+		return g.ReadScrollOfResistance(), true
 	}
 
-	v.Infof("QUEST EFFECT reward %s value=%d (%s) [not simulated]", e.Code, e.Value, e.Note)
+	return nil, false
+}
+
+// useQuestItem is the item-use hook of the inventory: it reports whether the item was a quest item that took
+// effect (and so is consumed). An item whose reward bit is not set stays where it is.
+func (v *Game) useQuestItem(code string) bool {
+	r := v.quests()
+	if r == nil {
+		return false
+	}
+
+	effects, known := questItemEffects(r.g, code)
+	if !known {
+		return false
+	}
+
+	if len(effects) == 0 {
+		v.Infof("QUEST item use code=%s: nothing happens (reward bit not set)", strings.TrimSpace(code))
+
+		return false
+	}
+
+	v.Infof("QUEST item use code=%s", strings.TrimSpace(code))
+	v.applyQuestEffects(effects)
+
+	return true
 }
 
 // spawnQuestItem drops a quest reward at the hero's feet (the engine's reward
 // items are ground items the hero picks up; an approximation of the original,
 // which puts them in the inventory). Unknown item codes are logged, not sent.
-func (v *Game) spawnQuestItem(code string) {
+func (v *Game) spawnQuestItem(code string, options ...string) {
 	if v.asset.Records.Item.All[code] == nil {
 		v.Infof("QUEST EFFECT item code %q is not in the item tables; nothing dropped", code)
 		return
 	}
 
-	v.debugSpawnItemAtPlayer(code)
+	v.debugSpawnItemAtPlayer(append([]string{code}, options...)...)
+}
+
+// questItemOptions are the NewItem options of a quest reward: the quality
+// (0 normal, 1 magic, 2 rare) and the item level; for stackable items the value
+// is a count (eight stamina potions).
+func questItemOptions(rec *d2records.ItemCommonRecord, quality, value int) []string {
+	var out []string
+
+	switch quality {
+	case 1:
+		out = append(out, "q=magic")
+	case 2:
+		out = append(out, "q=rare")
+	}
+
+	switch {
+	case value <= 0:
+	case rec != nil && rec.Stackable:
+		out = append(out, "qty="+strconv.Itoa(value))
+	default:
+		out = append(out, "ilvl="+strconv.Itoa(value))
+	}
+
+	return out
 }
 
 // syncQuestLog pushes the quest states to the quest log panel.

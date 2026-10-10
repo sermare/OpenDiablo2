@@ -92,36 +92,7 @@ func (a *App) initLanguage() {
 }
 
 func (a *App) initDataDictionaries() error {
-	dictPaths := []string{
-		d2resource.LevelType, d2resource.LevelPreset, d2resource.LevelWarp,
-		d2resource.ObjectType, d2resource.ObjectDetails, d2resource.Weapons,
-		d2resource.Armor, d2resource.Misc, d2resource.Books, d2resource.ItemTypes,
-		d2resource.UniqueItems, d2resource.Missiles, d2resource.SoundSettings,
-		d2resource.MonStats, d2resource.MonStats2, d2resource.MonPreset,
-		d2resource.MonProp, d2resource.MonType, d2resource.MonMode,
-		d2resource.MagicPrefix, d2resource.MagicSuffix, d2resource.ItemStatCost,
-		d2resource.ItemRatio, d2resource.StorePage, d2resource.Overlays,
-		d2resource.CharStats, d2resource.Hireling, d2resource.Experience,
-		d2resource.Gems, d2resource.QualityItems, d2resource.Runes,
-		d2resource.DifficultyLevels, d2resource.AutoMap, d2resource.LevelDetails,
-		d2resource.LevelMaze, d2resource.LevelSubstitutions, d2resource.CubeRecipes,
-		d2resource.SuperUniques, d2resource.Inventory, d2resource.Skills,
-		d2resource.SkillCalc, d2resource.MissileCalc, d2resource.Properties,
-		d2resource.SkillDesc, d2resource.BodyLocations, d2resource.Sets,
-		d2resource.SetItems, d2resource.AutoMagic, d2resource.TreasureClass,
-		d2resource.TreasureClassEx, d2resource.States, d2resource.SoundEnvirons,
-		d2resource.Shrines, d2resource.ElemType, d2resource.PlrMode,
-		d2resource.PetType, d2resource.NPC, d2resource.MonsterUniqueModifier,
-		d2resource.MonsterEquipment, d2resource.UniqueAppellation, d2resource.MonsterLevel,
-		d2resource.MonsterSound, d2resource.MonsterSequence, d2resource.PlayerClass,
-		d2resource.MonsterPlacement, d2resource.ObjectGroup, d2resource.CompCode,
-		d2resource.MonsterAI, d2resource.RarePrefix, d2resource.RareSuffix,
-		d2resource.Events, d2resource.Colors, d2resource.ArmorType,
-		d2resource.WeaponClass, d2resource.PlayerType, d2resource.Composite,
-		d2resource.HitClass, d2resource.UniquePrefix, d2resource.UniqueSuffix,
-		d2resource.CubeModifier, d2resource.CubeType, d2resource.HirelingDescription,
-		d2resource.LowQualityItems, d2resource.Belts, d2resource.Gamble,
-	}
+	dictPaths := d2resource.DataDictionaries()
 
 	a.Info("Initializing asset manager")
 
@@ -175,7 +146,13 @@ func (a *App) loadStrings() error {
 		_, err := a.asset.LoadStringTable(tablePath)
 		if err != nil {
 			if tablePath == d2resource.ExpansionStringTable {
+				// non-English installs fold the expansion strings into string.tbl
 				a.Warning("skipping missing expansion strings (no Lord of Destruction files)")
+				continue
+			}
+
+			if tablePath == d2resource.PatchStringTable {
+				a.Warning("skipping missing patch strings (unpatched install)")
 				continue
 			}
 

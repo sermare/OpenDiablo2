@@ -2,15 +2,19 @@ package d2monsters
 
 import (
 	"fmt"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2hireling"
 	"hash/fnv"
 	"regexp"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
@@ -148,6 +152,16 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 		defense, blockPct, physResist, reduce = t.Defense, t.BlockPct, t.PhysResist, t.DamageReduction
 	}
 
+	// the defender's armor vs melee (0x21) or vs missile (0x20) is part of the
+	// to-hit defense (ToHitInput.Defense contract); items only (Totals).
+	if t := p.Stats.Totals; t != nil && t.Stats != nil {
+		if via == "" {
+			defense += int(t.Stats.Get(d2statlist.StatArmorHTH))
+		} else {
+			defense += int(t.Stats.Get(d2statlist.StatArmorMissile))
+		}
+	}
+
 	in := d2combat.ToHitInput{
 		AttackRating:  d2combat.MonsterAttackRating(atk.ToHit, 0, 0),
 		Defense:       defense,
@@ -155,7 +169,13 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 		DefenderLevel: p.Stats.Level,
 	}
 
-	hit, chance, roll := d2combat.RollToHit(u.b.Seed, in)
+	// VERIFIED (0x57cc10): a player defender in mode 3 (running) is auto-hit,
+	// the to-hit is not rolled and no seed step is consumed.
+	hit, chance, roll := true, 0, 0
+	if !heroAutoHit(p) {
+		hit, chance, roll = d2combat.RollToHit(u.b.Seed, in)
+	}
+
 	dmg := 0
 
 	blocked, note := false, ""
@@ -165,6 +185,19 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 		// is not moving while she is struck here (the running /3 rule is not applied)
 		if blocked = d2combat.RollShieldBlock(u.b.Seed, blockPct, false); blocked {
 			hit = false
+
+			// VERIFIED (0x57ae50): the block animation replays only after
+			// 15 + fasterblockrate/8 frames since the last one (stat 0x5f)
+			note = d.noteBlockAnim(p)
+		}
+	}
+
+	// VERIFIED order: dodge / avoid / evade are rolled by the outcome step,
+	// BEFORE the damage roll (the exe does not roll damage for an avoided hit).
+	if hit && d.HeroAvoid != nil {
+		if av, anote := d.HeroAvoid(p, u.m, via == ""); av {
+			hit = false
+			note += anote
 		}
 	}
 
@@ -174,17 +207,17 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 			dmg = 1
 		}
 
-		// flat damage reduction first, then the physical resistance percent (cap 50);
-		// the order of the two is UNVERIFIED. A hit never drops below 0 damage.
-		dmg = d2combat.ApplyResist(dmg-reduce, physResist)
-		if dmg < 0 {
-			dmg = 0
-		}
+		// VERIFIED (0x579c90): flat reduction first, then the physical resist
+		// percent; no floor per component, the Total is only subtracted when > 0.
+		dmg = heroPhysicalDamage(dmg, reduce, physResist)
 
 		// skill defenses run after the to-hit and shield block steps and the
-		// armor reductions: Dodge/Avoid/Evade, Energy Shield, Bone Armor, Thorns
+		// armor reductions: Energy Shield, Bone Armor, Thorns
 		if d.HeroDefense != nil {
-			dmg, note = d.HeroDefense(p, u.m, via == "", dmg)
+			var dnote string
+
+			dmg, dnote = d.HeroDefense(p, u.m, via == "", dmg)
+			note += dnote
 		}
 
 		d.Counters.AttackHits++
@@ -239,7 +272,8 @@ func (d *Director) fireShot(u *unit, mode d2monster.Mode, atk d2mapentity.Monste
 		Owner: u.b.ID, Mode: mode.String(), From: d2path.Point{X: sx, Y: sy}, To: d2path.Point{X: ax, Y: ay},
 		Missile: missileFor(u.m.Stat, mode), Velocity: d.missileVelocity(missileFor(u.m.Stat, mode)),
 		Collide: func(x, y int) bool {
-			for _, p := range d.targets {
+			for _, tid := range d.targetIDs() {
+				p := d.targets[tid]
 				px, py := playerSubtile(p)
 				if d.targetable(p) && abs(px-x) <= shotCollideRadius && abs(py-y) <= shotCollideRadius {
 					struck = p
@@ -309,8 +343,11 @@ func (d *Director) HeroStrike(p *d2mapentity.Player, m *d2mapentity.Monster) boo
 		ar = t.AttackRating // with the equipment's attack rating, dexterity and AR percent
 	}
 
+	// VERIFIED (0x57b8b0): the attack rating operands of a player attacker
+	ar, mdef := HeroAROperands(p.Stats.Totals, m, ar, m.Vitals.Defense)
+
 	hit, chance, roll := d2combat.RollToHit(d.heroRoller(), d2combat.ToHitInput{
-		AttackRating: ar, Defense: m.Vitals.Defense,
+		AttackRating: ar, Defense: mdef,
 		AttackerLevel: p.Stats.Level, DefenderLevel: m.Vitals.Level,
 	})
 
@@ -520,6 +557,90 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 	d.kill(u, src)
 }
 
+// scaleKillXP applies the VERIFIED clamp of one kill's experience to 0x7fffff,
+// the level difference scaling, the level cap and the item "+% experience"
+// bonus of the original (0x0057c490 / 0x0057c300, d2herostats.KillXP) to a
+// kill's base experience. A kill at the hero's own level, by a hero without the
+// bonus, is unchanged. The ExpRatio column is NOT applied: the extracted
+// Experience.txt has no such column (the exe keeps it in its own table), so it
+// stays 1:1, which is what the shipped ratio of 1024 >> 10 amounts to
+// (UNVERIFIED). Unknown levels (<= 0) leave the experience as is.
+func scaleKillXP(xp, monsterLevel int, st *d2hero.HeroStatsState) int {
+	if xp > d2herostats.KillXPCap {
+		xp = d2herostats.KillXPCap
+	}
+
+	if st == nil || st.Level <= 0 || monsterLevel <= 0 || xp <= 0 {
+		return xp
+	}
+
+	return d2herostats.KillXP(xp, monsterLevel, st.Level, heroMaxLevel, st.ItemExperiencePct())
+}
+
+// heroMaxLevel is the character level at which kills stop giving experience.
+const heroMaxLevel = 99
+
+// shrineXP adds the shrine experience bonus (percent of xp, truncated).
+func (d *Director) shrineXP(xp int) int {
+	if d.ExpBonusPct != nil {
+		xp += xp * d.ExpBonusPct() / 100
+	}
+
+	return xp
+}
+
+// awardKillXP gives the hero the experience of his kill (also the kills of his
+// merc and pets, which are credited to the owner at full value) and returns the
+// amount after the shrine bonus. The level-difference scaling happens before, in
+// scaleKillXP. Experience is capped later, at row MaxLvl-1 of Experience.txt
+// (VERIFIED 0x0057c510, hero_levelup.go).
+func (d *Director) awardKillXP(src *d2mapentity.Player, xp int, _ string) int {
+	xp = d.shrineXP(xp)
+	src.Stats.Experience += xp
+
+	return xp
+}
+
+// creditKill credits the hero for a kill of a monster of monsterLevel worth
+// baseXP. In a network party the server splits the UNSCALED experience (shrine
+// bonus included) and each member's client scales its share (PartyXP hook,
+// d2party.Roster.ShareKillXP); otherwise the hero is scaled and credited here.
+// It returns the amount the killer got, or the offered amount for a party kill.
+func (d *Director) creditKill(src *d2mapentity.Player, baseXP, monsterLevel int, label string) int {
+	if baseXP > d2herostats.KillXPCap {
+		baseXP = d2herostats.KillXPCap
+	}
+
+	if d.PartyXP != nil {
+		if offered := d.shrineXP(baseXP); d.PartyXP(src, offered, monsterLevel, label) {
+			return offered
+		}
+	}
+
+	return d.awardKillXP(src, scaleKillXP(baseXP, monsterLevel, src.Stats), label)
+}
+
+// creditOwnerMerc gives the killer's merc its share of a kill (0x0057c990
+// VERIFIED): the unscaled xp goes through the merc's own pipeline (its level),
+// and a kill the merc did not make itself is worth 86/256 of that.
+func (d *Director) creditOwnerMerc(src *d2mapentity.Player, victim *unit, baseXP int) {
+	mu := d.mercs[src]
+	if mu == nil || mu.merc == nil || !mu.m.Alive() || d.hire == nil {
+		return
+	}
+
+	if baseXP > d2herostats.KillXPCap {
+		baseXP = d2herostats.KillXPCap
+	}
+
+	share := baseXP
+	if victim.m.Vitals.Level > 0 && baseXP > 0 {
+		share = d2herostats.KillXP(baseXP, victim.m.Vitals.Level, mu.merc.level, d2hireling.MaxLevel, 0)
+	}
+
+	d.creditMerc(mu.merc, mu, d2herostats.MercKillShare(share, d.killer == mu))
+}
+
 func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 	u.m.Die()
 	d.fp.Remove(u.b.ID) // a dying monster stops blocking (UNVERIFIED); the corpse flag is set when DT ends
@@ -532,19 +653,9 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 
 	if src != nil {
 		by = src.Name()
-		if d.ExpBonusPct != nil { // shrine experience boost (d2object), percent
-			xp += xp * d.ExpBonusPct() / 100
-		}
-
-		// in a network party the server splits the experience among the members
-		// that share the level (d2party.ShareXP); the awards come back as packets
-		if d.PartyXP == nil || !d.PartyXP(src, xp, u.m.Label()) {
-			src.Stats.Experience += xp
-		}
-	}
-
-	if k := d.killer; k != nil {
-		d.creditMerc(k.merc, k, xp)
+		base := xp
+		xp = d.creditKill(src, base, u.m.Vitals.Level, u.m.Label())
+		d.creditOwnerMerc(src, u, base)
 	}
 
 	d.emit("death", "MONSTER death name=%s id=%d by=%s xp=%d", u.m.Label(), u.b.ID, by, xp)
@@ -569,13 +680,16 @@ func (d *Director) dropLoot(u *unit) {
 
 	// the treasure class moves along its level group with the monster level
 	// only in the expansion above Normal (VERIFIED, 0x558d80)
-	upgrade := 0
-	if d2difficulty.UpgradesTreasureClass(d.opt.Expansion, d2difficulty.Level(d.opt.Difficulty), true) {
-		upgrade = level
+	flags := 0
+	if u.m.Stat != nil && u.m.Stat.IgnoreMonLevelTxt {
+		flags |= d2drop.MonStatsNoRatio
 	}
+
+	upgrade := d2drop.MonsterUpgradeLevel(d.opt.Expansion, int(d.opt.Difficulty), true, flags, level)
 
 	loot, err := d.engine.DropLoot(tc, diablo2item.DropOptions{
 		Seed: u.b.Seed.Step(), ILvl: level, UpgradeLevel: upgrade, Players: 1,
+		RollExtras: true, Difficulty: int(d.opt.Difficulty), Classic: !d.opt.Expansion,
 	}, 0)
 	if err != nil {
 		d.emit("drop", "MONSTER drop name=%s tc=%q error=%v", u.m.Label(), tc, err)
@@ -607,6 +721,7 @@ func (d *Director) dropLoot(u *unit) {
 
 		it := e.Item
 		names = append(names, fmt.Sprintf("%s(%s)", it.CommonCode, colorToken.ReplaceAllString(it.Label(), "")))
+		d.emit("drop", "ITEMGEN created source=monster monster=%s %s", u.m.Label(), it.CreationLine())
 		d.Counters.Drops++
 
 		ent, err := d.engine.NewDroppedItem(x, y, it)
@@ -621,4 +736,61 @@ func (d *Director) dropLoot(u *unit) {
 
 	d.emit("drop", "MONSTER drop name=%s tc=%q ilvl=%d items=%d [%s]", u.m.Label(), tc, level, len(loot.Entries),
 		strings.Join(names, ", "))
+}
+
+// heroAutoHit reports the 0x57cc10 rule: a player defender in mode 3 (running)
+// is hit without a to-hit roll.
+func heroAutoHit(p *d2mapentity.Player) bool {
+	vel := p.GetVelocity()
+
+	return p.IsRunning() && !vel.IsZero()
+}
+
+// heroPhysicalDamage is the per-type reduction of 0x579c90 for a physical
+// hit of whole hit points: the flat reduction (stat 34), then the physical
+// resist percent, in 8.8 and truncated back to whole points. A flat larger
+// than the damage gives a negative component which the Total rule floors at
+// 0. Physical has no absorb stat.
+func heroPhysicalDamage(dmg, flat, physResist int) int {
+	out, _ := d2combat.ReduceComponent(dmg<<d2combat.FixedShift, d2combat.ScaleFlatReduction(flat, 0), physResist,
+		false, false, 0, 0)
+	if !d2combat.ApplicableTotal(int32(out)) {
+		return 0
+	}
+
+	return out >> d2combat.FixedShift
+}
+
+// noteBlockAnim applies the block-animation cooldown (VERIFIED 0x57ae50) for
+// a hero and returns a log note; the cooldown stamp is stat 0x5f.
+func (d *Director) noteBlockAnim(p *d2mapentity.Player) string {
+	if d.lastBlock == nil {
+		d.lastBlock = map[*d2mapentity.Player]int{}
+	}
+
+	fbr := 0
+	if p.Stats != nil && p.Stats.Totals != nil {
+		fbr = p.Stats.Totals.FasterBlock
+	}
+
+	last, seen := d.lastBlock[p]
+	play := !seen || d2combat.BlockRecoveryReady(d.frame-last, fbr)
+
+	if play {
+		d.lastBlock[p] = d.frame
+		d.Counters.BlockAnims++
+	}
+
+	return fmt.Sprintf(" block_anim=%v", play)
+}
+
+// UnitID is the monster's numeric unit id (the brain id, assigned in spawn
+// order from 1), the key the game's target picks order by; 0 for an unknown
+// monster.
+func (d *Director) UnitID(m *d2mapentity.Monster) uint32 {
+	if u := d.byEntity[m.ID()]; u != nil {
+		return u.b.ID
+	}
+
+	return 0
 }

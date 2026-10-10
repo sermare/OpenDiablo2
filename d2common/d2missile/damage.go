@@ -31,6 +31,11 @@ type DamageDesc struct {
 	// Flags are d2combat.DamageFlag bits copied into the damage struct.
 	Flags    uint32
 	HitClass int
+	// Crit is descriptor flag 0x2 (verified): the critical / deadly / mastery
+	// roll succeeded when the descriptor was built (0x64cce0). 0x64be80 turns
+	// it into missile stat 0x8d = 1 and the physical damage struct builder
+	// (0x5a673b) doubles the physical damage after the percent bonus.
+	Crit bool
 }
 
 // Empty reports whether the descriptor deals no damage at all.
@@ -40,59 +45,46 @@ func (d *DamageDesc) Empty() bool {
 		d.Fire.Min <= 0 && d.Lightning.Min <= 0 && d.Magic.Min <= 0 && d.Cold.Min <= 0
 }
 
-// roll returns min + Roll(max-min), the game's range roll (SUnitDmg: elemental
-// roll is min plus a random value modulo (max-min); "rolls elemMin +
-// rand%(max-min)" in the notes, inferred for the exact modulus).
-func roll(r d2combat.Roller, min, max int32) int32 {
-	if max <= min || r == nil {
-		return min
-	}
-
-	return min + int32(r.Roll(max-min))
-}
-
-// Roll rolls every component into a damage struct and sets the hit bit. Order
-// of rolls: physical, fire, lightning, magic, cold, poison, burn.
+// Roll rolls every component into a damage struct and sets the hit bit. The
+// rules are the verified ones of the exe's builder (0x5a63c0 / 0x5a6690, see
+// d2combat.BuildMissileDamage): a component whose min or max is not positive
+// is 0 and consumes no random step, min > max swaps, the roll is
+// min + Roll(max-min), and the order of rolls is physical, fire, magic,
+// lightning, cold, poison, burn.
 func (d *DamageDesc) Roll(r d2combat.Roller) d2combat.Damage {
 	dmg := d2combat.Damage{Flags: d.Flags, Result: d2combat.ResultHit, HitClass: int32(d.HitClass)}
+	rr := func(e Elem) int32 { return d2combat.MinMaxRoll(r, e.Min, e.Max, 0, false) }
 
-	if d.PhysMax > 0 || d.PhysMin > 0 {
-		p := roll(r, d.PhysMin, d.PhysMax)
-		p += int32(int64(p) * int64(d.DamagePct) / 100)
+	p := d2combat.MinMaxRoll(r, d.PhysMin, d.PhysMax, 0, false)
+	p += int32(int64(p) * int64(d.DamagePct) / 100)
 
-		if p < 0 {
-			p = 0
-		}
-
-		dmg.Physical = p
+	if p < 0 {
+		p = 0
 	}
 
-	if d.Fire.Max > 0 || d.Fire.Min > 0 {
-		dmg.Fire = roll(r, d.Fire.Min, d.Fire.Max)
+	// Descriptor flag 0x2 (missile stat 0x8d, verified in verify-mastery-formulas /
+	// missile-crit.md): the critical/deadly/mastery roll made when the descriptor
+	// was built doubles the physical damage after the percent bonus and sets the
+	// critical result bit, the same step d2combat.BuildMissileDamage applies for
+	// stat 0x8d.
+	if d.Crit && p > 0 {
+		p *= 2
+		dmg.Result |= d2combat.ResultCritical
 	}
 
-	if d.Lightning.Max > 0 || d.Lightning.Min > 0 {
-		dmg.Lightning = roll(r, d.Lightning.Min, d.Lightning.Max)
-	}
+	dmg.Physical = p
+	dmg.Fire = rr(d.Fire)
+	dmg.Magic = rr(d.Magic)
+	dmg.Lightning = rr(d.Lightning)
 
-	if d.Magic.Max > 0 || d.Magic.Min > 0 {
-		dmg.Magic = roll(r, d.Magic.Min, d.Magic.Max)
-	}
+	dmg.Cold = rr(d.Cold)
+	dmg.ColdLen = d.Cold.Len
 
-	if d.Cold.Max > 0 || d.Cold.Min > 0 {
-		dmg.Cold = roll(r, d.Cold.Min, d.Cold.Max)
-		dmg.ColdLen = d.Cold.Len
-	}
+	dmg.Poison = rr(d.Poison)
+	dmg.PoisonLen = d.Poison.Len
 
-	if d.Poison.Max > 0 || d.Poison.Min > 0 {
-		dmg.Poison = roll(r, d.Poison.Min, d.Poison.Max)
-		dmg.PoisonLen = d.Poison.Len
-	}
-
-	if d.Burn.Max > 0 || d.Burn.Min > 0 {
-		dmg.Burn = roll(r, d.Burn.Min, d.Burn.Max)
-		dmg.BurnLen = d.Burn.Len
-	}
+	dmg.Burn = rr(d.Burn)
+	dmg.BurnLen = d.Burn.Len
 
 	dmg.FreezeLen = d.FreezeLen
 	dmg.StunLen = d.StunLen

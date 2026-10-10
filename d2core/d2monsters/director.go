@@ -3,12 +3,14 @@ package d2monsters
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2hireling"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monstats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
@@ -48,6 +50,17 @@ type Options struct {
 	// Expansion selects the MonLvl*Ex columns of levels.txt for the area
 	// monster level.
 	Expansion bool
+	// Players is the number of players in the game for the monster hit point
+	// and experience bonus (0 means 1: no bonus).
+	Players int
+	// PlayersFunc, if set, reports the live number of connected heroes and
+	// replaces Players. It is read at each spawn, so a change of the count
+	// affects only monsters spawned afterwards (the exe records the count in
+	// the monster at creation, stat 0x64); monsters already alive keep theirs.
+	PlayersFunc func() int
+	// ForcedPlayers is the optional "players X" override (0..8): the exe takes
+	// the larger of the real count and the forced value (EffectivePlayers).
+	ForcedPlayers int
 	// IgnoreTown lets monsters target heroes standing in town (for tests; the
 	// original never aggroes onto players in town).
 	IgnoreTown bool
@@ -60,6 +73,17 @@ type Options struct {
 	// OnHeroStrike, if set, is called when a hero's swing hit a monster: the weapon
 	// may lose durability.
 	OnHeroStrike func(p *d2mapentity.Player)
+	// CanTeleport, if set, says which monster classes carry AiGeneral flag
+	// 0x20 (the wounded MonTeleport). No class is known to set it: nil = off.
+	CanTeleport func(class int) bool
+	// LevelThreat, if set, returns the levels.txt byte +0x2f of a level (the
+	// level-threat re-target; column UNVERIFIED). nil = 0 = off.
+	LevelThreat func(levelID int) int
+	// IsTownLevel, if set, keeps teleports out of town levels.
+	IsTownLevel func(levelID int) bool
+	// OnOverlay, if set, receives the SandRaider overlay request (brain id,
+	// overlay id).
+	OnOverlay func(brainID uint32, overlay int)
 }
 
 // Counters tally what happened, for autotest summaries.
@@ -70,6 +94,8 @@ type Counters struct {
 	MercSpawns, MercAttacks, MercHits, MercSkills, MercDeaths, MercRevives, MercTeleports, MercLevelUps int
 	// Shots is projectiles launched, ShotHits those that reached a hero.
 	Shots, ShotHits int
+	// BlockAnims counts hero block animations that played (cooldown rule).
+	BlockAnims int
 
 	// Raised counts corpses revived by Fallen Shaman / Greater Mummy casts.
 	Raised int
@@ -123,10 +149,12 @@ type moveIntent struct {
 type Director struct {
 	*d2util.Logger
 
-	asset   *d2asset.AssetManager
-	engine  *d2mapengine.MapEngine
-	players func() []*d2mapentity.Player
-	opt     Options
+	asset    *d2asset.AssetManager
+	engine   *d2mapengine.MapEngine
+	summoner *Summoner  // lazily created, see petworld.go
+	firer    SkillFirer // skill engine callback for armed traps, see trapfire.go
+	players  func() []*d2mapentity.Player
+	opt      Options
 
 	frame    int
 	acc      float64
@@ -134,21 +162,22 @@ type Director struct {
 	adoptAcc float64
 	nextID   uint32
 
-	units    map[uint32]*unit // by brain id
-	byEntity map[string]*unit
-	seenNPC  map[string]bool
-	statByID map[int]*d2records.MonStatRecord
-	targets  map[uint32]*d2mapentity.Player
-	grid     mapGrid // static map flags (line of sight)
-	fp       *footprints
-	fpPlayer map[uint32]bool
-	launcher Launcher
-	hero     *d2rand.Seed
-	hire     *d2hireling.Table
-	mercs    map[*d2mapentity.Player]*unit
-	killer   *unit // the merc whose hit is being resolved (kill credit)
-	snd      *rand.Rand
-	packRNG  *d2rand.Seed
+	units     map[uint32]*unit // by brain id
+	byEntity  map[string]*unit
+	seenNPC   map[string]bool
+	statByID  map[int]*d2records.MonStatRecord
+	targets   map[uint32]*d2mapentity.Player
+	grid      mapGrid // static map flags (line of sight)
+	fp        *footprints
+	fpPlayer  map[uint32]bool
+	launcher  Launcher
+	hero      *d2rand.Seed
+	hire      *d2hireling.Table
+	mercs     map[*d2mapentity.Player]*unit
+	killer    *unit // the merc whose hit is being resolved (kill credit)
+	snd       *rand.Rand
+	packRNG   *d2rand.Seed
+	regionRNG *d2rand.Seed // region seed of the teleport destination search
 
 	boss BossHooks // the boss AIs' encounter hooks (bosshooks.go)
 
@@ -156,12 +185,12 @@ type Director struct {
 	// (the experience shrine).
 	ExpBonusPct func() int
 
-	// PartyXP, when set, is offered the experience of every kill by a hero
-	// (the amount after the shrine bonus). It returns true when the amount is
-	// handled elsewhere (a network party: the server splits it among the
-	// members and each gets its share back as a packet); false leaves the whole
-	// amount to the killer.
-	PartyXP func(src *d2mapentity.Player, xp int, monster string) bool
+	// PartyXP, when set, is offered the UNSCALED experience of every kill by a
+	// hero (after the shrine bonus) and the monster's level. It returns true
+	// when the amount is handled elsewhere (a network party: the server splits
+	// it among the members, scales each share with the member's level and sends
+	// it back as a packet); false leaves the kill to the killer alone.
+	PartyXP func(src *d2mapentity.Player, xp, monsterLevel int, monster string) bool
 
 	pvp map[string]*d2rand.Seed // hero id -> its roller for swings at other heroes
 
@@ -174,6 +203,13 @@ type Director struct {
 	// a note for the log (skills: dodge, avoid, Energy Shield, Bone Armor,
 	// Thorns...). melee is false for projectiles.
 	HeroDefense func(p *d2mapentity.Player, attacker *d2mapentity.Monster, melee bool, dmg int) (int, string)
+
+	// HeroAvoid, if set, rolls the hero's dodge / avoid / evade for a landed
+	// hit BEFORE the damage roll (the exe's order). It reports whether the hit
+	// was avoided, with a log note. melee is false for projectiles.
+	HeroAvoid func(p *d2mapentity.Player, attacker *d2mapentity.Monster, melee bool) (bool, string)
+
+	lastBlock map[*d2mapentity.Player]int // frame of the last hero block animation
 
 	// Counters are updated as events happen.
 	Counters Counters
@@ -197,21 +233,22 @@ type KillEvent struct {
 func NewDirector(asset *d2asset.AssetManager, engine *d2mapengine.MapEngine,
 	players func() []*d2mapentity.Player, l d2util.LogLevel, opt Options) *Director {
 	d := &Director{
-		Logger:   d2util.NewLogger(),
-		asset:    asset,
-		engine:   engine,
-		players:  players,
-		opt:      opt,
-		units:    map[uint32]*unit{},
-		byEntity: map[string]*unit{},
-		seenNPC:  map[string]bool{},
-		statByID: map[int]*d2records.MonStatRecord{},
-		targets:  map[uint32]*d2mapentity.Player{},
-		mercs:    map[*d2mapentity.Player]*unit{},
-		grid:     mapGrid{engine},
-		snd:      newSoundRand(opt.Seed),
-		fpPlayer: map[uint32]bool{},
-		packRNG:  d2rand.New(opt.Seed ^ 0x5041434b),
+		Logger:    d2util.NewLogger(),
+		asset:     asset,
+		engine:    engine,
+		players:   players,
+		opt:       opt,
+		units:     map[uint32]*unit{},
+		byEntity:  map[string]*unit{},
+		seenNPC:   map[string]bool{},
+		statByID:  map[int]*d2records.MonStatRecord{},
+		targets:   map[uint32]*d2mapentity.Player{},
+		mercs:     map[*d2mapentity.Player]*unit{},
+		grid:      mapGrid{engine},
+		snd:       newSoundRand(opt.Seed),
+		fpPlayer:  map[uint32]bool{},
+		packRNG:   d2rand.New(opt.Seed ^ 0x5041434b),
+		regionRNG: d2rand.New(opt.Seed ^ 0x52474e53),
 	}
 
 	d.fp = newFootprints(d.grid)
@@ -241,7 +278,7 @@ func (d *Director) emit(kind, format string, args ...interface{}) {
 // included; mercenaries and summoned minions are not part of it (see Merc, Minions).
 func (d *Director) Monsters() []*d2mapentity.Monster {
 	out := make([]*d2mapentity.Monster, 0, len(d.units))
-	for _, u := range d.units {
+	for _, u := range d.sortedUnits() {
 		if !u.friendly() && !u.b.Allied { // converted monsters are the hero's friends
 			out = append(out, u.m)
 		}
@@ -283,6 +320,7 @@ func (d *Director) spawn(stat *d2records.MonStatRecord, subX, subY int, ally *al
 
 	b := d2monster.NewBrain(d.nextID, stat.ID, d.opt.Difficulty, prof, d.opt.Seed)
 	b.X, b.Y = subX, subY
+	b.CanTeleport = d.opt.CanTeleport != nil && d.opt.CanTeleport(stat.ID)
 
 	m, err := d.engine.NewMonster(subX, subY, stat, 0, b)
 	if err != nil {
@@ -381,6 +419,10 @@ func (d *Director) step() {
 	d.indexPlayers()
 	d.launcher.Step()
 
+	if d.summoner != nil {
+		d.summoner.Step()
+	}
+
 	for _, u := range d.sortedUnits() {
 		if !d.engineHas(u) {
 			d.forget(u)
@@ -473,9 +515,18 @@ func (d *Director) noteAggro(u *unit) {
 	u.hadTarget = u.b.HasTarget
 }
 
-// adoptPlacements converts hostile monster placements that the map stamps
-// created as NPCs (DS1 monster objects) into AI-driven monsters.
-func (d *Director) adoptPlacements() {
+type placement struct {
+	npc  *d2mapentity.NPC
+	x, y int
+}
+
+// freshPlacements marks the not yet seen NPC entities as seen and returns them
+// in a stable order (by position). Entity ids are random uuids and the
+// entity table is a map, so neither may decide the order monsters get their
+// brain ids in.
+func (d *Director) freshPlacements() []placement {
+	var out []placement
+
 	for id, e := range d.engine.Entities() {
 		npc, ok := e.(*d2mapentity.NPC)
 		if !ok || d.seenNPC[id] {
@@ -483,6 +534,27 @@ func (d *Director) adoptPlacements() {
 		}
 
 		d.seenNPC[id] = true
+
+		pos := npc.GetPosition()
+		out = append(out, placement{npc: npc, x: int(pos.X()), y: int(pos.Y())})
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].y != out[j].y {
+			return out[i].y < out[j].y
+		}
+
+		return out[i].x < out[j].x
+	})
+
+	return out
+}
+
+// adoptPlacements converts hostile monster placements that the map stamps
+// created as NPCs (DS1 monster objects) into AI-driven monsters.
+func (d *Director) adoptPlacements() {
+	for _, pl := range d.freshPlacements() {
+		npc := pl.npc
 
 		stat := d.statByID[npc.MonstatID()]
 		if stat == nil || !IsHostile(stat) {
@@ -598,4 +670,34 @@ func abs(v int) int {
 	}
 
 	return v
+}
+
+// PlayerCount is the player count used for the HP / XP bonus of a monster
+// spawned now: the larger of the live (or static) count and ForcedPlayers,
+// at least 1.
+func (d *Director) PlayerCount() int {
+	n := d.opt.Players
+	if d.opt.PlayersFunc != nil {
+		n = d.opt.PlayersFunc()
+	}
+
+	if n < 1 {
+		n = 1
+	}
+
+	return d2monstats.EffectivePlayers(n, d.opt.ForcedPlayers, 1)
+}
+
+// ForcedPlayersFromEnv parses the OD2_PLAYERS override (0..8; 0 or invalid: none).
+func ForcedPlayersFromEnv(v string) int {
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || n < 0 {
+		return 0
+	}
+
+	if n > 8 {
+		n = 8
+	}
+
+	return n
 }

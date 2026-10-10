@@ -54,6 +54,7 @@ const (
 	ResultBlocked  uint32 = 0x10
 	ResultDodged   uint32 = 0x80
 	ResultAvoided  uint32 = 0x100
+	ResultHitReact uint32 = 0x4    // landed on a unit without state 0x36 (verified in 0x57cc10)
 	ResultCritical uint32 = 0x2000 // deadly strike / critical strike applied
 	ResultMonBlock uint32 = 0x8000
 )
@@ -113,6 +114,41 @@ func RollStrike(r Roller, in StrikeInput) bool {
 
 	if in.DeadlyChance > 0 {
 		if ok, _ := roll100(r, in.DeadlyChance); ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+// RollMissileStrike is the missile-side crit helper (FUN_0064ba70, called from
+// MISSILE_BuildDamageDescriptor 0x64cce0 / 0x64cf2a; verified): the order is
+// passive_critical_strike (0x151), item_deadlystrike (0x8d), then the weapon
+// mastery (646bc0 mode 2, only with a weapon: pass 0 or SkipWeapon without
+// one); the first success wins. Each chance is rolled only when > 0.
+// DEVIATION (no gameplay effect): the exe rolls the 0x151 step even when the
+// chance is 0 (no test before the roll at 0x64ba7d..0x64baae), consuming one
+// random step per missile; this port does not, so a hero without crit stats
+// keeps an identical random stream.
+func RollMissileStrike(r Roller, in StrikeInput) bool {
+	if r == nil {
+		return false
+	}
+
+	if in.CriticalChance > 0 {
+		if ok, _ := roll100(r, in.CriticalChance); ok {
+			return true
+		}
+	}
+
+	if in.DeadlyChance > 0 {
+		if ok, _ := roll100(r, in.DeadlyChance); ok {
+			return true
+		}
+	}
+
+	if !in.SkipWeapon && in.WeaponChance > 0 {
+		if ok, _ := roll100(r, in.WeaponChance); ok {
 			return true
 		}
 	}

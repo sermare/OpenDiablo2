@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -143,7 +144,7 @@ func (s *ebitenSurface) RenderSprite(sprite *d2ui.Sprite) {
 	opts := s.createDrawImageOptions()
 
 	if s.stateCurrent.brightness != 1 || s.stateCurrent.saturation != 1 {
-		opts.ColorM.ChangeHSV(0, s.stateCurrent.saturation, s.stateCurrent.brightness)
+		s.applyHSV(opts)
 	}
 
 	s.handleStateEffect(opts)
@@ -156,7 +157,7 @@ func (s *ebitenSurface) Render(sfc d2interface.Surface) {
 	opts := s.createDrawImageOptions()
 
 	if s.stateCurrent.brightness != 1 || s.stateCurrent.saturation != 1 {
-		opts.ColorM.ChangeHSV(0, s.stateCurrent.saturation, s.stateCurrent.brightness)
+		s.applyHSV(opts)
 	}
 
 	s.handleStateEffect(opts)
@@ -169,12 +170,53 @@ func (s *ebitenSurface) RenderSection(sfc d2interface.Surface, bound image.Recta
 	opts := s.createDrawImageOptions()
 
 	if s.stateCurrent.brightness != 0 {
-		opts.ColorM.ChangeHSV(0, s.stateCurrent.saturation, s.stateCurrent.brightness)
+		s.applyHSV(opts)
 	}
 
 	s.handleStateEffect(opts)
 
 	s.image.DrawImage(sfc.(*ebitenSurface).image.SubImage(bound).(*ebiten.Image), opts)
+}
+
+// hsvCache holds the colour matrices of ColorM.ChangeHSV(0, saturation, brightness) applied to the
+// identity. Building one allocates several matrices; the same few (saturation, brightness) pairs are
+// drawn thousands of times per frame (every lit monster and tile). ColorM values are immutable
+// (every operation returns a new matrix), so sharing them is safe.
+//
+//nolint:gochecknoglobals // render-thread cache
+var (
+	hsvMu    sync.Mutex
+	hsvCache = map[[2]float64]ebiten.ColorM{}
+)
+
+const hsvCacheMax = 256
+
+// applyHSV applies the surface's saturation and brightness to opts.ColorM.
+func (s *ebitenSurface) applyHSV(opts *ebiten.DrawImageOptions) {
+	sat, bright := s.stateCurrent.saturation, s.stateCurrent.brightness
+
+	if s.stateCurrent.color != nil { // the matrix already holds the draw colour: no shortcut
+		opts.ColorM.ChangeHSV(0, sat, bright)
+		return
+	}
+
+	key := [2]float64{sat, bright}
+
+	hsvMu.Lock()
+	defer hsvMu.Unlock()
+
+	m, ok := hsvCache[key]
+	if !ok {
+		m.ChangeHSV(0, sat, bright)
+
+		if len(hsvCache) >= hsvCacheMax {
+			hsvCache = map[[2]float64]ebiten.ColorM{}
+		}
+
+		hsvCache[key] = m
+	}
+
+	opts.ColorM = m
 }
 
 func (s *ebitenSurface) createDrawImageOptions() *ebiten.DrawImageOptions {

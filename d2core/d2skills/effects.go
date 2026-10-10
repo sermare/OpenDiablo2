@@ -186,6 +186,9 @@ func (e *Engine) selfState(p *d2mapentity.Player, sk *d2skill.Skill, ef *d2skill
 		}
 	}
 
+	// SRVDO_FrozenArmorState (0x5c7540) ends every state of the same States.txt
+	// group (itself included) before it builds the new statlist (0x56a480).
+	set.ClearGroup(e.frame, ef.State)
 	set.Apply(e.frame, inst)
 	e.emit("state", "STATE apply skill=%q unit=%s state=%s frames=%d stacks=%d stats=%s chill_attackers=%d", sk.Name, p.Name(),
 		ef.State, ef.Frames, inst.Count, describeMods(ef.Stats), ef.Chill)
@@ -547,7 +550,7 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 
 	opt := d2monsters.MinionOptions{Owner: p, Kind: o.Kind, HPPct: o.HPPct, HPFlat: o.HPFlat, Frames: o.Frames, Tag: o.PetType}
 	if opt.Tag == "" || opt.Tag == "none" {
-		opt.Tag = sk.Name
+		opt.Tag = stat.Key // the tag petworld.go gives such minions
 	}
 
 	for _, m := range o.Stats {
@@ -573,7 +576,6 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		}
 	}
 
-	alive := e.alivePets(p.ID(), opt.Tag)
 	hx, hy := u.Pos()
 	x, y := o.X, o.Y
 
@@ -581,30 +583,26 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		x, y = hx, hy
 	}
 
-	count := o.Count
-
-	if o.Kind == "minion" || o.Kind == "totem" {
-		if room := o.Max - len(alive); count > room {
-			count = room
+	// d2summon.Roster decides how many minions appear and which old ones make
+	// room; the Summoner computes their stats (d2monsters/petworld.go).
+	ids, plan := e.monsters.Summoner().Cast(p.ID(), stat.Key, o, e.pipe.SummonPassives(u, sk.ID), func(i, n int) (int, int) {
+		if o.Kind == "wall" {
+			return wallCell(hx, hy, x, y, i, n, o.Mode)
 		}
 
-		if count < 1 {
-			e.emit("summon", "SUMMON skill=%q key=%s refused=limit alive=%d max=%d", sk.Name, stat.Key, len(alive), o.Max)
-			return
-		}
+		return x, y
+	})
+
+	if len(ids) == 0 {
+		e.emit("summon", "SUMMON skill=%q key=%s refused=limit max=%d evicted=%d", sk.Name, stat.Key, o.Max, len(plan.Evict))
+		return
 	}
 
 	made := 0
 
-	for i := 0; i < count; i++ {
-		px, py := x, y
-		if o.Kind == "wall" {
-			px, py = wallCell(hx, hy, x, y, i, count, o.Mode)
-		}
-
-		m, err := e.monsters.SpawnMinion(stat, px, py, opt)
-		if err != nil {
-			e.emit("summon", "SUMMON skill=%q key=%s refused=%v", sk.Name, stat.Key, err)
+	for _, id := range ids {
+		m := e.monsters.MinionByBrainID(id)
+		if m == nil {
 			continue
 		}
 
@@ -673,6 +671,47 @@ func (e *Engine) registerTrap(u *heroUnit, sk *d2skill.Skill, ef *d2skill.Effect
 	e.emit("summon", "TRAP armed skill=%q missile=%s period=%d range=%d", sk.Name, missile, trapPeriod, trapRange)
 }
 
+// trapCaster is the part of d2skill.Pipeline a trap shot needs (a fake in tests).
+type trapCaster interface {
+	CastTrap(u d2skill.Unit, skillID int, missile string, fromX, fromY int, tgt d2skill.Target) *d2missile.Missile
+}
+
+// trapCaster returns the pipeline, or the fake a test injected.
+func (e *Engine) trapCaster() trapCaster {
+	if e.fakeCaster != nil {
+		return e.fakeCaster
+	}
+
+	return e.pipe
+}
+
+// fireTrapAt is the one place a sentry shot is built: used by trapsTick and by
+// the Director callback (FireTrap), so both fire the same missile with the
+// same damage.
+func (e *Engine) fireTrapAt(c trapCaster, t *trapRun, tx, ty int, best *d2mapentity.Monster) bool {
+	bx, by := best.SubtilePos()
+	tg := d2skill.Target{X: bx, Y: by, Unit: e.target(best), UX: bx, UY: by}
+
+	return c.CastTrap(t.u, t.skillID, t.missile, tx, ty, tg) != nil
+}
+
+// FireTrap implements d2monsters.SkillFirer (UNVERIFIED path, see
+// d2monsters/trapfire.go: nothing arms traps with it yet).
+func (e *Engine) FireTrap(s d2monsters.TrapShot) bool {
+	if s.Owner == nil || s.Target == nil {
+		return false
+	}
+
+	t := &trapRun{m: s.Trap, u: e.hero(s.Owner), skillID: s.Spec.SkillID, missile: s.Spec.Missile, skillName: s.Spec.SkillName}
+	if !e.fireTrapAt(e.trapCaster(), t, s.FromX, s.FromY, s.Target) {
+		return false
+	}
+
+	e.emit("summon", "TRAP fire skill=%q missile=%s target=%s", t.skillName, t.missile, s.Target.Label())
+
+	return true
+}
+
 func (e *Engine) trapsTick() {
 	live := e.traps[:0]
 
@@ -705,10 +744,7 @@ func (e *Engine) trapsTick() {
 			continue
 		}
 
-		bx, by := best.SubtilePos()
-		tg := d2skill.Target{X: bx, Y: by, Unit: e.target(best), UX: bx, UY: by}
-
-		if e.pipe.CastTrap(t.u, t.skillID, t.missile, tx, ty, tg) != nil {
+		if e.fireTrapAt(e.trapCaster(), t, tx, ty, best) {
 			e.emit("summon", "TRAP fire skill=%q missile=%s target=%s", t.skillName, t.missile, best.Label())
 		}
 	}
@@ -829,6 +865,7 @@ func (e *Engine) dot(m *d2mapentity.Monster, poison, burn int) {
 
 	if !m.Alive() {
 		e.Counters.Kills++
+		e.setOf(m.ID()).Death("monster")
 		e.flushDotFor(m)
 		e.emit("damage", "KILL skill=%q target=%s", "damage over time", m.Label())
 	}
@@ -859,20 +896,28 @@ func (e *Engine) flushDot() {
 
 // ---- hero defense ----
 
-// heroDefense is the Director's HeroDefense hook: dodge / avoid / evade
-// (d2combat.RollAvoid), Energy Shield, Bone Armor type pools, Thorns.
-func (e *Engine) heroDefense(p *d2mapentity.Player, attacker *d2mapentity.Monster, melee bool, dmg int) (int, string) {
+// heroAvoid is the Director's HeroAvoid hook: dodge / avoid / evade
+// (d2combat.RollAvoid), rolled before the damage roll.
+func (e *Engine) heroAvoid(p *d2mapentity.Player, _ *d2mapentity.Monster, melee bool) (bool, string) {
 	u := e.hero(p)
-	set := e.setOf(p.ID())
 	vel := p.GetVelocity()
 
-	if out := d2combat.RollAvoid(u.seed, d2combat.AvoidInput{
+	switch out := d2combat.RollAvoid(u.seed, d2combat.AvoidInput{
 		Moving:      !vel.IsZero(),
 		EvadeChance: u.Stat("passive_evade"), DodgeChance: u.Stat("passive_dodge"), AvoidChance: u.Stat("passive_avoid"),
 		IsMissile: !melee,
-	}); out == d2combat.AvoidAvoided || out == d2combat.AvoidDodged || out == d2combat.AvoidEvaded {
-		return 0, fmt.Sprintf(" avoided=%d", out)
+	}); out {
+	case d2combat.AvoidAvoided, d2combat.AvoidDodged, d2combat.AvoidEvaded:
+		return true, fmt.Sprintf(" avoided=%d", out)
 	}
+
+	return false, ""
+}
+
+// heroDefense is the Director's HeroDefense hook: Energy Shield, Bone Armor
+// type pools, Thorns (dodge / avoid / evade moved to heroAvoid).
+func (e *Engine) heroDefense(p *d2mapentity.Player, attacker *d2mapentity.Monster, melee bool, dmg int) (int, string) {
+	set := e.setOf(p.ID())
 
 	note := ""
 
@@ -919,23 +964,47 @@ func (e *Engine) heroDefense(p *d2mapentity.Player, attacker *d2mapentity.Monste
 
 // ---- splash ----
 
-// splashRadius is the radius of the area damage hit functions (1: sHitPar1,
-// 13: Glacial Spike's aurarangecalc); 0 for other missiles. U: that the
-// radius of function 1 is sHitPar1 subtiles.
+// splashRadius is the radius of the glacial spike style splash (hit func 13:
+// aurarangecalc); hit funcs 1 and 14 are exact area hits (EventArea).
 func (e *Engine) splashRadius(m *d2missile.Missile) int {
 	h := e.heroes[m.Owner.ID]
 	if h == nil {
 		return 0
 	}
 
-	switch m.Spec.SrvHitFunc {
-	case 1:
-		return m.Spec.SHitPar[0]
-	case 13:
+	if m.Spec.SrvHitFunc == 13 {
 		return e.pipe.AuraRange(h, m.SkillID)
 	}
 
 	return 0
+}
+
+// areaDamage applies an area hit function (1: Fire Ball style, 14: Meteor,
+// 0x5a7500 / 0x5a8680): one damage roll for every monster whose subtile is
+// within radius subtiles of the missile (squared distance <= radius^2). Hit
+// function 1 deals no direct damage to the unit that was struck, only this.
+func (e *Engine) areaDamage(ev d2missile.Event) {
+	m := ev.Missile
+
+	h := e.heroes[m.Owner.ID]
+	if h == nil || ev.Radius <= 0 {
+		return
+	}
+
+	n := 0
+
+	for _, o := range e.monstersNear(int(m.X), int(m.Y), ev.Radius) {
+		d := ev.Damage
+		n++
+
+		e.target(o)
+		e.hurt(o, h.p, &d, e.skillName(m.SkillID)+" area")
+	}
+
+	if n > 0 {
+		e.Counters.AreaHits += n
+		e.emit("hit", "SKILL area skill=%q at=(%d,%d) radius=%d targets=%d", e.skillName(m.SkillID), int(m.X), int(m.Y), ev.Radius, n)
+	}
 }
 
 // splash damages the other monsters near the one a missile just hit with the
@@ -967,7 +1036,7 @@ func (e *Engine) splash(m *d2missile.Missile, primary *d2mapentity.Monster, dmg 
 	}
 }
 
-// splashAt is the splash of a missile that ended on a wall.
+// splashAt is the splash of a missile that ended on a wall or ran out.
 func (e *Engine) splashAt(m *d2missile.Missile) {
 	r := e.splashRadius(m)
 	if r <= 0 {

@@ -35,6 +35,7 @@ func skillFromRow(r row) *Skill {
 		HitClass: r.num("HitClass"), AuraFilter: r.num("aurafilter"), AuraState: r["aurastate"],
 		AuraTargetState: r["auratargetstate"], AuraLenCalc: r.calc("auralencalc"), AuraRangeCalc: r.calc("aurarangecalc"),
 		PassiveState: r["passivestate"],
+		PassiveIType: r["passiveitype"], Range: r["range"], IType1: r["itypea1"],
 	}
 	s.SrvMissileB, s.SrvMissileC = r["srvmissileb"], r["srvmissilec"]
 	s.CharClass, s.Summon, s.PetType, s.SumMode = r["charclass"], r["summon"], r["pettype"], r["summode"]
@@ -103,6 +104,10 @@ var rows = []row{
 		"EDmgSymPerCalc": "(skill('Fire Ball'.blvl)+skill('Meteor'.blvl))*par8"},
 	{"skill": "Warmth", "Id": "37", "passivestate": "warmth", "passivestat1": "manarecoverybonus", "passivecalc1": "ln12",
 		"InTown": "1", "passive": "1", "Param1": "30", "Param2": "12", "manashift": "8"},
+	{"skill": "Test Resist", "Id": "390", "passivestate": "passive_resistfire", "passivestat1": "maxfireresist",
+		"passivecalc1": "ln12", "Param1": "2", "Param2": "3"},
+	{"skill": "Test Mastery", "Id": "391", "passive": "1", "passivestate": "swordmastery", "passiveitype": "swor",
+		"passivestat1": "passive_mastery_melee_th", "passivecalc1": "ln12", "Param1": "7", "Param2": "2"},
 	{"skill": "Charged Bolt", "Id": "38", "srvdofunc": "17", "srvmissilea": "chargedbolt", "minmana": "1", "manashift": "5",
 		"mana": "24", "lvlmana": "4", "calc1": "min(24,ln12)", "Param1": "3", "Param2": "1", "Param8": "6", "HitShift": "7",
 		"EType": "ltng", "EMin": "4", "EMinLev1": "1", "EMinLev2": "1", "EMinLev3": "2", "EMinLev4": "3", "EMinLev5": "4",
@@ -865,5 +870,32 @@ func TestThrow(t *testing.T) {
 	f.u.thrown = "firebolt" // any missile record stands in for a throwing knife
 	if _, do := f.cast("Throw", 10, 0); !do.OK || len(do.Missiles) != 1 {
 		t.Fatalf("%+v", do)
+	}
+}
+
+func TestTruePassiveStats(t *testing.T) {
+	f := newFixture(map[string]int{"Warmth": 3, "Test Resist": 4, "Test Mastery": 2, "Fire Bolt": 5})
+	f.u.base = f.u.levels
+
+	// the gate is passivestate, not the passive flag (verified at 0x648130)
+	if got := f.p.TruePassiveStats(f.u, f.id("Test Resist")); len(got) != 1 || got[0].Stat != "maxfireresist" ||
+		got[0].Value == 0 || got[0].Param != "" {
+		t.Errorf("resist: %+v", got)
+	}
+
+	// passiveitype becomes the stat param, not a gate
+	if got := f.p.TruePassiveStats(f.u, f.id("Test Mastery")); len(got) != 1 || got[0].Param != "swor" {
+		t.Errorf("mastery: %+v", got)
+	}
+
+	if f.p.TruePassiveStats(f.u, f.id("Fire Bolt")) != nil {
+		t.Error("a skill without passivestate has no passive stats")
+	}
+
+	f.u.levels["Warmth"] = 0
+	f.u.base = f.u.levels
+
+	if f.p.TruePassiveStats(f.u, f.id("Warmth")) != nil {
+		t.Error("level 0 removes the passive")
 	}
 }

@@ -27,6 +27,10 @@ const (
 	StatSecMaxDamage = 24
 	StatDamagePct    = 25
 	StatArmorClass   = 31
+	StatIgnoreDef    = 0x73 // item_ignoretargetac (attack ignores target defense)
+	StatTargetACPct  = 0x74 // item_fractionaltargetac (percent of target defense removed)
+	StatDemonAR      = 0x7b // item_demon_tohit
+	StatUndeadAR     = 0x7c // item_undead_tohit
 	StatArmorMissile = 32
 	StatArmorHTH     = 33
 	StatNormalReduce = 34 // normal_damage_reduction (flat physical damage reduction)
@@ -59,6 +63,7 @@ const (
 	StatMaxManaPct   = 77
 	StatGoldFind     = 79
 	StatMagicFind    = 80
+	StatAddExp       = 85 // item_addexperience: +% experience from kills (ItemStatCost id 85)
 	StatReduceReqPct = 91
 	StatFasterAttack = 93
 	StatFasterMove   = 96

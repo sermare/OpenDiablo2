@@ -295,8 +295,57 @@ func newGoldenBird() *Quest {
 			{ev: EvItemPickedUp, item: ItemJadeFigurine, min: -1, max: -1, to: 1, bit: -1},
 		},
 		noLeaveRule: true,
-		claimFx:     fxs(reward("life-boost", 20, "Alkor's Potion of Life: +20 life")),
+		// VERIFIED (Game.exe 0x5b7f40, msg 538 = 0x21a): the claim hands out the Potion of Life ("xyz") and
+		// sets CUSTOM1 (bit 5); the +20 life is paid when the potion is drunk (DrinkPotionOfLife).
+		claimFx: func(g *Game, q *Quest) []Effect {
+			g.set(q, FlagCustom1, "Potion of Life earned")
+
+			return []Effect{{Kind: EffectSpawn, Quest: q.ID, Code: ItemPotionOfLife, Note: "Alkor gives the Potion of Life"}}
+		},
 	})
+}
+
+// DrinkPotionOfLife is the hero drinking Alkor's Potion of Life. VERIFIED (ITEMACT_ServerUseItem 0x55bfd0):
+// only while A3Q4 bit 5 is set; the bit is cleared and the base max-life stat (7) rises by 20 (0x1400 in
+// 8.8 fixed point).
+func (g *Game) DrinkPotionOfLife() []Effect {
+	q := g.byID[QuestGoldenBird]
+	if !g.get(q, FlagCustom1) {
+		return nil
+	}
+
+	g.clear(q, FlagCustom1, "Potion of Life drunk")
+	g.emit(reward("life-boost", 20, "Potion of Life: +20 max life"))
+
+	return g.TakeEffects()
+}
+
+// ReadScrollOfResistance is the hero reading Malah's Scroll of Resistance ("tr2"). VERIFIED (0x55bfd0,
+// FUN_00587f90 0x587f90, FUN_00587ee0 0x587ee0): allowed while A5Q3 bit 8 (scroll given) is set and bit 7
+// (scroll read) is clear; it sets bit 7 and adds a stat list with base stats 39/41/43/45 (fire, lightning,
+// cold, poison resist). The value is 10 for every difficulty record whose bit 7 is set (the exe sums the
+// three records, so the bonus accumulates across difficulties), and the exe re-applies it when a player
+// joins a game (SERVER_ClientAddPlayerToGame 0x537455). The Value of the effect is the whole bonus of
+// this record only; callers combine the records.
+func (g *Game) ReadScrollOfResistance() []Effect {
+	q := g.byID[QuestPrison]
+	if !g.get(q, FlagCustom4) || g.get(q, FlagCustom3) {
+		return nil
+	}
+
+	g.set(q, FlagCustom3, "Scroll of Resistance read")
+	g.emit(reward("resist-bonus", 10, "Scroll of Resistance: +10 fire/lightning/cold/poison resist"))
+
+	return g.TakeEffects()
+}
+
+// ResistBonus is the permanent resistance bonus this record has earned (10 once the scroll was read).
+func (g *Game) ResistBonus() int {
+	if g.get(g.byID[QuestPrison], FlagCustom3) {
+		return 10
+	}
+
+	return 0
 }
 
 // A3Q5 The Blackened Temple (Ormus): kill the three Council members in
@@ -319,12 +368,12 @@ func newBlackenedTemple() *Quest {
 func newGuardian() *Quest {
 	return newSpecQuest(&spec{
 		id: QuestGuardian, slot: 22, act: 2, logIndex: 6, name: "The Guardian", label: "A3Q6",
-		start: 0, goal: 5, tbl: map[int]int{1: 0, 2: 1, 3: 2, 4: 3}, rp: 5, done: 6,
+		start: 0, goal: 5, tbl: map[int]int{1: 0, 2: 1, 3: 2, 4: 3}, rp: 5, done: 6, kill: guardianSpeech(),
 		steps: []step{{from: 1, npc: NPCOrmus, msg: 628, to: 2}},
 		trigs: []trig{
 			{ev: EvAreaChanged, level: LevelDurance1, max: 3, to: 3},
 			{ev: EvAreaChanged, level: LevelDurance3, max: 3, to: 4},
-			{ev: EvMonsterKilled, monster: NPCMephisto, names: []string{"mephisto"}, min: -1, goal: true},
+			{ev: EvMonsterKilled, monster: NPCMephisto, names: []string{"mephisto"}, min: -1, goal: true, exe: &exeKill{bits: []int{exeBitMephisto}, dropCode: ItemMephistoSoulstone}},
 		},
 	})
 }
@@ -352,18 +401,18 @@ func newFallenAngel() *Quest {
 func newTerrorsEnd() *Quest {
 	return newSpecQuest(&spec{
 		id: QuestTerrorsEnd, slot: 26, act: 3, logIndex: 2, name: "Terror's End", label: "A4Q2",
-		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 1}, rp: 2, done: 3, rpExp: 4, doneExp: 5,
+		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 1}, rp: 2, done: 3, rpExp: 4, doneExp: 5, kill: terrorSpeech(),
 		steps: []step{{from: 1, npc: NPCTyrael2, msg: 681, to: 2}},
 		trigs: []trig{
 			{ev: EvAreaChanged, level: LevelChaosSanctum, max: 3, to: 3},
-			{ev: EvMonsterKilled, monster: NPCDiablo, names: []string{"diablo"}, min: -1, goal: true},
+			{ev: EvMonsterKilled, monster: NPCDiablo, names: []string{"diablo"}, min: -1, goal: true, exe: &exeKill{classicBits: []int{6, 7}}},
 		},
 	})
 }
 
 // A4Q3 The Hellforge (Cain): smash the Mephisto Soulstone on the Hellforge
 // with the Hellforge Hammer. Cain's first line depends on the soulstone.
-// UNVERIFIED: the object (376) and the item codes.
+// VERIFIED: the object (376, OperateFn 49 = 0x5b3820 asks for the hammer "hfh "), the hammer drop by Hephasto (see below).
 func newHellforge() *Quest {
 	return newSpecQuest(&spec{
 		id: QuestHellforge, slot: 27, act: 3, logIndex: 3, name: "The Hellforge", label: "A4Q3",
@@ -386,6 +435,15 @@ func newHellforge() *Quest {
 
 					return []Effect{{Kind: EffectDeleteItem, Quest: q.ID, Code: ItemMephistoSoulstone,
 						Note: "the soulstone is smashed on the Hellforge"}}
+				}},
+			// Hephasto's kill drops the hammer (unless Game.LegacyBossBits). VERIFIED (QUEST_A4_TheHellforge_OnMonsterKilled 0x5b4190, attached to
+			// class 0x199 by 0x5af8c0): while the node is active the dying unit's item code (+0xb8) is stamped "hfh " and dropped through
+			// 0x557980; no check of the quest state beyond the node being active, no bit is set.
+			{ev: EvMonsterKilled, monster: NPCHephasto, names: []string{"hephasto"}, min: 1, bit: -1,
+				cond: func(g *Game, q *Quest) bool { return !g.LegacyBossBits },
+				fx: func(g *Game, q *Quest) []Effect {
+					return []Effect{{Kind: EffectGiveItem, Quest: q.ID, Code: ItemHellforgeHammer,
+						Note: "Hephasto drops the hammer (exe: unit code override \"hfh \", 0x5b4190)"}}
 				}},
 		},
 		noLeaveRule: true,
@@ -429,6 +487,8 @@ func newSiege() *Quest {
 			{ev: EvAreaChanged, level: LevelBloodyFoothills, max: 3, to: 3},
 			{ev: EvMonsterKilled, super: "Shenk the Overseer", goal: true},
 		},
+		// VERIFIED (Game.exe 0x584d60, msg 20090 = 0x4e7a): the ack clears the progress bits and sets bit 5; it
+		// does not set RG or clear RP itself (UNRESOLVED: where the socketing action sets RG; kept at the claim).
 		claimFx: fxs(reward("socket-quest", 1, "Larzuk adds sockets to one item")),
 	})
 }
@@ -469,7 +529,15 @@ func newPrison() *Quest {
 			{ev: EvAreaChanged, level: LevelFrozenRiver, max: 3, to: 4},
 			{ev: EvItemRemoved, item: ItemMalahScroll, min: 5, max: 5, goal: true},
 		},
-		claimFx: fxs(reward("resist-bonus", 10, "Malah's scroll: +10% to all resistances (Normal)")),
+		// VERIFIED (Game.exe 0x587460): the claim pays no resistance; Malah's line gives the Scroll of Resistance
+		// (tr2) and sets bit 8; the +10 comes from reading it (ReadScrollOfResistance). UNRESOLVED: the original
+		// needs both Malah's scroll and Anya's item (msg 20136) before RG is set, and Malah's "ice" potion
+		// (msg 20127) thaws Anya; this flow still follows the earlier approximation.
+		claimFx: func(g *Game, q *Quest) []Effect {
+			g.set(q, FlagCustom4, "Malah's scroll given")
+
+			return []Effect{{Kind: EffectSpawn, Quest: q.ID, Code: ItemMalahScroll, Note: "Malah gives the Scroll of Resistance"}}
+		},
 	})
 }
 
@@ -515,11 +583,11 @@ func newRite() *Quest {
 func newEve() *Quest {
 	return newSpecQuest(&spec{
 		id: QuestEve, slot: 40, act: 4, logIndex: 6, name: "Eve of Destruction", label: "A5Q6",
-		start: 0, goal: 3, tbl: map[int]int{1: 0, 2: 0}, rp: 1, done: 3, noLeaveRule: true,
+		start: 0, goal: 3, tbl: map[int]int{1: 0, 2: 0}, rp: 1, done: 3, noLeaveRule: true, kill: eveSpeech(),
 		trigs: []trig{
 			{ev: EvAreaChanged, level: LevelWorldstone1, max: 1, to: 2},
 			{ev: EvAreaChanged, level: LevelThrone, max: 2, to: 2},
-			{ev: EvMonsterKilled, monster: NPCBaalCrab, names: []string{"baal"}, min: -1, goal: true},
+			{ev: EvMonsterKilled, monster: NPCBaalCrab, names: []string{"baal"}, min: -1, goal: true, exe: &exeKill{level: LevelWorldstoneChamber}},
 		},
 		claimFx: fxs(reward("unlock-difficulty", 0, "Baal is dead: the next difficulty opens"),
 			reward("game-complete", 0, "end of the game")),

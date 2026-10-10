@@ -135,15 +135,40 @@ func LN(a, b, lvl int) int {
 	return a + (lvl-1)*b
 }
 
-// DM is the dmXY field, diminishing returns between a and b:
-// ((110*lvl)*(b-a))/(100*(lvl+6)) + a (the formula from skillcalc.txt, the
-// code matches it; behaviour for lvl < 1 is UNVERIFIED, 0 is returned).
+// DM is the dmXY field (SKILL_DiminishingReturns, 0x646ed0, verified against
+// the real game with the emulator oracle):
+//
+//	t = (110*lvl)/(lvl+6)          (integer division FIRST)
+//	r = a + t*(b-a)/100            (truncating)
+//	r = min(r, b)                  (the game caps at the second parameter even
+//	                                when b < a, so a decreasing pair gives b)
+//
+// The game returns 0 for lvl < 1 in the dm12..dm56 fields (dm78 has no such
+// guard, see DM78).
 func DM(a, b, lvl int) int {
 	if lvl < 1 {
 		return 0
 	}
 
-	return ((110*lvl)*(b-a))/(100*(lvl+6)) + a
+	return DM78(a, b, lvl)
+}
+
+// DM78 is DM without the lvl < 1 guard, which is how the game's dm78 field
+// (case 7 of 0x6477d0) calls the shared routine. lvl+6 == 0 would fault in the
+// game; here 0 is returned.
+func DM78(a, b, lvl int) int {
+	if lvl+6 == 0 {
+		return 0
+	}
+
+	t := int32(110*lvl) / int32(lvl+6)
+	r := int(t)*(b-a)/100 + a
+
+	if r > b {
+		r = b
+	}
+
+	return r
 }
 
 // IsFieldCode reports whether code (first four lower case characters of an

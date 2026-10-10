@@ -229,8 +229,18 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 // for gold, straight into the hero's purse.
 func (v *Game) pickUp(it *d2mapentity.Item) {
 	if it.IsGold() {
-		v.gameClient.MapEngine.RemoveEntity(it)
-		v.gameControls.AddGold(it.Gold)
+		before := v.localPlayer.Gold
+		pile := goldPileFuncs{
+			remove: func() { v.gameClient.MapEngine.RemoveEntity(it) },
+			leave:  func(amount int) { v.dropGoldOverflow(it, amount) },
+		}
+
+		if !pickUpGoldPile(v.gameControls, pile, it.Gold) {
+			// the purse is full: the pile stays where it is (the original leaves the overflow on the ground)
+			v.Infof("gold pickup refused: carrying the maximum (%d)", before)
+			return
+		}
+
 		v.playSoundAt("item_gold", it.GetPosition(), "pickup")
 		v.Infof("AUTOGROUND pickup gold amount=%d total=%d", it.Gold, v.localPlayer.Gold)
 
@@ -278,21 +288,68 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 
 	v.playSoundAt(handle, ob.GetPosition(), "object")
 
-	ilvl := v.areaLevel()
-	tc := d2ground.ChestTreasureClass(v.localPlayer.Act, d2ground.Difficulty(v.difficulty()), ilvl, v.itemFactory().TreasureClassLevel)
-
 	v.ground.chestSeq++
 	seed := v.chestSeed() + v.ground.chestSeq
 
-	cx, cy := ob.GetPositionF()
-	loot, err := v.itemFactory().DropLoot(tc, diablo2item.DropOptions{Seed: seed, ILvl: ilvl, Players: 1}, 0)
+	// the class and the item level follow from the monster level of the area
+	// the chest stands in (VERIFIED, see diablo2item.ChestLoot)
+	co := diablo2item.ChestDropOptions{
+		DropOptions: diablo2item.DropOptions{Seed: seed, Players: 1, MagicFind: v.heroMagicFind(), GoldFind: v.heroGoldFind()},
+		LevelID:     v.currentLevel(), Difficulty: v.difficulty(), Expansion: true,
+	}
 
-	if err != nil {
-		v.Errorf("chest %d: %v", id, err)
+	var (
+		loot *diablo2item.Loot
+		derr error
+		tc   string
+	)
+
+	// The treasure class is rolled through d2object.Open (adapter d2objspawn); the loot itself
+	// is dropped by the engine hook, so the result is identical to the direct path below.
+	hooks := d2object.ChestHooks{
+		TreasureClass: func(_ d2object.Def, _, _, _ int) string {
+			class, _, err := v.itemFactory().ChestSetup(co)
+			if err != nil {
+				return ""
+			}
+
+			return class
+		},
+		Drop: func(class string, _ int, sd uint32) int {
+			_, opts, err := v.itemFactory().ChestSetup(co)
+			if err != nil {
+				derr = err
+
+				return 0
+			}
+
+			opts.Seed = sd
+			loot, derr = v.itemFactory().DropLoot(class, opts, 0)
+
+			if loot == nil {
+				return 0
+			}
+
+			return len(loot.Entries)
+		},
+	}
+
+	st := d2object.ChestState{}
+	if res, err := v.spawnTables().OpenChest(id, &st, hooks, v.localPlayer.Act, v.difficulty(), v.areaLevel(), seed); err == nil {
+		tc = res.TreasureClass
+	} else {
+		// unknown object row: keep the original direct path
+		loot, tc, derr = v.itemFactory().ChestLoot(co)
+	}
+
+	if derr != nil || loot == nil {
+		v.Errorf("chest %d: %v", id, derr)
 		return
 	}
 
-	v.Infof("AUTOGROUND chest id=%d name=%q tc=%q ilvl=%d seed=%d drops=%d", id, ob.Label(), tc, ilvl, seed, len(loot.Entries))
+	cx, cy := ob.GetPositionF()
+	v.Infof("AUTOGROUND chest id=%d name=%q tc=%q level=%d seed=%d drops=%d", id, ob.Label(), tc, v.currentLevel(),
+		seed, len(loot.Entries))
 	v.spawnLoot(loot, int(math.Floor(cx)), int(math.Floor(cy)), "chest")
 }
 
@@ -304,6 +361,23 @@ func (v *Game) chestSeed() uint32 {
 	}
 
 	return uint32(v.gameClient.MapEngine.Seed())
+}
+
+// heroMagicFind and heroGoldFind are the hero's totals from its equipment.
+func (v *Game) heroMagicFind() int {
+	if v.localPlayer != nil && v.localPlayer.Stats != nil && v.localPlayer.Stats.Totals != nil {
+		return v.localPlayer.Stats.Totals.MagicFind
+	}
+
+	return 0
+}
+
+func (v *Game) heroGoldFind() int {
+	if v.localPlayer != nil && v.localPlayer.Stats != nil && v.localPlayer.Stats.Totals != nil {
+		return v.localPlayer.Stats.Totals.GoldFind
+	}
+
+	return 0
 }
 
 // areaLevel is the item level of object drops: OD2_AUTOGROUND_ILVL if set,
@@ -323,7 +397,10 @@ func (v *Game) areaLevel() int {
 
 // itemFactory returns the item factory of the map engine.
 func (v *Game) itemFactory() *diablo2item.ItemFactory {
-	return v.gameClient.MapEngine.ItemFactory()
+	f := v.gameClient.MapEngine.ItemFactory()
+	f.Difficulty = v.difficulty()
+
+	return f
 }
 
 // spawnLoot puts a roll's items and gold on free ground cells around (cx, cy),
@@ -357,6 +434,7 @@ func (v *Game) spawnLoot(loot *diablo2item.Loot, cx, cy int, source string) []*d
 		quality := "gold"
 		if e.Item != nil {
 			quality = e.Item.QualityName()
+			v.Infof("ITEMGEN created source=%s %s", source, e.Item.CreationLine())
 		}
 
 		v.Infof("AUTOGROUND spawn source=%s name=%q quality=%s pos=(%d,%d)",
@@ -378,6 +456,22 @@ func (v *Game) spawnGroundItem(it *diablo2item.Item, c d2ground.Cell) (*d2mapent
 	v.playSoundAt(ent.DropSound, ent.GetPosition(), "drop")
 
 	return ent, nil
+}
+
+// dropGoldOverflow leaves the gold that did not fit in the purse as a new pile
+// where the picked-up one lay (0x558e40 -> 0x557fe0, VERIFIED).
+func (v *Game) dropGoldOverflow(from *d2mapentity.Item, amount int) {
+	x, y := from.GetPositionF()
+
+	ent, err := v.gameClient.MapEngine.NewGoldPile(amount, v.asset.TranslateString("gld"),
+		int(math.Round(x*subtilesInTile)), int(math.Round(y*subtilesInTile)))
+	if err != nil {
+		v.Warningf("could not leave the gold overflow on the ground: %v", err)
+		return
+	}
+
+	v.gameClient.MapEngine.AddEntity(ent)
+	v.Infof("gold pickup: %d did not fit, left on the ground", amount)
 }
 
 func (v *Game) spawnGoldPile(amount int, c d2ground.Cell) (*d2mapentity.Item, error) {

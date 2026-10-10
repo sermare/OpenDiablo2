@@ -80,7 +80,7 @@ func (m *MissileRecord) PipelineSpec() *d2missile.Spec {
 		NextDelay: m.Collision.TimerFrames, Size: m.Size,
 		SubLoop: m.Animation.HasSubLoop, SubStart: m.Animation.SubStartingFrame, SubStop: m.Animation.SubEndingFrame,
 		ExplosionMissile: m.ExplosionMissile, SubMissile: m.SubMissile, HitSubMissile: m.HitSubMissile,
-		SkillName: m.SkillName, HitClass: m.HitClass, ResultFlags: m.ResultFlags, HitFlags: m.HitFlags,
+		SkillName: m.SkillName, HitClass: m.HitClass, SrcDam: m.SourceDamage, ResultFlags: m.ResultFlags, HitFlags: m.HitFlags,
 		SrvCalc1: m.ServerMovementCalc.Program, DmgCalc1: m.ServerDamageCalc.Program,
 	}
 
@@ -125,6 +125,8 @@ func (s *SkillRecord) PipelineSkill() *d2skill.Skill {
 		AuraStatCalc: [7]*d2calc.Program{nil, s.Aurastatcalc1, s.Aurastatcalc2, s.Aurastatcalc3, s.Aurastatcalc4,
 			s.Aurastatcalc5, s.Aurastatcalc6},
 		PassiveState: s.Passivestate,
+		PassiveIType: s.Passiveitype,
+		IType1:       s.Itypea1,
 		PassiveStat:  [6]string{"", s.Passivestat1, s.Passivestat2, s.Passivestat3, s.Passivestat4, s.Passivestat5},
 		PassiveCalc: [6]*d2calc.Program{nil, s.Passivecalc1, s.Passivecalc2, s.Passivecalc3, s.Passivecalc4,
 			s.Passivecalc5},

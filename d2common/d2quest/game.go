@@ -18,6 +18,8 @@ const (
 	FlagEnterArea      = 4
 	FlagCustom1        = 5
 	FlagCustom2        = 6
+	FlagCustom3        = 7
+	FlagCustom4        = 8
 	FlagCustom6        = 10
 	FlagUpdateLog      = d2s.QuestBitClosed // 12
 	FlagPrimaryGoal    = d2s.QuestBitUpdated
@@ -86,7 +88,8 @@ const (
 	EffectSound
 	// EffectRespec: Akara offers the free stat/skill reset (slot 41).
 	EffectRespec
-	// EffectPortal: a town portal / the portal to Tristram opens (Note says which).
+	// EffectPortal: a portal opens (Note says which); Value is the destination
+	// level id when the quest knows it, 0 otherwise.
 	EffectPortal
 	// EffectBark: an overhead speech bubble, Value is the message id.
 	EffectBark
@@ -181,6 +184,9 @@ type Game struct {
 	// Expansion selects the Lord of Destruction rules (the Cow King checks the
 	// Baal quest instead of the Diablo quest).
 	Expansion bool
+	// LegacyBossBits restores the engine's earlier boss flow (kills of Mephisto, Diablo and Baal leave reward pending, no
+	// hammer drop from Hephasto). By default (false) the kills set the bits the binary sets (done + primary goal, see boss_exe.go).
+	LegacyBossBits bool
 	// Level is the id of the level the hero is in.
 	Level int
 	// Items counts the quest items the hero carries by item code.

@@ -1,19 +1,38 @@
 package d2combat
 
 // Defense returns a unit's total defense. Verified in COMBAT_GetDefense
-// (0x6225a0):
+// (0x6225a0, read from the disassembly):
 //
 //	base = armorClass + dex/4          (truncating toward zero)
-//	def  = base + base*bonusPct/100    (truncating toward zero)
+//	def  = base + base*bonusPct/100    (truncating toward zero) when base > 0
+//	def  = base - base*bonusPct/100    when base <= 0 (a bonus shrinks a
+//	                                   negative defense toward zero)
+//	def += def*overridePct/100         (stat 0xb6 armor_override_percent,
+//	                                   MulDiv on the running total; 0 skips)
 //
-// bonusPct is the sum of the percent stats 0xab and 0x10 (item_armor_percent).
-// NOTE (binary): the game additionally adds a skill-driven bonus from state
-// 0x65 into the percent before the multiply and a stat 0xb6 term after it;
-// neither is modelled here.
+// bonusPct is the sum of the percent stats 0xab (skill_armor_percent) and 0x10
+// (item_armor_percent). The game also adds the Holy Shield calc (skills.txt
+// calc1 of the skill whose aurastate is state 0x65) into bonusPct when the
+// unit has that state and a hand item that passes 0x63d9d0; callers pass it in
+// bonusPct. Which item that test wants is not decoded (U).
 func Defense(armorClass, dex, bonusPct int) int {
+	return DefenseOverride(armorClass, dex, bonusPct, 0)
+}
+
+// DefenseOverride is Defense with the stat 0xb6 term (see Defense).
+func DefenseOverride(armorClass, dex, bonusPct, overridePct int) int {
 	base := armorClass + dex/4
 
-	return base + base*bonusPct/100
+	def := base + base*bonusPct/100
+	if base <= 0 {
+		def = base - base*bonusPct/100
+	}
+
+	if overridePct != 0 {
+		def += def * overridePct / 100
+	}
+
+	return def
 }
 
 // PlayerAttackRating is the base attack rating of a player:
@@ -97,4 +116,10 @@ func RollToHit(r Roller, in ToHitInput) (hit bool, chance, roll int) {
 	hit, roll = roll100(r, chance)
 
 	return hit, chance, roll
+}
+
+// DefenseWithFinalPct is the same as DefenseOverride (kept for the skill
+// oracle audit tests): finalPct is unit stat 0xb6.
+func DefenseWithFinalPct(armorClass, dex, bonusPct, finalPct int) int {
+	return DefenseOverride(armorClass, dex, bonusPct, finalPct)
 }

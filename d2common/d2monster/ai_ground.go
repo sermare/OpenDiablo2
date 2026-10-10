@@ -16,7 +16,7 @@ func init() {
 	register("PantherWoman", TargetStandard, thinkPantherWoman)
 	register("SandLeaper", TargetStandard, thinkSandLeaper)
 	register("SandRaider", TargetStandard, thinkSandRaider)
-	register("SandMaggot", TargetOnly, thinkSandMaggot)
+	register("SandMaggot", TargetFindOrWait, thinkSandMaggot) // exe mode 4 (VERIFIED)
 	register("GreaterMummy", TargetStandard, thinkGreaterMummy)
 	register("Fetish", TargetStandard, thinkFetish)
 	register("FetishBlowgun", TargetStandard, thinkFetishBlowgun)
@@ -49,7 +49,7 @@ func (c *Ctx) commandedUnit(cmd *Command) (Target, bool) {
 
 // thinkQuillRat is MONAI_Think_QuillRat 0x5f0200 (VERIFIED). aip1 kite
 // distance, aip2 shoot%, aip4 walk-away / wander distance. A2 is the spike
-// shot. FUN_005dbff0 is read as the aggressive flag (UNVERIFIED but matches
+// shot. FUN_005dbff0 is the aggressive flag (VERIFIED: pUnitData+0x54 in {3,0x13}; matches
 // the notes).
 func thinkQuillRat(c *Ctx) {
 	b, t := c.B, *c.Target
@@ -181,59 +181,151 @@ func thinkSandLeaper(c *Ctx) {
 	c.Sleep(10)
 }
 
-// thinkSandRaider approximates MONAI_Think_SandRaider 0x5ef800. The notes mark
-// it VERIFIED but only sketch it (charge counter at +0x14 up to aip5 that
-// turns on a colour state, hurt% aip1 sends it to defend an ally, FireHit
-// skill while charged, A1/A2 split by aip7, sleep aidel+1); the exact roll
-// order is UNVERIFIED, so this is the sketch: charge, defend, approach,
-// circle, attack.
+// Sand Raider scratch: charge counter (+0x14), "charged" flag (+0x18), defend
+// attempts (+0x1c).
+const (
+	raiderCount   = 0
+	raiderCharged = 1
+	raiderDefend  = 2
+)
+
+// Unit states the Sand Raider toggles (VERIFIED ids in 0x5ef800 through
+// FUN_0063aef0; the colour meaning is UNVERIFIED).
+const (
+	raiderStateA = 0x5a
+	raiderStateB = 0x5b
+)
+
+// StateSetter is an optional extension of Actor: FUN_0063aef0(unit, state, on).
+type StateSetter interface {
+	SetUnitState(b *Brain, state int, on bool)
+}
+
+// OverlayShower is an optional Actor extension for 0x622020 (VERIFIED): it
+// adds the unit's own stat list (flag 0x80) with stat 0xb2 = unit_dooverlay
+// set to the given overlay id (low 16 bits) and refreshes the unit in its
+// room - a purely visual effect. The SandRaider uses overlay 0x96 when
+// aip6 == 1 and 0x2e otherwise, at the moment its charge counter hits aip5.
+type OverlayShower interface {
+	ShowOverlay(b *Brain, overlay int)
+}
+
+const (
+	raiderOverlayA = 0x96
+	raiderOverlayB = 0x2e
+)
+
+// thinkSandRaider is MONAI_Think_SandRaider 0x5ef800 (VERIFIED, re-read from
+// the disassembly in this pass; the roll order below is the exe's). aip1 hurt%
+// below which it runs to an ally, aip2 strafe%, aip3 melee gate%, aip4 approach
+// %, aip5 charge ticks, aip6 selects which of two states/sounds, aip7 A2%.
+//
+//  1. counter == 0: clear states 0x5a/0x5b and the charged flag. counter++.
+//  2. counter == aip5: (0x622020: unit_dooverlay 0x96/0x2e, OverlayShower) sleep
+//     aidel+1, end. counter > aip5: set state 0x5a (aip6 == 1) or 0x5b, flag.
+//  3. defend < 7 and hp% < aip1: walk to the nearest ally if any (end), else
+//     defend++. (no roll)
+//  4. dist > 4 and not charged: roll(100) < aip2 -> Circle, end.
+//  5. in range: charged and Skill1 set -> cast it, counter = flag = 0, end;
+//     roll(100) < aip3 -> roll(100) < aip7 ? A2 : A1, end; else step 7.
+//     not in range: charged -> walk to the target; else roll(100) < aip4 ->
+//     walk, else step 7.
+//  7. if counter > max(aip5+6, 24): counter = flag = 0. sleep 15.
 func thinkSandRaider(c *Ctx) {
 	b, t := c.B, *c.Target
 	p := b.Profile
 
-	if b.Scratch[0] < b.AIP(5) {
-		b.Scratch[0]++
+	setState := func(s int, on bool) {
+		if ss, ok := c.W.(StateSetter); ok {
+			ss.SetUnitState(b, s, on)
+		}
 	}
 
-	charged := b.Scratch[0] >= b.AIP(5)
+	if b.Scratch[raiderCount] == 0 {
+		setState(raiderStateA, false)
+		setState(raiderStateB, false)
+		b.Scratch[raiderCharged] = 0
+	}
 
-	if b.HPPercent < b.AIP(1) {
-		if f, ok := c.W.(AllyFinder); ok {
-			if ally, _, found := f.NearestAlly(b); found && c.WalkTo(ally, meleeReach) {
-				return
+	b.Scratch[raiderCount]++
+
+	switch k := b.Scratch[raiderCount]; {
+	case k == b.AIP(5):
+		if o, ok := c.W.(OverlayShower); ok {
+			if b.AIP(6) == 1 {
+				o.ShowOverlay(b, raiderOverlayA)
+			} else {
+				o.ShowOverlay(b, raiderOverlayB)
 			}
 		}
-	}
 
-	if !c.InRange {
-		switch {
-		case b.Chance(b.AIP(2)) && c.WalkTo(t, meleeReach):
-		case b.Chance(b.AIP(3)) && c.Circle(t, 4):
-		default:
-			c.Sleep(p.AIDel + 1)
-		}
-
-		return
-	}
-
-	if !b.Chance(b.AIP(4)) {
 		c.Sleep(p.AIDel + 1)
 
 		return
+	case k > b.AIP(5):
+		if b.AIP(6) == 1 {
+			setState(raiderStateA, true)
+		} else {
+			setState(raiderStateB, true)
+		}
+
+		b.Scratch[raiderCharged] = 1
 	}
 
-	if charged && p.Skills[slot1].Used() {
-		b.Scratch[0] = 0
-		c.Cast(slot1, t)
+	if b.Scratch[raiderDefend] < 7 && b.HPPercent < b.AIP(1) {
+		if f, ok := c.W.(AllyFinder); ok {
+			if ally, _, found := f.NearestAlly(b); found && c.WalkTo(ally, 0) {
+				return
+			}
+		}
+
+		b.Scratch[raiderDefend]++
+	}
+
+	charged := b.Scratch[raiderCharged] == 1
+
+	if c.Dist > 4 && !charged && b.Roll(100) < b.AIP(2) {
+		c.Circle(t, 4)
 
 		return
 	}
 
-	if b.Roll(100) >= b.AIP(7) {
-		c.Attack(ModeAttack1, t)
-	} else {
-		c.Attack(ModeAttack2, t)
+	if c.InRange {
+		if charged && p.Skills[slot1].Used() {
+			b.Scratch[raiderCount], b.Scratch[raiderCharged] = 0, 0
+			c.Cast(slot1, t)
+
+			return
+		}
+
+		if b.Roll(100) < b.AIP(3) {
+			if b.Roll(100) < b.AIP(7) {
+				c.Attack(ModeAttack2, t)
+			} else {
+				c.Attack(ModeAttack1, t)
+			}
+
+			return
+		}
+	} else if charged || b.Roll(100) < b.AIP(4) {
+		if !c.WalkTo(t, 0) {
+			c.Sleep(10)
+		}
+
+		return
 	}
+
+	extra := 24 - b.AIP(5)
+	if extra < 6 {
+		extra = 6
+	}
+
+	lim := b.AIP(5) + extra
+	if b.Scratch[raiderCount] > lim {
+		b.Scratch[raiderCount], b.Scratch[raiderCharged] = 0, 0
+	}
+
+	c.Sleep(15)
 }
 
 // Sand Maggot scratch: phase (0x14), cooldown-until-frame (0x18), spit count
@@ -976,7 +1068,7 @@ func thinkSuccubus(c *Ctx) {
 	}
 }
 
-// thinkMinion is MONAI_Think_Minion 0x5e09c0 (VERIFIED in the notes, section
+// thinkMinion is MONAI_Think_Minion 0x5e09c0 (VERIFIED, re-read in the exe: a command is live while count > frame; section
 // 5): a type 1 command with an unexpired count (frame) and a living commanded
 // unit overrides the target. aip1 attack gate, aip2 A2%, aip3 approach%, aip4
 // stall.
@@ -996,8 +1088,17 @@ func thinkMinion(c *Ctx) {
 		b.PopCommand()
 	}
 
-	if !commanded && !c.InRange {
-		if !b.Chance(b.AIP(3)) {
+	// The in-range flag is the tick's for the tick target; for a different
+	// commanded unit the exe re-tests reach to it (FUN_00622e40, VERIFIED).
+	inRange := c.InRange
+	if commanded && (c.Target == nil || t.ID != c.Target.ID) {
+		inRange = c.W.InRange(b, t, b.DistanceTo(t.X, t.Y))
+	}
+
+	// Out of reach: a commanded minion walks at once (no roll); a free one
+	// rolls aip3 to approach, else stalls aip4 (VERIFIED order).
+	if !inRange {
+		if !commanded && !b.Chance(b.AIP(3)) {
 			c.Sleep(b.AIP(4))
 
 			return

@@ -10,6 +10,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2reward"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2stats"
@@ -26,6 +27,13 @@ const (
 	PropertyPoolUnique
 	PropertyPoolSetItem
 	PropertyPoolSet
+	// PropertyPoolCube holds the properties a Horadric Cube recipe attached
+	// (crafted mods, upgrade level requirements); PropertyPoolSocketed those of
+	// the gems, runes and jewels in the sockets; PropertyPoolRuneword those of
+	// the runeword the runes spell.
+	PropertyPoolCube
+	PropertyPoolSocketed
+	PropertyPoolRuneword
 )
 
 // for handling special cases
@@ -73,6 +81,17 @@ type Item struct {
 	SetItemCode string
 	PrefixCodes []string
 	SuffixCodes []string
+	// AutoCode is the automagic affix of an item made with the creator.
+	AutoCode string
+
+	// rolled is what the item creator rolled; an item made with it keeps its
+	// properties from there instead of regenerating them (see item_create.go).
+	rolled   *d2drop.Rolled
+	rareName string
+	runeword string // Runes.txt name of the runeword the item is
+	socketed []*Item
+	ear      *EarInfo
+	setRow   int // 1 + the Sets.txt row of a set item
 
 	properties      map[PropertyPool][]*Property
 	statContext     d2item.StatContext
@@ -85,7 +104,16 @@ type Item struct {
 	GridX int
 	GridY int
 
+	genQuality d2drop.Quality // quality the generator ended with (0 if not generated)
+
 	sockets []*d2item.Item // there will be checks for handling the craziness this might entail
+
+	// Horadric Cube and socketing state (see item_cube.go).
+	Sockets     int        // number of sockets
+	SocketCodes []string   // item codes of the gems, runes and jewels in them
+	Runeword    string     // display name of the runeword the item became
+	CubeMods    []ExtraMod // properties a cube recipe attached
+	Crafted     bool       // quality "crafted" (cube recipes)
 }
 
 // nolint:structcheck,unused // WIP
@@ -135,35 +163,56 @@ func (i *Item) Label() string {
 		str = i.factory.asset.TranslateString(i.CommonRecord().NameString)
 	}
 
-	if i.attributes.crafted {
-		return d2ui.ColorTokenize(str, d2ui.ColorTokenCraftedItem)
+	if p := i.attributes.personalization; p != "" { // Anya's reward
+		str = d2reward.PersonalName(p, str)
 	}
 
-	if i.SetItemRecord() != nil {
-		return d2ui.ColorTokenize(str, d2ui.ColorTokenSetItem)
+	if i.rolled != nil {
+		return d2ui.ColorTokenize(str, i.rolledColor())
 	}
 
-	if i.UniqueRecord() != nil {
-		return d2ui.ColorTokenize(str, d2ui.ColorTokenUniqueItem)
+	token := nameColorToken(nameColorInput{
+		crafted:  i.attributes.crafted,
+		set:      i.SetItemRecord() != nil,
+		unique:   i.UniqueRecord() != nil,
+		affixes:  len(i.PrefixRecords()) + len(i.SuffixRecords()),
+		socketed: len(i.sockets) > 0,
+		ethereal: i.attributes.ethereal,
+	})
+
+	return d2ui.ColorTokenize(str, token)
+}
+
+// nameColorInput is what decides the colour of an item's name.
+type nameColorInput struct {
+	crafted, set, unique bool
+	affixes              int
+	socketed, ethereal   bool
+}
+
+// nameColorToken is the colour of an item name by quality: crafted orange, set
+// green, unique gold, magic blue (1-2 affixes), rare yellow, and a plain item
+// white, or grey when it is socketed or ethereal. Verified for the ground
+// labels (INV_DrawGroundItemLabels: magic 3, set 2, rare 9, unique 4, crafted 8,
+// socketed/ethereal normal 5); the inventory tooltip name is UNVERIFIED to
+// follow the same rule.
+func nameColorToken(in nameColorInput) d2ui.ColorToken {
+	switch {
+	case in.crafted:
+		return d2ui.ColorTokenCraftedItem
+	case in.set:
+		return d2ui.ColorTokenSetItem
+	case in.unique:
+		return d2ui.ColorTokenUniqueItem
+	case in.affixes > maxAffixesOnMagicItem:
+		return d2ui.ColorTokenRareItem
+	case in.affixes > 0:
+		return d2ui.ColorTokenMagicItem
+	case in.socketed || in.ethereal:
+		return d2ui.ColorTokenSocketedItem
 	}
 
-	numAffixes := len(i.PrefixRecords()) + len(i.SuffixRecords())
-
-	if numAffixes > 0 && numAffixes <= maxAffixesOnMagicItem {
-		return d2ui.ColorTokenize(str, d2ui.ColorTokenMagicItem)
-	}
-
-	if numAffixes > maxAffixesOnMagicItem {
-		return d2ui.ColorTokenize(str, d2ui.ColorTokenRareItem)
-	}
-
-	if i.sockets != nil {
-		if len(i.sockets) > 0 {
-			return d2ui.ColorTokenize(str, d2ui.ColorTokenSocketedItem)
-		}
-	}
-
-	return d2ui.ColorTokenize(str, d2ui.ColorTokenNormalItem)
+	return d2ui.ColorTokenNormalItem
 }
 
 // Context returns the statContext that is being used to evaluate stats. for example,
@@ -238,9 +287,12 @@ func affixRecords(
 
 	result := make([]*d2records.ItemAffixCommonRecord, len(fromCodes))
 
-	for idx, code := range fromCodes {
-		rec := affixes[code]
-		result[idx] = rec
+	result = result[:0]
+
+	for _, code := range fromCodes {
+		if rec := affixes[code]; rec != nil {
+			result = append(result, rec)
+		}
 	}
 
 	return result
@@ -407,6 +459,10 @@ func (i *Item) init() *Item {
 		i.SetSeed(0)
 	}
 
+	if i.rolled != nil {
+		return i
+	}
+
 	if i.Seed != 0 && i.factory != nil {
 		// a seeded item rolls its property values from the seed, so that
 		// it can be rebuilt exactly (see Spec)
@@ -434,6 +490,9 @@ func (i *Item) generateAllProperties() {
 		PropertyPoolUnique,
 		PropertyPoolSetItem,
 		PropertyPoolSet,
+		PropertyPoolCube,
+		PropertyPoolSocketed,
+		PropertyPoolRuneword,
 	}
 
 	for _, pool := range pools {
@@ -458,6 +517,12 @@ func (i *Item) generateProperties(pool PropertyPool) {
 			props = generated
 		}
 	case PropertyPoolSet: // https://github.com/OpenDiablo2/OpenDiablo2/issues/817
+	case PropertyPoolCube:
+		props = i.generateCubeProperties()
+	case PropertyPoolSocketed:
+		props = i.generateSocketedProperties()
+	case PropertyPoolRuneword:
+		props = i.generateRunewordProperties()
 	}
 
 	if props == nil {
@@ -473,13 +538,19 @@ func (i *Item) generateProperties(pool PropertyPool) {
 	// in the case one of the properties is a stat-less prop for indestructable/ethereal
 	// we need to set the item attributes to the rolled values. we use `||` here just in
 	// case another property has already set the flag
-	for propIdx := range props {
-		prop := props[propIdx]
+	applyFlagProperties(i.attributes, props)
+}
+
+// applyFlagProperties sets the ethereal and indestructible attributes from
+// stat-less properties. The two flags are independent: an ethereal item is
+// not indestructible (it only has reduced durability and cannot be repaired).
+func applyFlagProperties(attrs *itemAttributes, props []*Property) {
+	for _, prop := range props {
 		switch prop.record.Code {
 		case propertyEthereal:
-			i.attributes.ethereal = i.attributes.ethereal || prop.computedBool
+			attrs.ethereal = attrs.ethereal || prop.computedBool
 		case propertyIndestructable:
-			i.attributes.indestructable = i.attributes.ethereal || prop.computedBool
+			attrs.indestructable = attrs.indestructable || prop.computedBool
 		}
 	}
 }
@@ -519,6 +590,8 @@ func (i *Item) updateItemAttributes() {
 		requiredDexterity: r.RequiredDexterity,
 		durable:           !r.NoDurability,
 		throwable:         r.Throwable,
+		numSockets:        i.Sockets,
+		crafted:           i.Crafted,
 	}
 
 	def, minDef, maxDef := 0, r.MinAC, r.MaxAC
@@ -623,6 +696,21 @@ func (i *Item) generateItemProperties(properties []*d2records.PropertyDescriptor
 }
 
 func (i *Item) generateName() {
+	if i.ear != nil {
+		i.name = i.ear.Label()
+		return
+	}
+
+	if i.rolled != nil {
+		i.name = i.rolledName()
+		return
+	}
+
+	if i.Runeword != "" {
+		i.name = fmt.Sprintf("%s\n%s", i.Runeword, i.factory.asset.TranslateString(i.CommonRecord().NameString))
+		return
+	}
+
 	if i.SetItemRecord() != nil {
 		i.name = i.factory.asset.TranslateString(i.SetItemRecord().SetItemKey)
 		return
@@ -915,6 +1003,10 @@ func (i *Item) GetItemDescription() []string {
 	for _, statStr := range statStrings {
 		str = d2ui.ColorTokenize(statStr, d2ui.ColorTokenBlue)
 		lines = append(lines, str)
+	}
+
+	if n := i.NumSockets(); n > 0 { // Larzuk's reward
+		lines = append(lines, d2ui.ColorTokenize(fmt.Sprintf("Socketed (%d)", n), d2ui.ColorTokenBlue))
 	}
 
 	return lines

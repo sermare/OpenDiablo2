@@ -53,7 +53,10 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 		Expansion:  true, // the game data is Lord of Destruction (MonLvl*Ex columns)
 		// the scenario spawns monsters next to a hero who may still be in town
 		IgnoreTown: os.Getenv("OD2_AUTOMONSTER") != "" || os.Getenv("OD2_AUTOMERC") != "" || os.Getenv("OD2_AUTOAI") != "" || os.Getenv("OD2_AUTOPARTY") != "" || os.Getenv("OD2_AUTOBOSS") != "",
-		OnSound:    v.onMonsterSound,
+		// heroes in the game (1 when playing alone); OD2_PLAYERS can force more
+		PlayersFunc:   func() int { return len(v.gameClient.Players) },
+		ForcedPlayers: d2monsters.ForcedPlayersFromEnv(os.Getenv("OD2_PLAYERS")),
+		OnSound:       v.onMonsterSound,
 		// worn items lose durability when the hero is hit or hits (d2equip)
 		OnHeroHit: func(p *d2mapentity.Player) {
 			if v.gameControls != nil && p == v.localPlayer {
@@ -101,6 +104,7 @@ func (v *Game) advanceMonsters(elapsed float64) {
 	v.advanceMonsterTest(elapsed)
 	v.advanceAITest(elapsed)
 	v.advanceBossTest(elapsed)
+	v.advanceUberTest(elapsed)
 }
 
 // OnPlayerAttack makes the hero walk up to a monster and fight it.

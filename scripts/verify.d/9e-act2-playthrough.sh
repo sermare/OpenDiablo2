@@ -10,7 +10,7 @@ a2=$tmp/act2
 # hero cannot get close to); errors still fail the scenario
 scenario_warnings_ok=1
 scenario_env() {
-  mkdir -p $a2/s94 $a2/wb94; rm -f $a2/s94/*.d2s $a2/wb94/*.d2s
+  mkdir -p $a2/s94 $a2/wb94; rm -f $a2/s94/*.d2s(N) $a2/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && go run scripts/d2s-revive.go "$D2S_SAMPLE_BODY" $a2/s94/Hero.d2s "$D2_TABLES" >/dev/null 2>&1; then
     local s="wait:1;say:resetquests;say:completequest 1 6;travel:2;expect:level=40;wait:4;say:capframe $tmp/act2-town.png"
     local n

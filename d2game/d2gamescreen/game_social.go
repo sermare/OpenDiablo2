@@ -157,12 +157,12 @@ func (v *Game) commandKillNear(_ []string) error {
 
 // partyXP is the monster director's hook: with party members around, the
 // experience of the hero's kill goes to the server, which splits it.
-func (v *Game) partyXP(src *d2mapentity.Player, xp int, monster string) bool {
+func (v *Game) partyXP(src *d2mapentity.Player, xp, monsterLevel int, monster string) bool {
 	if src != v.localPlayer || v.gameClient.IsSinglePlayer() || len(v.gameClient.Roster.PartyMembers(v.me())) < 2 {
 		return false
 	}
 
-	pkt, err := d2netpacket.CreatePartyXPPacket(d2netpacket.PartyXPPacket{Killer: v.me(), Monster: monster, XP: xp})
+	pkt, err := d2netpacket.CreatePartyXPPacket(d2netpacket.PartyXPPacket{Killer: v.me(), Monster: monster, XP: xp, MonsterLevel: monsterLevel})
 	if err != nil || v.gameClient.SendPacketToServer(pkt) != nil {
 		return false
 	}
@@ -178,14 +178,20 @@ func (v *Game) onPartyXP(p d2netpacket.PartyXPPacket) {
 	}
 
 	before := v.localPlayer.Stats.Experience
-	v.localPlayer.Stats.Experience += p.Amount
+	amount := p.Amount
+
+	if p.MonsterLevel > 0 { // the server already scaled by level; the item +% experience is ours
+		amount += amount * v.localPlayer.Stats.ItemExperiencePct() / 100
+	}
+
+	v.localPlayer.Stats.Experience += amount
 	killer := p.Killer
 
 	if m, ok := v.gameClient.Roster.Member(p.Killer); ok {
 		killer = m.Name
 	}
 
-	v.Infof("PARTYXP award amount=%d of=%d killer=%q monster=%q experience %d->%d", p.Amount, p.XP, killer, p.Monster,
+	v.Infof("PARTYXP award amount=%d of=%d killer=%q monster=%q experience %d->%d", amount, p.XP, killer, p.Monster,
 		before, v.localPlayer.Stats.Experience)
 }
 
@@ -514,4 +520,44 @@ func (v *Game) onRoster(notice string) {
 	}
 
 	v.Infof("SOCIAL roster n=%d party=%d invited_by=%q notice=%q", r.Len(), r.PartyID(v.me()), inv, notice)
+}
+
+// commandAutoBuy is "autobuy <vendor>": the scripted buy of OD2_AUTOTRADE for one
+// vendor, from an autoscript (see scripts/verify.d/9e-d2s-item-export.sh).
+func (v *Game) commandAutoBuy(args []string) error {
+	if len(args) != 1 || v.gameControls == nil || v.gameClient == nil {
+		return errors.New("usage: autobuy <vendor> (in a game)")
+	}
+
+	for _, e := range v.gameClient.MapEngine.Entities() {
+		if e.Label() != args[0] {
+			continue
+		}
+
+		if !v.openTrade(e, 1) {
+			return fmt.Errorf("%s has no trade window", args[0])
+		}
+
+		v.gameControls.Trade.RunAutoTest()
+
+		return nil
+	}
+
+	return fmt.Errorf("no %s here", args[0])
+}
+
+// commandDropInv is "dropinv <code>": the hero drops the first inventory item with that base code.
+func (v *Game) commandDropInv(args []string) error {
+	if len(args) != 1 || v.gameControls == nil {
+		return errors.New("usage: dropinv <code> (in a game)")
+	}
+
+	name, err := v.gameControls.DropInventoryItem(args[0])
+	if err != nil {
+		return err
+	}
+
+	v.Infof("DROPINV code=%s name=%q", args[0], name)
+
+	return nil
 }

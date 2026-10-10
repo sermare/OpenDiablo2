@@ -1,7 +1,7 @@
 package d2records
 
 const (
-	objectsGroupSize     = 7
+	objectsGroupSize     = 8
 	memberDensityMin     = 0
 	memberDensityMax     = 125
 	memberProbabilityMin = 0

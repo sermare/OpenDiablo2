@@ -7,7 +7,10 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2missile"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 )
 
 // heroUnit adapts a Player to d2skill.Unit.
@@ -48,7 +51,10 @@ func (h *heroUnit) manaString() string {
 
 func (h *heroUnit) ID() string     { return h.p.ID() }
 func (h *heroUnit) IsPlayer() bool { return true }
-func (h *heroUnit) Level() int     { return h.p.Stats.Level }
+
+// Gone reports a dead hero (death animation or corpse); see Owner.Gone.
+func (h *heroUnit) Gone() bool { return h.p.IsDead() }
+func (h *heroUnit) Level() int { return h.p.Stats.Level }
 
 func (h *heroUnit) skill(id int) int {
 	if s := h.p.Skills[id]; s != nil {
@@ -58,8 +64,16 @@ func (h *heroUnit) skill(id int) int {
 	return 0
 }
 
-// SkillLevel returns the skill points; +skills from items are not modelled.
-func (h *heroUnit) SkillLevel(id int) int     { return h.skill(id) }
+// SkillLevel is the effective level: the points plus the +skills of the
+// hero's items (d2hero.EffectiveSkillLevel); BaseSkillLevel the points only.
+func (h *heroUnit) SkillLevel(id int) int {
+	if s := h.p.Skills[id]; s != nil {
+		return d2hero.EffectiveSkillLevel(h.p.Stats, h.p.Class, s)
+	}
+
+	return 0
+}
+
 func (h *heroUnit) BaseSkillLevel(id int) int { return h.skill(id) }
 
 // Stat is a base attribute plus what the hero's states (auras, buffs,
@@ -149,6 +163,73 @@ func (h *heroUnit) WeaponDamage() (min, max int) {
 	return min, max
 }
 
+// Mastery is the weapon mastery lookup (SKILL_Func_646bc0 0x646bc0) for the
+// right hand weapon: the largest mastery value of the hero's true passives
+// whose weapon type the equipped weapon is of (itemtypes equiv chain). 0
+// without a weapon or masteries.
+func (h *heroUnit) Mastery(k d2skill.MasteryKind, sk *d2skill.Skill) int {
+	if h.p.Equipment == nil || h.p.Equipment.RightHand == nil {
+		return 0
+	}
+
+	wt := h.e.weaponType(h.p.Equipment.RightHand.GetItemCode())
+	if wt == "" {
+		return 0
+	}
+
+	thrown := false
+	if rec := h.e.asset.Records.Item.Weapons[h.p.Equipment.RightHand.GetItemCode()]; rec != nil && rec.Throwable {
+		thrown = d2skill.SkillThrows(sk, func(have, want string) bool { return d2skill.TypeIs(h.e.equivOf, have, want) })
+	}
+
+	return h.e.MasteryFor(h.p.ID(), k, wt, thrown)
+}
+
+// weaponType is the itemtypes code of a weapon base item ("" if unknown).
+func (e *Engine) weaponType(code string) string {
+	if e.asset == nil {
+		return ""
+	}
+
+	if rec := e.asset.Records.Item.Weapons[code]; rec != nil {
+		return rec.Type
+	}
+
+	return ""
+}
+
+// equivOf returns the two parents of an item type code.
+func (e *Engine) equivOf(c string) (string, string) {
+	if e.asset != nil {
+		if r := e.asset.Records.Item.Types[c]; r != nil {
+			return r.Equiv1, r.Equiv2
+		}
+	}
+
+	return "", ""
+}
+
+// MasteryFor is the mastery value of kind k for a hero wielding a weapon of
+// item type wt (a code such as "swor"; ancestors via ItemTypes Equiv1/2).
+func (e *Engine) MasteryFor(unitID string, k d2skill.MasteryKind, wt string, thrown bool) int {
+	h := e.heroes[unitID]
+	if h == nil || h.inPassive {
+		return 0
+	}
+
+	var mods []d2skill.TruePassiveMod
+
+	h.inPassive = true
+	for id, s := range h.p.Skills {
+		if s != nil && s.SkillPoints > 0 {
+			mods = append(mods, e.pipe.TruePassiveStats(h, id)...)
+		}
+	}
+	h.inPassive = false
+
+	return d2skill.MasteryValue(mods, k, thrown, func(t string) bool { return d2skill.TypeIs(e.equivOf, wt, t) })
+}
+
 // RangedWeaponMissile is not derived from the weapon type yet (UNVERIFIED /
 // not implemented): weapons are treated as melee.
 func (h *heroUnit) RangedWeaponMissile() string { return "" }
@@ -203,6 +284,26 @@ func (t *monsterTarget) Defense(bool) int {
 	return v
 }
 
+// IsUndead and IsDemon implement d2missile.Kinded (monstats lUndead|hUndead
+// and demon).
+func (t *monsterTarget) IsUndead() bool {
+	return t.m.Stat != nil && (t.m.Stat.IsUndeadLow || t.m.Stat.IsUndeadHigh)
+}
+
+func (t *monsterTarget) IsDemon() bool { return t.m.Stat != nil && t.m.Stat.IsDemon }
+
+// Serial implements d2missile.Serial: the unit id Guided Arrow orders by.
+func (t *monsterTarget) Serial() int { return int(t.e.monsters.UnitID(t.m)) }
+
+// Size implements d2missile.Sized (monstats SizeX, subtracted from distances).
+func (t *monsterTarget) Size() int {
+	if t.m.StatEx != nil {
+		return t.m.StatEx.SizeX
+	}
+
+	return 0
+}
+
 // SubPos implements d2missile.Positioned (homing, chain lightning).
 func (t *monsterTarget) SubPos() (float64, float64) {
 	x, y := t.m.SubtilePos()
@@ -246,4 +347,43 @@ func (w *world) Targets(x, y int) []d2missile.Target {
 	return out
 }
 
-var _ d2path.Grid = (*world)(nil)
+// AdjustAROperands implements d2skill.AROperandAdjuster for the hero's skill
+// strikes: 0x57b8b0 against a monster target (d2monsters.HeroAROperands).
+func (h *heroUnit) AdjustAROperands(t d2missile.Target, ar, def int) (int, int) {
+	mt, ok := t.(*monsterTarget)
+	if !ok || h.p.Stats == nil {
+		return ar, def
+	}
+
+	return d2monsters.HeroAROperands(h.p.Stats.Totals, mt.m, ar, def)
+}
+
+// EnemiesWithin implements d2missile.Finder (the scan 0x569510 with the filter
+// 0x569100, verified): the living monsters of the owner's enemies whose
+// subtile position is within radius subtiles (euclidean, squared compare) of
+// (x, y), outside a town and in line of sight of the owner (wall bit 4 along
+// the line owner -> candidate). Only hero owners are served: the engine has no
+// monster-fired homing missiles and heroes are not enemy candidates (no PvP
+// missiles). The listing is sorted by unit id; the sim keeps the lowest.
+func (w *world) EnemiesWithin(o d2missile.Owner, x, y float64, radius int) []d2missile.Target {
+	h := w.e.heroes[o.ID]
+	if h == nil || !o.IsPlayer || (h.p.IsInTown() && !w.e.opt.IgnoreTown) {
+		return nil
+	}
+
+	ox, oy := h.Pos()
+
+	var cs []d2missile.Candidate
+
+	for _, m := range w.e.monsters.Monsters() {
+		mx, my := m.SubtilePos()
+		cs = append(cs, d2missile.Candidate{Target: w.e.target(m), X: mx, Y: my})
+	}
+
+	return d2missile.Scan(w.e.monsters.Grid(), d2path.Point{X: ox, Y: oy}, x, y, radius, cs)
+}
+
+var (
+	_ d2path.Grid      = (*world)(nil)
+	_ d2missile.Finder = (*world)(nil)
+)

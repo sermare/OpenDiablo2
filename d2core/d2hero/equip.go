@@ -144,7 +144,12 @@ func (f *HeroStateFactory) statItemOfStored(s *StoredItem, loc d2equip.Loc, base
 	if s.D2S != nil {
 		cp := *s.D2S
 		cp.Location = d2s.LocationEquipped
-		si = statItem(&cp, bases, false)
+		si = statItem(&cp, bases, false, f.setResolver())
+	} else if s.Stat != nil {
+		si = *s.Stat
+		b := bases[s.Code]
+		si.Weapon, si.BaseBlock = b.Weapon, b.BaseBlock
+		si.Ethereal = si.Ethereal || s.Ethereal
 	} else {
 		b := bases[s.Code]
 		si = d2statlist.Item{Code: s.Code, Ethereal: s.Ethereal, Weapon: b.Weapon, BaseBlock: b.BaseBlock}
@@ -203,7 +208,7 @@ func (f *HeroStateFactory) ResolveEquipped(c *HeroContainers, base d2statlist.He
 			}
 		}
 
-		t := d2statlist.Compute(base, list, nil)
+		t := d2statlist.Compute(base, list, f.statEnv())
 
 		return d2equip.Hero{Class: class, Str: t.Str, Dex: t.Dex, Level: base.Level}
 	}

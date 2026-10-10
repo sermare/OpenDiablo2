@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
@@ -268,6 +267,7 @@ func (v *Game) performLevelChange(t *levelTransition) {
 		plan.ActChange, arrival.X, arrival.Y, px, py)
 
 	if plan.ActChange {
+		v.questActChange(plan.FromAct, plan.ToAct, t.via)
 		v.Infof("ACT CHANGE %d -> %d LoadAct packet % x", plan.FromAct, plan.ToAct, plan.LoadAct.Encode())
 		v.logActArrival(t.target)
 	}
@@ -308,6 +308,7 @@ func (v *Game) afterLevelBuilt(from, to int, via string) {
 	v.levels.edgeArmed = false
 	v.scanWarps()
 	v.questArea(to) // the quest system follows the hero between areas
+	v.uberEnter(to)
 	v.restoreCorpse()
 	v.restoreLevel(to)
 
@@ -332,7 +333,7 @@ func (v *Game) resetLevelState() {
 	v.monsters, v.attackTarget, v.npcTarget = nil, nil, nil
 	v.ground.item, v.ground.chest = nil, nil
 	v.levels.use, v.levels.warpTarget, v.levels.wpObj, v.levels.exitWalk = nil, nil, nil, nil
-	v.lastRegionType = d2enum.RegionNone
+	v.lastZoneLevel = 0
 
 	v.gameControls.NPCMenu.Close()
 	v.gameControls.Waypoints.Close()
@@ -379,7 +380,9 @@ func (v *Game) advanceWarpUse(elapsed float64) {
 		v.levels.warpBestOf, v.levels.warpBest, v.levels.warpWait = w, dist, 0
 	}
 
-	if v.levels.warpWait += elapsed; v.levels.warpWait > objectUseTimeout {
+	// (a scripted walk to an exit has its own clock, exitTimeout: the way through a maze winds away
+	// from the tile for a while, which the straight distance does not show as progress)
+	if v.levels.warpWait += elapsed; v.levels.warpWait > objectUseTimeout && v.levels.exitWalk == nil {
 		v.Warningf("LEVEL gave up walking to the warp tile at (%d,%d): the hero is %.1f tiles away", w.TileX, w.TileY, dist)
 		v.levels.warpTarget = nil
 
@@ -409,6 +412,13 @@ func (v *Game) advanceWarpUse(elapsed float64) {
 	if e := v.levels.exitWalk; e != nil && !edgeWanted(e.level, dest) {
 		v.Infof("LEVEL warp tile at (%d,%d) to level %d ignored: the scripted walk heads for level %d", w.TileX, w.TileY, dest, e.level)
 		return
+	}
+
+	if r := v.quests(); r != nil {
+		if err := d2level.CheckActThreeWarp(cur, dest, r.g.Rec); err != nil {
+			v.Infof("LEVEL warp refused level %d -> %d: %v", cur, dest, err)
+			return
+		}
 	}
 
 	v.Infof("LEVEL warp tile style=%d at (%d,%d): level %d -> %d", w.Style, w.TileX, w.TileY, cur, dest)
@@ -644,7 +654,7 @@ func (v *Game) operatePortal(ob *d2mapentity.Object) {
 // portal object leading to that level, next to the hero.
 func (v *Game) commandSpawnPortal(args []string) error {
 	level, err := strconv.Atoi(args[0])
-	if err != nil || level < 1 || level > 132 {
+	if err != nil || level < 1 || level > 136 { // 133 to 136: the Pandemonium areas the cube opens
 		return fmt.Errorf("invalid level %q", args[0])
 	}
 

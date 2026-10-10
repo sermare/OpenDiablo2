@@ -23,10 +23,25 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		Code: s.Code, Quality: s.Quality, ILvl: s.ILvl, Seed: s.Seed,
 		Unique: s.Unique, SetItem: s.SetItem, Set: s.Set, Prefixes: s.Prefixes, Suffixes: s.Suffixes,
 		Identified: s.Identified, Ethereal: s.Ethereal, Quantity: s.Quantity, Durability: -1,
+		Sockets: s.Sockets, MaxDurability: s.MaxDurability, Personal: s.Personal,
 	}
 
 	if s.Durability != nil {
 		spec.Durability = *s.Durability
+	}
+
+	spec.Sockets, spec.SocketCodes, spec.Runeword, spec.Crafted = s.Sockets, s.Socketed, s.Runeword, s.Crafted
+
+	for _, m := range s.Mods {
+		spec.CubeMods = append(spec.CubeMods, diablo2item.ExtraMod{Code: m.Code, Param: m.Param, Min: m.Min, Max: m.Max, Value: m.Value})
+	}
+
+	if s.Spec != nil {
+		rolled := *s.Spec
+		rolled.Identified, rolled.Ethereal = spec.Identified, spec.Ethereal
+		rolled.Quantity, rolled.Durability = spec.Quantity, spec.Durability
+
+		return f.ItemFromSpec(rolled)
 	}
 
 	if s.Origin {
@@ -40,6 +55,9 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		rolled := it.Spec()
 		rolled.Identified, rolled.Ethereal = spec.Identified, spec.Ethereal
 		rolled.Quantity, rolled.Durability = spec.Quantity, spec.Durability
+		rolled.Sockets, rolled.MaxDurability, rolled.Personal = spec.Sockets, spec.MaxDurability, spec.Personal
+		rolled.SocketCodes, rolled.Runeword = spec.SocketCodes, spec.Runeword
+		rolled.Rolled, rolled.Socketed = nil, nil // the saved item's sockets and runeword win over the creator's roll
 
 		spec = rolled
 	}
@@ -55,7 +73,26 @@ func storedFromItem(it *diablo2item.Item, page, x, y int, orig *d2s.Item) d2hero
 		Quality: spec.Quality, ILvl: spec.ILvl, Seed: spec.Seed,
 		Unique: spec.Unique, SetItem: spec.SetItem, Set: spec.Set, Prefixes: spec.Prefixes, Suffixes: spec.Suffixes,
 		Identified: spec.Identified, Ethereal: spec.Ethereal, Quantity: spec.Quantity,
+		Sockets: spec.Sockets, MaxDurability: spec.MaxDurability, Personal: spec.Personal,
 		D2S: orig,
+
+		Socketed: spec.SocketCodes, Runeword: spec.Runeword, Crafted: spec.Crafted,
+	}
+
+	for _, m := range spec.CubeMods {
+		s.Mods = append(s.Mods, d2hero.StoredMod{Code: m.Code, Param: m.Param, Min: m.Min, Max: m.Max, Value: m.Value})
+	}
+
+	if spec.Rolled != nil {
+		s.Spec = &spec
+		stat := it.StatItem()
+		s.Stat = &stat
+	}
+
+	if orig == nil {
+		// made in the game: keep the rolled numbers for the .d2s export
+		f := it.Facts()
+		s.Facts = &f
 	}
 
 	if spec.Durability >= 0 {
@@ -261,20 +298,28 @@ func (g *GameControls) SpecRoundTripMismatches() (checked, mismatched int) {
 	return checked, mismatched
 }
 
-// beltBoxes is the number of belt cells the equipped belt gives
-// (belts.txt numboxes via the armor.txt belt column); without a belt it is the
-// "default" row of belts.txt.
+// beltBoxes is the number of belt cells the equipped belt gives: the
+// Belts.txt numboxes of the belt type (armor.txt belt column, ITEM_GetBeltType
+// 0x6220b0), and the "default" row (4) without a belt (0x63d700, VERIFIED).
+// d2inventory.BeltBoxes holds the verified 7-row table; a belt type outside it
+// falls back to the default row.
 func (g *GameControls) beltBoxes() int {
 	rec := g.inventory.grid.equipmentSlots[d2enum.EquippedSlotBelt].item
 
 	item, ok := rec.(*diablo2item.Item)
 	if !ok {
-		return d2inventory.BeltDefaultBoxes
+		return beltBoxesFor(false, 0)
 	}
 
-	if b := g.asset.Records.Item.Belts.ByIndex(item.CommonRecord().BeltIndex); b != nil {
-		return b.NumBoxes
+	return beltBoxesFor(true, item.CommonRecord().BeltIndex)
+}
+
+// beltBoxesFor is the pure part of beltBoxes: a worn belt of an armor.txt belt
+// column value, or no belt at all.
+func beltBoxesFor(worn bool, beltType int) int {
+	if !worn {
+		beltType = d2inventory.BeltDefaultType
 	}
 
-	return d2inventory.BeltDefaultBoxes
+	return d2inventory.BeltBoxes(beltType)
 }

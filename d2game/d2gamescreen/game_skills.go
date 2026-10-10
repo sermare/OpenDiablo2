@@ -1,6 +1,7 @@
 package d2gamescreen
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"strconv"
@@ -69,17 +70,22 @@ type castTest struct {
 // skillEngine returns the skill engine, creating it once the hero and the
 // monster director exist.
 func (v *Game) skillEngine() *d2skills.Engine {
-	if v.skills != nil {
-		return v.skills
-	}
-
 	if v.localPlayer == nil {
-		return nil
+		return v.skills
 	}
 
 	md := v.monsterDirector()
 	if md == nil {
-		return nil
+		return v.skills
+	}
+
+	if v.skills != nil {
+		// the area changed: the Director was rebuilt, the hero keeps his state
+		if v.skills.Monsters() != md {
+			v.skills.AreaChanged(md)
+		}
+
+		return v.skills
 	}
 
 	scenario := os.Getenv("OD2_AUTOCAST") != ""
@@ -89,12 +95,42 @@ func (v *Game) skillEngine() *d2skills.Engine {
 		InfiniteAmmo: scenario,
 	})
 
+	if st := v.localPlayer.Stats; st != nil {
+		id, eng := v.localPlayer.ID(), v.skills
+		st.SkillStats = func() map[string]int {
+			out := eng.StateStats(id)
+
+			for k, v := range eng.PassiveTotals(id) {
+				if out == nil {
+					out = map[string]int{}
+				}
+
+				out[k] += v
+			}
+
+			return out
+		}
+	}
+
 	return v.skills
 }
 
 func (v *Game) advanceSkills(elapsed float64) {
-	if eng := v.skillEngine(); eng != nil {
-		eng.Advance(elapsed)
+	eng := v.skillEngine()
+	if eng == nil {
+		return
+	}
+
+	eng.Advance(elapsed)
+
+	// the hero's buffs and auras are part of its stats: recompute the totals
+	// when the set of active skill stats changes
+	if st := v.localPlayer.Stats; st != nil && st.Recalc != nil {
+		sig := fmt.Sprint(eng.StateStats(v.localPlayer.ID()))
+		if sig != v.skillStatSig {
+			v.skillStatSig = sig
+			st.Recalc()
+		}
 	}
 }
 

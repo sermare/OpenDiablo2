@@ -1,8 +1,6 @@
 package d2player
 
 import (
-	"strconv"
-
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
@@ -51,6 +49,8 @@ type skillIcon struct {
 	lvlLabel *d2ui.Label
 	sprite   *d2ui.Sprite
 	skill    *d2hero.HeroSkill
+	// effective returns base points plus the item bonus (nil: base points).
+	effective func(*d2hero.HeroSkill) int
 
 	*d2util.Logger
 }
@@ -81,12 +81,18 @@ func (si *skillIcon) renderSprite(target d2interface.Surface) {
 }
 
 func (si *skillIcon) renderSpriteLabel(target d2interface.Surface) {
-	if si.skill.SkillPoints == 0 {
+	eff := si.skill.SkillPoints
+	if si.effective != nil {
+		eff = si.effective(si.skill)
+	}
+
+	text, col, shown := d2hero.TreeLabel(si.skill.SkillPoints, eff)
+	if !shown {
 		return
 	}
 
 	x, y := si.GetPosition()
-	si.lvlLabel.SetText(strconv.Itoa(si.skill.SkillPoints))
+	si.lvlLabel.SetText(col + text)
 	si.lvlLabel.SetPosition(x+skillLabelXOffset, y+skillLabelYOffset)
 	si.lvlLabel.Render(target)
 }

@@ -18,7 +18,6 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
 
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
@@ -79,7 +78,6 @@ func CreateGame(
 		gameClient:           gameClient,
 		gameControls:         nil,
 		localPlayer:          nil,
-		lastRegionType:       d2enum.RegionNone,
 		ticksSinceLevelCheck: 0,
 		mapRenderer: d2maprenderer.CreateMapRenderer(asset, renderer,
 			gameClient.MapEngine, term, l, startX, startY),
@@ -99,7 +97,7 @@ func CreateGame(
 	game.Logger.SetPrefix(logPrefix)
 	game.initAutoScript()
 	game.hookNetwork()
-	activeGame = game
+	setActiveGame(game)
 
 	game.soundEnv = d2audio.NewSoundEnvironment(game.soundEngine)
 
@@ -130,7 +128,9 @@ type Game struct {
 	uiManager            *d2ui.UIManager
 	gameControls         *d2player.GameControls
 	localPlayer          *d2mapentity.Player
-	lastRegionType       d2enum.RegionIdType
+	lastZoneLevel        int    // Levels.txt id last announced; 0 = none yet
+	vendorSeed           uint32 // per game session base of every vendor stock seed (set on first use)
+	lightLogLevel        int    // level whose base light was last logged
 	travel               travelState
 	ticksSinceLevelCheck float64
 	escapeMenu           *d2player.EscapeMenu
@@ -161,8 +161,11 @@ type Game struct {
 	monsterTest          *monsterTest
 	aiTest               *aiAutoTest
 	bossTest             *bossAutoTest
+	uber                 *uberRuntime
+	uberTest             *uberAutoTest
 	merc                 mercGame
 	skills               *d2skills.Engine
+	skillStatSig         string // last sum of the hero's skill stats, to know when to recalculate
 	castTestState        *castTest
 	attackTarget         *d2mapentity.Monster
 	attackRepathAcc      float64
@@ -171,6 +174,7 @@ type Game struct {
 	ambientTest          *ambientTest
 	regionEnvs           map[int]int
 	autoPanel            autoPanelState
+	autoCube             autoCubeState
 	autoEquip            autoEquipState
 	levelStatusAcc       float64
 	questRT              *questRuntime
@@ -226,7 +230,14 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"op", "arg"}, v.commandTrade},
 		{"pvp", "swings at another player (melee, needs hostility)", []string{"name"}, v.commandPvP},
 		{"giveitem", "puts a new item into the inventory", []string{"code"}, v.commandGiveItem},
+		{"dropinv", "removes the first inventory item with this base code (debug)", []string{"code"}, v.commandDropInv},
+		{"autobuy", "opens a vendor's trade window and buys the cheapest affordable item (OD2_AUTOTRADE_KEEP=1 keeps it)",
+			[]string{"vendor"}, v.commandAutoBuy},
 		{"killnear", "kills the nearest monster as the hero (party experience tests)", []string{}, v.commandKillNear},
+		{"rewarditem", "spends a pending Larzuk (socket) or Anya (personalize) quest reward on an item",
+			[]string{"socket|personalize"}, v.commandRewardItem},
+		{"transmute", "transmutes the quest recipes in the Horadric Cube (Staff, Khalim's Will, Pandemonium portals)",
+			nil, v.commandTransmute},
 	}
 
 	for _, cmd := range commands {
@@ -257,7 +268,7 @@ func (v *Game) OnUnload() error {
 	}
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
-		"party", "hostile", "roster", "trade", "pvp", "giveitem", "killnear"); err != nil {
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "killnear", "rewarditem", "transmute"); err != nil {
 		return err
 	}
 
@@ -265,9 +276,7 @@ func (v *Game) OnUnload() error {
 		return err
 	}
 
-	if activeGame == v {
-		activeGame = nil
-	}
+	clearActiveGame(v)
 
 	if err := v.gameClient.Close(); err != nil {
 		return err
@@ -317,6 +326,8 @@ func (v *Game) Render(screen d2interface.Surface) {
 // Advance runs the update logic on the Gameplay screen
 // nolint:gocyclo // not need to change
 func (v *Game) Advance(elapsed float64) error {
+	d2util.PerfMark("game-playable")
+
 	elapsed *= autoTimeScale()
 
 	v.gameClient.Drain()
@@ -328,6 +339,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceNPCInteraction(elapsed)
 	v.advanceAutoSound(elapsed)
 	v.advanceAutoTest(elapsed)
+	v.advanceFlow(elapsed)
 	v.advanceAutoScript(elapsed)
 	v.advanceQuests(elapsed)
 	v.advanceAutosave(elapsed)
@@ -340,6 +352,7 @@ func (v *Game) Advance(elapsed float64) error {
 	v.advanceSound(elapsed)
 	v.advanceAutoAmbient(elapsed)
 	v.advanceAutoPanel(elapsed)
+	v.advanceAutoCube(elapsed)
 	v.advanceAutoEquip(elapsed)
 	v.advanceSocial(elapsed)
 
@@ -365,21 +378,28 @@ func (v *Game) Advance(elapsed float64) error {
 			tile := v.gameClient.MapEngine.TileAt(int(tilePosition.X()), int(tilePosition.Y()))
 
 			if tile != nil {
-				levelDetails := v.asset.Records.Level.Details[int(tile.RegionType)]
-				if v.ambientTest == nil { // OD2_AUTOAMBIENT picks the environment itself
-					v.soundEnv.SetEnv(v.soundEnvForRegion(tile.RegionType, levelDetails.SoundEnvironmentID))
+				// tile.RegionType is the LevelType, not a Levels.txt id: index
+				// Details by the id of the level the hero is actually in.
+				levelID := v.currentLevel()
+				levelDetails := v.asset.Records.Level.Details[levelID]
+
+				fallbackEnv := 0
+				if levelDetails != nil {
+					fallbackEnv = levelDetails.SoundEnvironmentID
 				}
 
-				// skip showing zone change text the first time we enter the world
-				if v.lastRegionType != d2enum.RegionNone && v.lastRegionType != tile.RegionType {
-					areaName := levelDetails.LevelDisplayName
-					areaChgStr := fmt.Sprintf("Entering The %s", areaName)
-					v.gameControls.SetZoneChangeText(areaChgStr)
+				if v.ambientTest == nil { // OD2_AUTOAMBIENT picks the environment itself
+					v.soundEnv.SetEnv(v.soundEnvForRegion(tile.RegionType, fallbackEnv))
+				}
+
+				// skipped the first time we enter the world
+				if text, ok := zoneChangeText(v.lastZoneLevel, levelID, levelDetails); ok {
+					v.gameControls.SetZoneChangeText(text)
 					v.gameControls.ShowZoneChangeText()
 					v.gameControls.HideZoneChangeTextAfter(hideZoneTextAfterSeconds)
 				}
 
-				v.lastRegionType = tile.RegionType
+				v.lastZoneLevel = levelID
 			}
 		}
 	}
@@ -428,8 +448,10 @@ func (v *Game) bindGameControls() error {
 		}
 
 		v.gameControls.Load()
+		v.gameControls.SetCubePortalHandler(v.cubePortal)
 		v.gameControls.Automap().SetLevelSource(v.currentLevel, v.levelName)
 		v.gameControls.SetEquipSound(v.playHeroUISound)
+		v.gameControls.SetQuestItemUse(v.useQuestItem)
 
 		if err := v.inputManager.BindHandler(v.gameControls); err != nil {
 			v.Error(bindControlsErrStr + player.ID())
@@ -498,6 +520,17 @@ func (v *Game) OnPlayerInteract(entity d2interface.MapEntity) {
 }
 
 // npcClassID returns the monstats class id (hcIdx) of an NPC entity, or -1.
+// stockSeed is the seed of a vendor's stock in this game session: fixed per
+// session (so the stock of a vendor does not depend on when the window is
+// opened) and different for every vendor and for gamble versus normal stock.
+func (v *Game) stockSeed(npc d2interface.MapEntity, gamble bool) uint32 {
+	if v.vendorSeed == 0 {
+		v.vendorSeed = uint32(time.Now().UnixNano()) | 1
+	}
+
+	return d2vendor.StockSeed(v.vendorSeed, v.npcClassID(npc), 0, gamble)
+}
+
 func (v *Game) npcClassID(entity d2interface.MapEntity) int {
 	if npc, ok := entity.(interface{ MonstatID() int }); ok {
 		return npc.MonstatID()
@@ -627,11 +660,11 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 		v.questTopic(npc, row.StringID)
 		v.endConversationUnlessMenuOpen()
 	case d2player.NPCActionTrade, d2player.NPCActionTradeRepair:
-		v.openTrade(npc, uint32(time.Now().UnixNano()))
+		v.openTrade(npc, v.stockSeed(npc, false))
 	case d2player.NPCActionHire:
 		v.openHire(npc)
 	case d2player.NPCActionGamble:
-		v.openGamble(npc, uint32(time.Now().UnixNano()))
+		v.openGamble(npc, v.stockSeed(npc, true))
 	case d2player.NPCActionIdentify:
 		v.openIdentify(npc)
 	case d2player.NPCActionTravelWest, d2player.NPCActionSailWest, d2player.NPCActionTravelEast, d2player.NPCActionSailEast:

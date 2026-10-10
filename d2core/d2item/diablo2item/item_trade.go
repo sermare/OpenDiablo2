@@ -7,7 +7,9 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2trade"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 )
 
 var errUnknownItemCode = errors.New("unknown item code")
@@ -20,14 +22,20 @@ func (f *ItemFactory) ItemFromCode(code string, q d2drop.Quality, ilvl int, seed
 		return nil, fmt.Errorf("%w: %q", errUnknownItemCode, code)
 	}
 
-	rng := d2rand.New(seed)
+	item, err := f.Create(CreateParams{Code: code, ILvl: ilvl, Quality: q, Seed: seed, Difficulty: f.Difficulty, Classic: f.Classic})
+	if err != nil {
+		if !errors.Is(err, errNoCreator) {
+			return nil, err
+		}
 
-	item := f.itemFromDrop(f.dropTables(), rng, &d2drop.Drop{Code: code, Quality: q, ILvl: ilvl})
-	if item == nil {
-		return nil, fmt.Errorf("%w: %q", errUnknownItemCode, code)
+		rng := d2rand.New(seed)
+
+		if item = f.legacyItemFromDrop(rng, &d2drop.Drop{Code: code, Quality: q, ILvl: ilvl}); item == nil {
+			return nil, fmt.Errorf("%w: %q", errUnknownItemCode, code)
+		}
+
+		item.quality = q
 	}
-
-	item.quality = q
 
 	return item, nil
 }
@@ -89,10 +97,11 @@ func (i *Item) InventoryFileName() string {
 // TradeItem converts the item to the input of d2trade.ItemPrice.
 //
 // Not covered (price terms are left out rather than invented): the
-// ItemStatCost per-stat price columns, the socketed items' cost, ethereal
-// (the factory does not roll it), the recharge cost of charged items, tome
-// and body part tables, and gamble flags. Magic affixes use PriceScale/PriceAdd (1/1024 fixed
-// point, checked against MagicPrefix.txt); unique and set rows are not priced.
+// ItemStatCost per-stat price columns, the single skill price, the socketed
+// items' cost, ethereal (the factory does not roll it), the recharge cost of
+// charged items, tome and body part tables, automagic rows and gamble flags.
+// Magic affixes use PriceScale/PriceAdd (1/1024 fixed point, checked against
+// MagicPrefix.txt); unique and set rows are not priced.
 func (i *Item) TradeItem() *d2trade.Item {
 	rec := i.CommonRecord()
 	typ := i.factory.asset.Records.Item.Types[rec.Type] // TypeCode is only set for dropped items
@@ -110,6 +119,7 @@ func (i *Item) TradeItem() *d2trade.Item {
 		Stackable:  rec.Stackable,
 		IsArmour:   rec.MaxAC > 0 && rec.Source == d2enum.InventoryItemTypeArmor,
 		Defense:    i.attributes.defense,
+		MinAC:      rec.MinAC,
 		MaxAC:      rec.MaxAC,
 
 		HasDurability: maxDur > 0,
@@ -127,18 +137,22 @@ func (i *Item) TradeItem() *d2trade.Item {
 		it.Repairable = typ.Repair && maxDur > 0 && it.Identified && !it.Ethereal
 	}
 
-	it.StackableRepairable = rec.Stackable && it.Repairable
-
 	if !it.Identified {
 		return it
 	}
 
-	for _, p := range i.PrefixRecords() {
-		it.Terms = append(it.Terms, d2trade.Term{Mult: p.PriceScale, Add: p.PriceAdd})
+	// The price function picks the affix rows by quality (one prefix and one
+	// suffix for magic items, three of each for rare and crafted ones).
+	for n, p := range i.PrefixRecords() {
+		if n < len(it.Affixes.Prefix) {
+			it.Affixes.Prefix[n] = &d2trade.Term{Mult: p.PriceScale, Add: p.PriceAdd}
+		}
 	}
 
-	for _, s := range i.SuffixRecords() {
-		it.Terms = append(it.Terms, d2trade.Term{Mult: s.PriceScale, Add: s.PriceAdd})
+	for n, s := range i.SuffixRecords() {
+		if n < len(it.Affixes.Suffix) {
+			it.Affixes.Suffix[n] = &d2trade.Term{Mult: s.PriceScale, Add: s.PriceAdd}
+		}
 	}
 
 	// Unique and set rows ("cost mult" is a small integer such as 5 in the
@@ -147,25 +161,84 @@ func (i *Item) TradeItem() *d2trade.Item {
 }
 
 // GambleBase converts the item's base record to the input of
-// d2trade.GamblePrice (TRADE_CalcGamblePrice reads the item's own base row,
-// its exceptional (UberCode) and elite (UltraCode) rows).
+// d2trade.GamblePrice. TRADE_CalcGamblePrice works on the normal-tier row of
+// the item's family (its NormalCode), whose exceptional (UberCode) and elite
+// (UltraCode) rows it also reads; the levels it uses are the base item levels
+// (byte +0xfd, the "level" column), not the required levels. VERIFIED.
 func (i *Item) GambleBase() d2trade.Gamble {
 	all := i.factory.asset.Records.Item.All
 	rec := i.CommonRecord()
 
+	if n := all[rec.NormalCode]; n != nil && rec.NormalCode != "" {
+		rec = n
+	}
+
 	g := d2trade.Gamble{
-		ReqLevel: rec.RequiredLevel, Cost: rec.Cost, MinStack: rec.MinStack, MaxStack: rec.MaxStack,
+		ReqLevel: rec.Level, Cost: rec.Cost, MinStack: rec.MinStack, MaxStack: rec.MaxStack,
 		GambleCost:     rec.GambleCost,
 		IsRingOrAmulet: rec.Code == "rin" || rec.Code == "amu",
 	}
 
 	if x := all[rec.UberCode]; x != nil && rec.UberCode != "" {
-		g.HasExc, g.ExcReq, g.ExcCost = true, x.RequiredLevel, x.Cost
+		g.HasExc, g.ExcReq, g.ExcCost = true, x.Level, x.Cost
 	}
 
 	if x := all[rec.UltraCode]; x != nil && rec.UltraCode != "" {
-		g.HasElite, g.EliteReq, g.EliteCost = true, x.RequiredLevel, x.Cost
+		g.HasElite, g.EliteReq, g.EliteCost = true, x.Level, x.Cost
 	}
 
 	return g
+}
+
+// extraStackStatID is ItemStatCost id 254 (stat 0xfe), the per-item addition to
+// the stack limit (ITEM_GetMaxStack 0x6297b0). The name is taken from the
+// record with this id instead of being hard-coded; stock data calls it
+// "item_extra_stack".
+const extraStackStatID = 0xfe
+
+// extraStackStatName returns the ItemStatCost name of stat id 0xfe, or "" when
+// the table has no such row.
+func extraStackStatName(stats d2records.ItemStatCosts) string {
+	for name, rec := range stats {
+		if rec != nil && rec.Index == extraStackStatID {
+			return name
+		}
+	}
+
+	return ""
+}
+
+// IsStackable reports whether the base item stacks (armor/weapons/misc.txt
+// "stackable"; the original's test 0x62c9a0).
+func (i *Item) IsStackable() bool {
+	rec := i.CommonRecord()
+
+	return rec != nil && rec.Stackable
+}
+
+// StackLimit is the stack size limit: the base record maxstack plus the item's
+// stat 0xfe, clamped to 511 (ITEM_GetMaxStack 0x6297b0, VERIFIED). The stat is
+// found by its id (via the ItemStatCost row) in the evaluated stat list; items without it add 0.
+func (i *Item) StackLimit() int {
+	rec := i.CommonRecord()
+	if rec == nil {
+		return 0
+	}
+
+	extra := 0
+	extraName := extraStackStatName(i.factory.asset.Records.Item.Stats)
+
+	if i.statList != nil && extraName != "" {
+		for _, s := range i.statList.Stats() {
+			if s.Name() != extraName {
+				continue
+			}
+
+			if vals := s.Values(); len(vals) > 0 {
+				extra += vals[0].Int()
+			}
+		}
+	}
+
+	return d2inventory.MaxStack(rec.MaxStack, extra)
 }

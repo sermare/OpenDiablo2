@@ -15,6 +15,10 @@ package d2boss
 // UNVERIFIED: the delay between the staff and the portal, where Tyrael
 // stands, and that the exit is a permanent town portal.
 type Tomb struct {
+	// LegacyLairGate restores the earlier model in which the lair opens when the staff is placed. By default (false)
+	// LairWarpBlocked follows the exe: the lair stays closed until the portal timer has run (private byte +0xb = 1, VERIFIED).
+	LegacyLairGate bool
+
 	state tombState
 	// DurielAlive is set between the spawn and the kill.
 	DurielAlive bool
@@ -110,3 +114,22 @@ func (t *Tomb) OnKill(m *Manager, k Kill) {
 
 // OnTick implements Encounter.
 func (t *Tomb) OnTick(*Manager, int) {}
+
+// LairWarpBlocked is the gate of the warp into Duriel's Lair (level 73):
+// SERVER_EnterWarpTile 0x553140 asks FUN_00543a70, which for level 73 calls
+// FUN_0059b700 = "the Seven Tombs node (id 13) is active and its private byte
+// +0xb is 0" and cancels the warp then. VERIFIED: that test, and the writer of
+// +0xb: the staff placement event 0x59b960 (removes the staff, amulet and shaft,
+// sets private +0xd/+0xe, adds the quest timer 0x59b450 with a delay of
+// (table short - 0x4b) / 20 frames); that callback animates the orifice, creates
+// the portal object 100 at (X-13, Y+3) of the object stored in private +0x20
+// and ends with private +0xb = 1, +0xd = 0, +3 = 0. So the lair opens when the
+// portal appears, not when the staff is placed. LegacyLairGate restores the
+// earlier model, blocked only until the staff is placed.
+func (t *Tomb) LairWarpBlocked() bool {
+	if t.LegacyLairGate {
+		return t.state == tombSealed
+	}
+
+	return t.state < tombPortalOpen
+}

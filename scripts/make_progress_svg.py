@@ -32,7 +32,7 @@ y = head_h
 for i, b in enumerate(data["bars"]):
     frac = b["done"] / b["total"]
     pct = frac * 100
-    label = f'{pct:.0f}%' if pct >= 10 or pct == 0 else f'{pct:.1f}%'
+    label = f'{pct:.1f}%' if (pct < 10 and pct != 0) or 99 <= pct < 100 else f'{pct:.0f}%'
     a(f'<text x="{PAD}" y="{y+16}" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">{escape(b["label"])}</text>')
     a(f'<text x="{W-PAD}" y="{y+16}" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">{b["done"]:,} / {b["total"]:,}</text>')
     by = y + 28
@@ -41,6 +41,13 @@ for i, b in enumerate(data["bars"]):
     fw = max(frac * full, 6 if b["done"] else 0)
     if fw:
         a(f'<rect x="{PAD}" y="{by}" width="{fw:.1f}" height="{BAR_H}" rx="9" fill="url(#g{i})" filter="url(#glow)"/>')
+    # work that exists only on branches that have not passed the full verify yet: a lighter segment after the bar
+    pend = b.get("pending", 0)
+    if pend:
+        pw = min(pend / b["total"] * full, full - fw)
+        if pw > 0:
+            a(f'<rect x="{PAD + fw:.1f}" y="{by}" width="{pw:.1f}" height="{BAR_H}" rx="9" fill="{b["color"]}" fill-opacity="0.28" stroke="{b["color"]}" stroke-opacity="0.6" stroke-dasharray="4 3"/>')
+        b = dict(b, note=f'+{pend / b["total"] * 100:.0f}% done on branches, not yet verified (dashed) · ' + b["note"])
     a(f'<text x="{W-PAD}" y="{by+14}" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="{b["color"]}">{label}</text>')
     a(f'<text x="{PAD}" y="{by+BAR_H+17}" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">{escape(b["note"])}</text>')
     y += ROW_H

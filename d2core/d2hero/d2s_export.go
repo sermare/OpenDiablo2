@@ -10,6 +10,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 )
 
 // lastPlayedOffset is where a .d2s header keeps the time it was last saved
@@ -30,6 +31,12 @@ type ExportOptions struct {
 	SkillIDs []int
 	// LastPlayed is written to the header when non-zero.
 	LastPlayed time.Time
+	// Affixes maps rolled item names to save ids; with it (and the hero's
+	// containers) the items of the containers are written: moved, removed and
+	// made in the game (MergeContainerItems).
+	Affixes *AffixIDs
+	// Known says whether the engine has a record for a base item code.
+	Known func(code string) bool
 	// Warn receives a message for everything the engine state could not be
 	// written faithfully. May be nil.
 	Warn func(msg string)
@@ -93,6 +100,11 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 		}
 	}
 
+	if opts.Affixes != nil && state.Containers != nil {
+		// the counts are reported by NewItemsInD2S; only the items that could not be written warn
+		MergeContainerItems(c, state.Containers, tables, opts.Affixes, opts.Known, warn)
+	}
+
 	exportWorld(c.Header, state)
 
 	if state.SkillBar != nil {
@@ -100,6 +112,7 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 	}
 
 	exportMerc(c, state)
+	exportMercItems(c, state, warn)
 	exportDeath(c, state)
 
 	if !opts.LastPlayed.IsZero() {
@@ -171,6 +184,17 @@ func exportAttributes(c *d2s.Character, state *HeroState, warn func(string, ...i
 	}
 
 	set(d2s.StatGold, a.Gold, gold, false)
+
+	if state.StashGold != nil {
+		stash := *state.StashGold
+		if stash > d2inventory.StashGoldLimit {
+			warn("stash gold %d exceeds the stash cap, clamped to %d", stash, d2inventory.StashGoldLimit)
+
+			stash = d2inventory.StashGoldLimit
+		}
+
+		set(d2s.StatStashedGold, a.StashedGold, stash, false)
+	}
 
 	if s.Level > 0 && s.Level < 256 {
 		c.Header.Level = uint8(s.Level)

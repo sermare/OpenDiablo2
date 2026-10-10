@@ -501,3 +501,31 @@ const (
 	PaletteTransformSky       = "/data/global/palette/sky/Pal.pl2"
 	PaletteTransformTrademark = "/data/global/palette/trademark/Pal.pl2"
 )
+
+// DataDictionaries lists the excel tables every game session loads into the record manager, in load order.
+func DataDictionaries() []string {
+	return []string{
+		LevelType, LevelPreset, LevelWarp, ObjectType,
+		ObjectDetails, Weapons, Armor, Misc,
+		Books, ItemTypes, UniqueItems, Missiles,
+		SoundSettings, MonStats, MonStats2, MonPreset,
+		MonProp, MonType, MonMode, MagicPrefix,
+		MagicSuffix, ItemStatCost, ItemRatio, StorePage,
+		Overlays, CharStats, Hireling, Experience,
+		Gems, QualityItems, Runes, DifficultyLevels,
+		AutoMap, LevelDetails, LevelMaze, LevelSubstitutions,
+		CubeRecipes, SuperUniques, Inventory, Skills,
+		SkillCalc, MissileCalc, Properties, SkillDesc,
+		BodyLocations, Sets, SetItems, AutoMagic,
+		TreasureClass, TreasureClassEx, States, SoundEnvirons,
+		Shrines, ElemType, PlrMode, PetType,
+		NPC, MonsterUniqueModifier, MonsterEquipment, UniqueAppellation,
+		MonsterLevel, MonsterSound, MonsterSequence, PlayerClass,
+		MonsterPlacement, ObjectGroup, CompCode, MonsterAI,
+		RarePrefix, RareSuffix, Events, Colors,
+		ArmorType, WeaponClass, PlayerType, Composite,
+		HitClass, UniquePrefix, UniqueSuffix, CubeModifier,
+		CubeType, HirelingDescription, LowQualityItems, Belts,
+		Gamble,
+	}
+}

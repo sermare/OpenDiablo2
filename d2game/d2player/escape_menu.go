@@ -10,6 +10,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
+	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2client/d2clientconnectiontype"
 )
 
 type (
@@ -443,7 +444,7 @@ func (m *EscapeMenu) showLayout(id layoutID) {
 	}
 
 	if id == saveLayoutID {
-		m.navigator.ToMainMenu()
+		m.SaveAndExit()
 		return
 	}
 
@@ -637,4 +638,11 @@ func (m *EscapeMenu) OnKeyDown(event d2interface.KeyEvent) bool {
 	}
 
 	return true
+}
+
+// SaveAndExit leaves the game for the character select screen. The hero is
+// saved when the game screen unloads (the .d2s is written back, after a
+// .d2s.bak copy of the original), and the list there is read again.
+func (m *EscapeMenu) SaveAndExit() {
+	m.navigator.ToCharacterSelect(d2clientconnectiontype.Local, "")
 }

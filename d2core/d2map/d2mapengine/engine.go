@@ -181,6 +181,7 @@ func (m *MapEngine) LevelType() d2records.LevelTypeRecord {
 func (m *MapEngine) SetSeed(seed int64) {
 	m.Infof("Setting map engine seed to %d", seed)
 	m.seed = seed
+	m.StampFactory.Reseed(seed)
 }
 
 // Size returns the size of the map in sub-tiles.

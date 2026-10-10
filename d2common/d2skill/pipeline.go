@@ -424,6 +424,28 @@ func (p *Pipeline) PassiveStats(u Unit, skillID int) []StatMod {
 		return nil
 	}
 
+	return p.passiveStats(u, sk, lvl)
+}
+
+// SummonPassives evaluates the passivestat columns of a summoning skill at
+// the caster's level (Raise Skeleton's maxhp from Skeleton Mastery, the golems'
+// and druid pets' damage/tohit...). Unlike PassiveStats the skill itself is
+// not a passive: the columns describe the minion, not the caster.
+func (p *Pipeline) SummonPassives(u Unit, skillID int) []StatMod {
+	sk := p.Skills.ByID(skillID)
+	if sk == nil {
+		return nil
+	}
+
+	lvl := u.SkillLevel(skillID)
+	if lvl < 1 {
+		return nil
+	}
+
+	return p.passiveStats(u, sk, lvl)
+}
+
+func (p *Pipeline) passiveStats(u Unit, sk *Skill, lvl int) []StatMod {
 	env := p.env(sk, lvl, u)
 
 	var out []StatMod
@@ -432,6 +454,47 @@ func (p *Pipeline) PassiveStats(u Unit, skillID int) []StatMod {
 		if sk.PassiveStat[i] != "" {
 			out = append(out, StatMod{Stat: sk.PassiveStat[i], Value: env.eval(sk.PassiveCalc[i])})
 		}
+	}
+
+	return out
+}
+
+// TruePassiveMod is one stat of a true passive. Param is the passiveitype
+// (weapon type) the stat is keyed to, "" when it is not weapon-keyed.
+type TruePassiveMod struct {
+	Stat  string
+	Value int
+	Param string
+}
+
+// TruePassiveStats returns the stats the game applies for a skill the unit
+// has, the way the skill-change / join path does (0x648130, verified): the
+// gate is the passivestate column (> 0), NOT the passive flag, so Resist
+// Fire/Cold/Lightning and Blessed Aim count too. passivestat1..5 are
+// evaluated with passivecalc1..5 at the skill's total level; the stat list
+// is removed at level 0. passiveitype is not a gate: the exe stores it as the
+// stat's param (layer), so a mastery's stats exist always and the combat code
+// reads the entry for the equipped weapon type (the lookup side is unverified).
+// Unverified: slot values of 0 are kept here (the aura writer 0x5c4d70 skips
+// them); the removal when the unit has the aurastate (+0x80) is not modelled.
+func (p *Pipeline) TruePassiveStats(u Unit, skillID int) []TruePassiveMod {
+	sk := p.Skills.ByID(skillID)
+	lvl := u.SkillLevel(skillID)
+
+	if sk == nil || lvl < 1 || sk.PassiveState == "" {
+		return nil
+	}
+
+	env := p.env(sk, lvl, u)
+
+	var out []TruePassiveMod
+
+	for i := 1; i <= 5; i++ {
+		if sk.PassiveStat[i] == "" {
+			break // the exe stops at the first invalid stat id
+		}
+
+		out = append(out, TruePassiveMod{Stat: sk.PassiveStat[i], Value: env.eval(sk.PassiveCalc[i]), Param: sk.PassiveIType})
 	}
 
 	return out
@@ -454,8 +517,16 @@ type castOpts struct {
 }
 
 func (p *Pipeline) owner(u Unit) d2missile.Owner {
-	return d2missile.Owner{ID: u.ID(), IsPlayer: u.IsPlayer(), Level: u.Level(), AttackRating: u.AttackRating(),
+	o := d2missile.Owner{ID: u.ID(), IsPlayer: u.IsPlayer(), Level: u.Level(), AttackRating: u.AttackRating(),
 		Roller: u.Roller()}
+
+	// A unit that can die reports it, so missiles that need a living owner
+	// (SrvDoFunc 6 and 7, verified 0x5ac1b0 / 0x5ac2c0) end with it.
+	if g, ok := u.(interface{ Gone() bool }); ok {
+		o.Gone = g.Gone
+	}
+
+	return o
 }
 
 var masteryStat = map[string]string{
@@ -481,7 +552,8 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 	}
 
 	desc := sk.Descriptor(env, lvl, wmin, wmax, u.Stat(masteryStat[sk.EType]))
-	desc.DamagePct = int32(u.Stat("damagepercent"))
+	desc.DamagePct = int32(u.Stat("damagepercent") + missileMastery(u, sk))
+	desc.Crit = missileCrit(u, sk, ms)
 
 	x, y := u.Pos()
 	sx, sy := float64(x)+0.5, float64(y)+0.5
@@ -495,10 +567,55 @@ func (p *Pipeline) castMissile(u Unit, sk *Skill, lvl int, env *Env, name string
 		dx, dy = float64(tgt.UX)+0.5, float64(tgt.UY)+0.5
 	}
 
+	// Area hit functions without a table radius (sHitPar1 < 1) take it from the
+	// casting skill (verified): hit function 1 (0x5a7500) from calc1 (skills
+	// record +0x138), hit function 14 (Meteor, 0x5a8680) from aurarangecalc
+	// (+0x64); Meteor's flames last Param3 + (level-1)*Param4 frames (record
+	// +0x150 / +0x154, lifetime flag 0x8000).
+	var areaRadius, hitSubRange int
+
+	if ms.SHitPar[0] < 1 {
+		switch ms.SrvHitFunc {
+		case 1:
+			areaRadius = env.eval(sk.Calc[1])
+		case 3, 14, 36:
+			areaRadius = env.eval(sk.AuraRangeCalc)
+		}
+	}
+
+	// SrvDoFunc 27 (Tornado, 0x5ad590, verified): period = Param1 else calc4,
+	// radius = Param2 else aurarangecalc.
+	var pulse int
+
+	if ms.SrvDoFunc == 27 {
+		if ms.Param[0] < 1 {
+			pulse = env.eval(sk.Calc[4])
+		}
+
+		if ms.Param[1] < 1 {
+			areaRadius = env.eval(sk.AuraRangeCalc)
+		}
+	}
+
+	if ms.SrvHitFunc == 14 {
+		hitSubRange = sk.Params[3] + (lvl-1)*sk.Params[4]
+	}
+
+	// Hit function 7 (Holy Bolt, 0x5a7a40, verified) heals allies by calc1 +
+	// rand(calc2 - calc1) of the skill, in 8.8 fixed point.
+	var healMin, healMax int
+
+	if ms.SrvHitFunc == 7 {
+		healMin, healMax = env.eval(sk.Calc[1])<<8, env.eval(sk.Calc[2])<<8
+	}
+
 	m, err := p.Sim.Create(d2missile.CreateParams{
 		Spec: ms, Owner: p.owner(u), SkillID: sk.ID, Level: lvl, Damage: desc,
+		AreaRadius: areaRadius, HitSubRange: hitSubRange, HealMin: healMin, HealMax: healMax, PulseEvery: pulse,
 		X: sx, Y: sy, DestX: dx, DestY: dy, Angle: o.angle, Velocity: o.velocity, ClampToDest: o.clamp || sk.Lob,
-		Pierce: u.Stat("pierce_idx"), OnHit: o.onHit,
+		// the missile rolls its pierce charges (stat 0x148) from skill_pierce +
+		// item_pierce at creation (0x59d4e0, verified)
+		PierceChance: u.Stat("skill_pierce") + u.Stat("item_pierce"), OnHit: o.onHit,
 		Stationary: o.stationary, HitEvery: o.hitEvery, ScalePct: o.scalePct, Home: o.home, Range: o.rangeLife,
 	})
 	if err != nil {

@@ -51,6 +51,11 @@ type HeroStatsState struct {
 	// damage, resists, block and so on. Nil until the first recalculation. It
 	// travels to the client with the hero (its stat list does not).
 	Totals *d2statlist.Totals `json:"totals,omitempty"`
+	// SkillStats, when set, returns the stats the hero's active buffs and
+	// auras put on it (ItemStatCost name -> summed value). RecalcStats merges
+	// them into the item stat list. Nil (the default) means no skill stats and
+	// leaves every total exactly as the items give it.
+	SkillStats func() map[string]int `json:"-"`
 	// Recalc recomputes Totals and the maxima after strength/dexterity/
 	// vitality/energy or equipment changed. Set by the hero state factory.
 	Recalc func() `json:"-"`
@@ -94,4 +99,15 @@ func statClass(c *d2records.CharStatRecord) d2statlist.Class {
 		LifePerLevel: c.LifePerLevel, ManaPerLevel: c.ManaPerLevel, StaminaPerLevel: c.StaminaPerLevel,
 		ToHitFactor: c.ToHitFactor, BlockFactor: c.BlockFactor,
 	}
+}
+
+// ItemExperiencePct is the item "+% experience" bonus (stat 85,
+// item_addexperience) of the last RecalcStats; 0 for a hero without the bonus
+// or without a stat list (a copy of the stats that travelled over the network).
+func (s *HeroStatsState) ItemExperiencePct() int {
+	if s == nil || s.Totals == nil {
+		return 0
+	}
+
+	return int(s.Totals.Stats.Get(d2statlist.StatAddExp))
 }

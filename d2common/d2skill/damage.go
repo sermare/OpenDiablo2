@@ -58,14 +58,15 @@ func (d *DamageSpec) ElemMin(e *Env, lvl int) int32 {
 }
 
 // ElemMax is SKILL_GetElementalMaxDamage (0x646200): the same with EMax; the
-// synergy applies when the base is above 1.0.
+// synergy applies whatever the base is (oracle verified; ElemMin has the
+// "above 1.0 or EMinLev1 set" test, ElemMax has none).
 func (d *DamageSpec) ElemMax(e *Env, lvl int) int32 {
 	if lvl < 1 {
 		return 0
 	}
 
 	base := (d.EMax + tiers5(d.EMaxLev, lvl)) << uint(d.HitShift)
-	if !d.EDmgSymPer.Empty() && base > 0x100 {
+	if !d.EDmgSymPer.Empty() {
 		base += mulDiv(base, e.eval(d.EDmgSymPer), 100)
 	}
 

@@ -1,0 +1,6 @@
+# Paths exempt from scripts/check_repo_hygiene.sh. One exact path per line.
+# Upstream OpenDiablo2 files that predate the fork (not Blizzard data):
+d2common/d2loader/testdata/D.mpq
+docs/Gameplay.png
+docs/areas.gif
+rh.exe

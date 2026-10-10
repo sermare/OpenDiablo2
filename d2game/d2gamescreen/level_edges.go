@@ -133,7 +133,8 @@ type exitWalk struct {
 	candidates [][2]float64 // local tile positions to try, nearest first
 	next       int
 	standStill float64
-	paused     bool // a defensive fight interrupted the walk
+	logged     float64 // seconds since the last progress line
+	paused     bool    // a defensive fight interrupted the walk
 	lastX      float64
 	lastY      float64
 	warp       *d2mapengine.WarpTile
@@ -329,6 +330,12 @@ func (v *Game) advanceExitWalk(elapsed float64) {
 	e.progress(math.Hypot(c[0]-hx, c[1]-hy))
 
 	e.elapsed += elapsed
+	if e.logged += elapsed; e.logged >= 10 {
+		e.logged = 0
+		v.Infof("EXIT towards level %d: hero at (%.1f,%.1f), %.1f tiles from candidate %d, %.0f s without progress",
+			e.level, hx, hy, math.Hypot(c[0]-hx, c[1]-hy), e.next%len(e.candidates), e.elapsed)
+	}
+
 	if e.elapsed > exitTimeout {
 		v.Warningf("EXIT gave up walking towards level %d: hero at (%.1f,%.1f) after %.0f s", e.level, hx, hy, e.elapsed)
 		v.levels.exitWalk = nil

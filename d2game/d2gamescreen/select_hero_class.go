@@ -1,8 +1,10 @@
 package d2gamescreen
 
 import (
+	"fmt"
 	"image"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
@@ -325,10 +327,14 @@ type SelectHeroClass struct {
 	heroDesc3Label  *d2ui.Label
 	heroNameTextbox *d2ui.TextBox
 	heroNameLabel   *d2ui.Label
+	nameProblem     *d2ui.Label
 	heroRenderInfo  map[d2enum.Hero]*HeroRenderInfo
 	*d2inventory.InventoryItemFactory
 	*d2hero.HeroStateFactory
 	selectedHero       d2enum.Hero
+	shownProblem       string
+	problemKey         string
+	problem            string
 	exitButton         *d2ui.Button
 	okButton           *d2ui.Button
 	expansionCheckbox  *d2ui.Checkbox
@@ -440,6 +446,10 @@ func (v *SelectHeroClass) createLabels() {
 	v.heroNameLabel.SetText(d2ui.ColorTokenize(v.asset.TranslateString(d2enum.CharNameLabel), d2ui.ColorTokenGold))
 	v.heroNameLabel.SetPosition(heroNameLabelX, heroNameLabelY)
 
+	v.nameProblem = v.uiManager.NewLabel(d2resource.Font16, d2resource.PaletteUnits)
+	v.nameProblem.Alignment = d2ui.HorizontalAlignLeft
+	v.nameProblem.SetPosition(nameProblemX, nameProblemY)
+
 	v.expansionCharLabel = v.uiManager.NewLabel(d2resource.Font16, d2resource.PaletteUnits)
 	v.expansionCharLabel.Alignment = d2ui.HorizontalAlignLeft
 	v.expansionCharLabel.SetText(d2ui.ColorTokenize(v.asset.TranslateString("#803"), d2ui.ColorTokenGold))
@@ -495,6 +505,12 @@ func (v *SelectHeroClass) onExitButtonClicked() {
 
 func (v *SelectHeroClass) onOkButtonClicked() {
 	heroName := v.heroNameTextbox.GetText()
+	if problem := newHeroProblem(heroName, v.selectedHero, v.expansionCheckbox.GetCheckState(),
+		v.HeroStateFactory.NameTaken); problem != "" {
+		v.Warningf("NEWCHAR refused %q: %s", heroName, problem)
+		return
+	}
+
 	// the .od2 save and the real .d2s of a new character (never replacing a
 	// .d2s that exists) come from the one creation path
 	playerState, res, err := v.CreateNewHero(heroName, v.selectedHero,
@@ -545,6 +561,7 @@ func (v *SelectHeroClass) Render(screen d2interface.Surface) {
 
 	if v.heroNameTextbox.GetVisible() {
 		v.heroNameLabel.Render(screen)
+		v.nameProblem.Render(screen)
 		v.expansionCharLabel.Render(screen)
 		v.hardcoreCharLabel.Render(screen)
 	}
@@ -552,6 +569,8 @@ func (v *SelectHeroClass) Render(screen d2interface.Surface) {
 
 // Advance runs the update logic on the Select Hero Class screen
 func (v *SelectHeroClass) Advance(tickTime float64) error {
+	v.advanceFlow(tickTime)
+
 	canSelect := true
 
 	if err := v.campfire.Advance(tickTime); err != nil {
@@ -572,7 +591,25 @@ func (v *SelectHeroClass) Advance(tickTime float64) error {
 		v.updateHeroSelectionHover(heroType, canSelect)
 	}
 
-	v.okButton.SetEnabled(len(v.heroNameTextbox.GetText()) >= 2 && v.selectedHero != d2enum.HeroNone)
+	// the disk is only looked at when the name or class changed
+	key := fmt.Sprintf("%d/%t/%s", v.selectedHero, v.expansionCheckbox.GetCheckState(), v.heroNameTextbox.GetText())
+	if key != v.problemKey {
+		v.problemKey, v.problem = key, ""
+
+		if v.selectedHero != d2enum.HeroNone {
+			v.problem = newHeroProblem(v.heroNameTextbox.GetText(), v.selectedHero, v.expansionCheckbox.GetCheckState(),
+				v.HeroStateFactory.NameTaken)
+		}
+	}
+
+	problem := v.problem
+
+	if problem != v.shownProblem {
+		v.shownProblem = problem
+		v.nameProblem.SetText(d2ui.ColorTokenize(problem, d2ui.ColorTokenRed))
+	}
+
+	v.okButton.SetEnabled(len(v.heroNameTextbox.GetText()) >= 2 && v.selectedHero != d2enum.HeroNone && problem == "")
 
 	return nil
 }
@@ -802,4 +839,28 @@ func (v *SelectHeroClass) loadSoundEffect(sfx string) d2interface.SoundEffect {
 	}
 
 	return result
+}
+
+const nameProblemX, nameProblemY = 318, 538
+
+// newHeroProblem says why a character cannot be created with these choices,
+// or returns "" when it can. While the name is empty nothing is said (the OK
+// button stays disabled). taken tells whether a character of the name exists.
+func newHeroProblem(name string, hero d2enum.Hero, expansion bool, taken func(string) bool) string {
+	switch {
+	case name == "":
+		return ""
+	case len(name) < d2s.MinCharacterName:
+		return "Names need at least 2 letters."
+	case len(name) > d2s.MaxCharacterName:
+		return "Names have at most 15 letters."
+	case d2s.ValidateName(name) != nil:
+		return "Use letters only, and at most one - or _ inside."
+	case !expansion && (hero == d2enum.HeroDruid || hero == d2enum.HeroAssassin):
+		return "This class needs an Expansion character."
+	case taken != nil && taken(name):
+		return "A character with that name already exists."
+	}
+
+	return ""
 }

@@ -3,6 +3,7 @@ package d2gamescreen
 import (
 	"errors"
 	"strconv"
+	"sync"
 )
 
 const (
@@ -18,11 +19,34 @@ const (
 // when it exits without going through OnUnload.
 var activeGame *Game
 
+// activeGameMu guards activeGame: SaveActiveGame runs from the application's
+// quit and console paths while a game screen may be created or unloaded.
+var activeGameMu sync.Mutex
+
+func setActiveGame(g *Game) {
+	activeGameMu.Lock()
+	activeGame = g
+	activeGameMu.Unlock()
+}
+
+// clearActiveGame forgets g if it is still the active game.
+func clearActiveGame(g *Game) {
+	activeGameMu.Lock()
+	if activeGame == g {
+		activeGame = nil
+	}
+	activeGameMu.Unlock()
+}
+
 // SaveActiveGame saves the hero of the running game, if there is one. The
 // application calls it when it quits.
 func SaveActiveGame() {
-	if activeGame != nil {
-		activeGame.saveBeforeExit()
+	activeGameMu.Lock()
+	g := activeGame
+	activeGameMu.Unlock()
+
+	if g != nil {
+		g.saveBeforeExit()
 	}
 }
 

@@ -173,9 +173,10 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 		return err
 	}
 
-	env := drlgoutdoor.NewEnv(tb, func(file string) ([]byte, error) {
-		return g.asset.LoadFile("/data/global/tiles/" + file)
-	})
+	env, err := outdoorEnv(g.asset)
+	if err != nil {
+		return err
+	}
 
 	lv, err := drlgoutdoor.Generate(env, p)
 	if err != nil {
@@ -382,9 +383,10 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 		return err
 	}
 
-	env := drlgoutdoor.NewEnv(tb, func(file string) ([]byte, error) {
-		return g.asset.LoadFile("/data/global/tiles/" + file)
-	})
+	env, err := outdoorEnv(g.asset)
+	if err != nil {
+		return err
+	}
 
 	pl, err := drlgoutdoor.GeneratePreset(env, p, -1)
 	if err != nil {
@@ -516,7 +518,7 @@ func (g *MapGenerator) markWarpTiles(stamp *d2mapstamp.Stamp, path string, ox, o
 	// LvlWarp ids of the Levels.txt slots (33..36), so the preset stands for that one exit
 	if !hasCave {
 		cave, hasCave = d2level.SingleTileDestination(levelID)
-		isCave = hasCave && d2level.ActOfLevel(levelID) == 2
+		isCave = hasCave && d2level.ActOfLevel(levelID) >= 2 // also City of the Damned -> River of Flame, Arreat Plateau -> Crystalline Passage
 	}
 
 	sz := stamp.Size()
@@ -534,6 +536,13 @@ func (g *MapGenerator) markWarpTiles(stamp *d2mapstamp.Stamp, path string, ox, o
 					g.engine.SetWarpDestination(ox+x, oy+y, dest)
 				} else if isCave && hasCave {
 					dest = cave
+				}
+
+				if d, ok := d2level.OutdoorExitByPreset(levelID, path); ok {
+					dest = d
+				}
+
+				if dest != 0 {
 					g.engine.SetWarpDestination(ox+x, oy+y, dest)
 				}
 

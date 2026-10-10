@@ -44,8 +44,12 @@ type Spec struct {
 	SHitPar            [3]int // sHitPar1..3
 	DParam             [2]int // dParam1..2
 	HitClass           int
-	ResultFlags        int
-	HitFlags           int
+	// SrcDam is the missiles.txt SrcDamage column (byte +0x12d of the record):
+	// -1 (0xff) turns the skill's SrcDam off for this missile, which also
+	// turns off its critical strike roll (0x64cbde, verified).
+	SrcDam      int
+	ResultFlags int
+	HitFlags    int
 }
 
 // Table resolves missiles by id or name.
@@ -61,6 +65,9 @@ type Owner struct {
 	Level        int
 	AttackRating int
 	Roller       d2combat.Roller
+	// Gone, when set, reports that the owner is dead or gone; SrvDoFunc 7
+	// (Guided Arrow) destroys its missile then (0x5ac2c0, verified).
+	Gone func() bool
 }
 
 // Target is a unit a missile can hit.
@@ -85,6 +92,17 @@ type World interface {
 	Frame() int
 }
 
+// Finder is optionally implemented by a World to let hit function 10 (Guided
+// Arrow, 0x5a8100 -> 0x5a8060) look for a new target where the arrow ran out.
+type Finder interface {
+	// EnemiesWithin lists the living enemies of the owner that the exe's scan
+	// (0x569510 with filter 0x569100) offers: players and monsters, not in a
+	// town, targetable, in line of sight of the owner, whose subtile position
+	// is within radius subtiles (euclidean) of (x, y). The sim keeps the one
+	// with the lowest Serial (unit id), verified 0x569a40.
+	EnemiesWithin(o Owner, x, y float64, radius int) []Target
+}
+
 // EventKind classifies a simulation event.
 type EventKind string
 
@@ -98,6 +116,16 @@ const (
 	EventExpire  EventKind = "expire"  // lifetime ran out
 	EventExplode EventKind = "explode" // client side explosion missile
 	EventPierce  EventKind = "pierce"  // passed through a target
+	// EventVanish: destroyed without running the hit function (the exe's
+	// "return 2" paths: entering a wall bit that is not in the CollideType
+	// block mask, owner gone for SrvDoFunc 7).
+	EventVanish EventKind = "vanish"
+	// EventArea: an area damage hit function (1, 14) fired at the missile;
+	// Damage is rolled once and applies to every enemy within Radius subtiles
+	// (squared distance <= Radius^2, verified 0x569510).
+	EventArea EventKind = "area"
+	// EventHeal: Holy Bolt healed an ally (Event.Heal, 8.8 fixed point).
+	EventHeal EventKind = "heal"
 )
 
 // Event is one thing that happened to a missile.
@@ -110,4 +138,6 @@ type Event struct {
 	Chance int // to-hit chance (EventHit / EventMiss), 0 when no roll
 	Roll   int
 	Name   string // explosion missile name (EventExplode)
+	Heal   int    // EventHeal: life healed, 8.8 fixed point
+	Radius int    // EventArea: radius in subtiles
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgmaze"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 )
 
 // LevelProvider builds one kind of level into the map engine of a generator.
@@ -70,6 +71,8 @@ func (g *MapGenerator) LoadLevel(levelID int, req LoadRequest) (arrival Arrival,
 		}
 	}()
 
+	defer d2util.PerfTime(fmt.Sprintf("level-load id=%d provider=%s", levelID, p.Name()))()
+
 	if err := p.Load(g, levelID, req); err != nil {
 		return Arrival{}, fmt.Errorf("%s: level %d: %w", p.Name(), levelID, err)
 	}
@@ -103,9 +106,9 @@ func (townProvider) Load(g *MapGenerator, _ int, _ LoadRequest) error {
 }
 
 // maxMazeLevel is the last level id the maze provider tries: Act 1 (caves, crypts, jail, catacombs)
-// Act 2 (sewers, palace, tombs, lair, arcane sanctuary; the exe's DRLG_ port: drlgmaze/maze_act23.go)
-// and Act 3 (spider caves, flayer dungeons, sewers, temples, Durance of Hate).
-const maxMazeLevel = 102
+// and Act 2 (sewers, palace, tombs, lair, arcane sanctuary; the exe's DRLG_ port: drlgmaze/maze_act23.go).
+// Acts 4 and 5 (River of Flame, the ice caves, the Worldstone Keep: drlgmaze/maze_act45.go).
+const maxMazeLevel = 135
 
 // mazeProvider builds Act 1 maze levels (caves, crypts, jail, catacombs) with
 // the DRLG port. It is only active with OD2_REALMAPS=1.

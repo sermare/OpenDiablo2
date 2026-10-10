@@ -81,6 +81,13 @@ type ContainerPanel struct {
 	onChange func()
 	onClose  func()
 
+	// transmute is the cube's Transmute button (nil on the stash); onTransmute
+	// runs when it is pressed.
+	transmute   *d2ui.Button
+	onTransmute func()
+	status      *d2ui.Label
+	statusText  string
+
 	*d2util.Logger
 }
 
@@ -136,8 +143,61 @@ func (p *ContainerPanel) Load() {
 	p.title.SetPosition(p.originX+(320-tw)/2, panelTitleY) //nolint:gomnd // the panel is 320 wide
 	p.panelGroup.AddWidget(p.title)
 
+	if p.kind.page == d2hero.PageCube {
+		p.transmute = p.ui.NewButton(d2ui.ButtonTypeShort, "Transmute")
+		p.transmute.SetVisible(false)
+		// centred under the grid
+		p.transmute.SetPosition(p.originX+(320-cubeButtonWidth)/2, p.grid.originY+p.grid.height*p.grid.slotSize+cubeButtonGap+cubeButtonHeight)
+		p.transmute.OnActivated(func() {
+			if p.onTransmute != nil {
+				p.onTransmute()
+			}
+		})
+		p.panelGroup.AddWidget(p.transmute)
+
+		p.status = p.ui.NewLabel(d2resource.FontFormal11, d2resource.PaletteStatic)
+		p.status.Color[0] = color.RGBA{R: 255, G: 255, B: 255, A: 255}
+		p.status.SetPosition(p.originX+panelStatusX, p.grid.originY+p.grid.height*p.grid.slotSize+cubeButtonGap+cubeButtonHeight+panelStatusDY)
+		p.panelGroup.AddWidget(p.status)
+	}
+
 	p.tooltip = p.ui.NewTooltip(d2resource.FontFormal11, d2resource.PaletteStatic, d2ui.TooltipXCenter, d2ui.TooltipYBottom)
 	p.panelGroup.SetVisible(false)
+}
+
+// The size of the short button (the picture is 96 by 22 pixels in the sprite sheet) and its gap to the grid.
+const (
+	cubeButtonWidth  = 96
+	cubeButtonHeight = 22
+	cubeButtonGap    = 14
+)
+
+const (
+	panelStatusX  = 20
+	panelStatusDY = 22
+)
+
+// SetStatus shows a line of text under the Transmute button (the reason a
+// transmute did nothing, or what it made).
+func (p *ContainerPanel) SetStatus(text string) {
+	p.statusText = text
+
+	if p.status != nil {
+		p.status.SetText(text)
+	}
+}
+
+// Status returns the last status line.
+func (p *ContainerPanel) Status() string { return p.statusText }
+
+// SetOnTransmute sets the function the Transmute button runs.
+func (p *ContainerPanel) SetOnTransmute(f func()) { p.onTransmute = f }
+
+// PressTransmute presses the Transmute button (autotests do it without a mouse).
+func (p *ContainerPanel) PressTransmute() {
+	if p.transmute != nil {
+		p.transmute.Activate()
+	}
 }
 
 // SetOnClose sets the callback run when the panel closes.
@@ -224,7 +284,7 @@ func (p *ContainerPanel) HandleClick(mx, my int, ctrl bool) bool {
 	switch act {
 	case ClickPickup:
 		p.Infof("picked up %s from the %s at (%d,%d)", held.GetItemCode(), p.kind.name, x, y)
-	case ClickPlace, ClickSwap, ClickAuto:
+	case ClickPlace, ClickSwap, ClickAuto, ClickMerge:
 		p.Infof("%s: %s at (%d,%d)", p.kind.name, act, x, y)
 	}
 

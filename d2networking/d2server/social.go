@@ -238,6 +238,9 @@ func (g *GameServer) onPvPHit(client ClientConnection, packet d2netpacket.NetPac
 	return target.SendPacketToClient(pkt)
 }
 
+// partyMaxLevel is the character level at which kills stop giving experience.
+const partyMaxLevel = 99
+
 // onPartyXP splits the experience of a kill among the killer's party.
 func (g *GameServer) onPartyXP(client ClientConnection, packet d2netpacket.NetPacket) error {
 	p, err := d2netpacket.UnmarshalPartyXP(packet.PacketData)
@@ -248,7 +251,12 @@ func (g *GameServer) onPartyXP(client ClientConnection, packet d2netpacket.NetPa
 	p.Killer = client.GetUniqueID()
 
 	g.soc.mu.Lock()
-	shares := g.soc.roster.ShareXP(p.Killer, p.XP)
+	var shares []d2party.XPShare
+	if p.MonsterLevel > 0 {
+		shares = g.soc.roster.ShareKillXP(p.Killer, p.XP, p.MonsterLevel, partyMaxLevel)
+	} else {
+		shares = g.soc.roster.ShareXP(p.Killer, p.XP)
+	}
 	names := make([]string, len(shares))
 
 	for i, s := range shares {

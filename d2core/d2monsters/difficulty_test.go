@@ -3,6 +3,7 @@ package d2monsters
 import (
 	"testing"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
@@ -22,7 +23,7 @@ func difficultyDirector(diff d2monster.Difficulty, area int) *Director {
 	am := &d2asset.AssetManager{Records: &d2records.RecordManager{}}
 	am.Records.Monster.Levels = d2records.MonsterLevels{1: rec}
 
-	return &Director{asset: am, opt: Options{Difficulty: diff}, areaLevel: area}
+	return &Director{asset: am, opt: Options{Difficulty: diff, Expansion: true}, areaLevel: area}
 }
 
 func ratioStat() *d2records.MonStatRecord {
@@ -88,6 +89,72 @@ func TestComputeVitalsLevelRule(t *testing.T) {
 
 	if v := d.computeVitals(st, b); v.Level != 69 {
 		t.Errorf("noRatio level = %d, want 69", v.Level)
+	}
+}
+
+func TestComputeVitalsVerifiedLevelGate(t *testing.T) {
+	b := d2monster.NewBrain(1, 1, d2monster.Normal, &d2monster.Profile{}, 1)
+
+	// Normal never takes the area level (the old code did).
+	d := difficultyDirector(d2monster.Normal, 1)
+	st := ratioStat()
+	st.LevelNormal = 7
+
+	if v := d.computeVitals(st, b); v.Level != 7 {
+		t.Errorf("normal with area: level %d, want monstats 7", v.Level)
+	}
+
+	// Classic (non expansion) games never take it either.
+	d = difficultyDirector(d2monster.Hell, 1)
+	d.opt.Expansion = false
+
+	if v := d.computeVitals(ratioStat(), b); v.Level != 69 {
+		t.Errorf("classic hell: level %d, want 69", v.Level)
+	}
+
+	// boss classes keep the monstats level.
+	d.opt.Expansion = true
+	st = ratioStat()
+	st.IsSpecialBoss = true
+
+	if v := d.computeVitals(st, b); v.Level != 69 {
+		t.Errorf("boss: level %d, want 69", v.Level)
+	}
+}
+
+func TestComputeVitalsPlayerBonus(t *testing.T) {
+	// Normal: lv.hp 7, MinHP=MaxHP=100%; xp 30 * 100% = 30.
+	for _, c := range []struct {
+		players, align, hp, xp int
+	}{
+		{0, 0, 7, 30}, // default 1 player: no bonus
+		{1, 0, 7, 30},
+		{2, 0, 10, 45},   // +50%: 7+3, 30+15
+		{3, 0, 14, 60},   // +100%
+		{8, 0, 31, 135},  // +350%: 7+24, 30+105
+		{10, 0, 35, 138}, // hp +400%, xp (10*5+0x82)*2 = 360%
+		{8, 1, 7, 30},    // friendly classes are exempt
+		{8, 2, 7, 30},
+	} {
+		d := difficultyDirector(d2monster.Normal, 1)
+		d.opt.Players = c.players
+		st := ratioStat()
+		st.Alignment = d2enum.MonsterAlignmentType(c.align)
+		b := d2monster.NewBrain(1, 1, d2monster.Normal, &d2monster.Profile{}, 1)
+
+		if v := d.computeVitals(st, b); v.MaxHP != c.hp || v.Experience != c.xp {
+			t.Errorf("players %d align %d: hp %d xp %d, want %d %d", c.players, c.align, v.MaxHP, v.Experience, c.hp, c.xp)
+		}
+	}
+
+	// The bonus comes before the 0x7fffff cap.
+	d := difficultyDirector(d2monster.Normal, 1)
+	d.opt.Players = 8
+	d.asset.Records.Monster.Levels[1].Ladder.Normal.Hitpoints = 1 << 22
+	b := d2monster.NewBrain(1, 1, d2monster.Normal, &d2monster.Profile{}, 1)
+
+	if v := d.computeVitals(ratioStat(), b); v.MaxHP != 0x7fffff {
+		t.Errorf("cap: %d", v.MaxHP)
 	}
 }
 

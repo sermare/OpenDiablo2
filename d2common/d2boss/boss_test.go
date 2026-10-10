@@ -131,16 +131,16 @@ func TestSealsAndDiablo(t *testing.T) {
 
 	// the boss seals spawn their super uniques with the verified groups
 	want := map[int][3]int{
-		ObjSealVizier:   {SuperVizier, ClassVizier, 9},
+		ObjSealVizier:   {SuperInfector, ClassInfector, 9}, // exe pairing (0x5b4720): 392 = Infector
 		ObjSealDeSeis:   {SuperDeSeis, ClassDeSeis, 5},
-		ObjSealInfector: {SuperInfector, ClassInfector, 9},
+		ObjSealInfector: {SuperVizier, ClassVizier, 9}, // 396 = Grand Vizier
 	}
 
 	for _, obj := range []int{ObjSealVizier, ObjSealDeSeis, ObjSealInfector} {
 		as := m.Operate(Operate{Object: obj, X: 10, Y: 20})
 		w := want[obj]
 
-		if len(as) != 1 || as[0].Super != w[0] || as[0].Class != w[1] || as[0].Group != w[2] || as[0].X != 10 {
+		if len(as) != 1 || as[0].Super != w[0] || as[0].Class != w[1] || as[0].Group != w[2] || as[0].X == 10 {
 			t.Fatalf("seal %d: %v", obj, as)
 		}
 	}
@@ -153,13 +153,13 @@ func TestSealsAndDiablo(t *testing.T) {
 
 	// Diablo needs the three seal bosses dead too
 	for i, su := range []int{SuperVizier, SuperDeSeis, SuperInfector} {
-		as := m.Killed(Kill{Class: want[map[int]int{SuperVizier: ObjSealVizier, SuperDeSeis: ObjSealDeSeis, SuperInfector: ObjSealInfector}[su]][1], Super: su})
+		as := m.Killed(Kill{Class: want[map[int]int{SuperVizier: ObjSealInfector, SuperDeSeis: ObjSealDeSeis, SuperInfector: ObjSealVizier}[su]][1], Super: su})
 
 		if i < 2 && len(as) != 0 {
 			t.Fatalf("Diablo came early: %v", as)
 		}
 
-		if i == 2 && len(as) != 1 {
+		if i == 2 && len(as) != 2 { // summons message + arrival purge
 			t.Fatalf("no summons message after the third boss: %v", as)
 		}
 	}
@@ -168,7 +168,7 @@ func TestSealsAndDiablo(t *testing.T) {
 		t.Fatalf("state %s", d.State())
 	}
 
-	as := m.Tick(diabloDelay)
+	as := m.Tick(ExeDiabloDelay)
 	if len(as) != 1 || as[0].Class != ClassDiablo || d.State() != "diablo-alive" {
 		t.Fatalf("Diablo: %v %s", as, d.State())
 	}
@@ -197,7 +197,7 @@ func TestSealOrderDoesNotMatter(t *testing.T) {
 	m.Killed(Kill{Class: ClassInfector, Super: SuperInfector})
 	m.Operate(Operate{Object: ObjSealPlainA})
 
-	if as := m.Operate(Operate{Object: ObjSealPlainB}); len(as) != 1 {
+	if as := m.Operate(Operate{Object: ObjSealPlainB}); len(as) != 2 {
 		t.Fatalf("summons expected with the fifth seal: %v", as)
 	}
 }

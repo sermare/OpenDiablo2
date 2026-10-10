@@ -2,8 +2,10 @@ package d2hero
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 )
 
@@ -60,7 +62,7 @@ func (f *HeroStateFactory) equippedStatItems(state *HeroState, hero d2statlist.H
 	if len(state.D2SBase) > 0 {
 		if tables, err := f.loadD2SItemTables(); err == nil {
 			if c, perr := d2s.Parse(state.D2SBase, tables); perr == nil {
-				for _, it := range StatItemsFromD2S(c.Items, bases) {
+				for _, it := range StatItemsFromD2S(c.Items, bases, f.setResolver()) {
 					if !it.Charm {
 						out = append(out, it)
 					}
@@ -137,7 +139,7 @@ func (f *HeroStateFactory) charmStatItems(state *HeroState) []d2statlist.Item {
 		}
 	}
 
-	return StatItemsFromD2S(out, bases)
+	return StatItemsFromD2S(out, bases, f.setResolver())
 }
 
 // RecalcStats recomputes the hero's maxima and derived values from the class
@@ -165,7 +167,12 @@ func (f *HeroStateFactory) RecalcStats(state *HeroState) {
 		}
 	}
 
-	life, mana, stam := class.BaseMax(st.Level, st.Vitality, st.Energy)
+	// d2herostats.Derive is proven equal to the class formula and to the exe's
+	// 1/256 quarter-point rule (TestDeriveEqualsEngineRecalc)
+	derived := d2herostats.Derive(class, d2herostats.Attributes{
+		Level: st.Level, Str: st.Strength, Dex: st.Dexterity, Vit: st.Vitality, Ene: st.Energy,
+	})
+	life, mana, stam := derived.MaxLife, derived.MaxMana, derived.MaxStamina
 
 	if !st.StatsBonusInit {
 		// a hero imported from a .d2s: its stored maxima are the class formula
@@ -183,10 +190,21 @@ func (f *HeroStateFactory) RecalcStats(state *HeroState) {
 	hero := d2statlist.Hero{
 		Class: class, Level: st.Level, Str: st.Strength, Dex: st.Dexterity, Vit: st.Vitality, Ene: st.Energy,
 		BaseLife: life, BaseMana: mana, BaseStam: stam, Difficulty: int(state.Difficulty),
+		Classic: !state.Expansion,
 	}
 	items := append(append([]d2statlist.Item{}, f.equippedStatItems(state, hero)...), f.charmStatItems(state)...)
+	items = append(items, resistScrollItem(state.Progress.ResistScrollBonus())...)
 
-	tot := d2statlist.Compute(hero, items, nil)
+	env := f.skillEnv(st)
+	if set := f.statEnv(); set != nil {
+		if env == nil {
+			env = set
+		} else {
+			env.Gems, env.Sets = set.Gems, set.Sets
+		}
+	}
+
+	tot := d2statlist.Compute(hero, items, env)
 	st.Difficulty = int(state.Difficulty)
 
 	st.Totals = &tot
@@ -232,4 +250,41 @@ func StatsSummary(st *HeroStatsState) string {
 		t.ResistShown[0], t.ResistShown[1], t.ResistShown[2], t.ResistShown[3],
 		st.Health, st.MaxHealth, st.Mana, st.MaxMana, int(st.Stamina), st.MaxStamina,
 		t.MagicFind, t.GoldFind, t.FasterAttack, t.FasterCast, t.FasterHit, t.FasterBlock, t.FasterRun)
+}
+
+// skillEnv turns the hero's active skill stats (buffs, auras) into the stat
+// list Compute merges with the items. It is nil when there are none, so a hero
+// without buffs is computed exactly as before.
+func (f *HeroStateFactory) skillEnv(st *HeroStatsState) *d2statlist.Env {
+	if st.SkillStats == nil {
+		return nil
+	}
+
+	stats := st.SkillStats()
+	if len(stats) == 0 {
+		return nil
+	}
+
+	names := make([]string, 0, len(stats))
+	for n := range stats {
+		names = append(names, n)
+	}
+
+	sort.Strings(names)
+
+	list := d2statlist.NewList()
+
+	for _, n := range names {
+		// stats stored shifted (hitpoints, mana...) hold 8.8 values in a skill
+		// list; the item list is plain, so they are left out (U)
+		if rec := f.asset.Records.Item.Stats[n]; rec != nil && rec.ValShift == 0 {
+			list.Add(rec.Index, 0, int64(stats[n]))
+		}
+	}
+
+	if list.Len() == 0 {
+		return nil
+	}
+
+	return &d2statlist.Env{Skill: list}
 }
