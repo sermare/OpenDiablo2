@@ -135,6 +135,7 @@ type unit struct {
 	lastFlee, lastThink int
 	lastLabel           string // the AI state last traced (forced.go)
 	raising             bool   // a corpse a shaman is raising (corpses.go)
+	mirror              bool   // a realm unit drawn here: no AI, no local damage (mirror.go)
 }
 
 type moveIntent struct {
@@ -218,6 +219,9 @@ type Director struct {
 	OnEvent func(kind, line string)
 	// OnKill, if set, is called when a monster dies (the quest system listens).
 	OnKill func(KillEvent)
+	// OnMirrorHit, if set, receives the blows that hit a mirror monster (see
+	// mirror.go): the realm resolves them, nothing is applied locally.
+	OnMirrorHit func(m *d2mapentity.Monster, src *d2mapentity.Player)
 }
 
 // KillEvent describes a monster death for OnKill.
@@ -433,6 +437,15 @@ func (d *Director) step() {
 		d.footprint(u)
 		d.handleEvents(u)
 		d.ambientSounds(u)
+
+		if u.mirror {
+			if !u.m.Alive() && u.m.CorpseAge() > corpseSeconds { // the realm drives the rest
+				d.engine.RemoveEntity(u.m)
+				d.forget(u)
+			}
+
+			continue
+		}
 
 		if u.merc != nil {
 			d.stepMerc(u)

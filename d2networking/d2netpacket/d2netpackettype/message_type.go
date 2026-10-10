@@ -40,6 +40,7 @@ const (
 	TradeUpdate                                          // Sent by the server to both traders: the trade window state or its result
 	PvPHit                                               // Sent by a client (the attacker), relayed by the server to the defender
 	PartyXP                                              // Sent by a client (a kill), the server answers every sharing member with its part
+	RealmUnit                                            // Sent by the realm connection: a monster of the authoritative simulation appeared, moved, was hit or died
 
 	UnknownPacketType = 666
 )
@@ -68,6 +69,7 @@ func (n NetPacketType) String() string {
 		TradeUpdate:                     "TradeUpdate",
 		PvPHit:                          "PvPHit",
 		PartyXP:                         "PartyXP",
+		RealmUnit:                       "RealmUnit",
 	}
 
 	return strings[n]

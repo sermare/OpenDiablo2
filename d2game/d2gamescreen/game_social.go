@@ -42,6 +42,7 @@ func (v *Game) hookNetwork() {
 	v.gameClient.OnPvPHit = v.onPvPHit
 	v.gameClient.OnPartyXP = v.onPartyXP
 	v.gameClient.OnRoster = v.onRoster
+	v.hookRealm()
 }
 
 // advanceSocial connects the screen's pieces to the roster once they exist.

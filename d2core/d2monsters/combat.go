@@ -529,6 +529,14 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 		return
 	}
 
+	if u.mirror { // the realm decides what a blow does
+		if d.OnMirrorHit != nil {
+			d.OnMirrorHit(u.m, src)
+		}
+
+		return
+	}
+
 	u.m.Vitals.HP -= dmg
 
 	if u.m.Vitals.HP > 0 {
