@@ -2,6 +2,9 @@ package d2level
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
@@ -62,6 +65,33 @@ func TestDuranceLinksExist(t *testing.T) {
 
 		if !found {
 			t.Errorf("no link %d -> %d", p[0], p[1])
+		}
+	}
+}
+
+// TestScenariosUnsealDuranceFirst reproduces the 9g-act3-playthrough failure ("EXIT no way found towards level 100"
+// at Travincal): the stairs are refused while Khalim's Will is not done, so every scenario that walks Travincal ->
+// Durance must run `say:completequest 3 2` first.
+func TestScenariosUnsealDuranceFirst(t *testing.T) {
+	for _, name := range []string{"9g-act3-durance.sh", "9g-act3-playthrough.sh"} {
+		b, err := os.ReadFile(filepath.Join("..", "..", "scripts", "verify.d", name))
+		if err != nil {
+			t.Skipf("scenario script not available: %v", err)
+		}
+
+		s := string(b)
+		walk := strings.Index(s, "exit=100")
+		if i := strings.Index(s, "hop 100"); walk < 0 || (i >= 0 && i < walk) {
+			walk = i
+		}
+
+		if walk < 0 {
+			t.Errorf("%s: no walk to level 100", name)
+			continue
+		}
+
+		if q := strings.Index(s, "completequest 3 2"); q < 0 || q > walk {
+			t.Errorf("%s: the walk to level 100 is not preceded by completequest 3 2", name)
 		}
 	}
 }
