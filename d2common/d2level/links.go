@@ -329,6 +329,10 @@ func isOutdoor(level int) bool { return ActOfLevel(level) <= 2 && len(EdgeNeighb
 //     ones). The LvlWarp id is NOT the style there (style 4 leads down,
 //     LvlWarp 4 is "Cave Up").
 func TileDestination(level, style int) (int, bool) {
+	if to, ok := townTileDestinations[[2]int{level, style}]; ok {
+		return to, true
+	}
+
 	if isOutdoor(level) {
 		if to, ok := Destination(level, style); ok {
 			return to, true
@@ -385,6 +389,15 @@ func TileDestination(level, style int) (int, bool) {
 	}
 
 	return 0, false
+}
+
+// townTileDestinations are the special tiles of a town preset whose style is neither a LvlWarp id nor
+// a dungeon stair style: Lut Gholein's two ways into the Sewers (Levels.txt Vis0/Vis1 = 47, LvlWarp 19
+// "Town to Sewer Trap" and 20 "Town to Sewer Dock"). OBSERVED in the LutW preset (screenshots of the
+// tiles): style 2 is the manhole in the street, style 3 the stairs of the dock. UNVERIFIED in the exe.
+var townTileDestinations = map[[2]int]int{
+	{40, 2}: 47,
+	{40, 3}: 47,
 }
 
 // presetExitStyle is the style of the only exit tile of the small DrlgType 2

@@ -156,8 +156,10 @@ type LogMarkHost interface {
 // WaitLogTimeout is the longest a waitlog step waits (game seconds).
 const WaitLogTimeout = 90.0
 
-// BusyTimeout is the longest the runner waits for a busy host (game seconds).
-const BusyTimeout = 120.0
+// BusyTimeout is the longest the runner waits for a busy host (game seconds). It must exceed the longest play
+// step a script asks for (kill:all,200 ...): at 120 s the runner went on while the hero was still fighting, so
+// a check placed after the kill ran in the middle of it.
+const BusyTimeout = 400.0
 
 // Host performs the side effects of steps. Methods must not block.
 type Host interface {

@@ -84,6 +84,18 @@ func (s *QuestLog) SetStatuses(statuses map[int]int) {
 	}
 }
 
+// Select opens the panel on the tab of an act and the quest of that index, like clicking its socket.
+func (s *QuestLog) Select(act, index int) {
+	s.Open()
+	s.setTab(act - 1)
+	s.onQuestClicked(index)
+}
+
+// Title returns the quest title of the log (the string qstsa<act>q<index>).
+func (s *QuestLog) Title(act, index int) string {
+	return s.asset.TranslateString(fmt.Sprintf("qstsa%dq%d", act, index))
+}
+
 // DescriptionText returns the description the log shows for a quest (used by
 // logs and the autotest); "" when it has none.
 func (s *QuestLog) DescriptionText(act, index int) string {

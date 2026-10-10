@@ -402,11 +402,12 @@ type lootState struct {
 	elapsed  float64
 	tried    map[*d2mapentity.Item]bool
 	picked   int
+	nofit    map[string]bool // item codes that did not fit in the inventory (left on the ground)
 }
 
 // Loot picks up the ground items around the hero, nearest first.
 func (h autoScriptHost) Loot(radius, seconds float64) error {
-	h.v.levels.loot = &lootState{radius: radius, deadline: seconds, tried: map[*d2mapentity.Item]bool{}}
+	h.v.levels.loot = &lootState{radius: radius, deadline: seconds, tried: map[*d2mapentity.Item]bool{}, nofit: map[string]bool{}}
 	h.v.Infof("LOOT start radius=%.0f seconds=%.0f items=%d", radius, seconds, len(h.v.lootCandidates(h.v.levels.loot)))
 
 	return nil
@@ -419,7 +420,7 @@ func (v *Game) lootCandidates(l *lootState) []*d2mapentity.Item {
 
 	for _, e := range v.gameClient.MapEngine.Entities() {
 		it, ok := e.(*d2mapentity.Item)
-		if !ok || l.tried[it] {
+		if !ok || l.tried[it] || (it.Item != nil && l.nofit[strings.TrimSpace(it.Item.GetItemCode())]) {
 			continue
 		}
 
@@ -454,8 +455,11 @@ func (v *Game) advanceLoot(elapsed float64) {
 		if x, y, ok := v.gameControls.AutoPlaceCursor(); ok {
 			v.Infof("LOOT stored %q in the inventory at (%d,%d)", it.GetItemCode(), x, y)
 		} else {
-			v.Infof("LOOT no room in the inventory for %q", it.GetItemCode())
-			v.levels.loot = nil
+			// like a player: put it back on the ground and go on with the other items
+			v.Infof("LOOT no room in the inventory for %q: dropped again", it.GetItemCode())
+			l.nofit[strings.TrimSpace(it.GetItemCode())] = true
+			v.gameControls.SetCursorItem(nil)
+			v.OnPlayerDropItem(it)
 
 			return
 		}
@@ -474,7 +478,13 @@ func (v *Game) advanceLoot(elapsed float64) {
 
 	for _, it := range cands {
 		x, y := it.GetPositionF()
-		if d := math.Hypot(x-hx, y-hy); d < bd {
+		d := math.Hypot(x-hx, y-hy)
+
+		if isQuestItemCode(it) {
+			d -= 1000 // quest items first
+		}
+
+		if d < bd {
 			best, bd = it, d
 		}
 	}
@@ -515,4 +525,21 @@ func autoPlayPopulate() bool {
 	}
 
 	return true
+}
+
+// isQuestItemCode says whether a ground item is one of the quest items the quest system tracks.
+func isQuestItemCode(it *d2mapentity.Item) bool {
+	if it.Item == nil {
+		return false
+	}
+
+	code := strings.TrimSpace(it.Item.GetItemCode())
+
+	for _, q := range questItemCodes {
+		if q == code {
+			return true
+		}
+	}
+
+	return false
 }
