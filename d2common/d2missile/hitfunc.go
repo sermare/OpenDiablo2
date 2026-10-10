@@ -49,17 +49,19 @@ func (s *Sim) hitFunc(m *Missile, t Target) (ret int, ok bool) {
 
 		return resKill, true
 	case 29:
-		// STAND-IN (Frozen Orb, 0x5a9640, body not read): while the orb
-		// passes enemies (target given) nothing happens; where it ends (wall,
-		// expiry) HitSubMissile1 (frozenorbnova) flies out in orbRing
-		// directions and the orb ends.
-		if t != nil {
-			return 0, true
-		}
-
-		s.orbRing(m)
-
-		return resKill, true
+		return s.orbHit(m), true
+	case 17:
+		return s.howlHit(m, t), true
+	case 18:
+		return s.shoutHit(m, t), true
+	case 21:
+		return s.battleCryHit(m, t), true
+	case 22:
+		return s.fistHit(m), true
+	case 37:
+		return s.bladeHit(t), true
+	case 53:
+		return s.contagionHit(m, t), true
 	case 36:
 		// Fire Blast ("bomb in air", 0x5a9ab0, verified): with a target it
 		// returns 0; without one it spawns HitSubMissile1 at the missile
@@ -78,6 +80,10 @@ func (s *Sim) hitFunc(m *Missile, t Target) (ret int, ok bool) {
 		return resKill | resDamage, true
 	case 7:
 		return s.holyBoltHit(m, t), true
+	case 8:
+		return s.blazeHit(m, t), true
+	case 9:
+		return s.immolationHit(m), true
 	case 10:
 		return s.guidedHit(m, t), true
 	case 12:
@@ -89,6 +95,20 @@ func (s *Sim) hitFunc(m *Missile, t Target) (ret int, ok bool) {
 		return 0, true
 	case 20:
 		return s.furyHit(m), true
+	case 26:
+		return s.wardStartHit(m), true
+	case 27:
+		// Grim Ward proper (0x5a9540 is "mov eax,1; ret 4"): the ward is
+		// never hurt and ends where it expires.
+		return resKill, true
+	case 47:
+		return s.boulderHit(m, t), true
+	case 48:
+		return s.emergeHit(m), true
+	case 51:
+		return s.debrisHit(m), true
+	case 56:
+		return s.armageddonHit(m), true
 	}
 
 	return 0, false
@@ -121,7 +141,7 @@ func (s *Sim) spawnHitSub(m *Missile, n int) {
 			continue
 		}
 
-		_, _ = s.Create(CreateParams{Spec: sub, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level,
+		_, _ = s.Create(CreateParams{Spec: sub, Parent: m, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level,
 			Damage: m.Damage, AreaRadius: m.AreaRadius, X: m.X, Y: m.Y, DestX: m.X, DestY: m.Y})
 	}
 }
@@ -143,7 +163,7 @@ func (s *Sim) meteorFire(m *Missile) {
 	for i := 0; i < len(meteorOffsets); i += step {
 		x, y := m.X+float64(meteorOffsets[i][0]), m.Y+float64(meteorOffsets[i][1])
 
-		_, _ = s.Create(CreateParams{Spec: sub, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level,
+		_, _ = s.Create(CreateParams{Spec: sub, Parent: m, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level,
 			Damage: m.Damage, X: x, Y: y, DestX: x, DestY: y, Range: m.HitSubRange})
 	}
 }
@@ -364,9 +384,10 @@ func (s *Sim) holyBoltHit(m *Missile, t Target) int {
 // the skill's aurarangecalc (record +0x64), minimum 1, in subtiles; the pulse
 // uses the damage the missile carries, the missile record's HitFlags and
 // ResultFlags, and the skill's aurafilter (0xa583 for Tornado: enemy filter).
-// The pulse fires when the missile's remaining life is a multiple of the
-// period (the exe tests the value from 0x64b640 - missile data +0xe minus
-// +0x10 - which is taken as the remaining life: UNVERIFIED).
+// The pulse fires when the missile's ELAPSED life is a multiple of the period:
+// 0x64b640 returns missile data +0xe (life at creation, written by 0x64b580)
+// minus +0x10 (remaining life, written by 0x64b5e0 and decremented by the
+// standard move), verified from the setters.
 func (s *Sim) tornadoPulse(m *Missile) {
 	period := m.Spec.Param[0]
 	if period < 1 {
@@ -377,7 +398,7 @@ func (s *Sim) tornadoPulse(m *Missile) {
 		period = 1
 	}
 
-	if m.Life%period != 0 {
+	if m.Elapsed()%period != 0 {
 		return
 	}
 
@@ -437,7 +458,7 @@ func (s *Sim) chainHit(m *Missile, t Target) int {
 
 	tx, ty := pt.SubPos()
 
-	_, _ = s.Create(CreateParams{Spec: m.Spec, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level, Damage: m.Damage,
+	_, _ = s.Create(CreateParams{Spec: m.Spec, Parent: m, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level, Damage: m.Damage,
 		AreaRadius: m.AreaRadius, ChainLeft: child, X: m.X, Y: m.Y, DestX: tx, DestY: ty})
 
 	return ret
@@ -500,7 +521,7 @@ func (s *Sim) furyHit(m *Missile) int {
 		tx, ty := pt.SubPos()
 		count--
 
-		_, _ = s.Create(CreateParams{Spec: sub, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level, Damage: m.Damage,
+		_, _ = s.Create(CreateParams{Spec: sub, Parent: m, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level, Damage: m.Damage,
 			X: m.X, Y: m.Y, DestX: tx, DestY: ty})
 	}
 

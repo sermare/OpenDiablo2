@@ -54,19 +54,27 @@ type TradeCommandPacket struct {
 	Target string              `json:"target,omitempty"`
 	Accept bool                `json:"accept,omitempty"`
 	Offer  d2playertrade.Offer `json:"offer"`
+	// Seq numbers the sender's offer edits (1, 2, ...); the server echoes the
+	// last one it applied as TradeUpdatePacket.YourSeq. Absent (0) from a
+	// client that does not number its edits.
+	Seq uint32 `json:"seq,omitempty"`
 }
 
 // TradeUpdatePacket is the trade as one of the two players sees it.
 type TradeUpdatePacket struct {
-	State        string              `json:"state"` // requested, open, done, cancelled
-	Partner      string              `json:"partner"`
-	PartnerName  string              `json:"partnerName"`
-	Requester    bool                `json:"requester,omitempty"` // this player asked for the trade
-	Yours        d2playertrade.Offer `json:"yours"`
-	Theirs       d2playertrade.Offer `json:"theirs"`
-	YouAccepted  bool                `json:"youAccepted,omitempty"`
-	TheyAccepted bool                `json:"theyAccepted,omitempty"`
-	Reason       string              `json:"reason,omitempty"`
+	State       string              `json:"state"` // requested, open, done, cancelled
+	Partner     string              `json:"partner"`
+	PartnerName string              `json:"partnerName"`
+	Requester   bool                `json:"requester,omitempty"` // this player asked for the trade
+	Yours       d2playertrade.Offer `json:"yours"`
+	Theirs      d2playertrade.Offer `json:"theirs"`
+	// YourSeq is the Seq of the last offer of this player the server applied;
+	// an update with YourSeq below the client's latest edit carries a stale
+	// copy of Yours (d2playertrade.Pending.Apply).
+	YourSeq      uint32 `json:"yourSeq,omitempty"`
+	YouAccepted  bool   `json:"youAccepted,omitempty"`
+	TheyAccepted bool   `json:"theyAccepted,omitempty"`
+	Reason       string `json:"reason,omitempty"`
 	// Moved is set when the trade is done: what this player gave and got.
 	Moved *d2playertrade.Moved `json:"moved,omitempty"`
 }

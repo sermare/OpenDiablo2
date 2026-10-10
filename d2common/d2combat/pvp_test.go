@@ -64,3 +64,49 @@ func TestPvPEar(t *testing.T) {
 		t.Fatal("ears only for hardcore victims")
 	}
 }
+
+func TestPvPCarry(t *testing.T) {
+	const tick = 4*256 + 200 // a burning ground tick: 4.78 fire, 0.81 life at 17 percent
+
+	ticks := func(n int) [][5]int32 {
+		h := make([][5]int32, n)
+		for i := range h {
+			h[i] = [5]int32{0, tick, 0, 0, 0}
+		}
+
+		return h
+	}
+
+	tests := []struct {
+		name  string
+		hits  [][5]int32
+		want  int // whole points over all the hits
+		first int // whole points of the first hit
+	}{
+		{"one tick is under a point", ticks(1), 0, 0},
+		{"two ticks make one point", ticks(2), 1, 0},
+		{"100 ticks are 81 life", ticks(100), 81, 0},
+		{"a big hit scales like the integer rule", [][5]int32{{0, 2450 << 8, 0, 0, 0}}, 416, 416},
+		{"the types carry apart", [][5]int32{{0, tick, 0, 0, tick}, {0, tick, 0, 0, tick}}, 2, 0},
+		{"nothing for no damage", [][5]int32{{0, 0, 0, 0, 0}, {-5, 0, 0, 0, 0}}, 0, 0},
+	}
+
+	for _, tt := range tests {
+		var c PvPCarry
+
+		total := 0
+
+		for i, h := range tt.hits {
+			got := c.Scale(h, PvPPercent()).Total()
+			total += got
+
+			if i == 0 && got != tt.first {
+				t.Errorf("%s: first hit %d, want %d", tt.name, got, tt.first)
+			}
+		}
+
+		if total != tt.want {
+			t.Errorf("%s: %d points, want %d", tt.name, total, tt.want)
+		}
+	}
+}

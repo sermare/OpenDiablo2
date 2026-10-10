@@ -64,10 +64,10 @@
     },
     {
       "label": "Levels walked by a verify scenario",
-      "done": 38,
+      "done": 52,
       "total": 136,
-      "pending": 14,
-      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); dashed = Act 3 playthrough branch",
+      "pending": 0,
+      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); includes the whole Act 3 chain (Travincal, Council, Durance, Mephisto, red portal)",
       "color": "#ff9f43"
     },
     {
@@ -128,10 +128,10 @@
     },
     {
       "label": "Multiplayer playable through the game screen",
-      "done": 0,
+      "done": 3,
       "total": 4,
       "pending": 0,
-      "note": "realm server + protocol exist and are tested; game screen not wired yet: lobby UI, walk sync, combat sync, trade",
+      "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and the party panel through the realm are not wired (trade works over the legacy path)",
       "color": "#ffb86b"
     },
     {
@@ -144,10 +144,10 @@
     },
     {
       "label": "Real full verify green (scenario sections per job, real parallel log)",
-      "done": 180,
-      "total": 185,
+      "done": 193,
+      "total": 193,
       "pending": 0,
-      "note": "second and third full verify_parallel.sh 6 runs (batch 1: 4/6 jobs green; batch 2: 6 jobs x 31-32 scenarios, all playthroughs pass); reds were load/timing/expectation issues re-run alone green; no second full run on a final tree",
+      "note": "batch 3 full verify_parallel.sh 6: ALL JOBS PASSED (6 jobs, 193 scenarios, one retried flake); earlier runs: batch 1 4/6 jobs, batch 2 all playthroughs, nine reds fixed and re-run alone",
       "color": "#3ddc84"
     },
     {

@@ -67,6 +67,7 @@ type Session struct {
 	offers   [2]Offer
 	accepted [2]bool
 	lockedTo [2]time.Time
+	seqs     [2]uint32 // last client sequence number applied per side
 	now      func() time.Time
 }
 
@@ -136,6 +137,25 @@ func (s *Session) Offer(id string) Offer {
 	}
 
 	return s.offers[i]
+}
+
+// OfferSeq is the sequence number of the last offer of a side that was applied
+// with SetOfferSeq (0 if none).
+func (s *Session) OfferSeq(id string) uint32 {
+	i, err := s.side(id)
+	if err != nil {
+		return 0
+	}
+
+	return s.seqs[i]
+}
+
+// SetOfferSeq records the client's sequence number of the offer just applied.
+// Numbers never go back.
+func (s *Session) SetOfferSeq(by string, seq uint32) {
+	if i, err := s.side(by); err == nil && seq > s.seqs[i] {
+		s.seqs[i] = seq
+	}
 }
 
 // Accepted reports whether a side has accepted.

@@ -116,12 +116,31 @@ func (e *Engine) hurtPlayer(dst, src *d2mapentity.Player, d *d2combat.Damage, wh
 	raw := d2combat.PvPParts{
 		Phys: whole(d.Physical), Fire: whole(d.Fire), Light: whole(d.Lightning), Magic: whole(d.Magic), Cold: whole(d.Cold),
 	}
-	scaled := raw.Scale(d2combat.PvPPercent())
+
+	// The scale runs on the 8.8 values, with the fraction of a point carried to the
+	// next hit on the same defender: a burning ground tick (4.88 fire) is 0.83 life
+	// at 17 percent, which whole points would round to nothing (d2combat.PvPCarry).
+	if e.pvpCarry == nil {
+		e.pvpCarry = map[string]*d2combat.PvPCarry{}
+	}
+
+	carry := e.pvpCarry[dst.ID()]
+	if carry == nil {
+		carry = &d2combat.PvPCarry{}
+		e.pvpCarry[dst.ID()] = carry
+	}
+
+	scaled := carry.Scale([5]int32{d.Physical, d.Fire, d.Lightning, d.Magic, d.Cold}, d2combat.PvPPercent())
 
 	e.Counters.PvPHits++
 	e.Counters.Damage += scaled.Total()
 	e.emit("damage", "PVPSKILL skill=%q target=%s raw=%d scaled=%d pct=%d parts=%v", what, dst.Name(), raw.Total(),
 		scaled.Total(), d2combat.PvPPercent(), scaled.Slice())
+
+	// a tick that is still under one point is only carried, nothing to send
+	if scaled.Total() == 0 {
+		return
+	}
 
 	if e.OnPvPHit != nil {
 		e.OnPvPHit(PvPHit{Source: src, Target: dst, Skill: what, Raw: raw.Total(), Parts: scaled})

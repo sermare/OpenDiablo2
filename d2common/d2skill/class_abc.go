@@ -274,11 +274,14 @@ type WardOrder struct {
 }
 
 // Grim Ward numbers of missiles.txt (grimwardsmall..large: pSrvDoFunc 14 with
-// Param1 6 "repeat frame" and Range 200, verified from the table; the exe call
-// 0x5acb00 dispatches the skill's aura every Param1 frames).
+// Param1 6 "repeat frame"; the exe call 0x5acb00 dispatches the periodic helper
+// 30 every Param1 frames). The ward lives the skill's calc1 ("ward duration",
+// ln34: 1000 frames), not the table Range 200: the start missile's hit
+// function 26 (0x5a93f0) creates it with the lifetime override calc1, minimum
+// 5 (VERIFIED from the disassembly); Range 200 is only the fallback.
 const (
-	wardPeriod = 6
-	wardLife   = 200
+	wardPeriod  = 6
+	wardMinLife = 5
 )
 
 // doGrimWardFn is SRVDO_075_GrimWard (0x5d7430, verified shape): the target
@@ -299,7 +302,7 @@ func doGrimWardFn(c *cast) {
 	}
 
 	w := &WardOrder{CorpseID: c.tgt.CorpseID, X: c.tgt.CX, Y: c.tgt.CY, Radius: c.env.eval(c.sk.AuraRangeCalc),
-		Period: wardPeriod, Life: wardLife, Fear: c.env.eval(c.sk.AuraLenCalc), State: state}
+		Period: wardPeriod, Life: maxInt(c.calc(1), wardMinLife), Fear: c.env.eval(c.sk.AuraLenCalc), State: state}
 
 	c.effect(Effect{Kind: "ward", Ward: w})
 }

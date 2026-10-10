@@ -28,7 +28,7 @@ func init() {
 			"calc1": "dm12", "Param1": "5", "Param2": "60", "Param3": "30", "Param4": "5", "manashift": "8"},
 		row{"skill": "Grim Ward", "Id": "506", "charclass": "bar", "srvstfunc": "33", "srvdofunc": "75", "TargetCorpse": "1",
 			"auratargetstate": "terror", "auralencalc": "par6", "aurarangecalc": "ln12", "calc1": "ln34", "Param1": "3",
-			"Param2": "1", "Param6": "60", "manashift": "8"},
+			"Param2": "1", "Param3": "1000", "Param6": "60", "manashift": "8"},
 		row{"skill": "Blade Shield", "Id": "508", "charclass": "ass", "srvstfunc": "28", "srvdofunc": "54", "aurastate": "bladeshield",
 			"auralencalc": "ln12", "aurarangecalc": "par4", "periodic": "1", "perdelay": "par3", "Param1": "500", "Param2": "125",
 			"Param3": "25", "Param4": "6", "SrcDam": "32", "MinDam": "1", "MaxDam": "30", "HitShift": "8", "manashift": "8"},
@@ -179,8 +179,10 @@ func TestGrimWard(t *testing.T) {
 	}
 
 	w := effectOf(t, r, "ward").Ward
-	// ln12 = 3 + 3*1 = 6 subtiles, auralencalc par6 = 60 frames, 6 frame pulses for 200 frames
-	if w.Radius != 6 || w.Fear != 60 || w.Period != 6 || w.Life != 200 || w.State != "terror" || w.X != 8 || w.Y != 4 || w.CorpseID != "c2" {
+	// ln12 = 3 + 3*1 = 6 subtiles, auralencalc par6 = 60 frames, 6 frame pulses for
+	// calc1 = ln34 = Param3 1000 frames (hit function 26 passes calc1 as the ward's
+	// lifetime, not the table Range 200)
+	if w.Radius != 6 || w.Fear != 60 || w.Period != 6 || w.Life != 1000 || w.State != "terror" || w.X != 8 || w.Y != 4 || w.CorpseID != "c2" {
 		t.Errorf("ward %+v", w)
 	}
 }
