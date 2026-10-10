@@ -1,15 +1,18 @@
-scenario_name="Act 1 playthrough (fresh Sorceress: Akara, gate to Blood Moor, fights, loot, Den of Evil, reward, exported .d2s)"
+scenario_name="Act 1 playthrough (fresh level 1 hero, a Sorceress unless OD2_HERO names a class: Akara, gate to Blood Moor, fights, loot, Den of Evil, reward, exported .d2s)"
 a1=$tmp/act1
 # The first hour of Act 1 played by OD2_AUTOSCRIPT (see docs/PLAYTEST.md): talk to Akara (intro, Den of
 # Evil quest, topic), walk out of the town through its border into Blood Moor (real level change), fight
 # on the way, enter the Den of Evil cave through its entrance tile, clear it, come back and collect
 # the reward from Akara, then exit (which saves the hero to a .d2s). 9c reloads that .d2s.
+# OD2_HERO=<class> (scripts/verify_classes.sh) starts a brand new hero of that class instead of the Sorceress: the same
+# Act 1 from level 1 with the class' starting kit and its left skill (the plain attack, a new hero has no skill points).
 scenario_env() {
   mkdir -p $a1/new $a1/wb; rm -f $a1/new/*.d2s(N) $a1/wb/*.d2s(N)
-  # a brand new Sorceress through the hero creation path (a 335 byte .d2s without items)
+  # a brand new hero (a Sorceress unless OD2_HERO names a class) through the hero creation path (a 335 byte .d2s without items)
+  local cls=$(hero_class_name)
   {
     echo '#!/bin/zsh'
-    echo "export OD2_PORT=$OD2_PORT OD2_AUTONEWCHAR=Sorceress OD2_AUTONEWCHAR_NAME=Playtest OD2_D2S_WRITEBACK=$a1/new OD2_AUTOEXIT=1"
+    echo "export OD2_PORT=$OD2_PORT OD2_AUTONEWCHAR=$cls OD2_AUTONEWCHAR_NAME=Playtest OD2_D2S_WRITEBACK=$a1/new OD2_AUTOEXIT=1"
     echo "$tmp/od2 > $a1/newchar.log 2>&1"
   } > $a1/newchar.command
   chmod +x $a1/newchar.command; launch_game $a1/newchar.command; wait_run
@@ -20,7 +23,8 @@ scenario_check() {
   grep -E "NEWCHAR parse|LEVEL CHANGE|POPULATE|KILL (start|done)|LOOT (start|done)|HERO (LEVEL UP|state)|QUEST EFFECT|AUTOSCRIPT RESULT|D2S EXPORT reparse" $log.txt | cut -c1-260 | tail -40
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: the Act 1 playthrough did not pass"; fail=1; }
   grep -E "AUTOSCRIPT step [0-9]+ FAIL" $log.txt | cut -c1-200
-  grep -q "NEWCHAR parse: .*class=Sorceress level=1" $a1/newchar.log 2>/dev/null || { echo "FAIL: no new Sorceress was made"; fail=1; }
+  local cls=$(hero_class_name)
+  grep -q "NEWCHAR parse: .*class=$cls level=1" $a1/newchar.log 2>/dev/null || { echo "FAIL: no new $cls was made"; fail=1; }
   grep -q "HERO state at start: level=1 exp=0" $log.txt || { echo "FAIL: the playthrough did not start with a level 1 hero"; fail=1; }
   grep -q "containers loaded: .*belt_items=4" $log.txt || { echo "FAIL: the new hero has no starting potions"; fail=1; }
   # every level change of the route happened through the real exit

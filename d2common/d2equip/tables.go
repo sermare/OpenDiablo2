@@ -18,6 +18,7 @@ type Type struct {
 	Shoots         string // quiver type a weapon of this type needs
 	Quiver         string // weapon type a quiver of this type belongs to
 	Class          string // "Class" column (ama, sor, ...) for class specific types
+	Throwable      bool   // the "Throwable" column: javelins, throwing knives and axes are their own ammunition
 	// MaxSock1/25/40: socket limits by item level, see sockets.go
 	MaxSock1, MaxSock25, MaxSock40 int
 }
@@ -47,7 +48,8 @@ func ParseTypes(data []byte) (*Types, error) {
 			Body:     cell(r, col, "body") == "1",
 			BodyLoc1: LocFromCode(cell(r, col, "bodyloc1")), BodyLoc2: LocFromCode(cell(r, col, "bodyloc2")),
 			Shoots: cell(r, col, "shoots"), Quiver: cell(r, col, "quiver"), Class: cell(r, col, "class"),
-			MaxSock1: num(r, col, "maxsock1"), MaxSock25: num(r, col, "maxsock25"), MaxSock40: num(r, col, "maxsock40"),
+			Throwable: cell(r, col, "throwable") == "1",
+			MaxSock1:  num(r, col, "maxsock1"), MaxSock25: num(r, col, "maxsock25"), MaxSock40: num(r, col, "maxsock40"),
 		}
 	}
 

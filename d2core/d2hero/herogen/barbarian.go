@@ -25,8 +25,8 @@ const (
 	SkillNaturalResist  = 153
 )
 
-// Barbarian is a level 94 Barbarian who has finished the game: a Whirlwind
-// and Frenzy fighter with a unique two-hand sword, Battle Orders and a full
+// Barbarian is a level 94 Barbarian who has finished the game: a Frenzy
+// fighter (Battle Orders on the right button) with a unique two-hand sword and a full
 // set of unique gear that a level 94 hero can wear (every item is a
 // non-ladder UniqueItems row whose level requirement is at most 94 and whose
 // strength and dexterity requirements the attributes meet).
@@ -37,22 +37,26 @@ const (
 // energy stays at the class start. With the gear the hero has about 1,800
 // life, which is the point of the preset: it survives the scripted fights.
 //
-// Skills: the 105 points (93 from levels, 12 from quests) go to Frenzy,
-// Whirlwind, Sword Mastery and Battle Orders at 20, the skills they need as
-// prerequisites at 1, Natural Resistance at 10 (Iron Skin 1) and Increased
-// Speed at 2 (Increased Stamina 1).
+// Skills: the 105 points (93 from levels, 12 from quests) go to Frenzy (the
+// main attack, on the left button), Sword Mastery and Battle Orders at 20,
+// Double Swing and Taunt at 6 (Frenzy's synergies), Whirlwind and Natural
+// Resistance at 10, the skills they need as prerequisites at 1 (Iron Skin
+// among them) and Increased Speed at 2 (Increased Stamina 1).
 func Barbarian(name string) Spec {
 	return Spec{
 		Name: name, Class: d2s.Barbarian, Level: 94,
 		Strength: 189, Dexterity: 110, Vitality: 25 + 221, Energy: 10,
 		Skills: map[int]int{
-			SkillBash: 1, SkillSwordMastery: 20, SkillHowl: 1, SkillDoubleSwing: 1, SkillTaunt: 1, SkillShout: 1,
+			SkillBash: 1, SkillSwordMastery: 20, SkillHowl: 1, SkillDoubleSwing: 6, SkillTaunt: 6, SkillShout: 1,
 			SkillStun: 1, SkillDoubleThrow: 1, SkillIncreasedStam: 1, SkillLeap: 1, SkillLeapAttack: 1,
 			SkillConcentrate: 1, SkillIronSkin: 1, SkillBattleCry: 1, SkillFrenzy: 20, SkillIncreasedSpeed: 2,
-			SkillBattleOrders: 20, SkillWhirlwind: 20, SkillNaturalResist: 10,
+			SkillBattleOrders: 20, SkillWhirlwind: 10, SkillNaturalResist: 10,
 		},
-		Left: 0, Right: SkillWhirlwind,
-		Hotkeys: []int{SkillBattleOrders, SkillFrenzy, SkillWhirlwind, SkillLeap, SkillShout},
+		// Frenzy on the left button is what a scripted fight swings with (the first version of the preset
+		// used the plain attack and Whirlwind on the right button, and passed the Act 1 to 5 chain that way);
+		// Battle Orders on the right button is the buff a fight starts with
+		Left: SkillFrenzy, Right: SkillBattleOrders,
+		Hotkeys: []int{SkillFrenzy, SkillBattleOrders, SkillWhirlwind, SkillLeap, SkillShout},
 		Gold:    250000,
 		Items: []ItemSpec{
 			{Unique: "The Grandfather", Place: Worn(SlotRightHand)},

@@ -137,6 +137,10 @@ func (t *Tables) Generate(spec Spec, tmpl *Template) (*Hero, error) {
 		return nil, err
 	}
 
+	if err := t.ValidateSkills(spec); err != nil {
+		return nil, err
+	}
+
 	unusedSkills := AllowedSkillPoints(spec.Level)
 	for _, p := range skillPoints {
 		unusedSkills -= int(p)
@@ -213,6 +217,10 @@ func (t *Tables) Generate(spec Spec, tmpl *Template) (*Hero, error) {
 	}
 
 	if err := checkPlacement(c.Items); err != nil {
+		return nil, err
+	}
+
+	if err := t.CheckWorn(spec, c.Items); err != nil {
 		return nil, err
 	}
 

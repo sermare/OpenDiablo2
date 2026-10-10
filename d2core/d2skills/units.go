@@ -315,8 +315,25 @@ func (h *heroUnit) ThrownMissile() string {
 	return ""
 }
 
-func (h *heroUnit) HasAmmo() bool       { return h.merc != nil || h.e.opt.InfiniteAmmo }
-func (h *heroUnit) ConsumeAmmo() bool   { return h.merc != nil || h.e.opt.InfiniteAmmo }
+// HasAmmo: a merc and the scenarios with infinite ammunition always shoot; the hero needs a stack left in
+// the quiver or on the thrown weapon (Options.AmmoLeft).
+func (h *heroUnit) HasAmmo() bool {
+	if h.merc != nil || h.e.opt.InfiniteAmmo {
+		return true
+	}
+
+	return h.e.opt.AmmoLeft != nil && h.e.opt.AmmoLeft() > 0
+}
+
+// ConsumeAmmo takes one arrow or javelin off the stack (Options.UseAmmo).
+func (h *heroUnit) ConsumeAmmo() bool {
+	if h.merc != nil || h.e.opt.InfiniteAmmo {
+		return true
+	}
+
+	return h.e.opt.UseAmmo != nil && h.e.opt.UseAmmo()
+}
+
 func (h *heroUnit) Cooldown(id int) int { return h.cooldowns[id] }
 func (h *heroUnit) SetCooldown(id, until int) {
 	h.cooldowns[id] = until

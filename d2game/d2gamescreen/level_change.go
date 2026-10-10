@@ -87,6 +87,11 @@ type levelState struct {
 	loot      *lootState // the scripted pickup of a loot: step
 	// portalStateUntil is when the 75-frame state 0x66 after a portal jump ends.
 	portalStateUntil float64
+	// supportAt is the game clock of the last cast of each support skill of the scripted fights (buffs, summons,
+	// auras; fightskill.go), kept between the fights of a script and cleared when the hero changes level
+	// (his summons stay behind); supportLevel is the level they were cast in.
+	supportAt    map[int]float64
+	supportLevel int
 }
 
 // Busy reports that the hero is walking to an object or a level change runs.

@@ -11,6 +11,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2skills"
 )
 
 // The play steps of OD2_AUTOSCRIPT (d2autoscript.PlayHost): walk to exits and
@@ -50,6 +51,18 @@ type killState struct {
 	potions    int
 	lastPotion float64 // game clock of the last potion
 	defend     bool    // a fight started by a walk that was attacked on the way
+
+	// the skills of the fight (fightskill.go)
+	plan        *fightPlan
+	dropped     map[int]bool    // attack skills the engine refused again and again in this fight
+	castAfter   float64         // kill clock before which no attack is tried again
+	castFails   int             // refusals in a row that count against the skill
+	lastCast    float64         // kill clock of the last accepted cast of the left skill
+	supportAt   map[int]float64 // support skill -> kill clock of its last cast
+	lastMana    float64         // game clock of the last mana potion
+	manaPotions int             // mana potions drunk
+	casts       map[string]int  // accepted casts by skill name, for the summary
+	refusals    map[string]int  // refusals by reason, for the summary
 }
 
 // WalkToExit implements d2autoscript.PlayHost.
@@ -98,7 +111,11 @@ func (h autoScriptHost) Kill(radius, seconds float64) error {
 		return fmt.Errorf("no monster director")
 	}
 
-	k := &killState{radius: radius, deadline: seconds, skip: map[*d2mapentity.Monster]float64{}}
+	k := &killState{
+		radius: radius, deadline: seconds, skip: map[*d2mapentity.Monster]float64{},
+		dropped: map[int]bool{}, lastCast: -standSeconds * 10,
+		casts: map[string]int{}, refusals: map[string]int{},
+	}
 	k.start = len(v.killCandidates(k))
 	v.levels.kill = k
 
@@ -240,6 +257,8 @@ func (v *Game) advanceKill(elapsed float64) {
 			v.Infof("KILL time limit reached with %d monster(s) left", alive)
 		}
 
+		v.logFightSkills(k)
+
 		v.levels.kill = nil
 		v.attackTarget = nil
 
@@ -251,6 +270,11 @@ func (v *Game) advanceKill(elapsed float64) {
 	}
 
 	v.drinkIfHurt(k)
+
+	if k.plan == nil {
+		k.plan = v.planFight()
+		v.logFightPlan(k)
+	}
 
 	if k.target != nil && !k.target.Alive() {
 		k.kills++
@@ -293,8 +317,10 @@ func (v *Game) advanceKill(elapsed float64) {
 	hsx, hsy := v.localPlayer.Position.X(), v.localPlayer.Position.Y()
 	msx, msy := k.target.SubtilePos()
 	inReach := d2monster.EdgeDistance(int(hsx)-msx, int(hsy)-msy, 1) <= heroMeleeReach
+	// a caster that stands and casts at the target is not stuck
+	casting := k.elapsed-k.lastCast < killStuckSeconds/2
 
-	if dist < k.bestDist-0.5 || inReach {
+	if dist < k.bestDist-0.5 || inReach || casting {
 		k.bestDist, k.since = math.Min(dist, k.bestDist), 0
 	} else if k.since += elapsed; k.since > killStuckSeconds {
 		v.Warningf("KILL giving up for now on %q at (%.1f,%.1f): hero at (%.1f,%.1f) cannot get closer than %.1f tiles",
@@ -306,7 +332,15 @@ func (v *Game) advanceKill(elapsed float64) {
 		return
 	}
 
+	if v.castSupport(k) {
+		return
+	}
+
 	v.castAtTarget(k, dist)
+
+	if v.holdGround(k, dist) {
+		return
+	}
 
 	if v.attackTarget != k.target {
 		v.OnPlayerAttack(k.target) // melee takes over again
@@ -349,9 +383,25 @@ func (v *Game) attackSpell() int {
 
 // castAtTarget throws an attack spell at a target that is in range but not yet
 // in reach, like a sorceress does.
+//
+// A hero whose left button holds an attack skill (the class heroes of herogen) casts that skill instead:
+// a melee skill when the target is within reach, a ranged one from where he stands (fightskill.go).
 func (v *Game) castAtTarget(k *killState, dist float64) {
 	eng := v.skillEngine()
-	if eng == nil || dist > killCastRange || dist < 2.5 || v.localPlayer.IsCasting() {
+	if eng == nil || v.localPlayer.IsCasting() {
+		return
+	}
+
+	if k.plan != nil && k.plan.hasLeft {
+		// a class hero casts his left skill; one that was dropped in this fight swings (not the legacy spell)
+		if !k.dropped[k.plan.left.ID] {
+			v.castLeftSkill(k, eng, k.plan.left, dist)
+		}
+
+		return
+	}
+
+	if dist > killCastRange || dist < 2.5 {
 		return
 	}
 
@@ -364,6 +414,185 @@ func (v *Game) castAtTarget(k *killState, dist float64) {
 	if eng.CastAt(v.localPlayer, id, mx, my) {
 		k.castAcc++
 	}
+}
+
+// targetInReach says whether a monster is within the hero's melee reach.
+func (v *Game) targetInReach(m *d2mapentity.Monster) bool {
+	hsx, hsy := v.localPlayer.Position.X(), v.localPlayer.Position.Y()
+	msx, msy := m.SubtilePos()
+
+	return d2monster.EdgeDistance(int(hsx)-msx, int(hsy)-msy, 1) <= heroMeleeReach
+}
+
+// castLeftSkill casts the hero's left skill at the fight's target. A refused cast is tried again after a
+// short wait; a skill refused again and again (other than for mana or its delay) is dropped for the
+// rest of the fight, and the hero swings instead.
+func (v *Game) castLeftSkill(k *killState, eng *d2skills.Engine, pick fightPick, dist float64) {
+	if k.elapsed < k.castAfter {
+		return
+	}
+
+	if pick.Melee {
+		if !v.targetInReach(k.target) {
+			return // the chase brings the hero within reach
+		}
+	} else if dist > killCastRange {
+		return
+	}
+
+	if v.dryFor(pick.ID) {
+		v.drinkMana(k)
+
+		if !eng.CanAfford(v.localPlayer, pick.ID) {
+			return // waiting for the mana to come back; a melee hero swings meanwhile (advanceHeroAttack)
+		}
+	}
+
+	mx, my := k.target.SubtilePos()
+	if eng.CastAt(v.localPlayer, pick.ID, mx, my) {
+		k.castAcc++
+		k.castFails = 0
+		k.lastCast = k.elapsed
+		k.casts[v.skillName(pick.ID)]++
+
+		return
+	}
+
+	reason := eng.LastRefusal()
+	k.refusals[reason]++
+	k.castAfter = k.elapsed + castRetrySeconds
+
+	if !refusalCounts(reason) {
+		return
+	}
+
+	if k.castFails++; k.castFails >= castFailLimit {
+		k.dropped[pick.ID] = true
+		v.Warningf("KILL left skill %q refused %d times (%s): swinging instead for the rest of this fight",
+			v.skillName(pick.ID), k.castFails, reason)
+	}
+}
+
+// skillName is the skills.txt name of one of the hero's skills.
+func (v *Game) skillName(id int) string {
+	if s := v.localPlayer.Skills[id]; s != nil && s.SkillRecord != nil {
+		return s.SkillRecord.Skill
+	}
+
+	return fmt.Sprintf("#%d", id)
+}
+
+// holdGround keeps a hero with a ranged left skill standing while he casts at a target within range, as a
+// player does: no walking into the monsters. It reports whether the hero stands.
+func (v *Game) holdGround(k *killState, dist float64) bool {
+	if k.plan == nil || !k.plan.hasLeft || k.plan.left.Melee || k.dropped[k.plan.left.ID] ||
+		dist > standRange || k.elapsed-k.lastCast > standSeconds {
+		return false
+	}
+
+	v.attackTarget = nil
+	v.localPlayer.StopMoving()
+
+	return true
+}
+
+// castSupport casts the support skill that is due (the right button, the summons and buffs of the
+// hotkeys). It reports whether a cast started, which takes the tick: the attack comes next tick.
+func (v *Game) castSupport(k *killState) bool {
+	if k.plan == nil || len(k.plan.supports) == 0 || v.localPlayer.IsCasting() {
+		return false
+	}
+
+	if v.levels.supportAt == nil || v.levels.supportLevel != v.currentLevel() {
+		v.levels.supportAt, v.levels.supportLevel = map[int]float64{}, v.currentLevel()
+	}
+
+	now, at := v.levels.clock, v.levels.supportAt
+
+	s, due := dueSupport(k.plan.supports, at, now)
+	if !due {
+		return false
+	}
+
+	eng := v.skillEngine()
+	st := v.localPlayer.Stats
+
+	// the attack has the mana first; a support skill that cannot be paid now is tried again soon
+	if eng == nil || !eng.CanAfford(v.localPlayer, s.ID) || float64(st.Mana) < supportManaFraction*float64(st.MaxMana) {
+		at[s.ID] = now - s.Every + 3
+
+		return false
+	}
+
+	ax, ay := int(v.localPlayer.Position.X()), int(v.localPlayer.Position.Y())
+
+	if rec := v.localPlayer.Skills[s.ID]; rec != nil && rec.SkillRecord != nil && rec.SkillRecord.TargetCorpse {
+		if cx, cy, ok := v.nearestCorpse(ax, ay); ok {
+			ax, ay = cx, cy
+		}
+	}
+
+	if eng.CastAt(v.localPlayer, s.ID, ax, ay) {
+		at[s.ID] = now
+		k.casts[s.Name]++
+		v.Infof("KILL support %q cast (next in %.0fs)", s.Name, s.Every)
+
+		return true
+	}
+
+	k.refusals[eng.LastRefusal()]++
+	at[s.ID] = now - s.Every + 5 // refused (no corpse, ...): try again in a few seconds
+
+	return false
+}
+
+// nearestCorpse is the subtile position of the corpse nearest to a subtile position, within 12 tiles.
+func (v *Game) nearestCorpse(x, y int) (cx, cy int, ok bool) {
+	best := float64(killCastRange * 5)
+
+	for _, m := range v.monsters.Corpses() {
+		mx, my := m.SubtilePos()
+		if d := math.Hypot(float64(mx-x), float64(my-y)); d < best {
+			best, cx, cy, ok = d, mx, my, true
+		}
+	}
+
+	return cx, cy, ok
+}
+
+// logFightPlan tells what the fight casts, for the log (and the class matrix).
+func (v *Game) logFightPlan(k *killState) {
+	if !k.plan.hasLeft {
+		v.Infof("KILL skills: plain attack on the left button (legacy: right or best spell %d)", v.attackSpell())
+
+		return
+	}
+
+	var names []string
+	for _, s := range k.plan.supports {
+		names = append(names, s.Name)
+	}
+
+	kind := "ranged"
+	if k.plan.left.Melee {
+		kind = "melee"
+	}
+
+	v.Infof("KILL skills: left=%q (%s) supports=%v", v.skillName(k.plan.left.ID), kind, names)
+}
+
+// logFightSkills summarises the casts of a fight.
+func (v *Game) logFightSkills(k *killState) {
+	if k.plan == nil || !k.plan.hasLeft {
+		return
+	}
+
+	var dropped []string
+	for id := range k.dropped {
+		dropped = append(dropped, v.skillName(id))
+	}
+
+	v.Infof("KILL skill summary: casts=%v refusals=%v dropped=%v mana_potions=%d", k.casts, k.refusals, dropped, k.manaPotions)
 }
 
 // fireBoltManaFloor is a cheap guard; the skill pipeline checks the exact cost.

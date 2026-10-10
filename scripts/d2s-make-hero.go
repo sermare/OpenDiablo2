@@ -1,10 +1,13 @@
 //go:build ignore
 
 // d2s-make-hero writes a level 94 sample hero (.d2s) generated from the game
-// tables, for the long playthrough scenarios (OD2_HERO=barb). Nothing it writes
+// tables, for the long playthrough scenarios (OD2_HERO=<class>). Nothing it writes
 // may be committed: pass a scratch path.
 //
 //	go run scripts/d2s-make-hero.go [-class barbarian] [-name NokkaBarb] [-template sample.d2s] out.d2s $D2_TABLES
+//
+// -class is amazon, sorc (sorceress), necro (necromancer), paladin, barb
+// (barbarian), druid or assassin; -name defaults to Nokka<Class>.
 //
 // -template is the sample Sorceress (D2S_SAMPLE_BODY): the hero then shares its
 // quests, waypoints, NPC flags, active difficulty, map seed and mercenary, so a
@@ -16,14 +19,15 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero/herogen"
 )
 
 func main() {
-	class := flag.String("class", "barbarian", "hero preset (barbarian)")
-	name := flag.String("name", "NokkaBarb", "character name")
+	class := flag.String("class", "barbarian", "hero preset: "+strings.Join(herogen.PresetNames(), ", "))
+	name := flag.String("name", "", "character name (default Nokka<Class>)")
 	template := flag.String("template", "", "a .d2s whose quests, waypoints, difficulty, map seed and mercenary are copied")
 	flag.Parse()
 
@@ -34,9 +38,19 @@ func main() {
 
 	out, dir := flag.Arg(0), flag.Arg(1)
 
-	if *class != "barbarian" {
-		fmt.Fprintf(os.Stderr, "d2s-make-hero: unknown class preset %q\n", *class)
+	cls, ok := herogen.ClassOfPreset(*class)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "d2s-make-hero: unknown class preset %q (use %s)\n", *class, strings.Join(herogen.PresetNames(), ", "))
 		os.Exit(2)
+	}
+
+	if *name == "" {
+		*name = herogen.DefaultName(cls)
+	}
+
+	spec, err := herogen.Preset(cls, *name)
+	if err != nil {
+		fatal(err)
 	}
 
 	t, err := herogen.LoadTables(dir)
@@ -62,7 +76,7 @@ func main() {
 		}
 	}
 
-	hero, err := t.Generate(herogen.Barbarian(*name), tmpl)
+	hero, err := t.Generate(spec, tmpl)
 	if err != nil {
 		fatal(err)
 	}
@@ -72,10 +86,10 @@ func main() {
 	}
 
 	tot := hero.Totals
-	fmt.Printf("hero %s %v level %d: life %d mana %d stamina %d defense %d attack rating %d damage %d-%d, %d items, %d bytes\n",
+	fmt.Printf("hero %s %v level %d: life %d mana %d stamina %d defense %d attack rating %d damage %d-%d, left skill %s, %d items, %d bytes\n",
 		hero.Character.Header.Name, hero.Character.Header.Class, hero.Character.Header.Level, tot.MaxLife, tot.MaxMana,
-		tot.MaxStamina, tot.Defense, tot.AttackRating, tot.DamageMin, tot.DamageMax, len(hero.Character.Items),
-		len(hero.Data))
+		tot.MaxStamina, tot.Defense, tot.AttackRating, tot.DamageMin, tot.DamageMax,
+		herogen.SkillName(cls, spec.Left), len(hero.Character.Items), len(hero.Data))
 }
 
 func fatal(err error) {

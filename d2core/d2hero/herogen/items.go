@@ -74,6 +74,7 @@ var ErrItem = errors.New("herogen: item")
 const (
 	statDefense       = 0x1f
 	statMaxDurability = 0x49
+	statQuantity      = 0x46
 	statIndestruct    = 152
 )
 
@@ -164,6 +165,10 @@ func (t *Tables) buildItem(spec ItemSpec, index int) (d2s.Item, error) {
 
 	t.baseStats(&it, rolled.Writes)
 
+	if spec.Quantity > 0 && t.Save.IsStackable(it.Code) {
+		it.Quantity = uint16(clamp(spec.Quantity, 1, 511))
+	}
+
 	built, err := d2s.NewItem(it, t.Save)
 	if err != nil {
 		return it, fmt.Errorf("%w: %q: %v", ErrItem, spec.Unique, err)
@@ -213,7 +218,7 @@ func (t *Tables) place(it *d2s.Item, p Place) {
 // generator wrote. The durability is full, plus any "+N durability" property.
 // An indestructible item keeps no durability, like the game's saves.
 func (t *Tables) baseStats(it *d2s.Item, writes []d2drop.StatWrite) {
-	var def, maxDur int
+	var def, maxDur, qty int
 
 	// the last write of a stat wins; the current durability is rolled between half and full, but the
 	// sample hero starts with repaired gear, so only the maximum is read
@@ -227,7 +232,14 @@ func (t *Tables) baseStats(it *d2s.Item, writes []d2drop.StatWrite) {
 			def = w.Value
 		case statMaxDurability:
 			maxDur = w.Value
+		case statQuantity:
+			qty = w.Value
 		}
+	}
+
+	// a stackable weapon (javelins, throwing knives and axes) keeps the stack the generator rolled
+	if t.Save.IsStackable(it.Code) {
+		it.Quantity = uint16(clamp(qty, 1, 511))
 	}
 
 	if t.Save.ItemKindOf(it.Code) == d2s.KindArmor {
