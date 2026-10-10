@@ -219,6 +219,7 @@ func NewGameControls(
 		inventory:      inventory,
 		skilltree:      skilltree,
 		heroStatsPanel: heroStatsPanel,
+		mercPanel:      NewMercPanel(asset, ui, l),
 		questLog:       questLog,
 		HelpOverlay:    helpOverlay,
 		NPCMenu:        NewNPCMenu(asset, ui),
@@ -279,6 +280,7 @@ func NewGameControls(
 	hoverLabel.SetBackgroundColor(d2util.Color(blackAlpha50percent))
 
 	gc.heroStatsPanel.SetOnCloseCb(gc.onCloseHeroStatsPanel)
+	gc.mercPanel.SetOnCloseCb(gc.updateLayout)
 	gc.questLog.SetOnCloseCb(gc.onCloseQuestLog)
 	gc.inventory.SetOnCloseCb(gc.onCloseInventory)
 	gc.skilltree.SetOnCloseCb(gc.onCloseSkilltree)
@@ -327,6 +329,7 @@ type GameControls struct {
 	questItemUse      func(code string) bool // Book of Skill, Potion of Life, Scroll of Resistance
 	skilltree         *skillTree
 	heroStatsPanel    *HeroStatsPanel
+	mercPanel         *MercPanel
 	PartyPanel        *PartyPanel
 	questLog          *QuestLog
 	HelpOverlay       *HelpOverlay
@@ -461,6 +464,13 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 
 	if event.Key() == d2enum.KeyEscape {
 		g.onEscKey()
+		return true
+	}
+
+	if event.Key() == d2enum.KeyO && event.KeyMod() == 0 {
+		// the mercenary screen ("O" in the original's default keys)
+		g.ToggleMercPanel()
+
 		return true
 	}
 
@@ -810,6 +820,12 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	px = truncateFloat64(px)
 	py = truncateFloat64(py)
 
+	if event.Button() == d2enum.MouseButtonLeft && g.mercPanelClick(mx, my) {
+		g.lastLeftBtnActionTime = d2util.Now()
+
+		return true
+	}
+
 	if event.Button() == d2enum.MouseButtonLeft && g.handleContainerClick(mx, my, event.KeyMod() == d2enum.KeyModControl) {
 		g.lastLeftBtnActionTime = d2util.Now()
 
@@ -872,6 +888,7 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 
 func (g *GameControls) clearLeftScreenSide() {
 	g.heroStatsPanel.Close()
+	g.mercPanel.Close()
 
 	if g.PartyPanel != nil {
 		g.PartyPanel.Close()
@@ -1018,6 +1035,8 @@ func (g *GameControls) AutoPanel(name string) error {
 		return nil
 	case "character":
 		panel = g.heroStatsPanel
+	case "merc":
+		panel = g.mercPanel
 	case "skills":
 		panel = g.skilltree
 	case "quest":
@@ -1107,6 +1126,7 @@ func (g *GameControls) Load() {
 	g.belt.Load()
 	g.skilltree.load()
 	g.heroStatsPanel.Load()
+	g.mercPanel.Load()
 	g.loadContainers()
 
 	if g.PartyPanel != nil {
@@ -1138,6 +1158,7 @@ func (g *GameControls) Advance(elapsed float64) error {
 	g.advancePotions(elapsed)
 	g.automap.Advance(elapsed)
 	g.questLog.Advance(elapsed)
+	g.mercPanel.Advance(elapsed)
 	g.Speech.Advance(elapsed)
 
 	if g.PartyPanel != nil {
@@ -1185,7 +1206,7 @@ func (g *GameControls) isLeftPanelOpen() bool {
 		partyPanel = false
 	}
 
-	return g.heroStatsPanel.IsOpen() || partyPanel || g.questLog.IsOpen() || g.inventory.moveGoldPanel.IsOpen() || g.Trade.IsOpen() || g.Identify.IsOpen() ||
+	return g.heroStatsPanel.IsOpen() || g.mercPanel.IsOpen() || partyPanel || g.questLog.IsOpen() || g.inventory.moveGoldPanel.IsOpen() || g.Trade.IsOpen() || g.Identify.IsOpen() ||
 		g.stash.IsOpen() || g.cube.IsOpen()
 }
 
