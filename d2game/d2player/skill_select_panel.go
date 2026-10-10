@@ -219,7 +219,6 @@ func (s *SkillPanel) HandleClick(x, y int) bool {
 
 // HandleMouseMove updates the hovered icon and its tooltip.
 func (s *SkillPanel) HandleMouseMove(x, y int) bool {
-	println("DBG skillpanel move", x, y)
 	if !s.isOpen {
 		return false
 	}

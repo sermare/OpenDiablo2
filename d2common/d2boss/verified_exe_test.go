@@ -10,7 +10,7 @@ import "testing"
 // MinGrp = MaxGrp of those rows.
 func TestWaveTableMatchesExe(t *testing.T) {
 	wantGroup := [5]int{5, 3, 5, 8, 5}
-	wantClass := [5]int{62, 105, 121, 122, 135}
+	wantClass := [5]int{62, 105, 557, 558, 571}
 
 	for i, w := range Waves {
 		if w.Super != SuperBaalWave+i || w.Group != wantGroup[i] || w.Class != wantClass[i] {

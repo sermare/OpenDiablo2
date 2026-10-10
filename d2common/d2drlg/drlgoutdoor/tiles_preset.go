@@ -142,6 +142,22 @@ func (t *tileBuilder) buildPreset() error {
 		t.animate([][]uint32{shadow}, ww, t.rt.Shadows, true)
 	}
 
+	if rec.Logicals == 0 {
+		t.rt.Logic = t.logicRegionsWhole()
+	} else {
+		var o0, f0 []uint32
+
+		if nWall > 0 {
+			o0 = oris[0]
+		}
+
+		if nFloor > 0 {
+			f0 = floors[0]
+		}
+
+		t.rt.Logic = t.logicRegions(o0, f0, ww, wh)
+	}
+
 	return nil
 }
 

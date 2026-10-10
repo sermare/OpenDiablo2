@@ -91,11 +91,51 @@ var operateInfos = []Info{
 	{Fn: 30, Class: ClassExplode, Name: "trap / exploding chest", Sound: "object_barrel_explode"},
 	{Fn: 31, Class: ClassQuest, Name: "Gidbinn altar", Stub: true, Note: "Blade of the Old Religion (Act 3)"},
 	{Fn: 32, Class: ClassStash, Name: "stash"},
-	{Fn: 33, Class: ClassQuest, Name: "Wirt's body", Stub: true, Note: "Wirt's leg is a Tristram quest drop"},
 	{Fn: 34, Class: ClassTeleport, Name: "arcane sanctuary portal", Note: "Palace Cellar 3 <-> Arcane Sanctuary"},
 	{Fn: 42, Class: ClassQuest, Name: "tome", Stub: true},
 	{Fn: 43, Class: ClassTeleport, Name: "Duriel's lair / guild portal", Note: "to the lair (73) from the real tomb"},
 	{Fn: 47, Class: ClassTeleport, Name: "stair", Stub: true},
+	// Rows below are the OperateFn values of Objects.txt that the first table left unmapped. The chest
+	// variants are the Act 3/4/5 chests (named "chest", Lockable, TrapProb 15 like fn 4) and the jungle
+	// and Act 5 stashes / urns: they all open and drop a treasure class, so they are loot containers.
+	// The quest and boss objects are named stubs. Which exact function each fn runs is UNVERIFIED (the
+	// dispatch table at 0x730258 was only read for the entries above).
+	{Fn: 33, Class: ClassQuest, Name: "Wirt's body", Stub: true, Note: "Wirt's leg is a Tristram quest drop"},
+	{Fn: 35, Class: ClassNone, Name: "Steeg Stone (battle.net only)"},
+	{Fn: 36, Class: ClassNone, Name: "Guild Vault (battle.net only)"},
+	{Fn: 37, Class: ClassNone, Name: "Trophy Case (battle.net only)"},
+	{Fn: 38, Class: ClassNone, Name: "Message Board (battle.net only)"},
+	{Fn: 39, Class: ClassLoot, Name: "chest (act 3-5 variant)", Sound: "object_chest_large"},
+	{Fn: 40, Class: ClassLoot, Name: "chest (act 3-5 variant)", Sound: "object_chest_large"},
+	{Fn: 41, Class: ClassLoot, Name: "chest (act 3-5 variant)", Sound: "object_chest_large"},
+	{Fn: 44, Class: ClassTeleport, Name: "sewer stairs", Stub: true, Note: "Act 2 sewers, opened by the lever"},
+	{Fn: 45, Class: ClassTrap, Name: "sewer lever", Stub: true, Note: "Radament's sewer lever (Act 2)"},
+	{Fn: 46, Class: ClassQuest, Name: "siege control / sanctuary portal", Stub: true, Note: "rows 342 and 411 share this fn but differ in kind"},
+	{Fn: 48, Class: ClassQuest, Name: "trapped soul", Stub: true, Note: "Act 5 trapped souls"},
+	{Fn: 49, Class: ClassQuest, Name: "Hellforge", Stub: true, Note: "Mephisto's soulstone smash (Act 4)"},
+	{Fn: 50, Class: ClassDecor, Name: "dummy"},
+	{Fn: 51, Class: ClassLoot, Name: "stash (jungle / act 3 containers)", Sound: "object_corpse_loot"},
+	{Fn: 52, Class: ClassQuest, Name: "seal", Stub: true, Note: "Chaos Sanctuary seal (Act 4)"},
+	{Fn: 53, Class: ClassQuest, Name: "compelling orb", Stub: true, Note: "Act 3 Khalim's will"},
+	{Fn: 54, Class: ClassQuest, Name: "seal", Stub: true, Note: "Chaos Sanctuary seal (Act 4)"},
+	{Fn: 55, Class: ClassQuest, Name: "seal", Stub: true, Note: "Chaos Sanctuary seal (Act 4)"},
+	{Fn: 56, Class: ClassQuest, Name: "seal", Stub: true, Note: "Chaos Sanctuary seal (Act 4)"},
+	{Fn: 57, Class: ClassLoot, Name: "chest (act 4/5 variant)", Sound: "object_chest_large"},
+	{Fn: 58, Class: ClassLoot, Name: "chest (act 4/5 variant)", Sound: "object_chest_large"},
+	{Fn: 59, Class: ClassLoot, Name: "chest (act 4/5 variant)", Sound: "object_chest_large"},
+	{Fn: 61, Class: ClassQuest, Name: "gate / pene", Stub: true, Note: "Act 5 Nihlathak / Siege gates"},
+	{Fn: 62, Class: ClassQuest, Name: "ancient statue", Stub: true, Note: "Ancients' Way statues (Act 5)"},
+	{Fn: 63, Class: ClassQuest, Name: "ancient statue", Stub: true, Note: "Ancients' Way statues (Act 5)"},
+	{Fn: 64, Class: ClassQuest, Name: "ancient statue", Stub: true, Note: "Ancients' Way statues (Act 5)"},
+	{Fn: 65, Class: ClassQuest, Name: "ancients' altar", Stub: true, Note: "Rite of Passage (Act 5)"},
+	{Fn: 66, Class: ClassTeleport, Name: "to the Worldstone Keep Level 1", Stub: true},
+	{Fn: 67, Class: ClassQuest, Name: "fana", Stub: true},
+	{Fn: 68, Class: ClassLoot, Name: "evil urn", Sound: "object_urn_break_1"},
+	{Fn: 69, Class: ClassDecor, Name: "dummy"},
+	{Fn: 70, Class: ClassTeleport, Name: "Worldstone Chamber / Throne of Destruction", Stub: true},
+	{Fn: 71, Class: ClassTeleport, Name: "Glacial Caves Level 1", Stub: true},
+	{Fn: 72, Class: ClassNone, Name: "last cinematic trigger", Stub: true},
+	{Fn: 73, Class: ClassNone, Name: "Harrogath end-of-act trigger", Stub: true},
 }
 
 var byFn = func() map[int]Info {
@@ -219,4 +259,19 @@ func SoundFor(fn int, name string) string {
 	}
 
 	return info.Sound
+}
+
+// SubTrap is the SubClass bit of objects.txt rows that are trap emitters (the "a trap" row 250 shares
+// OperateFn 30 with the exploding chest but is not a container).
+const SubTrap = 128
+
+// InfoFor describes a row: its OperateFn description, except that a trap emitter (SubClass 128) that
+// shares OperateFn 30 with the exploding chest is a ClassTrap stub, so clicking it does not open loot.
+func InfoFor(d Def) Info {
+	i := Lookup(d.OperateFn)
+	if d.OperateFn == 30 && d.SubClass&SubTrap != 0 {
+		i.Class, i.Stub, i.Name, i.Note = ClassTrap, true, "trap emitter", "objects.txt row with SubClass 128"
+	}
+
+	return i
 }

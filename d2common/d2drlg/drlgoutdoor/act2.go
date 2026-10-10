@@ -164,6 +164,13 @@ func (l *Level) generateAct2() error {
 		l.variantSet([]int{0x19b}, true)
 	case 0x2d: // Valley of Snakes: only the centre preset
 		return l.act2Center()
+	case 0x86: // Forgotten Sands (134, Act 5) runs this generator: the Canyon's program without the pre46 caps
+		// and with the shrines last (drlg-act45-outdoor.md section 6, verified against the emulator)
+		l.placePreset(4, 4, 0x18a, -1, 0)
+		l.act2LvlSubs()
+		l.variantSet([]int{0x191, 0x192, 0x196, 0x197, 0x193}, false)
+		l.variantSet([]int{0x188, 0x189}, true)
+		l.shrineStage()
 	case 0x2e: // Canyon of the Magi
 		l.trace("pre46")
 
