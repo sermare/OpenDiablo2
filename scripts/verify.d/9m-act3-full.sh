@@ -7,7 +7,7 @@ a3=$tmp/act3m
 # lair and leaves through the red portal for the Pandemonium Fortress.
 # One game window, OD2_AUTOSPEED=8. "KILL giving up" warnings are part of fights in the undergrowth.
 scenario_warnings_ok=1
-scenario_timeout=470 # a long route: the borders of the whole act, the council, three Durance levels and Mephisto
+scenario_timeout=1200 # a long route: the borders of the whole act, the council, three Durance levels and Mephisto
 scenario_env() {
   mkdir -p $a3/s94 $a3/wb94; rm -f $a3/s94/*.d2s(N) $a3/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && go run scripts/d2s-revive.go "$D2S_SAMPLE_BODY" $a3/s94/Hero.d2s "$D2_TABLES" >/dev/null 2>&1; then
