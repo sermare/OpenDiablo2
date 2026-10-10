@@ -24,7 +24,7 @@ scenario_check() {
   grep -q "AUTOAI start ref=skeleton1 .*implemented=true" $log.txt || { echo "FAIL: subject AI not implemented"; fail=1; }
   go test ./d2common/d2monster/ -run 'TestMonaiTableCoverage|TestNoCommonMonsterIdles|TestMonsterAI4' -count=1 2>&1 | grep -v "ignoring duplicate libraries" | tail -5 | grep -q '^ok' || { echo "FAIL: monster AI archetype tests"; fail=1; }
   # every faithful-port family ran as an in-game subject with its implemented think function
-  for fam in $fb_families; do
+  for fam in ${=fb_families}; do
     grep -q "AUTOAI also ref=$fam monster=.* implemented=true" $log.txt || { echo "FAIL: in-game subject $fam missing or not implemented"; fail=1; }
   done
   grep -q "AUTOAI also-summary" $log.txt || { echo "FAIL: no also-summary lines"; fail=1; }
