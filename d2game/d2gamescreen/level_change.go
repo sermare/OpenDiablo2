@@ -3,6 +3,7 @@ package d2gamescreen
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2portal"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2quest"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
@@ -225,9 +227,31 @@ func (v *Game) startLevelChange(level int, start d2level.StartType, via string) 
 		return false
 	}
 
+	if err := v.levelGate(v.currentLevel(), level, via); err != nil {
+		v.Infof("LEVEL change to %d (%s) refused: %v", level, v.levelName(level), err)
+		return false
+	}
+
 	v.levels.trans = &levelTransition{target: level, start: start, via: via}
 
 	return true
+}
+
+// levelGate applies the Levels.txt QuestFlag / QuestFlagEx rule (d2level.CheckLevelGate) to a warp, waypoint or
+// portal change; other ways (act travel, loading a save, outdoor edges) are not gated here. A game without a
+// quest record (no hero progress) or with the travelfree debug switch on is not gated.
+func (v *Game) levelGate(from, to int, via string) error {
+	q := v.heroQuests()
+	if q == nil || v.travel.free {
+		return nil
+	}
+
+	switch d2level.GateVia(via) {
+	case d2level.GateWarp, d2level.GateWaypoint, d2level.GatePortal:
+		return d2level.CheckLevelGate(from, to, d2level.GateVia(via), v.heroExpansion(), q)
+	}
+
+	return nil
 }
 
 // performLevelChange rebuilds the map for the target level and puts the hero in
@@ -364,6 +388,40 @@ func (v *Game) scanWarps() {
 	v.levels.warpSeen = map[[2]int]bool{}
 
 	v.Infof("LEVEL %d: %d warp tile(s)", v.currentLevel(), len(v.levels.warps))
+
+	names := map[string]int{}
+	npcs := []string{}
+
+	for _, e := range v.gameClient.MapEngine.Entities() {
+		if npc, ok := e.(*d2mapentity.NPC); ok && npc.Label() != "" {
+			npcs = append(npcs, fmt.Sprintf("%s(%d)", npc.Label(), npc.MonstatID()))
+		}
+
+		if ob, ok := e.(*d2mapentity.Object); ok {
+			names[ob.Label()]++
+
+			if d2quest.IsQuestObject(ob.Record().Index) {
+				x, y := ob.GetPositionF()
+				v.Infof("LEVEL quest object id=%d name=%q at (%.1f,%.1f)", ob.Record().Index, ob.Label(), x, y)
+			}
+		}
+	}
+
+	if len(names) > 0 {
+		keys := make([]string, 0, len(names))
+		for k := range names {
+			keys = append(keys, fmt.Sprintf("%s x%d", k, names[k]))
+		}
+
+		sort.Strings(keys)
+		v.Infof("LEVEL objects: %s", strings.Join(keys, ", "))
+	}
+
+	if len(npcs) > 0 {
+		sort.Strings(npcs)
+		v.Infof("LEVEL npcs: %s", strings.Join(npcs, ", "))
+	}
+
 	for _, w := range v.levels.warps {
 		v.Infof("LEVEL warp tile at (%d,%d) style=%d", w.TileX, w.TileY, w.Style)
 	}

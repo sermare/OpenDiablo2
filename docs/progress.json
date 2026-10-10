@@ -75,15 +75,15 @@
       "done": 27,
       "total": 27,
       "pending": 0,
-      "note": "all 27 main quests: states, triggers, rewards (Act 1, Radament and nine more driven in scenarios)",
+      "note": "all 27 main quests: states, triggers, rewards (Act 1, Radament and nine more driven in scenarios); level quest gates now enforced in the engine (Canyon, tombs, Palace, Durance, Worldstone levels)",
       "color": "#e86fa6"
     },
     {
       "label": "Player skills with engine behaviour",
-      "done": 130,
+      "done": 141,
       "total": 210,
-      "pending": 11,
-      "note": "~130 of 7 classes x 30 skills; Necromancer/Paladin/Sorceress/Druid gaps closed on a branch (+11), Amazon/Barbarian/Assassin in progress; natural mana regeneration (exe-derived 25 Hz) landed",
+      "pending": 0,
+      "note": "141 of 210 player skills have engine behaviour: all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry)",
       "color": "#5fd0a5"
     },
     {
@@ -144,10 +144,10 @@
     },
     {
       "label": "Real full verify green (scenario sections per job, real parallel log)",
-      "done": 193,
-      "total": 193,
+      "done": 259,
+      "total": 259,
       "pending": 0,
-      "note": "batch 3 full verify_parallel.sh 6: ALL JOBS PASSED (6 jobs, 193 scenarios, one retried flake); earlier runs: batch 1 4/6 jobs, batch 2 all playthroughs, nine reds fixed and re-run alone",
+      "note": "batch 3 and batch 4 full verify_parallel.sh 6 runs both ALL JOBS PASSED (193 and 194 scenarios; batch 4 with no retry at all); batch 6a: 5 of 6 jobs green, the 6th red only on a scenario that crossed the new level quest gates (fixed in the scenario, passed alone)",
       "color": "#3ddc84"
     },
     {

@@ -51,3 +51,58 @@ func (g *GameControls) useQuestItem(from *ItemGrid, item InventoryItem) bool {
 
 	return true
 }
+
+// UseInventoryItem uses the first inventory item with this base code the way a right click does
+// (quest items with an effect are consumed); it reports whether the item took effect.
+func (g *GameControls) UseInventoryItem(code string) bool {
+	for _, it := range g.inventory.grid.Items() {
+		if strings.TrimSpace(it.GetItemCode()) == code {
+			if g.useQuestItem(g.inventory.grid, it) {
+				g.saveHero()
+
+				return true
+			}
+
+			return false
+		}
+	}
+
+	return false
+}
+
+// ClearInventoryGrid removes every item of the inventory grid (not the equipped ones, the belt or the
+// stash) and returns how many were removed (debug: makes room for a quest walkthrough).
+func (g *GameControls) ClearInventoryGrid() int {
+	n := 0
+
+	// (a copy: Items() is the grid's own slice and Remove shifts it, which skipped every second item)
+	for _, it := range append([]InventoryItem{}, g.inventory.grid.Items()...) {
+		g.inventory.grid.Remove(it)
+
+		n++
+	}
+
+	return n
+}
+
+// MoveInventoryItemToCube takes the first inventory item with this base code and puts it into the Horadric Cube
+// (what dragging it onto the open cube does); it reports whether it was moved.
+func (g *GameControls) MoveInventoryItemToCube(code string) bool {
+	for _, it := range g.inventory.grid.Items() {
+		if strings.TrimSpace(it.GetItemCode()) != code {
+			continue
+		}
+
+		g.inventory.grid.Remove(it)
+
+		if g.CubePut(it) {
+			return true
+		}
+
+		g.inventory.grid.AutoPlace(it, true)
+
+		return false
+	}
+
+	return false
+}

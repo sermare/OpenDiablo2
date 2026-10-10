@@ -51,18 +51,18 @@ type killState struct {
 	potions    int
 	lastPotion float64 // game clock of the last potion
 	defend     bool    // a fight started by a walk that was attacked on the way
+	name       string  // only monsters whose name contains this (kill:name=), lower case
 
 	// the skills of the fight (fightskill.go)
 	plan        *fightPlan
-	dropped     map[int]bool    // attack skills the engine refused again and again in this fight
-	castAfter   float64         // kill clock before which no attack is tried again
-	castFails   int             // refusals in a row that count against the skill
-	lastCast    float64         // kill clock of the last accepted cast of the left skill
-	supportAt   map[int]float64 // support skill -> kill clock of its last cast
-	lastMana    float64         // game clock of the last mana potion
-	manaPotions int             // mana potions drunk
-	casts       map[string]int  // accepted casts by skill name, for the summary
-	refusals    map[string]int  // refusals by reason, for the summary
+	dropped     map[int]bool   // attack skills the engine refused again and again in this fight
+	castAfter   float64        // kill clock before which no attack is tried again
+	castFails   int            // refusals in a row that count against the skill
+	lastCast    float64        // kill clock of the last accepted cast of the left skill
+	lastMana    float64        // game clock of the last mana potion
+	manaPotions int            // mana potions drunk
+	casts       map[string]int // accepted casts by skill name, for the summary
+	refusals    map[string]int // refusals by reason, for the summary
 }
 
 // newKillState returns a fight with its maps made (the defensive fights of a walk make one too).
@@ -71,6 +71,17 @@ func newKillState(radius, seconds float64, defend bool) *killState {
 		radius: radius, deadline: seconds, skip: map[*d2mapentity.Monster]float64{}, defend: defend,
 		dropped: map[int]bool{}, lastCast: -standSeconds * 10, casts: map[string]int{}, refusals: map[string]int{},
 	}
+}
+
+// isTarget says whether a monster is one the fight is about: a hostile monster (every one, or the named ones); a fight
+// that names its target (kill:name=) may also go for a destructible prop of that name (a prison door).
+func (k *killState) isTarget(m *d2mapentity.Monster) bool {
+	if k.name == "" {
+		return d2monsters.IsHostile(m.Stat)
+	}
+
+	return (d2monsters.IsHostile(m.Stat) || d2monsters.IsDestructibleProp(m.Stat)) &&
+		strings.Contains(strings.ToLower(m.Label()), k.name)
 }
 
 // WalkToExit implements d2autoscript.PlayHost.
@@ -124,6 +135,27 @@ func (h autoScriptHost) Kill(radius, seconds float64) error {
 	v.levels.kill = k
 
 	v.Infof("KILL start radius=%.0f seconds=%.0f candidates=%d level=%d", radius, seconds, k.start, v.currentLevel())
+
+	return nil
+}
+
+// KillNamed implements d2autoscript.NamedKillHost: a fight against the monsters whose name contains the text,
+// wherever they stand in the level.
+func (h autoScriptHost) KillNamed(name string, seconds float64) error {
+	v := h.v
+	if v.monsterDirector() == nil {
+		return fmt.Errorf("no monster director")
+	}
+
+	k := newKillState(0, seconds, false)
+	k.name = strings.ToLower(name)
+	if k.start = len(v.killCandidates(k)); k.start == 0 {
+		return fmt.Errorf("no monster named %q on this level", name)
+	}
+
+	v.levels.kill = k
+
+	v.Infof("KILL start name=%q seconds=%.0f candidates=%d level=%d", name, seconds, k.start, v.currentLevel())
 
 	return nil
 }
@@ -186,7 +218,7 @@ func (v *Game) killAlive(k *killState) int {
 	hx, hy := v.heroTilePos()
 
 	for _, m := range v.monsters.Monsters() {
-		if !m.Alive() || m.Stat == nil || !d2monsters.IsHostile(m.Stat) {
+		if !m.Alive() || m.Stat == nil || !k.isTarget(m) {
 			continue
 		}
 
@@ -207,7 +239,7 @@ func (v *Game) killCandidates(k *killState) []*d2mapentity.Monster {
 	hx, hy := v.heroTilePos()
 
 	for _, m := range v.monsters.Monsters() {
-		if !m.Alive() || m.Stat == nil || !d2monsters.IsHostile(m.Stat) {
+		if !m.Alive() || m.Stat == nil || !k.isTarget(m) {
 			continue
 		}
 
@@ -646,11 +678,13 @@ type lootState struct {
 	elapsed  float64
 	tried    map[*d2mapentity.Item]bool
 	picked   int
+	nofit    map[string]bool // item codes that did not fit in the inventory (left on the ground)
+	questing bool            // only quest items (the lootquest command)
 }
 
 // Loot picks up the ground items around the hero, nearest first.
 func (h autoScriptHost) Loot(radius, seconds float64) error {
-	h.v.levels.loot = &lootState{radius: radius, deadline: seconds, tried: map[*d2mapentity.Item]bool{}}
+	h.v.levels.loot = &lootState{radius: radius, deadline: seconds, tried: map[*d2mapentity.Item]bool{}, nofit: map[string]bool{}}
 	h.v.Infof("LOOT start radius=%.0f seconds=%.0f items=%d", radius, seconds, len(h.v.lootCandidates(h.v.levels.loot)))
 	h.v.lootDiagnose(radius)
 
@@ -664,7 +698,7 @@ func (v *Game) lootCandidates(l *lootState) []*d2mapentity.Item {
 
 	for _, e := range v.gameClient.MapEngine.Entities() {
 		it, ok := e.(*d2mapentity.Item)
-		if !ok || l.tried[it] {
+		if !ok || l.tried[it] || (it.Item != nil && l.nofit[strings.TrimSpace(it.Item.GetItemCode())]) || (l.questing && !isQuestItemCode(it)) {
 			continue
 		}
 
@@ -699,8 +733,11 @@ func (v *Game) advanceLoot(elapsed float64) {
 		if x, y, ok := v.gameControls.AutoPlaceCursor(); ok {
 			v.Infof("LOOT stored %q in the inventory at (%d,%d)", it.GetItemCode(), x, y)
 		} else {
-			v.Infof("LOOT no room in the inventory for %q", it.GetItemCode())
-			v.levels.loot = nil
+			// like a player: put it back on the ground and go on with the other items
+			v.Infof("LOOT no room in the inventory for %q: dropped again", it.GetItemCode())
+			l.nofit[strings.TrimSpace(it.GetItemCode())] = true
+			v.gameControls.SetCursorItem(nil)
+			v.OnPlayerDropItem(it)
 
 			return
 		}
@@ -719,7 +756,13 @@ func (v *Game) advanceLoot(elapsed float64) {
 
 	for _, it := range cands {
 		x, y := it.GetPositionF()
-		if d := math.Hypot(x-hx, y-hy); d < bd {
+		d := math.Hypot(x-hx, y-hy)
+
+		if isQuestItemCode(it) {
+			d -= 1000 // quest items first
+		}
+
+		if d < bd {
 			best, bd = it, d
 		}
 	}
@@ -806,4 +849,21 @@ func (v *Game) lootClickSafe(x, y, hx, hy float64) bool {
 	}
 
 	return true
+}
+
+// isQuestItemCode says whether a ground item is one of the quest items the quest system tracks.
+func isQuestItemCode(it *d2mapentity.Item) bool {
+	if it.Item == nil {
+		return false
+	}
+
+	code := strings.TrimSpace(it.Item.GetItemCode())
+
+	for _, q := range questItemCodes {
+		if q == code {
+			return true
+		}
+	}
+
+	return false
 }
