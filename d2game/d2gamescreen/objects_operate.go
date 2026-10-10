@@ -5,9 +5,9 @@ import (
 	"hash/fnv"
 	"math"
 	"sort"
-	"strconv"
 	"sync"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2object"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
@@ -384,26 +384,13 @@ func (v *Game) useShrine(ob *d2mapentity.Object, in *objInstance, s d2object.Shr
 		rec.Index, ob.Label(), rec.OperateFn, s.Code, s.Name, s.Sound, effect, reset)
 }
 
-// townLevelOf is the town of an act (1-based).
-var townLevelOf = map[int]int{1: 1, 2: 40, 3: 75, 4: 103, 5: 109}
-
-// worldShrine runs the magic shrines. Portal is implemented (a town portal
-// next to the hero); the others are documented stubs.
+// worldShrine runs the magic shrines. Portal is implemented (the hero is sent
+// to the act start, see portalShrine); the others are documented stubs.
 func (v *Game) worldShrine(ob *d2mapentity.Object, s d2object.Shrine) string {
 	w := d2object.WorldFor(s)
 
 	if w == d2object.WorldPortal {
-		act := v.localPlayer.Act
-		if act < 1 || act > 5 {
-			act = 1
-		}
-
-		town := townLevelOf[act]
-		if err := v.commandSpawnPortal([]string{strconv.Itoa(town)}); err != nil {
-			return fmt.Sprintf("world=portal failed: %v", err)
-		}
-
-		return fmt.Sprintf("world=portal dest=%d", town)
+		return v.portalShrine()
 	}
 
 	switch w {
@@ -510,4 +497,20 @@ func (v *Game) advanceWell(id string, in *objInstance) {
 	if len(keep) == 0 {
 		in.rearmAt = 0
 	}
+}
+
+// portalShrine is OBJECT_OperateTeleportToNearActStart (0x580950): the hero is
+// teleported to the start level (town) of the current act. It is not a town
+// portal object.
+func (v *Game) portalShrine() string {
+	dest := d2level.PortalShrineDest(v.currentLevel())
+	if dest == 0 {
+		return "world=portal no act start"
+	}
+
+	if v.levelBusy() || !v.startLevelChange(dest, d2level.StartActChange, "shrine") {
+		return fmt.Sprintf("world=portal dest=%d refused", dest)
+	}
+
+	return fmt.Sprintf("world=portal dest=%d (%s)", dest, v.levelName(dest))
 }
