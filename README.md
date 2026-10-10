@@ -41,7 +41,7 @@ Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The 
 
 ## Status board
 
-_Last updated: 2026-10-10 (after batches 8 and 9 (integration 1e283cd2; 7 clean full verifies in a row through batch 7; batch 8 had no clean full run on its final tree, so the streak after that interruption is 1 (batch 9)); earlier, after the pass6 landing; Game v1 complete 69%, 70% with held branches; fourth full verify run 77399: all jobs passed, no retry; earlier run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
+_Last updated: 2026-10-10 (v1 scope change: the human-tester bar moved to v2, so the weighted headline reads about 79.7% on the same bars; after batches 8 and 9 (integration 1e283cd2; 7 clean full verifies in a row through batch 7; batch 8 had no clean full run on its final tree, so the streak after that interruption is 1 (batch 9)); earlier, after the pass6 landing; Game v1 complete 69%, 70% with held branches; fourth full verify run 77399: all jobs passed, no retry; earlier run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
 
 ### ✅ Working now (each one verified, not assumed)
 

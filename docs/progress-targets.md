@@ -38,7 +38,6 @@ full verify yet.
 | Weight | Bar |
 |---|---|
 | 14 | Acts playable end to end (scripted play) |
-| 10 | Acts played start to finish by a human tester (0 until a person plays them) |
 | 6 | Levels walked by a verify scenario |
 | 8 | Main quests with logic implemented |
 | 10 | Player skills with engine behaviour |
@@ -53,4 +52,4 @@ full verify yet.
 
 New bars (all start honest): *Sound and music confirmed by a human listen* (0/5: only a person can confirm
 menu music, NPC voices, footsteps, spell sounds, ambient), *Multiplayer playable through the game screen* (0/4),
-*Mac app* (2/3), *Acts played start to finish by a human tester* (0/5: the real completeness gauge).
+*Mac app* (2/3), *Acts played start to finish by a human tester* (0/5): moved out of v1 on 2026-10-10 by the project owner; it is tracked under v2 in `docs/progress.json`.

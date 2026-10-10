@@ -149,22 +149,13 @@
       "pending": 0,
       "note": "batch 3 and batch 4 full verify_parallel.sh 6 runs both ALL JOBS PASSED (193 and 194 scenarios; batch 4 with no retry at all); batch 6a: 5 of 6 jobs green, the 6th red only on a scenario that crossed the new level quest gates (fixed in the scenario, passed alone); batch 6b run 31638 and batch 7 run 7644 passed (6th and 7th clean in a row); batch 8 run 36803 had two red scenarios (92-objects2, 93-objects-gaps; fixed and re-run alone, no clean full run on the final tree); batch 9 run 98647 passed fully, so the current streak is 1 clean full verify",
       "color": "#3ddc84"
-    },
-    {
-      "label": "Acts played start to finish by a human tester",
-      "done": 0,
-      "total": 5,
-      "pending": 0,
-      "note": "the real completeness gauge: you play each act in the app and report what breaks (0 so far)",
-      "color": "#ff6b81"
     }
   ],
   "v1": {
     "title": "Game v1 complete",
-    "definition": "v1 = a person double-clicks the Mac app, makes or loads a character and plays Acts 1-5 single player (quests, items, skills, monsters, saves, sound) without hitting a blocker; multiplayer through the game screen and Hell-difficulty polish count too. The percentage is a weighted average of the measurable bars below; dashed = on branches, not yet verified.",
+    "definition": "v1 = a person double-clicks the Mac app, makes or loads a character and can play Acts 1-5 single player (quests, items, skills, monsters, saves, sound) without hitting a blocker; multiplayer through the game screen and Hell-difficulty polish count too. The percentage is a weighted average of the measurable bars below; dashed = on branches, not yet verified.",
     "weights": {
       "Acts playable end to end (scripted play)": 14,
-      "Acts played start to finish by a human tester": 10,
       "Levels walked by a verify scenario": 6,
       "Main quests with logic implemented": 8,
       "Player skills with engine behaviour": 10,
@@ -180,5 +171,16 @@
       "NPC interaction features": 4,
       "Real full verify green (scenario sections per job, real parallel log)": 6
     }
+  },
+  "v2": {
+    "title": "Planned for v2",
+    "items": [
+      {
+        "label": "Acts played start to finish by a human tester",
+        "done": 0,
+        "total": 5,
+        "note": "a human plays each act start to finish; moved out of v1 by the project owner on 2026-10-10"
+      }
+    ]
   }
 }

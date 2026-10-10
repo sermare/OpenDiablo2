@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="880" height="520" viewBox="0 0 880 520" role="img" aria-label="Progress over time">
 <rect width="880" height="520" rx="18" fill="#14162a"/>
 <text x="56" y="36" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="22" font-weight="700" fill="#fff">Progress over time</text>
-<text x="856" y="36" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">snapshot every 10 min · latest 2026-10-10 17:44 UTC</text>
+<text x="856" y="36" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">snapshot every 10 min · latest 2026-10-10 23:37 UTC</text>
 <line x1="56" y1="370.0" x2="856" y2="370.0" stroke="#fff" stroke-opacity="0.22"/>
 <text x="48" y="374.0" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">0%</text>
 <line x1="56" y1="308.8" x2="856" y2="308.8" stroke="#fff" stroke-opacity="0.08"/>
@@ -17,57 +17,55 @@
 <line x1="56.0" y1="64" x2="56.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
 <text x="56.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 02:19</text>
 <line x1="189.3" y1="64" x2="189.3" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="189.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 07:43</text>
+<text x="189.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 08:42</text>
 <line x1="322.7" y1="64" x2="322.7" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="322.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 13:07</text>
+<text x="322.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 15:05</text>
 <line x1="456.0" y1="64" x2="456.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="456.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 18:32</text>
+<text x="456.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 21:28</text>
 <line x1="589.3" y1="64" x2="589.3" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="589.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 23:56</text>
+<text x="589.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-10 03:51</text>
 <line x1="722.7" y1="64" x2="722.7" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="722.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-10 05:20</text>
+<text x="722.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-10 10:14</text>
 <line x1="856.0" y1="64" x2="856.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="856.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-10 10:44</text>
-<polyline points="56.0,346.2 57.2,343.1 58.6,343.1 59.8,334.4 66.0,327.0 76.1,315.4 77.1,315.4 78.9,309.0 85.1,304.8 93.0,304.8 104.4,302.2 110.3,302.2 112.5,302.2 127.5,302.2 134.3,302.2 138.7,302.2 148.4,299.9 193.6,299.9 213.3,248.8 214.0,248.8 800.5,64.0 856.0,64.0" fill="none" stroke="#7c5cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="856.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-10 16:37</text>
+<polyline points="56.0,346.2 57.0,343.1 58.2,343.1 59.2,334.4 64.5,327.0 73.0,315.4 73.8,315.4 75.4,309.0 80.6,304.8 87.3,304.8 97.0,302.2 101.9,302.2 103.8,302.2 116.6,302.2 122.3,302.2 126.0,302.2 134.2,299.9 172.4,299.9 189.1,248.8 189.8,248.8 686.2,64.0 733.2,64.0 856.0,64.0" fill="none" stroke="#7c5cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#7c5cff"/>
-<polyline points="800.5,130.5 856.0,130.5" fill="none" stroke="#8f7cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="686.2,130.5 733.2,130.5 856.0,130.5" fill="none" stroke="#8f7cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="130.5" r="4" fill="#8f7cff"/>
-<polyline points="56.0,64.0 57.2,64.0 58.6,64.0 59.8,64.0 66.0,64.0 76.1,64.0 77.1,64.0 78.9,64.0 85.1,64.0 93.0,64.0 104.4,64.0 110.3,64.0 112.5,64.0 127.5,64.0 134.3,64.0 138.7,64.0 148.4,64.0 193.6,64.0 213.3,64.0 214.0,64.0 800.5,64.0 856.0,64.0" fill="none" stroke="#2fb67c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="56.0,64.0 57.0,64.0 58.2,64.0 59.2,64.0 64.5,64.0 73.0,64.0 73.8,64.0 75.4,64.0 80.6,64.0 87.3,64.0 97.0,64.0 101.9,64.0 103.8,64.0 116.6,64.0 122.3,64.0 126.0,64.0 134.2,64.0 172.4,64.0 189.1,64.0 189.8,64.0 686.2,64.0 733.2,64.0 856.0,64.0" fill="none" stroke="#2fb67c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#2fb67c"/>
-<polyline points="56.0,320.3 57.2,303.7 58.6,287.1 59.8,265.0 66.0,231.9 76.1,193.3 77.1,193.3 78.9,176.7 85.1,160.1 93.0,138.0 104.4,138.0 110.3,138.0 112.5,138.0 127.5,138.0 134.3,138.0 138.7,138.0 148.4,160.1 193.6,160.1 213.3,160.1 214.0,160.1 800.5,160.1 856.0,160.1" fill="none" stroke="#2f9bff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="56.0,320.3 57.0,303.7 58.2,287.1 59.2,265.0 64.5,231.9 73.0,193.3 73.8,193.3 75.4,176.7 80.6,160.1 87.3,138.0 97.0,138.0 101.9,138.0 103.8,138.0 116.6,138.0 122.3,138.0 126.0,138.0 134.2,160.1 172.4,160.1 189.1,160.1 189.8,160.1 686.2,160.1 733.2,160.1 856.0,160.1" fill="none" stroke="#2f9bff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="160.1" r="4" fill="#2f9bff"/>
-<polyline points="93.0,69.8 104.4,76.2 110.3,72.2 112.5,72.2 127.5,67.2 134.3,67.2 138.7,67.2 148.4,66.6 193.6,66.1 213.3,66.1 214.0,66.1 800.5,64.0 856.0,64.0" fill="none" stroke="#22c1c3" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="87.3,69.8 97.0,76.2 101.9,72.2 103.8,72.2 116.6,67.2 122.3,67.2 126.0,67.2 134.2,66.6 172.4,66.1 189.1,66.1 189.8,66.1 686.2,64.0 733.2,64.0 856.0,64.0" fill="none" stroke="#22c1c3" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#22c1c3"/>
-<polyline points="59.8,94.6 66.0,94.6 76.1,94.6 77.1,94.6 78.9,94.6 85.1,94.6 93.0,94.6 104.4,94.6 110.3,94.6 112.5,94.6 127.5,94.6 134.3,94.6 138.7,94.6 148.4,94.6 193.6,94.6 213.3,94.6 214.0,94.6 800.5,94.6 856.0,94.6" fill="none" stroke="#f2a81d" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="59.2,94.6 64.5,94.6 73.0,94.6 73.8,94.6 75.4,94.6 80.6,94.6 87.3,94.6 97.0,94.6 101.9,94.6 103.8,94.6 116.6,94.6 122.3,94.6 126.0,94.6 134.2,94.6 172.4,94.6 189.1,94.6 189.8,94.6 686.2,94.6 733.2,94.6 856.0,94.6" fill="none" stroke="#f2a81d" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="94.6" r="4" fill="#f2a81d"/>
-<polyline points="56.0,238.8 57.2,238.8 58.6,238.8 59.8,238.8 66.0,195.2 76.1,151.4 77.1,151.4 78.9,151.4 85.1,151.4 93.0,107.7 104.4,102.2 110.3,102.2 112.5,102.2 127.5,102.2 134.3,64.0 138.7,64.0 148.4,64.0 193.6,64.0 213.3,64.0 214.0,64.0 800.5,64.0 856.0,64.0" fill="none" stroke="#ef5da8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="56.0,238.8 57.0,238.8 58.2,238.8 59.2,238.8 64.5,195.2 73.0,151.4 73.8,151.4 75.4,151.4 80.6,151.4 87.3,107.7 97.0,102.2 101.9,102.2 103.8,102.2 116.6,102.2 122.3,64.0 126.0,64.0 134.2,64.0 172.4,64.0 189.1,64.0 189.8,64.0 686.2,64.0 733.2,64.0 856.0,64.0" fill="none" stroke="#ef5da8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#ef5da8"/>
-<polyline points="800.5,64.0 856.0,64.0" fill="none" stroke="#ff7a45" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="686.2,64.0 733.2,64.0 856.0,64.0" fill="none" stroke="#ff7a45" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#ff7a45"/>
-<polyline points="800.5,253.0 856.0,253.0" fill="none" stroke="#ff9f43" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="856.0" cy="253.0" r="4" fill="#ff9f43"/>
-<polyline points="800.5,64.0 856.0,64.0" fill="none" stroke="#e86fa6" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="686.2,253.0 733.2,253.0 856.0,165.3" fill="none" stroke="#ff9f43" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="165.3" r="4" fill="#ff9f43"/>
+<polyline points="686.2,64.0 733.2,64.0 856.0,64.0" fill="none" stroke="#e86fa6" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#e86fa6"/>
-<polyline points="800.5,164.6 856.0,164.6" fill="none" stroke="#5fd0a5" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="856.0" cy="164.6" r="4" fill="#5fd0a5"/>
-<polyline points="800.5,70.2 856.0,70.2" fill="none" stroke="#4aa8ff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="686.2,164.6 733.2,164.6 856.0,151.4" fill="none" stroke="#5fd0a5" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="151.4" r="4" fill="#5fd0a5"/>
+<polyline points="686.2,70.2 733.2,70.2 856.0,70.2" fill="none" stroke="#4aa8ff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="70.2" r="4" fill="#4aa8ff"/>
-<polyline points="800.5,194.3 856.0,194.3" fill="none" stroke="#6c8cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="856.0" cy="194.3" r="4" fill="#6c8cff"/>
-<polyline points="800.5,195.2 856.0,195.2" fill="none" stroke="#c58bff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="686.2,194.3 733.2,194.3 856.0,171.5" fill="none" stroke="#6c8cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="171.5" r="4" fill="#6c8cff"/>
+<polyline points="686.2,195.2 733.2,195.2 856.0,195.2" fill="none" stroke="#c58bff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="195.2" r="4" fill="#c58bff"/>
-<polyline points="800.5,89.5 856.0,89.5" fill="none" stroke="#f2c94c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="856.0" cy="89.5" r="4" fill="#f2c94c"/>
-<polyline points="800.5,370.0 856.0,370.0" fill="none" stroke="#6fd3ff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="686.2,89.5 733.2,89.5 856.0,64.0" fill="none" stroke="#f2c94c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="64.0" r="4" fill="#f2c94c"/>
+<polyline points="686.2,370.0 733.2,370.0 856.0,370.0" fill="none" stroke="#6fd3ff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="370.0" r="4" fill="#6fd3ff"/>
-<polyline points="800.5,140.5 856.0,140.5" fill="none" stroke="#ffb86b" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="686.2,140.5 733.2,140.5 856.0,140.5" fill="none" stroke="#ffb86b" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="140.5" r="4" fill="#ffb86b"/>
-<polyline points="800.5,166.0 856.0,166.0" fill="none" stroke="#9be564" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="686.2,166.0 733.2,166.0 856.0,166.0" fill="none" stroke="#9be564" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="166.0" r="4" fill="#9be564"/>
-<polyline points="800.5,64.0 856.0,64.0" fill="none" stroke="#3ddc84" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="686.2,64.0 733.2,64.0 856.0,64.0" fill="none" stroke="#3ddc84" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#3ddc84"/>
-<polyline points="800.5,370.0 856.0,370.0" fill="none" stroke="#ff6b81" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="856.0" cy="370.0" r="4" fill="#ff6b81"/>
 <rect x="56" y="401" width="14" height="4" rx="2" fill="#7c5cff"/>
 <text x="78" y="410" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Game.exe functions named in Ghidra — 100%</text>
 <rect x="456" y="401" width="14" height="4" rx="2" fill="#8f7cff"/>
@@ -85,19 +83,19 @@
 <rect x="456" y="461" width="14" height="4" rx="2" fill="#ff7a45"/>
 <text x="478" y="470" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Acts playable end to end (scripted play) — 100%</text>
 <rect x="56" y="481" width="14" height="4" rx="2" fill="#ff9f43"/>
-<text x="78" y="490" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Levels walked by a verify scenario — 38%</text>
+<text x="78" y="490" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Levels walked by a verify scenario — 67%</text>
 <rect x="456" y="481" width="14" height="4" rx="2" fill="#e86fa6"/>
 <text x="478" y="490" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Main quests with logic implemented — 100%</text>
 <rect x="56" y="501" width="14" height="4" rx="2" fill="#5fd0a5"/>
-<text x="78" y="510" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Player skills with engine behaviour — 67%</text>
+<text x="78" y="510" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Player skills with engine behaviour — 71%</text>
 <rect x="456" y="501" width="14" height="4" rx="2" fill="#4aa8ff"/>
 <text x="478" y="510" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Monster AI archetypes implemented — 98%</text>
 <rect x="56" y="521" width="14" height="4" rx="2" fill="#6c8cff"/>
-<text x="78" y="530" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Monster AI archetypes ported faithfully — 57%</text>
+<text x="78" y="530" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Monster AI archetypes ported faithfully — 65%</text>
 <rect x="456" y="521" width="14" height="4" rx="2" fill="#c58bff"/>
 <text x="478" y="530" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">In-game UI panels matching the original layout — 57%</text>
 <rect x="56" y="541" width="14" height="4" rx="2" fill="#f2c94c"/>
-<text x="78" y="550" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Item generation gaps closed vs the exe — 92%</text>
+<text x="78" y="550" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Item generation gaps closed vs the exe — 100%</text>
 <rect x="456" y="541" width="14" height="4" rx="2" fill="#6fd3ff"/>
 <text x="478" y="550" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Sound and music confirmed by a human listen — 0%</text>
 <rect x="56" y="561" width="14" height="4" rx="2" fill="#ffb86b"/>
@@ -106,6 +104,4 @@
 <text x="478" y="570" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Mac app: build, Finder launch with real maps, disk image — 67%</text>
 <rect x="56" y="581" width="14" height="4" rx="2" fill="#3ddc84"/>
 <text x="78" y="590" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Real full verify green (scenario sections per job, real parallel log) — 100%</text>
-<rect x="456" y="581" width="14" height="4" rx="2" fill="#ff6b81"/>
-<text x="478" y="590" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Acts played start to finish by a human tester — 0%</text>
 </svg>
