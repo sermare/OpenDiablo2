@@ -306,7 +306,35 @@ func (d *Director) Cast(b *d2monster.Brain, slot int, t d2monster.Target) bool {
 	d.castSlot, d.castSet = slot, true
 	defer func() { d.castSet = false }()
 
-	return d.Attack(b, mode, t)
+	if d.Attack(b, mode, t) {
+		return true
+	}
+
+	return d.castSummonWithoutAnimation(b, slot, t)
+}
+
+// castSummonWithoutAnimation lands a summoning cast whose monstats mode cannot be played. The Foul Crow Nest's
+// Sk1mode is the sequence "seq_nestlay", not an animation mode, and the nest has no attack animation, so the
+// mode fallback (A1) never starts and the nest never laid a crow (found by scenario 97-summons). The summon
+// lands at once and reports no cast in progress; the AI's own gap (aip1) still paces the casts.
+func (d *Director) castSummonWithoutAnimation(b *d2monster.Brain, slot int, t d2monster.Target) bool {
+	u := d.unitOf(b)
+	if u == nil || b.Profile == nil || slot < 0 || slot >= d2monster.NumSkills || !b.Profile.Skills[slot].Used() {
+		return false
+	}
+
+	sk := d.resolveSkill(b.Profile, slot)
+	if sk == nil || sk.rec == nil || SummonKindOf(sk.rec.Srvdofunc) == SummonNone {
+		return false
+	}
+
+	u.skill = sk
+	u.aimX, u.aimY = t.X, t.Y
+	d.landSummon(u)
+
+	// false: no animation runs, so the AI must not wait for one to end (c.busy); it sleeps 10 frames and
+	// carries on with its own gap / limit counters
+	return false
 }
 
 // MoveTo implements d2monster.Actor.
