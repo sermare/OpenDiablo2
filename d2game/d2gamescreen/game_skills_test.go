@@ -27,6 +27,47 @@ func TestParseCastPart(t *testing.T) {
 	}
 }
 
+func TestCastSpreadEnv(t *testing.T) {
+	for _, c := range []struct {
+		in    string
+		state string
+		n     int
+	}{
+		{"", "", 0},
+		{"rabies", "", 0},
+		{"rabies,2", "rabies", 2},
+		{" rabies , 3 ", "rabies", 3},
+		{"rabies,0", "", 0},
+		{",2", "", 0},
+	} {
+		t.Setenv("OD2_AUTOCAST_SPREAD", c.in)
+
+		if state, n := castSpreadEnv(); state != c.state || n != c.n {
+			t.Errorf("%q: got (%q,%d), want (%q,%d)", c.in, state, n, c.state, c.n)
+		}
+	}
+}
+
+func TestCastCrowdEnv(t *testing.T) {
+	for _, c := range []struct {
+		in    string
+		n     int
+		state string
+	}{
+		{"", 0, ""},
+		{"3", 3, ""},
+		{" 3 , rabies ", 3, "rabies"},
+		{"0,rabies", 0, ""},
+		{"x", 0, ""},
+	} {
+		t.Setenv("OD2_AUTOCAST_CROWD", c.in)
+
+		if n, state := castCrowdEnv(); n != c.n || state != c.state {
+			t.Errorf("%q: got (%d,%q), want (%d,%q)", c.in, n, state, c.n, c.state)
+		}
+	}
+}
+
 // A mustHit skill whose cast hit nobody (the hero's minions killed the target
 // in the cast animation, or the swing missed) is cast again, a bounded number
 // of times; other skills never are.

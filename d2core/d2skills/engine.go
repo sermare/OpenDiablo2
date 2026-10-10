@@ -579,6 +579,27 @@ func (e *Engine) staticField(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Ski
 	e.emit("state", "STATE area skill=%q radius=%d affected=%d", sk.Name, ef.Radius, n)
 }
 
+// shortID is the first characters of a unit id, enough to tell the units of a log apart.
+func shortID(id string) string {
+	if len(id) > 4 {
+		return id[:4]
+	}
+
+	return id
+}
+
+// unitWhere is the " id=.. pos=(x,y)" tail of a log line about a monster target.
+func unitWhere(t d2missile.Target) string {
+	mt, ok := t.(*monsterTarget)
+	if !ok {
+		return ""
+	}
+
+	x, y := mt.m.SubtilePos()
+
+	return fmt.Sprintf(" id=%s pos=(%d,%d)", shortID(mt.m.ID()), x, y)
+}
+
 func (e *Engine) applyMissileState(owner d2skill.Unit, t d2missile.Target, state string, frames int) {
 	name := t.ID()
 
@@ -589,7 +610,7 @@ func (e *Engine) applyMissileState(owner d2skill.Unit, t d2missile.Target, state
 		e.setOf(t.ID()).Apply(e.frame, d2state.Instance{Name: state, Until: e.frame + frames, Source: owner.ID()})
 	}
 
-	e.emit("state", "STATE apply by=%s unit=%s state=%s frames=%d", owner.ID(), name, state, frames)
+	e.emit("state", "STATE apply by=%s unit=%s state=%s frames=%d%s", owner.ID(), name, state, frames, unitWhere(t))
 }
 
 // ---- damage ----
@@ -1020,8 +1041,14 @@ func (e *Engine) onSim(ev d2missile.Event) {
 			tname = mt.m.Label()
 		}
 
-		e.emit("hit", "MISSILE hit name=%s id=%d target=%s chance=%d roll=%d %s", name, m.ID, tname, ev.Chance, ev.Roll,
-			describe(&ev.Damage))
+		where := ""
+		if mt != nil {
+			tx, ty := mt.m.SubtilePos()
+			where = fmt.Sprintf(" at=(%.1f,%.1f) target_id=%s target_pos=(%d,%d)", m.X, m.Y, shortID(mt.m.ID()), tx, ty)
+		}
+
+		e.emit("hit", "MISSILE hit name=%s id=%d target=%s chance=%d roll=%d %s%s", name, m.ID, tname, ev.Chance, ev.Roll,
+			describe(&ev.Damage), where)
 
 		if mt != nil && ev.Damage.SumTotal(false) > 0 {
 			e.hurt(mt.m, e.owner(m), &ev.Damage, e.skillName(m.SkillID))

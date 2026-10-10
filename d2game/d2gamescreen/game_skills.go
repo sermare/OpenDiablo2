@@ -28,6 +28,9 @@ const (
 	castTestSettle       = 3.0   // seconds after the last cast before the scenario ends
 	castTestItemSettle   = 2.5   // seconds after a skill's last cast before the next skill starts
 	castTestCorpseWait   = 2.5   // seconds a corpse skill waits for a fresh corpse
+	castTestCrowdRadius  = 4     // subtiles: monsters this close to the target count as its neighbours (OD2_AUTOCAST_CROWD)
+	castTestCrowdReach   = 14    // subtiles from the hero: the crowded target is looked for this far at most
+	castTestCrowdWait    = 12.0  // seconds a cast waits for the crowd before it is made anyway
 )
 
 // castItem is one skill of the OD2_AUTOCAST list.
@@ -51,6 +54,8 @@ type castItem struct {
 	// after it settled, hitRetries times at most.
 	mustHit    bool
 	hitRetries int
+	// spreadCasts counts the extra casts made because the state had not spread yet
+	spreadCasts int
 }
 
 // missedHit reports whether a mustHit skill finished without a single hit
@@ -65,16 +70,22 @@ const castItemMaxRetries = 5
 // castItemMaxHitRetries bounds how often a mustHit skill is cast again.
 const castItemMaxHitRetries = 8
 
+// castItemMaxSpreadCasts bounds the extra casts of a skill that has to spread (OD2_AUTOCAST_SPREAD).
+const castItemMaxSpreadCasts = 8
+
 // castTest is the state of the OD2_AUTOCAST scenario.
 type castTest struct {
-	items    []*castItem
-	idx      int
-	level    int
-	since    float64
-	moveAcc  float64
-	corpseW  float64
-	walking  float64
-	engageW  float64
+	items   []*castItem
+	idx     int
+	level   int
+	since   float64
+	moveAcc float64
+	corpseW float64
+	walking float64
+	engageW float64
+	crowdW  float64
+	// infected holds every monster seen carrying the OD2_AUTOCAST_SPREAD state
+	infected map[string]bool
 	refused  int
 	reported bool
 	finished bool
@@ -285,6 +296,8 @@ func (v *Game) autoCast(elapsed float64) {
 		return
 	}
 
+	v.noteSpread(eng, t)
+
 	// a cast the engine refused (the target died in the cast animation, say) does not
 	// count: it is made again, a few times at most
 	if t.idx < len(t.items) {
@@ -315,6 +328,17 @@ func (v *Game) autoCast(elapsed float64) {
 			it.casts = it.count - 1
 			it.doneFor = 0
 			v.Infof("AUTOCAST skill=%q hit nobody, casting again (%d)", it.skill, it.hitRetries)
+
+			continue
+		}
+
+		if state, extra := castSpreadEnv(); state != "" && it.spreadCasts < castItemMaxSpreadCasts &&
+			len(t.infected) < eng.Counters.Casts-it.c0.Casts+extra {
+			it.spreadCasts++
+			it.casts = it.count - 1
+			it.doneFor = 0
+			v.Infof("AUTOCAST skill=%q spread %q to %d monsters for %d casts, casting again (%d)", it.skill, state,
+				len(t.infected), eng.Counters.Casts-it.c0.Casts, it.spreadCasts)
 
 			continue
 		}
@@ -356,6 +380,20 @@ func (v *Game) autoCast(elapsed float64) {
 		v.respawnCastMonsters()
 
 		return
+	}
+
+	if crowd, avoid := castCrowdEnv(); crowd > 0 {
+		cm, n := v.crowdedMonster(eng, avoid)
+		if cm != nil {
+			m = cm
+		}
+
+		// skills that need a pack (Rabies' contagion) wait until the target stands among others
+		if n < crowd && t.crowdW < castTestCrowdWait {
+			t.crowdW += elapsed
+
+			return
+		}
 	}
 
 	aimX, aimY := m.SubtilePos()
@@ -405,6 +443,7 @@ func (v *Game) autoCast(elapsed float64) {
 	t.walking = 0
 	t.since = 0
 	t.corpseW = 0
+	t.crowdW = 0
 	it.casts++
 
 	if !eng.CastAt(v.localPlayer, it.id, aimX, aimY) {
@@ -494,6 +533,107 @@ func (v *Game) putHeroNear(x, y int) {
 // castTestDone reports whether the OD2_AUTOCAST list is finished.
 func (v *Game) castTestDone() bool {
 	return v.castTestState != nil && v.castTestState.finished
+}
+
+// castSpreadEnv reads OD2_AUTOCAST_SPREAD=<state>,<n>: a skill that puts the state on its target
+// and hands it on (Rabies' contagion) is cast again, castItemMaxSpreadCasts times at most, until
+// n more monsters than it was cast at have carried the state. The random direction of a
+// contagion missile decides which neighbours it can reach, so one run may spread nowhere.
+func castSpreadEnv() (string, int) {
+	state, num, ok := strings.Cut(os.Getenv("OD2_AUTOCAST_SPREAD"), ",")
+	if !ok {
+		return "", 0
+	}
+
+	n, err := strconv.Atoi(strings.TrimSpace(num))
+	if err != nil || n < 1 || strings.TrimSpace(state) == "" {
+		return "", 0
+	}
+
+	return strings.TrimSpace(state), n
+}
+
+// noteSpread records the monsters that carry the OD2_AUTOCAST_SPREAD state.
+func (v *Game) noteSpread(eng *d2skills.Engine, t *castTest) {
+	state, _ := castSpreadEnv()
+	if state == "" {
+		return
+	}
+
+	if t.infected == nil {
+		t.infected = map[string]bool{}
+	}
+
+	for _, m := range v.monsters.Monsters() {
+		if !t.infected[m.ID()] && eng.HasState(m.ID(), state) {
+			t.infected[m.ID()] = true
+		}
+	}
+}
+
+// castCrowdEnv reads OD2_AUTOCAST_CROWD=<n>[,<state>]: each cast waits (castTestCrowdWait at
+// most) until the target has n other living monsters within castTestCrowdRadius subtiles, and
+// the target is the most crowded monster near the hero, one that does not carry <state> yet.
+func castCrowdEnv() (int, string) {
+	ref := os.Getenv("OD2_AUTOCAST_CROWD")
+	if ref == "" {
+		return 0, ""
+	}
+
+	num, state, _ := strings.Cut(ref, ",")
+
+	n, err := strconv.Atoi(strings.TrimSpace(num))
+	if err != nil || n < 1 {
+		return 0, ""
+	}
+
+	return n, strings.TrimSpace(state)
+}
+
+// crowdedMonster is the living monster within castTestCrowdReach of the hero with the most
+// living neighbours (ties: the nearest to the hero), skipping monsters that carry the state
+// (when given); nil when there is none. It returns the neighbour count.
+func (v *Game) crowdedMonster(eng *d2skills.Engine, state string) (*d2mapentity.Monster, int) {
+	hx, hy := int(v.localPlayer.Position.X()), int(v.localPlayer.Position.Y())
+
+	var (
+		best         *d2mapentity.Monster
+		bestN, bestD int
+	)
+
+	all := v.monsters.Monsters()
+
+	for _, m := range all {
+		if !m.Alive() || (state != "" && eng.HasState(m.ID(), state)) {
+			continue
+		}
+
+		mx, my := m.SubtilePos()
+
+		d := d2monster.Distance(hx-mx, hy-my)
+		if d > castTestCrowdReach {
+			continue
+		}
+
+		n := 0
+
+		for _, o := range all {
+			if o == m || !o.Alive() {
+				continue
+			}
+
+			ox, oy := o.SubtilePos()
+			if d2monster.Distance(ox-mx, oy-my) <= castTestCrowdRadius {
+				n++
+			}
+		}
+
+		if best == nil || n > bestN || (n == bestN && d < bestD) {
+			best, bestN, bestD = m, n, d
+		}
+	}
+
+	return best, bestN
 }
 
 func (v *Game) nearestMonster() *d2mapentity.Monster {
