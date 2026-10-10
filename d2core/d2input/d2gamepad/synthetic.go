@@ -39,7 +39,12 @@ func (s *Synthetic) Disconnect() {
 // Hold presses a button until Release.
 func (s *Synthetic) Hold(b Button) {
 	s.mu.Lock()
-	s.connected = true
+	if !s.connected { // an unplugged pad takes no input
+		s.mu.Unlock()
+
+		return
+	}
+
 	s.state.Pressed[b] = true
 	s.mu.Unlock()
 }
@@ -55,7 +60,12 @@ func (s *Synthetic) Release(b Button) {
 // Tap presses a button for a few frames.
 func (s *Synthetic) Tap(b Button) {
 	s.mu.Lock()
-	s.connected = true
+	if !s.connected { // an unplugged pad takes no input
+		s.mu.Unlock()
+
+		return
+	}
+
 	s.taps[b] = tapFrames
 	s.mu.Unlock()
 }
@@ -63,7 +73,11 @@ func (s *Synthetic) Tap(b Button) {
 // SetStick sets a stick ("left" or "right") to x,y (-1..1, y down).
 func (s *Synthetic) SetStick(right bool, x, y float64) {
 	s.mu.Lock()
-	s.connected = true
+	if !s.connected { // an unplugged pad takes no input
+		s.mu.Unlock()
+
+		return
+	}
 
 	if right {
 		s.state.Axes[AxisRX], s.state.Axes[AxisRY] = x, y

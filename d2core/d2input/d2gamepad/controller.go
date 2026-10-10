@@ -234,6 +234,10 @@ func (c *Controller) Update(dt float64, pads []PadInfo, mouseX, mouseY int) {
 
 	if moveLeft != c.moving {
 		c.moving = moveLeft
+		if !moveLeft { // the walk target was a point beside the hero: the cursor goes back to the hero
+			c.cx, c.cy = float64(c.cfg.HeroX), float64(c.cfg.HeroY)
+		}
+
 		c.logf("GAMEPAD walk=%v target=(%d,%d)", moveLeft, int(c.cx), int(c.cy))
 	}
 
@@ -442,6 +446,14 @@ func (c *Controller) Cursor() (x, y int, active bool) {
 	defer c.mu.Unlock()
 
 	return int(c.cx), int(c.cy), c.active
+}
+
+// Walking reports that the left stick is walking the hero (its click is a move order, whatever the left skill is).
+func (c *Controller) Walking() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.moving
 }
 
 func clampF(v, lo, hi float64) float64 {

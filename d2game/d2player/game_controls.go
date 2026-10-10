@@ -2,6 +2,7 @@ package d2player
 
 import (
 	"fmt"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2input/d2gamepad"
 	"math/rand"
 	"runtime"
 	"strconv"
@@ -627,6 +628,10 @@ func (g *GameControls) worldClick(button d2enum.MouseButton, mod d2enum.KeyMod, 
 	}
 
 	act := ResolveWorldClick(in)
+	if button == d2enum.MouseButtonLeft && act == WorldCastLeft && d2gamepad.Default().Walking() {
+		act = WorldMove // the left stick walks, it does not cast the left skill
+	}
+
 	g.Infof("INPUT world-click button=%d mod=%d action=%s left_skill=%d", button, mod, act, in.LeftSkillID)
 
 	switch act {
