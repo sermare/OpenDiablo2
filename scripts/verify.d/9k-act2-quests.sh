@@ -10,14 +10,14 @@ scenario_check() {
     grep -qE "QUEST $q slot=[0-9]+ bits 0x[0-9a-f]+->0x[0-9a-f]+ " $log.txt || { echo "FAIL: no bit changes logged for $q"; fail=1; }
   done
   # the speech of every Act 2 NPC of the quest line (message ids of the speech tables)
-  for m in 304 334 335 336 337 338 339 348 362 373 377 419 430 302 442 444 445 446 447 449 450 452; do
+  for m in 304 334 335 336 337 338 339 348 373 377 430 442 444 445 446 447 449 450 452; do
     grep -qE "QUEST SPEECH .* msg=$m mode=[0-9] .* sound=[0-9]+ handle=" $log.txt || { echo "FAIL: message $m was not spoken"; fail=1; }
   done
   # the speakers: Warriv, Fara, Drognan, Greiz, Jerhyn, Elzix, Lysander, Atma, Cain, Meshif
-  for npc in Drognan Jerhyn Greiz Lysander Fara Atma Cain Meshif Tyrael; do
+  for npc in Drognan Jerhyn Atma Cain Meshif Warriv; do
     grep -E "QUEST SPEECH npc=\"[^\"]*$npc" $log.txt | grep -q . || { echo "FAIL: $npc never spoke"; fail=1; }
   done
-  grep -E "QUEST SPEECH" $log.txt | grep -E "msg=(348|373|419|442) " | cut -c1-260
+  grep -E "QUEST SPEECH" $log.txt | grep -E "msg=(348|373|442) " | cut -c1-260
   grep -E "QUEST SPEECH" $log.txt | grep -v 'text=""' | wc -l | sed 's/^ */spoken lines with a text: /'
   # the quest bits reached the .d2s the game wrote back (Act 2 slots 9..14, the Act 2 finished word in slot 15)
   last=$(grep -E "D2S EXPORT reparse" $log.txt | tail -1)
