@@ -1,11 +1,11 @@
 scenario_realtime=1
-scenario_name="performance on real generated levels (OD2_REALMAPS: start-up and level-build budget, 120 monsters under full-screen lighting; generous limits so a loaded machine does not flake)"
+scenario_name="performance on real generated levels (default real maps: start-up and level-build budget, 120 monsters under full-screen lighting; generous limits so a loaded machine does not flake)"
 # Frigid Highlands (Act 5 outdoor with exact tiles) is the slowest level to build. The marks come from d2util.PerfMark /
 # PerfTime ("PERF mark <name> t_ms=<ms since process start>", "PERF span generate level=N ms=<ms>"). The limits are ten to
 # twenty times the measured times (assets ready ~0.12 s, level build ~0.5 s cold and ~0.1 s warm, playable ~2 s, passes
 # under 2 ms); they only catch accidental O(n^2) work, per-level file re-reading or a lost cache.
 scenario_env() {
-  echo 'export OD2_REALMAPS=1 OD2_AUTOLEVEL=111 OD2_AUTOPERF=1 OD2_AUTOPERF_SECONDS=5 OD2_AUTOPERF_WARMUP=6 OD2_AUTOMONSTER="fallen1,120" OD2_AUTOMONSTER_SECONDS=120'
+  echo 'export OD2_AUTOLEVEL=111 OD2_AUTOPERF=1 OD2_AUTOPERF_SECONDS=5 OD2_AUTOPERF_WARMUP=6 OD2_AUTOMONSTER="fallen1,120" OD2_AUTOMONSTER_SECONDS=120'
 }
 perf_limit() { # name value limit
   [ -z "$2" ] && { echo "FAIL: no $1"; fail=1; return; }

@@ -1,7 +1,7 @@
 scenario_name="visual fidelity (dungeon: dark cave lit by the hero and the object lights, logged draw statistics)"
 shot=$tmp/dungeon.png
 scenario_env() {
-  echo "export OD2_REALMAPS=1 OD2_AUTOLEVEL=9 OD2_DRAWSTATS=1"
+  echo "export OD2_AUTOLEVEL=9 OD2_DRAWSTATS=1"
   echo "export OD2_AUTOSCRIPT='wait:4;say:capframe $shot;wait:1;exit'"
 }
 scenario_check() {

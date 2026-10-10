@@ -36,7 +36,7 @@ scenario_env() {
   local jn=$mp_second_name hn=$mp_host_name jsave=$tmp/9g-join.d2s jcmd=$tmp/9g-join.command
   _9g_rename $save $jsave $jn
 
-  local common="export OD2_REALMAPS=1 OD2_PORT=$OD2_PORT OD2_PROTO=d2gs OD2_AUTOPARTY=1 ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
+  local common="export OD2_PORT=$OD2_PORT OD2_PROTO=d2gs OD2_AUTOPARTY=1 ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
 
   # No chat markers: chat sent while the other process is still loading a map is lost, so the two scripts are
   # kept in step by log lines both sides see (party messages, portal events) and by waits.

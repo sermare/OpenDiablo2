@@ -10,7 +10,7 @@ scenario_env() {
   s+=";say:spawnrank champion fallen1;wait:1;say:killleader;wait:1"
   s+=";say:spawnrank unique fallen1;wait:1;say:killleader;wait:1;say:killnear;wait:1"
   s+=";say:spawnrank super Bishibosh;wait:1;say:killleader;wait:1;say:killnear;wait:1"
-  echo 'export OD2_REALMAPS=1 OD2_AUTOLEVEL=9'
+  echo 'export OD2_AUTOLEVEL=9'
   echo "export OD2_AUTOSCRIPT='$s;exit'"
 }
 scenario_check() {

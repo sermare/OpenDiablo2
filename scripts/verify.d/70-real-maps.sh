@@ -1,7 +1,7 @@
 scenario_name="real maps (DRLG Den of Evil cave: renders, hero walks, monsters aggro, screenshot)"
 shot=$tmp/realmaps.png
 scenario_env() {
-  echo 'export OD2_REALMAPS=1 OD2_AUTOLEVEL=9'
+  echo 'export OD2_AUTOLEVEL=9'
   echo "export OD2_AUTOSCRIPT='wait:1;say:capframe $shot;wait:1;move:33,56;wait:32;expect:log=aggro=1;exit'"
 }
 scenario_check() {

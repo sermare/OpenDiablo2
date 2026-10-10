@@ -40,7 +40,7 @@ scenario_env() {
   local jn=$mp_second_name hn=$mp_host_name jsave=$tmp/9f-join.d2s jcmd=$tmp/9f-join.command
   _9f_make $save $jsave $jn
 
-  local common="export OD2_REALMAPS=1 OD2_PORT=$OD2_PORT OD2_PROTO=d2gs OD2_AUTOPARTY=1 ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
+  local common="export OD2_PORT=$OD2_PORT OD2_PROTO=d2gs OD2_AUTOPARTY=1 ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
 
   local hscript="wait:2;say:dropinv cm1;say:dropinv cm1;waitlog:SOCIAL roster n=2;say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3"
   hscript+=";wait:15;say:pvpwalk 6 0;wait:4;say:players"

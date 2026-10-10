@@ -4,7 +4,7 @@ scenario_env() {
   rm -f $a1/reload.d2s; mkdir -p $a1/wb2
   # without the 9b playthrough (a filtered run) there is nothing to reload: use the sample
   if [ -s $a1/wb/Playtest.d2s ]; then cp $a1/wb/Playtest.d2s $a1/reload.d2s; else cp "$D2S_SAMPLE_BODY" $a1/reload.d2s; echo "# no playthrough .d2s" >&2; fi
-  echo "export OD2_AUTOGAME=\"$a1/reload.d2s\" OD2_D2S_WRITEBACK=\"$a1/wb2\" OD2_REALMAPS=1"
+  echo "export OD2_AUTOGAME=\"$a1/reload.d2s\" OD2_D2S_WRITEBACK=\"$a1/wb2\""
   echo "export OD2_AUTOSCRIPT='wait:1;panel:quest;wait:1;say:capframe $tmp/act1-reload-quests.png;panel:close;move:npc=Akara;until:NPC menu opened: npc=\"Akara\",60;menu:Talk;wait:3;exit'"
 }
 scenario_check() {

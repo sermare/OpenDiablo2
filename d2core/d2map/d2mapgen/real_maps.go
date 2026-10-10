@@ -17,13 +17,13 @@ import (
 // The app sets it before the local server is started.
 var HeroMapSeed uint32
 
-// RealMapsEnabled reports whether OD2_REALMAPS=1 asks for the DRLG port.
-// Only complete parts are wired: Act 1 maze levels (caves, crypts, jail,
-// catacombs). Everything else keeps using the old generator.
-func RealMapsEnabled() bool { return os.Getenv("OD2_REALMAPS") == "1" }
+// RealMapsEnabled reports whether the verified DRLG port (real towns, maze
+// and outdoor levels, level changes, population) is used. It is the default;
+// OD2_REALMAPS=0 opts out to the old placeholder map (Rogue Encampment only).
+func RealMapsEnabled() bool { return os.Getenv("OD2_REALMAPS") != "0" }
 
 // RealLevel returns the maze level the game should start in when
-// OD2_REALMAPS=1: OD2_AUTOLEVEL=<id> (start directly in that level), or else
+// default (unless OD2_REALMAPS=0): OD2_AUTOLEVEL=<id> (start directly in that level), or else
 // OD2_AUTOMAP=<id>. 0 means "use the old generator".
 func RealLevel() int {
 	if !RealMapsEnabled() {

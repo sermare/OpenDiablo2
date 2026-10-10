@@ -187,9 +187,9 @@ of the file that reads the variable. Defaults below are from the code.
 
 | Variable | Meaning |
 |---|---|
-| `OD2_REALMAPS=1` | Enable the DRLG level providers (maze and Act 1 outdoor levels). Without it only the Rogue Encampment can be loaded. |
+| `OD2_REALMAPS=0` | Opt out of the DRLG level providers (real towns, maze and outdoor levels, level changes, population), which are the default; the old placeholder map (Rogue Encampment only) is used instead. |
 | `OD2_AUTOMAPSEED=<n>` | Play the maps of another game seed (for example `1` gives the other Lut Gholein variant). |
-| `OD2_AUTOLEVEL=<id>` | Start directly in that level (with `OD2_REALMAPS`). |
+| `OD2_AUTOLEVEL=<id>` | Start directly in that level . |
 | `OD2_AUTOMAP=<id>`, `OD2_AUTOMAP_DIFF`, `OD2_AUTOMAP_ASCII` | Generate that level from the hero's seed and log a summary; difficulty; log the room list and a walkability map. (Not the in-game automap panel; that is `OD2_AUTOSCRIPT` `automap:`.) |
 | `OD2_AUTOTIME=<phase>[@degree]` | Force and freeze the day/night clock. |
 | `OD2_LIGHTING=0` | Turn the light map off. |

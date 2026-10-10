@@ -5,7 +5,7 @@ a2=$tmp/act2n
 scenario_env() {
   mkdir -p $a2/s94 $a2/wb94; rm -f $a2/s94/*.d2s(N) $a2/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && go run scripts/d2s-revive.go "$D2S_SAMPLE_BODY" $a2/s94/Hero.d2s "$D2_TABLES" >/dev/null 2>&1; then
-    echo "export OD2_AUTOGAME=\"$a2/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a2/wb94\" OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0 OD2_AUTOMAPSEED=1"
+    echo "export OD2_AUTOGAME=\"$a2/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a2/wb94\" OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0 OD2_AUTOMAPSEED=1"
     echo "export OD2_AUTOSCRIPT='wait:1;say:resetquests;say:completequest 1 6;travel:2;expect:level=40;wait:4;say:capframe $tmp/act2n-town.png;walkto:exit=41;expect:level=41;wait:3;say:capframe $tmp/act2n-rocky.png;walkto:exit=40;expect:level=40;exit'"
   else
     echo "# no revived sample (D2_TABLES unset or the tool failed)" >&2

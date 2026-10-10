@@ -1,7 +1,7 @@
 scenario_name="real Act 5 outdoor (DRLG Frigid Highlands: Act 5 world placement, barricade presets, plain rooms, screenshot)"
 shot=$tmp/realact45.png
 scenario_env() {
-  echo 'export OD2_REALMAPS=1 OD2_AUTOLEVEL=111'
+  echo 'export OD2_AUTOLEVEL=111'
   echo "export OD2_AUTOSCRIPT='wait:1;say:capframe $shot;wait:1;exit'"
 }
 scenario_check() {

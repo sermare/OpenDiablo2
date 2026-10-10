@@ -8,7 +8,7 @@ scenario_env() {
   s+=";say:completequest 2 6;travel:3;expect:level=75;wait:4;say:capframe $tmp/town3.png"
   s+=";say:completequest 3 6;travel:4;expect:level=103;wait:4;say:capframe $tmp/town4.png"
   s+=";say:completequest 4 2;travel:5;expect:level=109;wait:4;say:capframe $tmp/town5.png;wait:1;exit"
-  echo "export OD2_REALMAPS=1 OD2_DRAWSTATS=1"
+  echo "export OD2_DRAWSTATS=1"
   echo "export OD2_AUTOSCRIPT='$s'"
 }
 scenario_check() {
