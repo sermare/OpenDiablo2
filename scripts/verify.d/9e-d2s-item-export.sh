@@ -7,7 +7,8 @@ wb9e=$tmp/9e-writeback
 scenario_env() {
   mkdir -p $wb9e; rm -f $wb9e/*.d2s(N)
   echo "export OD2_D2S_WRITEBACK=\"$wb9e\" OD2_AUTOTRADE_KEEP=1 OD2_AUTOTRADE_LEVEL=8 OD2_AUTOTRADE_SEED=1"
-  echo "export OD2_AUTOSCRIPT='wait:2;say:dropinv cm1;say:dropinv cm1;say:autobuy Akara;wait:1;panel:close;say:spawnitem cm1 key hp3 mp3 cm1;wait:1;loot:4,10;wait:1;exit'"
+  # the items lie 3-4 tiles from the hero, clear of the town exit warps beside the start point (nearWarpTile skips items there)
+  echo "export OD2_AUTOSCRIPT='wait:2;say:dropinv cm1;say:dropinv cm1;say:autobuy Akara;wait:1;panel:close;say:spawnitemat 28 16 cm1 key hp3 mp3 cm1;wait:1;loot:4,10;wait:1;exit'"
 }
 scenario_check() {
   grep -E "AUTOTRADE (buy|keep)|GIVEITEM|LOOT|D2S EXPORT|D2S export|AUTOSCRIPT RESULT" $log.txt | cut -c1-260

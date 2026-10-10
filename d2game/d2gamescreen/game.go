@@ -1175,7 +1175,7 @@ func (v *Game) commandSpawnItemAt(args []string) error {
 		return fmt.Errorf("invalid argument")
 	}
 
-	y, err := strconv.Atoi(args[0])
+	y, err := strconv.Atoi(args[1])
 	if err != nil {
 		return fmt.Errorf("invalid argument")
 	}
