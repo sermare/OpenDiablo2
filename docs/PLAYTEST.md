@@ -212,6 +212,8 @@ level build.
 | 50 | A script check placed after `kill:all,200` ran in the middle of the fight | the runner stopped waiting for a busy host after 120 s | `BusyTimeout = 400` | `TestBusyTimeoutCoversLongKills` |
 | 51 | `loot:` stopped at the first item that did not fit in the inventory, quest items could stay on the floor | no room = end of the step | the item is put back and the step goes on; quest items first; `lootquest` | 9j-quest-staff |
 
+| 52 | `scripts/verify_parallel.sh` printed "ALL JOBS PASSED" in a minute: no game scenario ran | it passes scenario names without `.sh`, `verify.sh` matched `OD2_VERIFY_ONLY` against the file name with `.sh`, so every scenario was skipped | match with and without the suffix | the 9j/9k scenarios appear in the parallel logs |
+
 ## Limits found, not fixed
 
 * The prison doors (class 434) of Rescue on Mount Arreat are not in the DS1 monster lists of the generated Frigid Highlands
