@@ -245,8 +245,8 @@ func TestCorpseExplosionLevelScale(t *testing.T) {
 	r := cf.p.Do(cf.u, id, tg)
 	e := effectOf(t, r, "area_hit")
 
-	// 70 percent of 100 life = 70, scaled by caster 10 / corpse 20 = 35
-	if e.Desc.Fire.Min != 35<<8 {
-		t.Errorf("fire %d, want %d", e.Desc.Fire.Min, 35<<8)
+	// 70 percent of 100 life = 70, scaled by caster 10 / corpse 20 = 35, half of it fire
+	if e.Desc.Fire.Min+e.Desc.PhysMin != 35<<8 {
+		t.Errorf("fire+phys %d, want %d", e.Desc.Fire.Min+e.Desc.PhysMin, 35<<8)
 	}
 }

@@ -96,3 +96,21 @@ func TestMissedHit(t *testing.T) {
 		t.Error("a skill without the mustHit flag is never repeated")
 	}
 }
+
+// "!!" (ownHit) ignores area pulses: other skills' fields must not hide a miss.
+func TestOwnHitIgnoresAreaPulses(t *testing.T) {
+	start := d2skills.Counters{Hits: 1}
+	it := &castItem{mustHit: true, ownHit: true, c0: start}
+
+	if !it.missedHit(d2skills.Counters{Hits: 1, AreaHits: 3, Melee: 1}) {
+		t.Error("area hits of other skills do not count as the strike hitting")
+	}
+
+	if it.missedHit(d2skills.Counters{Hits: 2, Melee: 1}) {
+		t.Error("a strike hit is a hit")
+	}
+
+	if s, n, must := parseCastPart("Bash,1!!"); s != "Bash" || n != 1 || !must {
+		t.Errorf("parse: %q %d %v", s, n, must)
+	}
+}

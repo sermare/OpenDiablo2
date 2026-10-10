@@ -10,7 +10,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | | F | P | S | M | T |
 |---|---|---|---|---|---|
 | before (start of feat/skills-npsd) | 59 | 42 | 3 | 8 | 8 |
-| after | 68 | 44 | 0 | 0 | 8 |
+| after | 75 | 37 | 0 | 0 | 8 |
 
 
 ## Necromancer
@@ -25,7 +25,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 71 | Dim Vision | 30 | S | F | before: state only; now forces monster AI state 10 (blind) |
 | 72 | Weaken | 30 | F | F | state with damageresist / damage stats |
 | 73 | Poison Dagger | 32 | F | F | melee + poison stream |
-| 74 | Corpse Explosion | 55 | P | P | level scale vs corpse added (verified 0x5c2c60); radius halving (ln34+1)/2 and calc3 element not ported |
+| 74 | Corpse Explosion | 55 | P | F | VERIFIED 0x5c2c60 / 0x5c2b90: radius (r+1)/2, life roll lo..hi-1 over the corpse life, caster/corpse level scale, calc3 element split, physical part zeroed beyond (r/2)^2 squared subtiles (skills-batch-next2.md) |
 | 75 | Clay Golem | 56 | F | F | golem order, one at a time |
 | 76 | Iron Maiden | 30 | F | F | reflect via afterHit |
 | 77 | Terror | 30 | F | F | flee state |
@@ -46,18 +46,18 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 92 | Poison Nova | 22 | F | F | nova missile ring (do 22) |
 | 93 | Bone Spirit | 10 | F | F | homing missile (do 10) |
 | 94 | FireGolem | 56 | P | P | golem; the fire absorb / damage aura stats come from the order only |
-| 95 | Revive | 58 | P | P | uses the corpse type; level cap + life scaling to caster level added (verified 0x5c35a0); life roll at the corpse level not ported |
+| 95 | Revive | 58 | P | F | VERIFIED 0x5c35a0: life rolled between the level-scaled min and max of the corpse class at the corpse level (Director.LifeRangeAt), then the caster-level cap |
 
 ## Paladin
 
 | id | skill | do | before | after | note |
 |---|---|---|---|---|---|
 | 96 | Sacrifice | 64 | F | F | self damage + strike |
-| 97 | Smite | 150 | P | P | shield bash damage; knockback/stun not simulated |
+| 97 | Smite | 150 | P | F | VERIFIED 0x5ccdd0: shield damage plus the Holy Shield skill's damage range at its level (StateSkiller), calc1 percent, always hits, calc2 stun; knockback bit 8 of ResultFlags rides on the hit |
 | 98 | Might | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
 | 99 | Prayer | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
 | 100 | Resist Fire | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
-| 101 | Holy Bolt | - | P | P | bolt damages undead; healing of allies not simulated |
+| 101 | Holy Bolt | - | P | F | VERIFIED 0x5a7a40: allies (pets, mercenary, converted units) are targets of the bolt and healed calc1..calc2 (Healer); undead/demon class filter on enemies |
 | 102 | Holy Fire | 66 | F | F | damage aura (do 66) |
 | 103 | Thorns | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
 | 104 | Defiance | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
@@ -75,12 +75,12 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 116 | Conversion | 79 | M | P | do 79 added (roll, state, level/life scale, charm AI); boss exclusion U |
 | 117 | Holy Shield | 18 | F | F | self state (do 18) |
 | 118 | Holy Shock | 66 | F | F | damage aura |
-| 119 | Sanctuary | 66 | P | P | damages all enemies, exe damages undead only and knocks back |
+| 119 | Sanctuary | 66 | P | F | VERIFIED 0x5cd880 + filter 0x569100: aurafilter 59270 reaches hostile undead non-boss monsters only, the hit carries result flag 8 (knockback) |
 | 120 | Meditation | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
 | 121 | Fist of the Heavens | 80 | P | P | VERIFIED do 80 + hit 22 (0x5cebd0 / 0x5ab7f0): the delay missile marks the target, strikes it with the lightning at its end and sends calc4 holy bolts to the enemies around; the srvoverlay is left to the engine |
 | 122 | Fanaticism | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
 | 123 | Conviction | 66 | F | F | enemy resist aura |
-| 124 | Redemption | 82 | P | P | corpse consumption heals; exe radius / cost rules approximated |
+| 124 | Redemption | 82 | P | F | VERIFIED 0x5cf410 / 0x5cf2e0: Euclidean radius, per corpse roll, heal and consume; a pulse that redeemed pays (lvlmana*(lvl-1)+mana)<<manashift (0 in the shipped row) |
 | 125 | Salvation | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
 
 ## Sorceress
@@ -109,7 +109,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 55 | Glacial Spike | - | F | F | generic missile path |
 | 56 | Meteor | 28 | P | P | SRVDO_028 creates meteorcenter (hit 14: area damage + meteorfire burning ground with its own fire damage columns); bodies read |
 | 57 | Thunder Storm | 29 | P | P | strikes the nearest enemy, no random targets |
-| 58 | Energy Shield | 23 | P | P | mana absorb ratio passed unverified |
+| 58 | Energy Shield | 23 | P | F | VERIFIED aurafunc 24 (0x5c8840): absorb pct of damage, limited by mana*16/ratio, cost absorb*ratio/16, shield ends at 0 mana; per-type walk and the player-attacker exclusion simplified (U) |
 | 59 | Blizzard | 28 | P | P | SRVDO_028 creates blizzardcenter; SrvDoFunc 10 drops blizzard1 shards (calc1 radius, calc2 period); bodies read; blizzard1 hits only its own cell (missile Size not modelled) |
 | 60 | Chilling Armor | 18 | F | F | do 18 self state with chill on melee attackers |
 | 61 | Fire Mastery | - | T | T |  |

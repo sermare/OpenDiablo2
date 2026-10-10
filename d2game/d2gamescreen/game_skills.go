@@ -54,6 +54,9 @@ type castItem struct {
 	// after it settled, hitRetries times at most.
 	mustHit    bool
 	hitRetries int
+	// ownHit (a trailing "!!") counts only the skill's own strike or missile
+	// hits for the retry, not area/aura pulses of earlier skills (Bash, Sacrifice).
+	ownHit bool
 	// spreadCasts counts the extra casts made because the state had not spread yet
 	spreadCasts int
 }
@@ -61,7 +64,12 @@ type castItem struct {
 // missedHit reports whether a mustHit skill finished without a single hit
 // (melee strike, missile or area/aura pulse: Holy Fire hurts only through those) and may be cast again.
 func (it *castItem) missedHit(c d2skills.Counters) bool {
-	return it.mustHit && it.hitRetries < castItemMaxHitRetries && (c.Hits-it.c0.Hits)+(c.AreaHits-it.c0.AreaHits) <= 0
+	n := (c.Hits - it.c0.Hits) + (c.AreaHits - it.c0.AreaHits)
+	if it.ownHit {
+		n = c.Hits - it.c0.Hits
+	}
+
+	return it.mustHit && it.hitRetries < castItemMaxHitRetries && n <= 0
 }
 
 // castItemMaxRetries bounds how often a refused cast is repeated.
@@ -194,7 +202,7 @@ func parseCastPart(part string) (skill string, count int, mustHit bool) {
 
 	if strings.HasSuffix(part, "!") {
 		mustHit = true
-		part = strings.TrimSpace(strings.TrimSuffix(part, "!"))
+		part = strings.TrimSpace(strings.TrimRight(part, "!"))
 	}
 
 	skill = part
@@ -223,6 +231,7 @@ func (v *Game) parseCastTest(eng *d2skills.Engine) *castTest {
 	for _, part := range strings.Split(ref, ";") {
 		it := &castItem{}
 		it.skill, it.count, it.mustHit = parseCastPart(part)
+		it.ownHit = strings.HasSuffix(strings.TrimSpace(part), "!!")
 
 		it.id = eng.SkillID(it.skill)
 		if it.id < 0 {

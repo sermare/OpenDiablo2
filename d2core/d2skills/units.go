@@ -447,6 +447,10 @@ func (w *world) IsEnemy(o d2missile.Owner, t d2missile.Target) bool {
 		return o.IsPlayer && pt.e.isRival(pt.ID())
 	}
 
+	if mt, ok := t.(*monsterTarget); ok && w.e.monsters.IsAlly(mt.m) { // pets, mercs, converted units
+		return false
+	}
+
 	return o.IsPlayer && !t.IsPlayer()
 }
 
@@ -473,6 +477,16 @@ func (w *world) Targets(x, y int) []d2missile.Target {
 
 	for _, p := range w.e.rivalsNear(x, y, 1) {
 		out = append(out, w.e.rivalTarget(p))
+	}
+
+	// the hero's allies (minions, mercenary, converted monsters): only missiles
+	// that act on friends read them (Holy Bolt heals), every other missile
+	// ignores a unit IsEnemy rejects
+	for _, m := range w.e.monsters.Allies() {
+		mx, my := m.SubtilePos()
+		if chebyshev(mx-x, my-y) <= 1 {
+			out = append(out, w.e.target(m))
+		}
 	}
 
 	return out

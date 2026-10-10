@@ -54,7 +54,7 @@ func init() {
 		9:  doStrikeBuffFn, // Frenzy (SRVDO_009_Frenzy) and, with 120, Maul / Feral Rage
 		68: doShoutFn,      // Shout, Battle Orders, Battle Command, War Cry
 		70: doDoubleSwingFn,
-		71: doCurseFn, // Taunt
+		71: doTauntFn, // Taunt
 		74: doDoubleThrowFn,
 		77: doLeapFn,
 		78: doLeapAttackFn,
@@ -81,7 +81,7 @@ func init() {
 		30: doCurseFn, // Amplify Damage, Dim Vision, Weaken, Iron Maiden, Terror, Life Tap, Decrepify, Lower Resist
 		31: doSummonFn,
 		32: doMeleeFn, // Poison Dagger: melee, poison from EType
-		33: doHammerFn,
+		33: doPsychicHammerFn,
 		55: doCorpseExplosionFn,
 		56: doSummonFn, // golems
 		58: doSummonFn, // Revive
@@ -121,7 +121,7 @@ func init() {
 		44: doSummonFn,   // Blade Sentinel
 		45: doSummonFn,   // sentries
 		46: doDragonFn,   // Dragon Claw
-		47: doArmorFn,    // Cloak of Shadows
+		47: doCloakFn,    // Cloak of Shadows
 		49: doSummonFn,   // Shadow Warrior / Master
 		50: doDragonFn,   // Dragon Tail
 		51: doMindBlastFn,
@@ -586,25 +586,6 @@ func doSacrificeFn(c *cast) {
 	}
 }
 
-// doSmiteFn is SRVDO_150_Smite (U): the shield bash; damage is the shield-based
-// range, here the shield is not modelled so it deals Smite's own physical
-// MinDam/MaxDam range plus calc1 percent, and stuns for calc2 frames.
-func doSmiteFn(c *cast) {
-	if !c.needTarget() {
-		return
-	}
-
-	o := c.meleeOpt()
-	o.pct = c.calc(1)
-	m := c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o)
-
-	if m.Hit {
-		m.Damage.StunLen = int32(c.calc(2))
-	}
-
-	c.addMelee(m)
-}
-
 // doChargedStrikeFn is SRVDO_011_ChargedStrike: a Power-Strike style melee hit;
 // on a hit calc1 charged bolts fly out of the target in random directions.
 func doChargedStrikeFn(c *cast) {
@@ -967,20 +948,6 @@ func doMineFn(c *cast) {
 
 // ---- area effects ----
 
-// doHammerFn is SRVDO_033_PsychicHammer (U): magic damage (EType mag) in a 3
-// subtile radius around the aim and a stun of calc? frames is not applied.
-func doHammerFn(c *cast) {
-	ax, ay := c.aim()
-	c.effect(Effect{Kind: "area_hit", Origin: "aim", X: ax, Y: ay, Radius: 3, Desc: c.desc()})
-}
-
-// doMindBlastFn is SRVDO_051_MindBlast (U): enemies in the radius par7 around the
-// aim are stunned for the skill's stun length and take the magic damage.
-func doMindBlastFn(c *cast) {
-	ax, ay := c.aim()
-	c.effect(Effect{Kind: "area_hit", Origin: "aim", X: ax, Y: ay, Radius: c.env.eval(c.sk.AuraRangeCalc), Desc: c.desc()})
-}
-
 // doShoutFn is SRVDO_068_Shout: a nova ring of the skill's missile plus the
 // timed self state (Shout, Battle Orders, Battle Command, Battle Cry). A skill
 // whose missile has no hit function 18 / 21 and no state (War Cry) keeps the
@@ -1150,21 +1117,6 @@ func doLeapAttackFn(c *cast) {
 	}
 }
 
-// doChargeFn is SRVDO_067_Charge (U): rush to the target and strike it with
-// calc1 percent damage.
-func doChargeFn(c *cast) {
-	if !c.needTarget() {
-		return
-	}
-
-	hx, hy := c.u.Pos()
-	c.effect(Effect{Kind: "move", Mode: "charge", X: (hx + c.tgt.UX) / 2, Y: (hy + c.tgt.UY) / 2})
-
-	o := c.meleeOpt()
-	o.pct = c.calc(1)
-	c.addMelee(c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o))
-}
-
 // doFistFn is SRVDO_080_FistOfTheHeavens (0x5cebd0, verified): without a target
 // unit nothing happens. The skill's missile (fistoftheheavensdelay) is created
 // at the target, marking it; when it ends (Range frames) hit function 22
@@ -1252,6 +1204,9 @@ func doAuraFn(c *cast) {
 		if sk.SrvDoFunc == 66 && sk.EType != "" {
 			e.Mode = "damage"
 			e.Desc = c.desc()
+			// VERIFIED: the hit carries the skill's result flags (0x5cd880); bit 8
+			// is the knockback (Sanctuary has ResultFlags 11).
+			e.Knock = sk.ResultFlags&resultKnock != 0
 		}
 	} else {
 		e.Stats = stats
@@ -1264,6 +1219,9 @@ func doAuraFn(c *cast) {
 		e.Mode = "redemption"
 		e.Heal, e.Dist = c.calc(2), c.calc(3)
 		e.Stack = c.calc(1)
+		// VERIFIED 0x5cf410: a pulse that redeemed something pays the aura
+		// parameter (lvlmana*(lvl-1)+mana) << manashift; 0 for the shipped row.
+		e.Cost = int(sk.calcMana(c.lvl, false))
 	}
 
 	c.effect(e)
@@ -1432,6 +1390,10 @@ func doDragonFn(c *cast) {
 
 		o.skillElem = false
 		c.addMelee(c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o))
+	}
+
+	if c.sk.SrvDoFunc == 42 && c.knockRoll(c.tgt.Unit, 100) { // 0x5d4370: the last kick may knock back
+		c.knock(c.tgt.Unit)
 	}
 
 	if c.sk.SrvDoFunc == 50 {
@@ -1607,6 +1569,10 @@ func doCorpseExplosionFn(c *cast) {
 	}
 
 	radius := c.env.eval(c.sk.AuraRangeCalc)
+	if c.sk.SrvDoFunc == 55 {
+		radius = (radius + 1) / 2 // VERIFIED 0x5c2c60: the units hit are within (aurarange+1)/2
+	}
+
 	e := Effect{Kind: "area_hit", Origin: "aim", X: c.tgt.CX, Y: c.tgt.CY, Radius: radius, CorpseID: c.tgt.CorpseID,
 		CorpseHP: c.tgt.CorpseHP}
 
@@ -1617,15 +1583,17 @@ func doCorpseExplosionFn(c *cast) {
 		return
 	}
 
-	lo, hi := c.calc(1), c.calc(2)
-	pct := lo
+	// VERIFIED (0x5c2c60): both bounds are percents of the corpse's life, and
+	// the roll is taken over the life range lo..hi-1 (RAND_RollSeedModulo(hi-lo)).
+	lo := mulDiv(c.tgt.CorpseHP, c.calc(1), 100)
+	hi := mulDiv(c.tgt.CorpseHP, c.calc(2), 100)
+	v := int32(lo)
 
 	if hi > lo {
-		pct = lo + c.rollN(int32(hi-lo+1))
+		v += int32(c.rollN(int32(hi - lo)))
 	}
 
 	d := &d2missile.DamageDesc{}
-	v := int32(mulDiv(c.tgt.CorpseHP, pct, 100))
 
 	// VERIFIED (SRVDO_055 0x5c2c60): a corpse above the caster's level deals
 	// its damage scaled by caster level / corpse level.
@@ -1634,7 +1602,24 @@ func doCorpseExplosionFn(c *cast) {
 	}
 
 	v <<= 8
-	d.Fire = d2missile.Elem{Min: v, Max: v}
+	phys, el := splitCorpseDamage(v, c.calc(3), c.sk.EType)
+	d.PhysMin, d.PhysMax = phys, phys
+
+	switch c.sk.EType {
+	case "cold":
+		d.Cold = el
+	case "ltng":
+		d.Lightning = el
+	case "mag":
+		d.Magic = el
+	default:
+		d.Fire = el
+	}
+
 	e.Desc = d
+	// VERIFIED 0x5c2b90: beyond (aurarange/2)^2 squared subtiles from the
+	// corpse the physical part is zeroed (the elemental part stays).
+	r := c.env.eval(c.sk.AuraRangeCalc)
+	e.Falloff, e.FalloffSq = true, (r/2)*(r/2)
 	c.effect(e)
 }

@@ -197,3 +197,29 @@ func MonsterResists(r *d2records.MonStatRecord, diff d2monster.Difficulty) [6]in
 		pick(r.ResistancePoisonNormal, r.ResistancePoisonNightmare, r.ResistancePoisonHell),
 	}
 }
+
+// LifeRangeAt is the minimum and maximum life (whole points) of a monster class
+// at a level in the current difficulty, without the player-count bonus: the
+// first two outputs of MONTBL_GetLevelScaledStats (0x6551e0, VERIFIED), which
+// Revive rolls between at the corpse's level (SRVDO_058 0x5c35a0).
+func (d *Director) LifeRangeAt(r *d2records.MonStatRecord, level int) (lo, hi int) {
+	diff := d.opt.Difficulty
+	pick := func(n, nm, h int) int { return [3]int{n, nm, h}[diff] }
+
+	var lv lvlNums
+
+	if rec := d.asset.Records.Monster.Levels[level]; rec != nil && !r.IgnoreMonLevelTxt {
+		lv = monlvlRow(rec, d.opt.Classic)[diff]
+	} else {
+		lv.hp = 100 // raw values: ratio of 100%
+	}
+
+	lo = d2monstats.MulDiv100(lv.hp, pick(r.MinHPNormal, r.MinHPNightmare, r.MinHPHell))
+	hi = d2monstats.MulDiv100(lv.hp, pick(r.MaxHPNormal, r.MaxHPNightmare, r.MaxHPHell))
+
+	if hi < lo {
+		hi = lo
+	}
+
+	return lo, hi
+}
