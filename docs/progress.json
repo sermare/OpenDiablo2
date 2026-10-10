@@ -36,7 +36,7 @@
       "label": "Level generator proven equal to the real game",
       "done": 8708,
       "total": 8768,
-      "note": "mazes + Act 1 outdoors + exact Act 1 tiles + Acts 2-5 outdoor/preset generators all proven in Go against the emulator",
+      "note": "mazes + Act 1 outdoors + exact Act 1 tiles + Acts 2-5 outdoor/preset generators all proven in Go against the emulator; on branches: all 70 maze levels (2,696 rooms) and presets 26/27/32/33/37/94/97 now match the emulator record for record (427 levels, 30,129 rooms, 0 mismatches), not yet landed",
       "color": "#22c1c3"
     },
     {
@@ -106,7 +106,7 @@
       "done": 0,
       "total": 14,
       "pending": 5,
-      "note": "14 panels; a layout audit covering 5 is on a branch, never run in a game",
+      "note": "14 panels; a layout audit covering 5 is on a branch, never run in a game; update: the layout was then run in a real game window on a branch (150 rectangles checked, 0 deviating) but that branch is not landed",
       "color": "#c58bff"
     },
     {
@@ -146,7 +146,7 @@
       "done": 71,
       "total": 74,
       "pending": 0,
-      "note": "scripts/verify_parallel.sh run 47389 (6 jobs): 74 distinct sections ran, 71 green, 3 red (Act 3 gate, skill bar, act travel); 4 of 6 jobs ALL CHECKS PASSED; 360 Go tests PASS, 0 FAIL",
+      "note": "scripts/verify_parallel.sh run 47389 (6 jobs): 74 distinct sections ran, 71 green, 3 red (Act 3 gate, skill bar, act travel); 4 of 6 jobs ALL CHECKS PASSED; 360 Go tests PASS, 0 FAIL; a landing verify of the combined branch is in flight (not counted until it finishes)",
       "color": "#3ddc84"
     },
     {
