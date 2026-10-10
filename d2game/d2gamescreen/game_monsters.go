@@ -98,6 +98,7 @@ func (v *Game) advanceMonsters(elapsed float64) {
 	d.Advance(elapsed)
 	v.advanceRealm(elapsed)
 	v.populateLevel()
+	v.placePrisonDoors()
 	v.advanceKill(elapsed)
 	v.advanceLoot(elapsed)
 	v.advanceMerc(elapsed)

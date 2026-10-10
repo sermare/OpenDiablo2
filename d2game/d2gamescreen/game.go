@@ -166,6 +166,7 @@ type Game struct {
 	ground               groundState
 	levelStore           levelStore // state of the levels the hero has left (level_persist.go)
 	populated            int        // levels.changes+1 of the level that was populated with monsters
+	prisonDoors          int        // levels.changes+1 of the level whose cages got their prison doors
 	objects              objectState
 	autoObject           autoObject
 	autoGround           autoGround
