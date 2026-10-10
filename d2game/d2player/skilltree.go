@@ -454,6 +454,10 @@ func (s *skillTree) iconAt(mx, my int) *skillIcon {
 
 // OnMouseMove tracks the icon under the mouse (for its tooltip and for hotkey assignment).
 func (s *skillTree) OnMouseMove(mx, my int) {
+	if scriptDrivesPointer() {
+		return // see HUD.OnMouseMove
+	}
+
 	s.setHovered(s.iconAt(mx, my))
 }
 

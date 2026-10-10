@@ -3,6 +3,7 @@ package d2player
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -481,3 +482,10 @@ func (g *GameControls) commandLevelUp(term d2interface.Terminal) func(args []str
 		return nil
 	}
 }
+
+// scriptDrivesPointer says whether an OD2_AUTOSCRIPT run is in charge of the pointer: the skill popup and the
+// skill tree then follow the script's skill:hover= steps only, not the physical cursor. Root cause of the
+// "hover + F8 did not assign Fire Wall" failures of parallel verifications: the cursor position is polled every
+// frame, windows of the other jobs opening and moving made it jump, and the jump cleared the scripted hover
+// before the F-key arrived.
+func scriptDrivesPointer() bool { return os.Getenv("OD2_AUTOSCRIPT") != "" }
