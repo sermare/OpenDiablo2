@@ -7,8 +7,16 @@
       "label": "Game.exe functions named in Ghidra",
       "done": 11235,
       "total": 11257,
-      "note": "original 1.14b binary; 11,235 named by meaning, 0 auto-labelled; the last 22 are the anti-cheat module, skipped on purpose",
+      "note": "original 1.14b binary; 11,235 named by meaning (names re-verified: see next bar), 0 auto-labelled; the last 22 are the anti-cheat module, skipped on purpose",
       "color": "#7c5cff"
+    },
+    {
+      "label": "Hedged exe names re-verified against the decompile",
+      "done": 1278,
+      "total": 1633,
+      "pending": 0,
+      "note": "1,187 confirmed, 71 corrected, ~20 unclear; ~355 left (server/client helpers, library thunks, game-logic rows) (~ estimate of the total)",
+      "color": "#8f7cff"
     },
     {
       "label": "Original source files indexed",
@@ -73,8 +81,8 @@
       "label": "Player skills with engine behaviour",
       "done": 130,
       "total": 210,
-      "pending": 0,
-      "note": "~130 of 7 classes x 30 skills; formulas audited against Game.exe (calc language, defense, to-hit, resist)",
+      "pending": 11,
+      "note": "~130 of 7 classes x 30 skills; Necromancer/Paladin/Sorceress/Druid gaps closed on a branch (+11), Amazon/Barbarian/Assassin in progress",
       "color": "#5fd0a5"
     },
     {
