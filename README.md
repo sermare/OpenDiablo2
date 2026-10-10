@@ -41,7 +41,7 @@ Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The 
 
 ## Status board
 
-_Last updated: 2026-10-09 (late evening; headline refreshed from measured data: Game v1 complete 58%, 64% with branches; full verify run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
+_Last updated: 2026-10-10 (after the pass6 landing; Game v1 complete 64%, 66% with held branches; full verify run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
 
 ### ✅ Working now (each one verified, not assumed)
 
