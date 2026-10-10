@@ -64,7 +64,7 @@
 <rect x="36" y="550" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
 <rect x="36" y="550" width="732.9" height="18" rx="9" fill="url(#g4)" filter="url(#glow)"/>
 <text x="844" y="564" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#22c1c3">99.3%</text>
-<text x="36" y="585" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">mazes + Act 1 outdoors + exact Act 1 tiles + Acts 2-5 outdoor/preset generators all proven in Go against the emulator</text>
+<text x="36" y="585" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">mazes + Act 1 outdoors + exact Act 1 tiles + Acts 2-5 outdoor/preset generators all proven in Go against the emulator; on branches: all 70 maze levels (2,696 rooms) and presets 26/27/32/33/37/94/97 now match the emulator record for record (427 levels, 30,129 rooms, 0 mismatches), not yet landed</text>
 <text x="36" y="616" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real .d2s save: read and write verified</text>
 <text x="844" y="616" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">9 / 10</text>
 <rect x="36" y="628" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -121,7 +121,7 @@
 <rect x="36" y="1252" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
 <rect x="36.0" y="1252" width="263.6" height="18" rx="9" fill="#c58bff" fill-opacity="0.28" stroke="#c58bff" stroke-opacity="0.6" stroke-dasharray="4 3"/>
 <text x="844" y="1266" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#c58bff">0%</text>
-<text x="36" y="1287" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+36% done on branches, not yet verified (dashed) · 14 panels; a layout audit covering 5 is on a branch, never run in a game</text>
+<text x="36" y="1287" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+36% done on branches, not yet verified (dashed) · 14 panels; a layout audit covering 5 is on a branch, never run in a game; update: the layout was then run in a real game window on a branch (150 rectangles checked, 0 deviating) but that branch is not landed</text>
 <text x="36" y="1318" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Item generation gaps closed vs the exe</text>
 <text x="844" y="1318" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11 / 12</text>
 <rect x="36" y="1330" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -149,7 +149,7 @@
 <rect x="36" y="1642" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
 <rect x="36" y="1642" width="708.1" height="18" rx="9" fill="url(#g18)" filter="url(#glow)"/>
 <text x="844" y="1656" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#3ddc84">96%</text>
-<text x="36" y="1677" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">scripts/verify_parallel.sh run 47389 (6 jobs): 74 distinct sections ran, 71 green, 3 red (Act 3 gate, skill bar, act travel); 4 of 6 jobs ALL CHECKS PASSED; 360 Go tests PASS, 0 FAIL</text>
+<text x="36" y="1677" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">scripts/verify_parallel.sh run 47389 (6 jobs): 74 distinct sections ran, 71 green, 3 red (Act 3 gate, skill bar, act travel); 4 of 6 jobs ALL CHECKS PASSED; 360 Go tests PASS, 0 FAIL; a landing verify of the combined branch is in flight (not counted until it finishes)</text>
 <text x="36" y="1708" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Acts played start to finish by a human tester</text>
 <text x="844" y="1708" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">0 / 5</text>
 <rect x="36" y="1720" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
