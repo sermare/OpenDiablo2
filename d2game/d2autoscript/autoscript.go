@@ -177,8 +177,11 @@ type LogMarkHost interface {
 // WaitLogTimeout is the longest a waitlog step waits (game seconds).
 const WaitLogTimeout = 90.0
 
-// BusyTimeout is the longest the runner waits for a busy host (game seconds).
-const BusyTimeout = 120.0
+// BusyTimeout is the longest the runner waits for a busy host (game seconds). A fight has its own
+// deadline (kill:near=30,150 runs up to 150 s); with the tougher natural monsters of the packs the
+// fights of the playthroughs use their whole time, and a runner that gave up waiting at 120 s started
+// the next walk while the hero still fought (Chaos Sanctuary: seal 394 never operated).
+const BusyTimeout = 400.0
 
 // Host performs the side effects of steps. Methods must not block.
 type Host interface {
