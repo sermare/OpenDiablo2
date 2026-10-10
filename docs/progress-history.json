@@ -3598,6 +3598,33 @@
 "Game v1 complete": 68.61,
 "Game v1 complete (incl. branch work)": 69.94
 }
+},
+{
+"t": "2026-10-10T18:17:38+00:00",
+"v": {
+"Game.exe functions named in Ghidra": 100.0,
+"Hedged exe names re-verified against the decompile": 78.26,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 68.59,
+"Level generator proven equal to the real game": 100.0,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 100.0,
+"Acts playable end to end (scripted play)": 100.0,
+"Levels walked by a verify scenario": 38.24,
+"Main quests with logic implemented": 100.0,
+"Player skills with engine behaviour": 67.14,
+"Monster AI archetypes implemented": 97.97,
+"Monster AI archetypes ported faithfully": 57.43,
+"In-game UI panels matching the original layout": 57.14,
+"Item generation gaps closed vs the exe": 91.67,
+"Sound and music confirmed by a human listen": 0.0,
+"Multiplayer playable through the game screen": 75.0,
+"Mac app: build, Finder launch with real maps, disk image": 66.67,
+"Real full verify green (scenario sections per job, real parallel log)": 100.0,
+"Acts played start to finish by a human tester": 0.0,
+"Game v1 complete": 68.61,
+"Game v1 complete (incl. branch work)": 69.94
+}
 }
 ]
 }
