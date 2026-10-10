@@ -131,7 +131,7 @@
       "done": 3,
       "total": 4,
       "pending": 0,
-      "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and the party panel through the realm are not wired (trade works over the legacy path)",
+      "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and party commands now travel through the realm bridge with unit tests (feat/mp-and-mac-dmg), not yet seen in two game windows; trade works over the legacy path",
       "color": "#ffb86b"
     },
     {
@@ -139,7 +139,7 @@
       "done": 2,
       "total": 3,
       "pending": 1,
-      "note": "app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image has not been opened by a human; the desktop app was rebuilt from the landed tree",
+      "note": "app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image install is rehearsed by scripts/dmg_install_check.sh (quarantine, mount, copy, verify) but has not been opened in Finder by a human; the desktop app was rebuilt from the landed tree",
       "color": "#9be564"
     },
     {

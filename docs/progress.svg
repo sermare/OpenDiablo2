@@ -135,14 +135,14 @@
 <rect x="36" y="1486" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
 <rect x="36" y="1486" width="553.5" height="18" rx="9" fill="url(#g16)" filter="url(#glow)"/>
 <text x="844" y="1500" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ffb86b">75%</text>
-<text x="36" y="1521" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and the party panel through the realm are not wired (trade works over the legacy path)</text>
+<text x="36" y="1521" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and party commands now travel through the realm bridge with unit tests (feat/mp-and-mac-dmg), not yet seen in two game windows; trade works over the legacy path</text>
 <text x="36" y="1552" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Mac app: build, Finder launch with real maps, disk image</text>
 <text x="844" y="1552" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">2 / 3</text>
 <rect x="36" y="1564" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
 <rect x="36" y="1564" width="492.0" height="18" rx="9" fill="url(#g17)" filter="url(#glow)"/>
 <rect x="528.0" y="1564" width="246.0" height="18" rx="9" fill="#9be564" fill-opacity="0.28" stroke="#9be564" stroke-opacity="0.6" stroke-dasharray="4 3"/>
 <text x="844" y="1578" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#9be564">67%</text>
-<text x="36" y="1599" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+33% done on branches, not yet verified (dashed) · app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image has not been opened by a human; the desktop app was rebuilt from the landed tree</text>
+<text x="36" y="1599" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+33% done on branches, not yet verified (dashed) · app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image install is rehearsed by scripts/dmg_install_check.sh (quarantine, mount, copy, verify) but has not been opened in Finder by a human; the desktop app was rebuilt from the landed tree</text>
 <text x="36" y="1630" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real full verify green (scenario sections per job, real parallel log)</text>
 <text x="844" y="1630" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">259 / 259</text>
 <rect x="36" y="1642" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>

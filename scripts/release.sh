@@ -25,6 +25,7 @@ scripts/make-dmg.sh dist/OpenDiablo2.app
 
 DMG=$(ls dist/*.dmg)
 scripts/check_app_bundle.sh dist/OpenDiablo2.app "$DMG"
+scripts/dmg_install_check.sh "$DMG"
 
 (cd dist && shasum -a 256 -- *.zip *.dmg | tee SHA256SUMS)
 echo "release artifacts in dist/ (not notarised: users right-click > Open, see docs/macos-quickstart.md)"

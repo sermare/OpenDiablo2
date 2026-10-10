@@ -80,6 +80,8 @@ type Bridge struct {
 	sched   []due // remote movement waiting for its server time
 	skill   uint32
 	hasSkil bool
+	levels  map[uint32]uint16 // unit id -> level id, from PlayerLevel
+	area    uint16            // level id of the local hero (0 = not reported yet)
 
 	out []d2netpacket.NetPacket // packets for the engine, built under mu
 
@@ -179,22 +181,13 @@ func (b *Bridge) Create(game string) (d2realm.GameJoined, error) {
 // Join enters the game, retrying while it does not exist yet (the host is
 // still creating it) for up to retry.
 func (b *Bridge) Join(game string, retry time.Duration) (d2realm.GameJoined, error) {
-	deadline := time.Now().Add(retry)
-
-	for {
-		j, err := b.client.Join(game, "")
-		if err == nil {
-			b.joined = j
-
-			return j, nil
-		}
-
-		if re, ok := err.(*d2realm.RequestError); (ok && re.Code != d2realm.CodeGameNotFound) || time.Now().After(deadline) {
-			return j, err
-		}
-
-		time.Sleep(300 * time.Millisecond)
+	j, err := retryJoin(func() (d2realm.GameJoined, error) { return b.client.Join(game, "") },
+		time.Now().Add(retry), func() { time.Sleep(300 * time.Millisecond) }, time.Now)
+	if err == nil {
+		b.joined = j
 	}
+
+	return j, err
 }
 
 // Begin sets up the replica of the game that was entered, tells the engine
@@ -311,6 +304,29 @@ func (b *Bridge) Send(np d2netpacket.NetPacket) error {
 		}
 
 		return b.client.Say(p.Text, "")
+	case d2netpackettype.ChangeLevel:
+		p, err := d2netpacket.UnmarshalChangeLevel(np.PacketData)
+		if err != nil {
+			return err
+		}
+
+		if err = b.ChangeLevel(p.Level); err != nil {
+			b.cfg.Logf("realm: level change not reported: %v", err)
+		}
+
+		return nil
+	case d2netpackettype.PartyCommand:
+		p, err := d2netpacket.UnmarshalPartyCommand(np.PacketData)
+		if err != nil {
+			return err
+		}
+
+		reason, err := b.Party(p.Op, p.Target)
+		if reason != "" {
+			b.cfg.Logf("realm: party %s: %s", p.Op, reason)
+		}
+
+		return err
 	case d2netpackettype.PlayerDisconnectionNotification:
 		b.Close()
 
@@ -453,6 +469,8 @@ func (b *Bridge) drain() {
 				b.seen.Casts++
 				b.emit(d2netpacket.CreateCastPacket(id, int(m.Skill), d2mp.FromSub(m.X), d2mp.FromSub(m.Y)))
 			}
+		case d2realm.PlayerLevel:
+			b.playerLevel(m)
 		case d2realm.PlayerLeave:
 			if id, ok := b.known[m.UnitID]; ok {
 				b.seen.Leaves++
@@ -542,8 +560,11 @@ func (b *Bridge) handle(e d2mp.Event) {
 			b.emit(d2netpacket.CreateRealmUnitPacket(d2netpacket.RealmUnitPacket{Op: d2netpacket.RealmUnitDeath, UnitID: e.ID,
 				X: x, Y: y, Killer: killer}))
 		}
+	case d2mp.EvParty:
+		b.emitRoster("")
 	case d2mp.EvMsg:
 		b.cfg.Logf("realm: %s", e.Text)
+		b.emitRoster(e.Text)
 	}
 }
 

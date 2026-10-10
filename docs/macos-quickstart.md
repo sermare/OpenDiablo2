@@ -84,6 +84,16 @@ Steam and Battle.net locations) and offers it, otherwise it asks you to pick the
 `d2xvideo`). Picking the parent of `Diablo II` works too. If files are missing it
 shows a dialog listing them; nothing crashes, and your files are only read.
 
+Rehearsing the install without a GUI: `scripts/dmg_install_check.sh [dmg]` (also run by `release.sh`) copies the
+image, marks it quarantined like a browser download, mounts it read-only and hidden, copies the app to a temporary
+Applications folder, marks that copy quarantined, and checks signature, executable bit, arm64, minimum macOS, the
+Application Support config default and the folder picker. It never touches `/Applications` or your Desktop app and
+starts nothing. What only a human can confirm is how the image looks in Finder and that the right-click Open dance
+works on a Mac that did not build the app (see the disk image item in `docs/PLAYTEST.md`).
+
+Not notarised on purpose: notarisation needs a paid Apple Developer ID. The ad-hoc signature plus right-click Open
+(or `xattr -dr com.apple.quarantine`) is the supported path.
+
 One command builds everything and checks it (nothing is launched, no game files needed):
 
 ```sh
