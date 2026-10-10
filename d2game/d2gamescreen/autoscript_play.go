@@ -65,6 +65,14 @@ type killState struct {
 	refusals    map[string]int  // refusals by reason, for the summary
 }
 
+// newKillState returns a fight with its maps made (the defensive fights of a walk make one too).
+func newKillState(radius, seconds float64, defend bool) *killState {
+	return &killState{
+		radius: radius, deadline: seconds, skip: map[*d2mapentity.Monster]float64{}, defend: defend,
+		dropped: map[int]bool{}, lastCast: -standSeconds * 10, casts: map[string]int{}, refusals: map[string]int{},
+	}
+}
+
 // WalkToExit implements d2autoscript.PlayHost.
 func (h autoScriptHost) WalkToExit(level int) error { return h.v.walkToExit(level) }
 
@@ -111,11 +119,7 @@ func (h autoScriptHost) Kill(radius, seconds float64) error {
 		return fmt.Errorf("no monster director")
 	}
 
-	k := &killState{
-		radius: radius, deadline: seconds, skip: map[*d2mapentity.Monster]float64{},
-		dropped: map[int]bool{}, lastCast: -standSeconds * 10,
-		casts: map[string]int{}, refusals: map[string]int{},
-	}
+	k := newKillState(radius, seconds, false)
 	k.start = len(v.killCandidates(k))
 	v.levels.kill = k
 
