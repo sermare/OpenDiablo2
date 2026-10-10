@@ -575,6 +575,13 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 
 	g.engine.SetStartPosition(sx, sy)
 
+	// the towns of Acts 4 and 5 are built here too (OD2_REALMAPS): the NPCs the DS1 lacks (Larzuk) are
+	// placed like in the plain town provider, and the TOWN NPC lines the scenarios read are logged
+	if IsActTown(levelID) {
+		g.placeTownExtras(levelID, int(sx), int(sy))
+		g.logTownNPCs(levelID)
+	}
+
 	g.Infof("real preset: level %d seed %#x: Def %d file %d (%s), %d rooms%s, map %dx%d tiles",
 		levelID, seed, pl.Def, pl.File, path, len(pl.Rooms), exact, pl.Rect.W, pl.Rect.H)
 	g.Infof("real preset: hero entry at tile (%.1f,%.1f) %s", sx, sy, how)
