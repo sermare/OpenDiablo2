@@ -798,6 +798,18 @@ func (e *Engine) AreaChanged(md *d2monsters.Director) {
 	e.dots = map[string]dotTotal{}
 	e.mercCasters = map[string]*heroUnit{}
 
+	// the missiles went with sim.Clear: their looping travel sounds must stop, and the
+	// corpses the Find skills marked belong to the old area (monster ids may be reused)
+	for id, stop := range e.travel {
+		if stop != nil {
+			stop()
+		}
+
+		delete(e.travel, id)
+	}
+
+	e.abc.looted = nil
+
 	for k, a := range e.auras {
 		if a.u != nil {
 			delete(e.auras, k) // the hirelings' auras belong to the old level

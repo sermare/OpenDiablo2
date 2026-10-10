@@ -84,3 +84,23 @@ func TestHeroDiedLeavesOtherHeroesAura(t *testing.T) {
 		t.Error("another hero's death changed this hero's aura")
 	}
 }
+
+// The looping travel sounds of the old area's missiles stop when the area
+// changes (sim.Clear drops the missiles without an end event), and the corpses
+// marked looted belong to the old area.
+func TestAreaChangedStopsTravelSoundsAndForgetsLooted(t *testing.T) {
+	e := auraEngine(d2state.Defs{})
+	stopped := 0
+	e.travel = map[uint32]func(){1: func() { stopped++ }, 2: nil}
+	e.abc.looted = map[string]bool{"m1": true}
+
+	e.AreaChanged(nil)
+
+	if stopped != 1 || len(e.travel) != 0 {
+		t.Errorf("travel sounds: stopped %d, %d left", stopped, len(e.travel))
+	}
+
+	if e.isLooted("m1") {
+		t.Error("a looted mark survived the area change")
+	}
+}
