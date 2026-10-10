@@ -11,7 +11,7 @@ a3=$tmp/act3
 # undergrowth the hero cannot get close to); errors still fail the scenario
 scenario_warnings_ok=1
 scenario_env() {
-  mkdir -p $a3/s94 $a3/wb94; rm -f $a3/s94/*.d2s $a3/wb94/*.d2s
+  mkdir -p $a3/s94 $a3/wb94; rm -f $a3/s94/*.d2s(N) $a3/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && make_hero $a3/s94/Hero.d2s; then
     local s="wait:1;say:resetquests;say:completequest 1 6;travel:2;expect:level=40;wait:3;say:completequest 2 6;travel:3;expect:level=75;wait:4;say:capframe $tmp/act3-docks.png"
     local n

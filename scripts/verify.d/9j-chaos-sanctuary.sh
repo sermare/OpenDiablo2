@@ -8,7 +8,7 @@ cs=$tmp/chaos
 # The sample character is a dead hardcore Sorceress; scripts/d2s-revive.go makes a living copy (needs D2_TABLES).
 scenario_warnings_ok=1
 scenario_env() {
-  mkdir -p $cs/s94 $cs/wb94; rm -f $cs/s94/Hero.d2s $cs/wb94/*.d2s
+  mkdir -p $cs/s94 $cs/wb94; rm -f $cs/s94/Hero.d2s $cs/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && make_hero $cs/s94/Hero.d2s; then
     local s="wait:1;say:resetquests;say:completequest 1 6;travel:2;expect:level=40;say:completequest 2 6;travel:3;expect:level=75;say:completequest 3 6;travel:4;expect:level=103;wait:11"
     s+=";say:spawnportal 108;use:Portal;expect:level=108;wait:3;say:capframe $tmp/chaos-star.png"

@@ -6,7 +6,7 @@ a2=$tmp/act2dun
 #   through a portal: it has no seamless neighbour) with its seven tomb entrances 66-72, each walked into and back.
 scenario_warnings_ok=1
 scenario_env() {
-  mkdir -p $a2/s94 $a2/wb94; rm -f $a2/s94/*.d2s $a2/wb94/*.d2s
+  mkdir -p $a2/s94 $a2/wb94; rm -f $a2/s94/*.d2s(N) $a2/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && make_hero $a2/s94/Hero.d2s; then
     local s="wait:1;say:resetquests;say:completequest 1 6;travel:2;expect:level=40"
     s+=";walkto:exit=47;expect:level=47;wait:2;walkto:exit=48;expect:level=48;walkto:exit=49;expect:level=49"

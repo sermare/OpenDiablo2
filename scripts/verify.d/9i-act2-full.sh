@@ -5,7 +5,7 @@ a2=$tmp/act2full
 # Fights happen on the way (the hero walks through what attacks him); the long clears are 9e's job.
 scenario_warnings_ok=1
 scenario_env() {
-  mkdir -p $a2/s94 $a2/wb94; rm -f $a2/s94/*.d2s $a2/wb94/*.d2s
+  mkdir -p $a2/s94 $a2/wb94; rm -f $a2/s94/*.d2s(N) $a2/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && make_hero $a2/s94/Hero.d2s; then
     local s="wait:1;say:resetquests;say:completequest 1 6;travel:2;expect:level=40"
     s+=";walkto:exit=41;expect:level=41;walkto:exit=42;expect:level=42;walkto:exit=43;expect:level=43;wait:3;say:capframe $tmp/act2-oasis.png"

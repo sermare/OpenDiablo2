@@ -11,7 +11,7 @@ a45=$tmp/act45
 # "KILL giving up for now" / "KILL time limit" lines are part of fights in big outdoor levels; errors still fail it.
 scenario_warnings_ok=1
 scenario_env() {
-  mkdir -p $a45/s94 $a45/wb94; rm -f $a45/s94/Hero.d2s $a45/wb94/*.d2s
+  mkdir -p $a45/s94 $a45/wb94; rm -f $a45/s94/Hero.d2s $a45/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && make_hero $a45/s94/Hero.d2s; then
     local s="wait:1;say:resetquests;say:completequest 1 6;travel:2;expect:level=40;say:completequest 2 6;travel:3;expect:level=75;say:completequest 3 6;travel:4;expect:level=103;wait:3;say:capframe $tmp/act4-fortress.png"
     # Act 4: the chain of outdoor levels by their borders, the lava warp, the maze, the bridge room, and back
