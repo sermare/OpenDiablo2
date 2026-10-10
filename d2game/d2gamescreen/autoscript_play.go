@@ -134,13 +134,17 @@ const warpChaseRadius = warpClickRadius + 1.5
 func (v *Game) nearWarpTile(x, y float64) bool {
 	// dungeons: the warp tiles are stairs the fight may pass; the exits of the Act 4 and 5 mazes (the bridge
 	// of the River of Flame, the Worldstone Keep stairs) are areas of floor tiles and are left alone too
+	radius := warpChaseRadius
 	if v.gameClient.MapEngine.World().Level == 0 && d2level.ActOfLevel(v.currentLevel()) < 4 {
-		return false
+		// a fight in a dungeon may pass the stairs, but not stand on them: with the tougher natural
+		// monsters (packs, skill hits) the Halls of the Dead fight chased a monster on the arrival stairs
+		// and the order to walk there took the hero back up (Act 2 playthrough, pass5)
+		radius = warpClickRadius + 0.5
 	}
 
 	for i := range v.levels.warps {
 		w := &v.levels.warps[i]
-		if math.Hypot(float64(w.TileX)+0.5-x, float64(w.TileY)+0.5-y) <= warpChaseRadius {
+		if math.Hypot(float64(w.TileX)+0.5-x, float64(w.TileY)+0.5-y) <= radius {
 			return true
 		}
 	}
