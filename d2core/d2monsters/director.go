@@ -208,6 +208,7 @@ type Director struct {
 	pvp map[string]*d2rand.Seed // hero id -> its roller for swings at other heroes
 
 	areaLevel int // levels.txt MonLvl of the current area (0 = unknown)
+	areaID    int // levels.txt id of the current area (0 = unknown), used by the InvisoSpawner class scaling
 	// levelTypes holds the monster types drawn for a level (VERIFIED: drawn once per game and level,
 	// MONREGION_PickLevelMonsterTypes), so every room of the level shares them.
 	levelTypes map[int][]d2monster.ClassInfo

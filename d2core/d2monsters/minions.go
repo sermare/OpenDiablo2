@@ -315,7 +315,8 @@ func (d *Director) petTick(u *unit) bool {
 // runs MERC_RelocatePetsWithOwner (0x5732b0): per pet type, pets that warp
 // follow the owner, pets with the range flag are dropped when more than 40
 // subtiles away (squared distance 1600) and the other types are freed
-// (UNVERIFIED which pettype column maps to which flag bit). Monster-cast
+// (VERIFIED: bit 0 is the warp column, bit 1 the range column of PetType.txt,
+// loader 0x618a30; see d2summon.LevelChangeFate and OwnerChangedLevel). Monster-cast
 // summons are not in the player pet list: when a monster leader dies, the
 // exe (MONAI_OnLeaderDeathReassignMinions 0x58d4a0) hands the minions to
 // the first minion or detaches them; nothing is killed.

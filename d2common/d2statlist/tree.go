@@ -35,6 +35,7 @@ type Tree struct {
 	agg      *List // own plus the attached children
 	parent   *Tree
 	children []*Tree
+	second   []*Tree // set bonus / state lists (the exe's second child list)
 	// skip reports the stats that do not apply to the parent
 	skip func(id int) bool
 }
@@ -58,73 +59,126 @@ func (t *Tree) AddProps(props []Prop) {
 	}
 }
 
-func (t *Tree) propagate(id, param int, delta int64) {
+// skipFor reports whether the stat is one that does not apply to a parent,
+// asking this list and then its parents for the rule.
+func (t *Tree) skipFor(id int) bool {
 	for n := t; n != nil; n = n.parent {
+		if n.skip != nil {
+			return n.skip(id)
+		}
+	}
+
+	return false
+}
+
+// propagate passes a change of the list's own stat up (the exe walk of
+// STATS_ApplyStatDeltaToList 0x626c80, VERIFIED reading): a set bonus / state
+// list (flag 0x2000) never passes anything up; otherwise every parent gets the
+// delta in turn, and the walk ends after a parent that is a set bonus / state
+// list, or, for a stat that does not apply to the parent, after a parent that
+// is itself attached.
+func (t *Tree) propagate(id, param int, delta int64) {
+	t.agg.Add(id, param, delta)
+
+	if t.Flags&FlagSetState != 0 {
+		return
+	}
+
+	t.walkUp(id, param, delta, t.skipFor(id))
+}
+
+func (t *Tree) walkUp(id, param int, delta int64, skipStat bool) {
+	for n := t.parent; n != nil; n = n.parent {
 		n.agg.Add(id, param, delta)
 
-		if n.parent != nil && n.skip != nil && n.skip(id) {
-			return // the stat stays below this list
+		if n.Flags&FlagSetState != 0 {
+			return
+		}
+
+		if skipStat && n.Flags&FlagApplied != 0 {
+			return
 		}
 	}
 }
 
-// Attach links the list under a parent and adds its aggregate to the parents.
-// skip names the stats that do not apply to the parent (nil: all apply).
-// Attaching an attached list is a no-op.
+// Attach links the list under a parent and adds its stats to the parents
+// (STATS_AttachStatList 0x627160, VERIFIED reading). The parent must be a unit
+// list (flag 0x80000000). The list is first detached from any old parent;
+// attaching a list under itself or under one of its own descendants does
+// nothing. A set bonus / state list (0x2000) goes on the parent's second
+// child list and adds nothing; other lists add every stat except those named
+// by skip (the ItemStatCost "not applied to parent" bit), which is how the
+// exe's attach loop treats them. nil skip: all stats apply.
 func (t *Tree) Attach(parent *Tree, skip func(id int) bool) {
-	if t.parent != nil || parent == nil || parent == t {
+	if parent == nil || parent.Flags&FlagBaseUnit == 0 {
 		return
 	}
 
-	t.parent, t.skip = parent, skip
+	for n := parent; n != nil; n = n.parent {
+		if n == t {
+			return
+		}
+	}
+
+	t.Detach()
+	t.skip = skip
+
+	if t.Flags&FlagSetState != 0 {
+		t.parent = parent
+		parent.second = append(parent.second, t)
+
+		return
+	}
+
+	t.parent = parent
 	t.Flags |= FlagApplied
 	parent.children = append(parent.children, t)
 
 	for _, p := range t.agg.Props() {
-		parent.fold(t, p)
-	}
-}
+		if skip != nil && skip(p.ID) {
+			continue
+		}
 
-// fold adds a child's stat to this list and its parents.
-func (t *Tree) fold(child *Tree, p Prop) {
-	if child.skip != nil && child.skip(p.ID) {
-		return
-	}
-
-	t.agg.Add(p.ID, p.Param, p.Value)
-
-	if t.parent != nil {
-		t.parent.fold(t, p)
+		t.walkUp(p.ID, p.Param, p.Value, false)
 	}
 }
 
 // Detach removes the list from its parent and takes its stats out of the
-// parents' aggregates again.
+// parents' aggregates again. UNVERIFIED: the exe's detach (0x627160 callee
+// STATS_DetachStatList) was not read; this undoes what Attach added.
 func (t *Tree) Detach() {
-	parent := t.parent
-	if parent == nil {
+	if t.parent == nil {
 		return
 	}
 
-	for _, p := range t.agg.Props() {
-		if t.skip != nil && t.skip(p.ID) {
-			continue
+	parent := t.parent
+
+	if t.Flags&FlagSetState != 0 {
+		parent.second = removeTree(parent.second, t)
+	} else {
+		for _, p := range t.agg.Props() {
+			if t.skip != nil && t.skip(p.ID) {
+				continue
+			}
+
+			t.walkUp(p.ID, p.Param, -p.Value, false)
 		}
 
-		p.Value = -p.Value
-		parent.fold(&Tree{skip: nil}, p)
-	}
-
-	for i, c := range parent.children {
-		if c == t {
-			parent.children = append(parent.children[:i], parent.children[i+1:]...)
-
-			break
-		}
+		parent.children = removeTree(parent.children, t)
 	}
 
 	t.parent, t.skip = nil, nil
 	t.Flags &^= FlagApplied
+}
+
+func removeTree(l []*Tree, t *Tree) []*Tree {
+	for i, c := range l {
+		if c == t {
+			return append(l[:i], l[i+1:]...)
+		}
+	}
+
+	return l
 }
 
 // Get reads a stat with parameter 0: the own value plus the attached children
@@ -133,6 +187,9 @@ func (t *Tree) Get(id int) int64 { return t.agg.Get(id) }
 
 // GetParam reads a stat with a parameter.
 func (t *Tree) GetParam(id, param int) int64 { return t.agg.GetParam(id, param) }
+
+// SecondChildren is the number of set bonus / state lists on the second list.
+func (t *Tree) SecondChildren() int { return len(t.second) }
 
 // Children is the number of attached lists.
 func (t *Tree) Children() int { return len(t.children) }

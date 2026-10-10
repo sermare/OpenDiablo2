@@ -112,10 +112,10 @@
     },
     {
       "label": "Item generation gaps closed vs the exe",
-      "done": 11,
+      "done": 12,
       "total": 12,
       "pending": 0,
-      "note": "11 of the 12 gaps closed and checked against the emulator (stat-list aggregation remains); not wired into every drop path yet",
+      "note": "12 of the 12 gaps closed (the last, stat-list aggregation, follows the exe decompile 0x627160 / 0x626c80 and is unit tested, not compared with the running emulator); not wired into every drop path yet",
       "color": "#f2c94c"
     },
     {

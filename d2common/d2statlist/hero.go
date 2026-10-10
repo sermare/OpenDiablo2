@@ -225,7 +225,7 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 
 		for tier, props := range it.SetLists {
 			if setCount[it.SetID] >= tier+2 {
-				attach(FlagSetState, props)
+				attach(0, props) // active tier: summed like an item list (a 0x2000 list in the exe is kept apart and adds nothing on attach)
 			}
 		}
 
@@ -241,7 +241,7 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 		sort.Ints(ids)
 
 		for _, id := range ids {
-			attach(FlagSetState, env.Sets.SetBonus(id, setCount[id]))
+			attach(0, env.Sets.SetBonus(id, setCount[id]))
 		}
 	}
 
