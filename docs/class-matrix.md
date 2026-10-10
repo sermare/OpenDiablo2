@@ -5,7 +5,7 @@ Act 1 to 5 chain one scenario at a time through `scripts/verify.sh` with `OD2_HE
 `d2core/d2hero/herogen` (`scripts/verify.d/lib/hero.sh`), except 9b, which starts a brand new level 1 hero of the class.
 The scripted fights cast the class' left skill (`d2game/d2gamescreen/fightskill.go`), real combat, no god mode.
 
-Last update 2026-10-10 02:44, commit `1bd1c801`, 4 run(s) in the table. A cell is *result runtime deaths*:
+Last update 2026-10-10 03:18, commit `3e8f81b2`, 5 run(s) in the table. A cell is *result runtime deaths*:
 `PASS` / `PASS*` (passed on the second attempt that verify.sh makes) / `FAIL`, wall clock, deaths of the hero (`d`).
 
 | class | 9b Act 1 (fresh) | 9e Act 2 | 9g Act 3 | 9h Acts 4+5 | 9i Act 5 caves | total | deaths | passed |
@@ -14,7 +14,7 @@ Last update 2026-10-10 02:44, commit `1bd1c801`, 4 run(s) in the table. A cell i
 | sorc | - | - | - | - | - | - | 0 | 0/5 |
 | necro | - | - | - | - | - | - | 0 | 0/5 |
 | paladin | - | - | - | - | - | - | 0 | 0/5 |
-| barb | PASS 4m13s d0 | FAIL 2m34s d0 | FAIL 0m18s d? | PASS 5m42s d0 | - | 12m47s | 0 | 2/5 |
+| barb | PASS 4m13s d0 | PASS 3m26s d0 | PASS 8m28s d0 | PASS 5m42s d0 | PASS 6m14s d0 | 28m03s | 0 | 5/5 |
 | druid | - | - | - | - | - | - | 0 | 0/5 |
 | assassin | - | - | - | - | - | - | 0 | 0/5 |
 
@@ -23,9 +23,10 @@ Last update 2026-10-10 02:44, commit `1bd1c801`, 4 run(s) in the table. A cell i
 | class | scenario | result | runtime | deaths | first anomaly |
 |---|---|---|---|---|---|
 | barb | 9b-act1-playthrough | PASS | 4m13s | 0 | [Game Server][WARNING] D2S export: container item "sbw": 4 stat(s) the save cannot hold were left out |
-| barb | 9e-act2-playthrough | FAIL | 2m34s | 0 | FAIL: the Act 2 playthrough did not pass |
-| barb | 9g-act3-playthrough | FAIL | 0m18s | ? | BUILD FAILED |
+| barb | 9e-act2-playthrough | PASS | 3m26s | 0 | [Game Server][WARNING] D2S export: container item "ba1": 1 stat(s) the save cannot hold were left out |
+| barb | 9g-act3-playthrough | PASS | 8m28s | 0 | none |
 | barb | 9h-act45-playthrough | PASS | 5m42s | 0 | none |
+| barb | 9i-act5-caves-playthrough | PASS | 6m14s | 0 | none |
 
 ## How to run
 
