@@ -139,6 +139,11 @@ func (v *Game) skillEngine() *d2skills.Engine {
 		},
 		Act:        v.currentAct,
 		Difficulty: int(v.gameClient.Difficulty),
+		WearWeapon: func(chance, amount int) {
+			if v.gameControls != nil {
+				v.gameControls.WearWeapon(chance, amount)
+			}
+		},
 	})
 	v.skills.Rivals = v.skillRivals
 	v.skills.OnPvPHit = v.sendSkillPvP

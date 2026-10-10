@@ -20,7 +20,7 @@
 //     the Director's HeroDefense hook, as do Energy Shield, Bone Armor and
 //     Thorns). Summons are allied monsters of the Director (SpawnMinion);
 //     sentries are stationary minions that fire the trap skill's missile.
-//   - Hostile monsters never target summons; summoned level is the owner's.
+//   - Hostile monsters target only Dopplezon and Valkyrie among the summons; summoned level is the owner's.
 //   - Area missiles splash (hit functions 1 and 13) but have no special do
 //     function movement (Blessed Hammer's spiral, Tornado's wander...).
 //   - Weapon damage is the right hand weapon's min/max, or 1-2 bare handed;

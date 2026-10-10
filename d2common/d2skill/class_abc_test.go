@@ -201,6 +201,10 @@ func TestDopplezonAndValkyrie(t *testing.T) {
 		t.Errorf("dopplezon order %+v", o)
 	}
 
+	if !o.DrawsAggro {
+		t.Error("dopplezon is not in the monsters' target list")
+	}
+
 	// Valkyrie: life bonus calc1 = 20*(3-1) + Dopplezon blvl 4 * 20 = 120 percent
 	_, r = cf.cast("Valkyrie", 5, 5)
 	if !r.OK {
@@ -210,6 +214,10 @@ func TestDopplezonAndValkyrie(t *testing.T) {
 	o = effectOf(t, r, "summon").Summon
 	if o.Key != "valkyrie" || o.HPPct != 120 || o.Max != 1 || o.Count != 1 {
 		t.Errorf("valkyrie order %+v", o)
+	}
+
+	if !o.DrawsAggro {
+		t.Error("valkyrie is not in the monsters' target list")
 	}
 
 	if v, ok := statOf(o.Stats, "strength"); !ok || v != 75 {

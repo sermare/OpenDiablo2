@@ -156,6 +156,8 @@ func (d *Director) Nearest(b *d2monster.Brain) (d2monster.Target, int, bool) {
 			id = mercTargetBase + mu.b.ID
 		case mu.merc == nil && mu.b.Allied:
 			id = unitTargetBase + mu.b.ID
+		case mu.ally != nil && mu.ally.opt.DrawsAggro:
+			id = unitTargetBase + mu.b.ID
 		default:
 			continue
 		}

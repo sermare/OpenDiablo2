@@ -454,6 +454,45 @@ func (g *GameControls) OnHeroStrike() {
 	}
 }
 
+// WearWeapon is the Impale wear (ITEM_ReduceDurabilityOrConsumeOnSkillUse): chance percent to lose amount
+// points of the right-hand weapon's durability.
+func (g *GameControls) WearWeapon(chance, amount int) {
+	if g.inventory == nil {
+		return
+	}
+
+	it, ok := g.inventory.WornAt(d2equip.LocRightHand).(*diablo2item.Item)
+	if !ok {
+		return
+	}
+
+	cur, maxDur := it.Durability()
+	if maxDur == 0 {
+		return
+	}
+
+	eq := d2equip.Item{MaxDurability: maxDur, Durability: cur, Indestructible: it.IsIndestructible()}
+
+	dur, broke, lost := d2equip.RollWear(&eq, g.durabilityRand().Intn(100), chance, amount)
+	if !lost {
+		return
+	}
+
+	it.SetDurability(dur)
+	g.Infof("DURABILITY skill item=%s %d->%d/%d chance=%d amount=%d", it.GetItemCode(), cur, dur, maxDur, chance, amount)
+
+	if broke {
+		g.playEquipSound(soundBroken)
+	}
+
+	g.equipTouched = true
+	g.Infof("DURABILITY recalc %s", g.recalcWorn())
+
+	if !g.equipNoSave {
+		g.saveHero()
+	}
+}
+
 func (g *GameControls) rollItemLoss(loc d2equip.Loc, why string, chance, roll int) {
 	it, ok := g.inventory.WornAt(loc).(*diablo2item.Item)
 	if !ok {

@@ -17,8 +17,8 @@ import (
 // run by the Director like any monster but allied to a hero: they follow it,
 // fight the nearest hostile monster and are never listed by Monsters.
 //
-// UNVERIFIED simplifications: hostile monsters never target minions (the real
-// AI does), minion damage is the monstats A1 range scaled by the skill's
+// UNVERIFIED simplifications: hostile monsters target only the summons flagged DrawsAggro (Dopplezon and
+// Valkyrie, VERIFIED to be registered in the exe's target list; whether other summons are is unread), minion damage is the monstats A1 range scaled by the skill's
 // damagepercent, summoned level is the owner's character level, and the
 // minion AI is a plain chase-and-hit (no ranged attackers: the Skeleton Mage
 // melees).
@@ -44,6 +44,9 @@ type MinionOptions struct {
 	Frames int
 	// Level overrides the monster level (0: the owner's level).
 	Level int
+	// DrawsAggro puts the summon in the hostile monsters' target list (Dopplezon, Valkyrie: the exe calls
+	// TARGETS_AddEntryToList for them, SRVDO_015/016).
+	DrawsAggro bool
 	// Tag is free for the caller (the skill name).
 	Tag string
 	// Stats, when set, replace the monstats-derived life, defense, attack

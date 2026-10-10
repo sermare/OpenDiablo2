@@ -134,6 +134,22 @@ func RollLoss(it *Item, percent, chance int) (dur int, lost bool) {
 	return dur, true
 }
 
+// RollWear is the skill-use durability loss of ITEM_ReduceDurabilityOrConsumeOnSkillUse (0x5d9580,
+// VERIFIED, Impale): with percent (seed % 100) below chance, durability drops by amount; when that would
+// leave 0 or less the item breaks (durability 0, broke true). Non-durable items never change.
+func RollWear(it *Item, percent, chance, amount int) (dur int, broke, lost bool) {
+	dur = it.Durability
+	if !it.CanLoseDurability() || percent >= chance {
+		return dur, false, false
+	}
+
+	if n := dur - amount; n > 0 {
+		return n, false, true
+	}
+
+	return 0, true, true
+}
+
 // PropertiesOff reports whether a worn item's properties are off because of its
 // condition. VERIFIED for armor: when the next point would bring it below 1
 // the game sets the broken flag (0x100) and removes the item's stat list
