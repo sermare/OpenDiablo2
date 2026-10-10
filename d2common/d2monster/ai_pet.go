@@ -35,8 +35,21 @@ func init() {
 	register("NecroPet", TargetNone, thinkNecroPet)
 	register("Raven", TargetNone, thinkRaven)
 	register("Vines", TargetNone, thinkStationary)
-	register("CycleOfLife", TargetNone, thinkStationary)
-	register("AssassinSentry", TargetNone, thinkSentry)
+}
+
+// thinkStationary (UNVERIFIED): rooted plants strike the nearest enemy with
+// skill 1 whenever one is in reach. Only the placeholder behind Vines, which
+// ai_pet_fb2.go overrides.
+func thinkStationary(c *Ctx) {
+	b := c.B
+
+	if t, dist, ok := c.W.AttackTarget(b); ok && c.W.InRange(b, t, dist) {
+		c.Cast(0, t)
+
+		return
+	}
+
+	c.Sleep(maxInt(b.AIP(2), 5))
 }
 
 // thinkNecroPet is MONAI_Think_NecroPet. Scratch[0] != 0 marks a casting pet
@@ -187,37 +200,6 @@ func thinkRaven(c *Ctx) {
 	}
 
 	c.Sleep(maxInt(b.AIP(2), 1))
-}
-
-// thinkSentry (UNVERIFIED): a trap fires monstats skill 1 at the nearest enemy
-// it can reach; aip1 is the percent chance per think (0 = always), aip2 the
-// sleep between thinks.
-func thinkSentry(c *Ctx) {
-	b := c.B
-
-	if t, dist, ok := c.W.AttackTarget(b); ok && c.W.InRange(b, t, dist) {
-		if p := b.AIP(1); p == 0 || b.Chance(p) {
-			c.Cast(0, t)
-
-			return
-		}
-	}
-
-	c.Sleep(maxInt(b.AIP(2), 5))
-}
-
-// thinkStationary (UNVERIFIED): rooted vine plants strike the nearest enemy
-// with skill 1 whenever one is in reach.
-func thinkStationary(c *Ctx) {
-	b := c.B
-
-	if t, dist, ok := c.W.AttackTarget(b); ok && c.W.InRange(b, t, dist) {
-		c.Cast(0, t)
-
-		return
-	}
-
-	c.Sleep(maxInt(b.AIP(2), 5))
 }
 
 func maxInt(a, b int) int {

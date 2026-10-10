@@ -45,14 +45,14 @@ var genericAIs = map[string]genericKind{
 	// stationary shooters
 	"GargoyleTrap": kindTurret,
 	"ArcaneTower":  kindTurret,
-	"Catapult":     kindTurret, "AssassinSentry": kindTurret,
+	"Catapult":     kindTurret,
 
 	// non-combat by design
 	"GoodNpcRanged": kindInert,
-	"JarJar":        kindInert, "Buffy": kindInert,
-	"HellMeteor": kindInert, "FoulCrowNest": kindInert, "MosquitoNest": kindInert,
+	"Buffy":         kindInert,
+	"HellMeteor":    kindInert, "FoulCrowNest": kindInert, "MosquitoNest": kindInert,
 	"BoneWall": kindInert, "InvisoPet": kindInert,
-	"CycleOfLife": kindInert, "AncientStatue": kindInert,
+	"AncientStatue": kindInert,
 }
 
 // DeliberatelyUnported are monai names left to the "idle" stand-in because
