@@ -14,6 +14,15 @@ type Game struct {
 	Expansion  bool
 	// ChaosQuiet is FUN_005b2e40 != 0: level 108 is not populated.
 	ChaosQuiet bool
+	// FullPacks switches on what the exe's population does beyond the
+	// emulator-compared creation sequence (testdata/natural_*.json.gz stops at
+	// the unit creations of the group code, the unique / champion decisions and
+	// the champion minions): the SetBoss party packs of MONSTER_SpawnMinionPackForLeader
+	// (0x5b0420) and the minion group of a rare unique (MONSTER_SpawnMinionGroup
+	// 0x59e7a0). Both draw from the leader's seed and the room seed, so they
+	// change the rest of the stream; the oracle test leaves this off.
+	FullPacks bool
+	superMade map[int]bool
 	// RoomCount returns the number of rooms of a level the game populates
 	// (FUN_00644070); called once per level.
 	RoomCount func(level int) int
@@ -37,6 +46,14 @@ type Unit struct {
 	Champion bool
 	Minion   bool
 	Leader   *Unit
+	// Mods are the monumod ids the unit carries (MONSTER_RollUniqueModifiers;
+	// a minion carries the xfer ones of its leader). Empty without a monumod table.
+	Mods []int
+	// Super is the superuniques.txt hcIdx + 1 of a super unique (0 = none).
+	Super int
+	// Party marks a SetBoss party-pack minion (not linked to the leader in the
+	// exe unless the class has SetBoss, which is why it is kept apart from Minion).
+	Party bool
 }
 
 // Event is one entry of the creation log: "c" a unit was created, "champ" and
@@ -306,13 +323,16 @@ func (g *Game) spawnGroup(w World, room *Room, c *Cell, class, lo, hi int, pop *
 	}
 
 	leader := g.create(pop, room, class, px, py)
+	g.partyPack(w, room, c, leader, class, pop) // flags 0: MONSTER_SpawnMinionPackForLeader runs
 	lo--
 	hi--
 
 	n := int(leader.Seed.Roll(int32(hi-lo+1))) + lo
 
 	for ; n > 0; n-- {
-		g.follower(w, room, c, leader, class, 3, pop)
+		if f := g.follower(w, room, c, leader, class, 3, pop); f != nil {
+			g.partyPack(w, room, c, f, class, pop)
+		}
 	}
 
 	return leader

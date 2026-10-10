@@ -39,6 +39,9 @@ const (
 	FlagRangedType   = 28
 )
 
+// modeColumns are the monstats2 mode columns in mode order.
+var modeColumns = [16]string{"mDT", "mNU", "mWL", "mGH", "mA1", "mA2", "mBL", "mSC", "mS1", "mS2", "mS3", "mS4", "mDD", "mKB", "mSQ", "mRN"}
+
 var flagColumns = map[string]int{
 	"isSpawn": FlagIsSpawn, "isMelee": FlagIsMelee, "noRatio": FlagNoRatio, "opendoors": FlagOpenDoors,
 	"SetBoss": FlagSetBoss, "BossXfer": FlagBossXfer, "boss": FlagBoss, "primeevil": FlagPrimeEvil, "npc": FlagNPC,
@@ -67,6 +70,10 @@ type Mon struct {
 	Sparse      int // +0x31 (sparsePopulate)
 	Level       [3]int
 	Flags       uint32 // +0xc
+	// TypeName is the MonType column (montype.txt row name); Type its row index,
+	// filled by LoadUMods (-1 when empty).
+	TypeName string
+	Type     int
 }
 
 // Has reports a flag bit.
@@ -83,6 +90,9 @@ type Mon2 struct {
 	SizeX    int // +8 (collision radius)
 	SizeY    int // +9
 	SpawnCol int // +0xa
+	// Modes has bit n set when the class has mode n (mDT mNU mWL mGH mA1 mA2 mBL
+	// mSC mS1..mS4 mDD mKB mSQ mRN: MONSTATS2_IsModeAvailable 0x467af0).
+	Modes uint32
 }
 
 // Level is the part of a Levels.txt row the spawn code reads (offsets of the
@@ -115,6 +125,9 @@ type Tables struct {
 	// LevelCount is the number of Levels records (DataTables+0xc5c).
 	LevelCount int
 	byKey      map[string]int
+	// UMods is the monumod.txt table (nil until LoadUMods): without it the
+	// unique / champion modifier roll keeps its older approximation.
+	UMods *UModTable
 }
 
 // MonByKey returns the class id of a monstats Id (-1 when unknown).
@@ -256,7 +269,8 @@ func ParseTables(monstats, monstats2, levels []byte) (*Tables, error) {
 			Minion1: idx(t.byKey, ms.str(r, "minion1")), Minion2: idx(t.byKey, ms.str(r, "minion2")),
 			PartyMin: ms.num(r, "PartyMin"), PartyMax: ms.num(r, "PartyMax"), Rarity: ms.num(r, "Rarity"),
 			MinGrp: ms.num(r, "MinGrp"), MaxGrp: ms.num(r, "MaxGrp"), Sparse: ms.num(r, "sparsePopulate"),
-			Level: [3]int{ms.num(r, "Level"), ms.num(r, "Level(N)"), ms.num(r, "Level(H)")}}
+			Level:    [3]int{ms.num(r, "Level"), ms.num(r, "Level(N)"), ms.num(r, "Level(H)")},
+			TypeName: ms.str(r, "MonType"), Type: -1}
 
 		for name, bit := range flagColumns {
 			if ms.num(r, name) != 0 {
@@ -274,6 +288,12 @@ func ParseTables(monstats, monstats2, levels []byte) (*Tables, error) {
 
 		for i, c := range comps {
 			m.Counts[i] = countCodes(m2.str(r, c))
+		}
+
+		for i, c := range modeColumns {
+			if m2.num(r, c) != 0 {
+				m.Modes |= 1 << uint(i)
+			}
 		}
 
 		bits := 0
