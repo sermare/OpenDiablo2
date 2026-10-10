@@ -106,6 +106,8 @@ type Counters struct {
 	Packs, BlockedSteps, HitRecoveries, MaxStack int
 	// Minions summoned; MinionAttacks swings and MinionHits that connected.
 	Minions, MinionAttacks, MinionHits int
+	// Summoned counts units created by monster-cast summons (summons.go).
+	Summoned int
 	// UnitFights counts monster-against-monster attacks (converted, confused or
 	// attracted monsters).
 	UnitFights int
@@ -136,6 +138,7 @@ type unit struct {
 	lastLabel           string    // the AI state last traced (forced.go)
 	raising             bool      // a corpse a shaman is raising (corpses.go)
 	skill               *monSkill // the monstats skill of the attack in progress (skilldmg.go), nil = plain attack
+	summoner            uint32    // brain id of the monster that summoned this unit (summons.go), 0 = natural
 	mirror              bool      // a realm unit drawn here: no AI, no local damage (mirror.go)
 }
 
