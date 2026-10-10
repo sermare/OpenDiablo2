@@ -27,6 +27,7 @@ type Object struct {
 	name         string
 	opening      bool
 	opened       bool
+	mode         d2enum.ObjectAnimationMode
 
 	// PortalDest is the level a portal object leads to (the original keeps it
 	// in the object data, byte +4) and PortalOwner the player who opened it.
@@ -119,6 +120,8 @@ func (ob *Object) setMode(animationMode d2enum.ObjectAnimationMode, direction in
 		return err
 	}
 
+	ob.mode = animationMode
+
 	ob.composite.SetDirection(direction)
 
 	ob.drawLayer = ob.objectRecord.OrderFlag[d2enum.ObjectAnimationModeNeutral]
@@ -145,6 +148,17 @@ func (ob *Object) setMode(animationMode d2enum.ObjectAnimationMode, direction in
 	}
 
 	return err
+}
+
+// LightRadius is the light the object casts in its current animation mode: the Objects.txt Lit0..Lit7 column of
+// the mode, in subtiles (0 = none). Whether the column is a radius or a diameter is unverified (U); the
+// column is used as the radius.
+func (ob *Object) LightRadius() int {
+	if ob.objectRecord == nil || int(ob.mode) < 0 || int(ob.mode) >= len(ob.objectRecord.LightDiameter) {
+		return 0
+	}
+
+	return ob.objectRecord.LightDiameter[ob.mode]
 }
 
 // ID returns the object uuid
