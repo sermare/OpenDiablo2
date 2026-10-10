@@ -55,7 +55,7 @@ func init() {
 		row{"skill": "Dragon Talon", "Id": "314", "srvstfunc": "24", "srvdofunc": "42", "calc1": "lvl/6+1", "calc2": "dm34",
 			"Param3": "50", "Param4": "100", "HitShift": "8", "manashift": "8"},
 		row{"skill": "Corpse Explosion", "Id": "315", "srvstfunc": "17", "srvdofunc": "55", "aurarangecalc": "ln34",
-			"calc1": "par1", "calc2": "par2", "Param1": "70", "Param2": "120", "Param3": "8", "Param4": "1", "EType": "fire",
+			"calc1": "par1", "calc2": "par2", "Param1": "70", "Param2": "120", "Param3": "8", "Param4": "1", "EType": "fire", "calc3": "par5", "Param5": "50",
 			"TargetCorpse": "1", "manashift": "8"},
 		row{"skill": "Chain Lightning", "Id": "316", "srvdofunc": "26", "srvmissilea": "chainlightning",
 			"aurarangecalc": "par1", "calc1": "ln34 / 5", "Param1": "20", "Param3": "26", "Param4": "1", "EType": "ltng",
@@ -425,8 +425,9 @@ func TestCorpseExplosion(t *testing.T) {
 	r := cf.p.Do(cf.u, id, tg)
 	e := effectOf(t, r, "area_hit")
 
-	// the roll picks the low end: 70 percent of 100 life = 70 fire
-	if e.Desc == nil || e.Desc.Fire.Min != 70<<8 || e.CorpseID != "c" || e.Radius != 8+4 {
+	// the roll picks the low end: 70 percent of 100 life = 70, half of it fire (calc3 = 50)
+	// and half physical; the radius is (aurarange+1)/2 = (12+1)/2
+	if e.Desc == nil || e.Desc.Fire.Min != 35<<8 || e.Desc.PhysMin != 35<<8 || e.CorpseID != "c" || e.Radius != 6 {
 		t.Errorf("corpse explosion %+v desc=%+v", e, e.Desc)
 	}
 }

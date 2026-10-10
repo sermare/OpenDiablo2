@@ -160,6 +160,12 @@ func (e *Engine) effect(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		e.move(p, u, sk, ef)
 	case "convert":
 		e.convert(p, sk, ef)
+	case "hit_unit":
+		e.hitUnit(p, u, sk, ef)
+	case "unit_state":
+		e.unitState(p, sk, ef)
+	case "knockback":
+		e.knockback(p, u, sk, ef)
 	case "shield":
 		e.shield(p, u, sk, ef)
 	case "loot":
@@ -550,21 +556,22 @@ func (e *Engine) pulseAura(a *auraRun) {
 			}
 		}
 	case "redemption":
+		// VERIFIED (SRVDO_RedemptionApplyToCorpse 0x5cf2e0): every corpse in range
+		// rolls on its own, a success heals calc2 life and calc3 mana (capped at
+		// the maximum) and consumes the corpse.
 		for _, c := range e.monsters.Corpses() {
 			cx, cy := c.SubtilePos()
 			if chebyshev(cx-hx, cy-hy) > ef.Radius {
 				continue
 			}
 
-			if int(u.seed.Roll(100)) < ef.Stack {
+			if redeemRoll(int(u.seed.Roll(100)), ef.Stack) {
 				e.monsters.RemoveCorpse(c)
 				a.p.Stats.Health = minInt(a.p.Stats.Health+ef.Heal, a.p.Stats.MaxHealth)
 				a.p.Stats.Mana = minInt(a.p.Stats.Mana+ef.Dist, a.p.Stats.MaxMana)
 				e.emit("state", "STATE redemption hero=%s life+%d mana+%d hero_hp=%d/%d", a.p.Name(), ef.Heal, ef.Dist,
 					a.p.Stats.Health, a.p.Stats.MaxHealth)
 			}
-
-			break
 		}
 	}
 }

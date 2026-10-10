@@ -54,7 +54,7 @@ func init() {
 		9:  doStrikeBuffFn, // Frenzy (SRVDO_009_Frenzy) and, with 120, Maul / Feral Rage
 		68: doShoutFn,      // Shout, Battle Orders, Battle Command, War Cry
 		70: doDoubleSwingFn,
-		71: doCurseFn, // Taunt
+		71: doTauntFn, // Taunt
 		74: doDoubleThrowFn,
 		77: doLeapFn,
 		78: doLeapAttackFn,
@@ -81,7 +81,7 @@ func init() {
 		30: doCurseFn, // Amplify Damage, Dim Vision, Weaken, Iron Maiden, Terror, Life Tap, Decrepify, Lower Resist
 		31: doSummonFn,
 		32: doMeleeFn, // Poison Dagger: melee, poison from EType
-		33: doHammerFn,
+		33: doPsychicHammerFn,
 		55: doCorpseExplosionFn,
 		56: doSummonFn, // golems
 		58: doSummonFn, // Revive
@@ -121,7 +121,7 @@ func init() {
 		44: doSummonFn,   // Blade Sentinel
 		45: doSummonFn,   // sentries
 		46: doDragonFn,   // Dragon Claw
-		47: doArmorFn,    // Cloak of Shadows
+		47: doCloakFn,    // Cloak of Shadows
 		49: doSummonFn,   // Shadow Warrior / Master
 		50: doDragonFn,   // Dragon Tail
 		51: doMindBlastFn,
@@ -586,25 +586,6 @@ func doSacrificeFn(c *cast) {
 	}
 }
 
-// doSmiteFn is SRVDO_150_Smite (U): the shield bash; damage is the shield-based
-// range, here the shield is not modelled so it deals Smite's own physical
-// MinDam/MaxDam range plus calc1 percent, and stuns for calc2 frames.
-func doSmiteFn(c *cast) {
-	if !c.needTarget() {
-		return
-	}
-
-	o := c.meleeOpt()
-	o.pct = c.calc(1)
-	m := c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o)
-
-	if m.Hit {
-		m.Damage.StunLen = int32(c.calc(2))
-	}
-
-	c.addMelee(m)
-}
-
 // doChargedStrikeFn is SRVDO_011_ChargedStrike: a Power-Strike style melee hit;
 // on a hit calc1 charged bolts fly out of the target in random directions.
 func doChargedStrikeFn(c *cast) {
@@ -967,20 +948,6 @@ func doMineFn(c *cast) {
 
 // ---- area effects ----
 
-// doHammerFn is SRVDO_033_PsychicHammer (U): magic damage (EType mag) in a 3
-// subtile radius around the aim and a stun of calc? frames is not applied.
-func doHammerFn(c *cast) {
-	ax, ay := c.aim()
-	c.effect(Effect{Kind: "area_hit", Origin: "aim", X: ax, Y: ay, Radius: 3, Desc: c.desc()})
-}
-
-// doMindBlastFn is SRVDO_051_MindBlast (U): enemies in the radius par7 around the
-// aim are stunned for the skill's stun length and take the magic damage.
-func doMindBlastFn(c *cast) {
-	ax, ay := c.aim()
-	c.effect(Effect{Kind: "area_hit", Origin: "aim", X: ax, Y: ay, Radius: c.env.eval(c.sk.AuraRangeCalc), Desc: c.desc()})
-}
-
 // doShoutFn is SRVDO_068_Shout: a nova ring of the skill's missile plus the
 // timed self state (Shout, Battle Orders, Battle Command, Battle Cry). A skill
 // whose missile has no hit function 18 / 21 and no state (War Cry) keeps the
@@ -1148,21 +1115,6 @@ func doLeapAttackFn(c *cast) {
 	for _, f := range c.p.foes(x, y, 5) {
 		c.addMelee(c.p.strike(c.u, c.sk, c.lvl, f.Target, c.env, o))
 	}
-}
-
-// doChargeFn is SRVDO_067_Charge (U): rush to the target and strike it with
-// calc1 percent damage.
-func doChargeFn(c *cast) {
-	if !c.needTarget() {
-		return
-	}
-
-	hx, hy := c.u.Pos()
-	c.effect(Effect{Kind: "move", Mode: "charge", X: (hx + c.tgt.UX) / 2, Y: (hy + c.tgt.UY) / 2})
-
-	o := c.meleeOpt()
-	o.pct = c.calc(1)
-	c.addMelee(c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o))
 }
 
 // doFistFn is SRVDO_080_FistOfTheHeavens (0x5cebd0, verified): without a target
@@ -1434,6 +1386,10 @@ func doDragonFn(c *cast) {
 		c.addMelee(c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o))
 	}
 
+	if c.sk.SrvDoFunc == 42 && c.knockRoll(c.tgt.Unit, 100) { // 0x5d4370: the last kick may knock back
+		c.knock(c.tgt.Unit)
+	}
+
 	if c.sk.SrvDoFunc == 50 {
 		c.effect(Effect{Kind: "area_hit", Origin: "aim", X: c.tgt.UX, Y: c.tgt.UY,
 			Radius: maxInt(c.env.eval(c.sk.AuraRangeCalc), 4), Desc: c.desc()})
@@ -1607,6 +1563,10 @@ func doCorpseExplosionFn(c *cast) {
 	}
 
 	radius := c.env.eval(c.sk.AuraRangeCalc)
+	if c.sk.SrvDoFunc == 55 {
+		radius = (radius + 1) / 2 // VERIFIED 0x5c2c60: the units hit are within (aurarange+1)/2
+	}
+
 	e := Effect{Kind: "area_hit", Origin: "aim", X: c.tgt.CX, Y: c.tgt.CY, Radius: radius, CorpseID: c.tgt.CorpseID,
 		CorpseHP: c.tgt.CorpseHP}
 
@@ -1634,7 +1594,20 @@ func doCorpseExplosionFn(c *cast) {
 	}
 
 	v <<= 8
-	d.Fire = d2missile.Elem{Min: v, Max: v}
+	phys, el := splitCorpseDamage(v, c.calc(3), c.sk.EType)
+	d.PhysMin, d.PhysMax = phys, phys
+
+	switch c.sk.EType {
+	case "cold":
+		d.Cold = el
+	case "ltng":
+		d.Lightning = el
+	case "mag":
+		d.Magic = el
+	default:
+		d.Fire = el
+	}
+
 	e.Desc = d
 	c.effect(e)
 }
