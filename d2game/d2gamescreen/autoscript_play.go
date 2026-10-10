@@ -680,6 +680,31 @@ type lootState struct {
 	picked   int
 	nofit    map[string]bool // item codes that did not fit in the inventory (left on the ground)
 	questing bool            // only quest items (the lootquest command)
+	last     *d2mapentity.Item
+	tries    map[*d2mapentity.Item]int
+}
+
+// maxQuestPickTries is how often a loot walks to a quest item again after a walk that ended without picking it up
+// (a monster hit interrupted the walk, the walk gave up). A quest item is the one thing a scripted run cannot do without.
+const maxQuestPickTries = 4
+
+// retryUnpicked makes the item of the previous walk a candidate again when it is a quest item that still lies on
+// the ground, so that one interrupted walk does not lose the Book of Skill for the whole run.
+func (l *lootState) retryUnpicked(questItem, stillOnGround bool) bool {
+	it := l.last
+	if it == nil {
+		return false
+	}
+
+	l.last = nil
+
+	if !questItem || !stillOnGround || l.tries[it] >= maxQuestPickTries {
+		return false
+	}
+
+	delete(l.tried, it)
+
+	return true
 }
 
 // Loot picks up the ground items around the hero, nearest first.
@@ -743,6 +768,13 @@ func (v *Game) advanceLoot(elapsed float64) {
 		}
 	}
 
+	if it := l.last; it != nil {
+		if l.retryUnpicked(isQuestItemCode(it), v.gameClient.MapEngine.Entities()[it.ID()] != nil) {
+			v.Infof("LOOT the quest item %q was not picked up: walking to it again", plainLabel(it.Label()))
+			l.picked--
+		}
+	}
+
 	cands := v.lootCandidates(l)
 	if len(cands) == 0 {
 		v.Infof("LOOT done: %d item(s) walked to, %.1fs", l.picked, l.elapsed)
@@ -768,6 +800,13 @@ func (v *Game) advanceLoot(elapsed float64) {
 	}
 
 	l.tried[best] = true
+	l.last = best
+
+	if l.tries == nil {
+		l.tries = map[*d2mapentity.Item]int{}
+	}
+
+	l.tries[best]++
 	l.picked++
 	v.walkToItem(best)
 }
