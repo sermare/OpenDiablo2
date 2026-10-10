@@ -81,22 +81,27 @@ func AlertWithLog(title, message, logPath string) {
 
 // ScriptedUI is a UI for tests: ChooseFolder returns Pick, Ask answers yes.
 // It is selected by the OD2_SETUP_AUTOPICK environment variable.
-type ScriptedUI struct{ Pick string }
+type ScriptedUI struct {
+	Pick string
+	used bool // the pick is offered once; asking again cancels (no endless loop on a bad folder)
+}
 
 // ChooseFolder implements UI.
-func (s ScriptedUI) ChooseFolder(string, string) (string, error) {
-	if s.Pick == "" {
+func (s *ScriptedUI) ChooseFolder(string, string) (string, error) {
+	if s.Pick == "" || s.used {
 		return "", ErrCancelled
 	}
+
+	s.used = true
 
 	return s.Pick, nil
 }
 
 // Ask implements UI.
-func (ScriptedUI) Ask(string, string, string, string) bool { return true }
+func (*ScriptedUI) Ask(string, string, string, string) bool { return true }
 
 // Alert implements UI.
-func (ScriptedUI) Alert(title, message string) {
+func (*ScriptedUI) Alert(title, message string) {
 	fmt.Fprintf(os.Stderr, "ALERT %s: %s\n", title, message)
 }
 
@@ -104,7 +109,7 @@ func (ScriptedUI) Alert(title, message string) {
 // only) and the native osascript dialogs otherwise.
 func DefaultUI() UI {
 	if p := os.Getenv("OD2_SETUP_AUTOPICK"); p != "" {
-		return ScriptedUI{Pick: p}
+		return &ScriptedUI{Pick: p}
 	}
 
 	return OsaUI{}
