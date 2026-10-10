@@ -382,3 +382,64 @@ func TestGapsRealTables(t *testing.T) {
 		}
 	}
 }
+
+func TestRackRules(t *testing.T) {
+	for _, tc := range []struct{ mon, want int }{{0, 0}, {1, 1}, {2, 1}, {30, 29}, {85, 84}} {
+		if got := RackItemLevel(tc.mon); got != tc.want {
+			t.Errorf("RackItemLevel(%d) = %d want %d", tc.mon, got, tc.want)
+		}
+	}
+
+	for _, tc := range []struct{ id, act int }{{1, 1}, {39, 1}, {40, 2}, {74, 2}, {75, 3}, {102, 3}, {103, 4}, {108, 4}, {109, 5}, {132, 5}} {
+		if got := ActOfLevelID(tc.id); got != tc.act {
+			t.Errorf("ActOfLevelID(%d) = %d want %d", tc.id, got, tc.act)
+		}
+	}
+
+	tests := []struct {
+		name    string
+		b       RackBase
+		ilvl    int
+		classic bool
+		vals    []int
+		want    bool
+		rolls   int
+	}{
+		{"plain", RackBase{Code: "a", QLvl: 1, Rarity: 1, Spawnable: true}, 5, false, nil, true, 0},
+		{"not spawnable", RackBase{Code: "a", QLvl: 1, Spawnable: false}, 5, false, nil, false, 0},
+		{"quest item", RackBase{Code: "a", QLvl: 1, Spawnable: true, Quest: true}, 5, false, nil, false, 0},
+		{"level too high", RackBase{Code: "a", QLvl: 6, Spawnable: true}, 5, false, nil, false, 0},
+		{"ilvl 0 acts as 1", RackBase{Code: "a", QLvl: 1, Spawnable: true}, 0, false, nil, true, 0},
+		{"rarity 4 kept 1 in 3 (act 1): roll 0", RackBase{Code: "a", QLvl: 1, Rarity: 4, Spawnable: true}, 5, false, []int{0}, true, 1},
+		{"rarity 4 rejected: roll 2", RackBase{Code: "a", QLvl: 1, Rarity: 4, Spawnable: true}, 5, false, []int{2}, false, 1},
+		{"rarity at the act needs no roll", RackBase{Code: "a", QLvl: 1, Rarity: 1, Spawnable: true}, 5, false, nil, true, 0},
+		{"classic drops expansion rows", RackBase{Code: "a", QLvl: 1, Spawnable: true, Expansion: true}, 5, true, nil, false, 0},
+		{"expansion keeps them", RackBase{Code: "a", QLvl: 1, Spawnable: true, Expansion: true}, 5, false, nil, true, 0},
+	}
+
+	for _, tc := range tests {
+		s := &script{vals: tc.vals}
+		if got := RackEligible(tc.b, tc.ilvl, tc.classic, s); got != tc.want || len(s.seen) != tc.rolls {
+			t.Errorf("%s: %v with %d rolls, want %v with %d", tc.name, got, len(s.seen), tc.want, tc.rolls)
+		}
+	}
+
+	rows := []RackBase{
+		{Code: "aaa", QLvl: 1, Spawnable: true}, {Code: "bbb", QLvl: 50, Spawnable: true}, {Code: "ccc", QLvl: 3, Spawnable: true},
+		{Code: "ddd", QLvl: 1, Spawnable: false}, {Code: "eee", QLvl: 5, Spawnable: true},
+	}
+
+	for _, tc := range []struct {
+		roll int
+		want string
+	}{{0, "aaa"}, {1, "ccc"}, {2, "eee"}, {99, "eee"}} {
+		code, ok := PickRackBase(rows, 10, false, &script{vals: []int{tc.roll}})
+		if !ok || code != tc.want {
+			t.Errorf("pick roll %d = %q,%v want %q", tc.roll, code, ok, tc.want)
+		}
+	}
+
+	if _, ok := PickRackBase(rows[1:2], 10, false, &script{}); ok {
+		t.Error("nothing eligible must report false")
+	}
+}

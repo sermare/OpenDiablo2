@@ -421,3 +421,90 @@ func WellMode(c, parm2 int) (mode int, ok bool) {
 // WellRefillFrames is the delay of the refill event scheduled after every pulse that did something:
 // Parm0 + 1 frames (0x5837b0). Each event returns one charge (0x57f410).
 func WellRefillFrames(parm0 int) int { return parm0 + 1 }
+
+// ---------------------------------------------------------------------------------------------------------
+// Weapon racks and armor stands (OperateFn 20 / 19, 0x582050 / 0x581fe0 -> 0x557610 / 0x5574c0 -> 0x5540b0 / 0x553f60)
+// ---------------------------------------------------------------------------------------------------------
+
+// A rack does not roll a treasure class. VERIFIED: it picks ONE random base item of the weapons.txt (rack) or
+// armor.txt (stand) table, uniformly among the eligible rows, and creates it at the item level
+// monsterLevel-1 (not below 1) with the creation code choosing the quality, then the object goes to mode 2.
+
+// RackBase is a row of armor.txt or weapons.txt as the picker (0x553ef0) sees it.
+type RackBase struct {
+	Code      string
+	QLvl      int  // the "level" column (record byte +0xfd)
+	Rarity    int  // record byte +0xfc
+	Spawnable bool // byte +0x133
+	Quest     bool // byte +0x12a
+	Expansion bool // version >= 100 (word +0xf6)
+}
+
+// RackItemLevel is the item level of a rack's item: the area's monster level minus one, not below 1
+// (0x5574c0 / 0x557610).
+func RackItemLevel(monLvl int) int {
+	if monLvl > 1 {
+		return monLvl - 1
+	}
+
+	return monLvl
+}
+
+// ActOfLevelID is DRLG_GetActFromLevelId: the act (1..5) of a levels.txt id.
+func ActOfLevelID(id int) int {
+	switch {
+	case id >= 109:
+		return 5
+	case id >= 103:
+		return 4
+	case id >= 75:
+		return 3
+	case id >= 40:
+		return 2
+	}
+
+	return 1
+}
+
+// RackMaxCandidates is the size of the candidate list in 0x553f60.
+const RackMaxCandidates = 0x3ff
+
+// RackEligible follows ITEMGEN_IsBaseItemEligible (0x553ef0) and the version test of the picker: the row
+// must be spawnable, not a quest item and have a level not above the item level (at least 1); then, unless
+// forced, a row whose rarity exceeds the act by d is kept only when Roll(d) is 0 - the exe passes the ITEM
+// LEVEL to DRLG_GetActFromLevelId there (a quirk kept here); a classic game excludes expansion rows.
+func RackEligible(b RackBase, ilvl int, classic bool, r Rand) bool {
+	if ilvl < 1 {
+		ilvl = 1
+	}
+
+	if !b.Spawnable || b.Quest || b.QLvl > ilvl {
+		return false
+	}
+
+	if d := b.Rarity - ActOfLevelID(ilvl); d > 0 && r.Roll(d) != 0 {
+		return false
+	}
+
+	return !classic || !b.Expansion
+}
+
+// PickRackBase draws the rack item: the eligible rows in table order (at most RackMaxCandidates), then one
+// uniform pick. ok is false when nothing is eligible. rows must be in the table's file order; the engine
+// has to sort them when its records are a map (UNVERIFIED: that order changes which row a seed picks, not
+// the odds).
+func PickRackBase(rows []RackBase, ilvl int, classic bool, r Rand) (code string, ok bool) {
+	var cand []string
+
+	for _, b := range rows {
+		if len(cand) < RackMaxCandidates && RackEligible(b, ilvl, classic, r) {
+			cand = append(cand, b.Code)
+		}
+	}
+
+	if len(cand) == 0 {
+		return "", false
+	}
+
+	return cand[r.Roll(len(cand))], true
+}
