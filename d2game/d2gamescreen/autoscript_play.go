@@ -403,6 +403,7 @@ type lootState struct {
 	tried    map[*d2mapentity.Item]bool
 	picked   int
 	nofit    map[string]bool // item codes that did not fit in the inventory (left on the ground)
+	questing bool            // only quest items (the lootquest command)
 }
 
 // Loot picks up the ground items around the hero, nearest first.
@@ -420,7 +421,7 @@ func (v *Game) lootCandidates(l *lootState) []*d2mapentity.Item {
 
 	for _, e := range v.gameClient.MapEngine.Entities() {
 		it, ok := e.(*d2mapentity.Item)
-		if !ok || l.tried[it] || (it.Item != nil && l.nofit[strings.TrimSpace(it.Item.GetItemCode())]) {
+		if !ok || l.tried[it] || (it.Item != nil && l.nofit[strings.TrimSpace(it.Item.GetItemCode())]) || (l.questing && !isQuestItemCode(it)) {
 			continue
 		}
 

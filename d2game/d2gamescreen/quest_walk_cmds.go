@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
 
 // Debug commands of the quest walkthroughs (scripts/verify.d/9j-*, 9k-*): they only reach what a player does
@@ -66,6 +68,30 @@ func (v *Game) commandQuestPanel(args []string) error {
 	v.Infof("QUESTPANEL act=%d quest=%d status=%d title=%q text=%q", act, idx, ql.Status(act, idx), title,
 		shorten(strings.TrimSpace(descr), 90))
 	ql.Close()
+
+	return nil
+}
+
+// commandLootQuest is "lootquest [tiles] [seconds]": picks up the quest items lying near the hero (a player
+// who needs the room leaves the monsters' junk lying).
+func (v *Game) commandLootQuest(args []string) error {
+	radius, seconds := 15.0, 30.0
+
+	if len(args) > 0 {
+		if r, err := strconv.ParseFloat(args[0], 64); err == nil {
+			radius = r
+		}
+	}
+
+	if len(args) > 1 {
+		if sec, err := strconv.ParseFloat(args[1], 64); err == nil {
+			seconds = sec
+		}
+	}
+
+	l := &lootState{radius: radius, deadline: seconds, tried: map[*d2mapentity.Item]bool{}, nofit: map[string]bool{}, questing: true}
+	v.levels.loot = l
+	v.Infof("LOOT quest items start radius=%.0f items=%d", radius, len(v.lootCandidates(l)))
 
 	return nil
 }

@@ -12,9 +12,17 @@ func TestHoradricStaffLogPageAfterAssembly(t *testing.T) {
 	pickup(g, ItemHoradricScroll)
 	talk(g, NPCCain2)
 
+	if p := g.LogPage(q); p != 2 {
+		t.Errorf("page after the scroll = %d, want 2 (search the Halls and the Maggot Lair)", p)
+	}
+
 	for _, c := range []string{ItemViperAmulet, ItemStaffOfKingsShaft, ItemHoradricCube} {
 		pickup(g, c)
 		talk(g, NPCCain2)
+	}
+
+	if p := g.LogPage(q); p != 3 {
+		t.Errorf("page after every report = %d, want 3 (restore the staff in the cube)", p)
 	}
 
 	pickup(g, ItemHoradricStaff)

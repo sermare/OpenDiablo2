@@ -75,7 +75,8 @@ func (g *GameControls) UseInventoryItem(code string) bool {
 func (g *GameControls) ClearInventoryGrid() int {
 	n := 0
 
-	for _, it := range g.inventory.grid.Items() {
+	// (a copy: Items() is the grid's own slice and Remove shifts it, which skipped every second item)
+	for _, it := range append([]InventoryItem{}, g.inventory.grid.Items()...) {
 		g.inventory.grid.Remove(it)
 
 		n++

@@ -199,7 +199,20 @@ func newHoradricStaff() *Quest {
 			return 0
 		}
 
-		return n + 1 // page numbers are UNVERIFIED
+		// The pages (qstsa2q21..25) are UNVERIFIED in their order; chosen by what they say: 1 show the scroll to
+		// Cain, 2 search the Halls and the Maggot Lair, 3 every part reported: restore the staff in the cube, 4 (above)
+		// to Tal Rasha's tomb, 5 the three parts are in the pack but Cain has not heard of them: take them to Cain.
+		// (It was n+1, which showed page 5 after the fourth report, when the cube is what the hero needs.)
+		switch {
+		case n >= len(reports):
+			return 3
+		case g.hasItem(ItemHoradricCube) && g.hasItem(ItemStaffOfKingsShaft) && g.hasItem(ItemViperAmulet):
+			return 5
+		case n >= 1:
+			return 2
+		}
+
+		return 1
 	}
 
 	q.on[EvGameStarted] = func(g *Game, q *Quest, _ *Event) {
