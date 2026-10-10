@@ -1,3 +1,4 @@
+scenario_timeout=1200
 scenario_name="Act 5 caves playthrough (level 94 sample hero: Crystalline Passage to the Throne of Destruction, waypoints on the way)"
 a5=$tmp/act5deep
 # The second half of Act 5 played by OD2_AUTOSCRIPT (see docs/PLAYTEST.md, "Act 4 and 5"): the hero travels to
