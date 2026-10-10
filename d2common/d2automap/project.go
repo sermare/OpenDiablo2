@@ -118,6 +118,28 @@ const (
 // box x 519..798, y 57..282 at the right. (VERIFIED formulas; the box offsets
 // 0x119, 0x39, 0x117, 0xe1 are read from the code.)
 func ComputeLayout(size Size, w, h int, heroCellX, heroCellY float64, shift PanelShift, miniLeft bool) Layout {
+	d210, d214 := MiniBoxOffsets(w, h, miniLeft)
+
+	return ComputeLayoutOffsets(size, w, h, heroCellX, heroCellY, shift, miniLeft, d210, d214)
+}
+
+// MiniBoxOffsets are the mini map's DAT_0079d210/214 as AUTOMAP_RecalcOffsets
+// (0x452cd0) computes them for the box at the right (miniLeft false) or left.
+// The engine recomputes them when the map size changes and, only if the
+// "AutoMap Centers" option is on, whenever the panel layout changes; with the
+// option off they stay stale, so the hero is no longer centred in the box.
+func MiniBoxOffsets(w, h int, miniLeft bool) (d210, d214 int) {
+	var d264, d260 int
+	if !miniLeft {
+		d264, d260 = (w*2)/3, 0x4e
+	}
+
+	return (w/3 - d264) - 0x10, (h/3 - d260) - 0x10
+}
+
+// ComputeLayoutOffsets is ComputeLayout with the mini map offsets (see
+// MiniBoxOffsets) given by the caller, which keeps them between recalculations.
+func ComputeLayoutOffsets(size Size, w, h int, heroCellX, heroCellY float64, shift PanelShift, miniLeft bool, d210, d214 int) Layout {
 	scale := size.Scale()
 	hx := int(heroCellX*10) / scale
 	hy := int(heroCellY*10) / scale
@@ -144,16 +166,6 @@ func ComputeLayout(size Size, w, h int, heroCellX, heroCellY float64, shift Pane
 	}
 
 	// mini map: a box of 0x117 x 0xe1 pixels; the map is centred in it
-	var d264, d260 int // DAT_0079d264/60: box anchor used by the origin
-	if miniLeft {
-		d264, d260 = 0, 0
-	} else {
-		d264, d260 = (w*2)/3, 0x4e
-	}
-
-	d210 := (w/3 - d264) - 0x10
-	d214 := (h/3 - d260) - 0x10
-
 	offX = hx - w/2
 	offY = hy - h/2
 	l.OriginX = d210 + originDX + offX

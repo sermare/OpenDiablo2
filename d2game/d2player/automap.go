@@ -28,9 +28,11 @@ import (
 //   - Tab shows or hides the map, "full" draws it over the whole screen centred on
 //     the hero, "mini" in a box at the top right with the half-size cells.
 //
-// OD2 differences (UNVERIFIED or not done): hostile monsters are not drawn (as in
-// the original), party colouring and names, the fade option, the centre-on-
-// cleared-level option and the saved-with-the-character automap are missing.
+// Options (Options -> Automap): size, fade (translucent cells near the hero, see
+// d2automap.CellTransparency), centre (see d2automap.MiniBoxOffsets), show party
+// and show names (markers, d2automap.Classify). The revealed cells are kept per
+// level for the session; they are not saved with the character (the original
+// does not keep them in the .d2s either). UNVERIFIED: the percentages of the fade.
 
 const (
 	automapPathFull = "/data/global/ui/automap/maximap.dc6"
@@ -52,11 +54,16 @@ type Automap struct {
 	tableErr error
 	objCel   map[int]int // objects.txt row -> AutoMap cel
 
-	on       bool
-	size     d2automap.Size
-	miniLeft bool
+	on   bool
+	size d2automap.Size
 
-	models    map[int]*d2automap.Model
+	store     *d2automap.Store // revealed cells per level, kept for the session
+	override  map[string]bool  // console overrides of the options (verification aid)
+	miniD210  int              // DAT_0079d210/214: mini map offsets, see d2automap.MiniBoxOffsets
+	miniD214  int
+	miniSeen  bool // the offsets have been computed
+	lastLeft  bool
+	lastShift d2automap.PanelShift
 	level     int
 	levelFn   func() int
 	nameFn    func(id int) string
@@ -65,12 +72,13 @@ type Automap struct {
 	haveLast  bool
 	lastAdded int
 
-	sprites  map[d2automap.Size]*d2ui.Sprite
-	spriteAt map[d2automap.Size]int // act the palette was loaded for
-	label    *d2ui.Label
-	offscr   d2interface.Surface
-	offW     int
-	offH     int
+	sprites   map[d2automap.Size]*d2ui.Sprite
+	spriteAt  map[d2automap.Size]int // act the palette was loaded for
+	label     *d2ui.Label
+	nameLabel *d2ui.Label
+	offscr    d2interface.Surface
+	offW      int
+	offH      int
 
 	*d2util.Logger
 }
@@ -84,7 +92,8 @@ func newAutomap(gc *GameControls, term d2interface.Terminal) *Automap {
 		hero:     gc.hero,
 		eng:      gc.mapEngine,
 		gc:       gc,
-		models:   map[int]*d2automap.Model{},
+		store:    d2automap.NewStore(),
+		override: map[string]bool{},
 		sprites:  map[d2automap.Size]*d2ui.Sprite{},
 		spriteAt: map[d2automap.Size]int{},
 		size:     d2automap.SizeFull,
@@ -93,7 +102,7 @@ func newAutomap(gc *GameControls, term d2interface.Terminal) *Automap {
 	a.Logger.SetPrefix("Automap")
 
 	if term != nil {
-		_ = term.Bind("automap", "automap on|off|toggle|full|mini|stats", []string{"mode"}, a.command)
+		_ = term.Bind("automap", "automap on|off|toggle|full|mini|fade|nofade|names|nonames|party|noparty|center|nocenter|stats", []string{"mode"}, a.command)
 	}
 
 	return a
@@ -124,13 +133,13 @@ func (a *Automap) Toggle() {
 
 // SetOn shows or hides the map.
 func (a *Automap) SetOn(on bool) {
-	a.on = on
+	a.on, a.miniSeen = on, false
 	a.logState()
 }
 
 // SetSize selects the full-screen or the mini map and shows it.
 func (a *Automap) SetSize(s d2automap.Size) {
-	a.size, a.on = s, true
+	a.size, a.on, a.miniSeen = s, true, false
 	a.logState()
 }
 
@@ -151,11 +160,15 @@ func (a *Automap) command(args []string) error {
 		a.SetSize(d2automap.SizeFull)
 	case "mini":
 		a.SetSize(d2automap.SizeMini)
+	case "fade", "nofade", "names", "nonames", "party", "noparty", "center", "nocenter":
+		key := map[string]string{"fade": "fade", "names": "names", "party": "party", "center": "center"}[strings.TrimPrefix(mode, "no")]
+		a.override[key] = !strings.HasPrefix(mode, "no")
+		a.Infof("AUTOMAP option %s=%v", key, a.override[key])
 	case "stats":
 		a.logState()
 		a.logMarkers()
 	default:
-		return fmt.Errorf("automap: unknown mode %q (on|off|toggle|full|mini|stats)", mode)
+		return fmt.Errorf("automap: unknown mode %q (on|off|toggle|full|mini|fade|names|party|center|stats)", mode)
 	}
 
 	return nil
@@ -204,13 +217,20 @@ func (a *Automap) currentLevel() int {
 func (a *Automap) model() *d2automap.Model {
 	id := a.currentLevel()
 
-	m := a.models[id]
-	if m == nil {
-		m = d2automap.NewModel()
-		a.models[id] = m
+	return a.store.Level(id)
+}
+
+// option reads an automap option: a console override, else Options -> Automap.
+func (a *Automap) option(key string) bool {
+	if v, ok := a.override[key]; ok {
+		return v
 	}
 
-	return m
+	return automapOptionOn(key)
+}
+
+func (a *Automap) markerOptions() d2automap.Options {
+	return d2automap.Options{ShowParty: a.option("party"), ShowNames: a.option("names")}
 }
 
 // loadTable reads automap.bin (authoritative; the txt may be stripped) or else AutoMap.txt.

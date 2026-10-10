@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
@@ -44,6 +45,12 @@ type Renderer struct {
 func (r *Renderer) Update() error {
 	if r.updateCallback == nil {
 		return errors.New("no update callback defined for ebiten renderer")
+	}
+
+	// Cmd+Enter (macOS) or Alt+Enter toggles fullscreen, like the original game
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) &&
+		(commandKeyDown() || ebiten.IsKeyPressed(ebiten.KeyAlt)) {
+		ebiten.SetFullscreen(!ebiten.IsFullscreen())
 	}
 
 	return r.updateCallback()
