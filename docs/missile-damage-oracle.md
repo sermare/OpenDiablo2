@@ -22,6 +22,7 @@ under an x86 emulator (unicorn) with fake units (stat reads served from tables, 
 | chain | target pick callback 0x569a40 (Chain Lightning hit function 12) | `d2missile.ChainNext` | 4000 | equal |
 | collide | 0x5a6160 common predicate, 0x5a61d0 / 0x5a6210 / 0x5a6270 | `d2missile.AcceptCommon`, `AcceptTyped` | 10000 | equal |
 | knock | 0x5bd580 knockback event | `RollKnockback` | 4000 | equal, incl. RNG state |
+| mdouble | 0x5a2f90 monster critical double | `Damage.RollMonsterDouble` | 4000 | equal, incl. RNG state (`dm_mdouble.py`) |
 
 ## Findings (observations)
 - MulDiv (0x47f2c0) truncates toward zero; it is not Win32 rounding. Large operands (a > 0x100000 or b > 0x10000) use other paths.
@@ -44,5 +45,5 @@ under an x86 emulator (unicorn) with fake units (stat reads served from tables, 
 
 ## Not covered (still unverified)
 - The weapon strike chance and mastery bonus helper 0x646bc0 (inputs only, per weapon item data); the per monster class bonus list (stat 0xb4, helper 0x5793c0); the order in which the attacker's item events (open wounds before crushing blow) are dispatched by 0x5be860 is ASSUMED.
-- The monster double (0x5a2f90, ported earlier without an oracle), the event dispatcher 0x5be860 itself, wall collision (verify-missiles-2 only), the unit scan 0x569510 filter (line of sight).
+- The event dispatcher 0x5be860 itself, wall collision (verify-missiles-2 only), the unit scan 0x569510 filter (line of sight).
 - The engine (d2core) is not rewired to the new pure functions except d2state (poison/burn replace, stun cap, chill/freeze extend) and d2missile.DamageDesc.Roll (exe order and zero rules): crushing blow, open wounds, ResolveComponent with flat/absorb and BuildAttackerDamage are available but unused by the engine.
