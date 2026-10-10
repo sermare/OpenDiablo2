@@ -13,6 +13,10 @@ var (
 	ErrValueRange    = errors.New("d2s: value does not fit its field")
 	ErrSocketCount   = errors.New("d2s: SocketCount does not match the number of children")
 	ErrPropertyOrder = errors.New("d2s: property group is incomplete")
+	// ErrWouldDrop is returned when the character holds data the file layout of
+	// its header cannot store (mercenary items without an expansion flag or a
+	// mercenary, a golem on a non-Necromancer), instead of silently losing it.
+	ErrWouldDrop = errors.New("d2s: character data has no place in a file with this header")
 )
 
 const maxNameLen = nameLength - 1
@@ -122,6 +126,14 @@ func (h *Header) marshal() ([]byte, error) {
 }
 
 func (c *Character) appendBody(out []byte, tables *ItemTables) ([]byte, error) {
+	if len(c.MercItems) > 0 && (!c.Header.IsExpansion() || c.Header.Mercenary.ID == 0) {
+		return nil, fmt.Errorf("%w: mercenary items need an expansion save with a mercenary", ErrWouldDrop)
+	}
+
+	if c.Golem != nil && (!c.Header.IsExpansion() || c.Header.Class != Necromancer) {
+		return nil, fmt.Errorf("%w: golem needs an expansion Necromancer", ErrWouldDrop)
+	}
+
 	out = c.Body.appendSections(out, tables)
 
 	var err error
