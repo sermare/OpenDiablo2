@@ -69,6 +69,8 @@ type SoundEngine struct {
 	mute     bool
 	trace    bool
 	stats    TraceStats
+	audit    AudioStats
+	live     map[*statPlayer]struct{}
 	lx, ly   float64 // listener in sound units, see SubtileToSound
 	sounds   map[*Sound]struct{}
 
@@ -92,6 +94,9 @@ func NewSoundEngine(provider d2interface.AudioProvider,
 		provider: provider,
 		sounds:   map[*Sound]struct{}{},
 		mute:     os.Getenv("OD2_AUTOTEST_MUTE") != "",
+		audit: AudioStats{Started: map[string]int{}, Peak: map[string]float64{},
+			Flow: map[string]int64{}, FlowPeak: map[string]int{}},
+		live: map[*statPlayer]struct{}{},
 
 		soundLog: os.Getenv("OD2_SOUNDLOG") != "",
 	}
@@ -153,12 +158,21 @@ func (s *SoundEngine) Bank() *d2sfx.Bank {
 	// nolint:gosec // client-only, no need for a secure generator
 	s.bank = d2sfx.NewBank(table, d2sfx.DefaultVoices, s.loadPlayer, engineClock{s}, rand.Intn)
 
+	if s.soundLog {
+		// every decision of the voice bank (start, stop, steal, finish), not only the request
+		s.bank.OnReport = func(r d2sfx.Report) {
+			s.Infof("SOUNDEVT t=%.1f handle=%s voice=%d decision=%s", s.ticks/d2sfx.TicksPerSecond, r.Handle, r.Voice, r.Decision)
+		}
+	}
+
 	return s.bank
 }
 
 func (s *SoundEngine) loadPlayer(row *d2sfx.Row) (d2sfx.Player, error) {
+	cat := Category(row.Handle, row.MusicVol, row.Loop)
+
 	if s.mute {
-		return &mutePlayer{e: s, loop: row.Loop}, nil
+		return &statPlayer{inner: &mutePlayer{e: s, loop: row.Loop}, e: s, cat: cat}, nil
 	}
 
 	p, err := s.provider.LoadSound(row.FileName, row.Loop, row.MusicVol)
@@ -173,7 +187,7 @@ func (s *SoundEngine) loadPlayer(row *d2sfx.Row) (d2sfx.Player, error) {
 		sc.SetVolumeScale(1)
 	}
 
-	return p, nil
+	return &statPlayer{inner: p, e: s, cat: cat}, nil
 }
 
 // volumeSource is implemented by audio providers that hold the master volumes

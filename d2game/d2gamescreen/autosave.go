@@ -53,6 +53,8 @@ func SaveActiveGame() {
 // saveBeforeExit saves the hero (a hero imported from a .d2s is also written
 // back to a .d2s by the server). Errors are logged, never fatal.
 func (v *Game) saveBeforeExit() {
+	v.Infof("AUDIOSTAT %s", v.soundEngine.AudioStats())
+
 	if v.localPlayer == nil || v.gameClient == nil {
 		return
 	}
