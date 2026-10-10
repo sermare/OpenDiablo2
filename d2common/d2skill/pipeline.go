@@ -66,6 +66,9 @@ type Target struct {
 	CorpseID  string
 	CorpseHP  int
 	CorpseKey string
+	// CorpseLevel is the corpse monster's level (Corpse Explosion scales its
+	// damage down when the corpse is above the caster).
+	CorpseLevel int
 }
 
 // Options tune the pipeline.
@@ -98,6 +101,10 @@ type Pipeline struct {
 	// Walkable reports whether a subtile can be stood on (Teleport, Leap).
 	// Optional: without it every cell is walkable.
 	Walkable func(x, y int) bool
+	// TeleportFlag is the levels.txt Teleport column of the caster's level
+	// (0 not allowed, 1 allowed, 2 allowed but not through walls/objects;
+	// VERIFIED in SRVDO_027). Optional: nil means 1.
+	TeleportFlag func() int
 	// After runs fn after that many frames (staggered bursts such as Inferno).
 	After func(frames int, fn func())
 }
@@ -275,6 +282,11 @@ type Effect struct {
 	Level, SkillID int
 	// Dist is the maximum distance of a move, subtiles.
 	Dist int
+	// Target is the unit a "convert" or "pull" effect acts on.
+	Target d2missile.Target
+	// CasterLevel is the caster's character level ("convert": a converted
+	// monster above that level is scaled down to it, SRVDO_079).
+	CasterLevel int
 }
 
 // Strike is one delayed hit of a "strikes" effect.
@@ -309,6 +321,13 @@ type SummonOrder struct {
 	UseCorpseType bool
 	// Damage descriptor for traps (the trap skill's own damage).
 	Desc *d2missile.DamageDesc
+	// Level is the level the summoned monster is given (skills.txt calc2 of
+	// Raven, the spirit wolves and the vines, VERIFIED in SRVDO_114/115/119 via
+	// SKILL_ComputeSummonLevel); 0 keeps the owner's level.
+	Level int
+	// Cells lists subtile offsets from (X, Y) for each of Count summons (the
+	// three hydras of SRVDO_144 stand in a triangle); empty = all at (X, Y).
+	Cells [][2]int
 }
 
 // MeleeResult is a resolved melee strike.

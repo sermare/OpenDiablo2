@@ -23,6 +23,10 @@ type Mods struct {
 	HPPct   int
 	Aura    []d2skill.StatMod
 	Passive []d2skill.StatMod
+	// LevelAC and LevelAR are the armor class and attack rating that
+	// SKILL_ComputeSummonLevel (0x5c2850) adds as stats 0x1f / 0x13 from the
+	// MonLvl row of the summon's level (VERIFIED); see Templates.LevelBonus.
+	LevelAC, LevelAR int
 }
 
 // FromOrder takes the modifiers of a d2skill summon order plus the skill's
@@ -75,8 +79,8 @@ func Compute(t *Template, diff Difficulty, m Mods, r *d2rand.Seed) Stats {
 	}
 
 	s := Stats{Walk: t.Walk, Run: t.Run, Res: b.Res, Absorb: map[string]int{}, Other: map[string]int{}}
-	s.Defense = b.AC
-	s.AR = b.A1TH
+	s.Defense = b.AC + m.LevelAC
+	s.AR = b.A1TH + m.LevelAR
 	s.DmgMin, s.DmgMax = b.A1Min, b.A1Max
 
 	var dmgPct, armorPct, flatHP int

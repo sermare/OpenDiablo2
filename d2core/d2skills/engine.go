@@ -37,6 +37,9 @@ type Options struct {
 	// InfiniteAmmo makes arrow skills find ammunition (the quiver is not
 	// modelled).
 	InfiniteAmmo bool
+	// TeleportFlag returns the levels.txt Teleport column of the hero's level
+	// (0 / 1 / 2, see d2skill.Pipeline.TeleportFlag); nil means always 1.
+	TeleportFlag func() int
 }
 
 // Counters tally what happened, for scenario summaries.
@@ -68,6 +71,8 @@ type Engine struct {
 
 	frame int
 	acc   float64
+
+	lastDealt int // whole life points the last hurt() removed (leech)
 
 	heroes  map[string]*heroUnit
 	targets map[string]*monsterTarget
@@ -114,6 +119,7 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 		Grid: monsters.Grid(), Frame: func() int { return e.frame },
 		Opt: d2skill.Options{IgnoreTown: opt.IgnoreTown, StaticFieldMinPct: staticFieldMin(asset, monsters)},
 	}
+	e.pipe.TeleportFlag = opt.TeleportFlag
 	e.pipe.ApplyState = e.applyMissileState
 	e.pipe.Near = e.near
 	e.pipe.After = e.after
@@ -327,6 +333,7 @@ func (e *Engine) targetAt(sx, sy int) d2skill.Target {
 		if d := chebyshev(mx-sx, my-sy); d < cbest {
 			cbest = d
 			tg.Corpse, tg.CX, tg.CY, tg.CorpseID, tg.CorpseHP, tg.CorpseKey = true, mx, my, m.ID(), m.Vitals.MaxHP, m.Stat.Key
+			tg.CorpseLevel = m.Vitals.Level
 		}
 	}
 
@@ -450,6 +457,7 @@ func (e *Engine) meleeResult(p *d2mapentity.Player, sk *d2skill.Skill, r *d2skil
 	if mt != nil {
 		e.Counters.Hits++
 		e.hurt(mt.m, p, &r.Damage, sk.Name)
+		e.leech(p, &r.Damage, e.lastDealt)
 		e.itemEvents(mt.m, p, true) // crushing blow, open wounds: after the base damage
 	}
 }
@@ -638,6 +646,7 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 	set.Hit(e.frame)
 
 	hp0 := m.Vitals.HP
+	e.lastDealt = whole
 	e.Counters.Damage += whole
 	e.emit("damage", "DAMAGE skill=%q target=%s raw=%.2f after_resist=%.2f dmg=%d hp=%d->%d/%d", what, m.Label(),
 		fixed(int(d.Physical+d.Fire+d.Lightning+d.Magic+d.Cold)), fixed(total), whole, hp0, maxInt(hp0-whole, 0), m.Vitals.MaxHP)
