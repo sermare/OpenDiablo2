@@ -5,58 +5,30 @@ Act 1 to 5 chain one scenario at a time through `scripts/verify.sh` with `OD2_HE
 `d2core/d2hero/herogen` (`scripts/verify.d/lib/hero.sh`), except 9b, which starts a brand new level 1 hero of the class.
 The scripted fights cast the class' left skill (`d2game/d2gamescreen/fightskill.go`), real combat, no god mode.
 
-Last update 2026-10-10 11:27, commit `4eda8ffc`, 35 run(s) in the table. A cell is *result runtime deaths*:
+Last update 2026-10-10 11:58, commit `b442a50b`, 35 run(s) in the table. A cell is *result runtime deaths*:
 `PASS` / `PASS*` (passed on the second attempt that verify.sh makes) / `FAIL`, wall clock, deaths of the hero (`d`).
 
-| class | 9b Act 1 (fresh) | 9e Act 2 | 9g Act 3 | 9h Acts 4+5 | 9i Act 5 caves | total | deaths | passed |
-|---|---|---|---|---|---|---|---|---|
-| amazon | PASS 4m10s d0 | PASS 3m23s d0 | PASS 10m00s d0 | PASS 8m15s d0 | PASS 6m14s d0 | 32m02s | 0 | 5/5 |
-| sorc | PASS 4m11s d0 | PASS 3m51s d0 | PASS 10m28s d0 | PASS* 17m55s d0 | PASS 7m41s d0 | 44m06s | 0 | 5/5 |
-| necro | PASS 4m14s d0 | PASS 3m29s d0 | PASS 8m54s d0 | PASS 5m54s d0 | PASS 6m08s d0 | 28m39s | 0 | 5/5 |
-| paladin | PASS 3m58s d0 | PASS 3m21s d0 | PASS 9m03s d0 | PASS* 10m55s d0 | PASS 4m33s d0 | 31m50s | 0 | 5/5 |
-| barb | PASS 4m13s d0 | PASS 3m26s d0 | PASS 8m28s d0 | PASS 5m42s d0 | PASS 6m14s d0 | 28m03s | 0 | 5/5 |
-| druid | PASS 4m08s d0 | PASS 3m56s d0 | PASS 10m45s d0 | PASS 9m20s d0 | PASS 9m16s d0 | 37m25s | 0 | 5/5 |
-| assassin | PASS 3m56s d0 | PASS 3m23s d0 | PASS 8m30s d0 | PASS 5m38s d0 | PASS 5m37s d0 | 27m04s | 0 | 5/5 |
+| class | 9e Act 2 | total | deaths | passed |
+|---|---|---|---|---|
+| amazon | PASS 3m10s d0 | 3m10s | 0 | 1/1 |
+| sorc | PASS 3m51s d0 | 3m51s | 0 | 1/1 |
+| necro | PASS 3m29s d0 | 3m29s | 0 | 1/1 |
+| paladin | PASS 3m21s d0 | 3m21s | 0 | 1/1 |
+| barb | PASS 3m26s d0 | 3m26s | 0 | 1/1 |
+| druid | PASS 3m56s d0 | 3m56s | 0 | 1/1 |
+| assassin | PASS 3m23s d0 | 3m23s | 0 | 1/1 |
 
 ## First anomaly of every run
 
 | class | scenario | result | runtime | deaths | first anomaly |
 |---|---|---|---|---|---|
-| amazon | 9b-act1-playthrough | PASS | 4m10s | 0 | none |
-| amazon | 9e-act2-playthrough | PASS | 3m23s | 0 | [Game Screen][INFO] KILL left skill "Lightning Fury" refused 12 times (no_ammo): swinging instead for the rest of this fight |
-| amazon | 9g-act3-playthrough | PASS | 10m00s | 0 | [Game Screen][INFO] KILL left skill "Lightning Fury" refused 12 times (no_ammo): swinging instead for the rest of this fight |
-| amazon | 9h-act45-playthrough | PASS | 8m15s | 0 | [Game Screen][INFO] KILL left skill "Lightning Fury" refused 12 times (no_ammo): swinging instead for the rest of this fight |
-| amazon | 9i-act5-caves-playthrough | PASS | 6m14s | 0 | [Game Screen][INFO] KILL left skill "Lightning Fury" refused 12 times (no_ammo): swinging instead for the rest of this fight |
-| sorc | 9b-act1-playthrough | PASS | 4m11s | 0 | [Game Server][WARNING] D2S export: container item "clb" (page 1) not written: quality 6 of clb cannot be written (rare/crafted names are not modelled) |
+| amazon | 9e-act2-playthrough | PASS | 3m10s | 0 | [Game Server][WARNING] D2S export: container item "dr2": 1 stat(s) the save cannot hold were left out |
 | sorc | 9e-act2-playthrough | PASS | 3m51s | 0 | [Game Server][WARNING] D2S export: container item "ywn": 2 stat(s) the save cannot hold were left out |
-| sorc | 9g-act3-playthrough | PASS | 10m28s | 0 | none |
-| sorc | 9h-act45-playthrough | PASS* | 17m55s | 0 | FAIL: the Act 4/5 playthrough did not pass |
-| sorc | 9i-act5-caves-playthrough | PASS | 7m41s | 0 | none |
-| necro | 9b-act1-playthrough | PASS | 4m14s | 0 | [Game Server][WARNING] D2S export: container item "cap" (page 1) not written: quality 6 of cap cannot be written (rare/crafted names are not modelled) |
 | necro | 9e-act2-playthrough | PASS | 3m29s | 0 | [Game Server][WARNING] D2S export: container item "tax": 6 stat(s) the save cannot hold were left out |
-| necro | 9g-act3-playthrough | PASS | 8m54s | 0 | none |
-| necro | 9h-act45-playthrough | PASS | 5m54s | 0 | none |
-| necro | 9i-act5-caves-playthrough | PASS | 6m08s | 0 | none |
-| paladin | 9b-act1-playthrough | PASS | 3m58s | 0 | [Game Server][WARNING] D2S export: container item "lgl" (page 1) not written: quality 6 of lgl cannot be written (rare/crafted names are not modelled) |
 | paladin | 9e-act2-playthrough | PASS | 3m21s | 0 | [Game Server][WARNING] D2S export: container item "flc": 2 stat(s) the save cannot hold were left out |
-| paladin | 9g-act3-playthrough | PASS | 9m03s | 0 | none |
-| paladin | 9h-act45-playthrough | PASS* | 10m55s | 0 | FAIL: errors or a walk that gave up in the Act 4/5 log |
-| paladin | 9i-act5-caves-playthrough | PASS | 4m33s | 0 | none |
-| barb | 9b-act1-playthrough | PASS | 4m13s | 0 | [Game Server][WARNING] D2S export: container item "sbw": 4 stat(s) the save cannot hold were left out |
 | barb | 9e-act2-playthrough | PASS | 3m26s | 0 | [Game Server][WARNING] D2S export: container item "ba1": 1 stat(s) the save cannot hold were left out |
-| barb | 9g-act3-playthrough | PASS | 8m28s | 0 | none |
-| barb | 9h-act45-playthrough | PASS | 5m42s | 0 | none |
-| barb | 9i-act5-caves-playthrough | PASS | 6m14s | 0 | none |
-| druid | 9b-act1-playthrough | PASS | 4m08s | 0 | [Game Server][WARNING] D2S export: container item "scp" (page 1) not written: quality 6 of scp cannot be written (rare/crafted names are not modelled) |
 | druid | 9e-act2-playthrough | PASS | 3m56s | 0 | none |
-| druid | 9g-act3-playthrough | PASS | 10m45s | 0 | none |
-| druid | 9h-act45-playthrough | PASS | 9m20s | 0 | none |
-| druid | 9i-act5-caves-playthrough | PASS | 9m16s | 0 | none |
-| assassin | 9b-act1-playthrough | PASS | 3m56s | 0 | [Game Server][WARNING] D2S export: container item "buc" (page 1) not written: quality 6 of buc cannot be written (rare/crafted names are not modelled) |
 | assassin | 9e-act2-playthrough | PASS | 3m23s | 0 | [Game Server][WARNING] D2S export: container item "tax": 1 stat(s) the save cannot hold were left out |
-| assassin | 9g-act3-playthrough | PASS | 8m30s | 0 | none |
-| assassin | 9h-act45-playthrough | PASS | 5m38s | 0 | none |
-| assassin | 9i-act5-caves-playthrough | PASS | 5m37s | 0 | [Game Screen][WARNING] KILL giving up for now on "Dark Lancer" at (50.2,126.6): hero at (52.8,126.8) cannot get closer than 2.9 tiles |
 
 ## How to run
 

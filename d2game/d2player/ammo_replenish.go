@@ -24,13 +24,7 @@ func (g *GameControls) advanceAmmo(elapsed float64) {
 		return
 	}
 
-	var value int64
-
-	for _, p := range s.StatItem().Props {
-		if p.ID == statReplenishQuantity {
-			value += p.Value
-		}
-	}
+	value := int64(s.StatTotal(statReplenishQuantity))
 
 	every := replenishSeconds(value)
 	if every <= 0 {
