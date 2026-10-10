@@ -77,3 +77,13 @@ func (a *App) loadGamepadProfiles() {
 
 	a.Infof("gamepad profiles loaded from %s", path)
 }
+
+// applySpeechOption tells the audio provider whether NPC speech is played
+// (the NPC SPEECH option: AUDIO AND TEXT, AUDIO ONLY or TEXT ONLY).
+func (a *App) applySpeechOption() {
+	if sp, ok := a.audio.(interface{ SetSpeechAudio(bool) }); ok {
+		const textOnly = 2
+
+		sp.SetSpeechAudio(a.config.OptionIndex(d2config.OptNpcSpeech) != textOnly)
+	}
+}
