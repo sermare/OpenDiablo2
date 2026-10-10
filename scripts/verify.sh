@@ -104,6 +104,7 @@ fi
 #   scenario_realtime=1      (optional) keep the game clock at real time (default: OD2_AUTOSPEED=4 for every scenario)
 #   scenario_timeout=<seconds> (optional) wall-clock limit before the game is reaped (default 420; long playthroughs)
 #   scenario_unmuted=1       (optional) play real audio (no OD2_AUTOTEST_MUTE); OD2_VERIFY_SOUND=1 does it for all
+#   scenario_timeout=<seconds> (optional) wall-clock limit of the game window (default 420; the reaper kills at 8 minutes)
 #   scenario_warnings_ok=1   (optional) do not fail on [ERROR]/[WARNING] lines
 # Adding a scenario = adding one small file; no edits to this runner are needed.
 # A GUI session is required (the game is started with `open`).
@@ -114,6 +115,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   # make_hero <out.d2s> for the level 94 playthroughs; OD2_HERO=barb picks the generated Barbarian (default: the Sorceress)
   source scripts/verify.d/lib/hero.sh
 
+  scen_run=0 scen_pass=0
   for f in scripts/verify.d/*.sh(N); do
     unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""; scenario_realtime=""; scenario_timeout=""
     source "$f"
@@ -121,6 +123,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
     [ -n "${OD2_VERIFY_ONLY:-}" ] && [[ ${f:t} != ${~OD2_VERIFY_ONLY} && ${f:t:r} != ${~OD2_VERIFY_ONLY} ]] && continue
     fail_before=$fail
     scenarios_run=$((scenarios_run+1))
+    scen_run=$((scen_run + 1))
     for attempt in 1 2; do
       fail=$fail_before
       step "$scenario_name"
@@ -155,7 +158,9 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
       [ $fail -eq $fail_before ] && break
       [ $attempt -eq 1 ] && echo "RETRY: $scenario_name failed once; running it again (scenarios are timing sensitive on a loaded machine)"
     done
+    [ $fail -eq $fail_before ] && scen_pass=$((scen_pass + 1))
   done
+  echo; echo "SCENARIOS run=$scen_run passed=$scen_pass failed=$((scen_run - scen_pass))"
 fi
 
 echo

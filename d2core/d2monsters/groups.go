@@ -422,6 +422,10 @@ func (d *Director) recordRank(m *d2mapentity.Monster, plan d2monster.Pack) {
 		if rec := d.asset.Records.Monster.Unique.Super[plan.SuperUnique]; rec != nil {
 			m.SuperUniqueIdx, _ = strconv.Atoi(rec.HcIdx)
 
+			if rec.Name != "" { // the boss shows (and reports in kill events) its own name, "Ismail Vilehand"
+				m.SetLabel(rec.Name)
+			}
+
 			for _, id := range rec.Mod {
 				if id > 0 {
 					m.Modifiers = append(m.Modifiers, id)

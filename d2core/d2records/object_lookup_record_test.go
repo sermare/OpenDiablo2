@@ -48,3 +48,21 @@ func TestIndexObjects(t *testing.T) {
 	assert.Equal("Act2CharId3", r.lookupObject(2, typeCharacter, 3).Description)
 	assert.Equal("Act2ItemId1", r.lookupObject(2, typeItem, 1).Description)
 }
+
+// The lookup table is positional (a DS1 object names its row by act, type and index): every group counts
+// up without gaps. Playtest bug 42: Act 3 row 104 (the hellgate portal of the Durance of Hate 3) was
+// numbered 342 (its objects.txt id), so loading that level was a fatal "Failed to look up object".
+func TestObjectLookupIdsAreContiguous(t *testing.T) {
+	next := map[[2]int]int{}
+
+	for i := range objectLookups {
+		rec := &objectLookups[i]
+		key := [2]int{rec.Act, int(rec.Type)}
+
+		if rec.Id != next[key] {
+			t.Fatalf("row %d (%s): act %d type %d has id %d, want %d", i, rec.Description, rec.Act, rec.Type, rec.Id, next[key])
+		}
+
+		next[key] = rec.Id + 1
+	}
+}

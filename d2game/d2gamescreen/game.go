@@ -166,11 +166,13 @@ type Game struct {
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	rankLeader           *d2mapentity.Monster // leader of the last spawnrank pack
+	realm                *realmState          // the monsters of a game played through the realm (realm_sync.go)
 	monsterTest          *monsterTest
 	aiTest               *aiAutoTest
 	bossTest             *bossAutoTest
 	uber                 *uberRuntime
 	chaos                *chaosRuntime
+	act3                 act3State
 	uberTest             *uberAutoTest
 	merc                 mercGame
 	skills               *d2skills.Engine
@@ -237,6 +239,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			nil, v.commandWalkProbe},
 		{"players", "logs the players of the game with their positions", []string{}, v.commandPlayers},
 		{"chat", "sends a chat line to all players (_ for a space)", []string{"text"}, v.commandChat},
+		{"mpkill", "realm games: fight the nearest monster of the realm", nil, v.commandMPKill},
+		{"mpworld", "realm games: logs the simulation as this client sees it (digest, monsters)", nil, v.commandMPWorld},
 		{"party", "party invite|accept|decline|leave|list <name or ->", []string{"op", "name"}, v.commandParty},
 		{"hostile", "declares (1) or withdraws (0) hostility toward a player", []string{"name", "0|1"}, v.commandHostile},
 		{"roster", "logs the roster and the party panel", []string{}, v.commandRoster},
@@ -271,6 +275,10 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"putitem", "puts the cursor item back into the inventory", nil, v.commandPutItem},
 		{"transmute", "transmutes the quest recipes in the Horadric Cube (Staff, Khalim's Will, Pandemonium portals)",
 			nil, v.commandTransmute},
+		{"pickground", "walks to the nearest ground item with this base code and picks it up (scripts)",
+			[]string{"code"}, v.commandPickGround},
+		{"cubeput", "moves inventory items (by base code) into the Horadric Cube; then use transmute (debug)",
+			[]string{"code1", "code2", "code3", "code4"}, v.commandCubePut},
 		{"setexp", "raises the hero's experience to at least <amount>; the level follows (debug)", []string{"amount"}, v.commandSetExp},
 	}
 
@@ -304,7 +312,7 @@ func (v *Game) OnUnload() error {
 	}
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
-		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "spawnrank", "killleader", "killnear", "rewarditem", "transmute", "setexp",
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "spawnrank", "killleader", "killnear", "rewarditem", "transmute", "setexp", "cubeput", "pickground",
 		"questpending", "pickitem", "putitem", "giveitemq", "freeinv",
 		"townportal", "closeportal", "portals", "useportal", "pvpcast", "pvpwalk", "sethp"); err != nil {
 		return err

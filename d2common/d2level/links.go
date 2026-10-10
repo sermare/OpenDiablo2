@@ -403,6 +403,13 @@ func TileDestination(level, style int) (int, bool) {
 	}
 
 	switch {
+	case ActOfLevel(level) == 3 && style < len(ups):
+		// Act 3 mazes (Sewers 1; the Durance of Hate 100..102 is answered above by the Vis slot rule): the tile styles list the exits in the order up
+		// then down (OBSERVED in the maze stamps: Durance 1 has up 0,1 and down 2,3, Sewers 1 up 0..3 and
+		// down 4); the Vis slots of Levels.txt name the levels
+		return ups[style], true
+	case ActOfLevel(level) == 3 && style-len(ups) < len(downs):
+		return downs[style-len(ups)], true
 	case style == 0 && len(ups) > 0:
 		return ups[0], true
 	case style == 1 && len(ups) > 1:

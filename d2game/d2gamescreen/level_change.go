@@ -322,6 +322,7 @@ func (v *Game) afterLevelBuilt(from, to int, via string) {
 	v.scanWarps()
 	v.questArea(to) // the quest system follows the hero between areas
 	v.uberEnter(to)
+	v.act3Enter(to)
 	v.enterSoundEnv(to)
 	v.chaosEnter(to)
 	v.restoreCorpse()
@@ -432,6 +433,11 @@ func (v *Game) advanceWarpUse(elapsed float64) {
 		}
 	}
 
+	if err := v.act3WarpAllowed(cur, dest); err != nil {
+		v.Infof("LEVEL warp refused level %d -> %d: %v", cur, dest, err)
+		return
+	}
+
 	// a scripted walk to an exit enters only the warp it heads for: the walk to Upper Kurast ended in the
 	// Disused Fane when a fight sent the hero over the entrance next to the Ruined Temple's
 	if e := v.levels.exitWalk; e != nil && !edgeWanted(e.level, dest) {
@@ -499,6 +505,10 @@ func (v *Game) advanceObjectUse(elapsed float64) {
 }
 
 func (v *Game) operateObject(ob *d2mapentity.Object) {
+	if v.act3Operate(ob) {
+		return
+	}
+
 	switch ob.Kind() {
 	case d2level.ObjectDoor:
 		v.operateDoor(ob)

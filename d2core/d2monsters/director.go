@@ -136,6 +136,7 @@ type unit struct {
 	lastLabel           string    // the AI state last traced (forced.go)
 	raising             bool      // a corpse a shaman is raising (corpses.go)
 	skill               *monSkill // the monstats skill of the attack in progress (skilldmg.go), nil = plain attack
+	mirror              bool      // a realm unit drawn here: no AI, no local damage (mirror.go)
 }
 
 type moveIntent struct {
@@ -234,6 +235,9 @@ type Director struct {
 	// treasure class (see d2drop.MonsterTreasureInput.QuestStates) for a
 	// class's TCQuestId / TCQuestCP. Without it the quest class never drops.
 	QuestStates func(questID, questCP int) [3]bool
+	// OnMirrorHit, if set, receives the blows that hit a mirror monster (see
+	// mirror.go): the realm resolves them, nothing is applied locally.
+	OnMirrorHit func(m *d2mapentity.Monster, src *d2mapentity.Player)
 }
 
 // KillEvent describes a monster death for OnKill.
@@ -456,6 +460,15 @@ func (d *Director) step() {
 		d.handleEvents(u)
 		d.ambientSounds(u)
 
+		if u.mirror {
+			if !u.m.Alive() && u.m.CorpseAge() > corpseSeconds { // the realm drives the rest
+				d.engine.RemoveEntity(u.m)
+				d.forget(u)
+			}
+
+			continue
+		}
+
 		if u.merc != nil {
 			d.stepMerc(u)
 		}
@@ -587,6 +600,18 @@ func (d *Director) adoptPlacements() {
 		x, y := int(pos.X()), int(pos.Y())
 
 		d.engine.RemoveEntity(npc)
+
+		// a placement that stands for a super unique (the Council of Travincal, the guards of Mephisto...)
+		// becomes the named boss with its followers, modifiers and treasure class
+		if npc.SuperKey != "" {
+			res, err := d.SpawnSuperUnique(npc.SuperKey, d2path.Point{X: x, Y: y})
+			if err == nil {
+				d.Infof("adopted DS1 super unique %q (%s) at (%d,%d): %d monsters", npc.SuperKey, stat.Key, x, y, len(res.Monsters))
+				continue
+			}
+
+			d.Infof("could not build super unique %q: %v; placing a plain %s", npc.SuperKey, err, stat.Key)
+		}
 
 		if _, err := d.Spawn(stat, x, y); err != nil {
 			d.Infof("could not adopt DS1 monster %s: %v", stat.Key, err)
