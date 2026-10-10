@@ -177,8 +177,9 @@ type Director struct {
 	killer     *unit // the merc whose hit is being resolved (kill credit)
 	snd        *rand.Rand
 	packRNG    *d2rand.Seed
-	staggerRNG *d2rand.Seed // generator of the hit recovery gate
-	regionRNG  *d2rand.Seed // region seed of the teleport destination search
+	leechFrac  map[string][2]int32 // hero id -> 8.8 fractions of life and mana kept by leech
+	staggerRNG *d2rand.Seed        // generator of the hit recovery gate
+	regionRNG  *d2rand.Seed        // region seed of the teleport destination search
 
 	boss BossHooks // the boss AIs' encounter hooks (bosshooks.go)
 

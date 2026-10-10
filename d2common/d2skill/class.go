@@ -373,7 +373,7 @@ func (p *Pipeline) strike(u Unit, sk *Skill, lvl int, t d2missile.Target, env *E
 	}
 
 	mr.Damage = dmg
-	mr.Total = dmg.SumTotal(true)
+	mr.Total = dmg.SumTotal(false)
 
 	return mr
 }
@@ -426,7 +426,7 @@ func doMeleeFn(c *cast) {
 	m := c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, c.meleeOpt())
 	if c.sk.SrvStFunc == stBash && m.Hit {
 		m.Damage.Physical += int32(c.calc(2)) << 8
-		m.Total = m.Damage.SumTotal(true)
+		m.Total = m.Damage.SumTotal(false)
 	}
 
 	c.addMelee(m)

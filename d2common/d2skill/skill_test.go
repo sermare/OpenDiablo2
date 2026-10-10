@@ -489,7 +489,7 @@ func TestFireBoltKillsMonsterInPath(t *testing.T) {
 			hits++
 
 			// level 1 Fire Bolt: 3.0 - 6.0 fire, roller 0 -> min
-			if e.Damage.Fire != 768 || e.Damage.SumTotal(true) != 768 {
+			if e.Damage.Fire != 768 || e.Damage.SumTotal(false) != 768 {
 				t.Fatalf("damage %+v", e.Damage)
 			}
 		}
@@ -732,7 +732,7 @@ func TestHowlRing(t *testing.T) {
 	}
 
 	for _, e := range f.evs {
-		if e.Kind == d2missile.EventHit && e.Damage.SumTotal(true) != 0 {
+		if e.Kind == d2missile.EventHit && e.Damage.SumTotal(false) != 0 {
 			t.Fatalf("howl deals damage %+v", e.Damage)
 		}
 	}
