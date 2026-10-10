@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"math"
-	"os"
 	"sort"
 	"sync"
 
@@ -513,12 +512,6 @@ func (v *Game) portalShrine() string {
 
 	if !d2level.PortalShrineOpens(level) {
 		return fmt.Sprintf("world=portal level=%d: no portal opens here", level)
-	}
-
-	// the autotest cycles every shrine code (OD2_AUTOOBJECT_SHRINE): the
-	// portal would be harmless, but keep the old behaviour of logging only
-	if os.Getenv("OD2_AUTOOBJECT_SHRINE") != "" {
-		return fmt.Sprintf("world=portal dest=%d (autotest: portal skipped)", dest)
 	}
 
 	if err := v.openTownPortal(); err != nil {
