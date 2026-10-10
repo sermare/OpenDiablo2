@@ -4,6 +4,8 @@ import (
 	"math"
 	"testing"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2lightmap"
 )
 
@@ -128,4 +130,32 @@ func TestResetLevelCaches(t *testing.T) {
 	}
 
 	(&MapRenderer{}).resetLevelCaches() // no lighting yet must not panic
+}
+
+// Numeric checks of the real rule (Game.exe 0x4d9e40): each axis alone, 1..3 tiles ahead of the hero's tile.
+func TestWallFadeRule(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		typ            d2enum.TileType
+		wx, wy, hx, hy int
+		want           bool
+	}{
+		{"left wall 1 ahead in x, any y", d2enum.TileLeftWall, 11, 90, 10, 10, true},
+		{"left wall 3 ahead", d2enum.TileLeftWall, 13, 10, 10, 10, true},
+		{"left wall 4 ahead", d2enum.TileLeftWall, 14, 10, 10, 10, false},
+		{"left wall same column", d2enum.TileLeftWall, 10, 10, 10, 10, false},
+		{"left wall behind", d2enum.TileLeftWall, 9, 10, 10, 10, false},
+		{"left wall ignores y", d2enum.TileLeftWall, 5, 12, 10, 10, false},
+		{"right wall 2 ahead in y", d2enum.TileRightWall, 90, 12, 10, 10, true},
+		{"right wall x ahead only", d2enum.TileRightWall, 12, 10, 10, 10, false},
+		{"south corner either axis (x)", d2enum.TileSouthCornerWall, 12, 50, 10, 10, true},
+		{"south corner either axis (y)", d2enum.TileSouthCornerWall, 50, 12, 10, 10, true},
+		{"pillar y", d2enum.TilePillarsColumnsAndStandaloneObjects, 50, 11, 10, 10, true},
+		{"tree never fades", d2enum.TileTree, 11, 11, 10, 10, false},
+		{"floor never fades", d2enum.TileFloor, 11, 11, 10, 10, false},
+	} {
+		if got := wallFadeRule(tc.typ, tc.wx, tc.wy, tc.hx, tc.hy); got != tc.want {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		}
+	}
 }

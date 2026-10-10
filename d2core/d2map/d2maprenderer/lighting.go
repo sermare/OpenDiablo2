@@ -22,9 +22,9 @@ const (
 	wallHalfWidth = 80 // a tile is 160 px wide; its centre column is the bottom corner
 
 	// fade of walls covering the hero (renderer.md b1): 500 ms linear. The
-	// target alpha is not known from the notes; 0.4 is a visual choice (U).
+	// target alpha is 0x80/255 (verified, DRAWLIST_AddTimedRoomEntry 0x4d9f60).
 	wallFadeSeconds = 0.5
-	wallFadeTarget  = 0.4
+	wallFadeTarget  = 128.0 / 255.0
 )
 
 // LightInput is what the game tells the renderer about the lighting each frame.
