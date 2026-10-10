@@ -340,23 +340,32 @@ func TileDestination(level, style int) (int, bool) {
 		return 0, false
 	}
 
-	// the Durance of Hate (100..102): like the Act 2 files, the style of a special tile is the Levels.txt Vis slot
-	// (observed in the generated level 101: the tiles carry the styles 0 and 3 for slots {102, 102, 100, 100}).
-	// UNVERIFIED against the exe like the other tile rules.
-	// Level 100 keeps the up/down rule below (TestAct3DungeonTileDestination: style 0 up to Travincal, 4 down).
-	if level >= 101 && level <= 102 {
-		slot := 0
+	// the Durance of Hate (100..102): OBSERVED in the generated levels, the special tiles carry the styles 0 and 1
+	// (the "WarpU"/"Warp" rooms: stairs up to the previous level) and 3 (the "WarpD" room: stairs down). They are
+	// NOT the Levels.txt Vis slots (slot order is {down, down, up, up}, which would send the arrival stairs of
+	// level 100, style 1, down). Before, level 100 resolved only style 4 as "down", so its north stairs (style 3)
+	// led nowhere and the Act 3 gate scenario never reached level 101. UNVERIFIED against the exe like the
+	// other tile rules.
+	if level >= 100 && level <= 102 {
+		var ups, downs []int
 
 		for _, l := range allLinks {
-			if l.From != level || l.Kind != KindTile {
+			if l.From != level || l.Kind != KindTile || l.Warp < 0 {
 				continue
 			}
 
-			if slot == style {
-				return l.To, true
+			if upWarps[l.Warp] {
+				ups = append(ups, l.To)
+			} else {
+				downs = append(downs, l.To)
 			}
+		}
 
-			slot++
+		switch {
+		case (style == 0 || style == 1) && len(ups) > 0:
+			return ups[0], true
+		case (style == duranceDownStyle || style == downStyleBase) && len(downs) > 0:
+			return downs[0], true
 		}
 
 		return 0, false
@@ -435,6 +444,9 @@ func TileDestination(level, style int) (int, bool) {
 var presetExitStyle = map[int]int{13: 1, 14: 1, 15: 1, 16: 1, 37: 0}
 
 func hasPresetExit(level int) bool { _, ok := presetExitStyle[level]; return ok }
+
+// duranceDownStyle is the tile style of the "WarpD" stairs room of the Durance of Hate levels (observed).
+const duranceDownStyle = 3
 
 // downStyleBase is the tile style of the first "down" exit of a dungeon level.
 const downStyleBase = 4
