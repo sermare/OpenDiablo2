@@ -97,8 +97,8 @@ func NewQuestLog(asset *d2asset.AssetManager,
 		tabs[i] = questLogTab{}
 	}
 
-	// nolint:gomnd // this is only test, it also should come from save file
-	mpa := 2
+	// the original's quest log (UI_DrawQuestLogPanel 0x49fc00) always shows the five act tabs of the expansion
+	mpa := d2enum.ActsNumber
 
 	ql := &QuestLog{
 		asset:         asset,

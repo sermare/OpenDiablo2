@@ -36,7 +36,7 @@ func artRect(panel, name string, s *d2ui.Sprite, frameIdx, x, top int) UIRect {
 }
 
 // UILayoutPanels lists the panels UILayout knows.
-var UILayoutPanels = []string{"hud", "minipanel", "character", "inventory", "skills", "quest", "stash", "cube", "party"} //nolint:gochecknoglobals // list
+var UILayoutPanels = []string{"hud", "minipanel", "belt", "character", "inventory", "skills", "quest", "stash", "cube", "npcmenu", "trade", "waypoint", "party"} //nolint:gochecknoglobals // list
 
 // UILayout returns the rectangles of what the interface really places for a panel, taken from the widgets and
 // the constants they are placed with (not from uilayout.go's expected values), for the OD2_AUTOUILAYOUT log and its
@@ -88,6 +88,8 @@ func (g *GameControls) UILayout(panel string) []UIRect {
 		for i, y := range []int{140, 202, 288, 350} {
 			rs = append(rs, UIRect{"character", fmt.Sprintf("add_stat%d", i), 205, y + panelShiftY, 30, 30})
 		}
+
+		rs = append(rs, s.layoutRects()...)
 	case "inventory":
 		i := g.inventory
 		l, t, r, b := i.grid.Bounds()
@@ -98,13 +100,21 @@ func (g *GameControls) UILayout(panel string) []UIRect {
 	case "skills":
 		s := g.skilltree
 		rs = append(rs, UIRect{"skills", "art_origin", s.originX, s.originY, 0, 0})
+		rs = append(rs, s.layoutRects()...)
 	case "quest":
 		rs = append(rs,
 			UIRect{"quest", "art_origin", questLogOffsetX, questLogOffsetY, 0, 0},
-			UIRect{"quest", "tab0", questTabX[0], questTabY + questTabYOffset - 31, 0, 0},
-			UIRect{"quest", "tab1", questTabX[1], questTabY + questTabYOffset - 31, 0, 0},
 			UIRect{"quest", "close", questLogCloseButtonX, questLogCloseButtonY, 32, 32},
 		)
+		rs = append(rs, g.questLog.layoutRects()...)
+	case "belt":
+		rs = append(rs, g.belt.layoutRects()...)
+	case "waypoint":
+		rs = append(rs, g.Waypoints.layoutRects()...)
+	case "trade":
+		rs = append(rs, g.Trade.layoutRects()...)
+	case "npcmenu":
+		rs = append(rs, g.NPCMenu.layoutRects()...)
 	case "party":
 		rs = append(rs, UIRect{"party", "art_origin", partyPanelOffsetX, partyPanelOffsetY, 0, 0},
 			UIRect{"party", "close", partyPanelCloseButtonX, partyPanelCloseButtonY, 32, 32})

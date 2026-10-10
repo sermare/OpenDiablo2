@@ -18,6 +18,8 @@ func (v *Game) autoUILayout() {
 	for _, name := range d2player.UILayoutPanels {
 		switch name {
 		case "hud", "minipanel":
+		case "waypoint":
+			v.openWaypointPanel(v.currentLevel())
 		default:
 			if err := v.gameControls.AutoPanel(name); err != nil {
 				v.Infof("UILAYOUT panel=%s unavailable: %v", name, err)

@@ -27,34 +27,39 @@ const (
 )
 
 const (
-	labelLevelX, labelLevelY = 110, 100
+	labelLevelX, labelLevelY = 112, 97
 
 	labelHeroNameX, labelHeroNameY   = 165, 72
 	labelHeroClassX, labelHeroClassY = 330, 74
 
-	labelExperienceX, labelExperienceY = 200, 100
-	labelNextLevelX, labelNextLevelY   = 330, 100
+	labelExperienceX, labelExperienceY = 202, 97
+	labelNextLevelX, labelNextLevelY   = 330, 97
 
-	labelStrengthX, labelStrengthY   = 100, 150
-	labelDexterityX, labelDexterityY = 100, 213
-	labelVitalityX, labelVitalityY   = 95, 300
-	labelEnergyX, labelEnergyY       = 100, 360
+	// The captions are centred in the boxes of the label table 0x723a5c (x 10..73 for the four attributes, 174..228
+	// for stamina, life and mana, 174..268 for defense, 190..268 for the resistances, plus the panel offset
+	// (80, 60)); their y is the bottom of the line. scripts/verify.d/ui-layout.golden pins the resulting anchors.
+	labelStrengthX, labelStrengthY   = 122, 150
+	labelDexterityX, labelDexterityY = 122, 213
+	labelVitalityX, labelVitalityY   = 122, 298
+	labelEnergyX, labelEnergyY       = 122, 360
 
-	labelDefenseX, labelDefenseY = 280, 260
-	labelStaminaX, labelStaminaY = 280, 300
-	labelLifeX, labelLifeY       = 280, 322
-	labelManaX, labelManaY       = 280, 360
+	labelDefenseX, labelDefenseY = 301, 260
+	labelStaminaX, labelStaminaY = 281, 298
+	labelLifeX, labelLifeY       = 281, 322
+	labelManaX, labelManaY       = 281, 360
 
-	labelResFireLine1X, labelResFireLine1Y = 310, 396
-	labelResFireLine2X, labelResFireLine2Y = 310, 403
+	// the two-line resistance captions: the last line's bottom is the table's y (UNVERIFIED: how the original
+	// anchors a two-line string; the lines here are 7 apart)
+	labelResFireLine1X, labelResFireLine1Y = 310, 392
+	labelResFireLine2X, labelResFireLine2Y = 310, 399
 	// the original lists the resistances fire, cold, lightning, poison from top to bottom (string ids 4071 to 4074 at
 	// y 346, 370, 395, 419 of the panel, 0x723a5c; stats 39, 43, 41, 45 at 0x723b70)
-	labelResColdLine1X, labelResColdLine1Y   = 310, 420
-	labelResColdLine2X, labelResColdLine2Y   = 310, 428
-	labelResLightLine1X, labelResLightLine1Y = 310, 444
-	labelResLightLine2X, labelResLightLine2Y = 310, 452
-	labelResPoisLine1X, labelResPoisLine1Y   = 310, 468
-	labelResPoisLine2X, labelResPoisLine2Y   = 310, 476
+	labelResColdLine1X, labelResColdLine1Y   = 310, 416
+	labelResColdLine2X, labelResColdLine2Y   = 310, 423
+	labelResLightLine1X, labelResLightLine1Y = 310, 441
+	labelResLightLine2X, labelResLightLine2Y = 310, 448
+	labelResPoisLine1X, labelResPoisLine1Y   = 310, 465
+	labelResPoisLine2X, labelResPoisLine2Y   = 310, 472
 )
 
 const (
@@ -110,7 +115,7 @@ const (
 	labelDefenseValueX, labelDefenseValueY = 370, 258 // the box right of the caption: x 273..307 of the panel (0x723b70)
 	labelDamageValueX, labelDamageValueY   = 140, 177
 	labelARValueX, labelARValueY           = 140, 237
-	labelResValueX                         = 375
+	labelResValueX                         = 370
 )
 
 // resistValueY are the y positions of the fire, cold, lightning and poison values.
@@ -364,48 +369,58 @@ func (s *HeroStatsPanel) renderStaticPanelFrames(target d2interface.Surface) {
 	}
 }
 
-func (s *HeroStatsPanel) renderStaticLabels(target d2interface.Surface) {
-	var label *d2ui.Label
+// statsLabelSpec is one static caption of the character panel; name is the key of the layout log.
+type statsLabelSpec struct {
+	name        string
+	x, y        int
+	txt         string
+	font        string
+	centerAlign bool
+}
 
+// staticLabelSpecs lists the captions of the panel in the order they are drawn.
+func (s *HeroStatsPanel) staticLabelSpecs() []statsLabelSpec {
 	fr := strings.Split(s.asset.TranslateString("strchrfir"), "\n")
 	lr := strings.Split(s.asset.TranslateString("strchrlit"), "\n")
 	cr := strings.Split(s.asset.TranslateString("strchrcol"), "\n")
 	pr := strings.Split(s.asset.TranslateString("strchrpos"), "\n")
-	// all static labels are not stored since we use them only once to generate the image cache
-	var staticLabelConfigs = []struct {
-		x, y        int
-		txt         string
-		font        string
-		centerAlign bool
-	}{
-		{labelHeroNameX, labelHeroNameY, s.heroName, d2resource.Font16, true},
-		{labelHeroClassX, labelHeroClassY, s.asset.TranslateString(s.heroClass), d2resource.Font16, true},
 
-		{labelLevelX, labelLevelY, s.asset.TranslateString("strchrlvl"), d2resource.Font6, true},
-		{labelExperienceX, labelExperienceY, s.asset.TranslateString("strchrexp"), d2resource.Font6, true},
-		{labelNextLevelX, labelNextLevelY, s.asset.TranslateString("strchrnxtlvl"), d2resource.Font6, true},
-		{labelStrengthX, labelStrengthY, s.asset.TranslateString("strchrstr"), d2resource.Font6, false},
-		{labelDexterityX, labelDexterityY, s.asset.TranslateString("strchrdex"), d2resource.Font6, false},
-		{labelVitalityX, labelVitalityY, s.asset.TranslateString("strchrvit"), d2resource.Font6, false},
-		{labelEnergyX, labelEnergyY, s.asset.TranslateString("strchreng"), d2resource.Font6, false},
-		{labelDefenseX, labelDefenseY, s.asset.TranslateString("strchrdef"), d2resource.Font6, false},
-		{labelStaminaX, labelStaminaY, s.asset.TranslateString("strchrstm"), d2resource.Font6, true},
-		{labelLifeX, labelLifeY, s.asset.TranslateString("strchrlif"), d2resource.Font6, true},
-		{labelManaX, labelManaY, s.asset.TranslateString("strchrman"), d2resource.Font6, true},
+	return []statsLabelSpec{
+		{"name", labelHeroNameX, labelHeroNameY, s.heroName, d2resource.Font16, true},
+		{"class", labelHeroClassX, labelHeroClassY, s.asset.TranslateString(s.heroClass), d2resource.Font16, true},
+
+		{"level", labelLevelX, labelLevelY, s.asset.TranslateString("strchrlvl"), d2resource.Font6, true},
+		{"experience", labelExperienceX, labelExperienceY, s.asset.TranslateString("strchrexp"), d2resource.Font6, true},
+		{"nextlevel", labelNextLevelX, labelNextLevelY, s.asset.TranslateString("strchrnxtlvl"), d2resource.Font6, true},
+		{"strength", labelStrengthX, labelStrengthY, s.asset.TranslateString("strchrstr"), d2resource.Font6, true},
+		{"dexterity", labelDexterityX, labelDexterityY, s.asset.TranslateString("strchrdex"), d2resource.Font6, true},
+		{"vitality", labelVitalityX, labelVitalityY, s.asset.TranslateString("strchrvit"), d2resource.Font6, true},
+		{"energy", labelEnergyX, labelEnergyY, s.asset.TranslateString("strchreng"), d2resource.Font6, true},
+		{"defense", labelDefenseX, labelDefenseY, s.asset.TranslateString("strchrdef"), d2resource.Font6, true},
+		{"stamina", labelStaminaX, labelStaminaY, s.asset.TranslateString("strchrstm"), d2resource.Font6, true},
+		{"life", labelLifeX, labelLifeY, s.asset.TranslateString("strchrlif"), d2resource.Font6, true},
+		{"mana", labelManaX, labelManaY, s.asset.TranslateString("strchrman"), d2resource.Font6, true},
 
 		// can't use "Fire\nResistance" because line spacing is too big and breaks the layout
-		{labelResFireLine1X, labelResFireLine1Y, fr[0], d2resource.Font6, true},
-		{labelResFireLine2X, labelResFireLine2Y, fr[len(fr)-1], d2resource.Font6, true},
+		{"fire1", labelResFireLine1X, labelResFireLine1Y, fr[0], d2resource.Font6, true},
+		{"fire2", labelResFireLine2X, labelResFireLine2Y, fr[len(fr)-1], d2resource.Font6, true},
 
-		{labelResColdLine1X, labelResColdLine1Y, cr[0], d2resource.Font6, true},
-		{labelResColdLine2X, labelResColdLine2Y, cr[len(cr)-1], d2resource.Font6, true},
+		{"cold1", labelResColdLine1X, labelResColdLine1Y, cr[0], d2resource.Font6, true},
+		{"cold2", labelResColdLine2X, labelResColdLine2Y, cr[len(cr)-1], d2resource.Font6, true},
 
-		{labelResLightLine1X, labelResLightLine1Y, lr[0], d2resource.Font6, true},
-		{labelResLightLine2X, labelResLightLine2Y, lr[len(lr)-1], d2resource.Font6, true},
+		{"lightning1", labelResLightLine1X, labelResLightLine1Y, lr[0], d2resource.Font6, true},
+		{"lightning2", labelResLightLine2X, labelResLightLine2Y, lr[len(lr)-1], d2resource.Font6, true},
 
-		{labelResPoisLine1X, labelResPoisLine1Y, pr[0], d2resource.Font6, true},
-		{labelResPoisLine2X, labelResPoisLine2Y, pr[len(pr)-1], d2resource.Font6, true},
+		{"poison1", labelResPoisLine1X, labelResPoisLine1Y, pr[0], d2resource.Font6, true},
+		{"poison2", labelResPoisLine2X, labelResPoisLine2Y, pr[len(pr)-1], d2resource.Font6, true},
 	}
+}
+
+func (s *HeroStatsPanel) renderStaticLabels(target d2interface.Surface) {
+	var label *d2ui.Label
+
+	// all static labels are not stored since we use them only once to generate the image cache
+	staticLabelConfigs := s.staticLabelSpecs()
 
 	for _, cfg := range staticLabelConfigs {
 		label = s.createTextLabel(PanelText{
@@ -425,17 +440,17 @@ func (s *HeroStatsPanel) initStatValueLabels() {
 		value    int
 		x, y     int
 	}{
-		{&s.labels.Level, s.heroState.Level, 112, 110},
-		{&s.labels.Experience, s.heroState.Experience, 200, 110},
-		{&s.labels.NextLevelExp, s.heroState.NextLevelExp, 330, 110},
+		{&s.labels.Level, s.heroState.Level, 113, 107},
+		{&s.labels.Experience, s.heroState.Experience, 203, 107},
+		{&s.labels.NextLevelExp, s.heroState.NextLevelExp, 331, 107},
 		{&s.labels.Strength, s.heroState.Strength, 175, 147},
-		{&s.labels.Dexterity, s.heroState.Dexterity, 175, 207},
+		{&s.labels.Dexterity, s.heroState.Dexterity, 175, 209},
 		{&s.labels.Vitality, s.heroState.Vitality, 175, 295},
 		{&s.labels.Energy, s.heroState.Energy, 175, 355},
 		{&s.labels.MaxStamina, s.heroState.MaxStamina, 330, 295},
 		{&s.labels.Stamina, int(s.heroState.Stamina), 370, 295},
-		{&s.labels.MaxHealth, s.heroState.MaxHealth, 330, 320},
-		{&s.labels.Health, s.heroState.Health, 370, 320},
+		{&s.labels.MaxHealth, s.heroState.MaxHealth, 330, 318},
+		{&s.labels.Health, s.heroState.Health, 370, 318},
 		{&s.labels.MaxMana, s.heroState.MaxMana, 330, 355},
 		{&s.labels.Mana, s.heroState.Mana, 370, 355},
 	}

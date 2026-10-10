@@ -57,7 +57,7 @@ const (
 	classLabelX, baseClassLabelY                     = 115, 158 + panelShiftY
 	levelLabelX, baseLevelLabelY                     = 386, 160 + panelShiftY
 	inviteAcceptButtonX, baseInviteAcceptButtonY     = 265, 147 + panelShiftY
-	indexOffset                                      = 52
+	indexOffset                                      = 0x26 // the row pitch of the original (UI_DrawPartyScreen 0x496540; up to 8 rows from panel y 0x5a)
 )
 
 // PartyHooks connect the panel to the game's roster (package d2party, kept by
