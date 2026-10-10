@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
 
@@ -124,6 +126,9 @@ const (
 )
 
 type Game struct {
+	// pvpDefend carries the fraction of a life point elemental resist cuts off small PvP ticks
+	pvpDefend d2combat.PvPDefendCarry
+
 	*d2mapentity.MapEntityFactory
 	asset                *d2asset.AssetManager
 	gameClient           *d2client.GameClient

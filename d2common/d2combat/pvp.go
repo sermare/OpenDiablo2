@@ -115,3 +115,35 @@ func (c *PvPCarry) Scale(raw [5]int32, pct int) PvPParts {
 
 	return PvPParts{out[0], out[1], out[2], out[3], out[4]}
 }
+
+// PvPDefendCarry keeps the fraction of a point that the defender's elemental
+// resist cuts off a hit, per element (fire, lightning, cold), in hundredths.
+// A burning ground tick of one scaled point against 75 percent resist is 0.25
+// life; whole points would throw every such tick away (9f-pvp-skills-ear: the
+// Meteor ground ticks were "scaled=1 taken=0").
+type PvPDefendCarry [3]int
+
+// ReceiveParts is PvPReceiveParts with the elemental fractions carried to the
+// next hit on the same defender.
+func (c *PvPDefendCarry) ReceiveParts(p PvPParts, d PvPDefender) int {
+	total := PvPReceive(p.Phys, d.PhysResist, d.Reduce)
+	total += PvPReceive(p.Magic, d.MagicResist, d.MagicReduce)
+
+	el := [3]struct{ v, resist int }{{p.Fire, d.FireResist}, {p.Light, d.LightResist}, {p.Cold, d.ColdResist}}
+	for i, e := range el {
+		if e.v <= 0 {
+			continue
+		}
+
+		m := 100 - e.resist
+		if m < 0 {
+			m = 0
+		}
+
+		sum := e.v*m + c[i]
+		total += sum / 100
+		c[i] = sum % 100
+	}
+
+	return total
+}
