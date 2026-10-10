@@ -346,7 +346,7 @@ func (t *TradeWindow) rebuildGrid() {
 
 func (t *TradeWindow) syncGold() {
 	t.inv.SetGold(t.hero.Gold)
-	t.goldLabel.SetText(fmt.Sprintf("%s %d", t.text("strGold", "Gold:"), t.hero.Gold))
+	t.goldLabel.SetText(fmt.Sprintf("%s %s", t.text("strGold", "Gold:"), t.asset.Locale().FormatInt(t.hero.Gold)))
 }
 
 func (t *TradeWindow) params(mode d2trade.Mode) d2trade.Params {
