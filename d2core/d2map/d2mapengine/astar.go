@@ -18,6 +18,7 @@ const (
 	astarDiagonal  = 1.41421356
 	astarStraight  = 1.0
 	astarGoalSlack = 1e-9
+	astarMaxCells  = 4 << 20 // largest search box (sub-tiles) given dense tables
 )
 
 // pt is a sub-tile coordinate.
@@ -80,6 +81,20 @@ func lineClear(blocked func(x, y int) bool, a, b pt) bool {
 // goal cell itself was reached, and whether any route was found. If the goal
 // cannot be reached the route leads to the reachable cell nearest to it.
 func findPath(blocked func(x, y int) bool, start, goal pt) (path []pt, reached bool) {
+	w := maxInt(start.x, goal.x) - minInt(start.x, goal.x) + 2*astarMargin + 1
+	h := maxInt(start.y, goal.y) - minInt(start.y, goal.y) + 2*astarMargin + 1
+
+	if w*h > astarMaxCells {
+		return findPathSparse(blocked, start, goal)
+	}
+
+	return findPathDense(blocked, start, goal)
+}
+
+// findPathSparse is the map based search: the reference for findPathDense (same
+// results, see TestFindPathDenseMatchesSparse) and the fallback for searches
+// whose bounding box is too large for a dense table.
+func findPathSparse(blocked func(x, y int) bool, start, goal pt) (path []pt, reached bool) {
 	lox, hix := minInt(start.x, goal.x)-astarMargin, maxInt(start.x, goal.x)+astarMargin
 	loy, hiy := minInt(start.y, goal.y)-astarMargin, maxInt(start.y, goal.y)+astarMargin
 
