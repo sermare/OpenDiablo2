@@ -28,7 +28,7 @@ scenario_env() {
     s+=";walkto:exit=111;expect:level=111;wait:3;kill:near=30,45"
     s+=";walkto:exit=112;expect:level=112;wait:3"
     s+=";walkto:exit=113;expect:level=113;wait:3;say:capframe $tmp/act5-crystal.png;exit"
-    echo "export OD2_AUTOGAME=\"$a45/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a45/wb94\" OD2_REALMAPS=1 OD2_AUTOSPEED=4 OD2_AUTOMONSTER_DIFF=0"
+    echo "export OD2_AUTOGAME=\"$a45/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a45/wb94\" OD2_POPULATE_DENSITY=25 OD2_REALMAPS=1 OD2_AUTOSPEED=4 OD2_AUTOMONSTER_DIFF=0"
     echo "export OD2_AUTOSCRIPT='$s'"
   else
     echo "# no revived sample (D2_TABLES unset or the tool failed)" >&2

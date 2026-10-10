@@ -36,7 +36,7 @@ scenario_env() {
     hop 83
     hop 100; hop 83
     s+=";wait:8;say:spawnportal 75;use:Portal;expect:level=75;wait:3;say:capframe $tmp/act3-portal.png"
-    echo "export OD2_AUTOGAME=\"$a3/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a3/wb94\" OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0"
+    echo "export OD2_AUTOGAME=\"$a3/s94/Hero.d2s\" OD2_D2S_WRITEBACK=\"$a3/wb94\" OD2_POPULATE_DENSITY=25 OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOMONSTER_DIFF=0"
     echo "export OD2_AUTOSCRIPT='$s;exit'"
   else
     echo "# no revived sample (D2_TABLES unset or the tool failed)" >&2
