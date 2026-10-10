@@ -101,8 +101,25 @@ scenario_check() {
   done
 
   local bad
-  bad=$(sed -nE 's/.*PVP SKILL target="[^"]*" skill="[^"]*" raw=([0-9]+) scaled=([0-9]+) pct=([0-9]+).*/\1 \2 \3/p' $log.txt | awk '$3 != 17 || $2 * 100 > $1 * 17 + 200 {n++} END {print n + 0}')  # + 200: the carried fraction (one point) and the fraction whole() cut off the raw (another), left by a burning ground tick left (PvPCarry) pays out in one later hit
+  bad=$(sed -nE 's/.*PVP SKILL target="[^"]*" skill="[^"]*" raw=([0-9]+) scaled=([0-9]+) pct=([0-9]+).*/\3/p' $log.txt | awk '$1 != 17 {n++} END {print n + 0}')
   [ "$bad" -eq 0 ] || { echo "FAIL: $bad skill hits are not scaled to 17 percent"; fail=1; }
+
+  # The exact scale, with no slack beyond the carry: raw= is rounded to whole points, so the check uses the unrounded
+  # 8.8 damage of every hit (exact=[phys fire light magic cold], one PVPSKILL line per hit, including the ticks that
+  # only add to the carry). Per damage type PvPCarry keeps t = the sum of floor(v*17/100) (units of 1/256 point) and
+  # pays out whole points, leaving a remainder under one point, so the points charged satisfy EXACTLY
+  # 256*charged <= t < 256*charged + 256 (no slack; one hit alone is at most floor((v*17/100 + 255)/256), the first
+  # line of the awk). d2combat.PvPScaledBounds is the closed form of the same bound, unit-tested.
+  bad=$(sed -nE 's/.*PVPSKILL skill="[^"]*" target=[^ ]* raw=[0-9]+ scaled=[0-9]+ pct=17 parts=\[([0-9 ]+)\] exact=\[([0-9 ]+)\].*/\1 \2/p' $log.txt | awk '
+    { for (i = 1; i <= 5; i++) { s = $i; v = $(i + 5); sum[i] += s; ex[i] += v; t[i] += int(v * 17 / 100)
+        if (s * 25600 > 17 * v + 25500) { bad++; print "  hit above the exact bound: type " i " scaled " s " exact88 " v > "/dev/stderr" } }
+      lines++ }
+    END { for (i = 1; i <= 5; i++) {
+            if (sum[i] * 256 > t[i]) { bad++; print "  type " i ": charged " sum[i] " above the exact 17 percent (" t[i] "/256) of " ex[i] "/256" > "/dev/stderr" }
+            if (sum[i] * 256 + 256 <= t[i]) { bad++; print "  type " i ": charged " sum[i] " is a whole point or more below the exact " t[i] "/256" > "/dev/stderr" } }
+          print bad + 0 " " lines + 0 }')
+  if [ "${bad#* }" -eq 0 ]; then echo "FAIL: no PVPSKILL line with exact= in the host log"; fail=1
+  elif [ "${bad%% *}" -ne 0 ]; then echo "FAIL: ${bad%% *} PvP scale bound violations (17 percent of the unrounded damage plus the carry)"; fail=1; fi
   bad=$(sed -nE 's/.*PVP HIT attacker="[^"]*" raw=([0-9]+) scaled=([0-9]+) taken=([0-9]+).*skill="[^"]+".*/\2 \3/p' $j | awk '$2 > $1 {n++} END {print n + 0}')
   [ "$bad" -eq 0 ] || { echo "FAIL: $bad hits took more than the scaled damage"; fail=1; }
 
