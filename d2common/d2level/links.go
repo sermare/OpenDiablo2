@@ -343,7 +343,8 @@ func TileDestination(level, style int) (int, bool) {
 	// the Durance of Hate (100..102): like the Act 2 files, the style of a special tile is the Levels.txt Vis slot
 	// (observed in the generated level 101: the tiles carry the styles 0 and 3 for slots {102, 102, 100, 100}).
 	// UNVERIFIED against the exe like the other tile rules.
-	if level >= 100 && level <= 102 {
+	// Level 100 keeps the up/down rule below (TestAct3DungeonTileDestination: style 0 up to Travincal, 4 down).
+	if level >= 101 && level <= 102 {
 		slot := 0
 
 		for _, l := range allLinks {
