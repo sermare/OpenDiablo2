@@ -51,6 +51,12 @@ step() { printf '\n== %s\n' "$1"; }
 export OD2_PORT=$(( 20000 + RANDOM % 20000 ))
 while lsof -nP -iTCP:$OD2_PORT -sTCP:LISTEN >/dev/null 2>&1; do export OD2_PORT=$(( 20000 + RANDOM % 20000 )); done
 
+# a verify without the real data silently skipped the scenario loop (false green): refuse to run
+for v in D2S_SAMPLE_BODY D2S_SAMPLE_BODY_JSON D2_TABLES; do
+  [ -n "${(P)v:-}" ] || { echo "VERIFY ABORTED: $v is unset; without it the real-data checks and the in-game scenarios would be skipped (false green)"; exit 1; }
+done
+scenarios_run=0
+
 step "repo hygiene (no game files / decompiled code)"
 scripts/check_repo_hygiene.sh || { echo "REPO HYGIENE FAILED"; exit 1; }
 
@@ -110,6 +116,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
     # OD2_VERIFY_ONLY=<glob> (e.g. "83-*") runs only the scenarios whose file name matches
     [ -n "${OD2_VERIFY_ONLY:-}" ] && [[ ${f:t} != ${~OD2_VERIFY_ONLY} && ${f:t:r} != ${~OD2_VERIFY_ONLY} ]] && continue
     fail_before=$fail
+    scenarios_run=$((scenarios_run+1))
     for attempt in 1 2; do
       fail=$fail_before
       step "$scenario_name"
@@ -145,4 +152,6 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
 fi
 
 echo
+echo "SCENARIOS RUN: $scenarios_run"
+if [ $scenarios_run -eq 0 ]; then echo "VERIFY FAILED: the scenario loop ran 0 scenarios (D2S_SAMPLE_BODY unset or OD2_VERIFY_ONLY matched nothing)"; exit 1; fi
 [ $fail -eq 0 ] && echo "ALL CHECKS PASSED" || { echo "SOME CHECKS FAILED"; exit 1; }

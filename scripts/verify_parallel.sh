@@ -25,6 +25,10 @@ for n in {0..$((jobs-1))}; do
 done
 rc=0
 for k in {1..${#pids}}; do wait ${pids[$k]} || rc=1; done
-for l in $logs; do printf '%s: ' $l; grep -E "ALL CHECKS PASSED|SOME CHECKS FAILED" $l | tail -1; grep -E "^FAIL" $l | sort -u | head -5; done
+for l in $logs; do
+  cnt=$(grep -c '^SCENARIOS RUN:' $l); nsec=$(grep -c '^== ' $l); run=$(grep '^SCENARIOS RUN:' $l | tail -1 | sed 's/.*: //')
+  echo "$l: scenarios run=${run:-0} sections('== ')=$nsec"
+  if [ "${run:-0}" -eq 0 ]; then echo "FAIL: job ran 0 scenarios ($l)"; rc=1; fi
+  printf '%s: ' $l; grep -E "ALL CHECKS PASSED|SOME CHECKS FAILED" $l | tail -1; grep -E "^FAIL" $l | sort -u | head -5; done
 [ $rc -eq 0 ] && echo "PARALLEL VERIFY: ALL JOBS PASSED" || echo "PARALLEL VERIFY: FAILED"
 exit $rc
