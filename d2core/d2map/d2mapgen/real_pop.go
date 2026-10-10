@@ -126,7 +126,15 @@ type popLevel struct {
 	stats popStats
 }
 
-type popStats struct{ preset, super, natural, skipped, unique int }
+type popStats struct {
+	preset, super, natural, skipped, unique int
+	// trials is the number of density rolls the level's populated rooms get (PopulateNatural: one per 3x3 subtile
+	// of every room cell) and density the MonDen they are rolled against; the population scenarios compare the
+	// planned monsters with trials * density / 100000 groups.
+	// walkTrials is trials weighted with the share of each room's subtiles that are not walk-blocked: the rolls that
+	// can land on ground a monster fits on (a lava level's rooms are mostly blocked, so far fewer groups follow).
+	trials, walkTrials, density int
+}
 
 // newPopLevel prepares the population of a level; nil (after a warning) when
 // the tables are unavailable, in which case the caller keeps the old placement.
@@ -239,6 +247,10 @@ func (p *popLevel) run() {
 		return n
 	}
 
+	if rg := game.Regions[p.level]; rg != nil {
+		p.stats.density = rg.Density
+	}
+
 	ctx := &drlgpop.Ctx{LevelID: p.level, Difficulty: int(p.diff), Counter: new(int)}
 	superDone := map[int]bool{}
 
@@ -248,6 +260,12 @@ func (p *popLevel) run() {
 		room := &d2monreg.Room{Level: p.level, NoPopulate: r.noPop, Seed: r.seed,
 			X: r.x * drlgpop.Subtile, Y: r.y * drlgpop.Subtile, W: r.w * drlgpop.Subtile, H: r.h * drlgpop.Subtile}
 		room.Cells = []d2monreg.Cell{{X0: r.x, Y0: r.y, X1: r.x + r.w, Y1: r.y + r.h, Flag: 1}}
+
+		if !r.noPop {
+			n := ((r.w * drlgpop.Subtile) / 3) * ((r.h * drlgpop.Subtile) / 3)
+			p.stats.trials += n
+			p.stats.walkTrials += int(float64(n) * w.walkShare(r))
+		}
 
 		game.Wanderer(room)
 
@@ -284,6 +302,13 @@ func (p *popLevel) run() {
 				p.stats.unique++
 			}
 		}
+	}
+
+	// an empty plan is a decision too (MonDen 0, or every room Populate=0: the level has no natural monsters); a nil
+	// one would make the game screen fall back to its approximate block population and spawn monsters the
+	// Levels.txt row does not allow (Bloody Foothills, Rocky Summit)
+	if plan == nil {
+		plan = []d2mapengine.PlannedMonster{}
 	}
 
 	g.engine.SetPopulation(plan)
@@ -345,8 +370,8 @@ func (p *popLevel) createPreset(game *d2monreg.Game, w d2monreg.World, room *d2m
 }
 
 func (p *popLevel) logSummary(kind string) {
-	p.g.Infof("%s: population: %d rooms, %d preset monsters, %d super uniques, %d natural monsters planned (%d packs with modifiers), %d skipped",
-		kind, len(p.rooms), p.stats.preset, p.stats.super, p.stats.natural, p.stats.unique, p.stats.skipped)
+	p.g.Infof("%s: population: %d rooms, %d preset monsters, %d super uniques, %d natural monsters planned (%d packs with modifiers), %d skipped, %d density rolls at MonDen %d (%d on walkable ground)",
+		kind, len(p.rooms), p.stats.preset, p.stats.super, p.stats.natural, p.stats.unique, p.stats.skipped, p.stats.trials, p.stats.density, p.stats.walkTrials)
 }
 
 // engineWorld answers the placement's map questions from the engine.
@@ -378,6 +403,27 @@ func newEngineWorld(g *MapGenerator, lv *d2monreg.Level) *engineWorld {
 	}
 
 	return w
+}
+
+// walkShare is the share of a room's subtiles that are not walk-blocked.
+func (w *engineWorld) walkShare(r *popRoom) float64 {
+	total, ok := 0, 0
+
+	for sy := r.y * subtilesPerTile; sy < (r.y+r.h)*subtilesPerTile; sy++ {
+		for sx := r.x * subtilesPerTile; sx < (r.x+r.w)*subtilesPerTile; sx++ {
+			total++
+
+			if !w.g.engine.WalkBlocked(sx, sy) {
+				ok++
+			}
+		}
+	}
+
+	if total == 0 {
+		return 0
+	}
+
+	return float64(ok) / float64(total)
 }
 
 func (w *engineWorld) Blocked(_ *d2monreg.Room, x, y, radius, mask int) bool {

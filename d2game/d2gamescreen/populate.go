@@ -33,6 +33,8 @@ const (
 	// populateSparseWalkableShare is the share used when no block reaches the
 	// usual one (engine choice, UNVERIFIED against the original's rooms).
 	populateSparseWalkableShare = 0.15
+	// populateRetries bounds the extra draws per room for a level that got no group.
+	populateRetries = 12
 )
 
 // populateLevel fills the level the hero stands in. It runs once per level
@@ -73,6 +75,26 @@ func (v *Game) populateLevel() {
 		occupied[[2]int{int(x) / populateBlockTiles, int(y) / populateBlockTiles}] = true
 	}
 
+	var rooms []d2monsters.Room
+
+	fill := func(room d2monsters.Room) bool {
+		res, err := v.monsters.PopulateRoom(room, level)
+		if err != nil {
+			v.Warningf("POPULATE level %d room %+v: %v", level, room, err)
+			return false
+		}
+
+		groups += len(res)
+
+		for _, g := range res {
+			for _, m := range g.Monsters {
+				natural[m] = true
+			}
+		}
+
+		return true
+	}
+
 	// a level with no block of the usual walkable share (the Kurast Causeway is a
 	// bridge between canals) is tried again with the sparse share, so it is not
 	// left empty
@@ -99,24 +121,25 @@ func (v *Game) populateLevel() {
 					room.WalkTiles = int(v.walkableShare(x0, y0, w, h, reach)*float64(w*h) + 0.5)
 				}
 
-				res, err := v.monsters.PopulateRoom(room, level)
-				if err != nil {
-					v.Warningf("POPULATE level %d block (%d,%d): %v", level, bx, by, err)
+				rooms = append(rooms, room)
+
+				if !fill(room) {
 					return
-				}
-
-				groups += len(res)
-
-				for _, g := range res {
-					for _, m := range g.Monsters {
-						natural[m] = true
-					}
 				}
 			}
 		}
 
 		if blocks > 0 {
 			break
+		}
+	}
+
+	// the fractional density of a sparse level can round every block to no group
+	// (Kurast Causeway: one bridge block of 0.8 monsters): draw again, a few
+	// times, so a level with ground to stand on is never left empty
+	for try := 0; groups == 0 && len(rooms) > 0 && try < populateRetries*len(rooms); try++ {
+		if !fill(rooms[try%len(rooms)]) {
+			return
 		}
 	}
 
@@ -138,6 +161,9 @@ func (v *Game) populateLevel() {
 // hero could not reach.
 func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonster) {
 	made := make([]*d2mapentity.Monster, len(plan))
+	natural := map[*d2mapentity.Monster]bool{}
+	packs := map[*d2mapentity.Monster]bool{} // unique / champion packs: their types are logged apart (umon list, not the level's drawn types)
+	special := make([]bool, len(plan))
 	units := 0
 
 	for i, pm := range plan {
@@ -153,6 +179,14 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 		}
 
 		made[i] = mon
+		special[i] = pm.Unique || pm.Champion || (pm.Leader >= 0 && pm.Leader < i && special[pm.Leader])
+
+		if special[i] {
+			packs[mon] = true
+		} else {
+			natural[mon] = true
+		}
+
 		units++
 
 		if pm.Leader >= 0 && pm.Leader < len(made) && made[pm.Leader] != nil {
@@ -162,16 +196,35 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 
 	removed := v.removeUnreachableMonsters()
 
+	v.logPopulateTypes(level, natural)
+	v.logPopulateClasses("packs", level, packs)
+
+	// pack leaders (units without a leader of their own) = groups the density rolls produced, uniques included
+	leaders := 0
+
+	for _, pm := range plan {
+		if pm.Leader < 0 {
+			leaders++
+		}
+	}
+
+	v.Infof("POPULATE groups level %d: %d", level, leaders)
+
 	v.Infof("POPULATE level %d (%s): %d planned, %d monsters (%d unreachable ones removed)", level,
 		v.levelName(level), len(plan), units-removed, removed)
 }
 
 // logPopulateTypes logs the classes of the natural monsters that survived the
-// reachability filter, one "POPULATE types" line per level, for the Act 3
-// population scenarios (scripts/verify.d/lib/act3pop.sh), which check every
+// reachability filter, one "POPULATE types" line per level (both population paths),
+// for the per-level population scenarios (scripts/verify.d/lib/poplevel.sh), which check every
 // class against the level's Levels.txt row (mon1..mon10 plus the minions of
 // those classes).
 func (v *Game) logPopulateTypes(level int, natural map[*d2mapentity.Monster]bool) {
+	v.logPopulateClasses("types", level, natural)
+}
+
+// logPopulateClasses logs "POPULATE <what> level N: key:count ..." for a set of monsters.
+func (v *Game) logPopulateClasses(what string, level int, natural map[*d2mapentity.Monster]bool) {
 	counts := map[string]int{}
 
 	for _, mon := range v.monsters.Monsters() {
@@ -192,7 +245,7 @@ func (v *Game) logPopulateTypes(level int, natural map[*d2mapentity.Monster]bool
 		parts[i] = k + ":" + strconv.Itoa(counts[k])
 	}
 
-	v.Infof("POPULATE types level %d: %s", level, strings.Join(parts, " "))
+	v.Infof("POPULATE %s level %d: %s", what, level, strings.Join(parts, " "))
 }
 
 // removeUnreachableMonsters deletes the monsters standing where the hero cannot
