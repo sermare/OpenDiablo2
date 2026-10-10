@@ -590,10 +590,10 @@ func (v *Game) sendTrade(p d2netpacket.TradeCommandPacket) error {
 // TradeOffer, TradeAccept and TradeCancel implement d2player.PlayerTradeHandler.
 
 // TradeOffer sends the hero's current offer.
-func (v *Game) TradeOffer(offer d2playertrade.Offer) {
+func (v *Game) TradeOffer(offer d2playertrade.Offer, seq uint32) {
 	v.syncForTrade()
 
-	if err := v.sendTrade(d2netpacket.TradeCommandPacket{Op: d2netpacket.TradeOffer, Offer: offer}); err != nil {
+	if err := v.sendTrade(d2netpacket.TradeCommandPacket{Op: d2netpacket.TradeOffer, Offer: offer, Seq: seq}); err != nil {
 		v.Errorf("TRADE offer: %v", err)
 	}
 }
@@ -636,7 +636,10 @@ func (v *Game) onTrade(u d2netpacket.TradeUpdatePacket) {
 			v.Infof("TRADE notice: %s", u.Reason)
 		}
 
-		gc.PTrade.Update(u.Yours, u.Theirs, u.YouAccepted, u.TheyAccepted, u.Reason)
+		if !gc.PTrade.Update(u.Yours, u.Theirs, u.YouAccepted, u.TheyAccepted, u.Reason, u.YourSeq) {
+			v.Infof("TRADE stale update kept local offer (server applied seq=%d)", u.YourSeq)
+		}
+
 		v.Infof("TRADE window with=%q yours=%v gold=%d theirs=%v gold=%d you_accepted=%v they_accepted=%v", u.PartnerName,
 			gc.TradeItemNames(u.Yours.Items), u.Yours.Gold, gc.TradeItemNames(u.Theirs.Items), u.Theirs.Gold,
 			u.YouAccepted, u.TheyAccepted)
