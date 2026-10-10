@@ -14,6 +14,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2itemdesc"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
@@ -525,6 +526,13 @@ func (t *TradeWindow) changed() {
 }
 
 func (t *TradeWindow) costLine(key, fallback string, price int) string {
+	if tables := t.factory.DescriptionTables(); tables != nil {
+		kind := map[string]d2itemdesc.PriceKind{"cost": d2itemdesc.PriceBuy, "Sell": d2itemdesc.PriceSell,
+			"Repair": d2itemdesc.PriceRepair}[key]
+
+		return diablo2item.Tokenize([]d2itemdesc.Line{tables.PriceLine(kind, price, t.hero.Gold)})[0]
+	}
+
 	token := d2ui.ColorTokenGold
 	if price > t.hero.Gold && key == "cost" {
 		token = d2ui.ColorTokenRed

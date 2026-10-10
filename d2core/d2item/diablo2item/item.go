@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -114,6 +115,9 @@ type Item struct {
 	Runeword    string     // display name of the runeword the item became
 	CubeMods    []ExtraMod // properties a cube recipe attached
 	Crafted     bool       // quality "crafted" (cube recipes)
+
+	// origin is the item as a .d2s save held it (see SetOrigin).
+	origin *d2s.Item
 }
 
 // nolint:structcheck,unused // WIP
@@ -938,6 +942,16 @@ const (
 // GetItemDescription gets the complete item description as a slice of strings.
 // This is what is used in the item's hover-tooltip
 func (i *Item) GetItemDescription() []string {
+	if lines, ok := i.describeOrigin(); ok {
+		return lines
+	}
+
+	return i.GeneratedDescription()
+}
+
+// GeneratedDescription is the description of the generated item, ignoring any
+// saved form attached with SetOrigin (the spec round trip test compares it).
+func (i *Item) GeneratedDescription() []string {
 	lines := make([]string, 0)
 
 	common := i.CommonRecord()

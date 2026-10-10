@@ -62,7 +62,16 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		spec = rolled
 	}
 
-	return f.ItemFromSpec(spec)
+	item, err := f.ItemFromSpec(spec)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.D2S != nil {
+		item.SetOrigin(s.D2S) // the tooltip is built from the saved item
+	}
+
+	return item, nil
 }
 
 // storedFromItem describes a placed item.
@@ -277,7 +286,7 @@ func (g *GameControls) SpecRoundTripMismatches() (checked, mismatched int) {
 			return
 		}
 
-		if a, b := strings.Join(item.GetItemDescription(), "|"), strings.Join(again.GetItemDescription(), "|"); a != b {
+		if a, b := strings.Join(item.GeneratedDescription(), "|"), strings.Join(again.GeneratedDescription(), "|"); a != b {
 			g.Infof("AUTOPANEL spec mismatch code=%s: %q != %q", item.CommonCode, a, b)
 			mismatched++
 		}
