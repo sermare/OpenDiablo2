@@ -51,6 +51,7 @@ const (
 var (
 	errPlayerAlreadyExists = errors.New("player already exists")
 	errServerFull          = errors.New("server full") // Server currently at maximum TCP connections
+	errNoPlayerState       = errors.New("connection request without a hero")
 )
 
 // GameServer manages a copy of the map and entities as well as manages packet routing and connections.
@@ -356,6 +357,14 @@ func (g *GameServer) registerConnection(b []byte, conn net.Conn, mk func(id stri
 	packet, err := d2netpacket.UnmarshalPlayerConnectionRequest(b)
 	if err != nil {
 		g.Errorf("Failed to unmarshal PlayerConnectionRequest: %s\n", err)
+		return client, err
+	}
+
+	// a request without a hero (the joiner could not load its save) cannot be
+	// placed in the game: OnClientConnected needs the hero state
+	if packet.PlayerState == nil {
+		g.Errorf("%v from %s", errNoPlayerState, packet.ID)
+		return client, errNoPlayerState
 	}
 
 	// check to see if the player is already registered

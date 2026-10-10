@@ -106,14 +106,17 @@ func newD2SPath(state *HeroState) string {
 
 // writeFileAtomic writes data to path through a temporary file in the same
 // folder (synced, then renamed over the target), so a crash or a full disk
-// never leaves half a save.
+// never leaves half a save, and a reader (another game process loading the
+// same hero: a host and a joiner, parallel test runs) sees the old or the new
+// file, never an empty or half-written one. The temp name is unique, so two
+// writers of the same path do not interleave their data.
 func writeFileAtomic(path string, data []byte) error {
-	tmp := path + ".tmp"
-
-	file, err := os.OpenFile(filepath.Clean(tmp), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, writefilePermission)
+	file, err := os.CreateTemp(filepath.Dir(filepath.Clean(path)), "."+filepath.Base(path)+".tmp*")
 	if err != nil {
 		return err
 	}
+
+	tmp := file.Name()
 
 	if _, err = file.Write(data); err == nil {
 		err = file.Sync()
@@ -123,17 +126,19 @@ func writeFileAtomic(path string, data []byte) error {
 		err = cerr
 	}
 
+	if err == nil {
+		err = os.Chmod(tmp, writefilePermission)
+	}
+
+	if err == nil {
+		err = os.Rename(tmp, path)
+	}
+
 	if err != nil {
 		_ = os.Remove(tmp)
-		return err
 	}
 
-	if err = os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // backupOriginal copies an existing file to path+BackupSuffix unless a backup

@@ -41,8 +41,8 @@ func TestBackupOriginalKeepsFirstCopy(t *testing.T) {
 			t.Fatalf("save %d: file = %q, want %q", i, cur, write)
 		}
 
-		if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
-			t.Fatalf("save %d: temporary file left behind", i)
+		if entries, _ := os.ReadDir(dir); len(entries) != 2 { // the save and its backup
+			t.Fatalf("save %d: temporary file left behind (%d entries)", i, len(entries))
 		}
 	}
 }

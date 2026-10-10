@@ -3,6 +3,7 @@ package d2client
 import (
 	"fmt"
 	"hash/fnv"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -35,6 +36,28 @@ import (
 )
 
 const logPrefix = "Game Client"
+
+// logTap forwards the client's log lines to the writer it was made with and, once
+// SetLogTap is called, to a second one. The client logs from the network
+// goroutine too, so the tap is swapped under a lock instead of by replacing the
+// logger's writer.
+type logTap struct {
+	inner io.Writer
+	mu    sync.Mutex
+	tap   io.Writer
+}
+
+func (t *logTap) Write(p []byte) (int, error) {
+	t.mu.Lock()
+	tap := t.tap
+	t.mu.Unlock()
+
+	if tap != nil {
+		_, _ = tap.Write(p)
+	}
+
+	return t.inner.Write(p)
+}
 
 const (
 	numSubtilesPerTile = 5
@@ -70,6 +93,7 @@ type GameClient struct {
 	// Multiplayer: packets of a network game arrive on another goroutine; they are
 	// queued and handled on the game loop by Drain. gameInfo is the host's map
 	// seed and difficulty (game protocol), which every level of the game uses.
+	logTap     *logTap
 	pktMu      sync.Mutex
 	pending    []d2netpacket.NetPacket
 	queueing   bool
@@ -108,6 +132,8 @@ func Create(connectionType d2clientconnectiontype.ClientConnectionType,
 	result.Logger = d2util.NewLogger()
 	result.Logger.SetPrefix(logPrefix)
 	result.Logger.SetLevel(l)
+	result.logTap = &logTap{inner: result.Logger.Writer}
+	result.Logger.Writer = result.logTap
 
 	// for a remote client connection, set loading to true - wait until we process the GenerateMapPacket
 	// before we start updating map entites
@@ -161,6 +187,14 @@ func (g *GameClient) Open(connectionString, saveFilePath string) error {
 	}
 
 	return err
+}
+
+// SetLogTap also sends every line the client logs to w (the autoscript's waitlog
+// step reads what the other players did: PLAYER ADD / LEAVE / CAST, CHAT).
+func (g *GameClient) SetLogTap(w io.Writer) {
+	g.logTap.mu.Lock()
+	g.logTap.tap = w
+	g.logTap.mu.Unlock()
 }
 
 // SetGameInfo records the host's map seed and difficulty (d2gs protocol). Levels
