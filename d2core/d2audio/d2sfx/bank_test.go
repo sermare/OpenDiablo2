@@ -434,14 +434,49 @@ func TestSoloDucksOthers(t *testing.T) {
 }
 
 func TestMasterVolumes(t *testing.T) {
+	// The Sounds.txt Volume column does not scale the level (row 1 has 128);
+	// music rows use music% * sound%, sfx rows sound% only; integer truncation.
 	rows := []Row{row(0, nil), row(1, func(r *Row) { r.Volume = 128 }), row(2, func(r *Row) { r.MusicVol = true })}
 	h := newHarness(rows, 4)
 	h.b.SetVolumes(0.5, 0.25)
 	h.b.Play(Request{Index: 1})
 	h.b.Play(Request{Index: 2})
 
-	if math.Abs(h.players[0].vol-128.0/255*0.5) > 1e-9 || math.Abs(h.players[1].vol-0.25) > 1e-9 {
-		t.Errorf("volumes: %v %v", h.players[0].vol, h.players[1].vol)
+	if want := 127.0 / 255; math.Abs(h.players[0].vol-want) > 1e-9 {
+		t.Errorf("sfx: got %v want %v (Volume column must not scale)", h.players[0].vol, want)
+	}
+
+	// 255*25/100=63, then *50/100 = 31 (sound volume also scales music)
+	if want := 31.0 / 255; math.Abs(h.players[1].vol-want) > 1e-9 {
+		t.Errorf("music: got %v want %v", h.players[1].vol, want)
+	}
+}
+
+func TestMusicDefaultLevel(t *testing.T) {
+	// OD2 defaults: music 0.30, sound 1.0, row Volume 110 (area music rows):
+	// the in-game level must be 0.30-ish, not 0.30*110/255 = 0.129.
+	h := newHarness([]Row{row(0, nil), row(1, func(r *Row) { r.MusicVol = true; r.Volume = 110 })}, 2)
+	h.b.SetVolumes(1, 0.3)
+	h.b.Play(Request{Index: 1})
+
+	if got, want := h.players[0].vol, 76.0/255; math.Abs(got-want) > 1e-9 {
+		t.Errorf("area music level got %v want %v", got, want)
+	}
+}
+
+func TestZeroVolumeRowDoesNotPlay(t *testing.T) {
+	h := newHarness([]Row{row(0, nil), row(1, func(r *Row) { r.Volume = 0 })}, 2)
+
+	if got := h.b.Play(Request{Index: 1}).Report().Decision; got == DecisionPlayed {
+		t.Errorf("Volume 0 row played")
+	}
+}
+
+func TestPercentRounding(t *testing.T) {
+	for in, want := range map[float64]int{-1: 0, 0: 0, 0.3: 30, 0.555: 56, 1: 100, 2: 100} {
+		if got := percent(in); got != want {
+			t.Errorf("percent(%v)=%d want %d", in, got, want)
+		}
 	}
 }
 
