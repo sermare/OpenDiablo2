@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="880" height="520" viewBox="0 0 880 520" role="img" aria-label="Progress over time">
 <rect width="880" height="520" rx="18" fill="#14162a"/>
 <text x="56" y="36" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="22" font-weight="700" fill="#fff">Progress over time</text>
-<text x="856" y="36" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">snapshot every 10 min · latest 2026-10-10 00:27 UTC</text>
+<text x="856" y="36" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">snapshot every 10 min · latest 2026-10-10 00:37 UTC</text>
 <line x1="56" y1="370.0" x2="856" y2="370.0" stroke="#fff" stroke-opacity="0.22"/>
 <text x="48" y="374.0" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">0%</text>
 <line x1="56" y1="308.8" x2="856" y2="308.8" stroke="#fff" stroke-opacity="0.08"/>
@@ -17,71 +17,75 @@
 <line x1="56.0" y1="64" x2="56.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
 <text x="56.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 02:19</text>
 <line x1="189.3" y1="64" x2="189.3" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="189.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 04:50</text>
+<text x="189.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 04:52</text>
 <line x1="322.7" y1="64" x2="322.7" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="322.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 07:22</text>
+<text x="322.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 07:25</text>
 <line x1="456.0" y1="64" x2="456.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="456.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 09:53</text>
+<text x="456.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 09:58</text>
 <line x1="589.3" y1="64" x2="589.3" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="589.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 12:25</text>
+<text x="589.3" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 12:31</text>
 <line x1="722.7" y1="64" x2="722.7" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="722.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 14:56</text>
+<text x="722.7" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 15:04</text>
 <line x1="856.0" y1="64" x2="856.0" y2="370" stroke="#fff" stroke-opacity="0.05"/>
-<text x="856.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 17:27</text>
-<polyline points="56.0,346.2 58.6,343.1 61.5,343.1 64.2,334.4 77.4,327.0 99.1,315.4 101.1,315.4 105.1,309.0 118.2,304.8 135.3,304.8 159.7,302.2 172.2,302.2 177.0,302.2 209.2,302.2 223.8,302.2 233.2,302.2 253.9,299.9 350.6,299.9 392.8,248.8 394.4,248.8 394.6,248.8 395.0,248.8 403.8,248.8 412.7,248.8 421.5,248.8 430.3,248.8 439.2,248.8 448.0,248.8 456.9,248.8 465.7,248.8 474.6,248.8 483.4,248.8 492.3,248.8 501.3,248.8 510.1,248.8 519.0,248.8 527.9,248.8 542.0,248.8 556.3,248.8 569.1,248.8 599.3,198.2 599.4,198.2 608.2,195.3 617.1,195.3 626.0,195.3 634.9,195.3 643.7,195.3 652.5,195.3 661.4,158.3 670.2,158.3 679.1,158.3 687.9,158.3 696.8,158.3 705.6,158.3 714.5,158.3 723.3,158.3 732.2,158.3 741.0,158.3 749.9,158.3 758.7,158.3 767.5,158.3 776.4,158.3 785.2,158.3 794.1,158.3 802.9,64.6 811.8,64.6 820.6,64.6 829.4,64.6 838.3,64.6 847.1,64.6 856.0,64.6" fill="none" stroke="#7c5cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="856.0" y="386" text-anchor="middle" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11" fill="#9fa1c4">10-09 17:37</text>
+<polyline points="56.0,346.2 58.6,343.1 61.5,343.1 64.1,334.4 77.2,327.0 98.6,315.4 100.6,315.4 104.6,309.0 117.5,304.8 134.4,304.8 158.6,302.2 170.9,302.2 175.7,302.2 207.5,302.2 221.9,302.2 231.2,302.2 251.7,299.9 347.4,299.9 389.1,248.8 390.7,248.8 390.9,248.8 391.3,248.8 400.0,248.8 408.8,248.8 417.5,248.8 426.2,248.8 435.0,248.8 443.8,248.8 452.5,248.8 461.2,248.8 470.0,248.8 478.8,248.8 487.6,248.8 496.4,248.8 505.1,248.8 513.9,248.8 522.7,248.8 536.7,248.8 550.8,248.8 563.5,248.8 593.4,198.2 593.4,198.2 602.2,195.3 610.9,195.3 619.8,195.3 628.5,195.3 637.3,195.3 646.0,195.3 654.8,158.3 663.5,158.3 672.3,158.3 681.0,158.3 689.8,158.3 698.5,158.3 707.3,158.3 716.0,158.3 724.8,158.3 733.5,158.3 742.3,158.3 751.0,158.3 759.8,158.3 768.5,158.3 777.2,158.3 786.0,158.3 794.7,64.6 803.5,64.6 812.2,64.6 821.0,64.6 829.7,64.6 838.5,64.6 847.2,64.6 856.0,64.6" fill="none" stroke="#7c5cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.6" r="4" fill="#7c5cff"/>
-<polyline points="56.0,64.0 58.6,64.0 61.5,64.0 64.2,64.0 77.4,64.0 99.1,64.0 101.1,64.0 105.1,64.0 118.2,64.0 135.3,64.0 159.7,64.0 172.2,64.0 177.0,64.0 209.2,64.0 223.8,64.0 233.2,64.0 253.9,64.0 350.6,64.0 392.8,64.0 394.4,64.0 394.6,64.0 395.0,64.0 403.8,64.0 412.7,64.0 421.5,64.0 430.3,64.0 439.2,64.0 448.0,64.0 456.9,64.0 465.7,64.0 474.6,64.0 483.4,64.0 492.3,64.0 501.3,64.0 510.1,64.0 519.0,64.0 527.9,64.0 542.0,64.0 556.3,64.0 569.1,64.0 599.3,64.0 599.4,64.0 608.2,64.0 617.1,64.0 626.0,64.0 634.9,64.0 643.7,64.0 652.5,64.0 661.4,64.0 670.2,64.0 679.1,64.0 687.9,64.0 696.8,64.0 705.6,64.0 714.5,64.0 723.3,64.0 732.2,64.0 741.0,64.0 749.9,64.0 758.7,64.0 767.5,64.0 776.4,64.0 785.2,64.0 794.1,64.0 802.9,64.0 811.8,64.0 820.6,64.0 829.4,64.0 838.3,64.0 847.1,64.0 856.0,64.0" fill="none" stroke="#2fb67c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="856.0,130.5" fill="none" stroke="#8f7cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="856.0" cy="130.5" r="4" fill="#8f7cff"/>
+<polyline points="56.0,64.0 58.6,64.0 61.5,64.0 64.1,64.0 77.2,64.0 98.6,64.0 100.6,64.0 104.6,64.0 117.5,64.0 134.4,64.0 158.6,64.0 170.9,64.0 175.7,64.0 207.5,64.0 221.9,64.0 231.2,64.0 251.7,64.0 347.4,64.0 389.1,64.0 390.7,64.0 390.9,64.0 391.3,64.0 400.0,64.0 408.8,64.0 417.5,64.0 426.2,64.0 435.0,64.0 443.8,64.0 452.5,64.0 461.2,64.0 470.0,64.0 478.8,64.0 487.6,64.0 496.4,64.0 505.1,64.0 513.9,64.0 522.7,64.0 536.7,64.0 550.8,64.0 563.5,64.0 593.4,64.0 593.4,64.0 602.2,64.0 610.9,64.0 619.8,64.0 628.5,64.0 637.3,64.0 646.0,64.0 654.8,64.0 663.5,64.0 672.3,64.0 681.0,64.0 689.8,64.0 698.5,64.0 707.3,64.0 716.0,64.0 724.8,64.0 733.5,64.0 742.3,64.0 751.0,64.0 759.8,64.0 768.5,64.0 777.2,64.0 786.0,64.0 794.7,64.0 803.5,64.0 812.2,64.0 821.0,64.0 829.7,64.0 838.5,64.0 847.2,64.0 856.0,64.0" fill="none" stroke="#2fb67c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#2fb67c"/>
-<polyline points="56.0,320.3 58.6,303.7 61.5,287.1 64.2,265.0 77.4,231.9 99.1,193.3 101.1,193.3 105.1,176.7 118.2,160.1 135.3,138.0 159.7,138.0 172.2,138.0 177.0,138.0 209.2,138.0 223.8,138.0 233.2,138.0 253.9,160.1 350.6,160.1 392.8,160.1 394.4,160.1 394.6,160.1 395.0,160.1 403.8,160.1 412.7,160.1 421.5,160.1 430.3,160.1 439.2,160.1 448.0,160.1 456.9,160.1 465.7,160.1 474.6,160.1 483.4,160.1 492.3,160.1 501.3,160.1 510.1,160.1 519.0,160.1 527.9,160.1 542.0,160.1 556.3,160.1 569.1,160.1 599.3,160.1 599.4,160.1 608.2,160.1 617.1,160.1 626.0,160.1 634.9,160.1 643.7,160.1 652.5,160.1 661.4,160.1 670.2,160.1 679.1,160.1 687.9,160.1 696.8,160.1 705.6,160.1 714.5,160.1 723.3,160.1 732.2,160.1 741.0,160.1 749.9,160.1 758.7,160.1 767.5,160.1 776.4,160.1 785.2,160.1 794.1,160.1 802.9,160.1 811.8,160.1 820.6,160.1 829.4,160.1 838.3,160.1 847.1,160.1 856.0,160.1" fill="none" stroke="#2f9bff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="56.0,320.3 58.6,303.7 61.5,287.1 64.1,265.0 77.2,231.9 98.6,193.3 100.6,193.3 104.6,176.7 117.5,160.1 134.4,138.0 158.6,138.0 170.9,138.0 175.7,138.0 207.5,138.0 221.9,138.0 231.2,138.0 251.7,160.1 347.4,160.1 389.1,160.1 390.7,160.1 390.9,160.1 391.3,160.1 400.0,160.1 408.8,160.1 417.5,160.1 426.2,160.1 435.0,160.1 443.8,160.1 452.5,160.1 461.2,160.1 470.0,160.1 478.8,160.1 487.6,160.1 496.4,160.1 505.1,160.1 513.9,160.1 522.7,160.1 536.7,160.1 550.8,160.1 563.5,160.1 593.4,160.1 593.4,160.1 602.2,160.1 610.9,160.1 619.8,160.1 628.5,160.1 637.3,160.1 646.0,160.1 654.8,160.1 663.5,160.1 672.3,160.1 681.0,160.1 689.8,160.1 698.5,160.1 707.3,160.1 716.0,160.1 724.8,160.1 733.5,160.1 742.3,160.1 751.0,160.1 759.8,160.1 768.5,160.1 777.2,160.1 786.0,160.1 794.7,160.1 803.5,160.1 812.2,160.1 821.0,160.1 829.7,160.1 838.5,160.1 847.2,160.1 856.0,160.1" fill="none" stroke="#2f9bff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="160.1" r="4" fill="#2f9bff"/>
-<polyline points="135.3,69.8 159.7,76.2 172.2,72.2 177.0,72.2 209.2,67.2 223.8,67.2 233.2,67.2 253.9,66.6 350.6,66.1 392.8,66.1 394.4,66.1 394.6,66.1 395.0,66.1 403.8,66.1 412.7,66.1 421.5,66.1 430.3,66.1 439.2,66.1 448.0,66.1 456.9,66.1 465.7,66.1 474.6,66.1 483.4,66.1 492.3,66.1 501.3,66.1 510.1,66.1 519.0,66.1 527.9,66.1 542.0,66.1 556.3,66.1 569.1,66.1 599.3,66.1 599.4,66.1 608.2,66.1 617.1,66.1 626.0,66.1 634.9,66.1 643.7,66.1 652.5,66.1 661.4,66.1 670.2,66.1 679.1,66.1 687.9,66.1 696.8,66.1 705.6,66.1 714.5,66.1 723.3,66.1 732.2,66.1 741.0,66.1 749.9,66.1 758.7,66.1 767.5,66.1 776.4,66.1 785.2,66.1 794.1,66.1 802.9,66.1 811.8,66.1 820.6,66.1 829.4,66.1 838.3,66.1 847.1,66.1 856.0,66.1" fill="none" stroke="#22c1c3" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="134.4,69.8 158.6,76.2 170.9,72.2 175.7,72.2 207.5,67.2 221.9,67.2 231.2,67.2 251.7,66.6 347.4,66.1 389.1,66.1 390.7,66.1 390.9,66.1 391.3,66.1 400.0,66.1 408.8,66.1 417.5,66.1 426.2,66.1 435.0,66.1 443.8,66.1 452.5,66.1 461.2,66.1 470.0,66.1 478.8,66.1 487.6,66.1 496.4,66.1 505.1,66.1 513.9,66.1 522.7,66.1 536.7,66.1 550.8,66.1 563.5,66.1 593.4,66.1 593.4,66.1 602.2,66.1 610.9,66.1 619.8,66.1 628.5,66.1 637.3,66.1 646.0,66.1 654.8,66.1 663.5,66.1 672.3,66.1 681.0,66.1 689.8,66.1 698.5,66.1 707.3,66.1 716.0,66.1 724.8,66.1 733.5,66.1 742.3,66.1 751.0,66.1 759.8,66.1 768.5,66.1 777.2,66.1 786.0,66.1 794.7,66.1 803.5,66.1 812.2,66.1 821.0,66.1 829.7,66.1 838.5,66.1 847.2,66.1 856.0,66.1" fill="none" stroke="#22c1c3" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="66.1" r="4" fill="#22c1c3"/>
-<polyline points="64.2,94.6 77.4,94.6 99.1,94.6 101.1,94.6 105.1,94.6 118.2,94.6 135.3,94.6 159.7,94.6 172.2,94.6 177.0,94.6 209.2,94.6 223.8,94.6 233.2,94.6 253.9,94.6 350.6,94.6 392.8,94.6 394.4,94.6 394.6,94.6 395.0,94.6 403.8,94.6 412.7,94.6 421.5,94.6 430.3,94.6 439.2,94.6 448.0,94.6 456.9,94.6 465.7,94.6 474.6,94.6 483.4,94.6 492.3,94.6 501.3,94.6 510.1,94.6 519.0,94.6 527.9,94.6 542.0,94.6 556.3,94.6 569.1,94.6 599.3,94.6 599.4,94.6 608.2,94.6 617.1,94.6 626.0,94.6 634.9,94.6 643.7,94.6 652.5,94.6 661.4,94.6 670.2,94.6 679.1,94.6 687.9,94.6 696.8,94.6 705.6,94.6 714.5,94.6 723.3,94.6 732.2,94.6 741.0,94.6 749.9,94.6 758.7,94.6 767.5,94.6 776.4,94.6 785.2,94.6 794.1,94.6 802.9,94.6 811.8,94.6 820.6,94.6 829.4,94.6 838.3,94.6 847.1,94.6 856.0,94.6" fill="none" stroke="#f2a81d" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="64.1,94.6 77.2,94.6 98.6,94.6 100.6,94.6 104.6,94.6 117.5,94.6 134.4,94.6 158.6,94.6 170.9,94.6 175.7,94.6 207.5,94.6 221.9,94.6 231.2,94.6 251.7,94.6 347.4,94.6 389.1,94.6 390.7,94.6 390.9,94.6 391.3,94.6 400.0,94.6 408.8,94.6 417.5,94.6 426.2,94.6 435.0,94.6 443.8,94.6 452.5,94.6 461.2,94.6 470.0,94.6 478.8,94.6 487.6,94.6 496.4,94.6 505.1,94.6 513.9,94.6 522.7,94.6 536.7,94.6 550.8,94.6 563.5,94.6 593.4,94.6 593.4,94.6 602.2,94.6 610.9,94.6 619.8,94.6 628.5,94.6 637.3,94.6 646.0,94.6 654.8,94.6 663.5,94.6 672.3,94.6 681.0,94.6 689.8,94.6 698.5,94.6 707.3,94.6 716.0,94.6 724.8,94.6 733.5,94.6 742.3,94.6 751.0,94.6 759.8,94.6 768.5,94.6 777.2,94.6 786.0,94.6 794.7,94.6 803.5,94.6 812.2,94.6 821.0,94.6 829.7,94.6 838.5,94.6 847.2,94.6 856.0,94.6" fill="none" stroke="#f2a81d" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="94.6" r="4" fill="#f2a81d"/>
-<polyline points="56.0,238.8 58.6,238.8 61.5,238.8 64.2,238.8 77.4,195.2 99.1,151.4 101.1,151.4 105.1,151.4 118.2,151.4 135.3,107.7 159.7,102.2 172.2,102.2 177.0,102.2 209.2,102.2 223.8,64.0 233.2,64.0 253.9,64.0 350.6,64.0 392.8,64.0 394.4,64.0 394.6,64.0 395.0,64.0 403.8,64.0 412.7,64.0 421.5,64.0 430.3,64.0 439.2,64.0 448.0,64.0 456.9,64.0 465.7,64.0 474.6,64.0 483.4,64.0 492.3,64.0 501.3,64.0 510.1,64.0 519.0,64.0 527.9,64.0 542.0,64.0 556.3,64.0 569.1,64.0 599.3,64.0 599.4,64.0 608.2,64.0 617.1,64.0 626.0,64.0 634.9,64.0 643.7,64.0 652.5,64.0 661.4,64.0 670.2,64.0 679.1,64.0 687.9,64.0 696.8,64.0 705.6,64.0 714.5,64.0 723.3,64.0 732.2,64.0 741.0,64.0 749.9,64.0 758.7,64.0 767.5,64.0 776.4,64.0 785.2,64.0 794.1,64.0 802.9,64.0 811.8,64.0 820.6,64.0 829.4,64.0 838.3,64.0 847.1,64.0 856.0,64.0" fill="none" stroke="#ef5da8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="56.0,238.8 58.6,238.8 61.5,238.8 64.1,238.8 77.2,195.2 98.6,151.4 100.6,151.4 104.6,151.4 117.5,151.4 134.4,107.7 158.6,102.2 170.9,102.2 175.7,102.2 207.5,102.2 221.9,64.0 231.2,64.0 251.7,64.0 347.4,64.0 389.1,64.0 390.7,64.0 390.9,64.0 391.3,64.0 400.0,64.0 408.8,64.0 417.5,64.0 426.2,64.0 435.0,64.0 443.8,64.0 452.5,64.0 461.2,64.0 470.0,64.0 478.8,64.0 487.6,64.0 496.4,64.0 505.1,64.0 513.9,64.0 522.7,64.0 536.7,64.0 550.8,64.0 563.5,64.0 593.4,64.0 593.4,64.0 602.2,64.0 610.9,64.0 619.8,64.0 628.5,64.0 637.3,64.0 646.0,64.0 654.8,64.0 663.5,64.0 672.3,64.0 681.0,64.0 689.8,64.0 698.5,64.0 707.3,64.0 716.0,64.0 724.8,64.0 733.5,64.0 742.3,64.0 751.0,64.0 759.8,64.0 768.5,64.0 777.2,64.0 786.0,64.0 794.7,64.0 803.5,64.0 812.2,64.0 821.0,64.0 829.7,64.0 838.5,64.0 847.2,64.0 856.0,64.0" fill="none" stroke="#ef5da8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#ef5da8"/>
-<polyline points="829.4,125.2 838.3,125.2 847.1,125.2 856.0,125.2" fill="none" stroke="#ff7a45" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="821.0,125.2 829.7,125.2 838.5,125.2 847.2,125.2 856.0,125.2" fill="none" stroke="#ff7a45" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="125.2" r="4" fill="#ff7a45"/>
-<polyline points="829.4,284.5 838.3,284.5 847.1,284.5 856.0,284.5" fill="none" stroke="#ff9f43" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="821.0,284.5 829.7,284.5 838.5,284.5 847.2,284.5 856.0,284.5" fill="none" stroke="#ff9f43" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="284.5" r="4" fill="#ff9f43"/>
-<polyline points="829.4,64.0 838.3,64.0 847.1,64.0 856.0,64.0" fill="none" stroke="#e86fa6" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="821.0,64.0 829.7,64.0 838.5,64.0 847.2,64.0 856.0,64.0" fill="none" stroke="#e86fa6" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="64.0" r="4" fill="#e86fa6"/>
-<polyline points="829.4,180.6 838.3,180.6 847.1,180.6 856.0,180.6" fill="none" stroke="#5fd0a5" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="821.0,180.6 829.7,180.6 838.5,180.6 847.2,180.6 856.0,180.6" fill="none" stroke="#5fd0a5" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="180.6" r="4" fill="#5fd0a5"/>
-<polyline points="829.4,70.2 838.3,70.2 847.1,70.2 856.0,70.2" fill="none" stroke="#4aa8ff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="821.0,70.2 829.7,70.2 838.5,70.2 847.2,70.2 856.0,70.2" fill="none" stroke="#4aa8ff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="70.2" r="4" fill="#4aa8ff"/>
-<polyline points="829.4,194.3 838.3,194.3 847.1,194.3 856.0,194.3" fill="none" stroke="#6c8cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="821.0,194.3 829.7,194.3 838.5,194.3 847.2,194.3 856.0,194.3" fill="none" stroke="#6c8cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="194.3" r="4" fill="#6c8cff"/>
-<polyline points="829.4,370.0 838.3,370.0 847.1,370.0 856.0,370.0" fill="none" stroke="#c58bff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="821.0,370.0 829.7,370.0 838.5,370.0 847.2,370.0 856.0,370.0" fill="none" stroke="#c58bff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="370.0" r="4" fill="#c58bff"/>
-<polyline points="829.4,89.5 838.3,89.5 847.1,89.5 856.0,89.5" fill="none" stroke="#f2c94c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="821.0,89.5 829.7,89.5 838.5,89.5 847.2,89.5 856.0,89.5" fill="none" stroke="#f2c94c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="856.0" cy="89.5" r="4" fill="#f2c94c"/>
 <rect x="56" y="401" width="14" height="4" rx="2" fill="#7c5cff"/>
 <text x="78" y="410" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Game.exe functions named in Ghidra — 100%</text>
-<rect x="456" y="401" width="14" height="4" rx="2" fill="#2fb67c"/>
-<text x="478" y="410" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Original source files indexed — 100%</text>
-<rect x="56" y="421" width="14" height="4" rx="2" fill="#2f9bff"/>
-<text x="78" y="430" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Source files studied in depth — 69%</text>
-<rect x="456" y="421" width="14" height="4" rx="2" fill="#22c1c3"/>
-<text x="478" y="430" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Level generator proven equal to the real game — 99%</text>
-<rect x="56" y="441" width="14" height="4" rx="2" fill="#f2a81d"/>
-<text x="78" y="450" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Real .d2s save: read and write verified — 90%</text>
-<rect x="456" y="441" width="14" height="4" rx="2" fill="#ef5da8"/>
-<text x="478" y="450" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">NPC interaction features — 100%</text>
-<rect x="56" y="461" width="14" height="4" rx="2" fill="#ff7a45"/>
-<text x="78" y="470" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Acts playable end to end (scripted play) — 80%</text>
-<rect x="456" y="461" width="14" height="4" rx="2" fill="#ff9f43"/>
-<text x="478" y="470" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Levels walked by a verify scenario — 28%</text>
-<rect x="56" y="481" width="14" height="4" rx="2" fill="#e86fa6"/>
-<text x="78" y="490" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Main quests with logic implemented — 100%</text>
-<rect x="456" y="481" width="14" height="4" rx="2" fill="#5fd0a5"/>
-<text x="478" y="490" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Player skills with engine behaviour — 62%</text>
-<rect x="56" y="501" width="14" height="4" rx="2" fill="#4aa8ff"/>
-<text x="78" y="510" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Monster AI archetypes implemented — 98%</text>
-<rect x="456" y="501" width="14" height="4" rx="2" fill="#6c8cff"/>
-<text x="478" y="510" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Monster AI archetypes ported faithfully — 57%</text>
-<rect x="56" y="521" width="14" height="4" rx="2" fill="#c58bff"/>
-<text x="78" y="530" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">In-game UI panels matching the original layout — 0%</text>
-<rect x="456" y="521" width="14" height="4" rx="2" fill="#f2c94c"/>
-<text x="478" y="530" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Item generation gaps closed vs the exe — 92%</text>
+<rect x="456" y="401" width="14" height="4" rx="2" fill="#8f7cff"/>
+<text x="478" y="410" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Hedged exe names re-verified against the decompile — 78%</text>
+<rect x="56" y="421" width="14" height="4" rx="2" fill="#2fb67c"/>
+<text x="78" y="430" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Original source files indexed — 100%</text>
+<rect x="456" y="421" width="14" height="4" rx="2" fill="#2f9bff"/>
+<text x="478" y="430" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Source files studied in depth — 69%</text>
+<rect x="56" y="441" width="14" height="4" rx="2" fill="#22c1c3"/>
+<text x="78" y="450" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Level generator proven equal to the real game — 99%</text>
+<rect x="456" y="441" width="14" height="4" rx="2" fill="#f2a81d"/>
+<text x="478" y="450" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Real .d2s save: read and write verified — 90%</text>
+<rect x="56" y="461" width="14" height="4" rx="2" fill="#ef5da8"/>
+<text x="78" y="470" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">NPC interaction features — 100%</text>
+<rect x="456" y="461" width="14" height="4" rx="2" fill="#ff7a45"/>
+<text x="478" y="470" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Acts playable end to end (scripted play) — 80%</text>
+<rect x="56" y="481" width="14" height="4" rx="2" fill="#ff9f43"/>
+<text x="78" y="490" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Levels walked by a verify scenario — 28%</text>
+<rect x="456" y="481" width="14" height="4" rx="2" fill="#e86fa6"/>
+<text x="478" y="490" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Main quests with logic implemented — 100%</text>
+<rect x="56" y="501" width="14" height="4" rx="2" fill="#5fd0a5"/>
+<text x="78" y="510" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Player skills with engine behaviour — 62%</text>
+<rect x="456" y="501" width="14" height="4" rx="2" fill="#4aa8ff"/>
+<text x="478" y="510" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Monster AI archetypes implemented — 98%</text>
+<rect x="56" y="521" width="14" height="4" rx="2" fill="#6c8cff"/>
+<text x="78" y="530" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Monster AI archetypes ported faithfully — 57%</text>
+<rect x="456" y="521" width="14" height="4" rx="2" fill="#c58bff"/>
+<text x="478" y="530" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">In-game UI panels matching the original layout — 0%</text>
+<rect x="56" y="541" width="14" height="4" rx="2" fill="#f2c94c"/>
+<text x="78" y="550" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#e6e7fa">Item generation gaps closed vs the exe — 92%</text>
 </svg>
