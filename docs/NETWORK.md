@@ -303,7 +303,7 @@ with `OD2_AUTOGAME` behave the same.
   viewers in OTHER levels about a hero when it joins or changes level (viewers in the same level get the usual
   `EvSpawn`, so with every hero in one level nothing extra is sent and the traffic is unchanged). `Replica.Heroes()` is
   the global list the bridge builds the `RosterUpdate` from (area = the hero's level id). Invite/accept/leave work
-  across levels; trade and the shared kill XP still need the partner in the same level.
+  across levels; trade still needs the partner in the same level.
 - Not wired: the trade window in the game screen, per-difficulty monsters, monster types beyond the placeholder list,
   a dedicated `od2server` with engine rules (it uses DefaultRules, whose spawn differs from the engine's). The older
   `d2networking/d2server` (legacy `OD2_PROTO=d2gs|json`) is unchanged and still has no per-level worlds.
