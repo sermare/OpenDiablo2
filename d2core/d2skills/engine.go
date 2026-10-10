@@ -159,7 +159,8 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 // Director returns the monster director the engine runs against.
 func (e *Engine) Director() *d2monsters.Director { return e.monsters }
 
-// staticFieldMin reads DifficultyLevels StaticFieldMin for normal difficulty
+// staticFieldMin reads DifficultyLevels StaticFieldMin for normal difficulty,
+// the fallback of staticFieldFloor, which uses the monster's own difficulty
 // (the scenario difficulty is not tracked here); 0 when the table has no row.
 func staticFieldMin(asset *d2asset.AssetManager, _ *d2monsters.Director) int {
 	if rec := asset.Records.DifficultyLevels[d2enum.DifficultyNormal]; rec != nil {
@@ -538,7 +539,9 @@ func (e *Engine) staticField(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Ski
 			dmg = ef.MinDamage
 		}
 
-		if floor := v.MaxHP * ef.FloorPct / 100; v.HP-dmg < floor {
+		floorPct := e.staticFieldFloor(m, ef.FloorPct)
+
+		if floor := v.MaxHP * floorPct / 100; v.HP-dmg < floor {
 			dmg = v.HP - floor
 		}
 
@@ -551,7 +554,7 @@ func (e *Engine) staticField(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Ski
 		n++
 
 		e.emit("damage", "SKILL static_field target=%s pct=%d floor=%d%% resist=%d dmg=%d hp=%d/%d", m.Label(), ef.Pct,
-			ef.FloorPct, res, dmg, v.HP, v.MaxHP)
+			floorPct, res, dmg, v.HP, v.MaxHP)
 
 		if dmg > 0 {
 			e.Counters.Damage += dmg
@@ -736,6 +739,18 @@ func (e *Engine) coldDivisors(m *d2mapentity.Monster) (chill, freeze int) {
 	}
 
 	return divisorsFor(e.asset.Records.DifficultyLevels, int(m.Vitals.Difficulty))
+}
+
+// staticFieldFloor is the StaticFieldMin column of the monster's difficulty
+// (0, 33, 50 in the 1.14b table); def when the table has no row for it.
+func (e *Engine) staticFieldFloor(m *d2mapentity.Monster, def int) int {
+	if e.asset != nil && e.asset.Records != nil {
+		if rec := e.asset.Records.DifficultyLevels[d2enum.DifficultyType(int(m.Vitals.Difficulty))]; rec != nil {
+			return rec.StaticFieldMin
+		}
+	}
+
+	return def
 }
 
 func divisorsFor(recs d2records.DifficultyLevels, diff int) (chill, freeze int) {

@@ -129,7 +129,7 @@ type RecordManager struct {
 	Missiles
 	missilesByName
 	pipeline pipelineTables // built lazily by SkillTable / MissileTable
-	Monster struct {
+	Monster  struct {
 		AI        MonsterAI
 		Equipment MonsterEquipment
 		Levels    MonsterLevels
@@ -144,9 +144,13 @@ type RecordManager struct {
 		Sequences  MonsterSequences
 		Sounds     MonsterSounds
 		Stats      MonStats
-		Stats2     MonStats2
-		Types      MonsterTypes
-		Unique     struct {
+		// Shadowed are monstats rows whose Id repeats an earlier or later row (the
+		// shipped table has two "cr_lancer8"): Stats keeps the last, the others
+		// are still classes by hcIdx.
+		Shadowed []*MonStatRecord
+		Stats2   MonStats2
+		Types    MonsterTypes
+		Unique   struct {
 			Appellations UniqueAppellations
 			Mods         MonsterUniqueModifiers
 			Constants    MonsterUniqueModifierConstants
@@ -414,7 +418,9 @@ func (r *RecordManager) initObjectRecords(lookups []ObjectLookupRecord) {
 }
 
 // FindObject is LookupObject without the fatal error: nil for a DS1 object the table has no row for.
-func (r *RecordManager) FindObject(act, typ, id int) *ObjectLookupRecord { return r.lookupObject(act, typ, id) }
+func (r *RecordManager) FindObject(act, typ, id int) *ObjectLookupRecord {
+	return r.lookupObject(act, typ, id)
+}
 
 // LookupObject looks up an object record
 func (r *RecordManager) LookupObject(act, typ, id int) *ObjectLookupRecord {

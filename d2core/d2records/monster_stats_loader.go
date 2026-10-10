@@ -8,6 +8,7 @@ import (
 // nolint:funlen // cant reduce
 func monsterStatsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 	records := make(MonStats)
+	var shadowed []*MonStatRecord
 
 	for d.Next() {
 		record := &MonStatRecord{
@@ -265,6 +266,10 @@ func monsterStatsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			SpecialClientEnd:               d.Number("SplClientEnd") > 0,
 		}
 
+		if old, dup := records[record.Key]; dup {
+			shadowed = append(shadowed, old)
+		}
+
 		records[record.Key] = record
 	}
 
@@ -275,6 +280,7 @@ func monsterStatsLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 	r.Debugf("Loaded %d MonStat records", len(records))
 
 	r.Monster.Stats = records
+	r.Monster.Shadowed = shadowed
 
 	return nil
 }
