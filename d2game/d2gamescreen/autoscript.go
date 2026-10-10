@@ -229,6 +229,13 @@ func (h autoScriptHost) Hotkey(key, skill string) error {
 
 func (h autoScriptHost) Click(spec string) error { return h.v.gameControls.AutoClick(spec) }
 
+// HoldStart, HoldTick and HoldEnd implement d2autoscript.HoldHost.
+func (h autoScriptHost) HoldStart(spec string) error { return h.v.gameControls.AutoHoldStart(spec) }
+
+func (h autoScriptHost) HoldTick(elapsed float64) { h.v.gameControls.AutoHoldTick(elapsed) }
+
+func (h autoScriptHost) HoldEnd() { h.v.gameControls.AutoHoldEnd() }
+
 func (h autoScriptHost) Press(key string) error { return h.v.gameControls.AutoPress(key) }
 
 // Pad implements d2autoscript.PadHost: the step drives the synthetic

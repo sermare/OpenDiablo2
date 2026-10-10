@@ -114,3 +114,16 @@ func TestSkillStepNeedsASkillHost(t *testing.T) {
 		t.Error("a host without skill support must fail the step")
 	}
 }
+
+func TestParseHoldStep(t *testing.T) {
+	steps, err := Parse("hold:5,left@560,340")
+	if err != nil || steps[0].Kind != KindHold || steps[0].Seconds != 5 || steps[0].Arg != "left@560,340" {
+		t.Fatalf("hold step: %+v %v", steps, err)
+	}
+
+	for _, bad := range []string{"hold:left@1,2", "hold:0,left", "hold:3,up"} {
+		if _, err := Parse(bad); err == nil {
+			t.Errorf("%q parsed, want an error", bad)
+		}
+	}
+}

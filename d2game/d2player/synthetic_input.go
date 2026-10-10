@@ -1,11 +1,13 @@
 package d2player
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
 
 // synthEvent is an input event made by the OD2_AUTOSCRIPT runner (press: and
@@ -71,20 +73,137 @@ func ParseClickSpec(spec string) (button d2enum.MouseButton, mod d2enum.KeyMod, 
 	return button, mod, x, y, nil
 }
 
+// autoHold is the state of a hold: step (a mouse button kept down by the script).
+type autoHold struct {
+	ev       synthEvent
+	t        float64 // seconds held
+	nextLog  float64
+	repeated int
+}
+
+// resolveMonsterSpec replaces a "@monster" target of a click spec by the screen position of the living monster
+// nearest to the hero, and returns that monster (nil when the spec has no such target).
+func (g *GameControls) resolveMonsterSpec(spec string) (string, *d2mapentity.Monster, error) {
+	i := strings.Index(spec, "@monster")
+	if i < 0 {
+		return spec, nil, nil
+	}
+
+	hx, hy := g.hero.GetPositionF()
+
+	var best *d2mapentity.Monster
+
+	bestD := 0.0
+
+	for _, e := range g.mapEngine.Entities() {
+		m, ok := e.(*d2mapentity.Monster)
+		if !ok || !m.Alive() {
+			continue
+		}
+
+		mx, my := m.GetPositionF()
+		if d := (mx-hx)*(mx-hx) + (my-hy)*(my-hy); best == nil || d < bestD {
+			best, bestD = m, d
+		}
+	}
+
+	if best == nil {
+		return spec, nil, errors.New("click @monster: no living monster")
+	}
+
+	sx, sy := g.mapRenderer.WorldToScreen(best.GetPositionF())
+
+	return fmt.Sprintf("%s@%d,%d", spec[:i], sx, sy), best, nil
+}
+
 // AutoClick sends a synthetic mouse click (down, then up) through the handlers
-// a real click reaches, for OD2_AUTOSCRIPT click: steps.
+// a real click reaches, for OD2_AUTOSCRIPT click: steps. A target "@monster" clicks the living monster
+// nearest to the hero; the monster is made the hovered entity directly (a real hover is only known after
+// the next rendered frame).
 func (g *GameControls) AutoClick(spec string) error {
+	spec, mon, err := g.resolveMonsterSpec(spec)
+	if err != nil {
+		return err
+	}
+
 	button, mod, x, y, err := ParseClickSpec(spec)
 	if err != nil {
 		return err
 	}
 
 	g.OnMouseMove(&synthEvent{x: x, y: y})
+
+	if mon != nil {
+		g.hud.hoveredEntity = mon
+	}
+
 	g.lastLeftBtnActionTime, g.lastRightBtnActionTime = 0, 0
 	g.OnMouseButtonDown(&synthEvent{button: button, mod: mod, x: x, y: y})
 	g.OnMouseButtonUp(&synthEvent{button: button, mod: mod, x: x, y: y})
 
 	return nil
+}
+
+// AutoHoldStart presses a mouse button (spec as for click:) and keeps it down: AutoHoldTick then repeats it
+// like the input manager does for a real held button, until AutoHoldEnd.
+func (g *GameControls) AutoHoldStart(spec string) error {
+	button, mod, x, y, err := ParseClickSpec(spec)
+	if err != nil {
+		return err
+	}
+
+	ev := synthEvent{button: button, mod: mod, x: x, y: y}
+	g.autoHold = &autoHold{ev: ev}
+
+	g.OnMouseMove(&synthEvent{x: x, y: y})
+	g.lastLeftBtnActionTime, g.lastRightBtnActionTime = 0, 0
+	g.Infof("HOLD start spec=%s", spec)
+	g.OnMouseButtonDown(&ev)
+	g.logHoldPos()
+
+	return nil
+}
+
+// AutoHoldTick is one frame of a held button (the input manager's updatePressedButton).
+func (g *GameControls) AutoHoldTick(elapsed float64) {
+	h := g.autoHold
+	if h == nil {
+		return
+	}
+
+	h.t += elapsed
+	h.repeated++
+	g.OnMouseButtonRepeat(&h.ev)
+
+	const logEvery = 0.5
+	if h.t >= h.nextLog+logEvery {
+		h.nextLog = h.t
+		g.logHoldPos()
+	}
+}
+
+// AutoHoldEnd releases the held button.
+func (g *GameControls) AutoHoldEnd() {
+	h := g.autoHold
+	if h == nil {
+		return
+	}
+
+	g.logHoldPos()
+	g.OnMouseButtonUp(&h.ev)
+	g.Infof("HOLD end seconds=%.1f frames=%d", h.t, h.repeated)
+
+	g.autoHold = nil
+}
+
+func (g *GameControls) logHoldPos() {
+	p := g.hero.Position.World()
+	hover := ""
+	if g.hud != nil && g.hud.hoveredEntity != nil {
+		hover = g.hud.hoveredEntity.Label()
+	}
+
+	g.Infof("HOLD pos t=%.1f (%.2f,%.2f) town=%t hover=%q", g.autoHold.t, p.X(), p.Y(), g.hero.IsInTown(), hover)
 }
 
 // AutoKey sends a synthetic key press (down, then up) by key name ("Tab", "I", "Escape").
