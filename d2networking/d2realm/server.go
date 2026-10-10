@@ -927,6 +927,21 @@ func (s *Server) doLevel(ss *session, m LevelChange) {
 		return
 	}
 
+	// the world is per level: the hero's simulation unit changes level with it
+	// (it stops seeing and affecting the old level's units, and sees the new
+	// one's). The PlayerLevel below is the lobby notice; flush skips its own
+	// because simLevel is already current.
+	if g := ss.game; g.sim != nil && g.sim.Level(ss.unitID) != 0 {
+		if !g.sim.ChangeLevel(ss.unitID, m.Level) {
+			ss.result(MsgLevelChange, CodeBadRequest, "bad level")
+
+			return
+		}
+
+		ss.simLevel = m.Level
+		s.flush(g)
+	}
+
 	ss.act, ss.level, ss.hasLevel = m.Act, m.Level, true
 
 	for _, o := range ss.game.members {

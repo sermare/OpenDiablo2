@@ -148,32 +148,31 @@ func (b *Bridge) rosterSnapshot() d2party.Snapshot {
 		return snap
 	}
 
-	add := func(engineID string, unit uint32) {
-		u := b.rep.Unit(unit)
-		if u == nil {
-			return
-		}
-
-		area := int(b.levels[unit])
+	area := func(unit uint32, lvl uint16) int {
 		if unit == b.joined.UnitID {
-			area = int(b.area)
+			return int(b.area)
 		}
 
-		snap.Players = append(snap.Players, d2party.Info{ID: engineID, Name: u.Name, Class: heroOfClass[d2s.Class(u.Type)],
-			Level: 1, Area: area, Party: int(u.Party)})
+		if lvl != 0 {
+			return int(lvl)
+		}
+
+		return int(b.levels[unit])
 	}
 
-	add(b.self, b.joined.UnitID)
-
-	ids := make([]uint32, 0, len(b.known))
-	for unit := range b.known {
-		ids = append(ids, unit)
+	if u := b.rep.Unit(b.joined.UnitID); u != nil {
+		snap.Players = append(snap.Players, d2party.Info{ID: b.self, Name: u.Name, Class: heroOfClass[d2s.Class(u.Type)],
+			Level: 1, Area: area(u.ID, 0), Party: int(u.Party)})
 	}
 
-	sortUnits(ids)
+	// every hero of the game, in whatever level: the roster is global
+	for _, h := range b.rep.Heroes() {
+		if h.ID == b.joined.UnitID {
+			continue
+		}
 
-	for _, unit := range ids {
-		add(b.known[unit], unit)
+		snap.Players = append(snap.Players, d2party.Info{ID: PeerID(h.ID), Name: h.Name, Class: heroOfClass[d2s.Class(h.Type)],
+			Level: 1, Area: area(h.ID, h.Level), Party: int(h.Party)})
 	}
 
 	return snap

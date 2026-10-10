@@ -281,16 +281,37 @@ with `OD2_AUTOGAME` behave the same.
   (`MirrorHP`, `MirrorKill`: death animation and sound, no local XP or loot).
 - Console: `mpkill` (fight the nearest realm monster), `mpworld` (log
   `REALM WORLD ... digest=`; equal digests = equal worlds).
-- Level changes and party (code and unit tests, not yet seen in two game windows): the engine's ChangeLevel
-  packet becomes the realm's LevelChange (act numbered from 0), `PlayerLevel` is kept per hero
+- Level changes and party (code and unit tests with two simulated clients, not yet seen in two game windows): the
+  engine's ChangeLevel packet becomes the realm's LevelChange (act numbered from 0), `PlayerLevel` is kept per hero
   (`Bridge.PeerLevel`, `SameLevel`) and the party commands invite / accept / leave become `d2mp.Command`s
   (decline and hostility have no realm command and are logged). Party ids from the simulation come back to the
   engine as a `RosterUpdate` packet (`d2realmclient/social.go`). A refused join is explained in the log
-  (`JOIN refused: ...`); only "game not found" is retried. The realm world itself is still one arena, so heroes in
-  different levels share the town's units until per-level worlds exist.
-- Not wired: per-level worlds in the realm, the trade window, per-difficulty monsters, monster types beyond the
-  placeholder list, a dedicated `od2server` with engine rules (it uses
-  DefaultRules, whose spawn differs from the engine's).
+  (`JOIN refused: ...`); only "game not found" is retried.
+- **One world per level.** The simulation (`d2mp.Sim`) already kept units, monsters, objects, missiles and items per
+  level id and only queued events for the viewers in that level. What was missing was the handoff: the engine walks
+  stairs and doors on its own map, and the realm only noted it for the lobby, so the hero's simulation unit stayed in
+  town. Now `LevelChange` calls `Sim.ChangeLevel` (level 1..136; the hero leaves its old level with an `EvRemove`,
+  appears at the new level's spawn, receives that level's units, trades are cancelled; the same level is a no-op, an
+  unknown level is refused with `bad level`). A hero therefore only receives, sees and affects units of its level:
+  attacking or picking up a unit id of another level does nothing, and combat events of another level are never sent.
+  Levels are generated lazily, monsters of a level with no hero stand still. Portals and waypoints in the simulation
+  (`Sim.UseWaypoint`, town portal, `Command`) use the same path.
+- Visibility between levels: a hero in another level is not shown. The bridge removes the engine player (a
+  disconnect packet) when the hero leaves the viewer's level, and announces it again (AddPlayer) when it enters;
+  when the local hero changes level the bridge drops all remote heroes and mirror monsters it had.
+- Party and roster stay global: `EvParty` goes to everybody, and a new `EvHero` (identity, class, level id, party) tells
+  viewers in OTHER levels about a hero when it joins or changes level (viewers in the same level get the usual
+  `EvSpawn`, so with every hero in one level nothing extra is sent and the traffic is unchanged). `Replica.Heroes()` is
+  the global list the bridge builds the `RosterUpdate` from (area = the hero's level id). Invite/accept/leave work
+  across levels; trade and the shared kill XP still need the partner in the same level.
+- Not wired: the trade window in the game screen, per-difficulty monsters, monster types beyond the placeholder list,
+  a dedicated `od2server` with engine rules (it uses DefaultRules, whose spawn differs from the engine's). The older
+  `d2networking/d2server` (legacy `OD2_PROTO=d2gs|json`) is unchanged and still has no per-level worlds.
+- Tests: `d2mp` `TestPerLevelWorldsTwoClients`, `TestPerLevelRosterJoinAndParty`; `d2realm` `TestLevelChangeSplitsTheWorld`
+  (two TCP clients); `d2realmclient` `TestBridgeHidesHeroInOtherLevel` (two bridges). All `go test -race`.
+- Scenarios to run ALONE before this lands (not run yet; the machine was busy): `96-multiplayer`,
+  `9j-realm-multiplayer` (the realm path; checks digests at four checkpoints, in one level), and
+  `9d-party-trade` / `9f-pvp-skills-ear` for the party, trade and PvP paths.
 - Scenario `scripts/verify.d/9j-realm-multiplayer.sh`: two windows, both started
   at the main menu through `OD2_AUTOFLOW` (`host`, `join:<addr>`), numeric
   checks at four checkpoints (digests, dead counts, kill units and killers).

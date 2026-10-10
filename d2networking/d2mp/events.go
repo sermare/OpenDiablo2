@@ -28,12 +28,13 @@ const (
 	EvTrade                    // trade window state for viewer ID (see Event.Trade)
 	EvInv                      // viewer's inventory: Items, gold A
 	EvMsg                      // system message Text for the viewer
+	EvHero                     // Unit: a hero in ANOTHER level than the viewer (identity, class, level id, party); roster only
 )
 
 var evNames = map[EvType]string{
 	EvTick: "tick", EvSpawn: "spawn", EvSeg: "seg", EvAttack: "attack", EvHit: "hit", EvDeath: "death",
 	EvRemove: "remove", EvObject: "object", EvLevel: "level", EvVitals: "vitals", EvXP: "xp", EvParty: "party",
-	EvTrade: "trade", EvInv: "inv", EvMsg: "msg",
+	EvTrade: "trade", EvInv: "inv", EvMsg: "msg", EvHero: "hero",
 }
 
 func (t EvType) String() string {
@@ -236,7 +237,7 @@ func AppendEvent(b []byte, e Event) []byte {
 	switch e.Type {
 	case EvTick:
 		w.i32(e.A)
-	case EvSpawn:
+	case EvSpawn, EvHero:
 		w.unit(e.Unit)
 	case EvSeg:
 		w.u32(e.ID)
@@ -299,7 +300,7 @@ func DecodeEvents(b []byte) ([]Event, error) {
 		switch e.Type {
 		case EvTick:
 			e.A = r.i32()
-		case EvSpawn:
+		case EvSpawn, EvHero:
 			e.Unit = r.unit()
 			e.ID = e.Unit.ID
 		case EvSeg:

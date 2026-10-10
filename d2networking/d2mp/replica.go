@@ -50,6 +50,7 @@ type Replica struct {
 	Def   *LevelDef // layout of the current level, built from the game seed
 
 	units    map[uint32]*RUnit
+	heroes   map[uint32]Unit // every hero of the game, in any level (identity, level id, party); the roster is global
 	serverMs uint32
 	offsets  []float64 // local - server samples
 	predict  []Seg     // walks sent but not yet confirmed, oldest first
@@ -87,7 +88,7 @@ func NewReplica(cfg ReplicaConfig) *Replica {
 		cfg.RunSpeed = RunSpeed
 	}
 
-	return &Replica{cfg: cfg, rules: cfg.Rules, units: map[uint32]*RUnit{}, Stats: map[EvType]int{}}
+	return &Replica{cfg: cfg, rules: cfg.Rules, units: map[uint32]*RUnit{}, heroes: map[uint32]Unit{}, Stats: map[EvType]int{}}
 }
 
 // Self returns the local hero's unit id.
@@ -131,6 +132,23 @@ func (r *Replica) Units() []*RUnit {
 
 	return out
 }
+
+// Heroes returns every hero the server has told this client about, whatever
+// level it is in (Level is its level id), ordered by id. The local hero is
+// not included once it is only known as a unit; use Unit for it.
+func (r *Replica) Heroes() []Unit {
+	out := make([]Unit, 0, len(r.heroes))
+	for _, u := range r.heroes {
+		out = append(out, u)
+	}
+
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+
+	return out
+}
+
+// Forget drops a hero that left the game from the roster.
+func (r *Replica) Forget(id uint32) { delete(r.heroes, id) }
 
 // Pos returns where a unit is drawn now.
 func (r *Replica) Pos(id uint32) (x, y float64, ok bool) {
@@ -231,7 +249,18 @@ func (r *Replica) Apply(e Event) {
 			r.units = map[uint32]*RUnit{}
 			r.predict = nil
 		}
+
+		if h, ok := r.heroes[e.ID]; ok {
+			h.Level = e.Level
+			r.heroes[e.ID] = h
+		}
+	case EvHero:
+		r.heroes[e.ID] = e.Unit
 	case EvSpawn:
+		if e.Unit.Kind == KindPlayer {
+			r.heroes[e.ID] = e.Unit
+		}
+
 		u := &RUnit{Unit: e.Unit}
 		u.Segs = append([]Seg(nil), e.Unit.Segs...)
 
@@ -273,6 +302,11 @@ func (r *Replica) Apply(e Event) {
 	case EvParty:
 		if u := r.units[e.ID]; u != nil {
 			u.Party = uint16(e.A)
+		}
+
+		if h, ok := r.heroes[e.ID]; ok {
+			h.Party = uint16(e.A)
+			r.heroes[e.ID] = h
 		}
 	case EvTrade:
 		tv := e.Trade

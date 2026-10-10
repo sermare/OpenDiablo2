@@ -82,6 +82,8 @@ type Bridge struct {
 	hasSkil bool
 	levels  map[uint32]uint16 // unit id -> level id, from PlayerLevel
 	area    uint16            // level id of the local hero (0 = not reported yet)
+	// rosterDue: the local hero changed level; the roster is sent when its unit is back
+	rosterDue bool
 
 	out []d2netpacket.NetPacket // packets for the engine, built under mu
 
@@ -472,6 +474,8 @@ func (b *Bridge) drain() {
 		case d2realm.PlayerLevel:
 			b.playerLevel(m)
 		case d2realm.PlayerLeave:
+			b.rep.Forget(m.UnitID)
+
 			if id, ok := b.known[m.UnitID]; ok {
 				b.seen.Leaves++
 				delete(b.known, m.UnitID)
@@ -531,6 +535,15 @@ func (b *Bridge) handle(e d2mp.Event) {
 	switch e.Type {
 	case d2mp.EvLevel:
 		b.cfg.Logf("realm: level %d", e.Level)
+
+		if e.ID == b.joined.UnitID {
+			b.leaveLevel(0)
+			b.area, b.rosterDue = e.Level, true // the server moved the hero (stairs, portal, waypoint)
+		}
+	case d2mp.EvRemove:
+		b.leaveLevel(e.ID)
+	case d2mp.EvHero:
+		b.emitRoster("")
 	case d2mp.EvSpawn:
 		b.spawn(e)
 	case d2mp.EvSeg:
@@ -568,12 +581,42 @@ func (b *Bridge) handle(e d2mp.Event) {
 	}
 }
 
+// leaveLevel hides what is no longer in the local hero's level (b.mu held):
+// one unit that left it, or (unit 0) everything, when the local hero moved to
+// another level. A hero in another level is not shown: its engine player is
+// removed, and it is announced again if it comes back into view. The roster
+// stays global (it is built from the replica's hero list, not from these).
+func (b *Bridge) leaveLevel(unit uint32) {
+	if unit != 0 {
+		if id, ok := b.known[unit]; ok {
+			delete(b.known, unit)
+			b.emit(d2netpacket.CreatePlayerDisconnectRequestPacket(id))
+		}
+
+		delete(b.mons, unit)
+
+		return
+	}
+
+	for u, id := range b.known {
+		delete(b.known, u)
+		b.emit(d2netpacket.CreatePlayerDisconnectRequestPacket(id))
+	}
+
+	b.mons = map[uint32]bool{}
+}
+
 func (b *Bridge) spawn(e d2mp.Event) {
 	u := e.Unit
 
 	switch u.Kind {
 	case d2mp.KindPlayer:
 		if u.ID == b.joined.UnitID {
+			if b.rosterDue { // the hero's own unit exists again: the roster can name it
+				b.rosterDue = false
+				b.emitRoster("")
+			}
+
 			return
 		}
 
