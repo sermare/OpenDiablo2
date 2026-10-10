@@ -72,6 +72,7 @@ func CreateGame(
 	}
 
 	keyMap := d2player.GetDefaultKeyMap(asset)
+	keyMap.LoadSavedBindings()
 
 	game := &Game{
 		asset:                asset,

@@ -26,7 +26,10 @@ type Configuration struct {
 	// Options holds the choices of the in-game options menu (see options.go);
 	// sound and music live in SfxVolume and BgmVolume.
 	Options map[string]int `json:",omitempty"`
-	path    string
+	// KeyBindings are the keys of the Configure Controls page: event name ->
+	// [primary, secondary] key names (see d2player.KeyName). Empty = defaults.
+	KeyBindings map[string][]string `json:",omitempty"`
+	path        string
 }
 
 // Save saves the configuration object to disk

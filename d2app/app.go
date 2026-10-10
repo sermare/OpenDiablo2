@@ -171,6 +171,10 @@ func (a *App) loadEngine() error {
 	}
 
 	a.renderer = renderer
+	renderer.SetFullscreenHook(func(full bool) {
+		a.config.FullScreen = full
+		a.saveConfig()
+	})
 
 	if a.errorMessage != nil {
 		return a.renderer.Run(a.updateInitError, updateNOOP, 800, 600, "OpenDiablo2")
