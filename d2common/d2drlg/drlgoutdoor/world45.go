@@ -148,5 +148,17 @@ func ParamsFromLayout45(t d2drlg.Levels, lay *drlgworld.Layout, act, id int, gam
 
 	p.Neighbors = lists[id]
 
+	// the rectangles of the outdoor neighbours as registered when the game runs (the town links of Act 5 are
+	// registered after the neighbour lists were built): rooms next to a town read them (markTownAdjacency)
+	for i := 0; i < 8; i++ {
+		if nb, ok := rects[p.Vis[i]]; ok && p.Vis[i] != 0 && p.Warp[i] == -1 {
+			if p.Adjacent == nil {
+				p.Adjacent = map[int]Rect{}
+			}
+
+			p.Adjacent[p.Vis[i]] = nb
+		}
+	}
+
 	return p, nil
 }

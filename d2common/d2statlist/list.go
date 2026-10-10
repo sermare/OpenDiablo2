@@ -56,6 +56,7 @@ const (
 	StatPoisonMax    = 58
 	StatLifeSteal    = 60
 	StatManaSteal    = 62
+	StatManaRecRaw   = 26 // manarecovery: raw mana per frame (potion states)
 	StatManaRecovery = 27 // manarecoverybonus
 	StatStamRecovery = 28
 	StatHPRegen      = 74

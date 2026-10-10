@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgoutdoor"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgpop"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monreg"
@@ -116,6 +117,9 @@ type popRoom struct {
 	seed       d2rand.Seed
 	noPop      bool
 	preset     *popPreset
+	// cells are the room's logic regions (drlgoutdoor logic.go) in map tiles, newest first; nil: one region, the
+	// whole room (plain rooms, presets with Logicals = 0, or no exact tiles to derive them from)
+	cells []d2monreg.Cell
 }
 
 // popPreset is the preset units of one stamped DS1 that are still to be
@@ -268,6 +272,43 @@ func (p *popLevel) addPreset(stamp *d2mapstamp.Stamp, ox, oy int, gate *d2rand.S
 	return ps
 }
 
+// useLogic hands the logic regions of the built tile records to the population rooms: tiles[i] belongs to the
+// room index[i] (nil index: room i). Regions are translated to the room's place on the map.
+func (p *popLevel) useLogic(tiles []*drlgoutdoor.RoomTiles, index []int) {
+	for i, rt := range tiles {
+		ri := i
+		if index != nil {
+			ri = index[i]
+		}
+
+		if rt == nil || ri < 0 || ri >= len(p.rooms) {
+			continue
+		}
+
+		pr := p.rooms[ri]
+
+		// building the room can set the no-population flag too: the hidden floor of a cave entrance / exit
+		// (0x670e80) marks its room, as a LvlPrest row with Populate = 0 does
+		if rt.Room.Flags&roomNoPopulate != 0 {
+			pr.noPop = true
+		}
+
+		cells := make([]d2monreg.Cell, 0, len(rt.Logic))
+
+		for _, lg := range rt.Logic {
+			c := d2monreg.Cell{Skip: lg.Skip, Flag: lg.ID}
+			if lg.X0 != 0 || lg.X1 != 0 || lg.Y0 != 0 || lg.Y1 != 0 {
+				c.X0, c.Y0 = pr.x+lg.X0-rt.Room.X, pr.y+lg.Y0-rt.Room.Y
+				c.X1, c.Y1 = pr.x+lg.X1-rt.Room.X, pr.y+lg.Y1-rt.Room.Y
+			}
+
+			cells = append(cells, c)
+		}
+
+		pr.cells = cells
+	}
+}
+
 // keepFunc is the entity filter for PlaceStampClippedWhere.
 func (ps *popPreset) keepFunc() func(int) bool {
 	if ps == nil {
@@ -320,12 +361,21 @@ func (p *popLevel) run() {
 	for _, r := range p.rooms {
 		room := &d2monreg.Room{Level: p.level, NoPopulate: r.noPop, Seed: r.seed,
 			X: r.x * drlgpop.Subtile, Y: r.y * drlgpop.Subtile, W: r.w * drlgpop.Subtile, H: r.h * drlgpop.Subtile}
-		room.Cells = []d2monreg.Cell{{X0: r.x, Y0: r.y, X1: r.x + r.w, Y1: r.y + r.h, Flag: 1}}
+		room.Cells = r.cells
+		if room.Cells == nil {
+			room.Cells = []d2monreg.Cell{{X0: r.x, Y0: r.y, X1: r.x + r.w, Y1: r.y + r.h, Flag: 1}}
+		}
 
 		if !r.noPop {
-			n := ((r.w * drlgpop.Subtile) / 3) * ((r.h * drlgpop.Subtile) / 3)
-			p.stats.trials += n
-			p.stats.walkTrials += int(float64(n) * w.walkShare(r))
+			for _, c := range room.Cells {
+				if c.Flag == 0 || c.Skip || (c.X0 == 0 && c.X1 == 0) {
+					continue
+				}
+
+				n := (((c.X1 - c.X0) * drlgpop.Subtile) / 3) * (((c.Y1 - c.Y0) * drlgpop.Subtile) / 3)
+				p.stats.trials += n
+				p.stats.walkTrials += int(float64(n) * w.walkShareRect(c.X0, c.Y0, c.X1-c.X0, c.Y1-c.Y0))
+			}
 		}
 
 		game.Wanderer(room)
@@ -484,12 +534,12 @@ func newEngineWorld(g *MapGenerator, lv *d2monreg.Level) *engineWorld {
 	return w
 }
 
-// walkShare is the share of a room's subtiles that are not walk-blocked.
-func (w *engineWorld) walkShare(r *popRoom) float64 {
+// walkShareRect is the share of the subtiles of a rectangle of tiles that are not walk-blocked.
+func (w *engineWorld) walkShareRect(x, y, wd, ht int) float64 {
 	total, ok := 0, 0
 
-	for sy := r.y * subtilesPerTile; sy < (r.y+r.h)*subtilesPerTile; sy++ {
-		for sx := r.x * subtilesPerTile; sx < (r.x+r.w)*subtilesPerTile; sx++ {
+	for sy := y * subtilesPerTile; sy < (y+ht)*subtilesPerTile; sy++ {
+		for sx := x * subtilesPerTile; sx < (x+wd)*subtilesPerTile; sx++ {
 			total++
 
 			if !w.g.engine.WalkBlocked(sx, sy) {

@@ -54,6 +54,9 @@ type Params struct {
 	ID        int
 	Rect      Rect
 	Neighbors []Neighbor
+	// Adjacent holds the rectangles of the outdoor levels linked through a vis slot without a warp, when the
+	// neighbour list does not have them (Act 4/5, see ParamsFromLayout45); only read by markTownAdjacency.
+	Adjacent  map[int]Rect
 	Vis, Warp [8]int
 	OdFlags   int
 	BaseSeed  uint32
@@ -206,6 +209,9 @@ type Level struct {
 
 	// presetSize overrides the Def size in placePresetRooms (town levels).
 	presetSize [2]int
+
+	// logicCtr is the level's logic region id counter (level +0x1dc).
+	logicCtr int
 }
 
 // Level accessors for callers.

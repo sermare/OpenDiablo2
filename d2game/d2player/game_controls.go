@@ -16,6 +16,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2equip"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
@@ -358,7 +359,8 @@ type GameControls struct {
 	equipRand              *rand.Rand
 	equipStatus            map[d2equip.Loc]d2hero.EquipStatus
 	regen                  d2inventory.Regen
-	regenHP, regenMana     float64 // fractions of points not yet applied
+	regenHP, regenMana     float64           // fractions of points not yet applied
+	vitals                 d2herostats.Regen // natural life/mana regeneration (natural_regen.go)
 	bottomMenuRect         *d2geom.Rectangle
 	leftMenuRect           *d2geom.Rectangle
 	rightMenuRect          *d2geom.Rectangle
@@ -640,7 +642,10 @@ func (g *GameControls) worldClick(button d2enum.MouseButton, mod d2enum.KeyMod, 
 	in := WorldClickInput{Button: button, Mod: mod, OverMonster: g.hoveredMonster() != nil}
 	if g.hero.LeftSkill != nil {
 		in.LeftSkillID = g.hero.LeftSkill.ID
+		in.LeftSkillInTown = g.hero.LeftSkill.SkillRecord != nil && g.hero.LeftSkill.SkillRecord.InTown
 	}
+
+	in.InTown = g.hero.IsInTown()
 
 	act := ResolveWorldClick(in)
 	if button == d2enum.MouseButtonLeft && act == WorldCastLeft && d2gamepad.Default().Walking() {
@@ -1156,6 +1161,7 @@ func (g *GameControls) Advance(elapsed float64) error {
 	g.hud.Advance(elapsed)
 	g.inventory.Advance(elapsed)
 	g.advancePotions(elapsed)
+	g.advanceNaturalRegen(elapsed)
 	g.automap.Advance(elapsed)
 	g.questLog.Advance(elapsed)
 	g.mercPanel.Advance(elapsed)
@@ -1395,6 +1401,16 @@ func (g *GameControls) bindTerminalCommands(term d2interface.Terminal) error {
 
 	if err := term.Bind("bindkey", "bind a key to a game event and save it, e.g. bindkey ToggleInventoryPanel X",
 		[]string{"event", "key"}, g.commandBindKey(term)); err != nil {
+		return err
+	}
+
+	// test-only: logs the hero position so OD2_AUTOSCRIPT scenarios can assert that a click walked (or did not)
+	if err := term.Bind("heropos", "log the hero's world position (HERO pos=...), for scenarios", nil, func([]string) error {
+		p := g.hero.Position.World()
+		g.Infof("HERO pos=(%.2f,%.2f) town=%t", p.X(), p.Y(), g.hero.IsInTown())
+
+		return nil
+	}); err != nil {
 		return err
 	}
 

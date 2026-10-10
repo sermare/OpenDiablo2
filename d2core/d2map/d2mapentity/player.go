@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
@@ -111,7 +112,8 @@ func (p *Player) IsInTown() bool {
 }
 
 const (
-	half = 0.5
+	half       = 0.5
+	stamina256 = 256 // stamina is held in 1/256 units in the exe
 )
 
 // Advance is called once per frame and processes a
@@ -160,24 +162,42 @@ func (p *Player) Advance(tickTime float64) {
 	}
 
 	charstats := p.composite.AssetManager.Records.Character.Stats[p.Class]
-	staminaDrain := float64(charstats.StaminaRunDrain)
 
-	// This number has been determined by trying it out and checking if the stamina drain is
-	// the same as in d2 with the drain value from the assets.
-	// (We stopped the time for a lvl 1 babarian to loose all stamina which is around 25 seconds
-	// if i Remember correctly)
-	const magicStaminaDrainDivisor = 5
-
-	// Drain and regenerate Stamina
+	// Drain and recover stamina with the exe's rules (0x0057d220 / 0x0057e4f0,
+	// see d2herostats/stamina.go): raw 1/256 units, 25 ticks per second
+	// (the tick rate is UNVERIFIED). Armor weight and the drain percent stat
+	// are not tracked here, so the drain is the bare charstats RunDrain.
 	if p.IsRunning() && !p.atTarget() && !p.IsInTown() {
-		p.Stats.Stamina -= staminaDrain * tickTime / magicStaminaDrainDivisor
+		perSecond := float64(d2herostats.StaminaDrainPerStep(charstats.StaminaRunDrain, -1, 0, false)*d2herostats.FramesPerSecond) / stamina256
+		p.Stats.Stamina -= perSecond * tickTime
+
 		if p.Stats.Stamina <= 0 {
 			p.SetSpeed(baseWalkSpeed)
 			p.Stats.Stamina = 0
 		}
 	} else if p.Stats.Stamina < float64(p.Stats.MaxStamina) {
-		p.Stats.Stamina += staminaDrain * tickTime / magicStaminaDrainDivisor
-		if p.IsRunning() {
+		mode := d2herostats.ModeNeutral
+
+		switch moving := !p.atTarget(); {
+		case p.IsInTown() && moving:
+			mode = d2herostats.ModeTownWalk
+		case p.IsInTown():
+			mode = d2herostats.ModeTownNeutral
+		case moving && p.IsRunning():
+			mode = d2herostats.ModeRun
+		case moving:
+			mode = d2herostats.ModeWalk
+		}
+
+		maxRaw, curRaw := p.Stats.MaxStamina*stamina256, int(p.Stats.Stamina*stamina256)
+		perSecond := float64(d2herostats.StaminaRegenPerTick(maxRaw, curRaw, mode, 0)*d2herostats.FramesPerSecond) / stamina256
+		p.Stats.Stamina += perSecond * tickTime
+
+		if p.Stats.Stamina > float64(p.Stats.MaxStamina) {
+			p.Stats.Stamina = float64(p.Stats.MaxStamina)
+		}
+
+		if p.IsRunning() && p.Stats.Stamina >= 1 {
 			p.SetSpeed(baseRunSpeed)
 		}
 	}

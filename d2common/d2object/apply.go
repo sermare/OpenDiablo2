@@ -41,8 +41,9 @@ func (o *Overlay) Apply(t *d2statlist.Totals, now float64) (expired []Buff) {
 //   - resist stats raise Resist and ResistShown (capped at MaxResist);
 //   - all skills raises AllSkills.
 //
-// Mana recovery, stamina and experience are not in Totals; read them with
-// Buffs.Total (StatManaRecovery, StatSkillStaminaPct, StatExperience).
+// Mana recovery percent raises Totals.ManaRecoveryPct (natural regeneration);
+// stamina and experience are not in Totals, read them with Buffs.Total
+// (StatSkillStaminaPct, StatExperience).
 func ApplyBuffs(t *d2statlist.Totals, b *Buffs) {
 	if pct := int(b.Total(StatSkillArmorPct)); pct != 0 {
 		t.Defense += t.Defense * pct / 100
@@ -72,6 +73,7 @@ func ApplyBuffs(t *d2statlist.Totals, b *Buffs) {
 	}
 
 	t.AllSkills += int(b.Total(d2statlist.StatAllSkills))
+	t.ManaRecoveryPct += int(b.Total(d2statlist.StatManaRecovery))
 }
 
 // ExperiencePct is the bonus experience percent of the active buffs.

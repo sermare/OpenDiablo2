@@ -106,6 +106,14 @@ type Totals struct {
 	MagicFind, GoldFind                                         int
 	AllSkills                                                   int
 
+	// Natural regeneration inputs (see d2herostats/regen.go): ManaRecoveryPct
+	// is stat 27 (regenerate mana %, items and the mana shrine), ManaRecoveryRaw
+	// stat 26 (raw 1/256 mana per frame) and LifeRegen stat 74 (replenish
+	// life, raw 1/256 life per frame).
+	ManaRecoveryPct int
+	ManaRecoveryRaw int
+	LifeRegen       int
+
 	// Stats is the summed stat list of all active items (without the
 	// item-specific enhanced defense/damage percent).
 	Stats *List `json:"-"`
@@ -328,6 +336,9 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 	t.FasterRun = int(list.Get(StatFasterMove))
 	t.MagicFind = int(list.Get(StatMagicFind))
 	t.GoldFind = int(list.Get(StatGoldFind))
+	t.ManaRecoveryPct = int(list.Get(StatManaRecovery))
+	t.ManaRecoveryRaw = int(list.Get(StatManaRecRaw))
+	t.LifeRegen = int(list.Get(StatHPRegen))
 	t.AllSkills = int(list.Get(StatAllSkills))
 
 	return t
@@ -439,6 +450,13 @@ func weaponDamage(active []Item, list *List, str, dex int) (min, max int) {
 	}
 
 	bonus := int64(str*strB/100+dex*dexB/100) + list.Get(StatDamagePct)
+	if w == nil {
+		bonus += int64(str) // bare hands: strength counts as percent (VERIFIED 0x579120)
+	}
+
+	if bonus < -90 { // VERIFIED 0x579120: the percent is floored at -90
+		bonus = -90
+	}
 	min = int((int64(baseMin)*(100+edMin)/100 + list.Get(StatMinDamage)) * (100 + bonus) / 100)
 	max = int((int64(baseMax)*(100+edMax)/100 + list.Get(StatMaxDamage)) * (100 + bonus) / 100)
 

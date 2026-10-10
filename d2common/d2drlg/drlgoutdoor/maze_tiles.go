@@ -13,6 +13,8 @@ import (
 // (0x6696c0) exactly like the preset rooms of the outdoor levels.
 type MazeLevel struct {
 	Rooms []*Room
+	// Chunk is the index into drlgmaze.Result.Chunks of each room (chunks of a room without a DS1 file make none).
+	Chunk []int
 	lv    *Level
 }
 
@@ -43,7 +45,7 @@ func NewMazeLevel(env *Env, res *drlgmaze.Result, levelID int, gameSeed uint32) 
 		}
 	}
 
-	for _, c := range res.Chunks {
+	for ci, c := range res.Chunks {
 		mr := res.Rooms[c.Room]
 		if mr.FileName == "" || mr.File < 0 {
 			continue
@@ -83,6 +85,7 @@ func NewMazeLevel(env *Env, res *drlgmaze.Result, levelID int, gameSeed uint32) 
 		}
 
 		ml.Rooms = append(ml.Rooms, r)
+		ml.Chunk = append(ml.Chunk, ci)
 	}
 
 	return ml, nil

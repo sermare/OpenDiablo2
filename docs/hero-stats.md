@@ -72,3 +72,24 @@ elemental damage and leech in the hero's attacks, IAS/FCR breakpoint tables
 (the raw percentages are reported), requirement checks for equipping, generated
 items in the UI (they have no property list yet; only imported saves and base
 items contribute), crushing blow and open wounds effects.
+
+## Natural regeneration (exe observations, `d2herostats/regen.go`)
+
+The server runs one vitals event per unit per game frame (event type 3, handler
+0x57e800, which re-schedules itself for frame+1; the frame rate is the value at
+0x72ee74, initially 25). For a living unit it runs the life routine 0x57e600, the
+stamina routine 0x57e4f0 and the mana routine 0x57e6e0, in 1/256 ("raw") units:
+
+- mana per frame = max(1, maxRaw / (charstats ManaRegen * 25)) * (100 + stat 27) / 100
+  + stat 26; the first part is skipped under state 85 (NOMANAREGEN); the sum is
+  clamped to [0, max]. ManaRegen is 120 for every class, so a full pool is back
+  in 120 s (a 477 mana sorceress gets 40 raw per frame, 3.9 mana per second).
+  Stat 27 is "regenerate mana %" (property regen-mana, the mana shrine), stat 26
+  the flat per-frame amount of the mana potion states.
+- life per frame = stat 74 (replenish life) raw, capped at the maximum and never
+  below 1 point; with no stat there is no natural life regeneration (10 points
+  of replenish life are 0.98 life per second).
+
+Unverified: the exact fractional part of the maximum (the exe's maxima are raw,
+ours are whole points), state 85 is not tracked, the sources of stat 74 other
+than worn items (potions use their own regeneration in `d2inventory`).

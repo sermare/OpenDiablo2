@@ -159,8 +159,25 @@ func (v *Game) advanceHeroAttack(elapsed float64) {
 		v.attackRepathAcc = 0
 
 		x, y := m.GetPositionF()
-		v.OnPlayerMove(x, y)
+		v.chaseTo(x, y)
 	}
+}
+
+// chaseTo is the repath order of a hero who goes after a monster. Unlike OnPlayerMove it never targets a
+// warp tile: a monster that follows the hero over the stairs he arrived on stands within warpClickRadius
+// of the tile, and the chase order would count as a click on it and take the hero to the other level in the
+// middle of the fight (Act 2 playthrough: a Spear Cat on the arrival stairs of the Halls of the Dead took
+// the hero back to Dry Hills).
+func (v *Game) chaseTo(x, y float64) {
+	v.chaseWith(x, y, v.movePlayerTo)
+}
+
+// chaseWith is chaseTo with the move order injected.
+func (v *Game) chaseWith(x, y float64, move func(x, y float64)) {
+	v.levels.use = nil
+	v.levels.warpTarget = nil // as OnPlayerMove cleared it, but nothing new is selected
+
+	move(x, y)
 }
 
 // advanceMonsterTest implements OD2_AUTOMONSTER=<monster id or name>[,count]:

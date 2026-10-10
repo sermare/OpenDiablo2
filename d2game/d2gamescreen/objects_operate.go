@@ -71,7 +71,7 @@ func (v *Game) objectInstance(ob *d2mapentity.Object) *objInstance {
 // and operate it with operateWorldObject.
 func objectIsOperable(ob *d2mapentity.Object) bool {
 	rec := ob.Record()
-	info := d2object.Lookup(rec.OperateFn)
+	info := d2object.InfoFor(d2object.Def{OperateFn: rec.OperateFn, SubClass: rec.SubClass})
 
 	if !info.Operable() {
 		return false
@@ -119,7 +119,7 @@ func (v *Game) vitalsText() string {
 // operateWorldObject runs the OperateFn of an object the hero has reached.
 func (v *Game) operateWorldObject(ob *d2mapentity.Object) {
 	rec := ob.Record()
-	info := d2object.Lookup(rec.OperateFn)
+	info := d2object.InfoFor(d2object.Def{OperateFn: rec.OperateFn, SubClass: rec.SubClass})
 
 	switch info.Class {
 	case d2object.ClassShrine:
@@ -228,7 +228,7 @@ func (v *Game) operateRack(ob *d2mapentity.Object) {
 	v.spawnLoot(loot, int(math.Floor(cx)), int(math.Floor(cy)), "rack")
 }
 
-// operateWell restores life and mana (UNVERIFIED which stats), plays the well
+// operateWell heals Parm1/256 of the maximum life, mana and stamina (VERIFIED, see d2object.WellPulse), plays the well
 // sound, empties the well for WellRefillSeconds and then refills it.
 func (v *Game) operateWell(ob *d2mapentity.Object) {
 	rec := ob.Record()
@@ -246,7 +246,12 @@ func (v *Game) operateWell(ob *d2mapentity.Object) {
 	}
 
 	before := v.vitalsText()
-	v.setHeroVitals(d2object.WellRestore(v.heroVitals()))
+	st := v.localPlayer.Stats
+
+	wv, _ := d2object.WellPulse(d2object.WellVitals{Vitals: v.heroVitals(), Stamina: int(st.Stamina), MaxStamina: st.MaxStamina},
+		rec.Parm[1], rec.Parm[3])
+	v.setHeroVitals(wv.Vitals)
+	st.Stamina = float64(wv.Stamina)
 	sound := d2object.SoundFor(rec.OperateFn, rec.Name)
 	v.playSoundAt(sound, ob.GetPosition(), "object")
 
@@ -273,7 +278,16 @@ func (v *Game) operateShrine(ob *d2mapentity.Object) {
 	if in.shrine == nil {
 		r := d2object.NewRoller(v.objectSeed(ob))
 
-		s, ok := d2object.RollShrine(v.shrineTable(), r, v.areaLevel(), rec.Parm[0], false)
+		var (
+			s  d2object.Shrine
+			ok bool
+		)
+
+		if rec.Parm[0] == 0 {
+			s, ok = d2object.RollShrineUniform(v.shrineTable(), r, v.areaLevel()) // VERIFIED path (0x54d840)
+		} else {
+			s, ok = d2object.RollShrine(v.shrineTable(), r, v.areaLevel(), rec.Parm[0], false)
+		}
 		if !ok {
 			v.Warningf("OBJECT shrine %d: no shrine type fits area level %d", rec.Index, v.areaLevel())
 			return

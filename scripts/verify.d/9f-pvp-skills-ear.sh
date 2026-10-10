@@ -4,7 +4,7 @@ scenario_name="PvP skills and the hardcore ear (two processes over TCP: a hostil
 # Both walk through a spawned portal to the Cold Plains first: skills do not work in town. Steps:
 #   1 host casts at the joiner before declaring hostility: nothing is sent
 #   2 host declares hostility, walks away and casts Fire Ball (missile + splash), Meteor (area) and Blizzard (storm)
-#   3 the joiner sets its life low; the host's next Fire Ball kills it: hardcore death, kill report, ear on the ground
+#   3 the host keeps casting Fire Balls until the joiner (a full-life hero) dies: hardcore death, kill report, ear on the ground
 #   4 the host picks the ear up and leaves; the exported .d2s has the ear
 # UNVERIFIED rules: the 17 percent scale (pvp.go), the defender applies its own resists after the scale, the ear
 # drops where the victim fell. Curses and auras are in the same code path (d2core/d2skills/pvp.go) but need a
@@ -47,7 +47,10 @@ scenario_env() {
   hscript+=";say:pvpcast Fire_Ball $jn;wait:3"
   hscript+=";say:hostile $jn 1;waitlog:$hn is now hostile toward $jn;wait:1"
   hscript+=";$(_9f_casts Fire_Ball 4);say:pvpcast Meteor $jn;wait:6;say:pvpcast Blizzard $jn;wait:8"
-  hscript+=";say:chat nowdie;wait:3;$(_9f_casts Fire_Ball 12)"
+  # The victim heals (its worn items have Replenish Life, and the natural regeneration applies to it): the 12 Fire
+  # Balls that once just killed it (43 of 1241 life left before the last one without regeneration) leave it alive
+  # with it. 24 casts is plenty; casts after the kill are skipped by pvpcast (the victim left the game).
+  hscript+=";say:chat nowdie;wait:3;$(_9f_casts Fire_Ball 24)"
   hscript+=";waitlog:PVP EAR dropped;wait:1;loot:8,15;wait:2;say:chat eartaken;wait:2;exit"
 
   local jscript="wait:1;waitlog:SOCIAL roster n=2;say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3"

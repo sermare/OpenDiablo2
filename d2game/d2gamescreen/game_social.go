@@ -275,15 +275,23 @@ func (v *Game) pvpSwing(target *d2mapentity.Player) error {
 
 // commandPvPCast is "pvpcast <skill> <player>": the skill goes at the other
 // player's position (scenarios: the autoscript cast needs fixed coordinates).
+// A player who already left is skipped (logged), not an error.
 func (v *Game) commandPvPCast(args []string) error {
-	id, err := v.resolveTarget(args[1])
-	if err != nil {
-		return err
+	if v.gameClient.IsSinglePlayer() {
+		return errors.New("there is nobody else in a single player game")
 	}
 
-	target := v.gameClient.Players[id]
+	var target *d2mapentity.Player
+
+	if id, err := v.gameClient.ResolvePlayer(args[1]); err == nil {
+		target = v.gameClient.Players[id]
+	}
+
 	if target == nil {
-		return fmt.Errorf("player %s is not here", args[1])
+		// a scenario casts a fixed number of times; the victim may have died and left before the last one
+		v.Infof("PVP CAST skipped: player %s is not here", args[1])
+
+		return nil
 	}
 
 	eng := v.skillEngine()
