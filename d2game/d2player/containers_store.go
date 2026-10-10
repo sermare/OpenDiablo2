@@ -92,7 +92,11 @@ func storedFromItem(it *diablo2item.Item, page, x, y int, orig *d2s.Item) d2hero
 		s.Mods = append(s.Mods, d2hero.StoredMod{Code: m.Code, Param: m.Param, Min: m.Min, Max: m.Max, Value: m.Value})
 	}
 
-	if spec.Rolled != nil || spec.Ear != nil {
+	if spec.Ear != nil {
+		s.Spec = &spec // an ear is rebuilt from its player, and written to the .d2s as an ear
+	}
+
+	if spec.Rolled != nil {
 		s.Spec = &spec
 		stat := it.StatItem()
 		s.Stat = &stat

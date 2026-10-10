@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2portal"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
@@ -51,6 +52,9 @@ type levelTransition struct {
 	actFinished bool
 	// edge crossings: the world position at which the hero left the old level
 	edgeWX, edgeWY float64
+	// portalDest is the far end of the town portal that was used (arrival next to it)
+	portalDest *d2portal.End
+	portalPair int
 }
 
 type pendingUse struct {
@@ -241,6 +245,10 @@ func (v *Game) performLevelChange(t *levelTransition) {
 		prefer = edgeArrival(from, t.target, t.edgeWX, t.edgeWY)
 	case "warp":
 		prefer = nextToWarpBackTo(from, t.target) // the stairs or cave entrance you came through
+	case "portal":
+		if t.portalDest != nil {
+			prefer = v.nextToPortalEnd(*t.portalDest, t.portalPair) // beside the other end of the town portal
+		}
 	}
 
 	v.saveLevel(from)
@@ -309,8 +317,11 @@ func (v *Game) afterLevelBuilt(from, to int, via string) {
 	v.scanWarps()
 	v.questArea(to) // the quest system follows the hero between areas
 	v.uberEnter(to)
+	v.enterSoundEnv(to)
 	v.restoreCorpse()
 	v.restoreLevel(to)
+	v.portal.ents = nil // the objects went with the old map
+	v.spawnPortals()
 
 	v.Infof("LEVEL built: level %d (%s) via=%s from=%d", to, v.levelName(to), via, from)
 }
@@ -625,6 +636,10 @@ func (v *Game) onWaypointChosen(level int) {
 // operatePortal uses a portal object: cooldown, owner and quest rules, then the
 // level change with the portal arrival rule.
 func (v *Game) operatePortal(ob *d2mapentity.Object) {
+	if v.operateTownPortal(ob) {
+		return
+	}
+
 	if !v.levels.cooldown.Ready(v.levels.clock, d2level.PortalCooldownSeconds) {
 		v.Infof("PORTAL refused: %v", d2level.ErrPortalCooldown)
 		return

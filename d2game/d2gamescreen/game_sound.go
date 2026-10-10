@@ -10,6 +10,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2skills"
 )
 
 const (
@@ -75,17 +76,23 @@ func soundPos(pos d2vector.Position) (x, y float64) {
 // playSoundAtPos plays a Sounds.txt handle at a map position through the
 // positional voice bank. Unknown handles are skipped silently.
 func (v *Game) playSoundAtPos(handle string, pos d2vector.Position, o d2audio.PlayOpts) {
+	v.playSoundAtPosSound(handle, pos, o)
+}
+
+// playSoundAtPosSound is playSoundAtPos returning the started sound (nil when
+// nothing started).
+func (v *Game) playSoundAtPosSound(handle string, pos d2vector.Position, o d2audio.PlayOpts) *d2audio.Sound {
 	if handle == "" {
-		return
+		return nil
 	}
 
 	o.X, o.Y = soundPos(pos)
 
 	if lx, ly := v.soundEngine.Listener(); farther(o.X-lx, o.Y-ly) {
-		return
+		return nil
 	}
 
-	v.soundEngine.PlayHandleAt(handle, o)
+	return v.soundEngine.PlayHandleAt(handle, o)
 }
 
 // farther reports whether a sound-unit delta is beyond every Falloff radius.
@@ -169,4 +176,16 @@ func (v *Game) soundSummary() string {
 	return fmt.Sprintf("sounds=%d audible=%d inaudible=%d nearest=%.0f farthest=%.0f voices=%d kinds=[%s]",
 		st.Total, st.Audible, st.Inaudible, st.Nearest, st.Farthest, v.soundEngine.Bank().ActiveVoices(),
 		strings.Join(kinds, " "))
+}
+
+// onSkillSound plays a skill or missile sound from the skill engine and
+// returns the function that stops it (looping travel sounds).
+func (v *Game) onSkillSound(ev d2skills.SoundEvent) func() {
+	snd := v.playSoundAtPosSound(ev.Handle, d2vector.NewPosition(ev.X, ev.Y),
+		d2audio.PlayOpts{Hero: ev.Hero, Kind: ev.Kind, Who: ev.Who})
+	if snd == nil {
+		return nil
+	}
+
+	return snd.Stop
 }

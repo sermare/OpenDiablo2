@@ -60,7 +60,7 @@ func itemSeedID(s *StoredItem) uint32 {
 // range) are left out and counted in dropped.
 func D2SItemFromStored(s *StoredItem, tables *d2s.ItemTables, ids *AffixIDs) (it d2s.Item, dropped int, why string) {
 	if s.Spec != nil && s.Spec.Ear != nil {
-		return earD2SItem(s)
+		return earD2S(s), 0, ""
 	}
 
 	if s.Facts == nil {
@@ -289,7 +289,7 @@ func MergeContainerItems(c *d2s.Character, containers *HeroContainers, tables *d
 
 	for i := range c.Items {
 		it := &c.Items[i]
-		if it.Location == d2s.LocationEquipped || it.Location == d2s.LocationSocketed {
+		if it.Ear || it.Location == d2s.LocationEquipped || it.Location == d2s.LocationSocketed {
 			continue
 		}
 
@@ -361,30 +361,14 @@ func MergeContainerItems(c *d2s.Character, containers *HeroContainers, tables *d
 	return len(fresh), removed
 }
 
-// earD2SItem writes a player ear made in the game: its player's class, level
-// and name (at most 15 characters, 7 bits each) in the place of the stored item.
-func earD2SItem(s *StoredItem) (it d2s.Item, dropped int, why string) {
+// earD2S is the .d2s form of a player ear: the class, level and name of the
+// player it was cut from (a hardcore PvP kill), in the inventory page.
+func earD2S(s *StoredItem) d2s.Item {
 	e := s.Spec.Ear
-	if e.Class < 0 || e.Class > 6 || e.Level < 1 || e.Level > 99 {
-		return it, 0, fmt.Sprintf("ear of %q: class %d level %d out of range", e.Name, e.Class, e.Level)
-	}
 
-	name := e.Name
-	if len(name) > 15 {
-		name = name[:15]
+	return d2s.Item{
+		Ear: true, Identified: true, Version: 101, Code: "ear", Location: d2s.LocationStored, Page: uint8(s.Page),
+		X: uint8(s.X), Y: uint8(s.Y),
+		EarInfo: &d2s.EarInfo{Class: uint8(clampInt(e.Class, 0, 6)), Level: uint8(clampInt(e.Level, 1, 99)), Name: e.Name},
 	}
-
-	it = d2s.Item{
-		Code: "ear", Ear: true, Identified: true, Version: d2s.DefaultItemVersion,
-		X: uint8(s.X), Y: uint8(s.Y), ID: itemSeedID(s),
-		EarInfo: &d2s.EarInfo{Class: uint8(e.Class), Level: uint8(e.Level), Name: name},
-	}
-
-	if s.Page == PageBelt {
-		it.Location = d2s.LocationBelt
-	} else {
-		it.Location, it.Page = d2s.LocationStored, uint8(s.Page)
-	}
-
-	return it, 0, ""
 }

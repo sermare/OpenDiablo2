@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2party"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2portal"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2playertrade"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket/d2netpackettype"
 )
@@ -78,20 +79,20 @@ type PvPHitPacket struct {
 	Target   string `json:"target"`
 	Damage   int    `json:"damage"` // after the player-versus-player scale
 	Raw      int    `json:"raw"`    // before it
-
-	// Kill marks the report of a kill: the victim's client sends it with the
-	// killer in Target (and its own position in X, Y), the server fills in the
-	// victim from the roster and relays it to the killer, whose client makes
-	// the ear. Attacker is the victim.
-	Kill bool `json:"kill,omitempty"`
-	// Victim is what the ear remembers (set by the server): name, class
-	// (0 amazon .. 6 assassin) and level of the hero that died, and the
-	// subtile where it died.
-	VictimName  string `json:"victimName,omitempty"`
-	VictimClass int    `json:"victimClass,omitempty"`
-	VictimLevel int    `json:"victimLevel,omitempty"`
-	X           int    `json:"x,omitempty"`
-	Y           int    `json:"y,omitempty"`
+	// Skill and Parts describe a skill hit: the skill name and the scaled
+	// damage by type (phys, fire, lightning, magic, cold); the defender applies
+	// its own resists to each. Empty for a melee swing (Damage is physical).
+	Skill string `json:"skill,omitempty"`
+	Parts []int  `json:"parts,omitempty"`
+	// Kill reverses the direction: the defender's client tells the killer
+	// (Target) that the sender (Attacker, the victim) died of its hit. Level
+	// and Class describe the victim; Hardcore says whether it was a hardcore
+	// hero (the killer then receives an ear). UNVERIFIED: the original has no
+	// such packet in this form.
+	Kill     bool `json:"kill,omitempty"`
+	Level    int  `json:"level,omitempty"`
+	Class    int  `json:"class,omitempty"`
+	Hardcore bool `json:"hardcore,omitempty"`
 }
 
 // PartyXPPacket carries the experience of a kill. The killer's client sends it
@@ -106,6 +107,44 @@ type PartyXPPacket struct {
 	MonsterLevel int    `json:"monsterLevel,omitempty"`
 	Player       string `json:"player,omitempty"`
 	Amount       int    `json:"amount,omitempty"`
+}
+
+// PortalOpenPacket is a client telling the server it opened its town portal
+// pair (Pair) or closed it (Close). The server takes the sender as the owner.
+type PortalOpenPacket struct {
+	Pair  d2portal.Pair `json:"pair"`
+	Close bool          `json:"close,omitempty"`
+}
+
+// PortalUpdatePacket is the server's list of open pairs, sent to everybody
+// when it changes (and to a player who joins).
+type PortalUpdatePacket struct {
+	Pairs  []d2portal.Pair `json:"pairs"`
+	Notice string          `json:"notice,omitempty"`
+}
+
+// CreatePortalOpenPacket builds a PortalOpen packet.
+func CreatePortalOpenPacket(p PortalOpenPacket) (NetPacket, error) {
+	return social(d2netpackettype.PortalOpen, p)
+}
+
+// CreatePortalUpdatePacket builds a PortalUpdate packet.
+func CreatePortalUpdatePacket(p PortalUpdatePacket) (NetPacket, error) {
+	return social(d2netpackettype.PortalUpdate, p)
+}
+
+// UnmarshalPortalOpen decodes a PortalOpen packet's data.
+func UnmarshalPortalOpen(b []byte) (p PortalOpenPacket, err error) {
+	err = json.Unmarshal(b, &p)
+
+	return
+}
+
+// UnmarshalPortalUpdate decodes a PortalUpdate packet's data.
+func UnmarshalPortalUpdate(b []byte) (p PortalUpdatePacket, err error) {
+	err = json.Unmarshal(b, &p)
+
+	return
 }
 
 func social(t d2netpackettype.NetPacketType, v interface{}) (NetPacket, error) {

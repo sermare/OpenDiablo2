@@ -40,6 +40,8 @@ const (
 	TradeUpdate                                          // Sent by the server to both traders: the trade window state or its result
 	PvPHit                                               // Sent by a client (the attacker), relayed by the server to the defender
 	PartyXP                                              // Sent by a client (a kill), the server answers every sharing member with its part
+	PortalOpen                                           // Sent by a client: it opened (or closed) its town portal pair
+	PortalUpdate                                         // Sent by the server to everybody: the open town portal pairs
 
 	UnknownPacketType = 666
 )
@@ -68,6 +70,8 @@ func (n NetPacketType) String() string {
 		TradeUpdate:                     "TradeUpdate",
 		PvPHit:                          "PvPHit",
 		PartyXP:                         "PartyXP",
+		PortalOpen:                      "PortalOpen",
+		PortalUpdate:                    "PortalUpdate",
 	}
 
 	return strings[n]

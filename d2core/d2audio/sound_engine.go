@@ -72,6 +72,10 @@ type SoundEngine struct {
 	lx, ly   float64 // listener in sound units, see SubtileToSound
 	sounds   map[*Sound]struct{}
 
+	bgmVol, sfxVol float64
+	volSet         bool
+	soundLog       bool
+
 	*d2util.Logger
 }
 
@@ -88,6 +92,8 @@ func NewSoundEngine(provider d2interface.AudioProvider,
 		provider: provider,
 		sounds:   map[*Sound]struct{}{},
 		mute:     os.Getenv("OD2_AUTOTEST_MUTE") != "",
+
+		soundLog: os.Getenv("OD2_SOUNDLOG") != "",
 	}
 
 	r.Logger = d2util.NewLogger()
@@ -155,7 +161,41 @@ func (s *SoundEngine) loadPlayer(row *d2sfx.Row) (d2sfx.Player, error) {
 		return &mutePlayer{e: s, loop: row.Loop}, nil
 	}
 
-	return s.provider.LoadSound(row.FileName, row.Loop, row.MusicVol)
+	p, err := s.provider.LoadSound(row.FileName, row.Loop, row.MusicVol)
+	if err != nil {
+		// unmuted, a sound that cannot be loaded is a bug worth a line in the log
+		s.Warningf("could not load sound %s (%q): %v", row.Handle, row.FileName, err)
+		return nil, err
+	}
+
+	// the bank applies the master volumes itself (live), see syncVolumes
+	if sc, ok := p.(interface{ SetVolumeScale(float64) }); ok {
+		sc.SetVolumeScale(1)
+	}
+
+	return p, nil
+}
+
+// volumeSource is implemented by audio providers that hold the master volumes
+// from the options menu.
+type volumeSource interface {
+	Volumes() (bgm, sfx float64)
+}
+
+// syncVolumes copies the options-menu volumes (music and sound, 0 mutes) into
+// the voice bank, which applies them to the playing sounds on its next tick.
+func (s *SoundEngine) syncVolumes() {
+	vs, ok := s.provider.(volumeSource)
+	if !ok || s.bank == nil {
+		return
+	}
+
+	bgm, sfx := vs.Volumes()
+	if bgm != s.bgmVol || sfx != s.sfxVol || !s.volSet {
+		s.bgmVol, s.sfxVol, s.volSet = bgm, sfx, true
+		s.bank.SetVolumes(sfx, bgm)
+		s.Infof("VOLUME music=%.2f sfx=%.2f", bgm, sfx)
+	}
 }
 
 // mutePlayer stands in for audio under OD2_AUTOTEST_MUTE: it occupies a voice
@@ -230,6 +270,7 @@ func (s *SoundEngine) Advance(elapsed float64) {
 		return
 	}
 
+	s.syncVolumes()
 	s.bank.Advance()
 
 	for sound := range s.sounds {
@@ -346,6 +387,8 @@ func (s *SoundEngine) play(req d2sfx.Request, opts ...PlayOpts) *Sound {
 		}
 	}
 
+	s.logSound(req, r, opts)
+
 	switch r.Decision {
 	case d2sfx.DecisionPlayed, d2sfx.DecisionStolen, d2sfx.DecisionQueued, d2sfx.DecisionMerged:
 	default:
@@ -435,4 +478,33 @@ func (s *SoundEngine) commandKillSounds([]string) error {
 	}
 
 	return nil
+}
+
+// logSound writes one SOUNDLOG line for every sound that starts (OD2_SOUNDLOG=1):
+// the game tick, the Sounds.txt handle and file, whether it is music, and the
+// decision. A load failure shows up as decision=load-failed. Sounds a request
+// never got to start (no file, inaudible, no voice) are logged too, so a
+// scenario can tell silence from a missing hook.
+func (s *SoundEngine) logSound(req d2sfx.Request, r d2sfx.Report, opts []PlayOpts) {
+	if !s.soundLog {
+		return
+	}
+
+	var o PlayOpts
+	if len(opts) > 0 {
+		o = opts[0]
+	}
+
+	kind := o.Kind
+	if kind == "" {
+		kind = "plain"
+	}
+
+	music := false
+	if row := s.Bank().Table().Get(r.Picked); row != nil {
+		music = row.MusicVol
+	}
+
+	s.Infof("SOUNDLOG t=%.1f kind=%s music=%v handle=%s id=%d file=%q decision=%s", s.ticks/d2sfx.TicksPerSecond,
+		kind, music, r.Handle, r.Picked, r.File, r.Decision)
 }
