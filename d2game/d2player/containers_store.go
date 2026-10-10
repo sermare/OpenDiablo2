@@ -92,13 +92,13 @@ func storedFromItem(it *diablo2item.Item, page, x, y int, orig *d2s.Item) d2hero
 		s.Mods = append(s.Mods, d2hero.StoredMod{Code: m.Code, Param: m.Param, Min: m.Min, Max: m.Max, Value: m.Value})
 	}
 
-	if spec.Rolled != nil {
+	if spec.Rolled != nil || spec.Ear != nil {
 		s.Spec = &spec
 		stat := it.StatItem()
 		s.Stat = &stat
 	}
 
-	if orig == nil {
+	if orig == nil && spec.Ear == nil {
 		// made in the game: keep the rolled numbers for the .d2s export
 		f := it.Facts()
 		s.Facts = &f

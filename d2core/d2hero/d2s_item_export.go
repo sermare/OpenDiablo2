@@ -59,6 +59,10 @@ func itemSeedID(s *StoredItem) uint32 {
 // Stats the save cannot hold (extra parameters, damage groups, values out of
 // range) are left out and counted in dropped.
 func D2SItemFromStored(s *StoredItem, tables *d2s.ItemTables, ids *AffixIDs) (it d2s.Item, dropped int, why string) {
+	if s.Spec != nil && s.Spec.Ear != nil {
+		return earD2SItem(s)
+	}
+
 	if s.Facts == nil {
 		return it, 0, "no rolled values stored for " + s.Code
 	}
@@ -285,7 +289,7 @@ func MergeContainerItems(c *d2s.Character, containers *HeroContainers, tables *d
 
 	for i := range c.Items {
 		it := &c.Items[i]
-		if it.Ear || it.Location == d2s.LocationEquipped || it.Location == d2s.LocationSocketed {
+		if it.Location == d2s.LocationEquipped || it.Location == d2s.LocationSocketed {
 			continue
 		}
 
@@ -355,4 +359,32 @@ func MergeContainerItems(c *d2s.Character, containers *HeroContainers, tables *d
 	c.Items = append(kept, fresh...)
 
 	return len(fresh), removed
+}
+
+// earD2SItem writes a player ear made in the game: its player's class, level
+// and name (at most 15 characters, 7 bits each) in the place of the stored item.
+func earD2SItem(s *StoredItem) (it d2s.Item, dropped int, why string) {
+	e := s.Spec.Ear
+	if e.Class < 0 || e.Class > 6 || e.Level < 1 || e.Level > 99 {
+		return it, 0, fmt.Sprintf("ear of %q: class %d level %d out of range", e.Name, e.Class, e.Level)
+	}
+
+	name := e.Name
+	if len(name) > 15 {
+		name = name[:15]
+	}
+
+	it = d2s.Item{
+		Code: "ear", Ear: true, Identified: true, Version: d2s.DefaultItemVersion,
+		X: uint8(s.X), Y: uint8(s.Y), ID: itemSeedID(s),
+		EarInfo: &d2s.EarInfo{Class: uint8(e.Class), Level: uint8(e.Level), Name: name},
+	}
+
+	if s.Page == PageBelt {
+		it.Location = d2s.LocationBelt
+	} else {
+		it.Location, it.Page = d2s.LocationStored, uint8(s.Page)
+	}
+
+	return it, 0, ""
 }

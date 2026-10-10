@@ -10,9 +10,16 @@ import "strings"
 // one after the other (at most seven, stopping at the first empty one) as
 // property kind 6 into the stat list 0xab.
 //
-// UNVERIFIED: the matching rule of ITEM_FindRunewordForSockets (here: the
-// complete rows whose item types fit the base item and whose runes equal the
-// socketed runes in order, with every socket filled).
+// VERIFIED (Ghidra, ITEM_FindRunewordForSockets 0x62c010): the search gives up
+// for an item of quality 4 to 9 (magic, set, rare, unique, crafted, tempered:
+// only low quality, normal and superior items make runewords), for a quest
+// item, and when the number of socketed items differs from the item's socket
+// count (every socket must be filled). Then the first row of Runes.txt in
+// table order wins that is flagged complete, whose runes (item classes,
+// stopping at the first empty one) equal the socketed items in socket order
+// (a longer row never matches), none of whose etypes the item is of
+// (ITEM_IsOfType, which follows the type inheritance) and of at least one of
+// whose itypes it is.
 
 const (
 	// ListRuneword is the selector of the stat list of a runeword.
@@ -40,9 +47,19 @@ type RuneTables struct {
 
 // FindRuneword returns the runeword made by the runes (item codes) socketed in
 // an item of the base code, nil if there is none.
+//
+// It applies the item rules of the exe for a normal quality item whose sockets
+// are all filled; FindRunewordFor takes the quality and the socket count.
 func (c *Creator) FindRuneword(base string, sockets []string) *Runeword {
+	return c.FindRunewordFor(base, QualityNormal, len(sockets), sockets)
+}
+
+// FindRunewordFor is FindRuneword for an item of a quality with a number of
+// sockets (see the rules above).
+func (c *Creator) FindRunewordFor(base string, quality Quality, socketCount int, sockets []string) *Runeword {
 	b := c.Items.ByCode[base]
-	if b == nil || c.Runes == nil || len(sockets) == 0 {
+	if b == nil || c.Runes == nil || len(sockets) == 0 || b.Quest != 0 ||
+		(quality >= QualityMagic && quality <= qualityTempered) || socketCount != len(sockets) {
 		return nil
 	}
 

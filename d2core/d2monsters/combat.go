@@ -5,6 +5,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2hireling"
 	"hash/fnv"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
@@ -659,17 +660,66 @@ func (d *Director) kill(u *unit, src *d2mapentity.Player) {
 	}
 
 	d.emit("death", "MONSTER death name=%s id=%d by=%s xp=%d", u.m.Label(), u.b.ID, by, xp)
-	d.dropLoot(u)
+	d.dropLoot(u, src != nil)
 
 	if d.OnKill != nil {
 		d.OnKill(KillEvent{Monster: u.m, Class: u.b.Class, Label: u.m.Label(), ByHero: src != nil})
 	}
 }
 
+// monsterTC picks the treasure class of a killed monster the way the exe does
+// (d2drop.MonsterTreasureClass): the super unique's own TC/TC(N)/TC(H), else the
+// champion or unique class of monstats (TreasureClass2 / 3), else the normal
+// one (TreasureClass1), per difficulty. A minion is no champion or unique and
+// drops its class's normal TC. Units that are not map monsters (summons) keep
+// the vitals TC.
+func (d *Director) monsterTC(u *unit, byPlayer bool) (string, error) {
+	if u.m.Stat == nil || d.engine == nil {
+		return u.m.Vitals.TreasureClass, nil
+	}
+
+	f := d.engine.ItemFactory()
+	if f == nil {
+		return u.m.Vitals.TreasureClass, nil
+	}
+
+	flags := 0
+	if u.m.TypeFlags&d2mapentity.MonTypeChampion != 0 {
+		flags |= d2drop.MonsterFlagChampion
+	}
+
+	if u.m.TypeFlags&d2mapentity.MonTypeUnique != 0 {
+		flags |= d2drop.MonsterFlagUnique
+	}
+
+	o := diablo2item.MonsterDropOptions{
+		Monster: u.m.Stat.Key, Flags: flags, Difficulty: int(d.opt.Difficulty), Expansion: d.opt.Expansion,
+		Level: u.m.Vitals.Level,
+	}
+
+	if u.m.TypeFlags&d2mapentity.MonTypeSuperUnique != 0 {
+		o.SuperUnique = u.m.SuperUnique
+	}
+
+	if d.QuestStates != nil && byPlayer {
+		o.KillerIsPlayer = true
+		id, _ := strconv.Atoi(u.m.Stat.TreasureClassQuestTriggerId)
+		cp, _ := strconv.Atoi(u.m.Stat.TreasureClassQuestCompleteId)
+		o.QuestStates = d.QuestStates(id, cp)
+	}
+
+	return f.MonsterTreasureClass(o)
+}
+
 // dropLoot rolls the monster's treasure class with d2drop and puts the items
 // on the ground around the corpse.
-func (d *Director) dropLoot(u *unit) {
-	tc := u.m.Vitals.TreasureClass
+func (d *Director) dropLoot(u *unit, byPlayer bool) {
+	tc, err := d.monsterTC(u, byPlayer)
+	if err != nil {
+		d.emit("drop", "MONSTER drop name=%s error=%v", u.m.Label(), err)
+
+		return
+	}
 	if tc == "" {
 		d.emit("drop", "MONSTER drop name=%s tc=- items=0", u.m.Label())
 
@@ -734,8 +784,8 @@ func (d *Director) dropLoot(u *unit) {
 		d.engine.AddEntity(ent)
 	}
 
-	d.emit("drop", "MONSTER drop name=%s tc=%q ilvl=%d items=%d [%s]", u.m.Label(), tc, level, len(loot.Entries),
-		strings.Join(names, ", "))
+	d.emit("drop", "MONSTER drop name=%s tc=%q ilvl=%d type_flags=%#x super_unique=%q mods=%v items=%d [%s]", u.m.Label(), tc,
+		level, u.m.TypeFlags, u.m.SuperUnique, u.m.Modifiers, len(loot.Entries), strings.Join(names, ", "))
 }
 
 // heroAutoHit reports the 0x57cc10 rule: a player defender in mode 3 (running)

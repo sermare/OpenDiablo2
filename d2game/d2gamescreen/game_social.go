@@ -9,7 +9,9 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2playertrade"
 	"github.com/OpenDiablo2/OpenDiablo2/d2game/d2player"
 	"github.com/OpenDiablo2/OpenDiablo2/d2networking/d2netpacket"
@@ -153,6 +155,67 @@ func (v *Game) commandKillNear(_ []string) error {
 	return nil
 }
 
+// commandSpawnRank spawns a champion pack, a unique pack or a super unique
+// (by its SuperUniques.txt key) beside the hero and logs its type flags and
+// modifiers (MONSTER rank ...), for the drop tests.
+func (v *Game) commandSpawnRank(args []string) error {
+	d := v.monsterDirector()
+	if d == nil {
+		return errors.New("no monsters yet")
+	}
+
+	centre := d2path.Point{X: int(v.localPlayer.Position.X()) + monsterTestRing, Y: int(v.localPlayer.Position.Y())}
+
+	var (
+		res *d2monsters.PackResult
+		err error
+	)
+
+	switch args[0] {
+	case "super":
+		res, err = d.SpawnSuperUnique(args[1], centre)
+	case "champion", "unique":
+		stat := d.FindStat(args[1])
+		if stat == nil {
+			return fmt.Errorf("no monster %q", args[1])
+		}
+
+		if args[0] == "champion" {
+			res, err = d.SpawnChampionGroup(stat, centre)
+		} else {
+			res, err = d.SpawnUniqueGroup(stat, centre)
+		}
+	default:
+		return fmt.Errorf("spawnrank: unknown kind %q", args[0])
+	}
+
+	if err != nil {
+		return err
+	}
+
+	v.rankLeader = res.Leader
+
+	for _, m := range res.Monsters {
+		v.Infof("MONSTER rank kind=%s name=%s type_flags=%#x super_unique=%q hcidx=%d mods=%v", args[0], m.Label(), m.TypeFlags,
+			m.SuperUnique, m.SuperUniqueIdx, m.Modifiers)
+	}
+
+	return nil
+}
+
+// commandKillLeader kills the leader of the last spawnrank pack as the hero.
+func (v *Game) commandKillLeader(_ []string) error {
+	d := v.monsterDirector()
+	if d == nil || v.rankLeader == nil {
+		return errors.New("no pack leader")
+	}
+
+	v.Infof("KILLLEADER %s", v.rankLeader.Label())
+	d.Damage(v.rankLeader, 1<<20, v.localPlayer)
+
+	return nil
+}
+
 // ---- party experience ----
 
 // partyXP is the monster director's hook: with party members around, the
@@ -267,6 +330,12 @@ func (v *Game) pvpSwing(target *d2mapentity.Player) error {
 
 // onPvPHit applies a hit of a hostile player to the local hero.
 func (v *Game) onPvPHit(p d2netpacket.PvPHitPacket) {
+	if p.Kill {
+		v.onPvPKill(p)
+
+		return
+	}
+
 	if p.Target != v.me() || v.localPlayer == nil || v.localPlayer.IsDead() {
 		return
 	}
@@ -300,7 +369,47 @@ func (v *Game) onPvPHit(p d2netpacket.PvPHitPacket) {
 		// (ears are a hardcore rule, d2combat.PvPKillGivesEar)
 		v.Infof("PVP KILLED by=%q ear=%v hardcore=%v", attacker, d2combat.PvPKillGivesEar(v.localPlayer.Hardcore),
 			v.localPlayer.Hardcore)
+
+		if d2combat.PvPKillGivesEar(v.localPlayer.Hardcore) {
+			// tell the server where the hero fell; it names the victim from the roster
+			x, y := v.localPlayer.GetPositionF()
+
+			if pkt, err := d2netpacket.CreatePvPHitPacket(d2netpacket.PvPHitPacket{
+				Kill: true, Attacker: v.me(), Target: p.Attacker, X: int(x), Y: int(y)}); err == nil {
+				_ = v.gameClient.SendPacketToServer(pkt)
+			}
+		}
 	}
+}
+
+// onPvPKill is the killer's side of a hardcore kill: the ear of the victim
+// (name, class, level) is made with the item factory and dropped on the ground
+// where the victim fell. The inventory saves it with the other items and the
+// .d2s item encoder writes it (d2hero.D2SItemFromStored).
+func (v *Game) onPvPKill(p d2netpacket.PvPHitPacket) {
+	ear, err := v.itemFactory().NewEar(p.VictimName, p.VictimClass, p.VictimLevel)
+	if err != nil {
+		v.Warningf("PVP EAR not made for %q: %v", p.VictimName, err)
+
+		return
+	}
+
+	cells := v.freeDropCells(p.X, p.Y, 1, false)
+	if len(cells) == 0 {
+		v.Warningf("PVP EAR of %q: no free ground cell", p.VictimName)
+
+		return
+	}
+
+	if _, err := v.spawnGroundItem(ear, cells[0]); err != nil {
+		v.Warningf("PVP EAR of %q: no ground graphic: %v", p.VictimName, err)
+
+		return
+	}
+
+	v.Infof("ITEMGEN created source=pvp %s", ear.CreationLine())
+	v.Infof("PVP EAR name=%q class=%d level=%d label=%q pos=(%d,%d)", p.VictimName, p.VictimClass, p.VictimLevel,
+		plainLabel(ear.Label()), cells[0].X, cells[0].Y)
 }
 
 // ---- trade ----

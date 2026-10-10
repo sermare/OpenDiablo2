@@ -66,7 +66,17 @@ type Monster struct {
 	// TypeFlags is the per-spawn monster type byte (Game.exe monster data +0x16,
 	// tested by 0x59dd60 with masks 0xa and 2). Not a monstats column.
 	TypeFlags uint16
-	name      string
+	// SuperUnique is the SuperUniques.txt key (empty for other monsters) and
+	// SuperUniqueIdx its row's hcIdx (0 unless TypeFlags has MonTypeSuperUnique): the exe keeps the index in
+	// the monster data next to the type word (unit data + 0x26).
+	SuperUnique    string
+	SuperUniqueIdx int
+	// Modifiers are the monumod.txt ids the monster carries (super unique
+	// Mod1..3, rolled champion / unique modifiers, or copied from the leader).
+	Modifiers []int
+	// LeaderID is the Brain id of the leader of a minion, 0 when none.
+	LeaderID uint32
+	name     string
 
 	mode       d2monster.Mode
 	hitFired   bool
@@ -102,6 +112,7 @@ func (m *Monster) ID() string { return m.uuid }
 // MONSTER_MakeChampion 0x59edb0 together with the minion level and experience penalty; its meaning is still unknown
 // and that function's name does not match the 0x4 champion bit). structs-server.md line 36 had these wrong.
 const (
+	MonTypeModsRolled  uint16 = 0x1
 	MonTypeSuperUnique uint16 = 0x2
 	MonTypeChampion    uint16 = 0x4
 	MonTypeUnique      uint16 = 0x8
