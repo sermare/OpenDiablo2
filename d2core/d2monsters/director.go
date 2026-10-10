@@ -588,6 +588,18 @@ func (d *Director) adoptPlacements() {
 
 		d.engine.RemoveEntity(npc)
 
+		// a placement that stands for a super unique (the Council of Travincal, the guards of Mephisto...)
+		// becomes the named boss with its followers, modifiers and treasure class
+		if npc.SuperKey != "" {
+			res, err := d.SpawnSuperUnique(npc.SuperKey, d2path.Point{X: x, Y: y})
+			if err == nil {
+				d.Infof("adopted DS1 super unique %q (%s) at (%d,%d): %d monsters", npc.SuperKey, stat.Key, x, y, len(res.Monsters))
+				continue
+			}
+
+			d.Infof("could not build super unique %q: %v; placing a plain %s", npc.SuperKey, err, stat.Key)
+		}
+
 		if _, err := d.Spawn(stat, x, y); err != nil {
 			d.Infof("could not adopt DS1 monster %s: %v", stat.Key, err)
 			d.engine.AddEntity(npc)

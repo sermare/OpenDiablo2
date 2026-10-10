@@ -102,6 +102,7 @@ fi
 #   scenario_realtime=1      (optional) keep the game clock at real time (default: OD2_AUTOSPEED=4 for every scenario)
 #   scenario_timeout=<seconds> (optional) wall-clock limit before the game is reaped (default 420; long playthroughs)
 #   scenario_unmuted=1       (optional) play real audio (no OD2_AUTOTEST_MUTE); OD2_VERIFY_SOUND=1 does it for all
+#   scenario_timeout=<seconds> (optional) wall-clock limit of the game window (default 420; the reaper kills at 8 minutes)
 #   scenario_warnings_ok=1   (optional) do not fail on [ERROR]/[WARNING] lines
 # Adding a scenario = adding one small file; no edits to this runner are needed.
 # A GUI session is required (the game is started with `open`).

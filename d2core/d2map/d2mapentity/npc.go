@@ -26,6 +26,10 @@ type NPC struct {
 	monstatEx     *d2records.MonStat2Record
 	HasPaths      bool
 	isDone        bool
+	// SuperKey is the SuperUniques.txt key of a placement that stands for a super unique (a DS1
+	// preset boss such as the Council of Travincal); the monster director builds the unique with
+	// its followers when it adopts the placement. "" for every other NPC.
+	SuperKey string
 }
 
 const (

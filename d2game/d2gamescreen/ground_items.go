@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2act3"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
@@ -110,6 +111,11 @@ func (v *Game) walkToObject(ob *d2mapentity.Object) {
 		v.Infof("walking to the stash (object %d) at (%.1f,%.1f)", stashObjectID, x, y)
 		v.OnPlayerMove(x, y)
 
+		return
+	}
+
+	if id := ob.Record().Index; d2act3.IsQuestObject(id) || id == d2act3.ObjHellgate {
+		v.useObject(ob) // Act 3: Khalim's chests, Lam Esen's Tome, Gidbinn, the Compelling Orb, the red portal
 		return
 	}
 
