@@ -155,15 +155,87 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 		made[i] = mon
 		units++
 
+		applyPlannedRank(mon, pm)
+
 		if pm.Leader >= 0 && pm.Leader < len(made) && made[pm.Leader] != nil {
 			v.monsters.Group(made[pm.Leader], mon)
 		}
 	}
 
 	removed := v.removeUnreachableMonsters()
+	v.logPopulateRanks(level)
 
 	v.Infof("POPULATE level %d (%s): %d planned, %d monsters (%d unreachable ones removed)", level,
 		v.levelName(level), len(plan), units-removed, removed)
+}
+
+// applyPlannedRank gives a planned monster the rank the original's population
+// decided: type bits (the exe's +0x16 mask: 1 modifiers rolled, 2 super unique,
+// 4 champion, 8 unique, 0x10 minion), the monumod ids it carries and, for a
+// super unique, its superuniques.txt key and hcIdx. A hit point bonus or the
+// effect of a modifier is not applied here.
+func applyPlannedRank(mon *d2mapentity.Monster, pm d2mapengine.PlannedMonster) {
+	switch {
+	case pm.SuperKey != "":
+		mon.TypeFlags |= d2mapentity.MonTypeSuperUnique | d2mapentity.MonTypeModsRolled
+		mon.SuperUnique, mon.SuperUniqueIdx = pm.SuperKey, pm.SuperIdx
+	case pm.Champion:
+		mon.TypeFlags |= d2mapentity.MonTypeChampion
+	case pm.Unique:
+		mon.TypeFlags |= d2mapentity.MonTypeUnique | d2mapentity.MonTypeModsRolled
+	}
+
+	if pm.Champion && pm.Unique {
+		mon.TypeFlags |= d2mapentity.MonTypeModsRolled
+	}
+
+	if pm.Minion {
+		mon.TypeFlags |= d2mapentity.MonTypeMinion
+	}
+
+	if len(pm.Mods) > 0 {
+		mon.Modifiers = append([]int(nil), pm.Mods...)
+	}
+}
+
+// logPopulateRanks logs the ranked monsters that survived the reachability
+// filter: one "POPULATE ranks level N:" line with the counts and one
+// "POPULATE rank leaders level N:" line with "key:C" (champion), "key:R" (rare)
+// and "key:S" (super unique) per pack leader, for the unique / champion
+// scenario (scripts/verify.d/9g-uniques-champions.sh checks them against the
+// tables of the level).
+func (v *Game) logPopulateRanks(level int) {
+	champs, rares, minions, supers := 0, 0, 0, 0
+
+	var leaders []string
+
+	for _, mon := range v.monsters.Monsters() {
+		if mon.Stat == nil {
+			continue
+		}
+
+		switch f := mon.TypeFlags; {
+		case f&d2mapentity.MonTypeSuperUnique != 0:
+			supers++
+
+			leaders = append(leaders, mon.Stat.Key+":S")
+		case f&d2mapentity.MonTypeMinion != 0:
+			minions++
+		case f&d2mapentity.MonTypeChampion != 0:
+			champs++
+
+			leaders = append(leaders, mon.Stat.Key+":C")
+		case f&d2mapentity.MonTypeUnique != 0:
+			rares++
+
+			leaders = append(leaders, mon.Stat.Key+":R")
+		}
+	}
+
+	sort.Strings(leaders)
+
+	v.Infof("POPULATE ranks level %d: champions=%d rares=%d minions=%d supers=%d", level, champs, rares, minions, supers)
+	v.Infof("POPULATE rank leaders level %d: %s", level, strings.Join(leaders, " "))
 }
 
 // logPopulateTypes logs the classes of the natural monsters that survived the
@@ -205,7 +277,7 @@ func (v *Game) removeUnreachableMonsters() int {
 
 	for _, mon := range v.monsters.Monsters() {
 		x, y := mon.SubtilePos()
-		if m.CanWalkTo(hero[0], hero[1], x, y) {
+		if m.CanWalkTo(hero[0], hero[1], x, y) || mon.SuperUnique != "" { // a quest boss is never dropped
 			continue
 		}
 

@@ -40,7 +40,7 @@ const (
 // popEnv holds the tables of the population code, loaded once per generator.
 type popEnv struct {
 	nm    *drlgpop.Names
-	tb    *d2monreg.Tables
+	tb    *d2monreg.Tables                    // with the monumod table when it could be read
 	stats map[string]*d2records.MonStatRecord // lower case key
 }
 
@@ -80,6 +80,16 @@ func (g *MapGenerator) popEnv() (*popEnv, error) {
 	tb, err := d2monreg.ParseTables(raw[0], raw[1], raw[2])
 	if err != nil {
 		return nil, err
+	}
+
+	// the modifier table is optional: without it the unique / champion roll keeps
+	// its approximate picks (every pick still takes its seed step)
+	if mu, err1 := get("/data/global/excel/monumod.txt"); err1 == nil {
+		if mt, err2 := get("/data/global/excel/montype.txt"); err2 == nil {
+			if err := tb.LoadUMods(mu, mt); err != nil {
+				g.Warningf("real population: monumod: %v", err)
+			}
+		}
 	}
 
 	e := &popEnv{nm: nm, tb: tb, stats: map[string]*d2records.MonStatRecord{}}
@@ -124,9 +134,56 @@ type popLevel struct {
 	seed  uint32
 	rooms []*popRoom
 	stats popStats
+	// plan is the level's natural population so far; idx maps the units of the
+	// population to their place in it (leaders are referenced by index)
+	plan []d2mapengine.PlannedMonster
+	idx  map[*d2monreg.Unit]int
 }
 
-type popStats struct{ preset, super, natural, skipped, unique int }
+type popStats struct{ preset, super, natural, skipped, unique, champions, rares, minions int }
+
+// addUnits appends the units of a population to the level's plan. superKey is
+// the superuniques.txt key of the first unit when the population is one super
+// unique with its followers.
+func (p *popLevel) addUnits(pop *d2monreg.Population, superKey string) {
+	if p.idx == nil {
+		p.idx = map[*d2monreg.Unit]int{}
+	}
+
+	for _, u := range pop.Units {
+		st := p.env.stat(u.Class)
+		if st == nil {
+			p.stats.skipped++
+			continue
+		}
+
+		pm := d2mapengine.PlannedMonster{Key: st.Key, X: u.X, Y: u.Y, Leader: -1, Unique: u.Unique, Champion: u.Champion,
+			Minion: u.Minion && u.Leader != nil && (u.Leader.Unique || u.Leader.Super > 0), Mods: u.Mods}
+
+		if u.Super > 0 {
+			pm.SuperKey, pm.SuperIdx = superKey, u.Super-1
+		}
+
+		if li, ok := p.idx[u.Leader]; ok && u.Leader != nil && u.Minion {
+			pm.Leader = li
+		}
+
+		p.idx[u] = len(p.plan)
+		p.plan = append(p.plan, pm)
+		p.stats.natural++
+
+		switch {
+		case u.Champion && u.Unique:
+			p.stats.unique++
+			p.stats.champions++
+		case u.Unique:
+			p.stats.unique++
+			p.stats.rares++
+		case u.Minion && u.Leader != nil && (u.Leader.Unique || u.Leader.Super > 0):
+			p.stats.minions++
+		}
+	}
+}
 
 // newPopLevel prepares the population of a level; nil (after a warning) when
 // the tables are unavailable, in which case the caller keeps the old placement.
@@ -214,6 +271,7 @@ func (p *popLevel) run() {
 	w := newEngineWorld(g, p.env.tb.Level(p.level))
 
 	game := d2monreg.NewGame(p.env.tb, p.seed, int(p.diff), true)
+	game.FullPacks = true // SetBoss party packs and the minions of a rare (not in the emulator-compared stream)
 	// every level gets its own density stream (the original has one game seed
 	// that the order of the visited rooms advances)
 	game.Seed = *d2rand.New(p.seed ^ uint32(p.level)*0x9E3779B1)
@@ -240,9 +298,6 @@ func (p *popLevel) run() {
 	}
 
 	ctx := &drlgpop.Ctx{LevelID: p.level, Difficulty: int(p.diff), Counter: new(int)}
-	superDone := map[int]bool{}
-
-	var plan []d2mapengine.PlannedMonster
 
 	for _, r := range p.rooms {
 		room := &d2monreg.Room{Level: p.level, NoPopulate: r.noPop, Seed: r.seed,
@@ -255,42 +310,20 @@ func (p *popLevel) run() {
 			var nodes []drlgpop.Node
 
 			nodes, r.preset.nodes = drlgpop.TakeForRoom(r.preset.nodes, drlgpop.Rect{X: r.x, Y: r.y, W: r.w, H: r.h})
-			p.createPreset(game, w, room, drlgpop.Requests(nodes, r.x, r.y, ctx, p.env.nm), superDone)
+			p.createPreset(game, w, room, drlgpop.Requests(nodes, r.x, r.y, ctx, p.env.nm))
 		}
 
 		var pop d2monreg.Population
 
 		game.PopulateNatural(w, room, &pop)
-
-		idx := map[*d2monreg.Unit]int{}
-
-		for _, u := range pop.Units {
-			st := p.env.stat(u.Class)
-			if st == nil {
-				p.stats.skipped++
-				continue
-			}
-
-			pm := d2mapengine.PlannedMonster{Key: st.Key, X: u.X, Y: u.Y, Leader: -1, Unique: u.Unique, Champion: u.Champion}
-			if li, ok := idx[u.Leader]; ok && u.Leader != nil {
-				pm.Leader = li
-			}
-
-			idx[u] = len(plan)
-			plan = append(plan, pm)
-			p.stats.natural++
-
-			if u.Unique || u.Champion {
-				p.stats.unique++
-			}
-		}
+		p.addUnits(&pop, "")
 	}
 
-	g.engine.SetPopulation(plan)
+	g.engine.SetPopulation(p.plan)
 }
 
 // createPreset makes the monsters of one room's preset requests.
-func (p *popLevel) createPreset(game *d2monreg.Game, w d2monreg.World, room *d2monreg.Room, reqs []drlgpop.Request, superDone map[int]bool) {
+func (p *popLevel) createPreset(game *d2monreg.Game, w d2monreg.World, room *d2monreg.Room, reqs []drlgpop.Request) {
 	for _, rq := range reqs {
 		if rq.Node.Kind != drlgpop.KindMonster {
 			continue
@@ -302,17 +335,9 @@ func (p *popLevel) createPreset(game *d2monreg.Game, w d2monreg.World, room *d2m
 		case drlgpop.MonClass:
 			class = rq.Monster.Class
 		case drlgpop.MonSuper:
-			if superDone[rq.Monster.Super] { // once per game (FUN_005a2480)
-				continue
-			}
+			p.createSuper(game, w, room, rq)
 
-			superDone[rq.Monster.Super] = true
-
-			if rq.Monster.Super < len(p.env.nm.SuperKeys) {
-				if su := p.g.asset.Records.Monster.Unique.Super[p.env.nm.SuperKeys[rq.Monster.Super]]; su != nil {
-					class = p.env.tb.MonByKey(su.Class)
-				}
-			}
+			continue
 		default:
 			p.stats.skipped++ // nests, champions, unique packs, groups: not made yet
 			continue
@@ -336,17 +361,52 @@ func (p *popLevel) createPreset(game *d2monreg.Game, w d2monreg.World, room *d2m
 
 		p.g.engine.AddEntity(npc)
 
-		if rq.Monster.Kind == drlgpop.MonSuper {
-			p.stats.super++
-		} else {
-			p.stats.preset++
-		}
+		p.stats.preset++
 	}
+}
+
+// createSuper makes a super unique of a preset node with its followers and
+// modifiers (d2monreg.SuperUnique, MONSTER_SpawnSuperUnique). The monsters go
+// into the level's plan, so the game screen creates them as ranked monsters.
+func (p *popLevel) createSuper(game *d2monreg.Game, w d2monreg.World, room *d2monreg.Room, rq drlgpop.Request) {
+	if rq.Monster.Super < 0 || rq.Monster.Super >= len(p.env.nm.SuperKeys) {
+		p.stats.skipped++
+
+		return
+	}
+
+	key := p.env.nm.SuperKeys[rq.Monster.Super]
+
+	su := p.g.asset.Records.Monster.Unique.Super[key]
+	if su == nil {
+		p.stats.skipped++
+
+		return
+	}
+
+	hc, _ := strconv.Atoi(su.HcIdx)
+	rec := d2monreg.SuperRec{HcIdx: hc, Class: p.env.tb.MonByKey(su.Class), Mods: su.Mod, MinGrp: su.MinGrp, MaxGrp: su.MaxGrp, Stacks: su.Stacks}
+
+	var pop d2monreg.Population
+
+	if game.SuperUnique(w, room, rec, rq.X, rq.Y, &pop) == nil || p.env.stat(rec.Class) == nil {
+		p.stats.skipped++
+
+		return
+	}
+
+	before := len(p.plan)
+
+	p.addUnits(&pop, key)
+	p.stats.natural -= len(p.plan) - before // supers are counted apart from the natural monsters
+	p.stats.super++
 }
 
 func (p *popLevel) logSummary(kind string) {
 	p.g.Infof("%s: population: %d rooms, %d preset monsters, %d super uniques, %d natural monsters planned (%d packs with modifiers), %d skipped",
 		kind, len(p.rooms), p.stats.preset, p.stats.super, p.stats.natural, p.stats.unique, p.stats.skipped)
+	p.g.Infof("%s: population ranks level %d diff %d: champions=%d rares=%d minions=%d supers=%d", kind, p.level, int(p.diff),
+		p.stats.champions, p.stats.rares, p.stats.minions, p.stats.super)
 }
 
 // engineWorld answers the placement's map questions from the engine.

@@ -13,8 +13,17 @@ type PlannedMonster struct {
 	// follows, or -1.
 	Leader int
 	// Unique and Champion mark the pack leaders the original makes
-	// unique / champion (the modifiers are not applied by the engine yet).
+	// unique (rare) / champion; the minions of a champion are champions too.
 	Unique, Champion bool
+	// Minion marks a follower of a unique, champion or super unique leader
+	// (type bit 0x10); Mods are the monumod ids it carries (a unique's own
+	// picks, a minion's inherited xfer ones).
+	Minion bool
+	Mods   []int
+	// SuperKey is the superuniques.txt key of a super unique ("" otherwise) and
+	// SuperIdx its hcIdx.
+	SuperKey string
+	SuperIdx int
 }
 
 // SetPopulation stores the natural population of the loaded level. It is
