@@ -188,7 +188,12 @@ func TestNoCommonMonsterIdles(t *testing.T) {
 		for id := uint32(1); id < 60 && !acted; id++ {
 			w := &worldX{fakeWorld: newFake(6, id%2 == 0)}
 			p := withSkills(profile(n, 60, 60, 60, 60, 20, 20, 20, 20), 0, 1, 2, 3)
-			b := NewBrain(id, 1, Normal, p, testSeed)
+			class := 1
+			if n == "Ancient" { // dispatches on its class id (0x21c..0x21e)
+				class = ancientC
+			}
+
+			b := NewBrain(id, class, Normal, p, testSeed)
 			b.X, b.Y = 100, 100
 
 			Tick(w, b)
