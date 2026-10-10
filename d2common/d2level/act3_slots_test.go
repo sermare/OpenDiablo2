@@ -38,8 +38,8 @@ func TestAct3DungeonTileDestination(t *testing.T) {
 		{86, 0, 78},   // Swampy Pit 1: up to Flayer Jungle
 		{86, 1, 87},   // the next stairs
 		{92, 0, 80},   // Sewers 1 up
-		{100, 0, 83},  // Durance 1 up to Travincal
-		{100, 4, 101}, // and down
+		{100, 3, 83},  // Durance 1 up to Travincal (Prev files carry the styles 2/3, verified with the oracle)
+		{100, 0, 101}, // and down (Next files carry 0/1)
 		{94, 0, 80},   // a temple returns to the Kurast level that leads there
 	} {
 		if got, ok := TileDestination(c.level, c.style); !ok || got != c.want {
