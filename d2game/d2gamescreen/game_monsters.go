@@ -238,6 +238,8 @@ func (v *Game) advanceMonsterTest(elapsed float64) {
 		v.autoFight() // OD2_AUTOMONSTER_PASSIVE=1 leaves the hero idle to watch monsters attack
 	}
 
+	v.logSummonCheck(elapsed)
+
 	alive := 0
 
 	for _, m := range v.monsters.Monsters() {
@@ -444,4 +446,24 @@ func (v *Game) logLevelStatus(elapsed float64) {
 	v.Infof("LEVELSTATUS hero=(%d,%d) tile=(%d,%d) hp=%d/%d monsters_alive=%d nearest=%d spawned=%d aggro=%d attacks=%d",
 		hx, hy, hx/5, hy/5, v.localPlayer.Stats.Health, v.localPlayer.Stats.MaxHealth, alive, nearest,
 		c.Spawned, c.Aggro, c.Attacks)
+}
+
+// logSummonCheck prints "SUMMONCHECK" every 2 s of an OD2_AUTOMONSTER run with
+// OD2_AUTOMONSTER_SUMMONS=1: the live monster-cast summons, the most any one
+// caster has alive and how many were ever created (verify scenario 97-summons).
+func (v *Game) logSummonCheck(elapsed float64) {
+	if os.Getenv("OD2_AUTOMONSTER_SUMMONS") == "" {
+		return
+	}
+
+	v.summonCheckAcc += elapsed
+	if v.summonCheckAcc < 2 {
+		return
+	}
+
+	v.summonCheckAcc = 0
+	live, maxPer := v.monsters.SummonStats()
+
+	v.Infof("SUMMONCHECK live=%d max_per_caster=%d created=%d hero_hp=%d", live, maxPer, v.monsters.Counters.Summoned,
+		v.localPlayer.Stats.Health)
 }

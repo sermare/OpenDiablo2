@@ -173,6 +173,7 @@ type Game struct {
 	rankLeader           *d2mapentity.Monster // leader of the last spawnrank pack
 	realm                *realmState          // the monsters of a game played through the realm (realm_sync.go)
 	monsterTest          *monsterTest
+	summonCheckAcc       float64 // seconds since the last SUMMONCHECK line (game_monsters.go)
 	aiTest               *aiAutoTest
 	bossTest             *bossAutoTest
 	uber                 *uberRuntime
