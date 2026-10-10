@@ -53,12 +53,12 @@ scenario_env() {
   # Balls that once just killed it (43 of 1241 life left before the last one without regeneration) leave it alive
   # with it. 24 casts is plenty; casts after the kill are skipped by pvpcast (the victim left the game).
   hscript+=";say:chat nowdie;wait:3;$(_9f_casts Fire_Ball 24)"
-  hscript+=";waitlog:PVP EAR dropped;wait:1;loot:8,15;wait:2;say:chat eartaken;wait:2;exit"
+  hscript+=";waitlog:PVP EAR dropped;wait:1;loot:8,15;wait:2;say:chat eartaken;wait:4;exit"
 
   local jscript="wait:1;waitlog:SOCIAL roster n=2;say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3"
   # the victim may die before the host's last Fire Ball (Meteor's burning ground keeps hurting): it stays in the
   # game until the host has picked the ear up, so the host's casts and the loot still find it
-  jscript+=";waitlog:PVP HIT attacker;waitlog:PVP KILLED;waitlog:eartaken;wait:2;exit"
+  jscript+=";waitlog:PVP HIT attacker;waitlog:PVP KILLED;waitlog:eartaken;wait:1;exit"
 
   {
     echo '#!/bin/zsh'
@@ -101,7 +101,7 @@ scenario_check() {
   done
 
   local bad
-  bad=$(sed -nE 's/.*PVP SKILL target="[^"]*" skill="[^"]*" raw=([0-9]+) scaled=([0-9]+) pct=([0-9]+).*/\1 \2 \3/p' $log.txt | awk '$3 != 17 || $2 * 100 > $1 * 17 + 100 {n++} END {print n + 0}')  # + 100: the fraction a burning ground tick left (PvPCarry) pays out in one later hit
+  bad=$(sed -nE 's/.*PVP SKILL target="[^"]*" skill="[^"]*" raw=([0-9]+) scaled=([0-9]+) pct=([0-9]+).*/\1 \2 \3/p' $log.txt | awk '$3 != 17 || $2 * 100 > $1 * 17 + 200 {n++} END {print n + 0}')  # + 200: the carried fraction (one point) and the fraction whole() cut off the raw (another), left by a burning ground tick left (PvPCarry) pays out in one later hit
   [ "$bad" -eq 0 ] || { echo "FAIL: $bad skill hits are not scaled to 17 percent"; fail=1; }
   bad=$(sed -nE 's/.*PVP HIT attacker="[^"]*" raw=([0-9]+) scaled=([0-9]+) taken=([0-9]+).*skill="[^"]+".*/\2 \3/p' $j | awk '$2 > $1 {n++} END {print n + 0}')
   [ "$bad" -eq 0 ] || { echo "FAIL: $bad hits took more than the scaled damage"; fail=1; }
