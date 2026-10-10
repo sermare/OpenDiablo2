@@ -45,10 +45,25 @@ type castItem struct {
 	// refusedSeen is the engine's refused count already accounted for; retries
 	// is how many refused casts were given back to be made again.
 	refusedSeen, retries int
+	// mustHit (a trailing "!" in the list) makes the skill count only when it hit
+	// something: the hero's own minions can kill every target during the cast
+	// animation, so a swing or a missile hits nobody. Such a skill is cast again
+	// after it settled, hitRetries times at most.
+	mustHit    bool
+	hitRetries int
+}
+
+// missedHit reports whether a mustHit skill finished without a single hit
+// (melee strike or missile) and may be cast again.
+func (it *castItem) missedHit(c d2skills.Counters) bool {
+	return it.mustHit && it.hitRetries < castItemMaxHitRetries && c.Hits-it.c0.Hits <= 0
 }
 
 // castItemMaxRetries bounds how often a refused cast is repeated.
 const castItemMaxRetries = 5
+
+// castItemMaxHitRetries bounds how often a mustHit skill is cast again.
+const castItemMaxHitRetries = 8
 
 // castTest is the state of the OD2_AUTOCAST scenario.
 type castTest struct {
@@ -160,9 +175,30 @@ func (v *Game) castWithPipeline(skillID int, tileX, tileY float64) bool {
 	return true
 }
 
+// parseCastPart splits one OD2_AUTOCAST entry "<skill>[,count][!]".
+func parseCastPart(part string) (skill string, count int, mustHit bool) {
+	part, count = strings.TrimSpace(part), castTestDefaultCount
+
+	if strings.HasSuffix(part, "!") {
+		mustHit = true
+		part = strings.TrimSpace(strings.TrimSuffix(part, "!"))
+	}
+
+	skill = part
+
+	if i := strings.LastIndex(part, ","); i >= 0 {
+		if n, err := strconv.Atoi(strings.TrimSpace(part[i+1:])); err == nil && n > 0 {
+			skill, count = strings.TrimSpace(part[:i]), n
+		}
+	}
+
+	return skill, count, mustHit
+}
+
 // parseCastTest reads OD2_AUTOCAST=<skill>[,count][;<skill>[,count]...]: a
 // list of skills (name or id) cast one after the other, each count times
-// (default 5).
+// (default 5). A trailing "!" (Bash,1!) means the skill must hit something: it
+// is cast again until it did.
 func (v *Game) parseCastTest(eng *d2skills.Engine) *castTest {
 	ref := os.Getenv("OD2_AUTOCAST")
 	t := &castTest{level: castTestDefaultLevel, skill: ref}
@@ -172,13 +208,8 @@ func (v *Game) parseCastTest(eng *d2skills.Engine) *castTest {
 	}
 
 	for _, part := range strings.Split(ref, ";") {
-		it := &castItem{skill: strings.TrimSpace(part), count: castTestDefaultCount}
-
-		if i := strings.LastIndex(part, ","); i >= 0 {
-			if n, err := strconv.Atoi(strings.TrimSpace(part[i+1:])); err == nil && n > 0 {
-				it.skill, it.count = strings.TrimSpace(part[:i]), n
-			}
-		}
+		it := &castItem{}
+		it.skill, it.count, it.mustHit = parseCastPart(part)
 
 		it.id = eng.SkillID(it.skill)
 		if it.id < 0 {
@@ -277,6 +308,15 @@ func (v *Game) autoCast(elapsed float64) {
 		it := t.items[t.idx]
 		if it.doneFor += elapsed; it.doneFor < castTestItemSettle {
 			return
+		}
+
+		if it.missedHit(eng.Counters) {
+			it.hitRetries++
+			it.casts = it.count - 1
+			it.doneFor = 0
+			v.Infof("AUTOCAST skill=%q hit nobody, casting again (%d)", it.skill, it.hitRetries)
+
+			continue
 		}
 
 		v.finishCastItem(eng, it)

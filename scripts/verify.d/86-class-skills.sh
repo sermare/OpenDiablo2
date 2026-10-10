@@ -3,17 +3,19 @@ scenario_name="class skills (one or more skills of every class: damage, kills, s
 # classes at zombies that are spawned again when they are all dead. Casting order matters: the
 # long lasting damage fields (Holy Fire, Hurricane, Thunder Storm) come last, because they kill
 # everything the other skills are meant to hit, curses before the kills, corpse skills after kills
-# (a corpse is made when none lies around).
+# (a corpse is made when none lies around). The hero's own minions (Valkyrie, Necroskeleton, Raven) kill the
+# zombies during a cast animation, so a swing or missile can hit nobody: Bash and Chain Lightning carry a "!"
+# (the engine casts them again until one hit landed; a to-hit miss counts as no hit, too).
 scenario_env() {
   # Amazon / Barbarian / Assassin skills with an own do function (docs/skills-coverage-abc.md) come first:
   # the corpse skills make their own corpses; Grim Ward is the very last cast (it consumes a corpse and
   # scares the zombies for 8 s, which would spoil every skill that needs them close)
   local list="Dopplezon,3;Valkyrie,3;Blade Fury,3;Dragon Flight,2;Whirlwind,3;Blade Shield,3;Find Potion,5;Find Item,5"
-  list+=";Bash,1;War Cry,3;Battle Orders,1"
+  list+=";Bash,1!;War Cry,3;Battle Orders,1"
   list+=";Poison Javelin,4;Multiple Shot,1"
   list+=";Amplify Damage,2;Iron Maiden,1;Poison Dagger,1;Bone Armor,1;Corpse Explosion,1;Raise Skeleton,1"
   list+=";Sacrifice,2;Might,1"
-  list+=";Fire Ball,1;Frost Nova,1;Chain Lightning,2;Teleport,1;Energy Shield,1;Blizzard,1"
+  list+=";Fire Ball,1;Frost Nova,1;Chain Lightning,2!;Teleport,1;Energy Shield,1;Blizzard,1"
   list+=";Raven,1;Firestorm,1"
   # feat/skills-npsd: AI curses, Poison Nova, Hydra, Plague Poppy, Telekinesis, Conversion, Hunger
   list+=";Dim Vision,2;Confuse,2;Attract,2;Poison Nova,1;Hydra,1;Plague Poppy,1;Telekinesis,2;Conversion,8;Hunger,2"
