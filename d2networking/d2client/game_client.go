@@ -487,6 +487,15 @@ func (g *GameClient) handleMovePlayerPacket(packet d2netpacket.NetPacket) error 
 		return nil // a player this client has not been told about yet
 	}
 
+	if movePlayer.StartX == movePlayer.DestX && movePlayer.StartY == movePlayer.DestY {
+		// the server's "stands here" after a level change
+		player.StopMoving()
+		player.Position.Set(movePlayer.StartX*numSubtilesPerTile, movePlayer.StartY*numSubtilesPerTile)
+		player.Target = player.Position
+
+		return nil
+	}
+
 	start := d2vector.NewPositionTile(movePlayer.StartX, movePlayer.StartY)
 	dest := d2vector.NewPositionTile(movePlayer.DestX, movePlayer.DestY)
 	path := g.MapEngine.PathFind(start, dest)

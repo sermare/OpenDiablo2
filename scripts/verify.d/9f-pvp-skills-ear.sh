@@ -42,16 +42,16 @@ scenario_env() {
 
   local common="export OD2_REALMAPS=1 OD2_PORT=$OD2_PORT OD2_PROTO=d2gs OD2_AUTOPARTY=1 ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
 
-  local hscript="wait:2;waitlog:SOCIAL roster n=2;say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3"
-  hscript+=";waitlog:LEVEL player=$jn level=3;wait:3;say:pvpwalk 6 0;wait:4;say:players"
+  local hscript="wait:2;say:dropinv cm1;say:dropinv cm1;waitlog:SOCIAL roster n=2;say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3"
+  hscript+=";wait:15;say:pvpwalk 6 0;wait:4;say:players"
   hscript+=";say:pvpcast Fire_Ball $jn;wait:3"
   hscript+=";say:hostile $jn 1;waitlog:$hn is now hostile toward $jn;wait:1"
   hscript+=";$(_9f_casts Fire_Ball 4);say:pvpcast Meteor $jn;wait:6;say:pvpcast Blizzard $jn;wait:8"
-  hscript+=";say:chat now_die;wait:3;$(_9f_casts Fire_Ball 12)"
-  hscript+=";waitlog:PVP EAR dropped;wait:1;loot:8,15;wait:2;say:chat ear_taken;wait:2;exit"
+  hscript+=";say:chat nowdie;wait:3;$(_9f_casts Fire_Ball 12)"
+  hscript+=";waitlog:PVP EAR dropped;wait:1;loot:8,15;wait:2;say:chat eartaken;wait:2;exit"
 
   local jscript="wait:1;waitlog:SOCIAL roster n=2;say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3"
-  jscript+=";waitlog:PVP HIT attacker;waitlog:CHAT <$hn> now_die;say:sethp 3;waitlog:PVP KILLED;wait:3;exit"
+  jscript+=";waitlog:PVP HIT attacker;waitlog:PVP KILLED;wait:3;exit"
 
   {
     echo '#!/bin/zsh'

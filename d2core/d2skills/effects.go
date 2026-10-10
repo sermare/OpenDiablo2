@@ -1023,6 +1023,14 @@ func (e *Engine) areaDamage(ev d2missile.Event) {
 		e.hurt(o, h.p, &d, e.skillName(m.SkillID)+" area")
 	}
 
+	// hostile heroes in the radius take the same roll (PvP: scaled by hurtPlayer)
+	for _, o := range e.rivalsNear(int(m.X), int(m.Y), ev.Radius) {
+		d := ev.Damage
+		n++
+
+		e.hurtPlayer(o, h.p, &d, e.skillName(m.SkillID)+" area")
+	}
+
 	if n > 0 {
 		e.Counters.AreaHits += n
 		e.emit("hit", "SKILL area skill=%q at=(%d,%d) radius=%d targets=%d", e.skillName(m.SkillID), int(m.X), int(m.Y), ev.Radius, n)

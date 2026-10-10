@@ -273,3 +273,25 @@ func (v *Game) nextToPortalEnd(end d2portal.End, pairID int) d2client.ArrivalFun
 		return (float64(sx) + 0.5) / subtilesInTile, (float64(sy)+0.5)/subtilesInTile + 1, true
 	}
 }
+
+// commandUsePortal is "useportal": uses the nearest town portal object of this
+// level without walking to it (scenarios; the walk itself is "use:Portal").
+func (v *Game) commandUsePortal(_ []string) error {
+	var best *d2mapentity.Object
+
+	bd := math.MaxFloat64
+
+	for ob := range v.portal.ents {
+		if d := v.distanceToObject(ob); d < bd {
+			best, bd = ob, d
+		}
+	}
+
+	if best == nil {
+		return errors.New("no town portal object in this level")
+	}
+
+	v.operateTownPortal(best)
+
+	return nil
+}

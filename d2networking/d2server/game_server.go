@@ -681,6 +681,21 @@ func (g *GameServer) onChangeLevel(client ClientConnection, packet d2netpacket.N
 	act := d2level.ActOfLevel(p.Level)
 	g.Infof("LEVEL player=%s level=%d act=%d pos=(%.1f,%.1f)", state.HeroName, p.Level, act, p.X, p.Y)
 
+	// tell the other clients where the hero stands now: a client only moves a remote hero on move
+	// packets, so one that changed level later would still be seen at its old place (start == dest
+	// means "stands here" to the client)
+	if mp, err := d2netpacket.CreateMovePlayerPacket(client.GetUniqueID(), p.X, p.Y, p.X, p.Y); err == nil {
+		for id, c := range g.connections {
+			if id == client.GetUniqueID() {
+				continue
+			}
+
+			if err := c.SendPacketToClient(mp); err != nil {
+				g.Errorf("GameServer: error sending packet: %s to client %s: %s", mp.PacketType, id, err)
+			}
+		}
+	}
+
 	if act >= 1 && act != state.Act {
 		from := state.Act
 		state.Act = act

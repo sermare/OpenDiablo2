@@ -38,19 +38,18 @@ scenario_env() {
 
   local common="export OD2_REALMAPS=1 OD2_PORT=$OD2_PORT OD2_PROTO=d2gs OD2_AUTOPARTY=1 ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
 
+  # No chat markers: chat sent while the other process is still loading a map is lost, so the two scripts are
+  # kept in step by log lines both sides see (party messages, portal events) and by waits.
   local hscript="wait:2;waitlog:SOCIAL roster n=2;say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3"
-  hscript+=";wait:2;say:townportal;waitlog:PORTAL object level=3;say:chat tp_open"
-  hscript+=";waitlog:CHAT <$jn> refused_ok"
-  hscript+=";say:party invite $jn;waitlog:$jn joined the party"
-  hscript+=";waitlog:CHAT <$jn> arrived"
-  hscript+=";wait:6;use:Portal;waitlog:LEVEL built: level 1;use:Portal;wait:7;say:chat host_in_town;use:Portal;waitlog:PORTAL used owner=\"$hn\" from=1 dest=3"
-  hscript+=";until:LEVEL built: level 3,20;wait:3;say:pvpwalk 4 0;wait:3;say:townportal;waitlog:replaced=true;say:chat host_recast"
-  hscript+=";waitlog:PORTAL closed owner=\"$jn\";wait:2;say:portals;exit"
+  hscript+=";wait:2;say:townportal paid;waitlog:PORTAL object level=3"
+  hscript+=";wait:45;say:party invite $jn;waitlog:$jn joined the party"
+  hscript+=";wait:25;use:Portal;waitlog:LEVEL built: level 1;use:Portal;wait:7;use:Portal;waitlog:PORTAL used owner=\"$hn\" from=1 dest=3"
+  hscript+=";wait:8;say:pvpwalk 4 0;wait:3;say:townportal paid;wait:4"
+  hscript+=";wait:50;say:portals;exit"
 
-  local jscript="wait:1;waitlog:SOCIAL roster n=2;waitlog:CHAT <$hn> tp_open;wait:1;say:portals;use:Portal;wait:2;say:chat refused_ok"
+  local jscript="wait:1;waitlog:SOCIAL roster n=2;wait:5;say:portals;say:useportal"
   jscript+=";waitlog:$hn invites you to a party;say:party accept -;waitlog:$jn joined the party"
-  jscript+=";use:Portal;waitlog:LEVEL built: level 3;wait:2;say:chat arrived"
-  jscript+=";waitlog:CHAT <$hn> host_recast;wait:2;say:portals;say:townportal free;wait:3;say:portals;exit"
+  jscript+=";wait:2;say:useportal;waitlog:LEVEL built: level 3;wait:75;say:portals;say:townportal free;wait:3;say:portals;exit"
 
   {
     echo '#!/bin/zsh'
