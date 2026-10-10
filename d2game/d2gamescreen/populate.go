@@ -2,6 +2,9 @@ package d2gamescreen
 
 import (
 	"math"
+	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
@@ -27,6 +30,9 @@ const (
 	populateSafeTiles = 8.0
 	// populateMinWalkable is the share of walkable sub-tiles a block needs.
 	populateMinWalkableShare = 0.4
+	// populateSparseWalkableShare is the share used when no block reaches the
+	// usual one (engine choice, UNVERIFIED against the original's rooms).
+	populateSparseWalkableShare = 0.15
 )
 
 // populateLevel fills the level the hero stands in. It runs once per level
@@ -53,6 +59,7 @@ func (v *Game) populateLevel() {
 	size := m.Size()
 	hx, hy := v.heroTilePos()
 	groups, blocks := 0, 0
+	natural := map[*d2mapentity.Monster]bool{}
 
 	// a block that already holds a monster (DS1 markers) is left alone
 	occupied := map[[2]int]bool{}
@@ -62,31 +69,46 @@ func (v *Game) populateLevel() {
 		occupied[[2]int{int(x) / populateBlockTiles, int(y) / populateBlockTiles}] = true
 	}
 
-	for by := 0; by*populateBlockTiles < size.Height; by++ {
-		for bx := 0; bx*populateBlockTiles < size.Width; bx++ {
-			x0, y0 := bx*populateBlockTiles, by*populateBlockTiles
-			cx, cy := float64(x0)+populateBlockTiles/2, float64(y0)+populateBlockTiles/2
+	// a level with no block of the usual walkable share (the Kurast Causeway is a
+	// bridge between canals) is tried again with the sparse share, so it is not
+	// left empty
+	for _, minShare := range []float64{populateMinWalkableShare, populateSparseWalkableShare} {
+		for by := 0; by*populateBlockTiles < size.Height; by++ {
+			for bx := 0; bx*populateBlockTiles < size.Width; bx++ {
+				x0, y0 := bx*populateBlockTiles, by*populateBlockTiles
+				cx, cy := float64(x0)+populateBlockTiles/2, float64(y0)+populateBlockTiles/2
 
-			if occupied[[2]int{bx, by}] || math.Hypot(cx-hx, cy-hy) < populateSafeTiles {
-				continue
+				if occupied[[2]int{bx, by}] || math.Hypot(cx-hx, cy-hy) < populateSafeTiles {
+					continue
+				}
+
+				w, h := minInt(populateBlockTiles, size.Width-x0), minInt(populateBlockTiles, size.Height-y0)
+				if v.walkableShare(x0, y0, w, h) < minShare {
+					continue
+				}
+
+				blocks++
+
+				room := d2monsters.Room{X0: x0 * subtiles, Y0: y0 * subtiles, W: w * subtiles, H: h * subtiles}
+
+				res, err := v.monsters.PopulateRoom(room, level)
+				if err != nil {
+					v.Warningf("POPULATE level %d block (%d,%d): %v", level, bx, by, err)
+					return
+				}
+
+				groups += len(res)
+
+				for _, g := range res {
+					for _, m := range g.Monsters {
+						natural[m] = true
+					}
+				}
 			}
+		}
 
-			w, h := minInt(populateBlockTiles, size.Width-x0), minInt(populateBlockTiles, size.Height-y0)
-			if v.walkableShare(x0, y0, w, h) < populateMinWalkableShare {
-				continue
-			}
-
-			blocks++
-
-			room := d2monsters.Room{X0: x0 * subtiles, Y0: y0 * subtiles, W: w * subtiles, H: h * subtiles}
-
-			res, err := v.monsters.PopulateRoom(room, level)
-			if err != nil {
-				v.Warningf("POPULATE level %d block (%d,%d): %v", level, bx, by, err)
-				return
-			}
-
-			groups += len(res)
+		if blocks > 0 {
+			break
 		}
 	}
 
@@ -95,6 +117,8 @@ func (v *Game) populateLevel() {
 	// level cleared would never finish
 	total := len(v.monsters.Monsters()) // the director's list still holds the removed ones until the next frame
 	removed := v.removeUnreachableMonsters()
+
+	v.logPopulateTypes(level, natural)
 
 	v.Infof("POPULATE level %d (%s): %d blocks, %d groups, %d monsters (%d unreachable ones removed)", level,
 		v.levelName(level), blocks, groups, total-removed, removed)
@@ -132,6 +156,35 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 
 	v.Infof("POPULATE level %d (%s): %d planned, %d monsters (%d unreachable ones removed)", level,
 		v.levelName(level), len(plan), units-removed, removed)
+}
+
+// logPopulateTypes logs the classes of the natural monsters that survived the
+// reachability filter, one "POPULATE types" line per level, for the Act 3
+// population scenarios (scripts/verify.d/lib/act3pop.sh), which check every
+// class against the level's Levels.txt row (mon1..mon10 plus the minions of
+// those classes).
+func (v *Game) logPopulateTypes(level int, natural map[*d2mapentity.Monster]bool) {
+	counts := map[string]int{}
+
+	for _, mon := range v.monsters.Monsters() {
+		if natural[mon] && mon.Stat != nil {
+			counts[mon.Stat.Key]++
+		}
+	}
+
+	keys := make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	parts := make([]string, len(keys))
+	for i, k := range keys {
+		parts[i] = k + ":" + strconv.Itoa(counts[k])
+	}
+
+	v.Infof("POPULATE types level %d: %s", level, strings.Join(parts, " "))
 }
 
 // removeUnreachableMonsters deletes the monsters standing where the hero cannot
