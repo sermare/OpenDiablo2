@@ -147,15 +147,16 @@ func TestSummonerAIsStayWithinTheirLimits(t *testing.T) {
 		{"Sarcophagus aip3 5", "Sarcophagus", []int{10, 0, 5}, map[int]*d2records.SkillRecord{0: nest}, "mummy1", "mummy1", 6, 6, true},
 		{"VileMother aip1 8 aip2 3", "VileMother", []int{8, 3, 100, 100, 0, 0, 0, 8}, map[int]*d2records.SkillRecord{0: nest},
 			"vilechild2", "vilechild2", 3, 8, true},
+		// EvilHole lays its minions itself (SpawnHoleMinion, counter aip1) and casts nothing
+		{"EvilHole (own counter aip1, no cast)", "EvilHole", []int{10, 50}, map[int]*d2records.SkillRecord{0: nest}, "fallen1", "fallen1",
+			nestSummonCap, -1, false},
 		// no AI limit of their own: the host cap holds them
-		{"EvilHole (generic turret stand-in)", "EvilHole", []int{10, 50}, map[int]*d2records.SkillRecord{0: nest}, "fallen1", "fallen1",
-			nestSummonCap, -1, true},
 		{"GenericSpawner", "GenericSpawner", []int{80, 0, 15}, map[int]*d2records.SkillRecord{0: nest}, "imp1", "imp1", nestSummonCap, -1, false},
-		{"HighPriest Hydra (generic caster stand-in)", "HighPriest", []int{75, 25, 125}, map[int]*d2records.SkillRecord{0: hydra},
+		{"HighPriest Hydra (Skill1 every 100 frames)", "HighPriest", []int{75, 0, 0, 100, 0, 0, 0, 30}, map[int]*d2records.SkillRecord{0: hydra},
 			"", "hydra1", hydraSummonCap, -1, true},
 		{"Diablo with a DiabPrison in every slot", "Diablo", []int{0, 0, 0}, all(prison), "", "boneprison1", prisonSummonCap, -1, false},
 		{"BloodRaven with a Nest in every slot", "BloodRaven", []int{0, 0, 0}, all(nest), "zombie2", "zombie2", nestSummonCap, -1, false},
-		{"Council Member in every slot", "HighPriest", []int{75, 25, 125}, all(hydra), "", "hydra1", hydraSummonCap, -1, true},
+		{"Council Member in every slot", "HighPriest", []int{75, 0, 0, 100, 0, 0, 0, 30}, all(hydra), "", "hydra1", hydraSummonCap, -1, true},
 	}
 
 	const (
