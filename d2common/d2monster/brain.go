@@ -68,9 +68,12 @@ type Brain struct {
 	// AiGeneral.
 	Def     *AIDef
 	Scratch [3]int // +0x14, +0x18, +0x1c (zeroed whenever the AI state is set)
-	queue   []Command
-	Leader  *Brain
-	Minions []*Brain
+	// SpawnClass is AiGeneral +0x3c, the class a GenericSpawner picked (-1 =
+	// none yet; set by its pre-hook).
+	SpawnClass int
+	queue      []Command
+	Leader     *Brain
+	Minions    []*Brain
 
 	// Wake is the first frame at which Tick runs the AI again. Any action or
 	// sleep issued by a think function pushes it out; the owner calls WakeNow
@@ -136,6 +139,7 @@ func NewBrain(id uint32, class int, diff Difficulty, p *Profile, gameSeed uint32
 func (b *Brain) SetAI(def *AIDef) {
 	b.Def = def
 	b.Scratch = [3]int{}
+	b.SpawnClass = 0
 	b.queue = nil
 	b.formationInit = false
 	b.preRan = false

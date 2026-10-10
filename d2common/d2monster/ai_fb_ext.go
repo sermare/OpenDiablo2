@@ -40,6 +40,10 @@ const (
 	// the caster by the spawn chain) within radius 25 in mode DD (0xc), the
 	// VileMother's brood limit.
 	FBXScanLinkedClass
+	// FBXScanWoundedAlly is the HighPriest heal scan (0x5df240, VERIFIED): a
+	// living allied monster within Radius2 (squared) whose life percent is
+	// below LifeBelow; the lowest life percent wins.
+	FBXScanWoundedAlly
 )
 
 // FBXScanQuery is one scan request.
@@ -47,6 +51,8 @@ type FBXScanQuery struct {
 	Kind    FBXScanKind
 	Radius2 int // squared radius when the filter has one
 	Class   int // monster class for FBXScanLinkedClass
+	// LifeBelow is the life percent bound of FBXScanWoundedAlly.
+	LifeBelow int
 }
 
 // FBXScanResult is what a scan found.

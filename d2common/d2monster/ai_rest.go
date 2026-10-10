@@ -35,7 +35,7 @@ var genericAIs = map[string]genericKind{
 
 	// casters / ranged
 	"FingerMage": kindCaster,
-	"HighPriest": kindCaster, "Imp": kindCaster, "MinionSpawner": kindCaster,
+	"Imp":        kindCaster, "MinionSpawner": kindCaster,
 	"Hydra": kindTurret,
 
 	// flyers
@@ -43,7 +43,7 @@ var genericAIs = map[string]genericKind{
 	"BladeCreeper": kindFlyer, "MaggotEgg": kindInert,
 
 	// stationary shooters
-	"GargoyleTrap": kindTurret, "EvilHole": kindTurret,
+	"GargoyleTrap": kindTurret,
 	"DesertTurret": kindTurret, "ArcaneTower": kindTurret,
 	"Catapult": kindTurret, "CatapultSpotter": kindTurret, "AssassinSentry": kindTurret,
 	"DeathSentry": kindTurret,
@@ -55,7 +55,7 @@ var genericAIs = map[string]genericKind{
 	"GoodNpcRanged": kindInert,
 	"JarJar":        kindInert, "Buffy": kindInert,
 	"HellMeteor": kindInert, "FoulCrowNest": kindInert, "MosquitoNest": kindInert,
-	"InvisoSpawner": kindInert, "GenericSpawner": kindInert, "BoneWall": kindInert, "InvisoPet": kindInert,
+	"BoneWall": kindInert, "InvisoPet": kindInert,
 	"CycleOfLife": kindInert, "AncientStatue": kindInert,
 }
 

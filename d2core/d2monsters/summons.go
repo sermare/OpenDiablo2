@@ -346,6 +346,10 @@ func (d *Director) FBXCellFreeAt(_ *d2monster.Brain, p d2monster.Point) bool {
 // the City of the Damned (scenario 9h-act45-playthrough). Other scans keep
 // finding nothing.
 func (d *Director) FBXScan(b *d2monster.Brain, q d2monster.FBXScanQuery) d2monster.FBXScanResult {
+	if q.Kind == d2monster.FBXScanWoundedAlly {
+		return d.woundedAlly(b, q)
+	}
+
 	if q.Kind != d2monster.FBXScanLinkedClass || q.Class < 0 {
 		return d2monster.FBXScanResult{}
 	}
