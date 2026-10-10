@@ -31,8 +31,21 @@ var modeNames = map[string]Mode{
 }
 
 // ParseMode converts a monstats mode token ("A1", "S2", "SQ"...) to a Mode.
+//
+// A monstats Sk#mode of the form "seq_<name>" names a monseq.txt sequence
+// (321 of the 1.14b Skill slots, e.g. seq_skeletonraise, seq_mummyres). Such
+// a skill is played in the SQ mode (14): MONAI_QueueSkillCast has an SQ
+// variant (0x5dcde0, VERIFIED in monster-ai-2.md) and monstats2 carries the
+// sequence name next to the mSQ flag. The token-to-mode mapping itself is
+// UNVERIFIED (the CUSTOMLINK loader was not decompiled). Before this mapping
+// those slots parsed as mode 0 (DT) and fell back to A1.
 func ParseMode(s string) (Mode, bool) {
-	m, ok := modeNames[strings.ToUpper(strings.TrimSpace(s))]
+	t := strings.ToLower(strings.TrimSpace(s))
+	if strings.HasPrefix(t, "seq_") {
+		return ModeCast, true
+	}
+
+	m, ok := modeNames[strings.ToUpper(t)]
 
 	return m, ok
 }

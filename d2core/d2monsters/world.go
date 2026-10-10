@@ -259,6 +259,16 @@ func (d *Director) Attack(b *d2monster.Brain, mode d2monster.Mode, t d2monster.T
 
 	u.attackTarget = t.ID
 
+	slot := -1
+	if d.castSet {
+		slot = d.castSlot
+	}
+
+	u.skill = nil
+	if b.Profile != nil {
+		u.skill = d.resolveSkill(b.Profile, skillSlotFor(b.Profile, mode, slot))
+	}
+
 	if u.ally != nil { // the pet AI names its victim by unit id
 		u.ally.strikeAt = d.units[t.ID]
 	}
@@ -292,6 +302,9 @@ func (d *Director) Cast(b *d2monster.Brain, slot int, t d2monster.Target) bool {
 
 		d.units[t.ID-corpseTargetBase].raising = true // reserved until the cast lands or is lost
 	}
+
+	d.castSlot, d.castSet = slot, true
+	defer func() { d.castSet = false }()
 
 	return d.Attack(b, mode, t)
 }
