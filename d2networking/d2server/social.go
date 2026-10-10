@@ -315,7 +315,7 @@ func (g *GameServer) tradeUpdateFor(s *d2playertrade.Session, id, reason string)
 
 	return d2netpacket.TradeUpdatePacket{
 		State: s.State().String(), Partner: other, PartnerName: g.nameOf(other), Requester: first == id,
-		Yours: s.Offer(id), Theirs: s.Offer(other), YouAccepted: s.Accepted(id), TheyAccepted: s.Accepted(other),
+		Yours: s.Offer(id), YourSeq: s.OfferSeq(id), Theirs: s.Offer(other), YouAccepted: s.Accepted(id), TheyAccepted: s.Accepted(other),
 		Reason: reason,
 	}
 }
@@ -442,6 +442,7 @@ func (g *GameServer) onTradeCommand(client ClientConnection, packet d2netpacket.
 			return fail(err)
 		}
 
+		s.SetOfferSeq(me, p.Seq)
 		g.Infof("TRADE offer name=%q items=%d gold=%d", myName, len(p.Offer.Items), p.Offer.Gold)
 		g.sendTrade(s, "", nil)
 	case d2netpacket.TradeAccept:

@@ -298,3 +298,41 @@ func TestServerTradeCancelAndLeave(t *testing.T) {
 		t.Fatalf("failed commit: %+v", u)
 	}
 }
+
+// The server echoes the sequence number of each side's last offer in every
+// update, so a client can tell a stale copy of its offer from a current one;
+// the other side's offers do not move it.
+func TestServerTradeEchoesOfferSeq(t *testing.T) {
+	g, a, b := testServer()
+
+	tradeCmd(t, g, a, d2netpacket.TradeCommandPacket{Op: d2netpacket.TradeRequest, Target: "Bob"})
+	tradeCmd(t, g, b, d2netpacket.TradeCommandPacket{Op: d2netpacket.TradeRespond, Accept: true})
+
+	if u := lastTrade(t, a); u.YourSeq != 0 {
+		t.Fatalf("seq before any offer: %d", u.YourSeq)
+	}
+
+	steps := []struct {
+		by         *fakeConn
+		offer      d2playertrade.Offer
+		seq        uint32
+		aSeq, bSeq uint32
+	}{
+		{a, d2playertrade.Offer{Items: []d2hero.StoredItem{item("rin", 0, 0)}}, 1, 1, 0},
+		{b, d2playertrade.Offer{Gold: 5}, 1, 1, 1},
+		{a, d2playertrade.Offer{Items: []d2hero.StoredItem{item("rin", 0, 0)}, Gold: 100}, 2, 2, 1},
+	}
+
+	for i, st := range steps {
+		tradeCmd(t, g, st.by, d2netpacket.TradeCommandPacket{Op: d2netpacket.TradeOffer, Offer: st.offer, Seq: st.seq})
+
+		ua, ub := lastTrade(t, a), lastTrade(t, b)
+		if ua.YourSeq != st.aSeq || ub.YourSeq != st.bSeq {
+			t.Errorf("step %d: seq a=%d b=%d want %d %d", i, ua.YourSeq, ub.YourSeq, st.aSeq, st.bSeq)
+		}
+	}
+
+	if u := lastTrade(t, a); len(u.Yours.Items) != 1 || u.Yours.Gold != 100 {
+		t.Fatalf("a's final offer %+v", u.Yours)
+	}
+}
