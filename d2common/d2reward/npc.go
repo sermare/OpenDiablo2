@@ -7,10 +7,12 @@ import (
 // The reward NPCs: who takes an item from the cursor, and the rules of the two
 // rewards that reward.go does not cover (Charsi's imbue and Akara's reset).
 // The mechanism (the item is dropped on the NPC) and the rules below are
-// UNVERIFIED against the binary: the server side of the NPC click with an item
-// on the cursor (SUnitNpc.cpp, Charsi case) is only known from the notes
-// (quests-2.md, A1Q3: "cursor item becomes a RARE of the same base, ilvl from the
-// player level, requires RP; keeps ethereal and personalisation").
+// VERIFIED in Game.exe 1.14b (0x577b70, classes 0x9a, 0x1ff, 0x200): the item
+// is on the player's cursor, the quest record bit (state 1) of the reward must
+// be set (Charsi flag 3, Larzuk 0x23, Anya 0x26), the item is cloned or
+// rebuilt and put back into the inventory (dropped on the ground when it does
+// not fit); on a refusal the cursor item is dropped. Charsi's rare keeps
+// ethereal and personalisation.
 
 // ItemKind is the reward an NPC performs on an item.
 type ItemKind string
@@ -101,31 +103,43 @@ type ImbueItem struct {
 	WeaponOrArmor bool
 	// Quality uses the item quality ids (1 low, 2 normal, 3 superior, 4 magic,
 	// 5 set, 6 rare, 7 unique, 8 crafted).
-	Quality int
-	Quest   bool
-	Gems    int // items socketed into it (they would be lost)
+	Quality     int
+	Quest       bool
+	Gems        int  // items socketed into it
+	Socketed    bool // item flag 0x800 (it has sockets)
+	Throwable   bool
+	NonSellable bool // item flag 0x1000
+	Gold        bool // item type 4
 }
 
-// CanImbue says whether Charsi may imbue the item: a weapon or a piece of
-// armour of low, normal, superior or magic quality (the community rule; the
-// notes only say "imbueable weapon/armour").
+// CanImbue says whether Charsi may imbue the item (class 0x9a in 0x577b70,
+// TRADE_IsItemSellableCheckA 0x62c700, VERIFIED): low, normal and superior
+// quality only (magic and every better quality are refused), no socketed
+// item (flag 0x800 or gems inside), no quest item, no throwing weapon, no gold
+// and no non-sellable item. WeaponOrArmor stands for the base-record flag the
+// original tests (ITEM_TestBitfield1Flag1; UNVERIFIED which bit it is).
 func CanImbue(it ImbueItem) error {
 	switch {
+	case it.Gold, it.NonSellable:
+		return ErrNotSocketable("this item cannot be imbued")
 	case it.Quest:
 		return ErrNotSocketable("quest items cannot be imbued")
 	case !it.WeaponOrArmor:
 		return ErrNotSocketable("only weapons and armour can be imbued")
-	case it.Quality < 1 || it.Quality > 4:
-		return ErrNotSocketable("only normal and magic items can be imbued")
-	case it.Gems > 0:
-		return ErrNotSocketable("take the gems out of the item first")
+	case it.Throwable:
+		return ErrNotSocketable("throwing weapons cannot be imbued")
+	case it.Quality < 1 || it.Quality > 3:
+		return ErrNotSocketable("only low, normal and superior items can be imbued")
+	case it.Gems > 0 || it.Socketed:
+		return ErrNotSocketable("a socketed item cannot be imbued")
 	}
 
 	return nil
 }
 
-// ImbueLevel is the item level of the rare Charsi makes (quests-2.md, A1Q3:
-// "player level based (+4 when above 5)"; the exact formula is UNVERIFIED).
+// ImbueLevel is the item level of the rare Charsi makes (VERIFIED, class 0x9a
+// in 0x577b70): ITEMGEN_GetDropBaseLevel(player) is the character level (at
+// least 1), plus 4 when above 5.
 func ImbueLevel(heroLevel int) int {
 	if heroLevel < 1 {
 		heroLevel = 1

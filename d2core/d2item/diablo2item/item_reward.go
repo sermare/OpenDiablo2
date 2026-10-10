@@ -8,10 +8,6 @@ import (
 // Item changes that quest rewards make: Larzuk's sockets and Anya's
 // personalisation (rules in d2common/d2reward).
 
-// qualityMagic is the first quality id of items Anya may name (magic 4, set 5,
-// rare 6, unique 7, crafted 8).
-const qualityMagic = d2drop.QualityMagic
-
 // SetNumSockets sets the item's socket count (Larzuk's reward).
 func (i *Item) SetNumSockets(n int) {
 	if i.attributes != nil && n >= 0 {
@@ -37,14 +33,28 @@ func (i *Item) SetPersonalName(hero string) {
 
 // IsQuestItem reports whether the item is one the quest system tracks
 // (type "ques").
-func (i *Item) IsQuestItem() bool { return i.TypeCode == "ques" }
+func (i *Item) IsQuestItem() bool {
+	if i.TypeCode == "ques" {
+		return true
+	}
+
+	// 0x62c8d0: base record quest byte set, except Wirt's Leg.
+	rec := i.CommonRecord()
+
+	return rec != nil && rec.Quest != 0 && i.CommonCode != "leg"
+}
 
 // SocketInfo describes the item for the socket rule of d2reward.
 func (i *Item) SocketInfo() d2reward.SocketItem {
-	si := d2reward.SocketItem{Code: i.CommonCode, ItemLevel: i.ItemLevel(), Sockets: i.NumSockets(), Quest: i.IsQuestItem()}
+	si := d2reward.SocketItem{
+		Code: i.CommonCode, ItemLevel: i.ItemLevel(), Sockets: i.NumSockets(), Quest: i.IsQuestItem(),
+		Gems: len(i.SocketCodes) + len(i.sockets) + len(i.socketed), Quality: int(i.quality),
+		Gold: i.TypeCode == "gold",
+	}
 
 	if rec := i.CommonRecord(); rec != nil {
 		si.BaseSockets = rec.GemSockets
+		si.Width, si.Height = rec.InventoryWidth, rec.InventoryHeight
 	}
 
 	if t := i.TypeRecord(); t != nil {
@@ -87,6 +97,9 @@ func (i *Item) ImbueInfo() d2reward.ImbueItem {
 		Quality:       int(i.quality),
 		Quest:         i.IsQuestItem(),
 		Gems:          len(i.SocketCodes) + len(i.sockets) + len(i.socketed),
+		Socketed:      i.NumSockets() > 0,
+		Throwable:     i.CommonRecord() != nil && i.CommonRecord().Throwable,
+		Gold:          i.TypeCode == "gold",
 	}
 }
 
@@ -124,7 +137,11 @@ func (f *ItemFactory) Imbue(old *Item, ilvl int, seed uint32) (*Item, error) {
 
 // PersonalizeInfo describes the item for the personalisation rule.
 func (i *Item) PersonalizeInfo() d2reward.PersonalizeItem {
-	p := d2reward.PersonalizeItem{MagicOrBetter: i.quality >= qualityMagic || i.UniqueCode != "" || i.SetItemCode != "" || len(i.PrefixCodes)+len(i.SuffixCodes) > 0, Personalized: i.PersonalName() != ""}
+	p := d2reward.PersonalizeItem{
+		Personalized: i.PersonalName() != "",
+		Gold:         i.TypeCode == "gold",
+		Excluded:     i.TypeCode == "bowq" || i.TypeCode == "xboq" || i.TypeCode == "play",
+	}
 
 	if rec := i.CommonRecord(); rec != nil {
 		p.Nameable = rec.Nameable

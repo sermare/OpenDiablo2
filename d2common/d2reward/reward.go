@@ -1,15 +1,16 @@
 // Package d2reward turns the EffectReward requests of the quest system into
 // state changes and into the rules of the item rewards (Larzuk's sockets,
-// Anya's personalisation), plus the quest items monsters drop (the Hellforge
-// Hammer, the Mephisto Soulstone). It is pure: the engine applies the returned
-// Outcome to the hero and its items.
+// Anya's personalisation, Charsi's imbue), plus the quest items monsters drop
+// (the Hellforge Hammer, the Mephisto Soulstone). It is pure: the engine
+// applies the returned Outcome to the hero and its items.
 //
 // Evidence: the reward names are those of d2quest (generic.go reward()). The
-// rules below come from the community description of the 1.14 rewards and are
-// UNVERIFIED against the binary (quests-2.md only covers Acts 1 and 2): the
-// socket count, the eligibility lists and the personalised name. The numbers
-// that come from the item tables (MaxSock1/25/40 of ItemTypes.txt and
-// gemsockets of the base item) are passed in by the engine.
+// item rules (LarzukRange, CanPersonalize, CanImbue, ImbueLevel) were read in
+// Game.exe 1.14b, handler TRADE_ServerHandleNpcMenuAction 0x577b70 (npc class
+// 0x9a Charsi, 0x1ff Larzuk, 0x200 Anya) and its helpers; see the comments for
+// addresses. The numbers that come from the item tables (MaxSock1/25/40 of
+// ItemTypes.txt, gemsockets and the size of the base item) are passed in by the
+// engine.
 package d2reward
 
 import (
@@ -96,12 +97,18 @@ func (s *State) Apply(e d2quest.Effect) Outcome {
 type SocketItem struct {
 	Code        string
 	ItemLevel   int
-	Sockets     int  // already present
-	BaseSockets int  // gemsockets of the base item (0: cannot be socketed)
-	MaxSock1    int  // ItemTypes.txt MaxSock1 (ilvl 1-25)
-	MaxSock25   int  // MaxSock25 (26-40)
-	MaxSock40   int  // MaxSock40 (41+)
-	Quest       bool // a quest item (never socketed)
+	Sockets     int // already present
+	Gems        int // items socketed into it
+	Quality     int // item quality ids (1 low .. 9 tempered)
+	BaseSockets int // gemsockets of the base item (0: cannot be socketed)
+	MaxSock1    int // ItemTypes.txt MaxSock1 (ilvl 1-25)
+	MaxSock25   int // MaxSock25 (26-40)
+	MaxSock40   int // MaxSock40 (41+)
+	Width       int // inventory width of the base item in cells
+	Height      int // inventory height of the base item in cells
+	Quest       bool
+	NonSellable bool // item flag 0x1000
+	Gold        bool // item type 4
 }
 
 // ErrNotSocketable explains a refusal.
@@ -109,77 +116,149 @@ type ErrNotSocketable string
 
 func (e ErrNotSocketable) Error() string { return string(e) }
 
-// difficultyCap is the limit the tables name for sockets on drops (3, 4, 6);
-// UNVERIFIED that Larzuk obeys it, so it is the less generous reading.
-var difficultyCap = [3]int{3, 4, 6}
-
-// LarzukSockets returns the number of sockets Larzuk gives the item in the
-// difficulty (0..2). The item must have a socketable base, no sockets yet and
-// not be a quest item. The count is the ilvl bracket maximum of the item type,
-// limited by the base item and by the difficulty cap (UNVERIFIED rule; the
-// original may roll a lower number).
-func LarzukSockets(it SocketItem, difficulty int) (int, error) {
-	switch {
-	case it.Quest:
-		return 0, ErrNotSocketable("quest items cannot be socketed")
-	case it.Sockets > 0:
-		return 0, ErrNotSocketable("the item already has sockets")
-	case it.BaseSockets <= 0:
-		return 0, ErrNotSocketable("the base item has no socket slots")
-	}
-
-	max := it.MaxSock1
+// maxSocketsForLevel is ITEM_GetMaxSocketsForLevel (0x62bd70, VERIFIED): the
+// MaxSock1/25/40 of the item type chosen by item level (<= 25, <= 40, above),
+// limited by the base record's gemsockets (byte +0x138).
+func maxSocketsForLevel(it SocketItem) int {
+	m := it.MaxSock1
 
 	switch {
 	case it.ItemLevel > 40:
-		max = it.MaxSock40
+		m = it.MaxSock40
 	case it.ItemLevel > 25:
-		max = it.MaxSock25
+		m = it.MaxSock25
 	}
 
-	if it.BaseSockets < max {
-		max = it.BaseSockets
+	if it.BaseSockets < m {
+		m = it.BaseSockets
 	}
 
-	if difficulty < 0 {
-		difficulty = 0
+	if m < 0 {
+		m = 0
 	}
 
-	if difficulty > 2 {
-		difficulty = 2
+	return m
+}
+
+// sizeCap is the quality cap of ITEM_ClampSocketCountBySize (0x62be00,
+// VERIFIED): the cells of the base item (width*height, at most 6), then magic
+// items at most 4, rare 2, set and unique 1, crafted and tempered 3.
+func sizeCap(it SocketItem) int {
+	c := it.Width * it.Height
+	if c > 6 {
+		c = 6
 	}
 
-	if c := difficultyCap[difficulty]; c < max {
-		max = c
+	limit := map[int]int{4: 4, 5: 1, 6: 2, 7: 1, 8: 3, 9: 3}[it.Quality]
+	if limit != 0 && c > limit {
+		c = limit
 	}
 
-	if max <= 0 {
-		return 0, ErrNotSocketable("the item type allows no sockets at this item level")
+	return c
+}
+
+// LarzukRange is the socket count range Larzuk gives (class 0x1ff in 0x577b70,
+// ITEM_CanAddSocketsAtNpc 0x62c8d0, VERIFIED). Difficulty plays no part (the
+// old 3/4/6 cap of this package was a guess and is gone). The wanted count is
+// the level maximum for low, normal and superior items, 1..min(max,2) (random)
+// for magic items and 1 for set, rare, unique, crafted and tempered; it is then
+// limited by the cells of the item and the quality cap (sizeCap) and by the
+// level maximum. Refused for gold, non-sellable and quest items, for items
+// that already have sockets or gems, and when the level maximum is 0.
+func LarzukRange(it SocketItem) (lo, hi int, err error) {
+	switch {
+	case it.Gold, it.NonSellable:
+		return 0, 0, ErrNotSocketable("this item cannot be socketed")
+	case it.Quest:
+		return 0, 0, ErrNotSocketable("quest items cannot be socketed")
+	case it.Sockets > 0 || it.Gems > 0:
+		return 0, 0, ErrNotSocketable("the item already has sockets")
 	}
 
-	return max, nil
+	mx := maxSocketsForLevel(it)
+	if mx <= 0 {
+		return 0, 0, ErrNotSocketable("the item type allows no sockets at this item level")
+	}
+
+	wantLo, wantHi := mx, mx
+
+	switch {
+	case it.Quality == 4:
+		wantLo, wantHi = 1, mx
+		if wantHi > 2 {
+			wantHi = 2
+		}
+	case it.Quality >= 5 && it.Quality <= 9:
+		wantLo, wantHi = 1, 1
+	}
+
+	capacity := sizeCap(it)
+	if mx <= capacity {
+		capacity = mx
+	}
+
+	clamp := func(w int) int {
+		if w < 1 {
+			w = 1
+		}
+
+		if w < capacity {
+			return w
+		}
+
+		return capacity
+	}
+
+	lo, hi = clamp(wantLo), clamp(wantHi)
+	if hi < 1 {
+		return 0, 0, ErrNotSocketable("the item is too small for sockets")
+	}
+
+	return lo, hi, nil
+}
+
+// LarzukSockets returns the sockets Larzuk gives. roll(n) returns a number in
+// [0, n) and is only used for magic items (nil takes the largest count).
+func LarzukSockets(it SocketItem, roll func(n int) int) (int, error) {
+	lo, hi, err := LarzukRange(it)
+	if err != nil {
+		return 0, err
+	}
+
+	if roll == nil || hi == lo {
+		return hi, nil
+	}
+
+	return lo + roll(hi-lo+1), nil
 }
 
 // ---- Anya ----
 
 // PersonalizeItem is what the personalisation rule needs.
 type PersonalizeItem struct {
-	MagicOrBetter bool // magic, rare, set, unique or crafted
-	Nameable      bool // the "nameable" column of the base item
-	Personalized  bool
+	Nameable     bool // the "nameable" column of the base item
+	Personalized bool // item flag 0x1000000
+	NonSellable  bool // item flag 0x1000
+	Gold         bool // item type 4
+	Excluded     bool // quivers (types 5, 6) and player body parts (type 7)
 }
 
-// CanPersonalize says whether Anya may name the item: it must be at least
-// magic or nameable by the tables, and not named yet.
+// CanPersonalize says whether Anya may name the item (class 0x200 in 0x577b70,
+// TRADE_IsItemSellableCheckB 0x62c800, VERIFIED): the base record's nameable
+// column decides, whatever the quality; gold, quivers, body parts,
+// non-sellable and already named items are refused. (One more refusal, a base
+// record byte tested by ITEM_GetBaseRecordByteChecked, is not decoded.)
 func CanPersonalize(it PersonalizeItem) error {
 	switch {
 	case it.Personalized:
 		return ErrNotSocketable("the item is already personalised")
-	case it.MagicOrBetter || it.Nameable:
-		return nil
+	case it.Gold, it.NonSellable, it.Excluded:
+		return ErrNotSocketable("this item cannot be personalised")
+	case !it.Nameable:
+		return ErrNotSocketable("this kind of item cannot be personalised")
 	}
 
-	return ErrNotSocketable("only magic, rare, set and unique items can be personalised")
+	return nil
 }
 
 // PersonalName is the name shown on a personalised item (UNVERIFIED format).
