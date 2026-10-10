@@ -25,3 +25,27 @@ func TestPortalShrineDest(t *testing.T) {
 		}
 	}
 }
+
+func TestPortalShrineOpens(t *testing.T) {
+	tests := []struct {
+		name  string
+		level int
+		want  bool
+	}{
+		{"cold plains", 3, true},
+		{"travincal", 83, true},
+		{"rogue encampment: town room, the exe does nothing", 1, false},
+		{"lut gholein", 40, false},
+		{"no level", 0, false},
+	}
+
+	for _, tc := range tests {
+		if got := PortalShrineOpens(tc.level); got != tc.want {
+			t.Errorf("%s: PortalShrineOpens(%d) = %v, want %v", tc.name, tc.level, got, tc.want)
+		}
+	}
+
+	if PortalShrineOffset != 5 {
+		t.Errorf("PortalShrineOffset = %d, want 5", PortalShrineOffset)
+	}
+}

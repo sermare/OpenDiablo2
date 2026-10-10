@@ -12,11 +12,20 @@ import (
 // class" kept in the AI data (+0x3c, MONAI_GetSummonClassFromAiData 0x58d4f0).
 // The Director did not answer that question, so the queens laid nothing.
 //
-// The table answers it (verified in the 1.14b monstats): the five queens'
-// `spawn` column names the adult young (maggotqueen1 lays sandmaggot1 ... 5,
-// with spawnx 8, spawny 0, spawnmode S1), and those SandMaggots lay the eggs
-// themselves. UNVERIFIED: that AI data +0x3c is simply that column (Ghidra
-// had no program loaded in this pass), and the exact cell search.
+// VERIFIED against the exe in a second pass (notes: exe-verify-unverified.md):
+// MONSTER_FindSpawnPositionForMinion (0x63fff0) does not read AI data +0x3c for
+// the queens (that getter is only used by the two callbacks cases). Its case
+// for the queen base class (id 284) takes the class from the sand maggot
+// chain: class 68 (sandmaggot1) advanced by a per-record number (0 for the
+// first queen up to 4), which is exactly the `spawn` column of the five rows
+// (maggotqueen1 lays sandmaggot1 ... 5); the position is the queen's own
+// subtile position plus (8, 0), absolute and not rotated by facing; the mode
+// is index 8 (S1). The creation call then searches square rings in steps of 3 subtiles
+// out to 6 subtiles from that point for a cell the monster fits on
+// (MONSTER_SpawnMonsterUnitCore 0x5b0600, ring order randomised), which the
+// nearest-free search below approximates (UNVERIFIED: the exact ring
+// pattern). The queen's own limit is a lifetime count of units laid against
+// aip1 of the difficulty (7..11), not a live count.
 
 // queenMayLay is the host bound (HostSummonCap): the queen is a self-limited
 // AI, its own aip1 brood count bounds it, and the cap only backs it up.
