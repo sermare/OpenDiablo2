@@ -24,6 +24,11 @@ type PlannedMonster struct {
 	// SuperIdx its hcIdx.
 	SuperKey string
 	SuperIdx int
+	// Origin is 1 + the index (into the plan) of the unit this one was created around, 0 for a group leader (so the
+	// zero value of a hand-made plan means "leader"). Unlike
+	// Leader it is kept for the followers the original does not link (party packs without SetBoss, unlinked extras of
+	// a super unique), so ranks and group counts can follow the whole tree of a pack.
+	Origin int
 }
 
 // SetPopulation stores the natural population of the loaded level. It is

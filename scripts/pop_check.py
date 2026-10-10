@@ -5,13 +5,19 @@ usage: pop_check.py <log.txt> <level id> [<min monsters>]
 
 Reads from the log (written by the game, OD2_REALMAPS=1 OD2_AUTOLEVEL=<id> OD2_POPULATE=1):
   "POPULATE types level N: key:count ..."   the natural monsters that survived the reachability filter
-  "POPULATE groups level N: G"              pack leaders (groups, unique packs included) of the planned population
+  "POPULATE packs level N: key:count ..."   rare / champion packs (leaders and everything created around them)
+  "POPULATE supers level N: key:count ..."  super uniques with the followers they came with (placed from presets)
+  "POPULATE groups level N: G"              groups the density rolls made (natural groups and rare / champion packs;
+                                            party-pack members and super uniques are not groups)
   "population: ... D density rolls at MonDen M"   the density rolls the level's rooms get (real maze / outdoor / preset)
 
 Checks, against D2_TABLES (drlg/patch_d2/Levels.txt, monsters/patch_d2/monstats.txt):
   - every drawn class is legal: mon1..mon10 of the Levels.txt row, the minion1/minion2 followers of those classes,
     or their Spawn replacement (monstats "spawn", PlaceSpawn); each must have isSpawn = 1;
   - at most NumMon of the listed types are drawn (the leaders; followers come from minion1/minion2);
+  - super uniques are legal on any level (superuniques.txt places them from presets, not from the level's drawn
+    types): only checked to be known classes, at least one of them a superuniques.txt Class, and left out of every
+    count below (their extras, e.g. Shenk's Enslaved, are hard-coded in the exe);
   - MonDen = 0 spawns no natural monster; otherwise at least <min monsters> (default 1) spawn;
   - density (when the log has the roll count): the groups made stay within a few standard deviations of
     rolls * MonDen / 100000 (each roll passes with that chance; a roll makes at most one group), and not far below
@@ -60,7 +66,7 @@ def main():
     nmon = int(row[lc["NumMon"]] or 0)
     den = int(row[lc["MonDen"]] or 0)
 
-    types = packs = groups = trials = walk_trials = None
+    types = packs = supers = groups = trials = walk_trials = None
     den_log = None
     for l in open(log, encoding="utf-8", errors="replace"):
         m = re.search(r"POPULATE types level %s: ?(.*)$" % level, l)
@@ -69,6 +75,9 @@ def main():
         m = re.search(r"POPULATE packs level %s: ?(.*)$" % level, l)
         if m:
             packs = m.group(1).split()
+        m = re.search(r"POPULATE supers level %s: ?(.*)$" % level, l)
+        if m:
+            supers = m.group(1).split()
         m = re.search(r"POPULATE groups level %s: (\d+)" % level, l)
         if m:
             groups = int(m.group(1))
@@ -120,6 +129,18 @@ def main():
         if k not in pack_legal:
             problems.append("illegal pack class %s" % k)
     packs_total = sum(pack_counts.values())
+    super_counts = {}
+    for item in supers or []:
+        k, n = item.rsplit(":", 1)
+        super_counts[k] = int(n)
+    if super_counts:
+        sh, srows = table(os.path.join(root, "monsters/patch_d2/superuniques.txt"))
+        super_classes = {r[sh.index("Class")].strip() for r in srows if len(r) > sh.index("Class")}
+        for k in super_counts:
+            if k not in stats:
+                problems.append("unknown super unique class %s" % k)
+        if not set(super_counts) & super_classes:
+            problems.append("supers %s include no superuniques.txt Class" % " ".join(sorted(super_counts)))
     if den == 0:
         if total or packs_total:
             problems.append("MonDen is 0 but %d natural monsters spawned" % (total + packs_total))

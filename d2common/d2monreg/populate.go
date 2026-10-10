@@ -46,6 +46,10 @@ type Unit struct {
 	Champion bool
 	Minion   bool
 	Leader   *Unit
+	// Origin is the unit this one was created around (a group leader, the unit of a party pack, a super unique or a
+	// rare), whether or not the exe links it as a follower: Leader is cleared for the SetBoss-less party packs and the
+	// unlinked extras of a super unique, Origin is not. nil for a group leader.
+	Origin *Unit
 	// Mods are the monumod ids the unit carries (MONSTER_RollUniqueModifiers;
 	// a minion carries the xfer ones of its leader). Empty without a monumod table.
 	Mods []int
@@ -349,6 +353,7 @@ func (g *Game) follower(w World, room *Room, c *Cell, leader *Unit, class, ring 
 	u := g.create(pop, room, class, x, y)
 	u.Minion = true
 	u.Leader = leader
+	u.Origin = leader
 
 	return u
 }

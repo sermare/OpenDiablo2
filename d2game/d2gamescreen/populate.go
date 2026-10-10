@@ -162,8 +162,9 @@ func (v *Game) populateLevel() {
 func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonster) {
 	made := make([]*d2mapentity.Monster, len(plan))
 	natural := map[*d2mapentity.Monster]bool{}
-	packs := map[*d2mapentity.Monster]bool{} // unique / champion packs: their types are logged apart (umon list, not the level's drawn types)
-	special := make([]bool, len(plan))
+	packs := map[*d2mapentity.Monster]bool{}  // unique / champion packs: their types are logged apart (umon list, not the level's drawn types)
+	supers := map[*d2mapentity.Monster]bool{} // super uniques with every follower they came with (superuniques.txt class, not the level's types)
+	kinds := classifyPlan(plan)
 	units := 0
 
 	for i, pm := range plan {
@@ -179,11 +180,13 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 		}
 
 		made[i] = mon
-		special[i] = pm.Unique || pm.Champion || (pm.Leader >= 0 && pm.Leader < i && special[pm.Leader])
 
-		if special[i] {
+		switch kinds[i] {
+		case planSuper:
+			supers[mon] = true
+		case planPack:
 			packs[mon] = true
-		} else {
+		default:
 			natural[mon] = true
 		}
 
@@ -201,20 +204,56 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 
 	v.logPopulateTypes(level, natural)
 	v.logPopulateClasses("packs", level, packs)
+	v.logPopulateClasses("supers", level, supers)
 
-	// pack leaders (units without a leader of their own) = groups the density rolls produced, uniques included
-	leaders := 0
-
-	for _, pm := range plan {
-		if pm.Leader < 0 {
-			leaders++
-		}
-	}
-
-	v.Infof("POPULATE groups level %d: %d", level, leaders)
+	v.Infof("POPULATE groups level %d: %d", level, countPlanGroups(plan, kinds))
 
 	v.Infof("POPULATE level %d (%s): %d planned, %d monsters (%d unreachable ones removed)", level,
 		v.levelName(level), len(plan), units-removed, removed)
+}
+
+type planKind int
+
+const (
+	planNatural planKind = iota // plain groups of the level's drawn types (and their party packs)
+	planPack                    // rare / champion leaders and everything created around them
+	planSuper                   // super uniques and everything created around them
+)
+
+// classifyPlan sorts the planned monsters by the kind of pack they belong to. A follower takes the kind of the unit it
+// was created around (Origin, which also covers the party packs and extras the original does not link to their
+// leader, else Leader), so a super unique's minions are not mistaken for natural monsters of the level's types.
+func classifyPlan(plan []d2mapengine.PlannedMonster) []planKind {
+	kinds := make([]planKind, len(plan))
+
+	for i, pm := range plan {
+		switch {
+		case pm.SuperKey != "":
+			kinds[i] = planSuper
+		case pm.Unique || pm.Champion:
+			kinds[i] = planPack
+		case pm.Origin > 0 && pm.Origin-1 < i:
+			kinds[i] = kinds[pm.Origin-1]
+		case pm.Leader >= 0 && pm.Leader < i:
+			kinds[i] = kinds[pm.Leader]
+		}
+	}
+
+	return kinds
+}
+
+// countPlanGroups counts the groups the density rolls made: the units that were not created around another one, super
+// uniques (placed from presets, not rolled) left out.
+func countPlanGroups(plan []d2mapengine.PlannedMonster, kinds []planKind) int {
+	n := 0
+
+	for i, pm := range plan {
+		if pm.Leader < 0 && pm.Origin == 0 && kinds[i] != planSuper {
+			n++
+		}
+	}
+
+	return n
 }
 
 // applyPlannedRank gives a planned monster the rank the original's population

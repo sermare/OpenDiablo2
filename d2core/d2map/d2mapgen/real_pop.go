@@ -174,6 +174,10 @@ func (p *popLevel) addUnits(pop *d2monreg.Population, superKey string) {
 			pm.SuperKey, pm.SuperIdx = superKey, u.Super-1
 		}
 
+		if oi, ok := p.idx[u.Origin]; ok && u.Origin != nil {
+			pm.Origin = oi + 1
+		}
+
 		if li, ok := p.idx[u.Leader]; ok && u.Leader != nil && u.Minion {
 			pm.Leader = li
 		}

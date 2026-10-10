@@ -10,7 +10,7 @@ poplevel_env() {
 }
 poplevel_check() {
   local lvl=$1 min=$2 rc
-  grep -E "POPULATE (level|types|packs|groups)|AUTOSCRIPT RESULT|density rolls" $log.txt | cut -c1-260
+  grep -E "POPULATE (level|types|packs|supers|groups)|AUTOSCRIPT RESULT|density rolls" $log.txt | cut -c1-260
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: population scenario for level $lvl did not pass"; fail=1; }
   python3 -I scripts/pop_check.py $log.txt $lvl $min; rc=$?
   [ $rc -eq 1 ] && { echo "FAIL: level $lvl population does not match its Levels.txt row"; fail=1; }
