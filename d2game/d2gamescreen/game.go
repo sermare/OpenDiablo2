@@ -131,6 +131,8 @@ type Game struct {
 	lastZoneLevel        int    // Levels.txt id last announced; 0 = none yet
 	vendorSeed           uint32 // per game session base of every vendor stock seed (set on first use)
 	lightLogLevel        int    // level whose base light was last logged
+	statsLevel           int       // level of the last DRAWSTATS line
+	statsAt              time.Time // time of the last DRAWSTATS line
 	travel               travelState
 	ticksSinceLevelCheck float64
 	escapeMenu           *d2player.EscapeMenu
@@ -149,6 +151,7 @@ type Game struct {
 	autoTestDone         bool
 	autoScript           *autoScriptState
 	levels               levelState
+	portal               portalState
 	autoSoundElapsed     float64
 	autoSoundDone        bool
 	ground               groundState
@@ -171,6 +174,7 @@ type Game struct {
 	attackRepathAcc      float64
 	soundTraceSet        bool
 	heroStepAcc          float64
+	speech               *d2audio.Sound // the NPC voice line playing, if any
 	ambientTest          *ambientTest
 	regionEnvs           map[int]int
 	autoPanel            autoPanelState
@@ -226,6 +230,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"0|1"}, v.commandTravelFree},
 		{"travel", "travels to the town of an act through the act travel rules",
 			[]string{"act"}, v.commandTravel},
+		{"walkprobe", "logs how many lava/water tiles of the level the hero can walk to and whether a walk order onto lava ends on it (debug)",
+			nil, v.commandWalkProbe},
 		{"players", "logs the players of the game with their positions", []string{}, v.commandPlayers},
 		{"chat", "sends a chat line to all players (_ for a space)", []string{"text"}, v.commandChat},
 		{"party", "party invite|accept|decline|leave|list <name or ->", []string{"op", "name"}, v.commandParty},
@@ -238,6 +244,14 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"dropinv", "removes the first inventory item with this base code (debug)", []string{"code"}, v.commandDropInv},
 		{"autobuy", "opens a vendor's trade window and buys the cheapest affordable item (OD2_AUTOTRADE_KEEP=1 keeps it)",
 			[]string{"vendor"}, v.commandAutoBuy},
+		{"pvpcast", "casts a skill (name, _ for a space) at another player's position",
+			[]string{"skill", "name"}, v.commandPvPCast},
+		{"pvpwalk", "walks the hero by dx dy tiles", []string{"dx", "dy"}, v.commandPvPWalk},
+		{"sethp", "sets the hero's life points (scenarios)", []string{"hp"}, v.commandSetHP},
+		{"townportal", "casts a town portal (scroll or tome charge; \"free\" skips the charge)", []string{"free"}, v.commandTownPortal},
+		{"closeportal", "closes the hero's town portal pair", []string{}, v.commandClosePortal},
+		{"portals", "logs the open town portal pairs", []string{}, v.commandPortals},
+		{"useportal", "uses the nearest town portal object without walking to it (scenarios)", []string{}, v.commandUsePortal},
 		{"killnear", "kills the nearest monster as the hero (party experience tests)", []string{}, v.commandKillNear},
 		{"rewarditem", "spends a pending Larzuk (socket) or Anya (personalize) quest reward on an item",
 			[]string{"socket|personalize"}, v.commandRewardItem},
@@ -273,7 +287,7 @@ func (v *Game) OnUnload() error {
 	}
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
-		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "killnear", "rewarditem", "transmute"); err != nil {
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "killnear", "rewarditem", "transmute", "townportal", "closeportal", "portals", "useportal", "pvpcast", "pvpwalk", "sethp"); err != nil {
 		return err
 	}
 
@@ -314,6 +328,7 @@ func (v *Game) Render(screen d2interface.Surface) {
 
 	screen.Clear(color.Black)
 	v.mapRenderer.Render(screen)
+	v.logDrawStats()
 
 	if v.gameControls != nil {
 		if v.gameControls.HelpOverlay != nil && v.gameControls.HelpOverlay.IsOpen() {
@@ -436,6 +451,8 @@ func (v *Game) Advance(elapsed float64) error {
 }
 
 func (v *Game) bindGameControls() error {
+	d2player.SetItemSoundHook(v.onItemSound)
+
 	for _, player := range v.gameClient.Players {
 		if player.ID() != v.gameClient.PlayerID {
 			continue

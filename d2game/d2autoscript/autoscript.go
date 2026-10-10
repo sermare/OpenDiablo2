@@ -87,7 +87,8 @@ var Panels = []string{"inventory", "character", "skills", "quest", "party", "clo
 var SkillOps = []string{"left", "right", "popup", "hover", "click", "use", "spend", "nospend"}
 
 // AutomapModes are accepted by the automap step.
-var AutomapModes = []string{"on", "off", "toggle", "full", "mini", "stats"}
+var AutomapModes = []string{"on", "off", "toggle", "full", "mini", "stats",
+	"fade", "nofade", "names", "nonames", "party", "noparty", "center", "nocenter"}
 
 // LevelHost is implemented by hosts that support the use, waypoint and
 // expect:level steps (it is separate so other hosts need not change).

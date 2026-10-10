@@ -59,6 +59,10 @@ func itemSeedID(s *StoredItem) uint32 {
 // Stats the save cannot hold (extra parameters, damage groups, values out of
 // range) are left out and counted in dropped.
 func D2SItemFromStored(s *StoredItem, tables *d2s.ItemTables, ids *AffixIDs) (it d2s.Item, dropped int, why string) {
+	if s.Spec != nil && s.Spec.Ear != nil {
+		return earD2S(s), 0, ""
+	}
+
 	if s.Facts == nil {
 		return it, 0, "no rolled values stored for " + s.Code
 	}
@@ -355,4 +359,16 @@ func MergeContainerItems(c *d2s.Character, containers *HeroContainers, tables *d
 	c.Items = append(kept, fresh...)
 
 	return len(fresh), removed
+}
+
+// earD2S is the .d2s form of a player ear: the class, level and name of the
+// player it was cut from (a hardcore PvP kill), in the inventory page.
+func earD2S(s *StoredItem) d2s.Item {
+	e := s.Spec.Ear
+
+	return d2s.Item{
+		Ear: true, Identified: true, Version: 101, Code: "ear", Location: d2s.LocationStored, Page: uint8(s.Page),
+		X: uint8(s.X), Y: uint8(s.Y),
+		EarInfo: &d2s.EarInfo{Class: uint8(clampInt(e.Class, 0, 6)), Level: uint8(clampInt(e.Level, 1, 99)), Name: e.Name},
+	}
 }

@@ -287,7 +287,7 @@ func (g *MapGenerator) applyExactTiles(tiles []*drlgoutdoor.RoomTiles, rect drlg
 	}
 
 	exact := func(r *drlgoutdoor.TileRecord) d2mapengine.ExactTile {
-		return d2mapengine.ExactTile{File: r.Tile.File(), Index: r.Tile.Idx}
+		return d2mapengine.ExactTile{File: r.Tile.File(), Index: r.Tile.Idx, Flags: r.Flags}
 	}
 
 	plain, presets := 0, 0

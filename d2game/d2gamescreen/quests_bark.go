@@ -63,7 +63,7 @@ func (v *Game) advanceBarks(elapsed float64) {
 	v.Infof("QUEST BARK npc=%q msg=%d mode=3 sound=%d handle=%s key=%s text=%q", npc.Label(), s.Msg, snd.Index, snd.Handle, key, shorten(text, 60))
 
 	if hasSound && os.Getenv("OD2_AUTOTEST_MUTE") == "" {
-		v.soundEngine.PlaySoundID(snd.Index)
+		v.playSpeech(snd.Index)
 	}
 
 	if text != "" {

@@ -8,8 +8,10 @@ root = pathlib.Path(__file__).resolve().parent.parent
 data = json.loads((root / "docs" / "progress.json").read_text(encoding="utf-8"))
 
 W, PAD = 880, 36
+V1 = data.get("v1")
+V1_H = 118 if V1 else 0
 ROW_H, BAR_H = 78, 18
-head_h = 92
+head_h = 92 + V1_H
 H = head_h + ROW_H * len(data["bars"]) + 30
 BAR_W = W - 2 * PAD - 150
 
@@ -27,6 +29,24 @@ a(f'<rect x="1" y="1" width="{W-2}" height="{H-2}" rx="17" fill="none" stroke="#
 a(f'<text x="{PAD}" y="46" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#ffffff">{escape(data["title"])}</text>')
 a(f'<text x="{PAD}" y="72" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#b8b9d6">{escape(data["subtitle"])}</text>')
 a(f'<text x="{W-PAD}" y="46" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">updated {escape(data["updated"])}</text>')
+
+
+if V1:
+    wts = V1["weights"]
+    byl = {b["label"]: b for b in data["bars"]}
+    tot = sum(wts.values())
+    vd = sum(wts[l] * byl[l]["done"] / byl[l]["total"] for l in wts if l in byl) / tot * 100
+    vp = sum(wts[l] * min(byl[l]["total"], byl[l]["done"] + byl[l].get("pending", 0)) / byl[l]["total"] for l in wts if l in byl) / tot * 100
+    hy = 92
+    full_h = W - 2 * PAD
+    a(f'<text x="{PAD}" y="{hy+22}" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">{escape(V1["title"])}</text>')
+    a(f'<text x="{W-PAD}" y="{hy+26}" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">{vd:.0f}%</text>')
+    a(f'<rect x="{PAD}" y="{hy+36}" width="{full_h}" height="26" rx="13" fill="#ffffff" fill-opacity="0.08"/>')
+    if vp > vd:
+        a(f'<rect x="{PAD}" y="{hy+36}" width="{full_h*vp/100:.1f}" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>')
+    a(f'<rect x="{PAD}" y="{hy+36}" width="{max(full_h*vd/100, 10):.1f}" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>')
+    a(f'<text x="{PAD}" y="{hy+84}" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +{vp-vd:.0f}% on branches, not yet verified</text>')
+    a(f'<text x="{PAD}" y="{hy+100}" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#8c8eb0">v1 = double-click the Mac app, make or load a character, play Acts 1-5 single player without a blocker</text>')
 
 y = head_h
 for i, b in enumerate(data["bars"]):

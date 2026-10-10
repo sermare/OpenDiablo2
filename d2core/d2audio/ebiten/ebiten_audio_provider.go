@@ -44,6 +44,7 @@ type AudioProvider struct {
 	lastBgm      string
 	sfxVolume    float64
 	bgmVolume    float64
+	textOnly     bool // options: NPC speech set to TEXT ONLY
 
 	*d2util.Logger
 }
@@ -121,6 +122,17 @@ func (eap *AudioProvider) LoadSound(sfx string, loop, bgm bool) (d2interface.Sou
 	result.SetVolume(volume)
 
 	return result, nil
+}
+
+// SetSpeechAudio says whether NPC speech is played (options NPC SPEECH is not TEXT ONLY).
+func (eap *AudioProvider) SetSpeechAudio(on bool) { eap.textOnly = !on }
+
+// SpeechAudio reports whether NPC speech should be played.
+func (eap *AudioProvider) SpeechAudio() bool { return !eap.textOnly }
+
+// Volumes returns the music and sound master volumes (0..1).
+func (eap *AudioProvider) Volumes() (bgm, sfx float64) {
+	return eap.bgmVolume, eap.sfxVolume
 }
 
 // SetVolumes sets the volumes of the audio provider
