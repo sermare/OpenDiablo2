@@ -368,6 +368,10 @@ func (g *MapGenerator) placeMonsters(stamp *d2mapstamp.Stamp, levelID int, diff 
 				continue
 			}
 
+			if i == 0 && rec.Monster.Unique.Super[name] != nil {
+				npc.SetSuperUnique(name) // the director spawns the boss of that name, with its followers
+			}
+
 			g.engine.AddEntity(npc)
 		}
 	}

@@ -125,6 +125,13 @@ type PlayHost interface {
 	Kill(radius, seconds float64) error
 }
 
+// NamedKillHost is implemented by hosts that can fight the monsters of one name (kill:name=).
+type NamedKillHost interface {
+	// KillNamed makes the hero fight every living monster whose name contains the text (wherever it is in the level)
+	// until none is left or the seconds ran out; Busy stays true meanwhile.
+	KillNamed(name string, seconds float64) error
+}
+
 // SkillHost is implemented by hosts that support the skill, hotkey and press
 // steps (separate so other hosts need not change).
 type SkillHost interface {
@@ -391,7 +398,8 @@ func parseLoot(s *Step, arg string) error {
 // DefaultLootSeconds is how long a loot step runs unless it says otherwise.
 const DefaultLootSeconds = 60.0
 
-// parseKill reads "all[,seconds]" or "near=<tiles>[,seconds]".
+// parseKill reads "all[,seconds]", "near=<tiles>[,seconds]" or "name=<text>[,seconds]" (the monsters whose name
+// contains the text, anywhere in the level: a quest boss such as "Shenk the Overseer").
 func parseKill(s *Step, arg string) error {
 	what, secs := arg, ""
 	if i := strings.Index(arg, ","); i >= 0 {
@@ -419,8 +427,10 @@ func parseKill(s *Step, arg string) error {
 		}
 
 		s.Target, s.Radius = "near", r
+	case strings.HasPrefix(what, "name=") && len(what) > len("name="):
+		s.Target, s.Arg = "name", strings.TrimPrefix(what, "name=")
 	default:
-		return errors.New("kill needs all or near=<tiles>")
+		return errors.New("kill needs all, near=<tiles> or name=<text>")
 	}
 
 	return nil
@@ -678,6 +688,15 @@ func (r *Runner) play(s Step) error {
 
 		return ph.WalkToObject(s.Arg)
 	case KindKill:
+		if s.Target == "name" {
+			nh, ok := r.host.(NamedKillHost)
+			if !ok {
+				return fmt.Errorf("host does not support kill:name=")
+			}
+
+			return nh.KillNamed(s.Arg, s.Seconds)
+		}
+
 		return ph.Kill(s.Radius, s.Seconds)
 	default:
 		return ph.Menu(s.Arg)

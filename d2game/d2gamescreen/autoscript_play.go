@@ -50,6 +50,12 @@ type killState struct {
 	potions    int
 	lastPotion float64 // game clock of the last potion
 	defend     bool    // a fight started by a walk that was attacked on the way
+	name       string  // only monsters whose name contains this (kill:name=), lower case
+}
+
+// matches says whether a monster is one the fight is about (every monster, or the named ones).
+func (k *killState) matches(m *d2mapentity.Monster) bool {
+	return k.name == "" || strings.Contains(strings.ToLower(m.Label()), k.name)
 }
 
 // WalkToExit implements d2autoscript.PlayHost.
@@ -107,6 +113,26 @@ func (h autoScriptHost) Kill(radius, seconds float64) error {
 	return nil
 }
 
+// KillNamed implements d2autoscript.NamedKillHost: a fight against the monsters whose name contains the text,
+// wherever they stand in the level.
+func (h autoScriptHost) KillNamed(name string, seconds float64) error {
+	v := h.v
+	if v.monsterDirector() == nil {
+		return fmt.Errorf("no monster director")
+	}
+
+	k := &killState{radius: 0, deadline: seconds, skip: map[*d2mapentity.Monster]float64{}, name: strings.ToLower(name)}
+	if k.start = len(v.killCandidates(k)); k.start == 0 {
+		return fmt.Errorf("no monster named %q on this level", name)
+	}
+
+	v.levels.kill = k
+
+	v.Infof("KILL start name=%q seconds=%.0f candidates=%d level=%d", name, seconds, k.start, v.currentLevel())
+
+	return nil
+}
+
 // chaseBorderSlack is the extra distance (tiles) from a level border inside
 // which a scripted fight leaves monsters alone.
 const chaseBorderSlack = 2.0
@@ -155,7 +181,7 @@ func (v *Game) killAlive(k *killState) int {
 	hx, hy := v.heroTilePos()
 
 	for _, m := range v.monsters.Monsters() {
-		if !m.Alive() || m.Stat == nil || !d2monsters.IsHostile(m.Stat) {
+		if !m.Alive() || m.Stat == nil || !d2monsters.IsHostile(m.Stat) || !k.matches(m) {
 			continue
 		}
 
@@ -176,7 +202,7 @@ func (v *Game) killCandidates(k *killState) []*d2mapentity.Monster {
 	hx, hy := v.heroTilePos()
 
 	for _, m := range v.monsters.Monsters() {
-		if !m.Alive() || m.Stat == nil || !d2monsters.IsHostile(m.Stat) {
+		if !m.Alive() || m.Stat == nil || !d2monsters.IsHostile(m.Stat) || !k.matches(m) {
 			continue
 		}
 

@@ -566,6 +566,10 @@ func (d *Director) adoptPlacements() {
 
 		d.engine.RemoveEntity(npc)
 
+		if d.adoptSuperUnique(npc, x, y) {
+			continue
+		}
+
 		if _, err := d.Spawn(stat, x, y); err != nil {
 			d.Infof("could not adopt DS1 monster %s: %v", stat.Key, err)
 			d.engine.AddEntity(npc)
@@ -573,6 +577,31 @@ func (d *Director) adoptPlacements() {
 			d.Infof("adopted DS1 placement %s at (%d,%d)", stat.Key, x, y)
 		}
 	}
+}
+
+// adoptSuperUnique spawns the boss of a DS1 super unique placement (with its followers and its own name: a quest asks
+// for "Shenk the Overseer", not for an "Overseer"); it reports whether it did.
+func (d *Director) adoptSuperUnique(npc *d2mapentity.NPC, x, y int) bool {
+	key := npc.SuperUnique()
+	if key == "" {
+		return false
+	}
+
+	res, err := d.SpawnSuperUnique(key, d2path.Point{X: x, Y: y})
+	if err != nil {
+		d.Infof("could not spawn super unique %s: %v", key, err)
+
+		return false
+	}
+
+	if rec := d.asset.Records.Monster.Unique.Super[key]; rec != nil {
+		res.Leader.SetLabel(d.asset.TranslateString(rec.Name))
+	}
+
+	d.Infof("adopted DS1 super unique %s (%s) at (%d,%d) with %d follower(s)", key, res.Leader.Label(), x, y,
+		len(res.Monsters)-1)
+
+	return true
 }
 
 // IsHostile says whether a monstats row is an enemy the director should run.

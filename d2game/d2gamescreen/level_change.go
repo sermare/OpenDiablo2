@@ -349,8 +349,13 @@ func (v *Game) scanWarps() {
 	v.Infof("LEVEL %d: %d warp tile(s)", v.currentLevel(), len(v.levels.warps))
 
 	names := map[string]int{}
+	npcs := []string{}
 
 	for _, e := range v.gameClient.MapEngine.Entities() {
+		if npc, ok := e.(*d2mapentity.NPC); ok && npc.Label() != "" {
+			npcs = append(npcs, fmt.Sprintf("%s(%d)", npc.Label(), npc.MonstatID()))
+		}
+
 		if ob, ok := e.(*d2mapentity.Object); ok {
 			names[ob.Label()]++
 
@@ -369,6 +374,11 @@ func (v *Game) scanWarps() {
 
 		sort.Strings(keys)
 		v.Infof("LEVEL objects: %s", strings.Join(keys, ", "))
+	}
+
+	if len(npcs) > 0 {
+		sort.Strings(npcs)
+		v.Infof("LEVEL npcs: %s", strings.Join(npcs, ", "))
 	}
 
 	for _, w := range v.levels.warps {
