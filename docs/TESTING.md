@@ -170,7 +170,9 @@ of the file that reads the variable. Defaults below are from the code.
 |---|---|
 | `OD2_AUTOGAME=<file>` | Start that character directly (a `.d2s` is imported first). Required by most scenarios. |
 | `OD2_AUTOEXIT` | Quit when the scenario finishes (script and quest runs exit 0 on PASS, 1 on FAIL). Some paths save the hero before quitting. |
-| `OD2_AUTOTEST_MUTE` | No audio output; the sound engine still tracks voices. |
+| `OD2_AUTOTEST_MUTE` | No audio output; the sound engine still tracks voices. Every `verify.sh` window runs muted unless `OD2_VERIFY_SOUND=1` (or the scenario sets `scenario_unmuted=1`); only the title-screen music ignores it, so muted windows are silent in game. |
+| `OD2_SOUNDLOG=1` | `SOUNDLOG` (request) and `SOUNDEVT` (start, stop, steal, finish) lines for every sound of the voice bank. |
+| `AUDIOSTAT` (always logged at exit) | Per category (music, ambience, event, footstep, swing, hit, skill, monster, ui, other): channels started, loudest volume given (`vol`), bytes the audio device pulled (`flow`) and loudest sample (`amp`); `direct_plays` are UI/menu sounds that bypass the bank. Scenarios `9l-ingame-audio` and `9m-town-audio` assert them nonzero. |
 | `OD2_AUTOSCRIPT='step;step'` | Scripted hero actions: `wait:`, `move:x,y` / `move:npc=`, `cast:`, `panel:`, `say:`, `expect:log=`, `use:`, `waypoint:`, `expect:level=`, `automap:`, `exit`. Needs `OD2_AUTOGAME`. Parser: `d2game/d2autoscript`. Ends with `AUTOSCRIPT RESULT PASS` or `FAIL`. |
 | `OD2_PORT` | Server/client port override. |
 | `OD2_CONFIG_DIR` | Move `config.json` and `Saves` (for isolated runs). |

@@ -4,6 +4,7 @@ package ebiten
 import (
 	"fmt"
 	"io"
+	"sync/atomic"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
@@ -123,6 +124,10 @@ func (eap *AudioProvider) LoadSound(sfx string, loop, bgm bool) (d2interface.Sou
 
 	return result, nil
 }
+
+// Plays returns how many sound effects were started through this provider, by
+// the voice bank and by direct callers (UI clicks, menus) alike.
+func (eap *AudioProvider) Plays() int { return int(atomic.LoadInt64(&totalPlays)) }
 
 // SetSpeechAudio says whether NPC speech is played (options NPC SPEECH is not TEXT ONLY).
 func (eap *AudioProvider) SetSpeechAudio(on bool) { eap.textOnly = !on }
