@@ -303,6 +303,25 @@ func (d *Director) petTick(u *unit) bool {
 	return true
 }
 
+// ownerGone reports that a player's summoned minion must vanish because its
+// owner died. D2MOO PlrModes.cpp (PLRMODE_StartXY_Dead and the death mode
+// handler) calls D2GAME_KillPlayerPets, which walks every pet type except the
+// hireling and removes the unit (SUNIT_RemoveUnit, no corpse, no death
+// animation). Applied to kind "minion" only; totems and traps are UNVERIFIED
+// (whether they are pet-list records depends on pettype.txt). The same source
+// frees pets when the owner leaves the game and, in classic (non-expansion)
+// games only, on an act change; leaving a level inside an act does not kill
+// them (they are teleported/pruned by the follow code), so nothing else is
+// done here. Monster-cast summons are not in the player pet list and nothing
+// in D2MOO kills them with their caster: see docs/KNOWN_GAPS.md.
+func ownerGone(a *allyState) bool {
+	if a == nil || a.kind != "minion" || a.owner == nil || a.owner.Stats == nil {
+		return false
+	}
+
+	return a.owner.Stats.Health <= 0
+}
+
 func (d *Director) allyStep(u *unit) {
 	a := u.ally
 	m := u.m
@@ -317,6 +336,12 @@ func (d *Director) allyStep(u *unit) {
 	}
 
 	if a.until > 0 && d.frame >= a.until {
+		d.expire(u)
+
+		return
+	}
+
+	if ownerGone(a) {
 		d.expire(u)
 
 		return
