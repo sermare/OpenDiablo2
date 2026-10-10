@@ -259,13 +259,26 @@ var townExtras = map[int][]struct {
 	DX, DY int
 }{
 	d2level.KurastDocks: {{"hratli", 5, -4}},
-	d2level.Harrogath:   {{"larzuk", 4, 3}},
+	// Nihlathak is in the Harrogath DS1 but the preset population filter can drop him (seed dependent); the
+	// offset is where the DS1 put him from the start tile (checked on the act town path, 41x41 map)
+	d2level.Harrogath: {{"larzuk", 4, 3}, {"nihlathak", -4, 21}},
+}
+
+// townHasNPC says whether an NPC of the monstats class is already on the map (the DS1 or the population made it).
+func (g *MapGenerator) townHasNPC(class int) bool {
+	for _, e := range g.engine.Entities() {
+		if npc, ok := e.(interface{ MonstatID() int }); ok && npc.MonstatID() == class {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (g *MapGenerator) placeTownExtras(levelID, sx, sy int) {
 	for _, ex := range townExtras[levelID] {
 		stats := g.asset.Records.Monster.Stats[ex.Key]
-		if stats == nil {
+		if stats == nil || g.townHasNPC(stats.ID) {
 			continue
 		}
 
@@ -291,6 +304,34 @@ func (g *MapGenerator) placeTownExtras(levelID, sx, sy int) {
 			g.Infof("act town: added %s (not in the DS1) near (%d,%d)", ex.Key, tx, ty)
 		}()
 	}
+}
+
+// townNPCsAfterPreset gives a town that was built as a real preset level (the default, OD2_REALMAPS != 0) what
+// GenerateActTown gives its own: the NPCs the DS1 lacks (Larzuk, Hratli), placed from the style 30 start tile, and
+// the TOWN NPC / TOWN lines the act travel scenario reads.
+func (g *MapGenerator) townNPCsAfterPreset(levelID, w, h int) {
+	var cands []startCand
+
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			t := g.engine.TileAt(x, y)
+			if t == nil {
+				continue
+			}
+
+			for i := range t.Components.Walls {
+				if wl := &t.Components.Walls[i]; wl.Type.Special() {
+					cands = append(cands, startCand{x, y, int(wl.Style), int(wl.Sequence)})
+				}
+			}
+		}
+	}
+
+	if sx, sy, _, ok := chooseTownStart(cands); ok {
+		g.placeTownExtras(levelID, sx, sy)
+	}
+
+	g.logTownNPCs(levelID)
 }
 
 // logTownNPCs lists the NPCs the DS1 produced (TOWN NPC lines are read by the

@@ -117,7 +117,7 @@ func loadCommonItems(d *d2txt.DataDictionary, source d2enum.InventoryItemType) (
 			NightmareUpgrade: d.String("NightmareUpgrade"),
 			HellUpgrade:      d.String("HellUpgrade"),
 
-			Nameable: d.Number("Nameable") > 0,
+			Nameable: d.Number("nameable") > 0,
 
 			// weapon params
 			BarbOneOrTwoHanded: d.Number("1or2handed") > 0,

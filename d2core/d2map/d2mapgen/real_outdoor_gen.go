@@ -575,6 +575,10 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 
 	g.engine.SetStartPosition(sx, sy)
 
+	if IsActTown(levelID) {
+		g.townNPCsAfterPreset(levelID, pl.Rect.W, pl.Rect.H)
+	}
+
 	g.Infof("real preset: level %d seed %#x: Def %d file %d (%s), %d rooms%s, map %dx%d tiles",
 		levelID, seed, pl.Def, pl.File, path, len(pl.Rooms), exact, pl.Rect.W, pl.Rect.H)
 	g.Infof("real preset: hero entry at tile (%.1f,%.1f) %s", sx, sy, how)
