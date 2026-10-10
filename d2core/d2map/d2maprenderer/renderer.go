@@ -59,6 +59,7 @@ type MapRenderer struct {
 	viewport            *Viewport              // Used for rendering offsets
 	Camera              Camera                 // Used to determine where on the map we are rendering
 	imageCacheRecords   map[uint32]d2interface.Surface
+	blankWalls          map[uint32]bool // wall tiles without graphics (marker DT1 files, collision placeholders)
 	blankShadows        map[uint32]bool // shadow tiles without graphics (never cached, never drawn)
 	mapDebugVisLevel    int             // Map debug visibility index (0=none, 1=tiles, 2=sub-tiles)
 	entityDebugVisLevel int             // Entity Debug visibility index (0=none, 1=vectors)
@@ -68,6 +69,8 @@ type MapRenderer struct {
 	entBuckets          map[[2]int]*entityBucket // per-frame entity index, see indexEntities
 	entFree             []*entityBucket
 	shadeVals           []color.RGBA // scratch for renderShadedImage
+	stats               DrawStats
+	roofCover           map[[2]int]bool // roof tiles fading out because the hero is under them
 
 	*d2util.Logger
 }
@@ -190,6 +193,11 @@ func (mr *MapRenderer) Render(target d2interface.Surface) {
 
 	endX := int(math.Min(float64(mapSize.Width), math.Ceil(etxf)))
 	endY := int(math.Min(float64(mapSize.Height), math.Ceil(etyf)))
+
+	mr.stats = DrawStats{Lit: mr.light.active()}
+	if mr.light.active() {
+		mr.stats.LightSources = 1 + len(mr.light.input.Extra)
+	}
 
 	mr.indexEntities()
 	mr.renderPass1(target, startX, startY, endX, endY)
@@ -402,6 +410,8 @@ func (mr *MapRenderer) getEntitiesAboveWalls(tileX, tileY int) []d2interface.Map
 
 // Roof tiles.
 func (mr *MapRenderer) renderPass4(target d2interface.Surface, startX, startY, endX, endY int) {
+	mr.updateRoofCover()
+
 	for tileY := startY; tileY < endY; tileY++ {
 		for tileX := startX; tileX < endX; tileX++ {
 			tile := mr.mapEngine.TileAt(tileX, tileY)
@@ -441,6 +451,8 @@ func (mr *MapRenderer) renderFloor(tile d2ds1.Tile, target d2interface.Surface, 
 		return
 	}
 
+	mr.stats.Floors++
+
 	mr.viewport.PushTranslationOrtho(-80, float64(tile.YAdjust))
 	defer mr.viewport.PopTranslation()
 
@@ -460,8 +472,17 @@ func (mr *MapRenderer) renderWall(tile d2ds1.Tile, viewport *Viewport, target d2
 	tileX, tileY, idx int, upper bool) {
 	img := mr.getImageCacheRecord(tile.Style, tile.Sequence, tile.Type, tile.RandomIndex)
 	if img == nil {
-		mr.Warningf("Render called on uncached wall {%v,%v,%v}", tile.Style, tile.Sequence, tile.Type)
+		if !mr.blankWalls[blankWallKey(&tile)] {
+			mr.Warningf("Render called on uncached wall {%v,%v,%v}", tile.Style, tile.Sequence, tile.Type)
+		}
+
 		return
+	}
+
+	if upper {
+		mr.stats.UpperWalls++
+	} else {
+		mr.stats.Walls++
 	}
 
 	viewport.PushTranslationOrtho(-80, float64(tile.YAdjust))
@@ -479,6 +500,9 @@ func (mr *MapRenderer) renderWall(tile d2ds1.Tile, viewport *Viewport, target d2
 	if upper {
 		sx, sy := viewport.GetTranslationScreen()
 		alpha = mr.light.fadeFor(wallKey{tileX, tileY, idx}, mr.heroBehind(tileX, tileY, sx, sy, img))
+		if alpha < 1 {
+			mr.stats.WallsFading++
+		}
 	}
 
 	mr.renderShadedImage(target, img, wallShadeCols, wallShadeRows, alpha, shadeWall, tileX, tileY)
@@ -494,6 +518,8 @@ func (mr *MapRenderer) renderRoof(tile d2ds1.Tile, viewport *Viewport, target d2
 		return
 	}
 
+	mr.stats.Roofs++
+
 	viewport.PushTranslationOrtho(-80, float64(tile.YAdjust))
 	defer viewport.PopTranslation()
 
@@ -501,11 +527,45 @@ func (mr *MapRenderer) renderRoof(tile d2ds1.Tile, viewport *Viewport, target d2
 	defer target.Pop()
 
 	if mr.light.active() {
-		target.PushColor(mr.light.ambientTint())
+		alpha := mr.light.roofAlpha(wallKey{tileX, tileY, idx}, mr.roofCover[[2]int{tileX, tileY}])
+		if alpha < 1 {
+			mr.stats.RoofsFading++
+		}
+
+		if alpha <= 0 {
+			return
+		}
+
+		target.PushColor(withAlpha(mr.light.ambientTint(), alpha))
 		defer target.Pop()
 	}
 
 	target.Render(img)
+}
+
+// updateRoofCover recomputes which roof tiles the hero is under (see roof_fade.go).
+func (mr *MapRenderer) updateRoofCover() {
+	mr.roofCover = nil
+	if !mr.light.active() {
+		return
+	}
+
+	hx, hy := int(mr.light.input.HeroX), int(mr.light.input.HeroY)
+	size := mr.mapEngine.Size()
+
+	mr.roofCover = roofRegion(func(x, y int) bool {
+		if x < 0 || y < 0 || x >= size.Width || y >= size.Height {
+			return false
+		}
+
+		for _, w := range mr.mapEngine.TileAt(x, y).Components.Walls {
+			if w.Type == d2enum.TileRoof && !w.Hidden() && w.Prop1 != 0 {
+				return true
+			}
+		}
+
+		return false
+	}, hx, hy)
 }
 
 // heroBehind reports whether the hero is hidden by the wall tile whose image is
@@ -528,6 +588,8 @@ func (mr *MapRenderer) heroBehind(tileX, tileY, sx, sy int, img d2interface.Surf
 
 // renderLitEntity draws an entity tinted by one light map sample at its feet.
 func (mr *MapRenderer) renderLitEntity(target d2interface.Surface, e d2interface.MapEntity) {
+	mr.stats.Entities++
+
 	if !mr.light.active() {
 		e.Render(target)
 		return
@@ -570,6 +632,8 @@ func (mr *MapRenderer) renderShadow(tile d2ds1.Tile, target d2interface.Surface,
 
 		return
 	}
+
+	mr.stats.Shadows++
 
 	defer mr.viewport.PushTranslationOrtho(-80, float64(tile.YAdjust)).PopTranslation()
 

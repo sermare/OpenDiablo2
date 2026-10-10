@@ -37,7 +37,19 @@ type LightInput struct {
 	// RadiusSubtiles is the hero's light radius target in subtiles (0 = the
 	// default d2lightmap.HeroRadiusSubtiles).
 	RadiusSubtiles int
+	// Extra are the static lights near the hero (objects such as torches and fires).
+	Extra []LightPoint
 }
+
+// LightPoint is a static light: a position in tile units, a radius in subtiles and a colour.
+type LightPoint struct {
+	X, Y    float64
+	Radius  int
+	R, G, B uint8
+}
+
+// staticLightIntensity is the peak intensity of object lights (U: the object light intensity is not in the notes).
+const staticLightIntensity = 255
 
 // lighting holds the light map and the PL2 derived shade table.
 type lighting struct {
@@ -51,6 +63,7 @@ type lighting struct {
 	shade    [d2pl2.ShadeRows]float64
 	fades    map[wallKey]*wallFade
 	elapsed  float64
+	sources  []*d2lightmap.Source
 }
 
 type wallKey struct{ x, y, idx int }
@@ -138,7 +151,19 @@ func (mr *MapRenderer) advanceLighting(elapsed float64) {
 	subX, subY := l.input.HeroX*subtilesPerTile, l.input.HeroY*subtilesPerTile
 	l.built = true
 	l.hero.SetPosition(subX, subY)
-	l.lm.Rebuild(int(subX), int(subY), l.input.Base, []*d2lightmap.Source{l.hero})
+	l.sources = append(l.sources[:0], l.hero)
+
+	for _, p := range l.input.Extra {
+		if p.Radius <= 0 {
+			continue
+		}
+
+		src := d2lightmap.NewSource(p.Radius, staticLightIntensity, p.R, p.G, p.B)
+		src.SetPosition(p.X*subtilesPerTile, p.Y*subtilesPerTile)
+		l.sources = append(l.sources, src)
+	}
+
+	l.lm.Rebuild(int(subX), int(subY), l.input.Base, l.sources)
 }
 
 func (l *lighting) active() bool { return l.enabled && l.hasInput }
@@ -305,4 +330,15 @@ func (l *lighting) fadeFor(key wallKey, covering bool) float64 {
 	}
 
 	return f.alpha
+}
+
+// resetFades forgets the wall fades (on a level change).
+func (l *lighting) resetFades() {
+	if l == nil {
+		return
+	}
+
+	for k := range l.fades {
+		delete(l.fades, k)
+	}
 }

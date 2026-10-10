@@ -21,8 +21,22 @@ const (
 	tileSurfaceHeight = 80
 )
 
+// resetLevelCaches drops everything cached for the previous level.
+func (mr *MapRenderer) resetLevelCaches() {
+	// The cached tile images are keyed by (style, sequence, type, variant) only, and the same key means a
+	// different graphic in every level type and palette. Without this reset a level change kept the
+	// previous level's images: Lut Gholein drew Rogue Encampment grass on the tiles both share
+	// (Act-1 looking green tiles in later acts).
+	mr.imageCacheRecords = nil
+	mr.blankShadows = nil
+	mr.blankWalls = nil
+	mr.light.resetFades()
+}
+
 func (mr *MapRenderer) generateTileCache() {
 	var err error
+
+	mr.resetLevelCaches()
 	mr.palette, err = mr.loadPaletteForAct(d2enum.RegionIdType(mr.mapEngine.LevelType().ID))
 
 	if err != nil {
@@ -208,6 +222,12 @@ func (mr *MapRenderer) generateWallCache(tile *d2ds1.Tile) {
 		// graphic-less collision placeholders exist in the DT1 files (e.g. barracks pillars 9/25 and 9/26,
 		// type 12): they only carry sub-tile flags, so there is nothing to draw
 		mr.Debugf("wall tile [%d %d %d] has no graphic", tile.Style, tile.Sequence, tile.Type)
+
+		if mr.blankWalls == nil {
+			mr.blankWalls = map[uint32]bool{}
+		}
+
+		mr.blankWalls[blankWallKey(tile)] = true
 		return
 	}
 
@@ -226,4 +246,8 @@ func (mr *MapRenderer) generateWallCache(tile *d2ds1.Tile) {
 	image.ReplacePixels(pixels)
 
 	mr.setImageCacheRecord(tile.Style, tile.Sequence, tile.Type, tile.RandomIndex, image)
+}
+
+func blankWallKey(tile *d2ds1.Tile) uint32 {
+	return uint32(tile.Style)<<24 | uint32(tile.Sequence)<<16 | uint32(tile.Type)<<8 | uint32(tile.RandomIndex)
 }
