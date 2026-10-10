@@ -276,7 +276,12 @@ func (b *Bridge) Send(np d2netpacket.NetPacket) error {
 			return err
 		}
 
-		return b.client.Walk(false, p.DestX, p.DestY)
+		if err = b.client.Walk(false, p.DestX, p.DestY); err != nil {
+			return err
+		}
+
+		// a game server echoes a move to its sender, and the engine walks its own hero when the echo arrives
+		return b.cfg.Sink(np)
 	case d2netpackettype.CastSkill:
 		p, err := d2netpacket.UnmarshalCast(np.PacketData)
 		if err != nil {
@@ -294,7 +299,11 @@ func (b *Bridge) Send(np d2netpacket.NetPacket) error {
 			}
 		}
 
-		return b.client.Cast(false, p.TargetX, p.TargetY)
+		if err = b.client.Cast(false, p.TargetX, p.TargetY); err != nil {
+			return err
+		}
+
+		return b.cfg.Sink(np) // the echo the game client skips (it played the cast itself)
 	case d2netpackettype.Chat:
 		p, err := d2netpacket.UnmarshalChat(np.PacketData)
 		if err != nil {
@@ -357,8 +366,33 @@ func (b *Bridge) Counts() Counts {
 	return b.seen
 }
 
-// Summary lists the units of the replica for logs: heroes and monsters with
-// their final positions and state, ordered by id.
+// StableDigest hashes what lasts: heroes, living monsters and objects, with
+// their final positions and life. Corpses and ground items come and go on
+// timers (a corpse is removed seconds after the death), so two clients that
+// look at slightly different moments still agree on this.
+func (b *Bridge) StableDigest() uint64 {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.stableDigest()
+}
+
+func (b *Bridge) stableDigest() uint64 {
+	var keep []*d2mp.Unit
+
+	for _, u := range b.rep.Units() {
+		if u.Kind == d2mp.KindItem || u.Kind == d2mp.KindMissile || u.Dead {
+			continue
+		}
+
+		keep = append(keep, &u.Unit)
+	}
+
+	return d2mp.DigestUnits(keep)
+}
+
+// Summary describes the replica for logs and scenarios: heroes, living
+// monsters, monsters seen to die (kills), the stable digest and the experience.
 func (b *Bridge) Summary() string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -367,20 +401,19 @@ func (b *Bridge) Summary() string {
 		return "no game"
 	}
 
-	var heroes, alive, dead int
+	var heroes, alive int
 
 	for _, u := range b.rep.Units() {
 		switch {
-		case u.Kind == d2mp.KindPlayer:
+		case u.Kind == d2mp.KindPlayer && !u.Dead:
 			heroes++
-		case u.Kind == d2mp.KindMonster && u.Dead:
-			dead++
-		case u.Kind == d2mp.KindMonster:
+		case u.Kind == d2mp.KindMonster && !u.Dead:
 			alive++
 		}
 	}
 
-	return fmt.Sprintf("level=%d heroes=%d monsters_alive=%d monsters_dead=%d digest=%016x xp=%d", b.rep.Level, heroes, alive, dead, b.rep.Digest(), b.rep.XP)
+	return fmt.Sprintf("level=%d heroes=%d monsters_alive=%d kills=%d digest=%016x xp=%d", b.rep.Level, heroes, alive,
+		b.seen.Kills, b.stableDigest(), b.rep.XP)
 }
 
 func (b *Bridge) pump() {

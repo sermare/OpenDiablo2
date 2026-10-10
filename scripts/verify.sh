@@ -103,12 +103,14 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   save="${OD2_VERIFY_SAVE:-$tmp/save.d2s}"
   [ -f "$save" ] || cp "$D2S_SAMPLE_BODY" "$save"
 
+  scen_run=0 scen_pass=0
   for f in scripts/verify.d/*.sh(N); do
     unset -f scenario_env scenario_check 2>/dev/null; scenario_name="${f:t}"; scenario_warnings_ok=""; scenario_unmuted=""; scenario_realtime=""
     source "$f"
     # OD2_VERIFY_ONLY=<glob> (e.g. "83-*") runs only the scenarios whose file name matches
     [ -n "${OD2_VERIFY_ONLY:-}" ] && [[ ${f:t} != ${~OD2_VERIFY_ONLY} ]] && continue
     fail_before=$fail
+    scen_run=$((scen_run + 1))
     for attempt in 1 2; do
       fail=$fail_before
       step "$scenario_name"
@@ -140,7 +142,9 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
       [ $fail -eq $fail_before ] && break
       [ $attempt -eq 1 ] && echo "RETRY: $scenario_name failed once; running it again (scenarios are timing sensitive on a loaded machine)"
     done
+    [ $fail -eq $fail_before ] && scen_pass=$((scen_pass + 1))
   done
+  echo; echo "SCENARIOS run=$scen_run passed=$scen_pass failed=$((scen_run - scen_pass))"
 fi
 
 echo

@@ -222,7 +222,7 @@ func TestTwoBridgesShareAWorld(t *testing.T) {
 	// equal worlds
 	time.Sleep(300 * time.Millisecond)
 
-	if hd, jd := host.Digest(), join.Digest(); hd != jd || hd == 0 {
+	if hd, jd := host.StableDigest(), join.StableDigest(); hd != jd || hd == 0 {
 		t.Fatalf("digests differ: %x %x\nhost   %s\njoiner %s", hd, jd, host.Summary(), join.Summary())
 	}
 

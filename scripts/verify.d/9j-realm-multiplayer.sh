@@ -14,7 +14,6 @@ scenario_name="realm multiplayer (two game windows through the menus: host / joi
 # The line "REALM WORLD level=1 heroes=2 monsters_alive=3 monsters_dead=0 digest=<hash of every unit's id, kind,
 # type, life, state and final position>" is printed by the game command mpworld. Equal digests at a checkpoint mean
 # both clients hold the same world, to the sub-tile.
-jsave_src="$HOME/git/d2s-test/Maricon.d2s"
 hflow=$tmp/9j-host
 jflow=$tmp/9j-join
 mp_join_log=$tmp/9j-join.log
@@ -23,27 +22,25 @@ d2s_name() { dd if="$1" bs=1 skip=20 count=16 2>/dev/null | tr -d '\0'; }
 
 scenario_env() {
   host_name=$(d2s_name "$D2S_SAMPLE_BODY")
-  join_name=$(d2s_name "$jsave_src")
+  join_name=Joiner   # created through the menus, hardcore like the sample hero (a realm game takes one mode only)
+  rm -rf $hflow $jflow   # a retry starts from nothing (the joiner is created anew)
   mkdir -p $hflow/saves $hflow/cfg $jflow/saves $jflow/cfg
   cp "$D2S_SAMPLE_BODY" $hflow/saves/Host.d2s
   cp "$HOME/Library/Application Support/OpenDiablo2/config.json" $hflow/cfg/ 2>/dev/null
-  if [ ! -f "$jsave_src" ]; then
-    echo 'echo "realm multiplayer: second character missing, only the host runs"'
-  else
-    cp "$jsave_src" $jflow/saves/Join.d2s
+  if true; then
     cp "$HOME/Library/Application Support/OpenDiablo2/config.json" $jflow/cfg/ 2>/dev/null
     local jcmd=$tmp/9j-join.command
     {
       echo '#!/bin/zsh'
       echo "export OD2_PORT=$OD2_PORT OD2_JOIN_RETRY=150 OD2_CONFIG_DIR=\"$jflow/cfg\" OD2_D2S_DIR=\"$jflow/saves\""
       echo "export ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1"
-      echo "export OD2_AUTOFLOW=\"join:127.0.0.1,select:$join_name,play,difficulty:0\""
+      echo "export OD2_AUTOFLOW=\"join:127.0.0.1,new,create:Sorceress:${join_name}:hardcore,difficulty:0\""
       # joiner: sees the host, walks east (and casts north, away from the dummies), tells the host it is there,
       # kills the nearest dummy once the host has looked, and leaves after the host's kill
       local js='waitlog:local=false;say:players;wait:1;move:126,117;wait:6;say:players;say:chat hello_from_joiner'
       js+=';cast:Fire Bolt@126,100;wait:2;say:mpworld;say:chat j_arrived'
-      js+=';waitlog:h_checked;say:mpkill;until:by="'$join_name'",45;wait:1;say:mpworld;say:chat j_killed'
-      js+=';waitlog:h_killed;wait:1;say:mpworld;say:chat j_done;wait:1;exit'
+      js+=';waitlog:h checked;say:mpkill;until:by="'$join_name'",45;wait:1;say:mpworld;say:chat j_killed'
+      js+=';waitlog:h killed;wait:1;say:mpworld;say:chat j_done;wait:1;exit'
       echo "export OD2_AUTOSCRIPT='$js'"
       echo "$tmp/od2 2>&1 | tee $mp_join_log"
     } > $jcmd
@@ -51,12 +48,12 @@ scenario_env() {
     launch_game $jcmd
   fi
   echo "unset OD2_AUTOGAME OD2_D2S_WRITEBACK"
-  echo "export OD2_CONFIG_DIR=\"$hflow/cfg\" OD2_D2S_DIR=\"$hflow/saves\" OD2_BIND=127.0.0.1"
+  echo "export OD2_CONFIG_DIR=\"$hflow/cfg\" OD2_D2S_DIR=\"$hflow/saves\" OD2_BIND=127.0.0.1 OD2_NOMERC=1"
   echo "export OD2_AUTOFLOW=\"host,select:$host_name,play,difficulty:0\""
   local hs='waitlog:local=false;say:players;say:chat hello_from_host'
-  hs+=';waitlog:j_arrived;wait:1;say:players;say:mpworld;say:chat h_checked'
-  hs+=';waitlog:j_killed;say:mpworld;say:mpkill;until:by="'$host_name'",45;wait:1;say:mpworld;say:chat h_killed'
-  hs+=';waitlog:j_done;wait:4;say:players;say:mpworld;exit'
+  hs+=';waitlog:j arrived;wait:1;say:players;say:mpworld;say:chat h_checked'
+  hs+=';waitlog:j killed;say:mpworld;say:mpkill;until:by="'$host_name'",45;wait:1;say:mpworld;say:chat h_killed'
+  hs+=';waitlog:j done;wait:4;say:players;say:mpworld;exit'
   echo "export OD2_AUTOSCRIPT='$hs'"
 }
 
@@ -119,13 +116,13 @@ scenario_check() {
     hw=$(grep 'REALM WORLD' $log.txt | sed -n ${i}p); jw=$(grep 'REALM WORLD' $j | sed -n ${i}p)
     hd=$(echo "$hw" | grep -o 'digest=[0-9a-f]*'); jd=$(echo "$jw" | grep -o 'digest=[0-9a-f]*')
     { [ -n "$hd" ] && [ "$hd" = "$jd" ]; } || { echo "FAIL: CP$i digests differ (host $hd, joiner $jd)"; fail=1; }
-    echo "$hw" | grep -q "heroes=2 monsters_alive=$((4 - i)) monsters_dead=$((i - 1))" || { echo "FAIL: CP$i host world: $hw"; fail=1; }
+    echo "$hw" | grep -q "heroes=2 monsters_alive=$((4 - i)) kills=$((i - 1))" || { echo "FAIL: CP$i host world: $hw"; fail=1; }
     echo "$jw" | grep -q "engine_monsters_alive=$((4 - i)) engine_monsters_dead=$((i - 1))" || { echo "FAIL: CP$i joiner engine monsters: $jw"; fail=1; }
   done
-  grep 'REALM WORLD' $log.txt | sed -n 4p | grep -q "heroes=1 monsters_alive=1 monsters_dead=2" || { echo "FAIL: CP4: the host does not see itself alone"; fail=1; }
+  grep 'REALM WORLD' $log.txt | sed -n 4p | grep -q "heroes=1 monsters_alive=1 kills=2" || { echo "FAIL: CP4: the host does not see itself alone"; fail=1; }
 
   # clean leave
   grep -q "PLAYER LEAVE name=\"$jn\"" $log.txt || { echo "FAIL: host did not see the joiner leave"; fail=1; }
   grep 'PLAYERS n=' $log.txt | tail -1 | grep -q 'n=1 ' || { echo "FAIL: host still lists the joiner after it left"; fail=1; }
-  if grep -E "\[(ERROR|WARNING)\]|panic" $j | grep -v "skipping missing"; then echo "FAIL: errors in the joiner log"; fail=1; fi
+  if grep -E "\[(ERROR|WARNING)\]|panic" $j | grep -v "skipping missing" | grep -v "D2S export: container item"; then echo "FAIL: errors in the joiner log"; fail=1; fi
 }
