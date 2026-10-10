@@ -168,6 +168,10 @@ type Room struct {
 	// PrestX, PrestY, PrestW and PrestH are the rectangle of the preset map the
 	// room is a chunk of (the DS1 origin and size).
 	PrestX, PrestY, PrestW, PrestH int
+	// GateSeed is the level seed when the preset's DS1 was loaded and
+	// GateSteps the number of gated draws taken from it (preset rooms).
+	GateSeed  d2rand.Seed
+	GateSteps int
 }
 
 type counter struct{ n, ctr int }

@@ -111,6 +111,10 @@ type Room struct {
 	Doors      int   // door mask: W=1 E=2 S=4 N=8
 	Links      []int // indices (into Result.Rooms) of connected rooms
 	Locked     bool  // special (finisher/theme) room
+	// GateSeed is the level seed when the preset's DS1 is loaded, i.e. the seed
+	// DRLG_FilterPresetObjects draws its GateSteps numbers from.
+	GateSeed  d2rand.Seed
+	GateSteps int
 }
 
 // Chunk is a DrlgRoom created from a Room: the whole preset for rooms up to
@@ -118,6 +122,9 @@ type Room struct {
 type Chunk struct {
 	Room       int
 	X, Y, W, H int
+	// Seed is the DrlgRoom seed right after DRLG_AllocRoomEx (level seed step,
+	// room seed initialised from it, one room seed step).
+	Seed d2rand.Seed
 }
 
 // Result is a generated maze level.
@@ -827,26 +834,31 @@ func (l *level) commit(p Params, res *Result) {
 			}
 		}
 
+		// the DS1 is loaded (and its gates drawn from the level seed) before the
+		// first DrlgRoom of the preset is allocated (verified: the room seeds of
+		// the emulated rooms follow the seed after the gates)
+		out.GateSeed = l.seed
+		out.GateSteps = gate
+
 		res.Rooms = append(res.Rooms, out)
 
 		// PlacePresetRooms: one DrlgRoom for rooms <= 12x12, else 8x8 chunks
 		// (rows outer, columns inner); one level-seed step each (verified).
 		if r.w <= 12 && r.h <= 12 {
-			l.seed.Step()
 			l.gate(gate)
-			res.Chunks = append(res.Chunks, Chunk{i, r.x, r.y, r.w, r.h})
+
+			rs, _ := d2rand.NewRoomSeed(&l.seed)
+			res.Chunks = append(res.Chunks, Chunk{i, r.x, r.y, r.w, r.h, *rs})
 
 			continue
 		}
 
-		gate1 := gate
+		l.gate(gate)
 
 		for y := 0; y < r.h; y += 8 {
 			for x := 0; x < r.w; x += 8 {
-				l.seed.Step()
-				l.gate(gate1)
-				gate1 = 0
-				res.Chunks = append(res.Chunks, Chunk{i, r.x + x, r.y + y, imin(8, r.w-x), imin(8, r.h-y)})
+				rs, _ := d2rand.NewRoomSeed(&l.seed)
+				res.Chunks = append(res.Chunks, Chunk{i, r.x + x, r.y + y, imin(8, r.w-x), imin(8, r.h-y), *rs})
 			}
 		}
 	}

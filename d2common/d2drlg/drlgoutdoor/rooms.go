@@ -139,10 +139,14 @@ func (l *Level) placePresetRooms(def, file, tx, ty int, gB uint32) {
 
 	var ds1 *Pattern
 
+	gateSeed, gateSteps := *l.Seed, 0
+
 	if file >= 0 && file < len(rec.File) {
-		// DS1 object RNG gate (0x66a230): some Act 3 files cost level-seed steps
+		// DS1 object RNG gate (0x66a230): some files cost level-seed steps
 		// when they are loaded, before the chunk rooms are allocated.
-		for i := ds1GateSteps(rec.File[file]); i > 0; i-- {
+		gateSteps = ds1GateSteps(rec.File[file])
+
+		for i := gateSteps; i > 0; i-- {
 			l.Seed.Step()
 		}
 	}
@@ -172,6 +176,7 @@ func (l *Level) placePresetRooms(def, file, tx, ty int, gB uint32) {
 			r.X, r.Y, r.W, r.H = cx, cy, min(8, remX), min(8, remY)
 			r.PrestDef, r.File = def, file
 			r.PrestX, r.PrestY, r.PrestW, r.PrestH = tx, ty, w, h
+			r.GateSeed, r.GateSteps = gateSeed, gateSteps
 			r.Flags = flags
 			r.R50 = uint32(rec.Dt1Mask)
 

@@ -149,14 +149,14 @@ func TestRegistryHasArchetypes(t *testing.T) {
 		}
 	}
 
-	if _, ok := Lookup("Tentacle"); ok {
-		t.Error("Tentacle is not ported")
+	if _, ok := Lookup("NoSuchAI"); ok {
+		t.Error("NoSuchAI cannot be ported")
 	}
 }
 
 func TestUnimplementedAIIdles(t *testing.T) {
 	w := newFake(5, true)
-	b := brainAt(profile("Tentacle"))
+	b := brainAt(profile("NoSuchAI"))
 
 	if !Tick(w, b) || b.Wake != 25 || len(w.log) != 0 {
 		t.Fatalf("unimplemented AI should just sleep: wake=%d log=%v", b.Wake, w.log)

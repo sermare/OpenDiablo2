@@ -36,6 +36,7 @@ type MapGenerator struct {
 	engine *d2mapengine.MapEngine
 
 	providers []LevelProvider
+	pop       *popEnv // tables of the real population (see real_pop.go)
 
 	rng *d2rand.Seed // layout rolls of the fake overworld (see intn)
 

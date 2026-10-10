@@ -85,6 +85,9 @@ type Brain struct {
 	baseDef      *AIDef
 	// formationInit is the State 3 Pre-hook having run (reset by SetAI).
 	formationInit bool
+	// preRan is a pre-hook (MONAI_Pre_*) having run since the AI was set
+	// (ai_faithful_a.go runs them lazily at the first think).
+	preRan bool
 
 	// Allied is true for a converted monster: it fights for the hero
 	// (alignment 1 + the owner's target bucket in the exe). OwnerID is the
@@ -135,6 +138,7 @@ func (b *Brain) SetAI(def *AIDef) {
 	b.Scratch = [3]int{}
 	b.queue = nil
 	b.formationInit = false
+	b.preRan = false
 }
 
 // Roll advances the unit's own RNG and returns a value in [0, n).

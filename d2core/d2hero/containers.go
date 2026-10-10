@@ -144,7 +144,7 @@ func d2sQuality(q uint8) int {
 
 // StoredFromD2S converts a stored or belt item of a .d2s save. skip is a
 // non-empty reason when the item is not converted: it is not in a container
-// (equipped, cursor, socketed), is an ear, or known(code) says OpenDiablo2 has
+// (equipped, cursor, socketed), or known(code) says OpenDiablo2 has
 // no record for its base item.
 func StoredFromD2S(it *d2s.Item, known func(code string) bool) (s StoredItem, skip string) {
 	return storedFromD2S(it, -1, known)
@@ -186,7 +186,7 @@ func containerPage(it *d2s.Item) (page int, skip string) {
 
 func finishStored(it *d2s.Item, page int, known func(code string) bool) (s StoredItem, skip string) {
 	if it.Ear {
-		return s, "player ear"
+		return earStored(it, page, known)
 	}
 
 	code := trimCode(it.Code)
@@ -273,4 +273,26 @@ func ExportD2SItems(c *HeroContainers) (out []d2s.Item, skipped []StoredItem) {
 	}
 
 	return out, skipped
+}
+
+// earStored converts the player ear of a save: the ear keeps its player in a
+// Spec, from which the item is rebuilt, and the save's own item for writing
+// it back unchanged.
+func earStored(it *d2s.Item, page int, known func(code string) bool) (s StoredItem, skip string) {
+	if it.EarInfo == nil {
+		return s, "player ear without its player"
+	}
+
+	if !known("ear") {
+		return s, "no OpenDiablo2 record for the player ear"
+	}
+
+	info := &diablo2item.EarInfo{Name: it.EarInfo.Name, Class: int(it.EarInfo.Class), Level: int(it.EarInfo.Level)}
+	spec := diablo2item.Spec{Code: "ear", ILvl: info.Level, Identified: true, Durability: -1, Ear: info}
+	cp := *it
+
+	return StoredItem{
+		Code: "ear", Page: page, X: int(it.X), Y: int(it.Y), ILvl: info.Level, Identified: true,
+		Spec: &spec, D2S: &cp,
+	}, ""
 }

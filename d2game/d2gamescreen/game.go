@@ -162,6 +162,7 @@ type Game struct {
 	autoObject           autoObject
 	autoGround           autoGround
 	monsters             *d2monsters.Director
+	rankLeader           *d2mapentity.Monster // leader of the last spawnrank pack
 	monsterTest          *monsterTest
 	aiTest               *aiAutoTest
 	bossTest             *bossAutoTest
@@ -240,6 +241,9 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"dropinv", "removes the first inventory item with this base code (debug)", []string{"code"}, v.commandDropInv},
 		{"autobuy", "opens a vendor's trade window and buys the cheapest affordable item (OD2_AUTOTRADE_KEEP=1 keeps it)",
 			[]string{"vendor"}, v.commandAutoBuy},
+		{"spawnrank", "spawns a champion pack, a unique pack or a super unique next to the hero (drop tests)",
+			[]string{"champion|unique|super", "monster or super unique"}, v.commandSpawnRank},
+		{"killleader", "kills the leader of the last spawnrank pack as the hero", []string{}, v.commandKillLeader},
 		{"pvpcast", "casts a skill (name, _ for a space) at another player's position",
 			[]string{"skill", "name"}, v.commandPvPCast},
 		{"pvpwalk", "walks the hero by dx dy tiles", []string{"dx", "dy"}, v.commandPvPWalk},
@@ -253,6 +257,7 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"socket|personalize"}, v.commandRewardItem},
 		{"transmute", "transmutes the quest recipes in the Horadric Cube (Staff, Khalim's Will, Pandemonium portals)",
 			nil, v.commandTransmute},
+		{"setexp", "raises the hero's experience to at least <amount>; the level follows (debug)", []string{"amount"}, v.commandSetExp},
 	}
 
 	for _, cmd := range commands {
@@ -285,7 +290,8 @@ func (v *Game) OnUnload() error {
 	}
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
-		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "killnear", "rewarditem", "transmute", "townportal", "closeportal", "portals", "useportal", "pvpcast", "pvpwalk", "sethp"); err != nil {
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "spawnrank", "killleader", "killnear", "rewarditem", "transmute", "setexp",
+		"townportal", "closeportal", "portals", "useportal", "pvpcast", "pvpwalk", "sethp"); err != nil {
 		return err
 	}
 

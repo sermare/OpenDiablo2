@@ -1,3 +1,4 @@
+scenario_timeout=1200
 scenario_name="Act 2 playthrough (level 94 sample hero: Lut Gholein NPCs, Rocky Waste, Dry Hills, Halls of the Dead and back)"
 a2=$tmp/act2
 # The start of Act 2 played by OD2_AUTOSCRIPT (see docs/PLAYTEST.md): the hero travels east with Warriv

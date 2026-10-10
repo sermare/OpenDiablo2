@@ -183,3 +183,41 @@ and need no fix, they only need the 10 s since the last level change that the or
   Drifter Cavern (116), Icy Cellar (119), the Worldstone Chamber (132) and Forgotten Sands (134) are generated but not
   walked by a script; the Throne of Destruction's link to the Worldstone Chamber is a portal in the original, not a tile.
 * The level names come from the game's Levels.txt strings (`Rigid Highlands`, `Crystalized Cavern Level 1`, ...).
+
+# Act 3 playthrough log
+
+Branch `feat/act3-playthrough`. The start of Act 3 with `OD2_REALMAPS=1`, played by `OD2_AUTOSCRIPT`:
+
+| Scenario | What it plays |
+|---|---|
+| `scripts/verify.d/9g-act3-playthrough.sh` | the revived level 94 sample hero sails east (`say:completequest 1 6; travel:2; say:completequest 2 6; travel:3`), talks to Alkor, Ormus, Hratli, Asheara and Meshif in Kurast Docks (real preset `DockTown3.ds1`), walks the seamless borders Spider Forest (76), Great Marsh (77), Flayer Jungle (78), Lower Kurast (79), Kurast Bazaar (80), Upper Kurast (81), Kurast Causeway (82) and Travincal (83), with fights and loot in the jungle; takes the dungeon entrances Spider Cavern (85), Swampy Pit (86), Flayer Dungeon (88), Sewers (92), Ruined Temple (94), Forgotten Reliquary (96) and the Durance of Hate (100) and comes back out of each, then opens a town portal (`say:spawnportal 75; use:Portal`) from Travincal back to Kurast Docks; the exported `.d2s` is an Act 3 save |
+
+By hand:
+
+```sh
+OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_AUTOGAME=hero.d2s OD2_AUTOEXIT=1 \
+  OD2_AUTOSCRIPT='wait:1;say:completequest 1 6;travel:2;expect:level=40;wait:3;say:completequest 2 6;travel:3;expect:level=75;walkto:exit=76;expect:level=76;walkto:exit=85;expect:level=85;exit' ./od2
+```
+
+## Bugs found by playing Act 3, and their fixes
+
+| # | What a player saw | Root cause | Fix | Regression test |
+|---|---|---|---|---|
+| 34 | `walkto:exit=76` in Kurast Docks: the gate leads nowhere; the jungle and Kurast levels cannot be walked from one to the next | the seamless borders of Act 3 (town - Spider Forest - Great Marsh - Flayer Jungle - Lower Kurast .. Travincal) were not in the link table, and the town had no world rectangle | five fixed links plus the three jungle pairs in `drlgEdges` (the jungle levels hang off each other at random; a border exists only where the rectangles of the seed touch), `GenerateActTown` hands the `PlaceAct3World` rectangles to the map engine for Kurast Docks | `TestAct3WorldBordersForEverySeed` (40 seeds, all of 75..83 reachable over borders; needs `D2_TABLES`), 9g |
+| 35 | the scripted walk from the south end of the Great Marsh to Flayer Jungle left through the *west* border into Spider Forest | the marsh touches both neighbours and any border crossing counted while the hero walked | `advanceEdges` crosses only the border, and `advanceWarpUse` enters only the warp tile, the walk heads for (`edgeWanted`; a fight next to the Ruined Temple's entrance once sent the walk to Upper Kurast into the Disused Fane) | `TestEdgeWantedOnlyTheBorderOfTheWalk` |
+| 36 | arriving in Upper Kurast from the Bazaar the hero cannot take a single step ("EXIT no way found") | the edge arrival keeps the world position; the approximated Kurast tiles put a roof there and the nearest free sub-tile was a 5x5 alcove closed on all sides | `MapEngine.NearestOpen`: the arrival moves to the nearest free sub-tile of a region of at least 600 sub-tiles (used by level changes and the provider default) | `TestNearestOpenCellSkipsClosedPockets` |
+| 37 | the entrances of Spider Forest, Flayer Jungle, Kurast and Travincal lead to level 0 | their special tile styles are not LvlWarp ids and `SingleTileDestination` is Act 2 only (Spider Forest has two caves, Bazaar a sewer and two temples) | the style of the entrance tile is the Vis slot of Levels.txt (OBSERVED, exe rule UNVERIFIED): `d2level.Act3SlotDestination`, also used by `TileDestination` | `TestAct3SlotDestination`, `TestAct3SlotsMatchLevelsTxt` (compares with the real Levels.txt), 9g (`exit tile ... leads to level 0` fails it) |
+| 38 | Spider Cavern, Flayer Dungeons, Sewers, the Durance of Hate: "no level provider" / "the engine cannot load that level yet" | the maze provider only probed levels up to 72 | `maxMazeLevel = 102` | `TestAct3DungeonsAreBuildable` (every Act 3 maze level generates), 9g |
+| 39 | the six temples (94..99), Sewers 2, the treasure rooms and the Durance level 3 are not built either | they are DrlgType 2 (a single preset DS1), not mazes | `isAct3Preset` joins `isPresetLevel` (`GenerateRealPreset`), with its own `Params` (no world, rectangle from Levels.txt) | `TestAct3DungeonsAreBuildable` (each DrlgType 2 level of 84..102 is a preset level), 9g (Ruined Temple, Forgotten Reliquary) |
+| 40 | in Spider Cavern the exit tile does nothing: the hero is locked in the cave | the lair presets carry the exit with style 1; `TileDestination` read style 1 as "second up exit or first down" and the cave has neither | a dungeon with a way out and no way down returns up for the low styles; the Act 3 "up" warp ids (52, 55, 58, 59, 62, 63, 65, 66) join `upWarps` | `TestAct3DungeonTileDestination` |
+| 41 | Lower Kurast, the Bazaar, Upper Kurast and Travincal have not a single monster | `GroupsForRoom` truncates: a 16x16 block of a level with MonDen 325 holds 0.83 monsters, which became 0 groups in every block | `GroupsForRoomFrac`: where the rounding gives 0 the fraction is the chance of one group (levels that had groups are untouched) | `TestGroupsForRoomFrac`, 9g (79, 80, 81, 83 get monsters) |
+
+## What Act 3 does not do yet
+
+* The quests of Act 3 (Lam Esen's Tome, Khalim's Will, Blade of the Old Religion, the Golden Bird, Mephisto) are not played; the NPCs of Kurast Docks only talk (menus and greetings). Hratli is not in the DS1 and stands at a guessed place (`townExtras`).
+* Kurast Causeway (82) has no natural monsters: no 16x16 block of the generated level reaches the walkable share of 40 % (the bridge between the canals). Travincal has its council monsters only as far as the DS1 names them.
+* The tiles of the jungle and of Kurast keep the approximation of `drlgoutdoor/doc.go`; the special (wall) tiles of the Kurast presets with styles 8, 9, 12, 16 are not exits and stay unresolved on purpose (38 of them in Upper Kurast).
+* The Swampy Pits and Flayer Dungeons (86..91) are mazes with DS1 monsters: the natural groups skip their blocks, the second level of each pit (87, 89) and the treasure rooms were generated but are not part of 9g.
+* Durance of Hate 2 (101) is generated but not walked; level 102 (Durance 3, Mephisto) is a preset level that nothing enters yet, and the red portal to the Pandemonium Fortress is only the act-travel rule.
+* Sewers 1 has two entrances in each of Kurast Bazaar and Upper Kurast (slots 0 and 1); coming back up, the hero arrives at the first one (which one the original uses is UNVERIFIED).
+* The Great Marsh and the jungle lose a third of their monsters to the "hero cannot walk there" filter (islands of floor between water and undergrowth).

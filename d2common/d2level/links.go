@@ -307,7 +307,9 @@ func CaveEntranceDestination(level int) (int, bool) {
 var upWarps = map[int]bool{4: true, 8: true, 11: true, 13: true, 16: true, 17: true,
 	// Act 2: sewers 21/22, palace 25..27, arcane 30/31, tombs and the Valley of
 	// the Kings exits 45, maggot lair 48 (the "up" slots of Levels.txt rows 47..72)
-	21: true, 22: true, 25: true, 26: true, 27: true, 30: true, 31: true, 45: true, 48: true}
+	21: true, 22: true, 25: true, 26: true, 27: true, 30: true, 31: true, 45: true, 48: true,
+	// Act 3: spider cave 52, dungeons 55, sewers 58/59, temples 62/63, Durance of Hate 65/66
+	52: true, 55: true, 58: true, 59: true, 62: true, 63: true, 65: true, 66: true}
 
 // isOutdoor reports a level that borders others on seamless edges. Only Acts 1
 // and 2 count: the TileDestination rules below were observed there, and the Act
@@ -360,6 +362,10 @@ func TileDestination(level, style int) (int, bool) {
 	}
 
 	if isOutdoor(level) {
+		if to, ok := Act3SlotDestination(level, style); ok {
+			return to, true
+		}
+
 		if to, ok := Destination(level, style); ok {
 			return to, true
 		}
@@ -412,6 +418,9 @@ func TileDestination(level, style int) (int, bool) {
 		return downs[0], true // the "next" stairs of crypts, jail and catacombs
 	case style >= downStyleBase && style-downStyleBase < len(downs):
 		return downs[style-downStyleBase], true
+	case style < downStyleBase && len(downs) == 0 && len(ups) > 0:
+		// a dungeon with a way out and no way down (Spider Cavern: the exit tile of its lair presets has style 1)
+		return ups[0], true
 	}
 
 	return 0, false

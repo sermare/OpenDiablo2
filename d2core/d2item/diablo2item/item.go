@@ -5,8 +5,8 @@ import (
 	"math/rand"
 	"sort"
 	"strconv"
-	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -114,6 +114,9 @@ type Item struct {
 	Runeword    string     // display name of the runeword the item became
 	CubeMods    []ExtraMod // properties a cube recipe attached
 	Crafted     bool       // quality "crafted" (cube recipes)
+
+	// origin is the item as a .d2s save held it (see SetOrigin).
+	origin *d2s.Item
 }
 
 // nolint:structcheck,unused // WIP
@@ -734,16 +737,24 @@ func (i *Item) generateName() {
 
 	// if it has 1 to 2 affixes, it's a magic item, and we just put the current item
 	// name between the prefix and suffix strings
+	// affix names are string table keys, so they are translated like every other name, and the
+	// parts are joined in the order of the active language (d2locale)
+	loc := i.factory.asset.Locale()
+
 	if numAffixes > 0 && numAffixes < 3 {
+		var prefixName, suffixName string
+
 		if len(i.PrefixRecords()) > 0 {
 			affix := i.PrefixRecords()[i.rand.Intn(len(i.PrefixRecords()))]
-			name = fmt.Sprintf("%s %s", affix.Name, name)
+			prefixName = i.factory.asset.TranslateString(affix.Name)
 		}
 
 		if len(i.SuffixRecords()) > 0 {
 			affix := i.SuffixRecords()[i.rand.Intn(len(i.SuffixRecords()))]
-			name = fmt.Sprintf("%s %s", name, affix.Name)
+			suffixName = i.factory.asset.TranslateString(affix.Name)
 		}
+
+		name = loc.MagicName(prefixName, name, suffixName)
 	}
 
 	// if it has more than 2 affixes, it's a rare item
@@ -759,10 +770,10 @@ func (i *Item) generateName() {
 		numSuffix := len(suffixes)
 
 		preIdx, sufIdx := i.rand.Intn(numPrefix), i.rand.Intn(numSuffix)
-		prefix := prefixes[preIdx].Name
-		suffix := suffixes[sufIdx].Name
+		prefix := i.factory.asset.TranslateString(prefixes[preIdx].Name)
+		suffix := i.factory.asset.TranslateString(suffixes[sufIdx].Name)
 
-		name = fmt.Sprintf("%s %s\n%s", strings.Title(prefix), strings.Title(suffix), name)
+		name = loc.RareName(prefix, suffix, name)
 	}
 
 	i.name = name
@@ -938,6 +949,16 @@ const (
 // GetItemDescription gets the complete item description as a slice of strings.
 // This is what is used in the item's hover-tooltip
 func (i *Item) GetItemDescription() []string {
+	if lines, ok := i.describeOrigin(); ok {
+		return lines
+	}
+
+	return i.GeneratedDescription()
+}
+
+// GeneratedDescription is the description of the generated item, ignoring any
+// saved form attached with SetOrigin (the spec round trip test compares it).
+func (i *Item) GeneratedDescription() []string {
 	lines := make([]string, 0)
 
 	common := i.CommonRecord()

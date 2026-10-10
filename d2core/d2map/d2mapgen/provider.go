@@ -79,7 +79,7 @@ func (g *MapGenerator) LoadLevel(levelID int, req LoadRequest) (arrival Arrival,
 
 	x, y := g.engine.GetStartPosition()
 
-	if sx, sy, ok := g.engine.NearestWalkable(int(x*subtilesPerTile), int(y*subtilesPerTile), arrivalSearchRadius); ok {
+	if sx, sy, ok := g.engine.NearestOpen(int(x*subtilesPerTile), int(y*subtilesPerTile), arrivalSearchRadius); ok {
 		x, y = (float64(sx)+0.5)/subtilesPerTile, (float64(sy)+0.5)/subtilesPerTile
 	}
 

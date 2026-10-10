@@ -93,6 +93,15 @@ func (v *Game) skillEngine() *d2skills.Engine {
 		Seed:         uint32(v.gameClient.MapEngine.Seed()),
 		IgnoreTown:   scenario || os.Getenv("OD2_AUTOMONSTER") != "" || os.Getenv("OD2_AUTOMERC") != "",
 		InfiniteAmmo: scenario,
+		TeleportFlag: func() int {
+			if det := v.asset.Records.GetLevelDetails(v.currentLevel()); det != nil {
+				return int(det.TeleportFlag)
+			}
+
+			return 1
+		},
+		Act:          v.currentAct,
+		Difficulty:   int(v.gameClient.Difficulty),
 	})
 	v.skills.Rivals = v.skillRivals
 	v.skills.OnPvPHit = v.sendSkillPvP
@@ -373,6 +382,10 @@ func (v *Game) corpseForCast(victim *d2mapentity.Monster, elapsed float64, t *ca
 	bd := 0
 
 	for _, c := range v.monsters.Corpses() {
+		if v.skills != nil && v.skills.Looted(c.ID()) { // Find Potion / Find Item / Grim Ward used it up
+			continue
+		}
+
 		cx, cy := c.SubtilePos()
 		if d := d2monster.Distance(hx-cx, hy-cy); best == nil || d < bd {
 			best, bd = c, d

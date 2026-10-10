@@ -23,6 +23,10 @@ type Configuration struct {
 	// D2SDir is an optional folder of real Diablo II .d2s characters to import
 	// (read only). When empty, well-known locations are searched.
 	D2SDir string
+	// Language selects the game language by tag (enUS, deDE, esES, frFR, itIT, jaJP, koKR,
+	// plPL, ptBR, ruRU, zhCN, zhTW). Empty or "auto" uses the language of the install.
+	// The -lang flag and the OD2_LANGUAGE environment variable override it.
+	Language string `json:",omitempty"`
 	// Options holds the choices of the in-game options menu (see options.go);
 	// sound and music live in SfxVolume and BgmVolume.
 	Options map[string]int `json:",omitempty"`

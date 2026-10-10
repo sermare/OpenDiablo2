@@ -51,7 +51,7 @@ func (g *GameClient) ChangeLevelAct(levelID int, prefer ArrivalFunc, actFinished
 
 	if prefer != nil {
 		if x, y, ok := prefer(g.MapEngine); ok {
-			sx, sy, found := g.MapEngine.NearestWalkable(int(x*numSubtilesPerTile), int(y*numSubtilesPerTile), arrivalRadius)
+			sx, sy, found := g.MapEngine.NearestOpen(int(x*numSubtilesPerTile), int(y*numSubtilesPerTile), arrivalRadius)
 			if found {
 				arrival = d2mapgen.Arrival{X: (float64(sx) + 0.5) / numSubtilesPerTile, Y: (float64(sy) + 0.5) / numSubtilesPerTile}
 			}

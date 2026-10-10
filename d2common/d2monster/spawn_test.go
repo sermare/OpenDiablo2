@@ -176,6 +176,44 @@ func TestGroupsForRoomAndAverage(t *testing.T) {
 	}
 }
 
+// Playtest bug (Act 3): a 16x16 block of Kurast (MonDen 325) rounds down to 0 groups, so five levels had no
+// monsters; the fraction becomes the chance of one group.
+func TestGroupsForRoomFrac(t *testing.T) {
+	never := func(int) int { t.Fatal("roll used although the room already has groups"); return 0 }
+
+	if got := GroupsForRoomFrac(1600, 3000, 4, never); got != 12 {
+		t.Errorf("rooms with groups keep them: %d", got)
+	}
+
+	if got := GroupsForRoomFrac(0, 325, 3, never); got != 0 {
+		t.Errorf("empty room: %d", got)
+	}
+
+	low := func(int) int { return 0 }
+	high := func(n int) int { return n - 1 }
+
+	// 256 tiles at density 325 and groups of 3: 0.28 expected groups
+	if got := GroupsForRoomFrac(256, 325, 3, low); got != 1 {
+		t.Errorf("lucky roll: %d", got)
+	}
+
+	if got := GroupsForRoomFrac(256, 325, 3, high); got != 0 {
+		t.Errorf("unlucky roll: %d", got)
+	}
+
+	hits := 0
+	for i := 0; i < 1000; i++ {
+		i := i
+		if GroupsForRoomFrac(256, 325, 3, func(n int) int { return i * (n / 1000) }) > 0 {
+			hits++
+		}
+	}
+
+	if hits < 250 || hits > 300 {
+		t.Errorf("chance of a group = %d/1000, want about 277", hits)
+	}
+}
+
 func TestResolveLevel(t *testing.T) {
 	stat := [3]int{5, 35, 65}
 

@@ -10,7 +10,14 @@ import (
 // TextDictionary is a string map
 type TextDictionary map[string]string
 
-func (td TextDictionary) loadHashEntries(hashEntries []*textDictionaryHashEntry, br *d2datautils.StreamReader) error {
+// Decoder turns the raw bytes of a table value into a string (see d2locale.Locale.Decode).
+// A nil Decoder keeps the bytes as they are.
+type Decoder func(raw []byte) string
+
+// Encoder is the inverse of Decoder.
+type Encoder func(s string) []byte
+
+func (td TextDictionary) loadHashEntries(hashEntries []*textDictionaryHashEntry, br *d2datautils.StreamReader, dec Decoder) error {
 	for i := 0; i < len(hashEntries); i++ {
 		entry := textDictionaryHashEntry{}
 
@@ -54,7 +61,7 @@ func (td TextDictionary) loadHashEntries(hashEntries []*textDictionaryHashEntry,
 			continue
 		}
 
-		if err := td.loadHashEntry(idx, hashEntries[idx], br); err != nil {
+		if err := td.loadHashEntry(idx, hashEntries[idx], br, dec); err != nil {
 			return fmt.Errorf("loading entry %d: %v", idx, err)
 		}
 	}
@@ -62,7 +69,7 @@ func (td TextDictionary) loadHashEntries(hashEntries []*textDictionaryHashEntry,
 	return nil
 }
 
-func (td TextDictionary) loadHashEntry(idx int, hashEntry *textDictionaryHashEntry, br *d2datautils.StreamReader) error {
+func (td TextDictionary) loadHashEntry(idx int, hashEntry *textDictionaryHashEntry, br *d2datautils.StreamReader, dec Decoder) error {
 	br.SetPosition(uint64(hashEntry.NameString))
 
 	value := ""
@@ -74,9 +81,12 @@ func (td TextDictionary) loadHashEntry(idx int, hashEntry *textDictionaryHashEnt
 			return fmt.Errorf("reading name value: %v", err)
 		}
 
-		// The 1.14 tables are UTF-8 for every language (verified against the
-		// shipped ENG/DEU/FRA/POL/KOR tables), so no code page conversion.
+		// The 1.14 tables are UTF-8 for every language; dec (if set) converts other encodings.
 		value = string(nameVal)
+
+		if dec != nil {
+			value = dec(nameVal)
+		}
 	}
 
 	br.SetPosition(uint64(hashEntry.IndexString))
@@ -123,6 +133,11 @@ const (
 
 // LoadTextDictionary loads the text dictionary from the given data
 func LoadTextDictionary(dictionaryData []byte) (TextDictionary, error) {
+	return LoadTextDictionaryDecoded(dictionaryData, nil)
+}
+
+// LoadTextDictionaryDecoded loads the text dictionary and decodes every value with dec
+func LoadTextDictionaryDecoded(dictionaryData []byte, dec Decoder) (TextDictionary, error) {
 	lookupTable := make(TextDictionary)
 
 	br := d2datautils.CreateStreamReader(dictionaryData)
@@ -174,7 +189,7 @@ func LoadTextDictionary(dictionaryData []byte) (TextDictionary, error) {
 
 	hashEntries := make([]*textDictionaryHashEntry, hashTableSize)
 
-	err = lookupTable.loadHashEntries(hashEntries, br)
+	err = lookupTable.loadHashEntries(hashEntries, br, dec)
 	if err != nil {
 		return nil, fmt.Errorf("loading has entries: %v", err)
 	}
@@ -184,6 +199,19 @@ func LoadTextDictionary(dictionaryData []byte) (TextDictionary, error) {
 
 // Marshal encodes text dictionary back into byte slice
 func (td *TextDictionary) Marshal() []byte {
+	return td.MarshalEncoded(nil)
+}
+
+// MarshalEncoded encodes the text dictionary with enc turning values back into table bytes
+func (td *TextDictionary) MarshalEncoded(enc Encoder) []byte {
+	encode := func(s string) []byte {
+		if enc == nil {
+			return []byte(s)
+		}
+
+		return enc(s)
+	}
+
 	sw := d2datautils.CreateStreamWriter()
 
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/1043
@@ -217,7 +245,7 @@ func (td *TextDictionary) Marshal() []byte {
 	dataPos := len(sw.GetBytes()) + 17*len(*td)
 
 	for _, key := range keys {
-		value := (*td)[key]
+		value := encode((*td)[key])
 		// non-zero if record is used (for us, every record is used ;-)
 		sw.PushBytes(1)
 
@@ -246,7 +274,7 @@ func (td *TextDictionary) Marshal() []byte {
 
 	// data stream: put all data in appropriate order
 	for _, key := range keys {
-		value := (*td)[key]
+		value := encode((*td)[key])
 
 		if key[0] == '#' {
 			key = "x"
@@ -257,7 +285,7 @@ func (td *TextDictionary) Marshal() []byte {
 		// 0 as separator
 		sw.PushBytes(0)
 
-		sw.PushBytes([]byte(value)...)
+		sw.PushBytes(value...)
 
 		// 0 as separator
 		sw.PushBytes(0)

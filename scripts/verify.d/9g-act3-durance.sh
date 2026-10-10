@@ -1,3 +1,4 @@
+scenario_timeout=1200
 scenario_name="Act 3 gate (Travincal stairs stay sealed until the Compelling Orb is smashed, then Durance 1 -> 2 -> 3)"
 a3=$tmp/act3
 # Needs the revived level-94 sample hero (D2_TABLES + D2S_SAMPLE_BODY, see 9e-act2-playthrough.sh).

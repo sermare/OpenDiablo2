@@ -158,6 +158,16 @@ func (e *Engine) effect(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		e.summon(p, u, sk, ef)
 	case "move":
 		e.move(p, u, sk, ef)
+	case "convert":
+		e.convert(p, sk, ef)
+	case "shield":
+		e.shield(p, u, sk, ef)
+	case "loot":
+		e.loot(p, sk, ef)
+	case "ward":
+		e.ward(p, sk, ef)
+	case "whirl":
+		e.whirl(p, u, sk, ef)
 	case "self_damage":
 		loss := p.Stats.MaxHealth * ef.SelfDamagePct / 100
 		p.Stats.Health = maxInt(p.Stats.Health-loss, 1)
@@ -235,6 +245,7 @@ func (e *Engine) applyMonsterState(m *d2mapentity.Monster, inst d2state.Instance
 	e.target(m)
 	e.setOf(m.ID()).Apply(e.frame, inst)
 	e.syncMonster(m)
+	e.forceFromMods(m, inst)
 }
 
 // syncMonster pushes the states of a monster to the director: speed, stun or
@@ -619,7 +630,8 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		return
 	}
 
-	opt := d2monsters.MinionOptions{Owner: p, Kind: o.Kind, HPPct: o.HPPct, HPFlat: o.HPFlat, Frames: o.Frames, Tag: o.PetType}
+	opt := d2monsters.MinionOptions{Owner: p, Kind: o.Kind, HPPct: o.HPPct, HPFlat: o.HPFlat, Frames: o.Frames, Tag: o.PetType,
+		Level: o.Level}
 	if opt.Tag == "" || opt.Tag == "none" {
 		opt.Tag = stat.Key // the tag petworld.go gives such minions
 	}
@@ -635,9 +647,13 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		}
 	}
 
+	corpseLevel := 0
+
 	if o.CorpseID != "" {
 		for _, c := range e.monsters.Corpses() {
 			if c.ID() == o.CorpseID {
+				corpseLevel = c.Vitals.Level
+
 				if o.UseCorpseType {
 					stat = c.Stat
 				}
@@ -661,6 +677,10 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 			return wallCell(hx, hy, x, y, i, n, o.Mode)
 		}
 
+		if i < len(o.Cells) {
+			return x + o.Cells[i][0], y + o.Cells[i][1]
+		}
+
 		return x, y
 	})
 
@@ -678,7 +698,17 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		}
 
 		made++
+
+		if o.OwnerHPPct > 0 { // Dopplezon: life is a percent of the owner's maximum life
+			hp := maxInt(p.Stats.MaxHealth*o.OwnerHPPct/100, 1)
+			m.Vitals.MaxHP, m.Vitals.HP = hp, hp
+		}
+
 		e.pets[p.ID()] = append(e.pets[p.ID()], m)
+
+		if o.UseCorpseType {
+			reviveCap(m, corpseLevel, p.Stats.Level)
+		}
 		e.target(m)
 
 		switch o.Kind {

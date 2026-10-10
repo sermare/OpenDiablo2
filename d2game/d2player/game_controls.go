@@ -260,6 +260,7 @@ func NewGameControls(
 
 	inventory.savedItems = hero.Containers != nil
 	inventory.itemHook = gc.itemTooltipLines
+	inventory.item.DescribeContext = gc.describeContext
 	gc.stash = NewContainerPanel(asset, ui, l, inventory, stashKind, gc.saveHero)
 	gc.cube = NewContainerPanel(asset, ui, l, inventory, cubeKind, gc.saveHero)
 	gc.cube.SetOnTransmute(gc.onTransmuteButton)

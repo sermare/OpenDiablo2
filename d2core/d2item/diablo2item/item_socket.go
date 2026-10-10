@@ -69,7 +69,7 @@ func (i *Item) makeRuneword() {
 		codes[k] = s.CommonCode
 	}
 
-	w := c.FindRuneword(i.CommonCode, codes)
+	w := c.FindRunewordFor(i.CommonCode, i.quality, i.NumSockets(), codes)
 	if w == nil {
 		return
 	}

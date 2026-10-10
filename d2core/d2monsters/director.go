@@ -221,6 +221,10 @@ type Director struct {
 	OnEvent func(kind, line string)
 	// OnKill, if set, is called when a monster dies (the quest system listens).
 	OnKill func(KillEvent)
+	// QuestStates, if set, answers the three quest checks of the quest
+	// treasure class (see d2drop.MonsterTreasureInput.QuestStates) for a
+	// class's TCQuestId / TCQuestCP. Without it the quest class never drops.
+	QuestStates func(questID, questCP int) [3]bool
 }
 
 // KillEvent describes a monster death for OnKill.

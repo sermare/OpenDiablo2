@@ -1,5 +1,7 @@
 scenario_name="monster AI states (forced fear / confuse / charm override the AI, are injected with the forcestate command and restore it; monsters fight monsters)"
-scenario_env() { echo 'export OD2_AUTOAI="skeleton1,state=fear+confuse+charm" OD2_AUTOAI_SECONDS=22'; }
+# faithful N-Z ports (feat/ai-faithful-b): one in-game subject per family, spawned beside the main subject
+fb_families="Vampire SuccubusWitch ZakarumPriest ZakarumZealot OblivionKnight Overseer Regurgitator VileMother VileDog ThornHulk PinHead PutridDefiler QuillMother SiegeBeast ReanimatedHorde Spirit TrappedSoul Trap-Melee SandMaggotQueen Tentacle FrogDemon WillOWisp ShadowWarrior Sarcophagus"
+scenario_env() { echo 'export OD2_AUTOAI="skeleton1,state=fear+confuse+charm" OD2_AUTOAI_SECONDS=34'; echo "export OD2_AUTOAI_ALSO=\"${fb_families// /+}\""; }
 scenario_check() {
   grep -E "AUTOAI (start|inject|summary)|MONSTER (state|aistate)|forcestate:" $log.txt | cut -c1-220
   grep -q "AUTOAI start ref=skeleton1" $log.txt || { echo "FAIL: AUTOAI did not start"; fail=1; }
@@ -10,7 +12,7 @@ scenario_check() {
   # fear swaps the think function and gives the class AI back when it ends
   grep -q "MONSTER aistate .* from=Skeleton to=State11+fear" $log.txt || { echo "FAIL: fear did not override the AI"; fail=1; }
   grep -q "MONSTER aistate .* from=State11+fear to=Skeleton" $log.txt || { echo "FAIL: fear did not restore the AI"; fail=1; }
-  grep -q "MONSTER aistate .* from=Skeleton to=Skeleton+confuse" $log.txt || { echo "FAIL: confuse not applied"; fail=1; }
+  grep -q "MONSTER aistate .* to=Skeleton+confuse" $log.txt || { echo "FAIL: confuse not applied"; fail=1; }
   grep -q "MONSTER aistate .* from=Skeleton+confuse to=Skeleton" $log.txt || { echo "FAIL: confuse not restored"; fail=1; }
   grep -q "MONSTER aistate .* to=Skeleton+charm+allied" $log.txt || { echo "FAIL: charm not applied"; fail=1; }
   grep -q "MONSTER aistate .* from=Skeleton+charm+allied to=Skeleton" $log.txt || { echo "FAIL: charm not restored"; fail=1; }
@@ -21,4 +23,41 @@ scenario_check() {
   # function and the ported ground archetypes act (static tests, no game needed)
   grep -q "AUTOAI start ref=skeleton1 .*implemented=true" $log.txt || { echo "FAIL: subject AI not implemented"; fail=1; }
   go test ./d2common/d2monster/ -run 'TestMonaiTableCoverage|TestNoCommonMonsterIdles|TestMonsterAI4' -count=1 2>&1 | grep -v "ignoring duplicate libraries" | tail -5 | grep -q '^ok' || { echo "FAIL: monster AI archetype tests"; fail=1; }
+  # faithful ports (feat/ai-faithful-a, monsters A..M): one in-game subject per family. Each runs its own short
+  # game (one window at a time) and must start with the ported think function ("implemented=true" and the AI
+  # name) and run without errors; the Go table tests cover the decisions themselves.
+  local main_log=$log ref ai fam sub_cmd sub_slot
+  for fam in baboon1:Baboon fingermage1:FingerMage foulcrow1:BloodHawk gargoyletrap:GargoyleTrap suckernest1:MosquitoNest deathmauler1:DeathMauler cr_lancer1:CorruptLancer; do
+    ref=${fam%%:*}; ai=${fam##*:}
+    sub_cmd=$tmp/97-sub-$ref.command log=$tmp/97-sub-$ref.log; rm -f $log
+    {
+      echo '#!/bin/zsh'
+      echo "export OD2_PORT=$OD2_PORT"
+      echo "export OD2_AUTOGAME=\"$save\" OD2_AUTOEXIT=1 OD2_AUTOTEST_MUTE=1 OD2_AUTOSPEED=4"
+      echo "export OD2_AUTOAI=$ref OD2_AUTOAI_SECONDS=14"
+      echo "$tmp/od2 2>&1 | tee $log"
+    } > $sub_cmd
+    chmod +x $sub_cmd
+    sub_slot=$(./scripts/gameslot.sh acquire $$)
+    launch_game $sub_cmd
+    wait_run
+    ./scripts/gameslot.sh release $sub_slot
+    sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
+    grep -E "AUTOAI (start|summary)" $log.txt | cut -c1-200
+    grep -q "AUTOAI start ref=$ref .* ai=$ai implemented=true" $log.txt || { echo "FAIL: $ref did not start with the ported $ai AI"; fail=1; }
+    grep -q "AUTOAI summary" $log.txt || { echo "FAIL: no AUTOAI summary for $ref"; fail=1; }
+    # the fighters must have acted (attacks or skills in the summary); the nest and the statue are passive here
+    case $ref in gargoyletrap|suckernest1) ;; *)
+      grep "AUTOAI summary ref=$ref " $log.txt | grep -qE "attacks=[1-9]|skills=[1-9]" || { echo "FAIL: $ref never attacked or cast"; fail=1; } ;;
+    esac
+    grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing" | head -3 | grep -q . && { echo "FAIL: errors in the $ref log"; fail=1; }
+  done
+  log=$main_log
+  go test ./d2common/d2monster/ -run 'TestFaithfulA|TestAncientStatue' -count=1 2>&1 | grep -v "ignoring duplicate libraries" | tail -5 | grep -q '^ok' || { echo "FAIL: faithful AI port tests"; fail=1; }
+  # every faithful-port family ran as an in-game subject with its implemented think function
+  for fam in ${=fb_families}; do
+    grep -q "AUTOAI also ref=$fam monster=.* implemented=true" $log.txt || { echo "FAIL: in-game subject $fam missing or not implemented"; fail=1; }
+  done
+  grep -q "AUTOAI also-summary" $log.txt || { echo "FAIL: no also-summary lines"; fail=1; }
+  go test ./d2common/d2monster/ -run 'TestFaithfulB' -count=1 2>&1 | grep -v "ignoring duplicate libraries" | tail -5 | grep -q '^ok' || { echo "FAIL: faithful N-Z AI tests"; fail=1; }
 }

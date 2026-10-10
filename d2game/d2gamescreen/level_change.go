@@ -426,6 +426,13 @@ func (v *Game) advanceWarpUse(elapsed float64) {
 		}
 	}
 
+	// a scripted walk to an exit enters only the warp it heads for: the walk to Upper Kurast ended in the
+	// Disused Fane when a fight sent the hero over the entrance next to the Ruined Temple's
+	if e := v.levels.exitWalk; e != nil && !edgeWanted(e.level, dest) {
+		v.Infof("LEVEL warp tile at (%d,%d) to level %d ignored: the scripted walk heads for level %d", w.TileX, w.TileY, dest, e.level)
+		return
+	}
+
 	v.Infof("LEVEL warp tile style=%d at (%d,%d): level %d -> %d", w.Style, w.TileX, w.TileY, cur, dest)
 	v.startLevelChange(dest, d2level.StartDefault, "warp")
 }

@@ -2,6 +2,19 @@ package d2gamescreen
 
 import "testing"
 
+// Playtest bug (Act 3): in the Great Marsh the scripted walk to Flayer Jungle left through the border to
+// Spider Forest, which the marsh also touches.
+func TestEdgeWantedOnlyTheBorderOfTheWalk(t *testing.T) {
+	for _, c := range []struct {
+		want, to int
+		ok       bool
+	}{{0, 76, true}, {78, 78, true}, {78, 76, false}, {76, 78, false}} {
+		if got := edgeWanted(c.want, c.to); got != c.ok {
+			t.Errorf("edgeWanted(%d, %d) = %v, want %v", c.want, c.to, got, c.ok)
+		}
+	}
+}
+
 // Playtest bug: the walk from the east end of Dry Hills to the border of Rocky Waste took longer than the
 // 60 s time-out although the hero walked all the time; the clock runs only while he does not get closer.
 func TestExitWalkProgressRestartsTheClock(t *testing.T) {

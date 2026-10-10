@@ -2,6 +2,7 @@ package d2app
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2loader/asset/types"
@@ -87,10 +88,22 @@ func (a *App) initConfig(config *d2config.Configuration) error {
 }
 
 func (a *App) initLanguage() {
+	requested := a.config.Language
+
+	if env := os.Getenv("OD2_LANGUAGE"); env != "" {
+		requested = env
+	}
+
+	if a.Options != nil && a.Options.Language != nil && *a.Options.Language != "" {
+		requested = *a.Options.Language
+	}
+
+	a.asset.SetRequestedLanguage(requested)
+
 	a.language = a.asset.LoadLanguage(d2resource.LocalLanguage)
 	a.asset.Loader.SetLanguage(&a.language)
 
-	a.charset = d2resource.GetFontCharset(a.language)
+	a.charset = a.asset.FontDir()
 	a.asset.Loader.SetCharset(&a.charset)
 }
 

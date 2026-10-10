@@ -3,6 +3,8 @@ package d2hero
 import (
 	"encoding/binary"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -86,6 +88,12 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 	state.Progress = &HeroProgress{Quests: quests(body), Waypoints: body.Waypoints, NPC: *body.NPCFlags()}
 
 	f.importD2SItems(state, data)
+
+	if path := os.Getenv(StashEnvVar); path != "" && state.Containers != nil {
+		added, skipped, err := f.ImportStashFile(state, path)
+		fmt.Printf("stash import: %s: added=%d skipped=%d err=%v\n", filepath.Base(path), added, len(skipped), err)
+	}
+
 	f.giveStartingItemsToFreshHero(state, hero)
 
 	if err := f.applyD2SSkills(state, hero, body.SkillPoints); err != nil {

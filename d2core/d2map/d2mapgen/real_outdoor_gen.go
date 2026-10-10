@@ -45,7 +45,19 @@ func isPresetLevel(id int) bool {
 		return true
 	}
 
-	return isAct1Preset(id)
+	return isAct1Preset(id) || isAct3Preset(id)
+}
+
+// isAct3Preset reports the Act 3 dungeon levels that are a single preset DS1 (Levels.txt DrlgType 2): the
+// treasure rooms of the Flayer Dungeons (90, 91), Sewers 2 (93), the six temples (94..99) and the third level
+// of the Durance of Hate (102).
+func isAct3Preset(id int) bool {
+	switch {
+	case id == 90, id == 91, id == 93, id >= 94 && id <= 99, id == 102:
+		return true
+	}
+
+	return false
 }
 
 // isAct1Preset reports the Act 1 DrlgType 2 levels outside the world layout: the
@@ -58,6 +70,14 @@ func isAct1Preset(id int) bool { return (id >= 13 && id <= 16) || id == 37 }
 // generator inputs (rectangle, od.flags, vis/warp, neighbour list).
 func levelParams(tb *d2drlg.Tables, levelID int, seed uint32, diff d2drlg.Difficulty) (drlgoutdoor.Params, *drlgworld.Layout, error) {
 	rec, _ := tb.Level(levelID)
+
+	if isAct3Preset(levelID) { // a dungeon of its own: no world, the rectangle is the level's size
+		p := drlgoutdoor.Params{ID: levelID, Vis: rec.Vis, Warp: rec.Warp,
+			Rect: drlgoutdoor.Rect{W: rec.SizeX[diff], H: rec.SizeY[diff]}}
+		p.BaseSeed, _ = d2rand.DrlgBaseSeed(seed)
+
+		return p, nil, nil
+	}
 
 	if isAct1Preset(levelID) {
 		p, err := drlgoutdoor.ParamsPreset(tb, levelID, seed, diff)
@@ -181,9 +201,24 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 	var (
 		mon     monsterStats
 		presets int
+		wps     [][2]int
 	)
 
 	levelSeed := d2rand.LevelSeed(p.BaseSeed, uint32(levelID))
+
+	// the original's population: every room of the level with its seed
+	pop := g.newPopLevel(levelID, seed, diff)
+	presetRooms := map[[2]int][]*popRoom{}
+
+	if pop != nil {
+		for _, r := range lv.Rooms {
+			pr := pop.addRoom(r.X-p.Rect.X, r.Y-p.Rect.Y, r.W, r.H, r.Seed, r.Flags&roomNoPopulate != 0)
+			if r.Type == 2 {
+				k := [2]int{r.PrestX - p.Rect.X, r.PrestY - p.Rect.Y}
+				presetRooms[k] = append(presetRooms[k], pr)
+			}
+		}
+	}
 
 	// preset rooms: one stamp per preset origin cell
 	for yc := 0; yc < lv.H; yc++ {
@@ -211,14 +246,48 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 			}
 
 			ox, oy := xc*8, yc*8
-			g.engine.PlaceStampClipped(stamp, ox, oy, pr.SizeX, pr.SizeY)
+			if pop != nil {
+				rs := presetRooms[[2]int{ox, oy}]
+
+				var (
+					first *popRoom
+					gate  *d2rand.Seed
+				)
+
+				if len(rs) > 0 {
+					first = rs[0]
+				}
+
+				for _, r := range lv.Rooms {
+					if r.Type == 2 && r.PrestX-p.Rect.X == ox && r.PrestY-p.Rect.Y == oy {
+						if r.GateSteps > 0 {
+							gate = &r.GateSeed
+						}
+
+						break
+					}
+				}
+
+				ps := pop.addPreset(stamp, ox, oy, gate, first)
+				for _, r := range rs {
+					r.preset = ps
+				}
+
+				g.engine.PlaceStampClippedWhere(stamp, ox, oy, pr.SizeX, pr.SizeY, ps.keepFunc(), false)
+			} else {
+				g.engine.PlaceStampClipped(stamp, ox, oy, pr.SizeX, pr.SizeY)
+			}
 
 			presets++
 
+			wps = append(wps, g.waypointObjects(stamp, ox, oy)...)
+
 			g.markWarpTiles(stamp, path, ox, oy, levelID)
 
-			roomSeed := d2rand.New(levelSeed.Lo + uint32(def)*0x9E3779B1 + uint32(xc*131+yc))
-			g.placeMonsters(stamp, levelID, diff, ox, oy, pr.SizeX, pr.SizeY, roomSeed, &mon)
+			if pop == nil {
+				roomSeed := d2rand.New(levelSeed.Lo + uint32(def)*0x9E3779B1 + uint32(xc*131+yc))
+				g.placeMonsters(stamp, levelID, diff, ox, oy, pr.SizeX, pr.SizeY, roomSeed, &mon)
+			}
 		}
 	}
 
@@ -229,7 +298,12 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 	g.engine.BlockEmptyTiles()
 	g.engine.UseCollisionPaths(true)
 
-	sx, sy, how := g.outdoorEntry(lv, p.Rect)
+	if pop != nil {
+		pop.run()
+		pop.logSummary("real outdoor")
+	}
+
+	sx, sy, how := g.outdoorEntry(lv, p.Rect, wps)
 	g.engine.SetStartPosition(sx, sy)
 
 	g.Infof("real outdoor: level %d seed %#x: %d rooms (%d plain%s, %d presets stamped), map %dx%d tiles",
@@ -398,7 +472,35 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 		return fmt.Errorf("level %d: cannot load %s", levelID, path)
 	}
 
-	g.engine.PlaceStampClipped(stamp, 0, 0, pl.Rect.W, pl.Rect.H)
+	var mon monsterStats
+
+	pop := g.newPopLevel(levelID, seed, diff)
+	if pop != nil {
+		var first *popRoom
+
+		for _, r := range pl.Rooms {
+			pr := pop.addRoom(r.X-pl.Rect.X, r.Y-pl.Rect.Y, r.W, r.H, r.Seed, r.Flags&roomNoPopulate != 0)
+			pr.preset = nil
+
+			if first == nil {
+				first = pr
+			}
+		}
+
+		gate := pl.GateSeed
+		ps := pop.addPreset(stamp, 0, 0, &gate, first)
+
+		for _, r := range pop.rooms {
+			r.preset = ps
+		}
+
+		g.engine.PlaceStampClippedWhere(stamp, 0, 0, pl.Rect.W, pl.Rect.H, ps.keepFunc(), false)
+	} else {
+		g.engine.PlaceStampClipped(stamp, 0, 0, pl.Rect.W, pl.Rect.H)
+
+		levelSeed := d2rand.LevelSeed(p.BaseSeed, uint32(levelID))
+		g.placeMonsters(stamp, levelID, diff, 0, 0, pl.Rect.W, pl.Rect.H, d2rand.New(levelSeed.Lo+uint32(pl.Def)), &mon)
+	}
 
 	// the exact records of the preset rooms (checked against Game.exe for the
 	// Act 4/5 preset levels); on failure the stamped DS1 tiles stay
@@ -411,13 +513,13 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 		exact = fmt.Sprintf(", exact tiles for %d rooms", n)
 	}
 
-	var mon monsterStats
-
-	levelSeed := d2rand.LevelSeed(p.BaseSeed, uint32(levelID))
-	g.placeMonsters(stamp, levelID, diff, 0, 0, pl.Rect.W, pl.Rect.H, d2rand.New(levelSeed.Lo+uint32(pl.Def)), &mon)
-
 	g.engine.BlockEmptyTiles()
 	g.engine.UseCollisionPaths(true)
+
+	if pop != nil {
+		pop.run()
+		pop.logSummary("real preset")
+	}
 
 	var (
 		sx, sy float64
@@ -427,7 +529,7 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 	if isAct1Preset(levelID) {
 		sx, sy, how = g.findEntry(&drlgmaze.Result{}, []roomRect{{0, 0, pl.Rect.W, pl.Rect.H, path}}, 0)
 	} else {
-		sx, sy, how = g.outdoorEntry(&drlgoutdoor.Level{}, pl.Rect)
+		sx, sy, how = g.outdoorEntry(&drlgoutdoor.Level{}, pl.Rect, nil)
 	}
 
 	g.engine.SetStartPosition(sx, sy)
@@ -469,14 +571,19 @@ func roomTile(a, b, c uint32) d2mapstamp.Tile {
 }
 
 // outdoorEntry picks the hero's start: next to the first road end (exit
-// towards the town or a neighbour), else the middle of the level.
-func (g *MapGenerator) outdoorEntry(lv *drlgoutdoor.Level, rect drlgoutdoor.Rect) (x, y float64, how string) {
+// towards the town or a neighbour); without one the original's entry rule for
+// a level without a fixed arrival (pickEntry: waypoint room, exit room, room at
+// the level centre); else the middle of the level. OD2_ENTRY=rule applies the
+// rule even when a road end exists. wps are the waypoint objects (map tiles).
+func (g *MapGenerator) outdoorEntry(lv *drlgoutdoor.Level, rect drlgoutdoor.Rect, wps [][2]int) (x, y float64, how string) {
 	cx, cy := rect.W/2, rect.H/2
 	how = "(level centre)"
 
-	if len(lv.River.Ends) > 0 {
+	if len(lv.River.Ends) > 0 && os.Getenv("OD2_ENTRY") != "rule" {
 		cx, cy = lv.River.Ends[0][0]-rect.X, lv.River.Ends[0][1]-rect.Y
 		how = "near the first exit"
+	} else if ex, ey, why, ok := pickEntry(entryCands(lv, rect, wps), cx, cy); ok {
+		cx, cy, how = ex, ey, "by the entry rule, "+why
 	}
 
 	if tx, ty, ok := g.nearestWalkable(cx, cy, 2*entrySearchTiles); ok {
@@ -510,8 +617,13 @@ func (g *MapGenerator) markWarpTiles(stamp *d2mapstamp.Stamp, path string, ox, o
 				}
 
 				dest := 0
-				if to, ok := d2level.CanyonTombDestination(int(w.Style)); ok && levelID == d2level.LevelCanyonOfTheMagi {
+				to, ok := d2level.Act3SlotDestination(levelID, int(w.Style))
+				if !ok && levelID == d2level.LevelCanyonOfTheMagi {
+					to, ok = d2level.CanyonTombDestination(int(w.Style))
+				}
+				if ok {
 					// the seven King Tomb entrances of the Canyon of the Magi: style n is the n-th tomb
+					// Act 3: the style of the entrance tile is the Vis slot of the dungeon
 					dest = to
 					g.engine.SetWarpDestination(ox+x, oy+y, dest)
 				} else if isCave && hasCave {
