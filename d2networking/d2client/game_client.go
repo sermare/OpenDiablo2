@@ -502,6 +502,8 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 
 		if lvl := d2mapgen.RealLevel(); lvl != 0 {
 			g.Level = lvl // OD2_REALMAPS=1 OD2_AUTOLEVEL=<id> starts in that level
+			// the hero is in town only if that level is one: a stale flag made every click outside town behave as in town
+			newPlayer.SetIsInTown(d2level.IsTown(lvl))
 		}
 		newPlayer.Progress, newPlayer.QuestDifficulty = player.Progress, int(player.Difficulty)
 

@@ -35,9 +35,14 @@ const (
 	// KindPress presses a skill hotkey: press:F1.
 	KindPress Kind = "press"
 	// KindClick sends a mouse click through the game's input handlers:
-	// click:<left|right>[+shift][+ctrl][+cmd][+alt][@x,y] (screen pixels of the 800x600 screen).
+	// click:<left|right>[+shift][+ctrl][+cmd][+alt][@x,y] (screen pixels of the 800x600 screen);
+	// the target @monster clicks the living monster nearest to the hero.
 	// press:<Key> likewise presses any key by name (Tab, I, Escape, F1...).
 	KindClick Kind = "click"
+	// KindHold presses and holds a mouse button for a time through the repeat path of a real held button
+	// (GameControls.OnMouseButtonRepeat every frame): hold:<seconds>,<click spec>, e.g. hold:5,left@560,340.
+	// The host logs the hero position about every half second (HOLD pos ...).
+	KindHold Kind = "hold"
 	// KindWaitLog waits (up to WaitLogTimeout game seconds) until the game log
 	// contains the text, then goes on; a timeout fails the step. It lets two
 	// processes of a network game run a scenario in step: waitlog:<substring>.
@@ -162,6 +167,16 @@ type SkillHost interface {
 type ClickHost interface {
 	// Click sends the click described by spec (see KindClick).
 	Click(spec string) error
+}
+
+// HoldHost is implemented by hosts that support the hold step.
+type HoldHost interface {
+	// HoldStart presses the button described by spec (see KindClick) and keeps it down.
+	HoldStart(spec string) error
+	// HoldTick is called every frame while the button is down (a real held button repeats).
+	HoldTick(elapsed float64)
+	// HoldEnd releases the button.
+	HoldEnd()
 }
 
 // LootHost is implemented by hosts that can pick up ground items.
@@ -306,6 +321,21 @@ func parseStep(raw string) (Step, error) {
 	case KindClick:
 		if b := strings.ToLower(arg); !strings.HasPrefix(b, "left") && !strings.HasPrefix(b, "right") {
 			return s, errors.New("click needs <left|right>[+shift|ctrl|alt][@x,y]")
+		}
+	case KindHold:
+		i := strings.Index(arg, ",")
+		if i <= 0 {
+			return s, errors.New("hold needs <seconds>,<left|right>[+mods][@x,y]")
+		}
+
+		s.Seconds, err = strconv.ParseFloat(strings.TrimSpace(arg[:i]), 64)
+		if err != nil || s.Seconds <= 0 {
+			return s, errors.New("hold needs positive seconds")
+		}
+
+		s.Arg = strings.TrimSpace(arg[i+1:])
+		if b := strings.ToLower(s.Arg); !strings.HasPrefix(b, "left") && !strings.HasPrefix(b, "right") {
+			return s, errors.New("hold needs <left|right>[+mods][@x,y] after the seconds")
 		}
 	case KindAutomap:
 		s.Arg = strings.ToLower(arg)
@@ -508,6 +538,8 @@ type Runner struct {
 	logWait   float64
 	failed    bool
 	done      bool
+	// holding is how many seconds a hold: step still keeps its button down
+	holding float64
 	// until is the waiting until: step and how long it has waited
 	until      *Step
 	untilSince float64
@@ -531,6 +563,20 @@ func (r *Runner) Failed() bool { return r.failed }
 // Advance moves the script forward by elapsed seconds.
 func (r *Runner) Advance(elapsed float64) {
 	if r.done {
+		return
+	}
+
+	if r.holding > 0 {
+		hh := r.host.(HoldHost) // only set by a hold step, which checked it
+
+		hh.HoldTick(elapsed)
+
+		if r.holding -= elapsed; r.holding <= 0 {
+			r.holding = 0
+
+			hh.HoldEnd()
+		}
+
 		return
 	}
 
@@ -632,6 +678,19 @@ func (r *Runner) run(s Step) error {
 		}
 
 		return ch.Click(s.Arg)
+	case KindHold:
+		hh, ok := r.host.(HoldHost)
+		if !ok {
+			return errors.New("host does not support hold")
+		}
+
+		if err := hh.HoldStart(s.Arg); err != nil {
+			return err
+		}
+
+		r.holding = s.Seconds
+
+		return nil
 	case KindSkill, KindHotkey, KindPress:
 		sh, ok := r.host.(SkillHost)
 		if !ok {
