@@ -8,6 +8,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2missile"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
@@ -95,6 +96,7 @@ type Engine struct {
 	auras  map[string]*auraRun // hero id -> the aura it keeps on
 	storms []*stormRun
 	traps  []*trapRun
+	walls  map[string]*wallRun // Bone Wall leaders by monster id
 
 	fakeCaster trapCaster                        // tests only
 	pets       map[string][]*d2mapentity.Monster // hero id -> summons by pet type (see summon.go)
@@ -121,6 +123,8 @@ type Engine struct {
 	// it again (looping travel sounds), or nil.
 	OnSound func(SoundEvent) (stop func())
 
+	monSeed *d2rand.Seed // rolls for monsters that own missiles (Rabies' plague carriers)
+
 	travel map[uint32]func() // missile id -> stop of its travel sound
 }
 
@@ -132,6 +136,7 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 		heroes: map[string]*heroUnit{}, mercCasters: map[string]*heroUnit{}, targets: map[string]*monsterTarget{},
 		visuals: map[uint32]*d2mapentity.Missile{}, fx: map[*d2mapentity.Missile]int{},
 		sets: map[string]*d2state.Set{}, auras: map[string]*auraRun{}, pets: map[string][]*d2mapentity.Monster{}, dots: map[string]dotTotal{},
+		walls: map[string]*wallRun{}, monSeed: d2rand.New(opt.Seed ^ 0x6d6f6e73),
 		travel: map[uint32]func(){},
 	}
 
@@ -1056,6 +1061,8 @@ func (e *Engine) onSim(ev d2missile.Event) {
 		e.splashAt(m)
 	case d2missile.EventExplode:
 		e.explosion(ev.Name, m.X, m.Y)
+	case d2missile.EventSummon:
+		e.onWallSummon(m, ev.Target)
 	}
 
 	if m.Dead() {

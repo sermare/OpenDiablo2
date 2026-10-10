@@ -1552,13 +1552,18 @@ func doSummonFn(c *cast) {
 	c.effect(Effect{Kind: "summon", Summon: o})
 }
 
-// doWallFn is SRVDO_060_BoneWall / 062 BonePrison (U): Param3 (8) stationary
-// bone wall pieces in a line (Bone Wall) or a ring around the target (Bone
-// Prison) lasting Param2 frames, each with calc1 extra life.
+// doWallFn is SRVDO_060_BoneWall / 062 BonePrison. Bone Wall (read, 0x5c37a0):
+// the first wall stands at the target, then two bonewallmaker missiles fly
+// perpendicular to the cast line placing calc2/2 walls each (calc2 = "# of
+// walls - 1", Param3 = 8 in the table); a skill without that missile (or
+// calc2 < 2) keeps the older line of Param3 pieces (UNVERIFIED layout). Bone
+// Prison (U) is a ring of 8 around the target. Walls last Param2 frames
+// (MAX duration) and have calc1 percent extra life (skills.txt "hp %
+// adjustment").
 func doWallFn(c *cast) {
 	ax, ay := c.aim()
 	o := &SummonOrder{Key: c.sk.Summon, PetType: "none", Kind: "wall", Count: c.sk.Params[3], Max: 64,
-		Frames: c.sk.Params[2], HPFlat: c.calc(1), X: ax, Y: ay, Mode: c.sk.SumMode}
+		Frames: c.sk.Params[2], HPPct: c.calc(1), X: ax, Y: ay, Mode: c.sk.SumMode}
 
 	if c.sk.SrvDoFunc == 62 {
 		o.Count = 8
@@ -1567,6 +1572,23 @@ func doWallFn(c *cast) {
 
 	if o.Count < 1 {
 		o.Count = 8
+	}
+
+	if per := c.calc(2) / 2; c.sk.SrvDoFunc == 60 && per >= 1 && c.sk.SrvMissileA != "" && c.p.Missiles.ByName(c.sk.SrvMissileA) != nil {
+		hx, hy := c.u.Pos()
+		dx, dy := ax-hx, ay-hy
+
+		// the perpendicular, one subtile per step on each axis (0x5c37a0 turns
+		// the cast heading by 90 degrees; the exact rounding is UNVERIFIED)
+		px, py := -sign(dy), sign(dx)
+		if px == 0 && py == 0 {
+			px, py = 0, 1
+		}
+
+		o.Count = 1
+		o.Mode = ""
+		o.Makers = &WallMakers{Missile: c.sk.SrvMissileA, PerMaker: per, FromX: ax, FromY: ay,
+			Dirs: [2][2]int{{px * 16, py * 16}, {-px * 16, -py * 16}}}
 	}
 
 	c.effect(Effect{Kind: "summon", Summon: o})
