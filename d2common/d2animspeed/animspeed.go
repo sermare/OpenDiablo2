@@ -47,8 +47,12 @@ const (
 	// AttackBasePct is stat 0x44 with a weapon of WSM 0 and no IAS (UNVERIFIED
 	// composition; the exe clamps stat0x44 + diminished item IAS to 15..175).
 	AttackBasePct = 100
-	// KickAdjust is added to the attack percent for the assassin kick mode
-	// (VERIFIED: -30; applies to player mode 0x12).
+	// KickAdjust is added to the attack percent when the unit's raw mode field is
+	// 0x12 (VERIFIED value). NOTE (oracle): player kick (mode 12) does NOT get
+	// it; the oracle shows modes 7, 8, 11 and 12 all play at plain attack
+	// rates, and mode 0x12 (the sequence mode) is not an attack, so the term
+	// only fires if a form change makes the effective mode an attack while the
+	// raw mode is 0x12 (UNVERIFIED which case that is).
 	KickAdjust = -30
 )
 
