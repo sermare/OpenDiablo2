@@ -1,4 +1,147 @@
-# Act 1 playthrough log
+# Play-test guide
+
+This page has two parts. **Part 1 is for anyone who wants to help test** (no programming needed). **Part 2** is the
+developers' playthrough log, kept for reference; skip it if you are only testing.
+
+# Part 1: Guided 30-minute play-test
+
+## Before you start
+
+* Install and first launch: [macos-quickstart.md](macos-quickstart.md) (drag the app to Applications, right-click, Open,
+  point it at your own Diablo II folder). The game starts with real maps; you change nothing.
+* Read [KNOWN_GAPS.md](KNOWN_GAPS.md) once. Anything listed there is already known; you do not need to report it again
+  (but tell us if it is worse than described).
+* Keep a text file or notes app open to write findings as you go. Do not attach game screenshots or game files; describe
+  what you saw (see "How to report" below).
+* Use a throw-away hero (a new character is fine). The game saves your hero as you play; your original Diablo II
+  saves are only read, never changed.
+
+Useful keys: `Tab` automap, `I` inventory, `C` character, `T` skill tree, `Q` quest log, `Esc` menu, Cmd+Enter full screen,
+Cmd+Q quit. A trackpad right click is a two-finger click or Control+click. Full list in the quickstart.
+
+Helper commands (press `` ` `` to open the console, type, press Enter) so you do not need to play for hours to reach later acts:
+
+| Command | What it does |
+|---|---|
+| `levelup 10` | Grants 10 levels (1 skill point and 5 stat points each). Spend them so your hero can fight. |
+| `completequest <act> <quest>` | Marks a quest done so that travel to the next act is allowed (for example `completequest 1 6`). |
+| `travel <act>` | Go to the town of that act (needs the quests above, or `travelfree 1` to skip the rules). |
+| `setwaypoint <level id> 1` | Activate a waypoint. |
+| `spawnportal <level id>` | Make a portal to that level next to you. |
+
+These are test tools; using them is expected and not a bug.
+
+## How the 30 minutes are split
+
+| Minutes | Act | Where |
+|---|---|---|
+| 0-6 | Act 1 | Rogue Encampment, Blood Moor, Cold Plains, a cave, Den of Evil |
+| 6-12 | Act 2 | Lut Gholein, Rocky Waste, Dry Hills, a tomb or sewer |
+| 12-18 | Act 3 | Kurast Docks, jungle, Kurast, a dungeon |
+| 18-24 | Act 4 | Pandemonium Fortress, Plains of Despair, City of the Damned, River of Flame |
+| 24-30 | Act 5 | Harrogath, Bloody Foothills, Frigid Highlands, an ice cave |
+
+Take the same quick look in every act. At each stop answer these four questions and write down only the "no" answers:
+
+1. **Ground and walls.** Do floors and walls look like one connected place? Look for wrong or mismatched tiles, patches of
+   a different tile set, floating walls, black holes inside the walkable area, bright seams along room edges.
+2. **Walking.** Can you walk everywhere that looks open? Are you ever stuck on empty floor, or able to walk through a
+   wall? Do exits, stairs, doors and waypoints take you where the name says?
+3. **Monsters and loot.** Are there monsters (packs, a few loners)? Do they come at you, attack, die and drop things?
+   Are any monsters standing still, in walls, or in places you cannot reach?
+4. **Sound and music.** Is there music and ambient sound? Do NPCs speak when clicked? Do monsters, spells, doors and
+   footsteps make sound? Does it stutter, cut off or stay silent?
+
+### Act 1 (about 6 minutes)
+
+1. Walk around the Rogue Encampment. Click Akara, Charsi, Gheed, Kashya, Warriv: each should speak and open a menu.
+2. Leave through the gate to Blood Moor, then Cold Plains. Fight a few monsters, pick up something, look at the automap.
+3. Enter the Den of Evil cave (or any cave) and go down one level. Caves are where tile problems are most likely.
+4. Talk to Akara again after the Den: she should react to the quest.
+
+Look for: tile seams along cave walls, the town gate and the first outdoor border, cave levels with very few or zero
+monsters, Quill Rats or other monsters that never attack, no champion or unique (named, coloured) packs ever
+appearing (known gap), music that does not change between town and field.
+
+### Act 2 (about 6 minutes)
+
+1. `levelup 10`, `completequest 1 6`, `travel 2` (or take Warriv's boat after Andariel). Walk Lut Gholein: Fara, Atma, Drognan, Greiz.
+2. Go out of the city gate into Rocky Waste and Dry Hills.
+3. Enter a tomb or the sewers and go in two levels deep.
+
+Look for: patches of wrong ground in the desert, a town that is too dark at night, the gate facing the wrong way,
+monsters on unreachable islands (they are removed on purpose, so a bare area is worth a note), stairs that lead to the wrong level.
+
+### Act 3 (about 6 minutes)
+
+1. `completequest 2 6`, `travel 3`. Talk to Alkor, Ormus, Hratli, Asheara, Meshif in Kurast Docks.
+2. Walk the jungle: Spider Forest, Great Marsh, Flayer Jungle.
+3. Enter a dungeon (Spider Cavern or a Flayer Dungeon).
+4. If you reach Travincal, try the stairs down to the Durance of Hate.
+
+Look for: jungle tile mix-ups, empty Kurast levels (Kurast Causeway has no monsters, a known gap), quest NPCs that only
+talk, the Travincal stairs (they should be sealed until the Compelling Orb is smashed; Act 3 quests are not
+playable yet, so being blocked there is expected; getting through without the orb is worth a note).
+
+### Act 4 (about 6 minutes)
+
+1. `completequest 3 6`, `travel 4`. Walk the Pandemonium Fortress, talk to Tyrael, Deckard Cain, Jamella, Halbu.
+2. Walk the Outer Steppes, Plains of Despair, City of the Damned, River of Flame.
+3. If you get far: the Chaos Sanctuary and the five seals.
+
+Look for: lava drawn as walkable ground or ground drawn as lava, the Chaos Sanctuary shape, exits from the River of Flame,
+bosses that appear at odd places, no way back to Act 3 (normal: the original has none).
+
+### Act 5 (about 6 minutes)
+
+1. `completequest 4 6` (or `travelfree 1`), `travel 5`. Walk Harrogath: Larzuk, Malah, Anya, Qual-Kehk, Nihlathak.
+2. Go out to Bloody Foothills, Frigid Highlands, Arreat Plateau.
+3. Enter an ice cave and take the stairs down.
+
+Look for: Arreat Plateau and Bloody Foothills with few or no monsters (known), stairs that put you in a strange spot,
+ice cave walls and floors that do not match.
+
+### Always, in every act
+
+* Open the inventory, character sheet and skill tree once. Is anything overlapping, cut off or in the wrong place?
+* Press `Tab` for the automap: does it match what you walked?
+* Quit with Cmd+Q and start again with the same hero. Are your gold, level, items and waypoints still there? (Items
+  picked up in the game may not be written back to the original `.d2s`; see KNOWN_GAPS.)
+
+## How to report
+
+Write one short entry per finding. Use this shape (words only, no game files, no screenshots of game data):
+
+```
+Act / level:     Act 1, Cave Level 2
+What I did:      walked from the entrance to the east side
+What I saw:      a row of floor tiles of a different colour along the south wall
+Kind:            tiles | missing monsters | walking/collision | audio | UI | crash | other
+How bad:         cosmetic | annoying | blocks progress | crash
+Can you repeat:  every time | sometimes | once
+Hero:            Sorceress level 20, Normal
+```
+
+Kinds, with what to write:
+
+* **Bad tiles:** the level name and roughly where (north/south of the entrance, near a door); the colour or shape that is wrong; whether it is along an edge or in the middle.
+* **Missing monsters:** the level, how long you walked, how many monsters you met, whether any were frozen or in walls. "No monsters at all in the whole level" is a valuable report.
+* **Audio:** what should have played (NPC voice, spell, footsteps, music, ambient), what you heard instead (silence, wrong sound, crackle, cut off), and whether it happens after switching windows.
+* **Crash or freeze:** what you were doing in the last ten seconds.
+
+For crashes and anything odd, attach the log file as text: `~/Library/Logs/OpenDiablo2/OpenDiablo2.log` (the run before is
+`OpenDiablo2.previous.log`). The log contains game messages and file paths, no game data and no key. Open it in a text editor and
+look it over before sending. Send reports to the maintainer
+([@sermare](https://github.com/sermare)) as a GitHub issue on the fork, or however you were asked to.
+
+---
+
+# Part 2: Developer playthrough log (historical)
+
+The text below is the working log of the scripted playthroughs. Some "does not do yet" lists in it are older than
+the code; [KNOWN_GAPS.md](KNOWN_GAPS.md) is the current list.
+
+## Act 1 playthrough log
 
 Branch `feat/act1-playthrough`. The first hour of Act 1 is played by `OD2_AUTOSCRIPT`:
 
@@ -71,7 +214,7 @@ position, `d2common/d2level/edges.go`) or the exit tile of a preset (cave entran
 * Dungeon stairs resolve by the style rule in `TileDestination` (UNVERIFIED against the exe's table).
 
 
-# Act 2 playthrough log
+## Act 2 playthrough log
 
 Branch `feat/act2-playthrough`. The start of Act 2 by default, played by `OD2_AUTOSCRIPT`:
 
@@ -138,7 +281,7 @@ Which tomb is real: the game seed draws two tomb levels (`DrawActExtras`); the f
 * A few monsters of the desert stand on islands the hero cannot reach (5-9 per level) and are removed; the walkable
   area of the generated levels differs from the original's.
 
-# Act 4 and the start of Act 5 playthrough
+## Act 4 and the start of Act 5 playthrough
 
 Branch `feat/act45-playthrough`. `scripts/verify.d/9h-act45-playthrough.sh` plays Act 4 (Pandemonium Fortress, Outer
 Steppes, Plains of Despair, City of the Damned, River of Flame, Chaos Sanctuary, and the waypoint back to the Fortress)
@@ -189,7 +332,7 @@ and need no fix, they only need the 10 s since the last level change that the or
   walked by a script; the Throne of Destruction's link to the Worldstone Chamber is a portal in the original, not a tile.
 * The level names come from the game's Levels.txt strings (`Rigid Highlands`, `Crystalized Cavern Level 1`, ...).
 
-# Act 3 playthrough log
+## Act 3 playthrough log
 
 Branch `feat/act3-playthrough`. The start of Act 3 with `OD2_REALMAPS=1`, played by `OD2_AUTOSCRIPT`:
 

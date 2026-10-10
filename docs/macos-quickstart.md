@@ -3,6 +3,29 @@
 This fork runs natively on an M-series Mac. You need your own copy of Diablo II
 and Lord of Destruction; no game files are included or distributed here.
 
+## Quick path for play-testers (no building, no terminal)
+
+1. **Install the app.** Open `OpenDiablo2-<version>-macos-arm64.dmg` and drag OpenDiablo2 onto the Applications folder.
+   Needs an Apple Silicon Mac with macOS 14 or newer.
+2. **First launch.** In Applications, right-click (or Control-click) OpenDiablo2, choose Open, then Open again. The app is
+   not notarised, so a plain double-click is blocked once. If macOS still refuses: System Settings > Privacy & Security >
+   "Open Anyway". If it says the app is damaged, run once in Terminal:
+   `xattr -dr com.apple.quarantine /Applications/OpenDiablo2.app`.
+3. **Point it at your own Diablo II files.** The app searches the usual places and offers what it finds. Otherwise a folder
+   picker opens: choose the folder that contains `d2data.mpq`, `d2exp.mpq`, `patch_d2.mpq` and the other `.mpq` files
+   (the parent of the `Diablo II` folder also works). If files are missing, a dialog lists them. Your files are only read.
+   Do not have the files yet? See section 1 below.
+4. **Start the game.** Choose a character (your real `.d2s` saves are found and imported automatically, originals never
+   changed) or create a new one, and play. Real maps are the default; there is no setting to turn on.
+5. **Settings.** Press `` ` `` in game for the console: `fullscreen`, `musicvolume 0.5`, `soundvolume 1`, `windowscale 2`.
+   Cmd+Enter is full screen, Cmd+Q quits and saves.
+6. **Play-test.** Follow the guided 30-minute checklist in [PLAYTEST.md](PLAYTEST.md#part-1-guided-30-minute-play-test)
+   and read [KNOWN_GAPS.md](KNOWN_GAPS.md) first.
+7. **If something goes wrong,** the log is `~/Library/Logs/OpenDiablo2/OpenDiablo2.log` (the previous run is
+   `OpenDiablo2.previous.log`); attach it as text to your report. It holds no game data and no key.
+
+The sections below are for people who build the app themselves or run the automated tests.
+
 ## 1. Get the game data
 
 OpenDiablo2 reads the original MPQ archives. On a Mac the easiest way to obtain
