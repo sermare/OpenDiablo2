@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
@@ -44,6 +45,23 @@ func withoutFlag(r []interface{}, bits uint32) []interface{} {
 	return o
 }
 
+// oracleGateSteps: the tile oracle's emulator environment has no monster
+// table loaded (monstats count 0), so the DS1 object gates of two files whose
+// gated records name monsters draw fewer level-seed steps there than in the
+// real game (full environment, golden gates4_big.json): MephNWarpD 2 instead
+// of 3 (levels 100/101) and JailSETheme 0 instead of 1 (level 31). The tile
+// golden was made with these numbers; the game itself uses d2drlg.DS1GateSteps.
+func oracleGateSteps(file string) int {
+	switch strings.ToLower(strings.ReplaceAll(file, `\`, "/")) {
+	case "act3/travincal/mephnwarpd.ds1":
+		return 2
+	case "act1/barracks/jailsetheme.ds1":
+		return 0
+	}
+
+	return d2drlg.DS1GateSteps(file)
+}
+
 func diffMaze(t *testing.T, env *Env, g mazeGoldLevel) mazeDiff {
 	t.Helper()
 
@@ -57,7 +75,11 @@ func diffMaze(t *testing.T, env *Env, g mazeGoldLevel) mazeDiff {
 
 	base, _ := d2rand.DrlgBaseSeed(g.Seed)
 
-	res, err := drlgmaze.Generate(tb, drlgmaze.Params{LevelID: g.Level, Difficulty: d2drlg.Normal, BaseSeed: base})
+	// the two special Act 2 tombs come from the game seed (levels 66..72)
+	ex := d2drlg.DrawActExtras(g.Seed, 1)
+
+	res, err := drlgmaze.Generate(tb, drlgmaze.Params{LevelID: g.Level, Difficulty: d2drlg.Normal, BaseSeed: base, GateSteps: oracleGateSteps,
+		TombA: ex.TombA, TombB: ex.TombB})
 	if err != nil {
 		d.err = "maze: " + err.Error()
 		return d

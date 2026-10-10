@@ -462,8 +462,10 @@ func (t *tileBuilder) tileObjectRows(rec *TileRecord, room *Room, lo, hi, style,
 			return
 		}
 
+		// 0x6706a0: objects 0x5b/0x5c (Act 2 mazes) roll the room seed (bound 3)
+		// before the spawn; the record is marked either way
 		if r.typ == 2 && (r.id == 0x5b || r.id == 0x5c) {
-			panic(unported("tile object row that rolls the room seed"))
+			t.rs.Roll(3)
 		}
 
 		if rec != nil {
@@ -616,7 +618,10 @@ func (t *tileBuilder) cell(ori int, v uint32, x, y int, fill bool) {
 		switch ori {
 		case 8, 9:
 			if id := t.l.Params.ID; id < 0x6f || (id > 0x70 && id != 0x75) {
-				// object only (no record flag; the room's object list is not modelled)
+				// object only, no record (0x671680 calls DRLG_CreateTileObject with no
+				// record; the object list is not modelled but the 0x5b/0x5c roll is)
+				t.tileObject(nil, t.r, v, ori == 9, x, y)
+
 				return
 			}
 		case 10, 11:
