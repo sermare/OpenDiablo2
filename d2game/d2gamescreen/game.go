@@ -158,6 +158,7 @@ type Game struct {
 	autoObject           autoObject
 	autoGround           autoGround
 	monsters             *d2monsters.Director
+	rankLeader           *d2mapentity.Monster // leader of the last spawnrank pack
 	monsterTest          *monsterTest
 	aiTest               *aiAutoTest
 	bossTest             *bossAutoTest
@@ -233,6 +234,9 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"dropinv", "removes the first inventory item with this base code (debug)", []string{"code"}, v.commandDropInv},
 		{"autobuy", "opens a vendor's trade window and buys the cheapest affordable item (OD2_AUTOTRADE_KEEP=1 keeps it)",
 			[]string{"vendor"}, v.commandAutoBuy},
+		{"spawnrank", "spawns a champion pack, a unique pack or a super unique next to the hero (drop tests)",
+			[]string{"champion|unique|super", "monster or super unique"}, v.commandSpawnRank},
+		{"killleader", "kills the leader of the last spawnrank pack as the hero", []string{}, v.commandKillLeader},
 		{"killnear", "kills the nearest monster as the hero (party experience tests)", []string{}, v.commandKillNear},
 		{"rewarditem", "spends a pending Larzuk (socket) or Anya (personalize) quest reward on an item",
 			[]string{"socket|personalize"}, v.commandRewardItem},
@@ -268,7 +272,7 @@ func (v *Game) OnUnload() error {
 	}
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "chat",
-		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "killnear", "rewarditem", "transmute"); err != nil {
+		"party", "hostile", "roster", "trade", "pvp", "giveitem", "dropinv", "autobuy", "spawnrank", "killleader", "killnear", "rewarditem", "transmute"); err != nil {
 		return err
 	}
 

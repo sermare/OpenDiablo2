@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -369,7 +370,8 @@ func (g *GameControls) recalcWorn() string {
 		g.equipStatus[s.Loc] = s
 	}
 
-	return fmt.Sprintf("items=[%s] stats: %s", d2hero.EquipStatusLine(status), d2hero.StatsSummary(g.hero.Stats))
+	return fmt.Sprintf("items=[%s] stats: %s sets=[%s]", d2hero.EquipStatusLine(status), d2hero.StatsSummary(g.hero.Stats),
+		g.setSummary())
 }
 
 // EquipClick handles a left click on a body slot of the open inventory. It
@@ -524,7 +526,62 @@ func (g *GameControls) itemTooltipLines(it InventoryItem) []string {
 		lines = append(lines, d2ui.ColorTokenize(note, d2ui.ColorTokenRed))
 	}
 
-	return lines
+	return append(lines, g.setTooltipLines(item)...)
+}
+
+// setTooltipLines lists the set of a set item with the pieces the hero wears
+// and the bonuses that are active (nothing for other items).
+func (g *GameControls) setTooltipLines(item *diablo2item.Item) []string {
+	row := item.SetRow()
+	if row == 0 {
+		return nil
+	}
+
+	info, ok := g.inventory.item.SetInfo(row)
+	if !ok {
+		return nil
+	}
+
+	worn := map[string]bool{}
+
+	for l := d2equip.Loc(1); l < d2equip.NumLocs; l++ {
+		if w, isItem := g.inventory.WornAt(l).(*diablo2item.Item); isItem && w.SetRow() == row {
+			worn[w.SetPieceName()] = true
+		}
+	}
+
+	return diablo2item.SetTooltipLines(info, worn)
+}
+
+// setSummary is the log text of the set bonuses the worn pieces switch on.
+func (g *GameControls) setSummary() string {
+	t := g.hero.Stats.Totals
+	if t == nil || len(t.SetPieces) == 0 {
+		return "none"
+	}
+
+	var parts []string
+
+	for row, n := range t.SetPieces {
+		info, ok := g.inventory.item.SetInfo(row)
+		if !ok {
+			continue
+		}
+
+		partial := 0
+		for i := range info.Partial {
+			if n >= i+2 && len(info.Partial[i]) > 0 {
+				partial++
+			}
+		}
+
+		parts = append(parts, fmt.Sprintf("%s:%d/%d partial_tiers=%d full=%v", info.Name, n, len(info.Pieces), partial,
+			len(info.Pieces) > 0 && n >= len(info.Pieces)))
+	}
+
+	sort.Strings(parts)
+
+	return strings.Join(parts, "; ")
 }
 
 // requirementNote explains what the hero lacks for an item (empty if nothing).

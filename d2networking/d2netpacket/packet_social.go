@@ -78,6 +78,20 @@ type PvPHitPacket struct {
 	Target   string `json:"target"`
 	Damage   int    `json:"damage"` // after the player-versus-player scale
 	Raw      int    `json:"raw"`    // before it
+
+	// Kill marks the report of a kill: the victim's client sends it with the
+	// killer in Target (and its own position in X, Y), the server fills in the
+	// victim from the roster and relays it to the killer, whose client makes
+	// the ear. Attacker is the victim.
+	Kill bool `json:"kill,omitempty"`
+	// Victim is what the ear remembers (set by the server): name, class
+	// (0 amazon .. 6 assassin) and level of the hero that died, and the
+	// subtile where it died.
+	VictimName  string `json:"victimName,omitempty"`
+	VictimClass int    `json:"victimClass,omitempty"`
+	VictimLevel int    `json:"victimLevel,omitempty"`
+	X           int    `json:"x,omitempty"`
+	Y           int    `json:"y,omitempty"`
 }
 
 // PartyXPPacket carries the experience of a kill. The killer's client sends it

@@ -3,6 +3,7 @@ package d2monsters
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
@@ -190,8 +191,11 @@ func (d *Director) SpawnPack(plan d2monster.Pack, center d2path.Point) (*PackRes
 
 		if res.Leader == nil {
 			res.Leader = m
+			d.recordRank(m, plan)
 		} else {
 			res.Leader.Brain.AddMinion(m.Brain)
+			m.LeaderID = res.Leader.Brain.ID
+			m.Modifiers = append([]int(nil), res.Leader.Modifiers...) // MONSTER_CopyLeaderUModsToMinion
 		}
 
 		res.Monsters = append(res.Monsters, m)
@@ -359,4 +363,63 @@ func (d *Director) leaderDied(u *unit) {
 	}
 
 	d.emit("leader", "MONSTER leader id=%d died, id=%d takes over %d followers", b.ID, nl.ID, len(nl.Minions))
+}
+
+// recordRank stores what makes the leader of a pack special on its unit: the
+// super unique key and hcIdx with the modifiers of its row (Mod1..3), or the
+// modifiers rolled for a champion / unique (type bit 0x1 = modifiers rolled).
+// The counts per rank and difficulty are UNVERIFIED: champion 2, unique
+// 1 + difficulty + 1 (Mod1..3 of a super unique are used as they are).
+func (d *Director) recordRank(m *d2mapentity.Monster, plan d2monster.Pack) {
+	switch {
+	case plan.SuperUnique != "":
+		m.SuperUnique = plan.SuperUnique
+
+		if rec := d.asset.Records.Monster.Unique.Super[plan.SuperUnique]; rec != nil {
+			m.SuperUniqueIdx, _ = strconv.Atoi(rec.HcIdx)
+
+			for _, id := range rec.Mod {
+				if id > 0 {
+					m.Modifiers = append(m.Modifiers, id)
+				}
+			}
+		}
+
+		m.TypeFlags |= d2mapentity.MonTypeModsRolled
+	case m.TypeFlags&(d2mapentity.MonTypeChampion|d2mapentity.MonTypeUnique) != 0:
+		n, champion := 2+int(d.opt.Difficulty), m.TypeFlags&d2mapentity.MonTypeChampion != 0
+		if champion {
+			n = 2
+		}
+
+		m.Modifiers = d2monster.PickUniqueMods(d.packRNG, d.modCandidates(champion), n)
+		m.TypeFlags |= d2mapentity.MonTypeModsRolled
+	}
+}
+
+// modCandidates lists the monumod rows a champion or unique may roll with the
+// cpick / upick weight of the game's difficulty (enabled rows; the champion-only
+// flag and the expansion-only rows follow the columns). Rows 1 and 2 (the name
+// seed and the hit point bonus) are always added by the game and never picked.
+func (d *Director) modCandidates(champion bool) []d2monster.ModCandidate {
+	var out []d2monster.ModCandidate
+
+	for _, r := range d.asset.Records.Monster.Unique.Mods {
+		if !r.Enabled || r.ID <= 2 || (r.ExpansionOnly && !d.opt.Expansion) || (r.Champion && !champion) {
+			continue
+		}
+
+		pf := [3]*d2records.PickFreq{r.PickFrequencies.Normal, r.PickFrequencies.Nightmare, r.PickFrequencies.Hell}[d.opt.Difficulty]
+		w := pf.Unique
+
+		if champion {
+			w = pf.Champion
+		}
+
+		out = append(out, d2monster.ModCandidate{ID: r.ID, Weight: w})
+	}
+
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID }) // map order must not change the roll
+
+	return out
 }

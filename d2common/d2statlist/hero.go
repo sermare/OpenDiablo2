@@ -1,6 +1,8 @@
 package d2statlist
 
 import (
+	"sort"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
 )
 
@@ -69,6 +71,9 @@ type Hero struct {
 
 // Totals is everything derived from the hero and its equipment.
 type Totals struct {
+	// SetPieces counts the worn pieces per set (1-based Sets.txt row).
+	SetPieces map[int]int
+
 	Str, Dex, Vit, Ene int // with item bonuses
 
 	MaxLife, MaxMana, MaxStamina int
@@ -188,36 +193,51 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 		}
 	}
 
-	list := NewList()
+	// the stat lists form the exe's tree: the hero's list with one list per
+	// worn item, per set bonus tier and per gem group attached under it (tree.go)
+	root := NewTree(Owner{Type: 0, ID: 1}, FlagBaseUnit)
 	armor := 0
+
+	attach := func(flags ListFlags, props []Prop) {
+		if len(props) == 0 {
+			return
+		}
+
+		node := NewTree(Owner{Type: 4}, flags)
+		node.AddProps(props)
+		node.Attach(root, itemSpecific)
+	}
 
 	for i := range active {
 		it := &active[i]
 
 		armor += it.DefenseOf(h.Level)
 
-		for _, p := range it.ownProps() {
-			if !itemSpecific(p.ID) {
-				list.Add(p.ID, p.Param, p.Value)
-			}
-		}
+		attach(0, it.ownProps())
 
 		for tier, props := range it.SetLists {
 			if setCount[it.SetID] >= tier+2 {
-				list.AddProps(props)
+				attach(FlagSetState, props)
 			}
 		}
 
-		for _, p := range env.gemProps(it) {
-			list.Add(p.ID, p.Param, p.Value)
-		}
+		attach(0, env.gemProps(it))
 	}
 
 	if env.Sets != nil {
-		for id, n := range setCount {
-			list.AddProps(env.Sets.SetBonus(id, n))
+		ids := make([]int, 0, len(setCount))
+		for id := range setCount {
+			ids = append(ids, id)
+		}
+
+		sort.Ints(ids)
+
+		for _, id := range ids {
+			attach(FlagSetState, env.Sets.SetBonus(id, setCount[id]))
 		}
 	}
+
+	list := root.List()
 
 	// skill sourced stats (passives, aura, buffs) join the item stats
 	list.Merge(env.Skill)
@@ -229,7 +249,7 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 		}
 	}
 
-	t := Totals{Stats: list}
+	t := Totals{Stats: list, SetPieces: setCount}
 	t.Str = h.Str + int(list.Get(StatStrength))
 	t.Dex = h.Dex + int(list.Get(StatDexterity))
 	t.Vit = h.Vit + int(list.Get(StatVitality))
