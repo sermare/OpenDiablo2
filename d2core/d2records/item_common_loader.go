@@ -117,7 +117,7 @@ func loadCommonItems(d *d2txt.DataDictionary, source d2enum.InventoryItemType) (
 			NightmareUpgrade: d.String("NightmareUpgrade"),
 			HellUpgrade:      d.String("HellUpgrade"),
 
-			Nameable: d.Number("nameable") > 0, // lower case in the real tables; column names are case sensitive (Anya refused every item)
+			Nameable: d.Number("nameable") > 0,
 
 			// weapon params
 			BarbOneOrTwoHanded: d.Number("1or2handed") > 0,

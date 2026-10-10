@@ -351,7 +351,9 @@ func (f *HeroStateFactory) LoadHeroState(filePath string) *HeroState {
 		}
 
 		hs.SkillRecord = f.asset.Records.Skill.Details[hs.Shallow.SkillID]
-		hs.SkillDescriptionRecord = f.asset.Records.Skill.Descriptions[hs.SkillRecord.Skilldesc]
+		if hs.SkillRecord != nil { // a skill id this game data does not have: keep the entry without records
+			hs.SkillDescriptionRecord = f.asset.Records.Skill.Descriptions[hs.SkillRecord.Skilldesc]
+		}
 		hs.SkillPoints = hs.Shallow.SkillPoints
 	}
 
@@ -395,11 +397,8 @@ func (f *HeroStateFactory) Save(state *HeroState) error {
 	}
 
 	fileJSON, _ := json.MarshalIndent(state, "", "   ")
-	if err := ioutil.WriteFile(state.FilePath, fileJSON, writefilePermission); err != nil {
-		return err
-	}
 
-	return nil
+	return writeFileAtomic(state.FilePath, fileJSON)
 }
 
 // DeletedSuffix is appended to the name of a real .d2s that the character
