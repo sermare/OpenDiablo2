@@ -3,6 +3,7 @@ package ebiten
 import (
 	"errors"
 	"image"
+	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 
@@ -41,6 +42,7 @@ type Renderer struct {
 	*d2util.GlyphPrinter
 	lastRenderError error
 	fullscreenHook  func(bool)
+	turboFrame      int
 }
 
 // Update calls the game's logical update function (the `Advance` method)
@@ -59,7 +61,30 @@ func (r *Renderer) Update() error {
 		ebiten.SetFullscreen(!ebiten.IsFullscreen())
 	}
 
+	if d2util.TurboEnabled() {
+		return r.turboUpdate()
+	}
+
 	return r.updateCallback()
+}
+
+// turboUpdate (OD2_TURBO) runs many 25 Hz virtual ticks in one frame, until the wall-clock budget is spent
+// or a draw was requested (a capture). Every tick is the same one an unhurried run would take.
+func (r *Renderer) turboUpdate() error {
+	start := time.Now()
+	budget := d2util.TurboBudgetSeconds()
+
+	for n := 1; ; n++ {
+		d2util.TurboAdvance()
+
+		if err := r.updateCallback(); err != nil {
+			return err
+		}
+
+		if !d2util.TurboContinue(n, time.Since(start).Seconds(), budget, d2util.TurboPeekDraw()) {
+			return nil
+		}
+	}
 }
 
 const drawError = "no render callback defined for ebiten renderer"
@@ -67,6 +92,14 @@ const drawError = "no render callback defined for ebiten renderer"
 // Draw updates the screen with the given *ebiten.Image
 func (r *Renderer) Draw(screen *ebiten.Image) {
 	r.lastRenderError = nil
+
+	if d2util.TurboEnabled() {
+		r.turboFrame++
+
+		if !d2util.TurboShouldDraw(r.turboFrame-1, d2util.TurboDrawEvery(), d2util.TurboTakeDraw()) {
+			return
+		}
+	}
 
 	if r.renderCallback == nil {
 		r.lastRenderError = errors.New(drawError)
@@ -95,6 +128,12 @@ func CreateRenderer(cfg *d2config.Configuration) (*Renderer, error) {
 		ebiten.SetRunnableOnUnfocused(config.RunInBackground)
 		ebiten.SetVsyncEnabled(config.VsyncEnabled)
 		ebiten.SetMaxTPS(config.TicksPerSecond)
+
+		if d2util.TurboEnabled() {
+			// OD2_TURBO: no display-rate cap; the update loop of turboUpdate sets the pace
+			ebiten.SetVsyncEnabled(false)
+			ebiten.SetMaxTPS(ebiten.UncappedTPS)
+		}
 	}
 
 	return result, nil
