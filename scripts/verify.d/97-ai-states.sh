@@ -1,5 +1,7 @@
 scenario_name="monster AI states (forced fear / confuse / charm override the AI, are injected with the forcestate command and restore it; monsters fight monsters)"
-scenario_env() { echo 'export OD2_AUTOAI="skeleton1,state=fear+confuse+charm" OD2_AUTOAI_SECONDS=22'; }
+# faithful N-Z ports (feat/ai-faithful-b): one in-game subject per family, spawned beside the main subject
+fb_families="Vampire SuccubusWitch ZakarumPriest ZakarumZealot OblivionKnight Overseer Regurgitator VileMother VileDog ThornHulk PinHead PutridDefiler QuillMother SiegeBeast ReanimatedHorde Spirit TrappedSoul Trap-Melee SandMaggotQueen Tentacle FrogDemon WillOWisp ShadowWarrior Sarcophagus"
+scenario_env() { echo 'export OD2_AUTOAI="skeleton1,state=fear+confuse+charm" OD2_AUTOAI_SECONDS=22'; echo "export OD2_AUTOAI_ALSO=\"${fb_families// /+}\""; }
 scenario_check() {
   grep -E "AUTOAI (start|inject|summary)|MONSTER (state|aistate)|forcestate:" $log.txt | cut -c1-220
   grep -q "AUTOAI start ref=skeleton1" $log.txt || { echo "FAIL: AUTOAI did not start"; fail=1; }
@@ -21,4 +23,10 @@ scenario_check() {
   # function and the ported ground archetypes act (static tests, no game needed)
   grep -q "AUTOAI start ref=skeleton1 .*implemented=true" $log.txt || { echo "FAIL: subject AI not implemented"; fail=1; }
   go test ./d2common/d2monster/ -run 'TestMonaiTableCoverage|TestNoCommonMonsterIdles|TestMonsterAI4' -count=1 2>&1 | grep -v "ignoring duplicate libraries" | tail -5 | grep -q '^ok' || { echo "FAIL: monster AI archetype tests"; fail=1; }
+  # every faithful-port family ran as an in-game subject with its implemented think function
+  for fam in $fb_families; do
+    grep -q "AUTOAI also ref=$fam monster=.* implemented=true" $log.txt || { echo "FAIL: in-game subject $fam missing or not implemented"; fail=1; }
+  done
+  grep -q "AUTOAI also-summary" $log.txt || { echo "FAIL: no also-summary lines"; fail=1; }
+  go test ./d2common/d2monster/ -run 'TestFaithfulB' -count=1 2>&1 | grep -v "ignoring duplicate libraries" | tail -5 | grep -q '^ok' || { echo "FAIL: faithful N-Z AI tests"; fail=1; }
 }
