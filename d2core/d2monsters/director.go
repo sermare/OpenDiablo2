@@ -175,6 +175,7 @@ type Director struct {
 	hire      *d2hireling.Table
 	mercs     map[*d2mapentity.Player]*unit
 	killer    *unit // the merc whose hit is being resolved (kill credit)
+	mercHooks MercSkillHooks
 	snd       *rand.Rand
 	packRNG   *d2rand.Seed
 	regionRNG *d2rand.Seed // region seed of the teleport destination search

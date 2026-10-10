@@ -24,6 +24,11 @@ type heroUnit struct {
 	passives     map[string]int
 	passiveFrame int
 	inPassive    bool
+
+	// merc is set when the unit is a hireling's caster: p is then its owner
+	// (kills and damage are credited to the owner) while the level, skills,
+	// position and combat numbers are the merc's (merc.go).
+	merc *mercCtx
 }
 
 func (e *Engine) hero(p *d2mapentity.Player) *heroUnit {
@@ -46,17 +51,47 @@ type HeroHandle struct{ h *heroUnit }
 func (h *HeroHandle) ManaString() string { return h.h.manaString() }
 
 func (h *heroUnit) manaString() string {
+	if h.merc != nil {
+		return "-"
+	}
+
 	return fmt.Sprintf("%.2f/%d", float64(h.Mana())/256, h.p.Stats.MaxMana)
 }
 
-func (h *heroUnit) ID() string     { return h.p.ID() }
+func (h *heroUnit) ID() string {
+	if h.merc != nil {
+		return h.merc.id
+	}
+
+	return h.p.ID()
+}
+
+// IsPlayer is true for a merc too: its missiles hurt monsters, and it casts
+// on the player side of the damage formulas.
 func (h *heroUnit) IsPlayer() bool { return true }
 
 // Gone reports a dead hero (death animation or corpse); see Owner.Gone.
-func (h *heroUnit) Gone() bool { return h.p.IsDead() }
-func (h *heroUnit) Level() int { return h.p.Stats.Level }
+func (h *heroUnit) Gone() bool {
+	if h.merc != nil {
+		return false
+	}
+
+	return h.p.IsDead()
+}
+
+func (h *heroUnit) Level() int {
+	if h.merc != nil {
+		return h.merc.c.Level
+	}
+
+	return h.p.Stats.Level
+}
 
 func (h *heroUnit) skill(id int) int {
+	if h.merc != nil {
+		return h.merc.skills[id]
+	}
+
 	if s := h.p.Skills[id]; s != nil {
 		return s.SkillPoints
 	}
@@ -79,6 +114,10 @@ func (h *heroUnit) BaseSkillLevel(id int) int { return h.skill(id) }
 // Stat is a base attribute plus what the hero's states (auras, buffs,
 // charges) and passive skills add to it.
 func (h *heroUnit) Stat(name string) int {
+	if h.merc != nil {
+		return h.mercStat(name)
+	}
+
 	v := 0
 
 	switch name {
@@ -124,9 +163,19 @@ func (h *heroUnit) passive(name string) int {
 	return h.passives[name]
 }
 
-func (h *heroUnit) Mana() int { return h.p.Stats.Mana<<8 | h.manaFrac }
+func (h *heroUnit) Mana() int {
+	if h.merc != nil {
+		return mercMana
+	}
+
+	return h.p.Stats.Mana<<8 | h.manaFrac
+}
 
 func (h *heroUnit) SetMana(v int) {
+	if h.merc != nil { // a merc has no mana
+		return
+	}
+
 	if v < 0 {
 		v = 0
 	}
@@ -134,13 +183,23 @@ func (h *heroUnit) SetMana(v int) {
 	h.p.Stats.Mana, h.manaFrac = v>>8, v&0xff
 }
 
-func (h *heroUnit) Pos() (x, y int) { return int(h.p.Position.X()), int(h.p.Position.Y()) }
-func (h *heroUnit) InTown() bool    { return h.p.IsInTown() }
+func (h *heroUnit) Pos() (x, y int) {
+	if h.merc != nil {
+		return h.e.monsters.MercPosition(h.p)
+	}
+
+	return int(h.p.Position.X()), int(h.p.Position.Y())
+}
+func (h *heroUnit) InTown() bool { return h.p.IsInTown() }
 func (h *heroUnit) Roller() d2combat.Roller {
 	return h.seed
 }
 
 func (h *heroUnit) AttackRating() int {
+	if h.merc != nil {
+		return h.merc.c.AR
+	}
+
 	st := h.e.asset.Records.Character.Stats[h.p.Class]
 	if st == nil {
 		return d2combat.PlayerAttackRating(0, h.p.Stats.Dexterity, 0)
@@ -153,6 +212,10 @@ func (h *heroUnit) AttackRating() int {
 // game's fallback min>=1, max>=2).
 func (h *heroUnit) WeaponDamage() (min, max int) {
 	min, max = 1, 2
+
+	if h.merc != nil {
+		return maxInt(h.merc.c.DmgMin, 1), maxInt(h.merc.c.DmgMax, 2)
+	}
 
 	if h.p.Equipment != nil && h.p.Equipment.RightHand != nil {
 		if rec := h.e.asset.Records.Item.Weapons[h.p.Equipment.RightHand.GetItemCode()]; rec != nil && rec.MaxDamage > 0 {
@@ -244,8 +307,8 @@ func (h *heroUnit) ThrownMissile() string {
 	return ""
 }
 
-func (h *heroUnit) HasAmmo() bool       { return h.e.opt.InfiniteAmmo }
-func (h *heroUnit) ConsumeAmmo() bool   { return h.e.opt.InfiniteAmmo }
+func (h *heroUnit) HasAmmo() bool       { return h.merc != nil || h.e.opt.InfiniteAmmo }
+func (h *heroUnit) ConsumeAmmo() bool   { return h.merc != nil || h.e.opt.InfiniteAmmo }
 func (h *heroUnit) Cooldown(id int) int { return h.cooldowns[id] }
 func (h *heroUnit) SetCooldown(id, until int) {
 	h.cooldowns[id] = until

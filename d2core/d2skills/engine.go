@@ -69,13 +69,14 @@ type Engine struct {
 	frame int
 	acc   float64
 
-	heroes  map[string]*heroUnit
-	targets map[string]*monsterTarget
-	visuals map[uint32]*d2mapentity.Missile
-	fx      map[*d2mapentity.Missile]int // explosion entities and the frame they vanish at
-	sets    map[string]*d2state.Set      // unit id -> states and DoT streams
-	defs    d2state.Defs                 // states.txt rules shared by the sets
-	timers  []timer
+	heroes      map[string]*heroUnit
+	mercCasters map[string]*heroUnit // hireling casters by id (merc.go)
+	targets     map[string]*monsterTarget
+	visuals     map[uint32]*d2mapentity.Missile
+	fx          map[*d2mapentity.Missile]int // explosion entities and the frame they vanish at
+	sets        map[string]*d2state.Set      // unit id -> states and DoT streams
+	defs        d2state.Defs                 // states.txt rules shared by the sets
+	timers      []timer
 
 	auras  map[string]*auraRun // hero id -> the aura it keeps on
 	storms []*stormRun
@@ -98,7 +99,7 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 	l d2util.LogLevel, opt Options) *Engine {
 	e := &Engine{
 		Logger: d2util.NewLogger(), asset: asset, mapEngine: mapEngine, monsters: monsters, opt: opt,
-		heroes: map[string]*heroUnit{}, targets: map[string]*monsterTarget{},
+		heroes: map[string]*heroUnit{}, mercCasters: map[string]*heroUnit{}, targets: map[string]*monsterTarget{},
 		visuals: map[uint32]*d2mapentity.Missile{}, fx: map[*d2mapentity.Missile]int{},
 		sets: map[string]*d2state.Set{}, auras: map[string]*auraRun{}, pets: map[string][]*d2mapentity.Monster{}, dots: map[string]dotTotal{},
 	}
@@ -122,9 +123,13 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 	}
 	monsters.HeroDefense = e.heroDefense
 	monsters.HeroAvoid = e.heroAvoid
+	e.installMercHooks()
 
 	return e
 }
+
+// Director returns the monster director the engine runs against.
+func (e *Engine) Director() *d2monsters.Director { return e.monsters }
 
 // staticFieldMin reads DifficultyLevels StaticFieldMin for normal difficulty
 // (the scenario difficulty is not tracked here); 0 when the table has no row.
@@ -364,7 +369,7 @@ func chebyshev(dx, dy int) int {
 }
 
 // runDo is the action frame of the cast animation.
-func (e *Engine) runDo(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, tg d2skill.Target) {
+func (e *Engine) runDo(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, tg d2skill.Target) bool {
 	// the target may have moved while the hero played the animation
 	if tg.Unit != nil {
 		if mt, ok := tg.Unit.(*monsterTarget); ok {
@@ -380,7 +385,7 @@ func (e *Engine) runDo(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, tg
 
 	if !res.OK {
 		e.Counters.Refused++
-		return
+		return false
 	}
 
 	e.Counters.ManaSpent += res.ManaPaid
@@ -400,6 +405,8 @@ func (e *Engine) runDo(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, tg
 	for i := range res.Effects {
 		e.effect(p, u, sk, &res.Effects[i])
 	}
+
+	return true
 }
 
 func (e *Engine) castOverlay(p *d2mapentity.Player, rec *d2records.SkillRecord) {
@@ -730,6 +737,13 @@ func (e *Engine) AreaChanged(md *d2monsters.Director) {
 	e.pets = map[string][]*d2mapentity.Monster{}
 	e.targets = map[string]*monsterTarget{}
 	e.dots = map[string]dotTotal{}
+	e.mercCasters = map[string]*heroUnit{}
+
+	for k, a := range e.auras {
+		if a.u != nil {
+			delete(e.auras, k) // the hirelings' auras belong to the old level
+		}
+	}
 
 	for id := range e.sets {
 		if e.heroes[id] == nil {
@@ -741,6 +755,8 @@ func (e *Engine) AreaChanged(md *d2monsters.Director) {
 		e.monsters = md
 		e.pipe.Grid = md.Grid()
 		md.HeroDefense = e.heroDefense
+		md.HeroAvoid = e.heroAvoid
+		e.installMercHooks()
 	}
 }
 
@@ -890,6 +906,7 @@ func (e *Engine) runTimers() {
 
 func (e *Engine) onSim(ev d2missile.Event) {
 	m := ev.Missile
+	defer e.creditFor(m.Owner.ID)()
 	name := m.Spec.Name
 
 	switch ev.Kind {
@@ -963,6 +980,10 @@ func (e *Engine) skillName(id int) string {
 
 func (e *Engine) owner(m *d2missile.Missile) *d2mapentity.Player {
 	if h := e.heroes[m.Owner.ID]; h != nil {
+		return h.p
+	}
+
+	if h := e.mercCasters[m.Owner.ID]; h != nil { // a hireling's missile: the owner gets the credit
 		return h.p
 	}
 

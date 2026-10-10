@@ -34,6 +34,7 @@ type watch struct {
 
 type auraRun struct {
 	p    *d2mapentity.Player
+	u    *heroUnit // the merc that keeps the aura (nil: the hero)
 	ef   d2skill.Effect
 	next int
 }
@@ -132,9 +133,15 @@ func (e *Engine) firstHero() *d2mapentity.Player {
 // ---- dispatch ----
 
 func (e *Engine) effect(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, ef *d2skill.Effect) {
+	if u.merc != nil && !mercEffect[ef.Kind] { // jumps, summons, self damage: not for a hireling
+		e.emit("state", "STATE skipped skill=%q kind=%s (not modelled for a mercenary)", sk.Name, ef.Kind)
+
+		return
+	}
+
 	switch ef.Kind {
 	case "self_state":
-		e.selfState(p, sk, ef)
+		e.selfState(p, u, sk, ef)
 	case "area_state":
 		e.areaState(p, u, sk, ef)
 	case "area_damage":
@@ -146,7 +153,7 @@ func (e *Engine) effect(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 	case "storm":
 		e.startStorm(p, u, sk, ef)
 	case "aura":
-		e.startAura(p, sk, ef)
+		e.startAura(p, u, sk, ef)
 	case "summon":
 		e.summon(p, u, sk, ef)
 	case "move":
@@ -166,9 +173,14 @@ func (e *Engine) effect(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 
 // selfState puts a timed (or indefinite) state on the hero. Stack > 0 makes it
 // a counter: the stat named like the state holds the count (assassin charges).
-func (e *Engine) selfState(p *d2mapentity.Player, sk *d2skill.Skill, ef *d2skill.Effect) {
-	set := e.setOf(p.ID())
-	inst := d2state.Instance{Name: ef.State, Source: p.ID(), SkillID: sk.ID, Level: ef.Level, Mods: statMods(ef.Stats), Count: 1}
+func (e *Engine) selfState(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, ef *d2skill.Effect) {
+	id, who := p.ID(), p.Name()
+	if u.merc != nil { // Frozen Armor and the like land on the merc, not its owner
+		id, who = u.ID(), u.merc.name
+	}
+
+	set := e.setOf(id)
+	inst := d2state.Instance{Name: ef.State, Source: id, SkillID: sk.ID, Level: ef.Level, Mods: statMods(ef.Stats), Count: 1}
 
 	if ef.Frames > 0 {
 		inst.Until = e.frame + ef.Frames
@@ -190,7 +202,7 @@ func (e *Engine) selfState(p *d2mapentity.Player, sk *d2skill.Skill, ef *d2skill
 	// group (itself included) before it builds the new statlist (0x56a480).
 	set.ClearGroup(e.frame, ef.State)
 	set.Apply(e.frame, inst)
-	e.emit("state", "STATE apply skill=%q unit=%s state=%s frames=%d stacks=%d stats=%s chill_attackers=%d", sk.Name, p.Name(),
+	e.emit("state", "STATE apply skill=%q unit=%s state=%s frames=%d stacks=%d stats=%s chill_attackers=%d", sk.Name, who,
 		ef.State, ef.Frames, inst.Count, describeMods(ef.Stats), ef.Chill)
 
 	if ef.Missile != "" && ef.Interval > 0 { // Blaze: fire is left behind
@@ -405,15 +417,35 @@ func (e *Engine) stormsTick() {
 
 // ---- auras ----
 
-func (e *Engine) startAura(p *d2mapentity.Player, sk *d2skill.Skill, ef *d2skill.Effect) {
-	if old := e.auras[p.ID()]; old != nil {
-		e.setOf(p.ID()).Remove(old.ef.State)
+func (e *Engine) startAura(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, ef *d2skill.Effect) {
+	key := p.ID()
+	if u.merc != nil {
+		key = u.ID()
 	}
 
-	e.auras[p.ID()] = &auraRun{p: p, ef: *ef, next: e.frame}
+	if old := e.auras[key]; old != nil {
+		e.endAura(key, old)
+	}
+
+	e.auras[key] = &auraRun{p: p, ef: *ef, next: e.frame}
+	if u.merc != nil {
+		e.auras[key].u = u
+	}
+
 	e.emit("state", "STATE aura skill=%q mode=%s state=%s radius=%d stats=%s target_state=%s target_stats=%s", sk.Name, ef.Mode,
 		ef.State, ef.Radius, describeMods(ef.Stats), ef.TargetState, describeMods(ef.TargetStats))
-	e.pulseAura(e.auras[p.ID()])
+	e.pulseAura(e.auras[key])
+}
+
+// endAura removes the states an aura keeps on its friends.
+func (e *Engine) endAura(key string, a *auraRun) {
+	e.setOf(a.p.ID()).Remove(a.ef.State)
+
+	if a.u != nil {
+		e.setOf(a.u.ID()).Remove(a.ef.State)
+	}
+
+	delete(e.auras, key)
 }
 
 func (e *Engine) aurasTick() {
@@ -434,17 +466,34 @@ func (e *Engine) aurasTick() {
 func (e *Engine) pulseAura(a *auraRun) {
 	a.next = e.frame + auraPulse
 	ef := &a.ef
-	u := e.hero(a.p)
+	u := a.u
+
+	if u == nil {
+		u = e.hero(a.p)
+	} else if !e.monsters.MercAlive(a.p, u.merc.c.Token) { // the merc died or was replaced: its aura ends
+		e.emit("state", "STATE aura end skill=%q merc=%s", ef.SkillName, u.merc.name)
+		e.endAura(u.ID(), a)
+
+		return
+	}
+
 	hx, hy := u.Pos()
 	until := e.frame + auraPulse + 3
 
 	if len(ef.Stats) > 0 || ef.State != "" && ef.Mode == "friendly" {
-		e.setOf(a.p.ID()).Apply(e.frame, d2state.Instance{Name: ef.State, Until: until, Mods: statMods(ef.Stats), Source: a.p.ID(),
-			SkillID: ef.SkillID, Level: ef.Level})
+		// a merc's aura helps its owner and itself (party range is not modelled)
+		for _, id := range []string{a.p.ID(), u.ID()} {
+			e.setOf(id).Apply(e.frame, d2state.Instance{Name: ef.State, Until: until, Mods: statMods(ef.Stats), Source: u.ID(),
+				SkillID: ef.SkillID, Level: ef.Level})
+		}
 
 		for _, m := range ef.Stats {
 			if m.Stat == "hitpoints" && m.Value > 0 {
 				a.p.Stats.Health = minInt(a.p.Stats.Health+maxInt(m.Value>>8, 1), a.p.Stats.MaxHealth)
+
+				if a.u != nil {
+					e.monsters.HealMerc(a.p, a.u.merc.c.Token, maxInt(m.Value>>8, 1))
+				}
 			}
 		}
 	}
