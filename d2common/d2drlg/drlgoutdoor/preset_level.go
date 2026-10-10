@@ -334,3 +334,33 @@ func ParamsPreset(t d2drlg.Levels, id int, gameSeed uint32, diff d2drlg.Difficul
 
 	return p, nil
 }
+
+// ParamsPresetWorld is ParamsPreset for a preset level that also appears in the
+// Act 1 world links (Monastery Gate, 26): the world search registered its
+// outdoor neighbour (Tamoe Highland) in the first free vis slot before the level
+// is generated. The rectangle is still the Levels.txt one (verified against the
+// emulator: testdata/preset_act1b.json).
+func ParamsPresetWorld(t d2drlg.Levels, id int, gameSeed uint32, diff d2drlg.Difficulty) (Params, error) {
+	p, err := ParamsPreset(t, id, gameSeed, diff)
+	if err != nil {
+		return p, err
+	}
+
+	links := linkSet{}
+
+	for _, l := range act1Links {
+		if err := links.get(t, l[0]).register(l[1]); err != nil {
+			return p, err
+		}
+
+		if err := links.get(t, l[1]).register(l[0]); err != nil {
+			return p, err
+		}
+	}
+
+	if k, ok := links[id]; ok {
+		p.Vis, p.Warp = k.vis, k.warp
+	}
+
+	return p, nil
+}

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgworld"
 )
 
 // TestOraclePresetAct1 compares GeneratePreset for the Act 1 DrlgType 2 levels
@@ -14,9 +15,20 @@ import (
 // the real Game.exe DRLG in an emulator: 12 seeds x 3 difficulties x 5 levels.
 // Needs D2_TABLES and D2_DS1_ROOT; skips without.
 func TestOraclePresetAct1(t *testing.T) {
+	oraclePresets(t, "preset_act1.json")
+}
+
+// TestOraclePresetAct1More covers the other Act 1 presets (Tower Cellar 5, Monastery Gate, Outer Cloister,
+// Inner Cloister, Cathedral, Tristram: levels 25-27, 32, 33, 38) and Duriel's Lair (73), 12 seeds x 3 difficulties.
+func TestOraclePresetAct1More(t *testing.T) {
+	oraclePresets(t, "preset_act1b.json")
+	oraclePresets(t, "preset_act2.json")
+}
+
+func oraclePresets(t *testing.T, name string) {
 	env := testEnv(t)
 
-	b, err := os.ReadFile(filepath.Join("..", "testdata", "preset_act1.json"))
+	b, err := os.ReadFile(filepath.Join("..", "testdata", name))
 	if err != nil {
 		t.Skip(err)
 	}
@@ -29,9 +41,20 @@ func TestOraclePresetAct1(t *testing.T) {
 	n := 0
 
 	for _, g := range gold {
-		p, err := ParamsPreset(env.Tables, g.Level, g.Seed, d2drlg.Difficulty(g.Diff))
+		override := -1
+
+		p, err := ParamsPresetWorld(env.Tables, g.Level, g.Seed, d2drlg.Difficulty(g.Diff))
 		if err != nil {
 			t.Fatal(err)
+		}
+
+		if g.Level == 27 { // the Act 1 world search forces 27's file (its exit side)
+			lay, err := drlgworld.Generate(env.Tables, g.Seed, d2drlg.Difficulty(g.Diff))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			override = PresetFileOverride(lay, g.Level)
 		}
 
 		if p.BaseSeed != g.Base || p.Vis != g.Vis || p.Rect != (Rect{g.Rect[0], g.Rect[1], g.Rect[2], g.Rect[3]}) {
@@ -39,7 +62,7 @@ func TestOraclePresetAct1(t *testing.T) {
 			continue
 		}
 
-		pl, err := GeneratePreset(env, p, -1)
+		pl, err := GeneratePreset(env, p, override)
 		if err != nil {
 			t.Errorf("seed %#x level %d: %v", g.Seed, g.Level, err)
 			continue
