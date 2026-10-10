@@ -194,6 +194,15 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 
 		applyPlannedRank(mon, pm)
 
+		// a super unique carries its own name ("Shenk the Overseer"): quests and the monster label ask for it
+		if pm.SuperKey != "" {
+			if rec := v.asset.Records.Monster.Unique.Super[pm.SuperKey]; rec != nil && rec.Name != "" {
+				if name := v.asset.TranslateString(rec.Name); name != "" {
+					mon.SetLabel(name)
+				}
+			}
+		}
+
 		if pm.Leader >= 0 && pm.Leader < len(made) && made[pm.Leader] != nil {
 			v.monsters.Group(made[pm.Leader], mon)
 		}

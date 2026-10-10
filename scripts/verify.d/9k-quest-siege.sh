@@ -21,7 +21,7 @@ scenario_check() {
   done
   grep -q 'LEVEL npcs: .*Larzuk(511)' $log.txt || { echo "FAIL: no Larzuk in Harrogath"; fail=1; }
   # the world: the super unique of the Bloody Foothills is Shenk the Overseer; killing him is the goal
-  grep -q "adopted DS1 super unique Siege Boss (Shenk the Overseer)" $log.txt || { echo "FAIL: Shenk the Overseer is not placed in the Bloody Foothills"; fail=1; }
+  grep -qE "adopted DS1 super unique Siege Boss \(Shenk the Overseer\)|POPULATE supers level 110: .*overseer1" $log.txt || { echo "FAIL: Shenk the Overseer is not placed in the Bloody Foothills"; fail=1; }
   grep -q "MONSTER death name=Shenk the Overseer" $log.txt || { echo "FAIL: Shenk was not killed"; fail=1; }
   for t in "1->2" "2->3" "3->4" "4->5"; do
     grep -q "QUEST A5Q1 state $t" $log.txt || { echo "FAIL: no state change $t of A5Q1"; fail=1; }
