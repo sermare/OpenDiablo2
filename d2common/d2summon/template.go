@@ -59,6 +59,59 @@ type Template struct {
 type Templates struct {
 	byID    map[string]*Template
 	byClass map[int]*Template
+	monLvl  []levelRow
+}
+
+// levelRow is the AC and TH part of a monlvl.txt row for the expansion
+// (L-AC, L-TH) columns, per difficulty.
+type levelRow struct {
+	AC, TH [3]int
+}
+
+// LoadMonLvl parses monlvl.txt (rows indexed by level) for LevelBonus.
+func (t *Templates) LoadMonLvl(monlvl []byte) error {
+	d := d2txt.LoadDataDictionary(monlvl)
+	t.monLvl = nil
+
+	for d.Next() {
+		t.monLvl = append(t.monLvl, levelRow{
+			AC: [3]int{d.Number("L-AC"), d.Number("L-AC(N)"), d.Number("L-AC(H)")},
+			TH: [3]int{d.Number("L-TH"), d.Number("L-TH(N)"), d.Number("L-TH(H)")},
+		})
+	}
+
+	if len(t.monLvl) == 0 {
+		return fmt.Errorf("d2summon: no rows in monlvl")
+	}
+
+	return nil
+}
+
+// LevelBonus is the armor class and attack rating a summon of the given level
+// receives. VERIFIED (SKILL_ComputeSummonLevel 0x5c2850): the level is capped
+// to the last MonLvl row, the columns are the expansion ones (L-AC, L-TH) of
+// the difficulty, and both are added to the minion as stats 0x1f and 0x13.
+// ok is false when no monlvl was loaded.
+func (t *Templates) LevelBonus(level int, diff Difficulty) (ac, th int, ok bool) {
+	if t == nil || len(t.monLvl) == 0 {
+		return 0, 0, false
+	}
+
+	if level >= len(t.monLvl) {
+		level = len(t.monLvl) - 1
+	}
+
+	if level < 0 {
+		level = 0
+	}
+
+	if diff < Normal || diff > Hell {
+		diff = Normal
+	}
+
+	r := t.monLvl[level]
+
+	return r.AC[diff], r.TH[diff], true
 }
 
 // LoadTemplates parses the contents of monstats.txt.

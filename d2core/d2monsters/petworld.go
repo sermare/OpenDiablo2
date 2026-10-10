@@ -87,7 +87,14 @@ func (s *Summoner) Cast(owner, key string, o *d2skill.SummonOrder, passive []d2s
 
 	if s.templates != nil {
 		if t, ok := s.templates.ByID(key); ok {
-			c := d2summon.Compute(t, s.diff, d2summon.FromOrder(o, passive), s.rng)
+			mods := d2summon.FromOrder(o, passive)
+			if o.Level > 0 {
+				if ac, th, ok := s.templates.LevelBonus(o.Level, s.diff); ok {
+					mods.LevelAC, mods.LevelAR = ac, th
+				}
+			}
+
+			c := d2summon.Compute(t, s.diff, mods, s.rng)
 			st = &c
 		}
 	}
@@ -137,7 +144,7 @@ func (p directorPets) SpawnPet(owner, key string, x, y int, o *d2skill.SummonOrd
 		return 0, fmt.Errorf("unknown monster %q", key)
 	}
 
-	opt := MinionOptions{Owner: p.owners(owner), Kind: o.Kind, Frames: o.Frames, Tag: o.PetType, Stats: st}
+	opt := MinionOptions{Owner: p.owners(owner), Kind: o.Kind, Frames: o.Frames, Tag: o.PetType, Stats: st, Level: o.Level}
 	if opt.Tag == "" || opt.Tag == d2summon.Unlimited {
 		opt.Tag = key
 	}
@@ -188,6 +195,12 @@ func (d *Director) Summoner() *Summoner {
 
 	if data, err := d.asset.LoadFile("/data/global/excel/monstats.txt"); err == nil {
 		tpl, _ = d2summon.LoadTemplates(data)
+	}
+
+	if tpl != nil {
+		if data, err := d.asset.LoadFile("/data/global/excel/monlvl.txt"); err == nil {
+			_ = tpl.LoadMonLvl(data)
+		}
 	}
 
 	pets := directorPets{d: d, owners: func(id string) *d2mapentity.Player {

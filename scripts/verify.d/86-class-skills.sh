@@ -11,6 +11,8 @@ scenario_env() {
   list+=";Sacrifice,2;Might,1"
   list+=";Fire Ball,1;Frost Nova,1;Chain Lightning,2;Teleport,1;Energy Shield,1;Blizzard,1"
   list+=";Raven,1;Firestorm,1"
+  # feat/skills-npsd: AI curses, Poison Nova, Hydra, Plague Poppy, Telekinesis, Conversion, Hunger
+  list+=";Dim Vision,1;Confuse,1;Attract,1;Poison Nova,1;Hydra,1;Plague Poppy,1;Telekinesis,2;Conversion,8;Hunger,2"
   list+=";Fists of Fire,2;Dragon Talon,1;Lightning Sentry,1;Shadow Warrior,1"
   list+=";Thunder Storm,1;Hurricane,1;Holy Fire,1"
   echo "export OD2_AUTOCAST_CLASS=necromancer OD2_AUTOCAST_MANA=500 OD2_AUTOMONSTER=\"zombie1,5\" OD2_AUTOMONSTER_SECONDS=900"
@@ -22,6 +24,7 @@ scenario_check() {
   for s in "Bash" "War Cry" "Battle Orders" "Poison Javelin" "Multiple Shot" "Amplify Damage" \
            "Iron Maiden" "Poison Dagger" "Bone Armor" "Corpse Explosion" "Raise Skeleton" "Sacrifice" "Might" "Holy Fire" \
            "Fire Ball" "Frost Nova" "Chain Lightning" "Teleport" "Energy Shield" "Blizzard" "Raven" "Firestorm" "Hurricane" \
+           "Dim Vision" "Confuse" "Attract" "Poison Nova" "Hydra" "Plague Poppy" "Telekinesis" "Conversion" "Hunger" \
            "Fists of Fire" "Dragon Talon" "Lightning Sentry" "Shadow Warrior" "Thunder Storm"; do
     grep -qE "CAST do skill=\"$s\" .*ok=true" $log.txt || { echo "FAIL: $s was not cast"; fail=1; }
   done
@@ -51,6 +54,16 @@ scenario_check() {
   # Druid: ravens, area spells
   grep -qE "MINION spawn name=Raven" $log.txt || { echo "FAIL: no ravens"; fail=1; }
   grep -qE "STATE storm skill=\"Hurricane\"" $log.txt || { echo "FAIL: Hurricane"; fail=1; }
+  # feat/skills-npsd: curses change the monster AI, Hydra raises three shooters, Poppy a vine, Hunger leeches
+  grep -qE "STATE forced unit=.* kind=blind" $log.txt || { echo "FAIL: Dim Vision did not force the blind AI"; fail=1; }
+  grep -qE "STATE forced unit=.* kind=confuse" $log.txt || { echo "FAIL: Confuse did not force the confuse AI"; fail=1; }
+  grep -qE "STATE forced unit=.* kind=attract" $log.txt || { echo "FAIL: Attract did not force the attract AI"; fail=1; }
+  grep -qE "SUMMON skill=\"Hydra\" key=hydra1 kind=trap created=3" $log.txt || { echo "FAIL: Hydra did not raise three hydras"; fail=1; }
+  grep -qE "TRAP armed skill=\"Hydra\"" $log.txt || { echo "FAIL: the hydras were not armed"; fail=1; }
+  grep -qE "SUMMON skill=\"Plague Poppy\" key=plaguepoppy kind=trap created=1" $log.txt || { echo "FAIL: Plague Poppy"; fail=1; }
+  grep -qE "SKILL area skill=\"Poison Nova\"|MISSILE hit name=poisonnova|CAST do skill=\"Poison Nova\" .*missiles=[1-9]" $log.txt || { echo "FAIL: Poison Nova"; fail=1; }
+  grep -qE "SKILL melee skill=\"Hunger\"" $log.txt || { echo "FAIL: Hunger never struck"; fail=1; }
+  grep -qE "(STATE convert skill=\"Conversion\"|SKILL melee skill=\"Conversion\")" $log.txt || { echo "FAIL: Conversion neither converted nor struck"; fail=1; }
   # Assassin: charges released, sentries, shadow
   grep -qE "STATE apply skill=\"Fists of Fire\" .*state=progressive_fire" $log.txt || { echo "FAIL: Fists of Fire charge"; fail=1; }
   grep -qE "STATE clear skill=\"Dragon Talon\"" $log.txt || { echo "FAIL: Dragon Talon released no charge"; fail=1; }

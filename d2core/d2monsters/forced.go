@@ -59,6 +59,17 @@ func (d *Director) ForceState(id uint32, kind d2monster.ForcedKind, frames int, 
 	return u.b.StateLabel(), nil
 }
 
+// ForceMonster is ForceState for a monster entity (the skill engine holds
+// entities, not brain ids).
+func (d *Director) ForceMonster(m *d2mapentity.Monster, kind d2monster.ForcedKind, frames int, source uint32) (string, error) {
+	u := d.byEntity[m.ID()]
+	if u == nil {
+		return "", fmt.Errorf("monster %s is not run by the director", m.ID())
+	}
+
+	return d.ForceState(u.b.ID, kind, frames, source)
+}
+
 // FindArchetype returns the lowest-numbered enabled monstats row whose AI is
 // the named archetype (case-insensitive, e.g. "Vulture"), or nil.
 func (d *Director) FindArchetype(ai string) *d2records.MonStatRecord {

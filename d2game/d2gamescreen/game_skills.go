@@ -93,6 +93,13 @@ func (v *Game) skillEngine() *d2skills.Engine {
 		Seed:         uint32(v.gameClient.MapEngine.Seed()),
 		IgnoreTown:   scenario || os.Getenv("OD2_AUTOMONSTER") != "",
 		InfiniteAmmo: scenario,
+		TeleportFlag: func() int {
+			if det := v.asset.Records.GetLevelDetails(v.currentLevel()); det != nil {
+				return int(det.TeleportFlag)
+			}
+
+			return 1
+		},
 	})
 
 	if st := v.localPlayer.Stats; st != nil {
