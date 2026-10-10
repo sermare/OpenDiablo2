@@ -506,6 +506,17 @@ func (d *Director) Damage(m *d2mapentity.Monster, dmg int, src *d2mapentity.Play
 	}
 }
 
+// staggerSuppressed runs the exe's hit recovery gate for a hit of dmg whole hit
+// points on a monster.
+func (d *Director) staggerSuppressed(u *unit, dmg int) bool {
+	if d.staggerRNG == nil {
+		d.staggerRNG = d2rand.New(d.opt.Seed ^ 0x53544147)
+	}
+
+	return d2combat.StaggerGate(d.staggerRNG.Step, false, 0, int32(dmg)<<d2combat.FixedShift, 0,
+		int32(u.m.Vitals.MaxHP)<<d2combat.FixedShift, true, u.m.HasMode(d2monster.ModeGetHit))
+}
+
 // DamageOverTime applies poison or burn damage: like Damage but the monster is
 // not interrupted (hit recovery) by the tick.
 func (d *Director) DamageOverTime(m *d2mapentity.Monster, dmg int, src *d2mapentity.Player) {
@@ -537,8 +548,14 @@ func (d *Director) damage(u *unit, src *d2mapentity.Player, dmg int) {
 
 		// hit recovery: the monster drops what it was doing (a blow that was
 		// winding up is lost), plays GH and thinks again when it ends. Aggro
-		// is not otherwise changed. Whether every hit interrupts, and how long
-		// the recovery lasts (monstats2 / aidel), is UNVERIFIED: every hit does.
+		// is not otherwise changed. Only hits large enough relative to max
+		// life interrupt (VERIFIED gate 0x57aa60, d2combat.StaggerGate, oracle
+		// react_golden); the hit class is UNVERIFIED (0 = the default divisor)
+		// and a frozen monster is not told apart from a stunned one here.
+		if d.staggerSuppressed(u, dmg) {
+			return
+		}
+
 		u.m.StopMoving()
 		u.m.DropHitEvents()
 		u.mv = nil
