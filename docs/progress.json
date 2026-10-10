@@ -138,8 +138,8 @@
       "label": "Mac app: build, Finder launch with real maps, disk image",
       "done": 2,
       "total": 3,
-      "pending": 0,
-      "note": "app builds and launches with real maps (verified); disk image built but not tested by a human",
+      "pending": 1,
+      "note": "app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image has not been opened by a human; the desktop app was rebuilt from the landed tree",
       "color": "#9be564"
     },
     {
@@ -147,7 +147,7 @@
       "done": 177,
       "total": 180,
       "pending": 3,
-      "note": "full verify_parallel.sh 6 run 50637 on 179e61b7: 6 jobs x 30 scenarios, 177 green; the 3 reds (86-class-skills, Act 3 playthrough, Act 5 caves playthrough) were fixed and re-run alone green; the final tree has no second full run",
+      "note": "full verify_parallel.sh 6 run 50637 on 179e61b7: 6 jobs x 30 scenarios, 177 green; the 3 reds (86-class-skills, Act 3 playthrough, Act 5 caves playthrough) were fixed and re-run alone green; the final tree has no second full run; batch 1 (Mac release, stamina, objects) landed after a second full run: 4 of 6 jobs green, 2 load/timing reds passed alone after fixes",
       "color": "#3ddc84"
     },
     {
