@@ -29,11 +29,11 @@
 <text x="36" y="72" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#b8b9d6">driven by Claude · counts come from code, tests and Ghidra; estimates are marked with ~ · dashed = on branches, not yet verified</text>
 <text x="844" y="46" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">updated 2026-10-09</text>
 <text x="36" y="114" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Game v1 complete</text>
-<text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">64%</text>
+<text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">68%</text>
 <rect x="36" y="128" width="808" height="26" rx="13" fill="#ffffff" fill-opacity="0.08"/>
-<rect x="36" y="128" width="540.9" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
-<rect x="36" y="128" width="520.1" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
-<text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +3% on branches, not yet verified</text>
+<rect x="36" y="128" width="565.1" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
+<rect x="36" y="128" width="550.1" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
+<text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +2% on branches, not yet verified</text>
 <text x="36" y="192" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#8c8eb0">v1 = double-click the Mac app, make or load a character, play Acts 1-5 single player without a blocker</text>
 <text x="36" y="226" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Game.exe functions named in Ghidra</text>
 <text x="844" y="226" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11,257 / 11,257</text>
@@ -84,12 +84,11 @@
 <text x="844" y="798" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff7a45">100%</text>
 <text x="36" y="819" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">Acts 1, 2, 3, 4 and 5 each pass a scripted real-combat playthrough on the landed tree (2e50f0e4): Act 1 752 s, Act 2 484 s, Act 3 874 s, Act 4 and the start of Act 5 in the full verify, Act 5 caves 574 s</text>
 <text x="36" y="850" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Levels walked by a verify scenario</text>
-<text x="844" y="850" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">38 / 136</text>
+<text x="844" y="850" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">52 / 136</text>
 <rect x="36" y="862" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="862" width="206.2" height="18" rx="9" fill="url(#g8)" filter="url(#glow)"/>
-<rect x="242.2" y="862" width="76.0" height="18" rx="9" fill="#ff9f43" fill-opacity="0.28" stroke="#ff9f43" stroke-opacity="0.6" stroke-dasharray="4 3"/>
-<text x="844" y="876" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff9f43">28%</text>
-<text x="36" y="897" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+10% done on branches, not yet verified (dashed) · levels a scenario enters (lower bound, counted from scripts/verify.d); dashed = Act 3 playthrough branch</text>
+<rect x="36" y="862" width="282.2" height="18" rx="9" fill="url(#g8)" filter="url(#glow)"/>
+<text x="844" y="876" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ff9f43">38%</text>
+<text x="36" y="897" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">levels a scenario enters (lower bound, counted from scripts/verify.d); includes the whole Act 3 chain (Travincal, Council, Durance, Mephisto, red portal)</text>
 <text x="36" y="928" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Main quests with logic implemented</text>
 <text x="844" y="928" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">27 / 27</text>
 <rect x="36" y="940" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -102,7 +101,7 @@
 <rect x="36" y="1018" width="456.9" height="18" rx="9" fill="url(#g10)" filter="url(#glow)"/>
 <rect x="492.9" y="1018" width="38.7" height="18" rx="9" fill="#5fd0a5" fill-opacity="0.28" stroke="#5fd0a5" stroke-opacity="0.6" stroke-dasharray="4 3"/>
 <text x="844" y="1032" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#5fd0a5">62%</text>
-<text x="36" y="1053" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+5% done on branches, not yet verified (dashed) · ~130 of 7 classes x 30 skills; Necromancer/Paladin/Sorceress/Druid gaps closed on a branch (+11), Amazon/Barbarian/Assassin in progress</text>
+<text x="36" y="1053" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+5% done on branches, not yet verified (dashed) · ~130 of 7 classes x 30 skills; Necromancer/Paladin/Sorceress/Druid gaps closed on a branch (+11), Amazon/Barbarian/Assassin in progress; natural mana regeneration (exe-derived 25 Hz) landed</text>
 <text x="36" y="1084" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Monster AI archetypes implemented</text>
 <text x="844" y="1084" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">145 / 148</text>
 <rect x="36" y="1096" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -133,10 +132,11 @@
 <text x="844" y="1422" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#6fd3ff">0%</text>
 <text x="36" y="1443" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">menu music, NPC voices, footsteps, spell/combat sounds, ambient: each needs a person to listen (I can only check logs)</text>
 <text x="36" y="1474" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Multiplayer playable through the game screen</text>
-<text x="844" y="1474" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">0 / 4</text>
+<text x="844" y="1474" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">3 / 4</text>
 <rect x="36" y="1486" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<text x="844" y="1500" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ffb86b">0%</text>
-<text x="36" y="1521" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">realm server + protocol exist and are tested; game screen not wired yet: lobby UI, walk sync, combat sync, trade</text>
+<rect x="36" y="1486" width="553.5" height="18" rx="9" fill="url(#g16)" filter="url(#glow)"/>
+<text x="844" y="1500" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ffb86b">75%</text>
+<text x="36" y="1521" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and the party panel through the realm are not wired (trade works over the legacy path)</text>
 <text x="36" y="1552" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Mac app: build, Finder launch with real maps, disk image</text>
 <text x="844" y="1552" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">2 / 3</text>
 <rect x="36" y="1564" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -145,12 +145,11 @@
 <text x="844" y="1578" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#9be564">67%</text>
 <text x="36" y="1599" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+33% done on branches, not yet verified (dashed) · app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image has not been opened by a human; the desktop app was rebuilt from the landed tree</text>
 <text x="36" y="1630" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Real full verify green (scenario sections per job, real parallel log)</text>
-<text x="844" y="1630" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">177 / 180</text>
+<text x="844" y="1630" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">193 / 193</text>
 <rect x="36" y="1642" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="1642" width="725.7" height="18" rx="9" fill="url(#g18)" filter="url(#glow)"/>
-<rect x="761.7" y="1642" width="12.3" height="18" rx="9" fill="#3ddc84" fill-opacity="0.28" stroke="#3ddc84" stroke-opacity="0.6" stroke-dasharray="4 3"/>
-<text x="844" y="1656" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#3ddc84">98%</text>
-<text x="36" y="1677" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">+2% done on branches, not yet verified (dashed) · full verify_parallel.sh 6 run 50637 on 179e61b7: 6 jobs x 30 scenarios, 177 green; the 3 reds (86-class-skills, Act 3 playthrough, Act 5 caves playthrough) were fixed and re-run alone green; the final tree has no second full run; batch 1 (Mac release, stamina, objects) landed after a second full run: 4 of 6 jobs green, 2 load/timing reds passed alone after fixes</text>
+<rect x="36" y="1642" width="738.0" height="18" rx="9" fill="url(#g18)" filter="url(#glow)"/>
+<text x="844" y="1656" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#3ddc84">100%</text>
+<text x="36" y="1677" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">batch 3 full verify_parallel.sh 6: ALL JOBS PASSED (6 jobs, 193 scenarios, one retried flake); earlier runs: batch 1 4/6 jobs, batch 2 all playthroughs, nine reds fixed and re-run alone</text>
 <text x="36" y="1708" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Acts played start to finish by a human tester</text>
 <text x="844" y="1708" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">0 / 5</text>
 <rect x="36" y="1720" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>

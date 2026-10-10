@@ -199,6 +199,7 @@ func (v *Game) commandResetQuests(_ []string) error {
 	}
 
 	v.Infof("QUEST record cleared")
+	v.restartQuests()
 
 	// the quest system holds state of its own (quest states, heard lines): build it again from the cleared record
 	if v.questRT != nil {

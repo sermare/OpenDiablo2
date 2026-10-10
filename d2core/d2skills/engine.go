@@ -110,6 +110,7 @@ type Engine struct {
 	OnPvPHit func(PvPHit)
 
 	rivalTargets map[string]*playerTarget
+	pvpCarry     map[string]*d2combat.PvPCarry // defender id -> fraction of a point the PvP scale cut off
 
 	// Counters are updated as events happen.
 	Counters Counters

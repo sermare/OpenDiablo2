@@ -494,8 +494,7 @@ func (mr *MapRenderer) renderWall(tile d2ds1.Tile, viewport *Viewport, target d2
 
 	alpha := 1.0
 	if upper {
-		sx, sy := viewport.GetTranslationScreen()
-		alpha = mr.light.fadeFor(wallKey{tileX, tileY, idx}, mr.heroBehind(tileX, tileY, sx, sy, img))
+		alpha = mr.light.fadeFor(wallKey{tileX, tileY, idx}, mr.heroBehind(tile.Type, tileX, tileY))
 		if alpha < 1 {
 			mr.stats.WallsFading++
 		}
@@ -564,22 +563,38 @@ func (mr *MapRenderer) updateRoofCover() {
 	}, hx, hy)
 }
 
-// heroBehind reports whether the hero is hidden by the wall tile whose image is
-// drawn at screen position (sx, sy): the wall is nearer to the camera than the
-// hero and the hero's screen position lies inside the wall image. This is a
-// heuristic; the real game flags the covering tiles in the room code, which
-// the notes did not locate (U).
-func (mr *MapRenderer) heroBehind(tileX, tileY, sx, sy int, img d2interface.Surface) bool {
-	in := mr.light.input
-	if float64(tileX+tileY) <= in.HeroX+in.HeroY-0.5 {
-		return false
+// wallFadeRule is the exact test of the real game for a wall that fades (Game.exe 1.14b, verified in Ghidra:
+// DRAWLIST_CollectRoomEntries 0x4da580 sends wall tile records with sprite-priority bits to
+// DRAWLIST_AddTimedRoomEntry 0x4d9f60, which asks DRAWLIST_IsRoomEntryOnScreen 0x4d9e40; hero position is
+// the path position / 5 in DRAWLIST_BuildForFrame 0x4da970). In tile units, with (hx, hy) the hero's tile:
+// orientations 1,4,5,7,8,10,12 fade when hx < wallX < hx+4, orientations 2,3,6,7,9,11,12 fade when
+// hy < wallY < hy+4 (each axis tested alone, the other axis is not looked at). Other orientations (trees,
+// 14) never fade. The target alpha is 0x80/255 and the fade is linear over 500 ms.
+func wallFadeRule(t d2enum.TileType, wallX, wallY, heroX, heroY int) bool {
+	switch t {
+	case d2enum.TileLeftWall, d2enum.TileLeftPartOfNorthCornerWall, d2enum.TileLeftEndWall,
+		d2enum.TileSouthCornerWall, d2enum.TileLeftWallWithDoor, d2enum.TileSpecialTile1,
+		d2enum.TilePillarsColumnsAndStandaloneObjects:
+		if wallX > heroX && wallX < heroX+4 {
+			return true
+		}
 	}
 
-	hx, hy := mr.viewport.WorldToScreenF(in.HeroX, in.HeroY)
-	w, h := img.GetSize()
+	switch t {
+	case d2enum.TileRightWall, d2enum.TileRightPartOfNorthCornerWall, d2enum.TileRightEndWall,
+		d2enum.TileSouthCornerWall, d2enum.TileRightWallWithDoor, d2enum.TileSpecialTile2,
+		d2enum.TilePillarsColumnsAndStandaloneObjects:
+		return wallY > heroY && wallY < heroY+4
+	}
 
-	// a wall only hides what is behind it: hero feet and body inside the image
-	return hx > float64(sx)+8 && hx < float64(sx+w)-8 && hy-30 > float64(sy) && hy < float64(sy+h)
+	return false
+}
+
+// heroBehind reports whether the wall tile fades for the hero (see wallFadeRule).
+func (mr *MapRenderer) heroBehind(t d2enum.TileType, tileX, tileY int) bool {
+	in := mr.light.input
+
+	return wallFadeRule(t, tileX, tileY, int(math.Floor(in.HeroX)), int(math.Floor(in.HeroY)))
 }
 
 // renderLitEntity draws an entity tinted by one light map sample at its feet.

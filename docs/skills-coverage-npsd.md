@@ -29,7 +29,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 75 | Clay Golem | 56 | F | F | golem order, one at a time |
 | 76 | Iron Maiden | 30 | F | F | reflect via afterHit |
 | 77 | Terror | 30 | F | F | flee state |
-| 78 | Bone Wall | 60 | P | P | wall pieces as blocking monsters; exe piece layout (SKILL_SpawnBonePrisonWalls offsets) approximated |
+| 78 | Bone Wall | 60 | P | P | wall pieces as blocking monsters, exe piece layout approximated. READ (0x5c37a0, not wired): the first wall stands at the target and two bonewallmaker missiles (do 13, ported in d2missile/gaps.go) fly perpendicular to the cast line summoning one wall per new subtile, calc2/2 walls each, linked to the first wall; the engine does not consume EventSummon yet |
 | 79 | Golem Mastery | - | T | T | feeds golem orders |
 | 80 | Raise Skeletal Mage | 31 | P | P | raised, but the mage melees (no ranged attack AI) |
 | 81 | Confuse | 61 | S | F | before: state only; now forces confuse (list 9, mode 3) |
@@ -77,7 +77,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 118 | Holy Shock | 66 | F | F | damage aura |
 | 119 | Sanctuary | 66 | P | P | damages all enemies, exe damages undead only and knocks back |
 | 120 | Meditation | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
-| 121 | Fist of the Heavens | 80 | P | P | bolt at the aim; the follow-up holy bolts are not simulated |
+| 121 | Fist of the Heavens | 80 | P | P | VERIFIED do 80 + hit 22 (0x5cebd0 / 0x5ab7f0): the delay missile marks the target, strikes it with the lightning at its end and sends calc4 holy bolts to the enemies around; the srvoverlay is left to the engine |
 | 122 | Fanaticism | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
 | 123 | Conviction | 66 | F | F | enemy resist aura |
 | 124 | Redemption | 82 | P | P | corpse consumption heals; exe radius / cost rules approximated |
@@ -107,15 +107,15 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 53 | Chain Lightning | 26 | F | F |  |
 | 54 | Teleport | 27 | P | F | levels.txt Teleport flag (0 refuse, 2 no walls) added (verified 0x5c84d0) |
 | 55 | Glacial Spike | - | F | F | generic missile path |
-| 56 | Meteor | 28 | P | P | impact only; the fire trail of meteorcenter is not simulated |
+| 56 | Meteor | 28 | P | P | SRVDO_028 creates meteorcenter (hit 14: area damage + meteorfire burning ground with its own fire damage columns); bodies read |
 | 57 | Thunder Storm | 29 | P | P | strikes the nearest enemy, no random targets |
 | 58 | Energy Shield | 23 | P | P | mana absorb ratio passed unverified |
-| 59 | Blizzard | 28 | P | P | random shards approximated |
+| 59 | Blizzard | 28 | P | P | SRVDO_028 creates blizzardcenter; SrvDoFunc 10 drops blizzard1 shards (calc1 radius, calc2 period); bodies read; blizzard1 hits only its own cell (missile Size not modelled) |
 | 60 | Chilling Armor | 18 | F | F | do 18 self state with chill on melee attackers |
 | 61 | Fire Mastery | - | T | T |  |
 | 62 | Hydra | 144 | M | P | do 144 added: 3 stationary fire shooters in the exe triangle; hydra AI timing U |
 | 63 | Lightning Mastery | - | T | T |  |
-| 64 | Frozen Orb | - | P | P | STAND-IN: do 15 bolt spiral + hit 29 16-way nova ring (d2missile/orb.go, bodies not read); frozenorbnova do 16 is plain flight |
+| 64 | Frozen Orb | - | P | P | VERIFIED do 15 (64 entry heading table, Param2 steps), hit 29 (ring only at life 0, sHitPar1 stride) and do 16 (the nova turns 45 degrees every Param2 frames for Param1 frames), d2missile/orb.go and gaps.go; create struct fields 28/32 taken as an offset from the orb (UNVERIFIED) |
 | 65 | Cold Mastery | - | T | T |  |
 
 ## Druid
@@ -130,22 +130,22 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 226 | Oak Sage | 119 | P | P | totem aura as a state; stats follow the order |
 | 227 | Summon Spirit Wolf | 119 | P | F | summon level (calc2) + MonLvl AC/AR now applied; resist / armor / damage stats from the order |
 | 228 | Wearbear | 116 | P | P | timed form state |
-| 229 | Molten Boulder | - | P | P | emerge missile; the rolling boulder chain is a hit/Do function not simulated |
+| 229 | Molten Boulder | - | P | P | emerge (hit 48) -> boulder (do 6 trail, hit 47) -> moltenboulderfirepath fire; bodies read, hit 47 monster-class bit UNVERIFIED |
 | 230 | Arctic Blast | 19 | F | F | stream (do 19) |
 | 231 | Cycle of Life | 115 | M | P | do 115 added (attack only; the corpse cycler heal is not simulated) |
 | 232 | Feral Rage | 120 | P | P | stacking state with leech stats; exe leech not applied |
 | 233 | Maul | 120 | P | P | stacking state, stun on hit |
-| 234 | Eruption | 28 | P | P | Fissure: random strikes approximated |
+| 234 | Eruption | 28 | P | P | SRVDO_028 creates erruption center; SrvDoFunc 25 scatter (calc1/calc2) read; the crack and fire sub missiles are not read |
 | 235 | Cyclone Armor | 18 | F | F | do 18 |
 | 236 | Heart of Wolverine | 119 | P | P | totem aura as a state |
 | 237 | Summon Fenris | 119 | P | F | summon level (calc2) + MonLvl AC/AR now applied |
-| 238 | Rabies | 121 | P | P | poison bite; the spreading contagion of the exe is not ported |
+| 238 | Rabies | 121 | P | P | VERIFIED bite + infection + plague (0x5c6b70 / 0x5c5dc0), do 30 plague and hit 53 contagion (d2missile/gaps.go); the plague only spreads between units that implement d2missile.Ownable and Stateful (the engine monsters do not yet) |
 | 239 | Fire Claws | 2 | F | F | do 2 melee with fire |
 | 240 | Twister | 118 | P | P | missile chain approximated |
 | 241 | Vines | 115 | M | P | do 115 added (attack only; the vine cycler is not simulated) |
 | 242 | Hunger | 122 | M | F | do 122 added: melee roll, calc1 damage percent, life and mana steal (verified 0x5c5f40) |
 | 243 | Shock Wave | 8 | P | P | missile fan with stun |
-| 244 | Volcano | 123 | P | P | random eruptions approximated |
+| 244 | Volcano | 123 | P | P | SRVDO_123 creates volcano with a random data byte; SrvDoFunc 28 lobs debris, hit 51 spawns the fire; bodies read |
 | 245 | Tornado | 118 | P | P | missile without the wander path |
 | 246 | Spirit of Barbs | 119 | P | P | totem aura as a state |
 | 247 | Summon Grizzly | 119 | P | F | summon level (calc2) + MonLvl AC/AR now applied |

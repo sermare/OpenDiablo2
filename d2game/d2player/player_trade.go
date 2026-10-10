@@ -37,7 +37,7 @@ const (
 // PlayerTradeHandler is what the window asks of the game: send the offer, the
 // acceptance or the cancellation to the server.
 type PlayerTradeHandler interface {
-	TradeOffer(offer d2playertrade.Offer)
+	TradeOffer(offer d2playertrade.Offer, seq uint32)
 	TradeAccept()
 	TradeCancel()
 }
@@ -58,7 +58,7 @@ type PlayerTradeWindow struct {
 	isOpen  bool
 	partner string
 
-	offer      d2playertrade.Offer // what this player offers now
+	pend       d2playertrade.Pending // what this player offers now, and the number of its latest edit
 	yourNames  []string
 	theirNames []string
 	theirGold  int
@@ -86,12 +86,12 @@ func newPlayerTradeWindow(asset *d2asset.AssetManager, ui *d2ui.UIManager, l d2u
 func (w *PlayerTradeWindow) IsOpen() bool { return w.isOpen }
 
 // Offer returns what this player currently offers.
-func (w *PlayerTradeWindow) Offer() d2playertrade.Offer { return w.offer }
+func (w *PlayerTradeWindow) Offer() d2playertrade.Offer { return w.pend.Offer }
 
 // Open shows the window for a trade with the named player.
 func (w *PlayerTradeWindow) Open(partner string) {
 	w.isOpen, w.partner = true, partner
-	w.offer = d2playertrade.Offer{}
+	w.pend.Reset()
 	w.yourNames, w.theirNames, w.theirGold, w.youOK, w.theyOK = nil, nil, 0, false, false
 	w.status = "Choose what to offer"
 	w.gc.inventory.Open()
@@ -106,22 +106,28 @@ func (w *PlayerTradeWindow) Close() {
 	}
 
 	w.isOpen = false
-	w.offer = d2playertrade.Offer{}
+	w.pend.Reset()
 	w.labels, w.rows = nil, nil
 }
 
 // Update shows the server's view of the trade.
-func (w *PlayerTradeWindow) Update(yours, theirs d2playertrade.Offer, youOK, theyOK bool, status string) {
-	w.offer = yours
-	w.yourNames = w.gc.TradeItemNames(yours.Items)
+// ack is the sequence number of our last offer the server had applied; an
+// update older than our latest edit keeps the local offer (see
+// d2playertrade.Pending) and does not show us as accepted. It reports whether
+// the server's copy of our offer was taken.
+func (w *PlayerTradeWindow) Update(yours, theirs d2playertrade.Offer, youOK, theyOK bool, status string, ack uint32) bool {
+	taken := w.pend.Apply(ack, yours)
+	w.yourNames = w.gc.TradeItemNames(w.pend.Offer.Items)
 	w.theirNames, w.theirGold = w.gc.TradeItemNames(theirs.Items), theirs.Gold
-	w.youOK, w.theyOK = youOK, theyOK
+	w.youOK, w.theyOK = youOK && taken, theyOK
 
 	if status != "" {
 		w.status = status
 	}
 
 	w.rebuild()
+
+	return taken
 }
 
 func (w *PlayerTradeWindow) mark(ok bool) string {
@@ -143,7 +149,7 @@ func (w *PlayerTradeWindow) rebuild() {
 		rows = append(rows, ptradeRow{text: "  " + n, color: white})
 	}
 
-	rows = append(rows, ptradeRow{text: fmt.Sprintf("  Gold: %d (click +%d, right click -%d)", w.offer.Gold, ptradeGoldSt, ptradeGoldSt),
+	rows = append(rows, ptradeRow{text: fmt.Sprintf("  Gold: %d (click +%d, right click -%d)", w.pend.Offer.Gold, ptradeGoldSt, ptradeGoldSt),
 		action: 1, color: white})
 	rows = append(rows, ptradeRow{text: w.partner + " offers" + w.mark(w.theyOK), color: gold})
 
@@ -214,7 +220,7 @@ func (w *PlayerTradeWindow) OnMouseButtonDown(event d2interface.MouseEvent) bool
 			delta = -ptradeGoldSt
 		}
 
-		w.SetGold(w.offer.Gold + delta)
+		w.SetGold(w.pend.Offer.Gold + delta)
 	case 2:
 		if w.handler != nil {
 			w.handler.TradeAccept()
@@ -243,31 +249,23 @@ func (w *PlayerTradeWindow) SetGold(n int) {
 		n = w.gc.hero.Gold
 	}
 
-	w.offer.Gold = n
+	w.pend.SetGold(n)
 	w.send()
 }
 
 func (w *PlayerTradeWindow) send() {
 	w.youOK = false
+	w.yourNames = w.gc.TradeItemNames(w.pend.Offer.Items)
 	w.rebuild()
 
 	if w.handler != nil {
-		w.handler.TradeOffer(w.offer)
+		w.handler.TradeOffer(w.pend.Offer, w.pend.Seq)
 	}
 }
 
 // Toggle puts an inventory item into the offer, or takes it out again.
 func (w *PlayerTradeWindow) Toggle(s d2hero.StoredItem) {
-	for i, it := range w.offer.Items {
-		if it.X == s.X && it.Y == s.Y && it.Code == s.Code {
-			w.offer.Items = append(append([]d2hero.StoredItem{}, w.offer.Items[:i]...), w.offer.Items[i+1:]...)
-			w.send()
-
-			return
-		}
-	}
-
-	w.offer.Items = append(append([]d2hero.StoredItem{}, w.offer.Items...), s)
+	w.pend.Toggle(s)
 	w.send()
 }
 

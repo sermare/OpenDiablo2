@@ -24,18 +24,6 @@ func (v *Game) commandUseItem(args []string) error {
 	return nil
 }
 
-// commandCubePut is "cubeput <code>": drags the inventory item with that base code into the Horadric Cube.
-func (v *Game) commandCubePut(args []string) error {
-	if len(args) != 1 || v.gameControls == nil {
-		return errors.New("usage: cubeput <code>")
-	}
-
-	ok := v.gameControls.MoveInventoryItemToCube(args[0])
-	v.Infof("CUBEPUT code=%s moved=%v cube=%v", args[0], ok, v.gameControls.CubeCodes())
-
-	return nil
-}
-
 // commandClearInv is "clearinv": empties the inventory grid so that quest items fit.
 func (v *Game) commandClearInv(_ []string) error {
 	if v.gameControls == nil {

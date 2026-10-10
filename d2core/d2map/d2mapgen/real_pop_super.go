@@ -21,7 +21,7 @@ func (p *popLevel) fallbackSuper(game *d2monreg.Game, key string, rec d2monreg.S
 		return false
 	}
 
-	npc.SetSuperUnique(key)
+	npc.SuperKey = key
 	p.g.engine.AddEntity(npc)
 	p.g.Infof("real population: super unique %s found no free spot by the placement rules; placed on the DS1 spot (%d,%d)",
 		key, rq.X, rq.Y)

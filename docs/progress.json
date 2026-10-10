@@ -64,10 +64,10 @@
     },
     {
       "label": "Levels walked by a verify scenario",
-      "done": 38,
+      "done": 52,
       "total": 136,
-      "pending": 14,
-      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); dashed = Act 3 playthrough branch",
+      "pending": 0,
+      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); includes the whole Act 3 chain (Travincal, Council, Durance, Mephisto, red portal)",
       "color": "#ff9f43"
     },
     {
@@ -83,7 +83,7 @@
       "done": 130,
       "total": 210,
       "pending": 11,
-      "note": "~130 of 7 classes x 30 skills; Necromancer/Paladin/Sorceress/Druid gaps closed on a branch (+11), Amazon/Barbarian/Assassin in progress",
+      "note": "~130 of 7 classes x 30 skills; Necromancer/Paladin/Sorceress/Druid gaps closed on a branch (+11), Amazon/Barbarian/Assassin in progress; natural mana regeneration (exe-derived 25 Hz) landed",
       "color": "#5fd0a5"
     },
     {
@@ -128,10 +128,10 @@
     },
     {
       "label": "Multiplayer playable through the game screen",
-      "done": 0,
+      "done": 3,
       "total": 4,
       "pending": 0,
-      "note": "realm server + protocol exist and are tested; game screen not wired yet: lobby UI, walk sync, combat sync, trade",
+      "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and the party panel through the realm are not wired (trade works over the legacy path)",
       "color": "#ffb86b"
     },
     {
@@ -144,10 +144,10 @@
     },
     {
       "label": "Real full verify green (scenario sections per job, real parallel log)",
-      "done": 177,
-      "total": 180,
-      "pending": 3,
-      "note": "full verify_parallel.sh 6 run 50637 on 179e61b7: 6 jobs x 30 scenarios, 177 green; the 3 reds (86-class-skills, Act 3 playthrough, Act 5 caves playthrough) were fixed and re-run alone green; the final tree has no second full run; batch 1 (Mac release, stamina, objects) landed after a second full run: 4 of 6 jobs green, 2 load/timing reds passed alone after fixes",
+      "done": 193,
+      "total": 193,
+      "pending": 0,
+      "note": "batch 3 full verify_parallel.sh 6: ALL JOBS PASSED (6 jobs, 193 scenarios, one retried flake); earlier runs: batch 1 4/6 jobs, batch 2 all playthroughs, nine reds fixed and re-run alone",
       "color": "#3ddc84"
     },
     {

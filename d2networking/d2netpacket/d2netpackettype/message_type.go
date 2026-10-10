@@ -42,6 +42,7 @@ const (
 	PartyXP                                              // Sent by a client (a kill), the server answers every sharing member with its part
 	PortalOpen                                           // Sent by a client: it opened (or closed) its town portal pair
 	PortalUpdate                                         // Sent by the server to everybody: the open town portal pairs
+	RealmUnit                                            // Sent by the realm connection: a monster of the authoritative simulation appeared, moved, was hit or died
 
 	UnknownPacketType = 666
 )
@@ -72,6 +73,7 @@ func (n NetPacketType) String() string {
 		PartyXP:                         "PartyXP",
 		PortalOpen:                      "PortalOpen",
 		PortalUpdate:                    "PortalUpdate",
+		RealmUnit:                       "RealmUnit",
 	}
 
 	return strings[n]

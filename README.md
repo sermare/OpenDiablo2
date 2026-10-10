@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/progress.svg?v=1791622310" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
+<p align="center"><img src="docs/progress.svg?v=1791626416" alt="Progress: functions named, files studied, save sections verified, NPC features, roadmap" width="880"></p>
 <p align="center"><img src="https://raw.githubusercontent.com/sermare/OpenDiablo2/progress-history/docs/progress-history.svg" alt="Progress over time: one line per part, snapshot every 10 minutes" width="880"></p>
 
 [![CI](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml/badge.svg)](https://github.com/sermare/OpenDiablo2/actions/workflows/ci.yml)
@@ -41,7 +41,7 @@ Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The 
 
 ## Status board
 
-_Last updated: 2026-10-10 (after the pass6 landing; Game v1 complete 64%, 66% with held branches; full verify run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
+_Last updated: 2026-10-10 (after the pass6 landing; Game v1 complete 68%, 70% with held branches; third full verify run 63179: all jobs passed; earlier run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
 
 ### ✅ Working now (each one verified, not assumed)
 
@@ -151,6 +151,8 @@ Command line and `OD2_*` variable workflows are unchanged. `OD2_CONFIG_DIR=<dir>
 
 | Date | Success |
 |---|---|
+| 2026-10-10 | **Batch 3 landed, first fully green full verify** (`integration` and `master` = 697ecb6c): the whole Act 3 chain with real combat (Docks to Travincal, the Council, Khalim's Flail, the Orb, Durance, Mephisto and the red portal), the multiplayer game screen (host and join through the menus, two windows synced through the realm) and the real Act 2 wall fade. Run 63179: all six jobs passed, 193 scenarios, one retried flake. Next: batch 4 (skills missiles incl. Meteor/Blizzard PvP, the trade offer race fix, quest walkthroughs), the all-classes playthrough matrix and your play-test |
+| 2026-10-10 | **Batch 2 landed** (`integration` and `master` = 59012a7a): natural mana regeneration from the exe (25 Hz; replenish-life item stat; the Act 5 caves mana failures dropped from about 4,000 to 400), the Act 5 endgame table fix (Baal's waves), preset population and exact maze tiles, class-skills retry, a chase fix (no warp click while fighting) and the town left-click fix (a spell on the left button no longer stops walking in town). Full verify: all five acts' playthroughs pass; nine scenario reds (stale expectations, a PvP margin the regen closed, a trade-window race) were fixed and re-run alone. Next: batch 3 (Act 3 depth, multiplayer game screen, Act 2 wall fade), then skills missiles and quests |
 | 2026-10-10 | **Batch 1 landed** (`integration` and `master` = 1dcef1be): Mac release hardening (release.sh, dmg and bundle checks, CI), the exe-derived stamina model and bare-hand damage, and the world-objects audit (wells, shrines, chests). Full verify: 4 of 6 jobs green; the two reds were load and timing flakes (a waypoint cooldown margin, a monster standing on arrival stairs) that passed alone after fixes. Next: batch 2 (natural mana regeneration, Act 5 endgame table fix, preset population, class-skills retry), then skills missiles, multiplayer game screen, quests and Act 3 depth |
 | 2026-10-10 | **LANDED: first real full verify green on the combined tree** (`integration` and `master` = 2e50f0e4): pass5 + population + playthroughs + skills-mp + travel + the Act 3 unseal, curse retry and Act 5 caves fixes. Run 50637: 6 jobs x 30 scenarios, 177 green; the 3 reds (class skills, Act 3 and Act 5 caves playthroughs) were fixed and passed alone. All five acts now pass a scripted real-combat playthrough (Act 3 in 874 s). Caveats: no second full run on the final tree; the Act 5 caves pass relies on restoring vitals (the engine has no natural mana regen yet, agent working on it). Headline Game v1 complete 64% (66% with held branches) |
 | 2026-10-09 | **Progress board refreshed from real numbers**: Ghidra all 11,257 `Game.exe` functions named (last 22 Warden/module functions named later the same day, a few names unverified); new bar *Real full verify green* from a real `verify_parallel.sh` log (74 sections ran, 71 green; red: Act 3 gate, skill bar, act travel; 4 of 6 jobs ALL CHECKS PASSED); *Game v1 complete* 58% (64% with branch work) |

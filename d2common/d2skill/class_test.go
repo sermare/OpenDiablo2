@@ -94,6 +94,14 @@ func classMissiles() missileTable {
 	m["guidedarrow"] = std(202, "guidedarrow", 24, 128)
 	m["firewall"] = &d2missile.Spec{ID: 203, Name: "firewall", SrvDoFunc: 5, Range: 90, CollideType: 3}
 	m["fistsoffirefirewall"] = std(204, "fistsoffirefirewall", 12, 20)
+	// missiles.txt (patch_d2): blizzardcenter pSrvDoFunc 10 Range 100 SubMissile1 blizzard1;
+	// blizzard1 pSrvDoFunc 3 Range 9 CollideType 3; meteorcenter pSrvHitFunc 14 Range 60 sHitPar2 1
+	m["blizzardcenter"] = &d2missile.Spec{ID: 158, Name: "blizzardcenter", SrvDoFunc: 10, Range: 100,
+		SubMissile: [3]string{"blizzard1"}}
+	m["blizzard1"] = &d2missile.Spec{ID: 159, Name: "blizzard1", SrvDoFunc: 3, Range: 9, CollideType: 3,
+		LastCollide: true, AlwaysExplode: true, Size: 2}
+	m["meteorcenter"] = &d2missile.Spec{ID: 101, Name: "meteorcenter", SrvDoFunc: 1, SrvHitFunc: 14, Range: 60,
+		LastCollide: true, AlwaysExplode: true, SHitPar: [3]int{0, 1}, HitSubMissile: [4]string{"meteorfire"}}
 
 	return m
 }
@@ -494,29 +502,49 @@ func TestChainLightningFollowsUnitIDs(t *testing.T) {
 	}
 }
 
+// TestRainsAndStorms: SRVDO_028 (0x5c8560, verified) just creates srvmissilea at
+// the aim point; the scatter is the missile's SrvDoFunc 10 (Blizzard: calc1
+// radius 7, calc2 every 4 frames) and hit function 14 (Meteor: radius ln12).
 func TestRainsAndStorms(t *testing.T) {
 	cf := newClassFixture(map[string]int{"Blizzard": 5, "Meteor": 5})
 	cf.u.roller = &seq{vals: make([]uint32, 400)}
 
 	_, r := cf.cast("Blizzard", 12, 12)
-	e := effectOf(t, r, "strikes")
-
-	// 100 frames, one shard every calc2 = 4 frames
-	if len(e.Strikes) != 25 || e.Desc == nil || e.Desc.Cold.Max == 0 {
-		t.Errorf("blizzard strikes %d desc=%+v", len(e.Strikes), e.Desc)
+	if len(r.Missiles) != 1 {
+		t.Fatalf("blizzard missiles %d, result %+v", len(r.Missiles), r)
 	}
 
-	for _, s := range e.Strikes {
-		if cheb(s.X-12, s.Y-12) > 8 {
-			t.Errorf("shard outside the radius: %+v", s)
+	m := r.Missiles[0]
+	if m.Spec.Name != "blizzardcenter" || m.SpawnRadius != 7 || m.SpawnEvery != 4 || int(m.X) != 12 || int(m.Y) != 12 {
+		t.Errorf("blizzard %v radius %d every %d", m, m.SpawnRadius, m.SpawnEvery)
+	}
+
+	for i := 0; i < 100; i++ {
+		cf.w.frame++
+		cf.sim.Step()
+	}
+
+	n := 0
+
+	for _, e := range cf.evs {
+		if e.Kind == d2missile.EventCreate && e.Missile.Spec.Name == "blizzard1" {
+			n++
+
+			if cheb(int(e.Missile.X)-12, int(e.Missile.Y)-12) > 6 || e.Missile.Damage.Cold.Max == 0 {
+				t.Errorf("shard %v dmg %+v", e.Missile, e.Missile.Damage)
+			}
 		}
 	}
 
-	_, r = cf.cast("Meteor", 12, 12)
-	e = effectOf(t, r, "strikes")
+	// one shard at elapsed 0, 4, ..., 96
+	if n != 25 {
+		t.Errorf("%d shards, want 25", n)
+	}
 
-	if len(e.Strikes) != 1 || e.Strikes[0].Delay != 12 || e.Strikes[0].Radius != 6 || e.Desc.Fire.Max == 0 {
-		t.Errorf("meteor %+v", e)
+	_, r = cf.cast("Meteor", 12, 12)
+	if len(r.Missiles) != 1 || r.Missiles[0].Spec.Name != "meteorcenter" || r.Missiles[0].AreaRadius != 6 ||
+		r.Missiles[0].Damage.Fire.Max == 0 {
+		t.Errorf("meteor %+v", r)
 	}
 }
 

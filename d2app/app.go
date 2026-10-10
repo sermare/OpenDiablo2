@@ -339,7 +339,7 @@ func (a *App) Run() (err error) {
 	// It exists so changes can be tested without clicking through the UI.
 	a.autoShot = newAutoShot()
 
-	if os.Getenv("OD2_AUTOSCRIPT") != "" && os.Getenv("OD2_AUTOGAME") == "" {
+	if os.Getenv("OD2_AUTOSCRIPT") != "" && os.Getenv("OD2_AUTOGAME") == "" && os.Getenv("OD2_AUTOFLOW") == "" {
 		a.Warning("OD2_AUTOSCRIPT needs OD2_AUTOGAME: the script only runs inside a game")
 	}
 
@@ -730,6 +730,7 @@ func (a *App) ToCreateGame(filePath string, connType d2clientconnectiontype.Clie
 
 	if err = gameClient.Open(host, filePath); err != nil {
 		errorMessage := fmt.Sprintf("can not connect to the host: %s", host)
+		a.Errorf("connecting to %q: %v", host, err)
 		a.Error(errorMessage)
 		a.ToMainMenu(errorMessage)
 	} else {

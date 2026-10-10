@@ -148,7 +148,7 @@ const chaseBorderSlack = 2.0
 func (v *Game) nearLevelBorder(x, y, margin float64) bool {
 	w := v.gameClient.MapEngine.World()
 	if w.Level == 0 {
-		return false
+		return v.nearWarpTile(x, y) // a dungeon has no borders; its stairs count where nearWarpTile says so
 	}
 
 	_, near := d2level.EdgeExit(w.Rects, w.Level, float64(w.OriginX)+x, float64(w.OriginY)+y, margin)
@@ -177,6 +177,12 @@ func (v *Game) nearWarpTile(x, y float64) bool {
 	for i := range v.levels.warps {
 		w := &v.levels.warps[i]
 		if math.Hypot(float64(w.TileX)+0.5-x, float64(w.TileY)+0.5-y) <= radius {
+			// a stair the rules refuse (Travincal's stairs while the Compelling Orb stands) cannot take the
+			// hero anywhere: the Council that stands around it must be fought
+			if dest, ok := warpDest(v.currentLevel(), w); ok && v.warpRefused(v.currentLevel(), dest) {
+				continue
+			}
+
 			return true
 		}
 	}

@@ -194,12 +194,11 @@ func (v *Game) spawnPlannedPopulation(level int, plan []d2mapengine.PlannedMonst
 
 		applyPlannedRank(mon, pm)
 
-		// a super unique carries its own name ("Shenk the Overseer"): quests and the monster label ask for it
+		// the boss shows (and reports in kill events) its own name, "Ismail Vilehand": the Council quest scenarios
+		// and the Flail drop read it. The director path (groups.go recordRank) does the same.
 		if pm.SuperKey != "" {
 			if rec := v.asset.Records.Monster.Unique.Super[pm.SuperKey]; rec != nil && rec.Name != "" {
-				if name := v.asset.TranslateString(rec.Name); name != "" {
-					mon.SetLabel(name)
-				}
+				mon.SetLabel(rec.Name)
 			}
 		}
 

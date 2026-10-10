@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 )
 
@@ -83,9 +84,47 @@ type Missile struct {
 	// PulseEvery is the damage period of SrvDoFunc 27 (Tornado) when the
 	// table's Param1 is empty (the skill's calc4, minimum 1).
 	PulseEvery int
+	// SpawnRadius, SpawnEvery are calc1 and calc2 of the casting skill for
+	// SrvDoFunc 10 (Blizzard) and 25 (Eruption): the scatter radius and the
+	// frames between two sub missiles (0x5ac5b0 / 0x5ad3e0, verified).
+	SpawnRadius, SpawnEvery int
+	// Data28 is the missile data field 0x28 as SrvDoFunc 28 (Volcano) uses
+	// it: the seed of its scatter; the cast stores a random byte there.
+	Data28 uint32
+	// Data2C is the missile data field 0x2c: the second direction component of
+	// SrvDoFunc 16 (Frozen Orb's nova), the packed (x, y) shorts of 35 (Royal
+	// Strike's chaos ice), the walls still to summon for 13 (Bone Wall).
+	Data2C uint32
+	// Skill holds the numbers of the casting skill the hit functions 17, 18,
+	// 21 and 53 read from its record.
+	Skill SkillInfo
+	// Mark is the unit the exe keeps in data fields 0x28 / 0x2c (its type and
+	// id): the target of hit function 22 (Fist of the Heavens) and the leader
+	// the walls of SrvDoFunc 13 link to. MarkOwner is the same for SrvDoFunc 30:
+	// the caster that Rabies' contagion belongs to (the missile's own owner is
+	// the infected monster it follows).
+	Mark      Target
+	MarkOwner *Owner
+	// OnEffect, when set, is called with every EventState / EventSummon the
+	// missile causes, after the sim's OnEvent.
+	OnEffect func(Event)
+	// SubLoops is the sub-loop count of create flag 8: SrvDoFunc 23 / 24 pass
+	// Param1 so their sub missile lives that many extra SubStart..SubStop loops.
+	SubLoops int
+	// Frame is the animation frame of SrvDoFunc 5 in 8.8 (missile field 0x44).
+	Frame int
 
-	legX, legY float64 // dest - source at creation: the length of a ground leg
-	parked     bool    // arrived at its aim point but still alive (hit func 10)
+	// ChildDamage: see CreateParams.
+	ChildDamage map[string]DamageDesc
+	// DiscRadius, DiscLife: the fire disc of hit function 9 (Immolation Arrow):
+	// the radius (skill calc1 when sHitPar1 is empty) and the lifetime of the
+	// ground fire (the missile's SHitCalc1).
+	DiscRadius, DiscLife int
+
+	destX, destY float64 // aim point at creation (the path destination)
+	seed         d2rand.Seed
+	legX, legY   float64 // dest - source at creation: the length of a ground leg
+	parked       bool    // arrived at its aim point but still alive (hit func 10)
 
 	// pathVel is the exe's path velocity: the creation velocity * 75/100
 	// (verified, 0x59d5d0). Accel is added to it every 5th frame (verified,
@@ -99,6 +138,7 @@ type Missile struct {
 	dead           bool
 	explodes       bool
 	childDamage    DamageDesc // damage the sub missiles of SrvDoFunc 15 carry
+	plague         *Spec      // the SrvDoFunc 30 spec that created this contagion (hit function 53)
 	entered        bool       // the previous step entered a new subtile (path flag 8)
 }
 
@@ -152,6 +192,25 @@ type CreateParams struct {
 	ChainLeft, FuryCount int
 	// HealMin, HealMax, PulseEvery: see Missile.
 	HealMin, HealMax, PulseEvery int
+	// Parent is the missile that spawns this one (sub missiles, hit sub
+	// missiles). The child gets the parent's ChildDamage map and, when that
+	// map has an entry for its own name, that damage instead of p.Damage: the
+	// sub missiles with damage columns of their own (burning ground).
+	Parent *Missile
+	// ChildDamage maps missile names to the damage their instances carry
+	// (see Parent); the pipeline fills it for the missiles of a cast whose
+	// damage comes from their own missiles.txt columns.
+	ChildDamage map[string]DamageDesc
+	// DiscRadius, DiscLife: see Missile.
+	DiscRadius, DiscLife int
+	// SpawnRadius, SpawnEvery, Data28, SubLoops: see Missile.
+	SpawnRadius, SpawnEvery, SubLoops int
+	Data28, Data2C                    uint32
+	// Skill, Mark, MarkOwner, OnEffect: see Missile.
+	Skill     SkillInfo
+	Mark      Target
+	MarkOwner *Owner
+	OnEffect  func(Event)
 	// HomeMode overrides the Guided Arrow mode (default: 1 when Home is set
 	// else 2, for SrvDoFunc 7 / hit func 10 missiles).
 	HomeMode int
@@ -230,7 +289,7 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 	life := p.Range
 	if life <= 0 {
 		life = d2combat.MissileRange(int16(sp.Range), int16(sp.LevRange), p.Level, sp.SubLoop,
-			uint8(sp.SubStart), uint8(sp.SubStop), 0, false)
+			uint8(sp.SubStart), uint8(sp.SubStop), p.SubLoops, p.SubLoops > 0)
 	}
 
 	s.nextID++
@@ -247,10 +306,39 @@ func (s *Sim) Create(p CreateParams) (*Missile, error) {
 	m.AreaRadius, m.HitSubRange = p.AreaRadius, p.HitSubRange
 	m.ChainLeft, m.FuryCount = p.ChainLeft, p.FuryCount
 	m.HealMin, m.HealMax, m.PulseEvery = p.HealMin, p.HealMax, p.PulseEvery
+	m.ChildDamage = p.ChildDamage
+	m.DiscRadius, m.DiscLife = p.DiscRadius, p.DiscLife
+
+	if p.Parent != nil {
+		if p.Parent.Spec.SrvDoFunc == 30 {
+			m.plague = p.Parent.Spec
+		}
+
+		if m.ChildDamage == nil {
+			m.ChildDamage = p.Parent.ChildDamage
+		}
+
+		if d, ok := p.Parent.ChildDamage[sp.Name]; ok {
+			m.Damage = d
+		}
+	}
+
+	m.SpawnRadius, m.SpawnEvery, m.Data28, m.SubLoops = p.SpawnRadius, p.SpawnEvery, p.Data28, p.SubLoops
+	m.Data2C, m.Skill, m.Mark, m.MarkOwner, m.OnEffect = p.Data2C, p.Skill, p.Mark, p.MarkOwner, p.OnEffect
+	m.destX, m.destY = p.DestX, p.DestY
+	m.seed.Init(uint32(m.ID))
 	m.legX, m.legY = dx, dy
 
-	if sp.SrvDoFunc == 15 { // Frozen Orb: the orb hurts nobody itself, its bolts carry the damage
+	if sp.SrvDoFunc == 15 || sp.SrvDoFunc == 30 {
+		// Frozen Orb and Rabies' plague hurt nobody themselves (neither has a Skill column), the
+		// bolts / contagion they create carry the damage
 		m.childDamage, m.Damage = p.Damage, DamageDesc{}
+	}
+
+	// SrvDoFunc 35 (chaos ice): a bolt without a heading of its own starts with
+	// the aim vector (UNVERIFIED: the exe's start values were not traced).
+	if sp.SrvDoFunc == 35 && m.Data2C == 0 {
+		m.Data2C = packShorts(int(math.Round(dx)), int(math.Round(dy)))
 	}
 
 	if m.Pierce == 0 && sp.Pierce && p.PierceChance > 0 {
@@ -427,6 +515,10 @@ func (s *Sim) stepOne(m *Missile) {
 		}
 	}
 
+	if !s.doFunc(m) {
+		return
+	}
+
 	if sp.SrvDoFunc == 27 {
 		s.tornadoPulse(m)
 	}
@@ -546,7 +638,7 @@ func (s *Sim) trailSub(m *Missile) bool {
 
 	x, y := math.Floor(m.X)+0.5, math.Floor(m.Y)+0.5
 
-	_, _ = s.Create(CreateParams{Spec: sub, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level,
+	_, _ = s.Create(CreateParams{Spec: sub, Parent: m, Owner: m.Owner, SkillID: m.SkillID, Level: m.Level,
 		Damage: m.Damage, X: x, Y: y, DestX: x, DestY: y, Stationary: sp.SrvDoFunc == 2})
 
 	return true
