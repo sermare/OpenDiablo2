@@ -35,3 +35,138 @@ stash grid 154 142 174 232
 stash close 336 448 32 32
 cube art_origin 80 60 0 0
 cube grid 198 199 87 116
+
+# character panel captions and values: text anchors (centre x, bottom y) = (x1+x2)/2 + 80, y + 60 from the label table
+# 0x723a5c and the value table 0x723b70 of the original; +-1 pixel for the font metrics.
+~1 character text.level 111 104 0 0
+~1 character text.experience 202 104 0 0
+~1 character text.nextlevel 330 104 0 0
+~1 character text.strength 121 157 0 0
+~1 character text.dexterity 121 220 0 0
+~1 character text.vitality 121 305 0 0
+~1 character text.energy 121 367 0 0
+~1 character text.defense 301 267 0 0
+~1 character text.stamina 281 305 0 0
+~1 character text.life 281 329 0 0
+~1 character text.mana 281 367 0 0
+~1 character text.fire2 309 406 0 0
+~1 character text.cold2 309 430 0 0
+~1 character text.lightning2 309 455 0 0
+~1 character text.poison2 309 479 0 0
+~1 character value.level 113 119 0 0
+~1 character value.experience 203 119 0 0
+~1 character value.nextlevel 331 119 0 0
+~1 character value.strength 174 159 0 0
+~1 character value.dexterity 174 221 0 0
+~1 character value.defense 370 269 0 0
+~1 character value.vitality 174 307 0 0
+~1 character value.maxstamina 329 306 0 0
+~1 character value.stamina 370 306 0 0
+~1 character value.maxlife 329 330 0 0
+~1 character value.life 370 330 0 0
+~1 character value.energy 174 368 0 0
+~1 character value.maxmana 329 368 0 0
+~1 character value.mana 370 368 0 0
+~1 character value.fire 370 408 0 0
+~1 character value.cold 370 432 0 0
+~1 character value.lightning 370 456 0 0
+~1 character value.poison 370 480 0 0
+
+# quest log: five act tabs (x = 5, 0x43, 0x81, 0xbf, 0xfd + 80, bottom y 93) and six slots (x 26, 123, 220 + 80; bottoms
+# y 121, 218 + 60) of UI_DrawQuestLogPanel 0x49fc00; width and height are those of the pictures (63x31 tab, 80x95 slot).
+quest tab0 85 62 63 31
+quest tab1 147 62 63 31
+quest tab2 209 62 63 31
+quest tab3 271 62 63 31
+quest tab4 333 62 63 31
+quest slot0 106 86 80 95
+quest slot1 203 86 80 95
+quest slot2 300 86 80 95
+quest slot3 106 183 80 95
+quest slot4 203 183 80 95
+quest slot5 300 183 80 95
+
+# belt: the 16 boxes of Belts.txt row "girdle2" (box width 29; lefts 423, 454, 485, 516; tops 562, 530, 498, 466) and the
+# pictures behind belt rows 1 to 3, drawn at (W/2 + 0x15, H - 0x29 - 0x20*(row-1)) standing on that y (UI_DrawBeltPanel 0x495530)
+belt cell0 423 562 29 29
+belt cell1 454 562 29 29
+belt cell2 485 562 29 29
+belt cell3 516 562 29 29
+belt cell4 423 530 29 29
+belt cell5 454 530 29 29
+belt cell6 485 530 29 29
+belt cell7 516 530 29 29
+belt cell8 423 498 29 29
+belt cell9 454 498 29 29
+belt cell10 485 498 29 29
+belt cell11 516 498 29 29
+belt cell12 423 466 29 29
+belt cell13 454 466 29 29
+belt cell14 485 466 29 29
+belt cell15 516 466 29 29
+belt pop_row1 421 527 125 32
+belt pop_row2 421 495 125 32
+belt pop_row3 421 463 125 32
+
+# skill tree: close button per tab for the Sorceress (x = 720 + {-0x131, -0x131, -0x95}, bottom y 477) and the icons
+# (48x48; columns 415, 484, 553; bottoms 122, 190, 258, 326, 395, 463)
+skills close_tab1 415 445 32 32
+skills close_tab2 415 445 32 32
+skills close_tab3 571 445 32 32
+skills icon_p1_r1_c2 484 74 48 48
+skills icon_p1_r1_c3 553 74 48 48
+skills icon_p1_r2_c1 415 142 48 48
+skills icon_p1_r3_c1 415 210 48 48
+skills icon_p1_r3_c2 484 210 48 48
+skills icon_p1_r4_c1 415 278 48 48
+skills icon_p1_r4_c3 553 278 48 48
+skills icon_p1_r5_c2 484 347 48 48
+skills icon_p1_r6_c2 484 415 48 48
+skills icon_p1_r6_c3 553 415 48 48
+skills icon_p2_r1_c2 484 74 48 48
+skills icon_p2_r2_c1 415 142 48 48
+skills icon_p2_r2_c3 553 142 48 48
+skills icon_p2_r3_c1 415 210 48 48
+skills icon_p2_r3_c2 484 210 48 48
+skills icon_p2_r4_c2 484 278 48 48
+skills icon_p2_r4_c3 553 278 48 48
+skills icon_p2_r5_c1 415 347 48 48
+skills icon_p2_r5_c3 553 347 48 48
+skills icon_p2_r6_c2 484 415 48 48
+skills icon_p3_r1_c2 484 74 48 48
+skills icon_p3_r1_c3 553 74 48 48
+skills icon_p3_r2_c1 415 142 48 48
+skills icon_p3_r2_c2 484 142 48 48
+skills icon_p3_r3_c3 553 210 48 48
+skills icon_p3_r4_c2 484 278 48 48
+skills icon_p3_r5_c1 415 347 48 48
+skills icon_p3_r5_c3 553 347 48 48
+skills icon_p3_r6_c1 415 415 48 48
+skills icon_p3_r6_c2 484 415 48 48
+
+# NPC dialog (0x4b4d40): width = widest text + 20, height = 0x15 + 0xf per row + 15, top = anchor y - 0x15 with the anchor
+# at the NPC y - 0x96 (here an NPC at (400, 300), three rows); the texts stand on the running sum of the advances
+~1 npcmenu dialog_c 400 129 20 81
+~2 npcmenu text.title 400 150 0 0
+~2 npcmenu text.row0 400 165 0 0
+~2 npcmenu text.row1 400 180 0 0
+~2 npcmenu text.row2 400 195 0 0
+
+# vendor window: the grid is the "Monster2" row of Inventory.txt (96..385 x 123..412); the bottom strip stands on y 477 and
+# its last slot (panel x 0x111, drawn at -1 + 80) is the close button (UI_DrawTradePanel 0x484570)
+trade grid 96 123 290 290
+trade close 352 445 32 32
+
+# waypoint panel (UI_DrawWaygatePanel 0x499190): left panel; header text bottom at panel y 0x30; row texts bottom at
+# 84 + 35*i of the panel (+60); "*" = not known from the original (text columns, row boxes)
+waypoint panel 80 60 320 432
+waypoint text.header * 108 0 0
+waypoint text.row0 * 144 0 0
+waypoint text.row1 * 179 0 0
+waypoint text.row2 * 214 0 0
+waypoint text.row3 * 249 0 0
+waypoint text.row4 * 284 0 0
+waypoint text.row5 * 319 0 0
+waypoint text.row6 * 354 0 0
+waypoint text.row7 * 389 0 0
+waypoint text.row8 * 424 0 0

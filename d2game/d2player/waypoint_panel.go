@@ -12,13 +12,26 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
 )
 
+// The waypoint panel of the original (UI_DrawWaygatePanel 0x499190, table 0x721860; numbers verified unless
+// said otherwise): a left panel (320 x 432 at (80, 60)); the header text stands on y 0x30 of the panel; the rows
+// have their icon bottom at 89 + 36*i and their text bottom at 84 + 35*i (panel space, up to 9 rows); the act tab
+// stands at x 5 + 62*(act-1) on y 94 (expansion); the close button is 32x32 standing at (0x111, 0x1a1).
 const (
-	wpRowHeight = 24
-	wpWidth     = 260
-	wpPadding   = 10
-	wpTitleH    = 34
-	screenW     = 800
-	screenH     = 600
+	wpPanelX, wpPanelY   = 80, 60
+	wpPanelW, wpPanelH   = 320, 432
+	wpRowX, wpRowTop     = 17, 60 // top-left of row 0 inside the panel: UNVERIFIED (inferred from the icon bottom)
+	wpRowPitch           = 36
+	wpRowH               = 29  // UNVERIFIED
+	wpRowW               = 283 // UNVERIFIED
+	wpTextBottom0        = 84
+	wpTextPitch          = 35
+	wpTextX              = 60 // UNVERIFIED: the text column
+	wpHeaderBottom       = 0x30
+	wpTabX, wpTabPitch   = 5, 62
+	wpTabBottom          = 94
+	wpCloseX, wpCloseTop = 0x111, 0x1a1 - 32
+	screenW              = 800
+	screenH              = 600
 )
 
 //nolint:gochecknoglobals // colours
@@ -129,19 +142,22 @@ func (p *WaypointPanel) Choose(level int) error {
 }
 
 func (p *WaypointPanel) bounds() (left, top, right, bottom int) {
-	h := wpTitleH + len(p.rows)*wpRowHeight + wpPadding
-	left, top = (screenW-wpWidth)/2, (screenH-h)/2
+	return wpPanelX, wpPanelY, wpPanelX + wpPanelW, wpPanelY + wpPanelH
+}
 
-	return left, top, left + wpWidth, top + h
+// rowBox is the hit rectangle of row i on the screen.
+func rowBox(i int) (x, y, w, h int) {
+	return wpPanelX + wpRowX, wpPanelY + wpRowTop + i*wpRowPitch, wpRowW, wpRowH
 }
 
 func (p *WaypointPanel) rowAt(mx, my int) int {
-	left, top, right, bottom := p.bounds()
-	if mx < left || mx >= right || my < top+wpTitleH || my >= bottom-wpPadding {
-		return -1
+	for i := range p.rows {
+		if x, y, w, h := rowBox(i); mx >= x && mx < x+w && my >= y && my < y+h {
+			return i
+		}
 	}
 
-	return (my - top - wpTitleH) / wpRowHeight
+	return -1
 }
 
 // Contains reports whether the point is on the panel.
@@ -187,26 +203,54 @@ func (p *WaypointPanel) Render(target d2interface.Surface) {
 		return
 	}
 
+	p.place()
+
 	left, top, _, _ := p.bounds()
 
 	target.PushTranslation(left, top)
-	target.DrawRect(wpWidth, wpTitleH+len(p.rows)*wpRowHeight+wpPadding, wpBackground)
+	target.DrawRect(wpPanelW, wpPanelH, wpBackground)
 	target.Pop()
 
-	tw, _ := p.title.GetTextMetrics(p.title.GetText())
-	p.title.SetPosition(left+(wpWidth-tw)/2, top+wpTitleH-12)
 	p.title.Render(target)
 
 	for i, l := range p.labels {
-		rowTop := top + wpTitleH + i*wpRowHeight
-
 		if i == p.hover && p.rows[i].Enabled() {
-			target.PushTranslation(left, rowTop)
-			target.DrawRect(wpWidth, wpRowHeight, wpHighlight)
+			x, y, w, h := rowBox(i)
+			target.PushTranslation(x, y)
+			target.DrawRect(w, h, wpHighlight)
 			target.Pop()
 		}
 
-		l.SetPosition(left+wpPadding, rowTop+wpRowHeight-6)
 		l.Render(target)
 	}
+}
+
+// place puts the header and the row texts where the original draws them.
+func (p *WaypointPanel) place() {
+	tw, th := p.title.GetTextMetrics(p.title.GetText())
+	p.title.SetPosition(wpPanelX+(wpPanelW-tw)/2, wpPanelY+wpHeaderBottom-th)
+
+	for i, l := range p.labels {
+		_, h := l.GetTextMetrics(l.GetText())
+		l.SetPosition(wpPanelX+wpTextX, wpPanelY+wpTextBottom0+i*wpTextPitch-h)
+	}
+}
+
+// layoutRects returns the panel box, the header and row text anchors, the row hit boxes
+// (the act tab and the close button of the original are not drawn yet), for the layout log.
+func (p *WaypointPanel) layoutRects() []UIRect {
+	p.place()
+
+	l, t, r, b := p.bounds()
+	rs := []UIRect{
+		{"waypoint", "panel", l, t, r - l, b - t},
+		textAnchor("waypoint", "text.header", p.title),
+	}
+
+	for i, lab := range p.labels {
+		x, y, w, h := rowBox(i)
+		rs = append(rs, UIRect{"waypoint", fmt.Sprintf("row%d", i), x, y, w, h}, textAnchor("waypoint", fmt.Sprintf("text.row%d", i), lab))
+	}
+
+	return rs
 }

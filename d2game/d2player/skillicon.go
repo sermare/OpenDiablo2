@@ -12,11 +12,23 @@ const (
 	skillLabelXOffset = 49
 	skillLabelYOffset = -4
 
-	skillIconXOff  = 346 + panelShiftX
-	skillIconYOff  = 59 + panelShiftY
-	skillIconDistX = 69
-	skillIconDistY = 68
+	skillIconColumn1X = 415 // W - 80 - 0x131 (UI_DrawSkillTreeIcon 0x4a86b0)
+	skillIconDistX    = 69  // the columns are 415, 484 and 553
 )
+
+// skillIconBottoms are the bottom edges of the six rows of the skill tree icons: H + e4 - {0x1a2, 0x15e, 0x11a, 0xd6,
+// 0x91, 0x4d} (UI_GetSkillTreeTierY 0x4a7100). The pitch is 68 except between rows 4 and 5, where it is 69.
+var skillIconBottoms = [6]int{122, 190, 258, 326, 395, 463} //nolint:gochecknoglobals // constant table
+
+// skillIconPosition returns the bottom-left corner of the icon of a skill: row 1..6 and column 1..3 of its
+// skilldesc record.
+func skillIconPosition(row, column int) (x, y int) {
+	if row < 1 || row > len(skillIconBottoms) {
+		row = 1
+	}
+
+	return skillIconColumn1X + (column-1)*skillIconDistX, skillIconBottoms[row-1]
+}
 
 func newSkillIcon(ui *d2ui.UIManager,
 	baseSprite *d2ui.Sprite,
@@ -25,8 +37,7 @@ func newSkillIcon(ui *d2ui.UIManager,
 	base := d2ui.NewBaseWidget(ui)
 	label := ui.NewLabel(d2resource.Font16, d2resource.PaletteSky)
 
-	x := skillIconXOff + skill.SkillColumn*skillIconDistX
-	y := skillIconYOff + skill.SkillRow*skillIconDistY
+	x, y := skillIconPosition(skill.SkillRow, skill.SkillColumn)
 
 	res := &skillIcon{
 		BaseWidget: base,

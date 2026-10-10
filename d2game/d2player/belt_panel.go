@@ -92,6 +92,12 @@ func (b *BeltPanel) Load() {
 	b.tooltip = b.ui.NewTooltip(d2resource.FontFormal11, d2resource.PaletteStatic, d2ui.TooltipXCenter, d2ui.TooltipYBottom)
 }
 
+// beltPopPosition is the bottom-left corner of the picture behind belt row 1..3 (the rows above the front row):
+// UI_DrawBeltPanel 0x495530 draws ctrlpnl_popbelt frame 0 at (W/2 + 0x15, H - 0x29 - 0x20*(row-1)). Verified.
+func beltPopPosition(row int) (x, bottom int) {
+	return screenWidth/2 + 0x15, screenHeight - 0x29 - 0x20*(row-1)
+}
+
 const beltBackground = "/data/global/ui/PANEL/ctrlpnl_popbelt.DC6"
 
 // Boxes returns the number of usable cells.
@@ -317,10 +323,9 @@ func (b *BeltPanel) OnMouseMove(mx, my int) {
 func (b *BeltPanel) Render(target d2interface.Surface) {
 	for row := 0; row < b.visibleRows(); row++ {
 		if row > 0 && b.background != nil {
-			x, y, _, _ := b.cellRect(row * d2inventory.BeltColumns)
 			_ = b.background.SetCurrentFrame(beltPopFrame)
-			_, h := b.background.GetCurrentFrameSize()
-			b.background.SetPosition(x-1, y-1+h)
+			x, bottom := beltPopPosition(row)
+			b.background.SetPosition(x, bottom)
 			b.background.Render(target)
 		}
 

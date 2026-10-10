@@ -455,6 +455,7 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 
 	if event.Key() == d2enum.KeyEscape && g.Trade.IsOpen() {
 		g.Trade.Close()
+		g.Waypoints.Close()
 		return true
 	}
 
@@ -976,7 +977,24 @@ func (g *GameControls) AutoPanel(name string) error {
 	switch name {
 	case "close":
 		g.clearScreen()
+		g.NPCMenu.Close()
+		g.Trade.Close()
 		g.updateLayout()
+
+		return nil
+	case "trade":
+		v, ok := d2vendor.ByName("Charsi")
+		if !ok {
+			return fmt.Errorf("no vendor Charsi")
+		}
+
+		g.OpenTrade(v, 1)
+
+		return nil
+	case "npcmenu":
+		// Akara's menu (Talk, Trade) for the layout run, anchored where an NPC at (400, 300) puts it
+		rows, _ := NPCMenuFor(148)
+		g.NPCMenu.Open("Akara", rows, 400, 300-0x96, nil)
 
 		return nil
 	case "inventory":

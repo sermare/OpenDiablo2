@@ -113,9 +113,11 @@ func CreateGame(
 
 // Game represents the Gameplay screen
 const (
-	npcInteractDistance  = 3.0 // tiles
-	npcMenuLeaveDistance = 5.0 // tiles; the menu closes when the hero is farther
-	npcBubbleLift        = 30  // pixels above the NPC's head
+	npcInteractDistance  = 3.0  // tiles
+	npcMenuLeaveDistance = 5.0  // tiles; the menu closes when the hero is farther
+	npcBubbleLift        = 30   // pixels above the NPC's head
+	npcMenuLift          = 0x96 // the NPC dialog's anchor is this far above the NPC's position (0x4ae400)
+	npcMenuTopMin        = 0x14
 	noonHour             = 12
 	autoTestDelaySeconds = 6.0
 	eveningHour          = 18
@@ -129,9 +131,9 @@ type Game struct {
 	uiManager            *d2ui.UIManager
 	gameControls         *d2player.GameControls
 	localPlayer          *d2mapentity.Player
-	lastZoneLevel        int    // Levels.txt id last announced; 0 = none yet
-	vendorSeed           uint32 // per game session base of every vendor stock seed (set on first use)
-	lightLogLevel        int    // level whose base light was last logged
+	lastZoneLevel        int       // Levels.txt id last announced; 0 = none yet
+	vendorSeed           uint32    // per game session base of every vendor stock seed (set on first use)
+	lightLogLevel        int       // level whose base light was last logged
 	statsLevel           int       // level of the last DRAWSTATS line
 	statsAt              time.Time // time of the last DRAWSTATS line
 	travel               travelState
@@ -688,7 +690,15 @@ func (v *Game) anchorNPCMenu(menu *d2player.NPCMenu, npc d2interface.MapEntity) 
 	sx, sy := v.mapRenderer.WorldToScreenF(npc.GetPositionF())
 	_, h := npc.GetSize()
 
-	menu.SetAnchor(int(sx), int(sy)-h-npcBubbleLift)
+	// the original (0x4ae400) anchors the dialog at the NPC's screen position lifted by 0x96, at least 0x14 from the top
+	_ = h
+
+	ay := int(sy) - npcMenuLift
+	if ay < npcMenuTopMin {
+		ay = npcMenuTopMin
+	}
+
+	menu.SetAnchor(int(sx), ay)
 }
 
 // openNPCMenu shows the Talk/Trade/... menu for an NPC.

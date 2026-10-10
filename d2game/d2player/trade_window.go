@@ -33,15 +33,15 @@ const (
 
 	tradePanelPad    = 8
 	tradeTitleY      = 100
-	tradeGoldY       = 440
-	tradeRepairX     = 100
-	tradeRepairY     = 500
+	tradeGoldY       = 420
+	tradeRepairX     = 195 // slot 0 of the strip of 0x721608: panel x 0x74 + 80 - 1
+	tradeRepairY     = 445 // the strip stands on y 477 (UI_DrawTradePanel 0x484570), 32 high
 	tradeRepairW     = 120
 	tradeRepairH     = 24
-	tradeCloseX      = 360
-	tradeCloseY      = 500
+	tradeCloseX      = 352 // slot 3: panel x 0x111 + 80 - 1
+	tradeCloseY      = 445
 	tradePanelRight  = 400
-	tradePanelBottom = 530
+	tradePanelBottom = 492 // 60 + 256 + 176
 )
 
 // Errors of a transaction.
@@ -87,6 +87,7 @@ type TradeWindow struct {
 	title      *d2ui.Label
 	goldLabel  *d2ui.Label
 	repairBtn  *d2ui.Button
+	closeBtn   *d2ui.Button
 
 	isOpen  bool
 	vendor  d2vendor.Vendor
@@ -156,6 +157,7 @@ func (t *TradeWindow) Load() {
 	t.grid = newPlainItemGrid(t.asset, t.ui, t.logLevel, cols, rows, left, top, cell)
 
 	closeBtn := t.ui.NewButton(d2ui.ButtonTypeSquareClose, "")
+	t.closeBtn = closeBtn
 	closeBtn.SetVisible(false)
 	closeBtn.SetPosition(tradeCloseX, tradeCloseY)
 	closeBtn.OnActivated(func() { t.Close() })

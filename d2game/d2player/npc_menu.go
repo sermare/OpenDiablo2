@@ -1,6 +1,7 @@
 package d2player
 
 import (
+	"fmt"
 	"image/color"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -10,11 +11,22 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
 )
 
+// The geometry of the original's dialog (UI_CreateDialog 0x4b47b0 / layout 0x4b4d40, 0x4b4cd0, hit test 0x4b3a00;
+// verified, see the d2-re-notes ui-layout notes): the width is the widest text plus 20, the height the sum of the row
+// advances plus 15; the NPC's name line advances 0x15 and every menu line 0xf; the text is centred in the box; the
+// box is clamped to the screen (10 pixels from the sides and the top, 0x3a above the bottom).
 const (
-	npcMenuRowHeight = 24
-	npcMenuPadding   = 10
-	npcMenuMinWidth  = 130
-	npcMenuTitleGap  = 4
+	npcMenuTitleAdvance = 0x15
+	npcMenuRowAdvance   = 0xf
+	npcMenuWidthPad     = 20
+	npcMenuHeightPad    = 15
+	npcMenuEdge         = 10
+	npcMenuBottomEdge   = 0x3a
+	npcMenuHitInsetX    = 15
+	npcMenuHitAbove     = 11
+	npcMenuHitBelow     = 4
+	npcMenuScreenW      = 800
+	npcMenuScreenH      = 600
 )
 
 //nolint:gochecknoglobals // colours
@@ -71,19 +83,15 @@ func (m *NPCMenu) Open(name string, rows []NPCMenuRow, anchorX, anchorY int, onC
 	m.title.Color[0] = color.RGBA{R: 255, G: 215, B: 0, A: 255}
 
 	m.labels = m.labels[:0]
-	m.width = npcMenuMinWidth
-
 	titleW, _ := m.title.GetTextMetrics(name)
-	if titleW+2*npcMenuPadding > m.width {
-		m.width = titleW + 2*npcMenuPadding
-	}
+	m.width = titleW + npcMenuWidthPad
 
 	for _, r := range m.rows {
 		l := m.ui.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
 		l.SetText(m.RowLabel(r))
 
-		if w, _ := l.GetTextMetrics(l.GetText()); w+2*npcMenuPadding > m.width {
-			m.width = w + 2*npcMenuPadding
+		if w, _ := l.GetTextMetrics(l.GetText()); w+npcMenuWidthPad > m.width {
+			m.width = w + npcMenuWidthPad
 		}
 
 		m.labels = append(m.labels, l)
@@ -107,37 +115,54 @@ func (m *NPCMenu) SetAnchor(x, y int) {
 	m.x, m.y = x, y
 }
 
+// bounds returns the dialog box. The anchor is the NPC's screen position lifted by 0x96 (the caller does that); the
+// dialog is centred on it and starts 0x15 above it (one non-selectable line; UNVERIFIED: the original takes
+// height/3 when the dialog has no title line).
 func (m *NPCMenu) bounds() (left, top, right, bottom int) {
-	height := npcMenuRowHeight*(len(m.rows)+1) + npcMenuTitleGap
+	height := npcMenuTitleAdvance + npcMenuRowAdvance*len(m.rows) + npcMenuHeightPad
 	left = m.x - m.width/2
-	top = m.y - height
+	top = m.y - npcMenuTitleAdvance
 
-	// keep the menu on the 800x600 screen
-	if left < 0 {
-		left = 0
-	} else if left+m.width > 800 {
-		left = 800 - m.width
+	if left < npcMenuEdge {
+		left = npcMenuEdge
 	}
 
-	if top < 0 {
-		top = 0
+	if left+m.width > npcMenuScreenW-npcMenuEdge {
+		left = npcMenuScreenW - npcMenuEdge - m.width
+	}
+
+	if top+height > npcMenuScreenH-npcMenuBottomEdge {
+		top = npcMenuScreenH - height - 0x30
+	}
+
+	if top < npcMenuEdge {
+		top = npcMenuEdge
 	}
 
 	return left, top, left + m.width, top + height
 }
 
+// rowBottom is the y of the bottom of the text line of menu row i (the running sum of the advances).
+func (m *NPCMenu) rowBottom(i int) int {
+	_, top, _, _ := m.bounds()
+
+	return top + npcMenuTitleAdvance + npcMenuRowAdvance*(i+1)
+}
+
 func (m *NPCMenu) rowAt(mx, my int) int {
-	left, top, right, bottom := m.bounds()
-	if mx < left || mx >= right || my < top || my >= bottom {
+	left, _, right, _ := m.bounds()
+	if mx <= left+npcMenuHitInsetX || mx >= right-npcMenuHitInsetX {
 		return -1
 	}
 
-	idx := (my - top - npcMenuRowHeight - npcMenuTitleGap) / npcMenuRowHeight
-	if my-top < npcMenuRowHeight+npcMenuTitleGap || idx >= len(m.rows) {
-		return -1
+	for i := range m.rows {
+		y := m.rowBottom(i)
+		if my > y-npcMenuHitAbove && my < y+npcMenuHitBelow {
+			return i
+		}
 	}
 
-	return idx
+	return -1
 }
 
 // Contains reports whether the point is on the menu.
@@ -201,27 +226,67 @@ func (m *NPCMenu) Render(target d2interface.Surface) {
 		return
 	}
 
-	left, top, _, _ := m.bounds()
+	left, top, _, bottom := m.bounds()
 
 	target.PushTranslation(left, top)
-	target.DrawRect(m.width, npcMenuRowHeight*(len(m.rows)+1)+npcMenuTitleGap, npcMenuBackground)
+	target.DrawRect(m.width, bottom-top, npcMenuBackground)
 	target.Pop()
 
-	tw, _ := m.title.GetTextMetrics(m.title.GetText())
-	m.title.SetPosition(left+(m.width-tw)/2, top+npcMenuRowHeight-2)
+	m.placeText()
 	m.title.Render(target)
 
 	for i, l := range m.labels {
-		rowTop := top + npcMenuRowHeight + npcMenuTitleGap + i*npcMenuRowHeight
-
 		if i == m.hover {
-			target.PushTranslation(left, rowTop)
-			target.DrawRect(m.width, npcMenuRowHeight, npcMenuHighlight)
+			target.PushTranslation(left+npcMenuHitInsetX, m.rowBottom(i)-npcMenuHitAbove)
+			target.DrawRect(m.width-2*npcMenuHitInsetX, npcMenuHitAbove+npcMenuHitBelow, npcMenuHighlight)
 			target.Pop()
 		}
 
-		w, _ := l.GetTextMetrics(l.GetText())
-		l.SetPosition(left+(m.width-w)/2, rowTop+npcMenuRowHeight-4)
 		l.Render(target)
 	}
+}
+
+// placeText puts the labels where the original draws them: centred in the box (x = dialog x + (width - text width +
+// 1)/2 + 1, 0x4b4cd0), standing on the running sum of the row advances.
+func (m *NPCMenu) placeText() {
+	left, top, _, _ := m.bounds()
+
+	put := func(l *d2ui.Label, bottom int) {
+		w, h := l.GetTextMetrics(l.GetText())
+		l.SetPosition(left+(m.width-w+1)/2+1, bottom-h)
+	}
+
+	put(m.title, top+npcMenuTitleAdvance)
+
+	for i, l := range m.labels {
+		put(l, m.rowBottom(i))
+	}
+}
+
+// layoutRects returns the dialog box, the position of the name line and of each row for the layout log: text anchors
+// are (centre x, bottom y) like the other panels'.
+func (m *NPCMenu) layoutRects() []UIRect {
+	left, top, right, bottom := m.bounds()
+	m.placeText()
+
+	// dialog_c: centre x, top, width minus the widest text, height (the checked form: the text widths vary with the language)
+	widest := 0
+
+	for _, l := range append([]*d2ui.Label{m.title}, m.labels...) {
+		if w, _ := l.GetTextMetrics(l.GetText()); w > widest {
+			widest = w
+		}
+	}
+
+	rs := []UIRect{
+		{"npcmenu", "dialog", left, top, right - left, bottom - top},
+		{"npcmenu", "dialog_c", (left + right) / 2, top, right - left - widest, bottom - top},
+		textAnchor("npcmenu", "text.title", m.title),
+	}
+
+	for i, l := range m.labels {
+		rs = append(rs, textAnchor("npcmenu", fmt.Sprintf("text.row%d", i), l))
+	}
+
+	return rs
 }
