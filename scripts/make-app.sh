@@ -88,6 +88,8 @@ cat >"$APP/Contents/Info.plist" <<EOF
 	<key>NSSupportsAutomaticGraphicsSwitching</key><true/>
 	<key>NSHighResolutionCapable</key><true/>
 	<key>NSPrincipalClass</key><string>NSApplication</string>
+	<!-- the verified level generator, the real towns, level changes and monster population; without this the engine plays its old placeholder map (no monsters) -->
+	<key>LSEnvironment</key><dict><key>OD2_REALMAPS</key><string>1</string></dict>
 	<key>NSHumanReadableCopyright</key><string>OpenDiablo2 is free software (GPL). Diablo II is a trademark of Blizzard Entertainment; game files are not included.</string>
 </dict>
 </plist>
