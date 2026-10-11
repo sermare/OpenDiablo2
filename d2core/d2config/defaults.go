@@ -22,6 +22,8 @@ func DefaultConfig() *Configuration {
 		BgmVolume:       defaultBgmVolume,
 		MpqPath:         "C:/Program Files (x86)/Diablo II",
 		Backend:         "Ebiten",
+		// the start window: 1512x982, limited to the monitor (docs/DISPLAY.md)
+		Display: DisplayConfig{Width: 1512, Height: 982},
 		MpqLoadOrder: []string{
 			"patch_d2.mpq",
 			"d2exp.mpq",
