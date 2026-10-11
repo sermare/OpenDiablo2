@@ -717,7 +717,7 @@ func thinkShadowMaster(c *Ctx) {
 
 	tgt := c.Target
 
-	if leader != nil && sqDist(b.X, b.Y, leader.X, leader.Y) > b.AIP(2)*b.AIP(2) &&
+	if leader != nil && sqDist(b.X, b.Y, leader.X, leader.Y) > shadowWord(b, 2, shadowLeash)*shadowWord(b, 2, shadowLeash) &&
 		pet.PetAction(b, nil, *leader, c.InRange) {
 		return
 	}
@@ -738,7 +738,7 @@ func thinkShadowMaster(c *Ctx) {
 
 	// out of the aip2 range the target is dropped; with none, the buff/aura
 	// upkeep loop runs (it may cast and end the tick)
-	if b.AIP(2) < c.Dist {
+	if shadowWord(b, 2, shadowIgnoreRange) < c.Dist {
 		tgt = nil
 	}
 
@@ -746,6 +746,16 @@ func thinkShadowMaster(c *Ctx) {
 		c.busy()
 
 		return
+	}
+
+	// the owner's own hostile, living target becomes the shadow's target
+	var ownerTgt *Target
+
+	if st, ok := c.W.(ShadowTargeting); ok && leader != nil {
+		if ot, found := st.OwnerTarget(b, *leader); found {
+			ownerTgt = &ot
+			tgt = &ot
+		}
 	}
 
 	if leader != nil && sqDist(b.X, b.Y, leader.X, leader.Y) < 0x91 &&
@@ -778,7 +788,11 @@ func thinkShadowMaster(c *Ctx) {
 		return
 	}
 
-	if hasBook {
+	if env, ok := c.W.(ShadowEnv); ok && hasBook {
+		if shadowTail(c, env, book, leader, tgt, ownerTgt) {
+			return
+		}
+	} else if hasBook {
 		if id, queued := book.Choose(b, *tgt, leader, c.InRange); queued {
 			b.Scratch[1] = id
 			c.busy()
