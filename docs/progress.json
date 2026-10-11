@@ -12,10 +12,10 @@
     },
     {
       "label": "Hedged exe names re-verified against the decompile",
-      "done": 1278,
+      "done": 1398,
       "total": 1633,
       "pending": 0,
-      "note": "1,187 confirmed, 71 corrected, ~20 unclear; ~355 left (server/client helpers, library thunks, game-logic rows) (~ estimate of the total)",
+      "note": "1,296 confirmed, 82 corrected, ~20 unclear; ~235 left (server/client network and session helpers, library thunks, remaining game-logic rows); batch 2 covered the missile/CLTDO/CLTST block (~ estimate of the total)",
       "color": "#8f7cff"
     },
     {
@@ -27,7 +27,7 @@
     },
     {
       "label": "Source files studied in depth",
-      "done": 190,
+      "done": 215,
       "total": 277,
       "note": "NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
       "color": "#2f9bff"
@@ -80,10 +80,10 @@
     },
     {
       "label": "Player skills with engine behaviour",
-      "done": 150,
+      "done": 157,
       "total": 210,
       "pending": 0,
-      "note": "150 of 210 player skills have engine behaviour: Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry)",
+      "note": "150 of 210 player skills have engine behaviour: Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry); skills batch 3 (branch feat/skills-3): Feral Rage and Maul stack by count, Wearwolf and Wearbear toggle, Leap Attack single victim, Dragon Claw and Dragon Tail follow the exe (+7); Leap, Dragon Flight, Thunder Storm, Conversion and the three totem auras re-read and corrected but still partial",
       "color": "#5fd0a5"
     },
     {
@@ -96,18 +96,18 @@
     },
     {
       "label": "Monster AI archetypes ported faithfully",
-      "done": 96,
+      "done": 103,
       "total": 148,
       "pending": 0,
-      "note": "~96 (estimate): batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
+      "note": "~103 (estimate): batch 5 closed the documented gaps of Diablo, Vulture, BloodRaven, Nihlathak, UberIzual and made UberDiablo and UberMephisto the exe-faithful stops (7 newly counted; Izual, Summoner, Duriel, Andariel and Smith were re-read and only got hooks, not counted again); batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
       "color": "#6c8cff"
     },
     {
       "label": "In-game UI panels matching the original layout",
-      "done": 8,
+      "done": 11,
       "total": 14,
       "pending": 0,
-      "note": "8 of 14 panels checked in a real game window against the original numbers (150 rectangles, 0 deviating, scenario 9f-ui-layout); 6 panels still unchecked (hireling panel, hirelings list and a few others are on held branches)",
+      "note": "8 of 14 panels checked in a real game window against the original numbers (150 rectangles, 0 deviating, scenario 9f-ui-layout); 3 more (party screen rows, mercenary panel, help screen) have layouts read from the exe and unit tested against golden numbers, not yet seen in a running window; move-gold dialog and NPC menu still unchecked",
       "color": "#c58bff"
     },
     {
@@ -123,7 +123,7 @@
       "done": 3,
       "total": 4,
       "pending": 0,
-      "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and party commands now travel through the realm bridge with unit tests (feat/mp-and-mac-dmg), not yet seen in two game windows; trade works over the legacy path",
+      "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; the realm world is now per level (a hero only receives and affects its level, level change handoff, heroes in other levels hidden, party/roster global) with two-client unit tests (feat/realm-per-level), not yet seen in two game windows (96-multiplayer, 9j-realm-multiplayer, 9d-party-trade, 9f-pvp-skills-ear still to run alone); trade works over the legacy path",
       "color": "#ffb86b"
     },
     {
