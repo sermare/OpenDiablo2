@@ -44,7 +44,7 @@ func init() {
 		doStatic: func(c *cast) {
 			c.res.Effects = append(c.res.Effects, Effect{
 				Kind: "area_damage", Radius: c.env.eval(c.sk.AuraRangeCalc), Filter: c.sk.AuraFilter,
-				Pct: c.env.eval(c.sk.Calc[1]), MinDamage: c.env.eval(c.sk.Calc[2]), FloorPct: c.p.Opt.StaticFieldMinPct,
+				Pct: c.env.eval(c.sk.Calc[1]), MinDamage: c.env.eval(c.sk.Calc[2]) /* raw 8.8, see StaticFieldDamage */, FloorPct: c.p.Opt.StaticFieldMinPct,
 				EType: c.sk.EType, ELen: c.sk.ElemLen(c.env, c.lvl),
 			})
 		},
@@ -1570,7 +1570,7 @@ func doSummonFn(c *cast) {
 // perpendicular to the cast line placing calc2/2 walls each (calc2 = "# of
 // walls - 1", Param3 = 8 in the table); a skill without that missile (or
 // calc2 < 2) keeps the older line of Param3 pieces (UNVERIFIED layout). Bone
-// Prison (U) is a ring of 8 around the target. Walls last Param2 frames
+// Prison (0x5c3c50, VERIFIED) is the 12-cell ring of BonePrisonOffsets. Walls last Param2 frames
 // (MAX duration) and have calc1 percent extra life (skills.txt "hp %
 // adjustment").
 func doWallFn(c *cast) {
@@ -1579,7 +1579,7 @@ func doWallFn(c *cast) {
 		Frames: c.sk.Params[2], HPPct: c.calc(1), X: ax, Y: ay, Mode: c.sk.SumMode}
 
 	if c.sk.SrvDoFunc == 62 {
-		o.Count = 8
+		o.Count = len(BonePrisonOffsets) // 0x5c3c50, VERIFIED batch 4
 		o.Mode = "ring"
 	}
 
