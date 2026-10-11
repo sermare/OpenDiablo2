@@ -6,7 +6,7 @@ func TestHeroWatchMoved(t *testing.T) {
 	var w heroWatch
 	w.arm(heroWatchMoved, 10, 10)
 
-	for _, p := range [][2]float64{{10, 10}, {10.5, 10.5}, {10.6, 10.6}} {
+	for _, p := range [][2]float64{{10, 10}, {10.2, 10.2}, {10.3, 10.3}} {
 		if fired, _ := w.update(p[0], p[1], 0.04); fired {
 			t.Fatalf("fired too early at %v", p)
 		}
