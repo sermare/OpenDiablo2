@@ -71,6 +71,10 @@ type session struct {
 	level    uint16
 	hasLevel bool
 	simLevel uint16 // level of the hero in the simulation, as last announced
+
+	// joinDeadline is the exe's per-client deadline stamp (JoinDeadline at
+	// the time of entering); nothing enforces it yet (its use is unverified).
+	joinDeadline time.Time
 }
 
 // Server is the realm.
@@ -804,7 +808,7 @@ func (s *Server) doJoin(ss *session, m JoinGame) {
 		ss.result(op, CodeBadPassword, "wrong password")
 
 		return
-	case len(g.members) >= int(g.info.MaxPlayers):
+	case GameFull(len(g.members), g.info.MaxPlayers):
 		ss.result(op, CodeGameFull, "game is full")
 
 		return
@@ -827,6 +831,7 @@ func (s *Server) enter(ss *session, g *game) {
 
 	ss.unitID, s.nextUnit = s.nextUnit, s.nextUnit+1
 	ss.game = g
+	ss.joinDeadline = JoinDeadline(time.Now())
 	ss.hasLevel = false
 
 	_, act, _ := ss.char.Header.ActiveDifficulty()
@@ -949,4 +954,24 @@ func (s *Server) doLevel(ss *session, m LevelChange) {
 			o.sendMsg(PlayerLevel{UnitID: ss.unitID, Act: m.Act, Level: m.Level})
 		}
 	}
+}
+
+// ClientDeadline is the span the exe adds to the tick count when it registers a
+// client in a game (SERVER_AddClientToGame 0x537470: GetTickCount + 0x2bf20 =
+// 180000 ms, VERIFIED). What the stamp is checked for is UNVERIFIED.
+const ClientDeadline = 180 * time.Second
+
+// JoinDeadline returns the deadline stamp of a client that joined at now.
+func JoinDeadline(now time.Time) time.Time { return now.Add(ClientDeadline) }
+
+// GameFull reports whether a game with the given member count refuses another
+// client: the exe refuses at 8 clients per game whatever the game's own limit
+// (VERIFIED, 0x537470), and the game's configured MaxPlayers also applies.
+func GameFull(members int, maxPlayers byte) bool {
+	limit := MaxPlayers
+	if maxPlayers != 0 && int(maxPlayers) < limit {
+		limit = int(maxPlayers)
+	}
+
+	return members >= limit
 }

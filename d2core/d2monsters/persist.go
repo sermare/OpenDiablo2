@@ -72,13 +72,47 @@ func (d *Director) ParkLevel(now int) *ParkedLevel {
 // were restored. now is the game frame on the clock ParkLevel used; a level
 // left for InactiveLifeFrames or more brings its monsters back at full life.
 func (d *Director) RestoreLevel(p *ParkedLevel, now int) int {
+	return d.RestoreLevelRules(p, now, 0, false)
+}
+
+// Level 108 (the Chaos Sanctuary) and the monster class that survives the
+// restore once the level's quest condition holds (exe 0x5401d0: level 0x6c
+// with the game predicate 0x5b2e40 true restores only class 0xf3 = Diablo).
+const (
+	chaosSanctuaryLevel  = 108
+	restoreOnlyMonsterID = 0xf3
+)
+
+// RestoresMonster reports whether a parked monster of the given monstats class
+// comes back on a level. questSet is the exe's predicate for level 108 (the
+// Terror's End condition; which exact quest byte it reads is UNVERIFIED).
+// The exe tests it only for level 108; elsewhere every monster returns.
+func RestoresMonster(level int, questSet bool, class int) bool {
+	if level == chaosSanctuaryLevel && questSet {
+		return class == restoreOnlyMonsterID
+	}
+
+	return true
+}
+
+// RestoreLevelRules is RestoreLevel with the level-108 rule: level is the
+// level id and questSet the quest predicate (see RestoresMonster). Monsters
+// the rule refuses are dropped.
+func (d *Director) RestoreLevelRules(p *ParkedLevel, now, level int, questSet bool) int {
 	if p == nil {
 		return 0
 	}
 
 	elapsed := now - p.at
+	restored := 0
 
 	for _, u := range p.units {
+		if !RestoresMonster(level, questSet, u.m.MonstatID()) {
+			continue
+		}
+
+		restored++
+
 		u.m.Vitals.HP = RestoredLife(u.m.Vitals.HP, u.m.Vitals.MaxHP, elapsed)
 
 		if u.m.Mode() == d2monster.ModeWalk || u.m.Mode() == d2monster.ModeRun {
@@ -110,7 +144,7 @@ func (d *Director) RestoreLevel(p *ParkedLevel, now int) int {
 		d.engine.AddEntity(u.m)
 	}
 
-	return len(p.units)
+	return restored
 }
 
 // DiscardPlacements removes the hostile DS1 monster placements of a freshly

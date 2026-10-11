@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2quest"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
 )
@@ -146,7 +147,7 @@ func (v *Game) restoreLevel(level int) {
 
 	engine := v.gameClient.MapEngine
 	discarded := dir.DiscardPlacements()
-	restored := dir.RestoreLevel(sl.parked, v.gameFrame())
+	restored := dir.RestoreLevelRules(sl.parked, v.gameFrame(), level, v.terrorsEndSet())
 
 	// the monsters the hero left alive come back as they were; the level must
 	// not be populated again
@@ -174,4 +175,15 @@ func (v *Game) restoreLevel(level int) {
 
 	v.Infof("PERSIST restored level %d (%s) visit %d: %d monsters back (%d placements dropped), %d of %d opened objects restored, %d ground items",
 		level, v.levelName(level), sl.visits, restored, discarded, objects, len(sl.opened), len(sl.items))
+}
+
+// terrorsEndSet is the quest predicate of the level-108 restore rule
+// (d2monsters.RestoresMonster). UNVERIFIED: the exe reads a game-level
+// predicate (0x5b2e40); Terror's End bit 0 (completed) is the best guess.
+func (v *Game) terrorsEndSet() bool {
+	if v.questRT == nil {
+		return false
+	}
+
+	return v.questBits(d2quest.SlotTerrorsEnd)&1 != 0
 }
