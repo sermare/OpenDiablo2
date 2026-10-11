@@ -32,14 +32,21 @@ func TestNewArchetypesRegistered(t *testing.T) {
 	}
 }
 
-// TestBruteAip3Twice pins the observed quirk: in range, with aip3=100 both
-// rolls pass so only A1 happens; the A2 split cannot be driven by aip4.
-func TestBruteAip3Twice(t *testing.T) {
+// TestBruteAip4Split: in range aip3 gates the attack and aip4 (monstats
+// +0x68) picks A1 or A2 (batch 7 correction of the old "aip3 twice" reading).
+func TestBruteAip4Split(t *testing.T) {
 	w := newFake(3, true)
-	b := brainAt(profile("Brute", 0, 15, 100, 0)) // aip4=0 would mean "always A2" if it were used
+	b := brainAt(profile("Brute", 0, 15, 100, 0)) // aip4=0: the split roll never passes -> A2
+
+	if got := runOne(t, w, b); len(got) != 1 || got[0] != "attack5" {
+		t.Fatalf("aip3=100 aip4=0: want A2, got %v", got)
+	}
+
+	w = newFake(3, true)
+	b = brainAt(profile("Brute", 0, 15, 100, 100))
 
 	if got := runOne(t, w, b); len(got) != 1 || got[0] != "attack4" {
-		t.Fatalf("aip3=100: want A1, got %v", got)
+		t.Fatalf("aip3=100 aip4=100: want A1, got %v", got)
 	}
 
 	// aip3=0: the first test fails, the second (circle) fails, sleep 15
@@ -52,9 +59,9 @@ func TestBruteAip3Twice(t *testing.T) {
 	}
 }
 
-func TestBruteSplitUsesSameColumnTwice(t *testing.T) {
-	// With aip3 = 50 the monster attacks A1 or A2 only after two passing rolls;
-	// replay the RNG to prove both rolls compare against aip3.
+func TestBruteSplitReplay(t *testing.T) {
+	// With aip3 = 50 and aip4 = 99 the monster attacks only after the first
+	// roll passes aip3; the second roll is compared with aip4.
 	for seed := uint32(1); seed < 60; seed++ {
 		w := newFake(3, true)
 		b := NewBrain(7, 1, Normal, profile("Brute", 0, 15, 50, 99), seed)
@@ -62,7 +69,7 @@ func TestBruteSplitUsesSameColumnTwice(t *testing.T) {
 		s := shadow(b)
 
 		r1 := int(s.Roll(100)) < 50
-		r2 := int(s.Roll(100)) < 50
+		r2 := int(s.Roll(100)) < 99
 
 		Tick(w, b)
 
@@ -162,14 +169,70 @@ func TestScarabGroupAlert(t *testing.T) {
 		t.Fatal("follower should hold the alert")
 	}
 
-	// the follower in range with a command jabs / attacks without the aip1 gate
+	// Holding the alert out of Jab: exact-tile walk, alert kept (batch 7)
 	w = newFake(3, true)
 	p2 := profile("Scarab", 0, 100, 15, 0, 0)
 	f.Profile = p2
 	runOne(t, w, f)
 
-	if len(w.log) != 1 || w.log[0] != "attack4" {
-		t.Fatalf("follower attack: %v", w.log)
+	if len(w.log) != 1 || w.log[0] != "walk-target/0" || f.QueueLen() != 1 {
+		t.Fatalf("follower without jab: %v q=%d", w.log, f.QueueLen())
+	}
+
+	// With Jab defined and in reach the alert is popped and the jab goes at once
+	w = newFake(3, true)
+	p3 := profile("Scarab", 0, 100, 15, 0, 0)
+	p3.Skills[0] = SkillSlot{Name: "Jab", Mode: ModeAttack1}
+	f.Profile = p3
+	f.WakeNow(0)
+	runOne(t, w, f)
+
+	if len(w.log) != 1 || w.log[0] != "cast0" || f.QueueLen() != 0 {
+		t.Fatalf("follower jab: %v q=%d", w.log, f.QueueLen())
+	}
+
+	// A walk the world refuses pops the alert
+	w = newFake(10, false)
+	w.failMove = true
+	f.PushCommand(Command{Type: CmdAlert, Count: 1})
+	f.WakeNow(0)
+	runOne(t, w, f)
+
+	if f.QueueLen() != 0 {
+		t.Fatalf("failed charge should pop the alert, q=%d", f.QueueLen())
+	}
+
+	// A command of another type is ignored, not popped
+	w = newFake(10, false)
+	f.PushCommand(Command{Type: CmdFollow, Count: 1})
+	f.WakeNow(0)
+	runOne(t, w, f)
+
+	if f.QueueLen() != 1 {
+		t.Fatalf("foreign command should stay, q=%d", f.QueueLen())
+	}
+}
+
+func TestScarabToggleRoll(t *testing.T) {
+	// flag set, out of reach: walk to 7 and a roll above 10 clears the flag
+	for seed := uint32(1); seed < 40; seed++ {
+		w := newFake(12, false)
+		b := NewBrain(7, 1, Normal, profile("Scarab", 75, 50, 15, 35, 0), seed)
+		b.X, b.Y = 100, 100
+		b.Scratch[0] = 1
+		s := shadow(b)
+
+		wantClear := int(s.Roll(100)) > 10
+
+		Tick(w, b)
+
+		if w.last() != "walk-target/7" {
+			t.Fatalf("seed %d: %v", seed, w.log)
+		}
+
+		if (b.Scratch[0] == 0) != wantClear {
+			t.Fatalf("seed %d: flag %d, roll says clear=%v", seed, b.Scratch[0], wantClear)
+		}
 	}
 }
 

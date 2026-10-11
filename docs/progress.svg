@@ -29,8 +29,8 @@
 <text x="36" y="114" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Game v1 complete</text>
 <text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">88%</text>
 <rect x="36" y="128" width="808" height="26" rx="13" fill="#ffffff" fill-opacity="0.08"/>
-<rect x="36" y="128" width="720.9" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
-<rect x="36" y="128" width="708.0" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
+<rect x="36" y="128" width="726.3" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
+<rect x="36" y="128" width="713.5" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
 <text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +2% on branches, not yet verified</text>
 <text x="36" y="192" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#8c8eb0">v1 = double-click the Mac app, make or load a character, play Acts 1-5 single player without a blocker</text>
 <text x="36" y="226" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Game.exe functions named in Ghidra</text>
@@ -40,11 +40,11 @@
 <text x="844" y="252" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#7c5cff">100%</text>
 <text x="36" y="273" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">original 1.14b binary; re-queried live from Ghidra (all 11,257 named; the last 22 Warden and module-loader functions were named 2026-10-09, a few names marked unverified)</text>
 <text x="36" y="304" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Hedged exe names re-verified against the decompile</text>
-<text x="844" y="304" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">1,398 / 1,633</text>
+<text x="844" y="304" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">1,518 / 1,633</text>
 <rect x="36" y="316" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="316" width="631.8" height="18" rx="9" fill="url(#g1)" filter="url(#glow)"/>
-<text x="844" y="330" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#8f7cff">86%</text>
-<text x="36" y="351" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">1,296 confirmed, 82 corrected, ~20 unclear; ~235 left (server/client network and session helpers, library thunks, remaining game-logic rows); batch 2 covered the missile/CLTDO/CLTST block (~ estimate of the total)</text>
+<rect x="36" y="316" width="686.0" height="18" rx="9" fill="url(#g1)" filter="url(#glow)"/>
+<text x="844" y="330" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#8f7cff">93%</text>
+<text x="36" y="351" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">1,397 confirmed, 97 corrected, ~24 unclear; ~115 left (mostly EVENT_/UNIT_/SERVER_ helpers above 0x551b90 and thunks); batch 3 covered the server/client/save/arena helpers 0x528000-0x551b90, batch 2 covered the missile/CLTDO/CLTST block (~ estimate of the total)</text>
 <text x="36" y="382" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Original source files indexed</text>
 <text x="844" y="382" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">277 / 277</text>
 <rect x="36" y="394" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -52,10 +52,10 @@
 <text x="844" y="408" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2fb67c">100%</text>
 <text x="36" y="429" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">every assert-string path mapped to modules and functions</text>
 <text x="36" y="460" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Source files studied in depth</text>
-<text x="844" y="460" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">215 / 277</text>
+<text x="844" y="460" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">240 / 277</text>
 <rect x="36" y="472" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="472" width="572.8" height="18" rx="9" fill="url(#g3)" filter="url(#glow)"/>
-<text x="844" y="486" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2f9bff">78%</text>
+<rect x="36" y="472" width="639.4" height="18" rx="9" fill="url(#g3)" filter="url(#glow)"/>
+<text x="844" y="486" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2f9bff">87%</text>
 <text x="36" y="507" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting</text>
 <text x="36" y="538" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Level generator proven equal to the real game</text>
 <text x="844" y="538" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">8,768 / 8,768</text>
@@ -106,11 +106,11 @@
 <text x="844" y="1110" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#4aa8ff">98%</text>
 <text x="36" y="1131" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">monai.txt entries with a Go think function (about 60 are stand-ins)</text>
 <text x="36" y="1162" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Monster AI archetypes ported faithfully</text>
-<text x="844" y="1162" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">103 / 148</text>
+<text x="844" y="1162" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">117 / 148</text>
 <rect x="36" y="1174" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="1174" width="513.6" height="18" rx="9" fill="url(#g12)" filter="url(#glow)"/>
-<text x="844" y="1188" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#6c8cff">70%</text>
-<text x="36" y="1209" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">~103 (estimate): batch 5 closed the documented gaps of Diablo, Vulture, BloodRaven, Nihlathak, UberIzual and made UberDiablo and UberMephisto the exe-faithful stops (7 newly counted; Izual, Summoner, Duriel, Andariel and Smith were re-read and only got hooks, not counted again); batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces</text>
+<rect x="36" y="1174" width="583.4" height="18" rx="9" fill="url(#g12)" filter="url(#glow)"/>
+<text x="844" y="1188" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#6c8cff">79%</text>
+<text x="36" y="1209" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">~117 (estimate): batch 7 (branch feat/ai-faithful-7) re-read 28 ground, melee, ranged and caster handlers against the exe and corrected 12 (Fallen, Brute, Scarab, SkeletonMage, Fetish, FetishShaman, BatDemon, Megademon, Succubus, AbyssKnight, Bighead, CorruptRogue; 12 newly counted) and wired FB1Unit, AuraStateSource and LineChecker in the game host; the WispBlesser, Shadow Master feed and PlayerScaler hosts are still missing; batch 6 (branch feat/skills-ai-6) ported the WillOWisp dance (states 4-6) and the Mephisto phase bodies from the exe (2 newly counted); the Shadow Master scoring and candidate stack are ported too but no game host feeds them yet, so it is not counted; Overseer got its quest hook; batch 5 closed the documented gaps of Diablo, Vulture, BloodRaven, Nihlathak, UberIzual and made UberDiablo and UberMephisto the exe-faithful stops (7 newly counted; Izual, Summoner, Duriel, Andariel and Smith were re-read and only got hooks, not counted again); batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces</text>
 <text x="36" y="1240" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">In-game UI panels matching the original layout</text>
 <text x="844" y="1240" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">11 / 14</text>
 <rect x="36" y="1252" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>

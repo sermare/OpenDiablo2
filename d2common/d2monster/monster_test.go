@@ -520,7 +520,7 @@ func TestFallenPackRally(t *testing.T) {
 		t.Fatalf("minion should charge: %v", w.log)
 	}
 
-	// In range it attacks (aip3 100) and the one-shot command is consumed.
+	// In range it attacks (aip3 100); the command stays.
 	w = newFake(2, true)
 	m1.WakeNow(0)
 	Tick(w, m1)
@@ -529,8 +529,8 @@ func TestFallenPackRally(t *testing.T) {
 		t.Fatalf("minion should attack: %v", w.log)
 	}
 
-	if m1.QueueLen() != 0 {
-		t.Fatal("alert should be consumed by the attack")
+	if m1.QueueLen() != 1 {
+		t.Fatal("the exe never pops the alert on an attack (batch 7)")
 	}
 
 	// A minion with no command and a lone chase: within aip2 it walks to 7.

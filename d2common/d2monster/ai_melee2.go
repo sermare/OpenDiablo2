@@ -25,11 +25,10 @@ func clamp(v, lo, hi int) int {
 // hurt, the more it "rages"; the override's meaning is UNVERIFIED so engines
 // ignore it), then it walks to the target. aip1 is unused.
 //
-// In range, as OBSERVED in the decompile (reproduced on purpose): the first
-// test is chance(aip3); if it passes a second chance(aip3) (the same column
-// again, where the monai comments suggest aip4) picks A1 or A2; if the first
-// test fails a third chance(aip3) circles the target for 4, else the unit
-// sleeps 15. The A1/A2 split is therefore by aip3 twice.
+// In range (VERIFIED again in batch 7): chance(aip3) gates the attack and the
+// A1/A2 split is chance(aip4) (monstats +0x68; batch 4 read +0x62 twice by
+// mistake); if the first test fails, chance(aip3) circles the target for 4,
+// else the unit sleeps 15.
 func thinkBrute(c *Ctx) {
 	b, t := c.B, *c.Target
 
@@ -45,7 +44,7 @@ func thinkBrute(c *Ctx) {
 	}
 
 	if b.Chance(b.AIP(3)) {
-		if b.Chance(b.AIP(3)) { // sic: aip3 again, see above
+		if b.Chance(b.AIP(4)) {
 			c.Attack(ModeAttack1, t)
 		} else {
 			c.Attack(ModeAttack2, t)
@@ -102,64 +101,72 @@ func thinkMummy(c *Ctx) {
 // scarabJab is monstats skill slot 1 ("Jab"), VERIFIED to be Skill1.
 const scarabJab = 0
 
-// thinkScarab is MONAI_Think_Scarab 0x5f1570. aip1 attack%, aip2 A1-vs-A2 %,
-// aip3 stall, aip4 jab%, aip5 rally% (sample 75/50/15/35/20). The notes
-// describe the structure but the exact rolls are marked partly uncertain
-// ("aip4-code uses +0x6e = aip5 'cmd?'"), so the group rally and the toggle
-// are UNVERIFIED readings:
+// thinkScarab is MONAI_Think_Scarab 0x5f1570 (VERIFIED in batch 7 from the
+// decompile; batch 4 had the alert path and the roll order wrong). aip1
+// attack gate %, aip2 A1 %, aip3 stall, aip4 jab %, aip5 rally %.
 //
-//   - a group leader closer than 20 broadcasts the alert (type 1) with chance
-//     aip5; followers holding the alert chase the target and jab/attack;
-//   - without a command, an out-of-range scarab alternates between circling
-//     (scratch14=1) and walking to the target (VERIFIED: "scratch14 toggles
-//     circle vs walk");
-//   - in range: chance(aip1) failing sleeps aip3 (VERIFIED), Jab with chance
-//     aip4 (VERIFIED skill), else A1 with chance aip2, else A2 (VERIFIED).
+//   - A group leader closer than 20 with no command rolls aip5 and, on a pass,
+//     broadcasts an alert (type 1) and keeps its own copy. A command of another
+//     type is NOT popped: the unit simply ignores it.
+//   - Holding an alert: in reach with Skill1 defined it pops the alert and
+//     jabs at once (no roll); otherwise speed override 100 and an exact-tile
+//     walk to the target, popping the alert when the walk cannot be queued.
+//   - Without an alert, out of reach: Scratch[0] set means a walk to 7 (speed
+//     override 0) after which a roll above 10 clears the flag; clear means a
+//     strafe and the flag is set. In reach: roll(100) >= aip1 stalls aip3,
+//     then Jab with aip4 (only when defined), then A1 with aip2 else A2.
 func thinkScarab(c *Ctx) {
 	b, t := c.B, *c.Target
 
 	cmd := b.PeekCommand()
-	if cmd != nil && cmd.Type != CmdAlert {
-		b.PopCommand()
-
-		cmd = nil
-	}
-
-	if cmd == nil && b.IsGroupLeader() && c.Dist < 20 && b.Roll(100) < b.AIP(5) {
+	if cmd == nil && c.Dist < 20 && b.IsGroupLeader() && b.Roll(100) < b.AIP(5) {
 		alert := Command{Type: CmdAlert, Count: 1}
 		b.Broadcast(alert)
 		b.PushCommand(alert)
+
+		cmd = b.PeekCommand()
+	}
+
+	if cmd != nil && cmd.Type == CmdAlert {
+		if c.InRange && b.Profile.Skills[scarabJab].Used() {
+			b.PopCommand()
+			c.Cast(scarabJab, t)
+
+			return
+		}
+
+		c.SetSpeed(100)
+
+		if !c.WalkTo(t, 0) {
+			b.PopCommand()
+		}
+
+		return
 	}
 
 	if !c.InRange {
-		if cmd == nil && b.Scratch[0] == 0 {
-			b.Scratch[0] = 1
+		if b.Scratch[0] != 0 {
+			c.SetSpeed(0)
+			c.WalkTo(t, meleeReach)
 
-			if c.Circle(t, 3) {
-				return
+			if b.Roll(100) > 10 {
+				b.Scratch[0] = 0
 			}
+
+			return
 		}
 
-		b.Scratch[0] = 0
+		c.Circle(t, 3)
 
-		if !c.WalkTo(t, meleeReach) {
-			c.Sleep(b.AIP(3))
-		}
+		b.Scratch[0] = 1
 
 		return
 	}
 
-	if !b.Chance(b.AIP(1)) && cmd == nil {
+	if !b.Chance(b.AIP(1)) {
 		c.Sleep(b.AIP(3))
 
 		return
-	}
-
-	if cmd != nil {
-		cmd.Count--
-		if cmd.Count <= 0 {
-			b.PopCommand()
-		}
 	}
 
 	if b.Profile.Skills[scarabJab].Used() && b.Chance(b.AIP(4)) {
@@ -203,8 +210,10 @@ func thinkBighead(c *Ctx) {
 			c.Sleep(10)
 		}
 	default:
-		if at, _, ok := c.W.AttackTarget(b); ok && b.Roll(100) < b.AIP(4) {
-			c.Attack(ModeAttack2, at)
+		// batch 7: the exe queues the shot at the TICK target, the attack target
+		// only gates it
+		if _, _, ok := c.W.AttackTarget(b); ok && b.Roll(100) < b.AIP(4) {
+			c.Attack(ModeAttack2, t)
 
 			return
 		}
@@ -228,8 +237,8 @@ func bigheadHealthy(c *Ctx, t Target) {
 	case c.InRange:
 		c.Attack(ModeAttack1, t)
 	case c.Dist < 15:
-		if at, _, ok := c.W.AttackTarget(b); ok && b.Roll(100) < b.AIP(3) {
-			c.Attack(ModeAttack2, at)
+		if _, _, ok := c.W.AttackTarget(b); ok && b.Roll(100) < b.AIP(3) {
+			c.Attack(ModeAttack2, t)
 
 			return
 		}
@@ -243,8 +252,9 @@ func bigheadHealthy(c *Ctx, t Target) {
 }
 
 // corruptRogueRunDistance is the distance beyond which a Corrupt Rogue runs
-// at the target. The exe subtracts 3*something from 20 using the group info of
-// FUN_00571760 (UNVERIFIED); that term is taken as 0 here.
+// at the target: 20 - 3*s where s is the second output of
+// MONSTER_CalcPlayerCountScaling (0x571760), the PlayerScaler host (VERIFIED
+// in batch 7: the exe computes 0x14 - 3*s; s is taken as 0 without a host).
 const corruptRogueRunDistance = 20
 
 // thinkCorruptRogue is MONAI_Think_CorruptRogue 0x5efbf0 (VERIFIED flow,
@@ -254,12 +264,20 @@ const corruptRogueRunDistance = 20
 func thinkCorruptRogue(c *Ctx) {
 	b, t := c.B, *c.Target
 
-	if c.Dist > corruptRogueRunDistance {
+	scale := 0
+	if ps, ok := c.W.(PlayerScaler); ok {
+		scale = ps.PlayerScaling(b)
+	}
+
+	if c.Dist > corruptRogueRunDistance-3*scale {
 		c.SetSpeed(b.AIP(4))
 
-		if c.RunTo(t, 3) {
-			return
+		// the exe ends the tick here whether or not the run was queued
+		if !c.RunTo(t, 3) {
+			c.Sleep(b.AIP(2))
 		}
+
+		return
 	}
 
 	if c.InRange {

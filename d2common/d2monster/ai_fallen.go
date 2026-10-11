@@ -16,8 +16,10 @@ const (
 //
 // Packs: the leader's S2 "shout" animation broadcasts a CmdAlert to every
 // minion's command queue; a minion holding the command chases and attacks
-// without needing the usual approach rolls. Commands are consumed per attack
-// (Count), which is an UNVERIFIED reading of the +0x14 field.
+// without needing the usual approach rolls. Batch 7 (VERIFIED against the
+// exe): the attack branches never touch the command. It is popped only when
+// the exact-tile walk to the target cannot be queued (or the command has a
+// different type), so an alerted Fallen keeps charging until then.
 func thinkFallen(c *Ctx) {
 	b, t := c.B, *c.Target
 
@@ -104,8 +106,7 @@ func fallenNeutral(c *Ctx, t Target) bool {
 				return true
 			}
 
-			// The notes print "PopAiCommand; return" here; sleeping after the
-			// pop keeps the unit scheduled (UNVERIFIED which the exe does).
+			// The exe pops and returns; the tick's idle fallback reschedules.
 			b.PopCommand()
 
 			return false
@@ -115,11 +116,6 @@ func fallenNeutral(c *Ctx, t Target) bool {
 			c.Sleep(5)
 
 			return true
-		}
-
-		cmd.Count--
-		if cmd.Count <= 0 {
-			b.PopCommand()
 		}
 
 		attackA1orA2(c, t, b.AIP(4))

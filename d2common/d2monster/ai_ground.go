@@ -545,8 +545,9 @@ func fetishCommand(c *Ctx, attackOnCmd1 bool) bool {
 }
 
 // thinkFetish is MONAI_Think_Fetish 0x5f4500 (VERIFIED). 3-phase scratch:
-// 0 approach/attack, 1 attack loop (aip3 attacks, then flee when the target's
-// hit points exceed aip4 - FUN_00622100 read as hp%, UNVERIFIED), 2 flee.
+// 0 approach/attack, 1 attack loop (aip3 attacks, then flee when the TARGET's
+// life percent exceeds aip4: batch 7 found the exe reads STATS_GetLifePercent
+// of the target, the earlier port used the Fetish's own), 2 flee.
 // aip1 attack%, aip2 stall. Type 1 and 0xe commands walk to the commanded
 // unit.
 func thinkFetish(c *Ctx) {
@@ -587,7 +588,7 @@ func thinkFetish(c *Ctx) {
 	case 1:
 		b.Scratch[fetCount]++
 
-		if b.Scratch[fetCount] > b.AIP(3) && b.AIP(4) < b.HPPercent {
+		if b.Scratch[fetCount] > b.AIP(3) && b.AIP(4) < fb1Life(c.W, t) {
 			b.Scratch[fetPhase], b.Scratch[fetCount] = 2, 0
 			c.SetSpeed(50)
 			c.RunAway(t, 14)
@@ -716,20 +717,41 @@ func thinkFetishBlowgun(c *Ctx) {
 }
 
 // shamanStateFlag is Scratch[2] standing in for unit state 0xc, which the
-// Fetish Shaman's Skill1 sets and its next think clears (UNVERIFIED).
+// Fetish Shaman's Skill1 sets and its next think clears. The real state is
+// consulted too when the world answers it.
 const shamanStateFlag = 2
 
-// thinkFetishShaman is MONAI_Think_FetishShaman 0x5f8be0 (VERIFIED flow).
-// aip1 heal-buddy%, aip2 buddy search "same-room" param, aip3 walk-near
-// distance, aip4 circle%, aip5 buddy radius. Skill1 is cast on self when the
-// state flag is clear and the skill range check passes (range is unknown
-// here, the exe default 1 is used, UNVERIFIED); Skill3 targets a buddy found
-// with the AllyFinder.
+// Classes the Fetish Shaman's buddy callback (0x5f8b00, disassembled in batch
+// 7) accepts: 0x8d (fetish1) and 0x18c (fetishblow1); the second is skipped
+// when aip2 == 1.
+const (
+	shamanBuddyFetish = 0x8d
+	shamanBuddyBlow   = 0x18c
+)
+
+// thinkFetishShaman is MONAI_Think_FetishShaman 0x5f8be0 (VERIFIED, batch 7).
+// aip1 raise %, aip2 buddy-class selector, aip3 walk-near threshold, aip4
+// circle %, aip5 buddy radius. Corrections against batch 4:
+//   - Skill1 (the group alert) fires when the distance is below the skill's
+//     own total level (at least 1), not below 1.
+//   - The buddy is the nearest DEAD fetish (mode 0xc, classes 0x8d / 0x18c)
+//     within aip5 squared, not the nearest living ally; Skill3 raises it. The
+//     leader test the callback makes when aip2 == 0 (the corpse must belong to
+//     this shaman's group) needs group data of corpses and is not modelled.
+//   - The walk-near test compares aip3 with the SQUARED distance (the exe
+//     mixes the two units); reproduced.
 func thinkFetishShaman(c *Ctx) {
 	b, t := c.B, *c.Target
 	p := b.Profile
 
-	if p.Skills[slot1].Used() && c.Dist < 1 && b.Scratch[shamanStateFlag] == 0 {
+	lvl := 1
+	if p.Skills[slot1].Used() && p.Skills[slot1].Level > 0 {
+		lvl = p.Skills[slot1].Level
+	}
+
+	stateOn := b.Scratch[shamanStateFlag] != 0 || c.W.HasState(b, 0xc)
+
+	if p.Skills[slot1].Used() && c.Dist < lvl && !stateOn {
 		b.Broadcast(Command{Type: CmdAlert, Target: t.ID, Count: 6})
 		b.Scratch[shamanStateFlag] = 1
 		c.Cast(slot1, t)
@@ -739,12 +761,21 @@ func thinkFetishShaman(c *Ctx) {
 
 	b.Scratch[shamanStateFlag] = 0
 
-	if f, ok := c.W.(AllyFinder); ok {
-		if ally, d, found := f.NearestAlly(b); found && d <= b.AIP(5) && b.Roll(100) < b.AIP(1) &&
+	if ss, ok := c.W.(StateSetter); ok && c.W.HasState(b, 0xc) {
+		ss.SetUnitState(b, 0xc, false)
+	}
+
+	if cf, ok := c.W.(CorpseFinder); ok {
+		classes := []int{shamanBuddyFetish}
+		if b.AIP(2) != 1 {
+			classes = append(classes, shamanBuddyBlow)
+		}
+
+		if ally, found := cf.NearestCorpse(b, classes, b.AIP(5)); found && b.Roll(100) < b.AIP(1) &&
 			p.Skills[slot3].Used() {
 			b.Broadcast(Command{Type: CmdFollow, Target: ally.ID, Count: 1})
 
-			if d > b.AIP(3) {
+			if d2 := sqDist(b.X, b.Y, ally.X, ally.Y); b.AIP(3) < d2 {
 				c.WalkNearTarget(&ally, 10)
 
 				return
@@ -763,6 +794,17 @@ func thinkFetishShaman(c *Ctx) {
 	c.Sleep(10)
 }
 
+// UnitStatAccess reads and writes a unit stat of the monster itself (the Bat
+// Demon's stat 0x4a boost while it climbs). Absent: no boost.
+type UnitStatAccess interface {
+	UnitStat(b *Brain, stat int) int
+	SetUnitStat(b *Brain, stat, v int)
+}
+
+// batFlightStat is the stat id the Bat Demon scales while airborne (VERIFIED
+// immediate 0x4a; its name is not decoded).
+const batFlightStat = 0x4a
+
 // Bat Demon phases (Scratch[0]): 0 and 4 take off, 1 climb (attacks with
 // S3/S4 modes while ascending), 2 retreat, 3 hunt.
 //
@@ -780,9 +822,27 @@ func thinkBatDemon(c *Ctx) {
 
 		b.Scratch[0], b.Scratch[1] = 1, 0
 		b.Airborne = true
+
+		// Batch 7: the take-off scales stat 0x4a by aip5/8 and remembers the
+		// delta in Scratch[2] (AiGeneral +0x1c) to undo it at landing.
+		b.Scratch[2] = 0
+
+		if us, ok := c.W.(UnitStatAccess); ok {
+			if st := us.UnitStat(b, batFlightStat); st != 0 {
+				b.Scratch[2] = b.AIP(5) * st / 8
+				us.SetUnitStat(b, batFlightStat, st+b.Scratch[2])
+			}
+		}
 	case 1:
-		if b.Scratch[1] > 1 && !(!c.InRange && c.Dist > 6 && (c.Dist > 13 || b.HPPercent < 51)) {
+		// Batch 7: the keep-climbing test also requires the Aggressive flag to
+		// be clear (the exe's IsDataField54Idle() == 0).
+		if b.Scratch[1] > 1 && !(!c.InRange && c.Dist > 6 && !b.Aggressive && (c.Dist > 13 || b.HPPercent < 51)) {
 			b.Airborne = false
+
+			if us, ok := c.W.(UnitStatAccess); ok && b.Scratch[2] != 0 {
+				us.SetUnitStat(b, batFlightStat, us.UnitStat(b, batFlightStat)-b.Scratch[2])
+			}
+
 			c.Attack(ModeSkill2, t)
 
 			b.Scratch[0] = 3
@@ -800,12 +860,13 @@ func thinkBatDemon(c *Ctx) {
 			return
 		}
 
-		if b.Roll(100) <= 32 {
-			if c.WalkTo(t, 0) {
-				b.Scratch[0] = 3
+		if b.Roll(100) < 33 {
+			// the exe switches to phase 3 whether or not the walk was queued
+			c.WalkTo(t, 0)
 
-				return
-			}
+			b.Scratch[0] = 3
+
+			return
 		}
 
 		if b.Roll(100) < 15 && c.Wander(6) {
@@ -894,8 +955,12 @@ func thinkAbyssKnight(c *Ctx) {
 	b, t := c.B, *c.Target
 	p := b.Profile
 
-	if p.Skills[slot2].Used() && b.HPPercent < b.AIP(1) && b.Roll(100) < b.AIP(2) {
-		c.Cast(slot2, *c.Target)
+	// Batch 7: the self buff needs the skill's aurastate to be defined and not
+	// yet active (skills.txt through AuraStateSource), then life below aip1
+	// and the aip2 roll; it is cast with no target.
+	if as := c.auraState(slot2); p.Skills[slot2].Used() && as >= 0 && !c.W.HasState(b, as) &&
+		b.HPPercent < b.AIP(1) && b.Roll(100) < b.AIP(2) {
+		c.Cast(slot2, Target{})
 
 		return
 	}
@@ -916,13 +981,8 @@ func thinkAbyssKnight(c *Ctx) {
 		b.Scratch[0] = b.AIP(6)
 	}
 
-	if p.Skills[slot1].Used() && b.Scratch[0] == 0 && !t.IsPlayer {
-		b.Scratch[0] = b.AIP(6)
-		c.Cast(slot1, t)
-
-		return
-	}
-
+	// The exe also tests a byte of the caster's own monster data (+0xe) against
+	// 4; no class in the tables reaches it, so it is taken as passing.
 	if p.Skills[slot1].Used() && b.Scratch[0] == 0 {
 		b.Scratch[0] = b.AIP(6)
 		c.Cast(slot1, t)
@@ -952,12 +1012,13 @@ func thinkAbyssKnight(c *Ctx) {
 }
 
 // thinkMegademon is MONAI_Think_Megademon 0x5dfad0 (Venom Lord, Fire Lord
-// and kin; VERIFIED flow). Skill1 is a charge/leap that needs a cooldown
-// (Scratch[0] = frame it is ready) and has a range; the exe reads the range
-// from the skill table (FUN_00645680), unavailable here, so range 1 is used
-// (UNVERIFIED) which makes the pre-cast approach branch the common one.
-// aip1 skill1 %, aip2 skill1 % in melee, aip3 attack%, aip4 approach%, aip5
-// circle%, aip6 skill cooldown.
+// and kin; VERIFIED, rewritten in batch 7). Skill1 is a charge with a
+// cooldown (Scratch[0] = frame it is ready). The distance gate of the
+// out-of-reach cast is the skill's own total level (at least 1), not a range,
+// and the unit state 0xc, which the cast leaves behind, is cleared on the next
+// think (the cast is not repeated while it is up). aip1 skill1 % at range,
+// aip2 skill1 % in reach, aip3 attack %, aip4 approach %, aip5 circle %,
+// aip6 cooldown.
 func thinkMegademon(c *Ctx) {
 	b, t := c.B, *c.Target
 	p := b.Profile
@@ -965,14 +1026,21 @@ func thinkMegademon(c *Ctx) {
 
 	skill := p.Skills[slot1].Used()
 
-	if skill && !c.InRange && c.Dist > 1 {
-		if b.Scratch[0] < now && b.Roll(100) < b.AIP(1) {
-			b.Scratch[0] = b.AIP(6) + now
-			c.Cast(slot1, t)
+	lvl := 1
+	if skill && p.Skills[slot1].Level > 0 {
+		lvl = p.Skills[slot1].Level
+	}
 
-			return
+	on := c.W.HasState(b, 0xc)
+	clearState := func() {
+		if ss, ok := c.W.(StateSetter); ok && on {
+			ss.SetUnitState(b, 0xc, false)
 		}
-	} else if c.InRange || !skill {
+	}
+
+	if !skill || c.InRange || lvl <= c.Dist {
+		clearState()
+
 		if c.InRange {
 			if skill && b.Scratch[0] < now && b.Roll(100) < b.AIP(2) {
 				b.Scratch[0] = b.AIP(6) + now
@@ -995,6 +1063,13 @@ func thinkMegademon(c *Ctx) {
 
 			return
 		}
+	} else if on {
+		clearState()
+	} else if b.Scratch[0] < now && b.Roll(100) < b.AIP(1) {
+		b.Scratch[0] = b.AIP(6) + now
+		c.Cast(slot1, t)
+
+		return
 	}
 
 	if b.Roll(100) < b.AIP(4) {
@@ -1006,9 +1081,11 @@ func thinkMegademon(c *Ctx) {
 	c.Sleep(10)
 }
 
-// thinkSuccubus is MONAI_Think_Succubus 0x5e0c70 (VERIFIED flow; the helper
-// FUN_006259a0(target, 0x20) is a state test and FUN_00622100 a hit point
-// percent; both are read as such, UNVERIFIED). aip1 attack%, aip2 approach%,
+// thinkSuccubus is MONAI_Think_Succubus 0x5e0c70 (VERIFIED flow; batch 7
+// replaced the stand-ins with the exe reads: the stat-list-flag 0x20 gate on
+// the target, the TARGET's life percent against aip7, and for Skill3 "target
+// max life above max mana, or not a player"; the host is FB1Unit, the same one
+// SuccubusWitch uses). aip1 attack%, aip2 approach%,
 // aip3 cast%, aip4 cast distance, aip5/aip6 stall, aip7 skill1 target hp%
 // floor, aip8 skill2 self hp% ceiling / skill5 chance. Slots: 1 and 2 hero
 // cast, 3 on non-players (or wounded targets), 4 on players, 5 random cast.
@@ -1016,9 +1093,17 @@ func thinkSuccubus(c *Ctx) {
 	b, t := c.B, *c.Target
 	p := b.Profile
 
-	if c.Dist < b.AIP(4) && b.Chance(b.AIP(3)) {
+	u, hasU := c.W.(FB1Unit)
+	hasFlag := hasU && u.HasStatListFlag(t, 0x20)
+
+	if !hasFlag && c.Dist < b.AIP(4) && b.Chance(b.AIP(3)) {
+		maxHP, maxMana := 1, 0
+		if hasU {
+			maxHP, maxMana = u.MaxHP(t), u.MaxMana(t)
+		}
+
 		switch {
-		case p.Skills[slot1].Used() && 100 >= b.AIP(7):
+		case p.Skills[slot1].Used() && fb1Life(c.W, t) >= b.AIP(7):
 			c.Cast(slot1, t)
 
 			return
@@ -1026,7 +1111,7 @@ func thinkSuccubus(c *Ctx) {
 			c.Cast(slot2, t)
 
 			return
-		case p.Skills[slot3].Used() && !t.IsPlayer:
+		case p.Skills[slot3].Used() && (maxMana < maxHP || !t.IsPlayer):
 			c.Cast(slot3, t)
 
 			return

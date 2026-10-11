@@ -179,7 +179,7 @@ func oracleCases() []oracleCase {
 			}
 
 			if r.chance(a(3)) {
-				if r.chance(a(3)) { // the exe tests aip3 twice (notes: copy-paste quirk)
+				if r.chance(a(4)) { // batch 7: +0x68 is aip4
 					return att(ModeAttack1)
 				}
 
