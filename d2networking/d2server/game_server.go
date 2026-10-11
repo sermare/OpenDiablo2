@@ -569,6 +569,10 @@ func (g *GameServer) OnClientDisconnected(client ClientConnection) {
 	delete(g.connections, client.GetUniqueID())
 	g.socialRemovePlayer(client.GetUniqueID())
 
+	if g.soc != nil {
+		g.soc.idle.Forget(client.GetUniqueID())
+	}
+
 	if client.GetConnectionType() == d2clientconnectiontype.Local {
 		g.Info("Host disconnected, game server shuting down")
 
@@ -589,6 +593,10 @@ func (g *GameServer) OnClientDisconnected(client ClientConnection) {
 func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacket.NetPacket) error {
 	if g == nil {
 		return errors.New("game server is nil")
+	}
+
+	if g.soc != nil && client != nil {
+		g.soc.idle.Stamp(client.GetUniqueID()) // last-message time, as the exe does for every in-game message
 	}
 
 	switch packet.PacketType {

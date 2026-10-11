@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2portal"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2playertrade"
@@ -97,24 +98,38 @@ func TestServerPartyAndPvP(t *testing.T) {
 		t.Fatal("not in a party after accept")
 	}
 
-	// hostility is refused inside a party, the attacker is blocked
+	// hostility against a party mate is allowed and takes the declarer out of
+	// the party (VERIFIED Game.exe 0x5a3870); an open town portal of the
+	// declarer is destroyed
+	g.soc.portals.Open(d2portal.Pair{Owner: "a", OwnerName: "Ann"})
 	party(t, g, a, d2netpacket.PartyHostile, "b")
 
-	if u := lastRoster(t, a); !strings.Contains(u.Notice, "hostile") || u.Player != "a" || g.soc.roster.Hostile("a", "b") {
-		t.Fatalf("hostile inside a party must be refused: %+v", u)
+	if u := lastRoster(t, a); !strings.Contains(u.Notice, "hostile") || u.Player != "" && u.Player != "a" || !g.soc.roster.Hostile("a", "b") {
+		t.Fatalf("hostile declaration: %+v", u)
 	}
 
-	g.soc.mu.Lock()
-	reason := g.pvpBlockedLocked("a", "b")
-	g.soc.mu.Unlock()
-
-	if !strings.Contains(reason, "party") {
-		t.Fatalf("friendly fire reason %q", reason)
+	if g.soc.roster.SameParty("a", "b") {
+		t.Fatal("the declarer must have left the party")
 	}
 
-	// after leaving, hostility works and the hit is relayed to the defender only
-	party(t, g, a, d2netpacket.PartyLeave, "")
+	if _, ok := g.soc.portals.Get("a"); ok {
+		t.Fatal("the declarer's portal must be destroyed")
+	}
+
+	// a second declaration inside a minute is refused (after peace)
+	party(t, g, a, d2netpacket.PartyPeace, "b")
 	party(t, g, a, d2netpacket.PartyHostile, "b")
+
+	if g.soc.roster.Hostile("a", "b") {
+		t.Fatal("cooldown must refuse the second declaration")
+	}
+
+	g.soc.roster.Now = func() time.Time { return time.Now().Add(2 * time.Minute) }
+	party(t, g, a, d2netpacket.PartyHostile, "b")
+
+	if !g.soc.roster.Hostile("a", "b") {
+		t.Fatal("allowed again after the cooldown")
+	}
 
 	hit, _ := d2netpacket.CreatePvPHitPacket(d2netpacket.PvPHitPacket{Attacker: "spoofed", Target: "b", Damage: 17, Raw: 100})
 	before := len(a.got)
