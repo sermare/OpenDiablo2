@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"image"
+	"image/color"
 	"image/gif"
 	"image/png"
 	"os"
@@ -26,6 +27,7 @@ import (
 	"github.com/pkg/profile"
 	"golang.org/x/image/colornames"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math"
@@ -172,6 +174,7 @@ func (a *App) loadEngine() error {
 	}
 
 	a.renderer = renderer
+	d2display.Set(d2display.Base) // the error screens use the legacy size
 	renderer.SetFullscreenHook(func(full bool) {
 		a.config.FullScreen = full
 		a.saveConfig()
@@ -318,6 +321,7 @@ func (a *App) Run() (err error) {
 	d2util.PerfMark("renderer-created")
 
 	windowTitle := fmt.Sprintf("OpenDiablo2 (%s)", a.gitBranch)
+	startSize, startScale := a.displaySize()
 
 	// If we fail to initialize, we will show the error screen
 	if err := a.initialize(); err != nil {
@@ -386,9 +390,7 @@ func (a *App) Run() (err error) {
 		a.ToMainMenu()
 	}
 
-	scale := a.windowScale()
-
-	err = a.renderer.Run(a.update, a.advance, 800*scale, 600*scale, windowTitle)
+	err = a.renderer.Run(a.update, a.advance, startSize.W*startScale, startSize.H*startScale, windowTitle)
 
 	d2gamescreen.SaveActiveGame() // the window was closed: save the hero
 
@@ -457,8 +459,19 @@ func (a *App) renderCapture(target d2interface.Surface) error {
 
 func (a *App) render(target d2interface.Surface) {
 	d2util.PerfMark("first-frame")
+	// The interface lives in an 800x600 column (docs/DISPLAY.md): the screen and the widgets draw in column
+	// space, the world, fades, the loading screen and the cursor in screen space.
+	d2display.SetAnchor(a.screen.Anchor())
+
+	if a.screen.Anchor() == d2display.AnchorCenter {
+		target.Clear(color.Black) // beside the centred 800x600 content
+	}
+
+	ox, oy := d2display.ColumnOrigin()
+	target.PushTranslation(ox, oy)
 	a.screen.Render(target)
 	a.ui.Render(target)
+	target.Pop()
 
 	if err := a.guiManager.Render(target); err != nil {
 		return

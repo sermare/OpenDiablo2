@@ -146,6 +146,9 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
       {
         echo '#!/bin/zsh'
         echo "export OD2_PORT=$OD2_PORT"
+        # logical screen size of every scenario (docs/DISPLAY.md): 1512x982 (the owner's MacBook) unless OD2_DISPLAY
+        # is set; a scenario pinned to the legacy 800x600 layout exports OD2_DISPLAY=800x600 in its scenario_env
+        echo "export OD2_DISPLAY=${OD2_DISPLAY:-1512x982}"
         echo "export OD2_AUTOGAME=\"$save\" OD2_AUTOEXIT=1"
         # muted unless OD2_VERIFY_SOUND=1 or the scenario sets scenario_unmuted=1 (real audio, uses the sound device)
         [ -n "${OD2_VERIFY_SOUND:-}" ] || [ -n "$scenario_unmuted" ] || echo "export OD2_AUTOTEST_MUTE=1"

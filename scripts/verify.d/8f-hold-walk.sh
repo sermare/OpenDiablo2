@@ -13,8 +13,8 @@ scenario_env() {
     echo "# no revived sample hero, using the default save" >&2
   fi
   local s='wait:2;skill:left=Attack;say:heropos'
-  s="$s;hold:4,left@${HOLD_A:-540,330};wait:0.5;say:heropos"
-  s="$s;hold:6,left@${HOLD_B:-200,200};wait:0.5;say:heropos;exit"
+  s="$s;hold:4,left@${HOLD_A:-hero:140,30};wait:0.5;say:heropos"
+  s="$s;hold:6,left@${HOLD_B:-hero:-200,-100};wait:0.5;say:heropos;exit"
   echo "export OD2_AUTOSCRIPT='$s'"
 }
 scenario_check() {

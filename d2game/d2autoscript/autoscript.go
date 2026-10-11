@@ -35,12 +35,13 @@ const (
 	// KindPress presses a skill hotkey: press:F1.
 	KindPress Kind = "press"
 	// KindClick sends a mouse click through the game's input handlers:
-	// click:<left|right>[+shift][+ctrl][+cmd][+alt][@x,y] (screen pixels of the 800x600 screen);
+	// click:<left|right>[+shift][+ctrl][+cmd][+alt][@x,y] (screen pixels), @hero:dx,dy (relative to the hero on screen,
+	// resolution independent) or @ui:x,y (pixels of the 800x600 interface column, docs/DISPLAY.md);
 	// the target @monster clicks the living monster nearest to the hero.
 	// press:<Key> likewise presses any key by name (Tab, I, Escape, F1...).
 	KindClick Kind = "click"
 	// KindHold presses and holds a mouse button for a time through the repeat path of a real held button
-	// (GameControls.OnMouseButtonRepeat every frame): hold:<seconds>,<click spec>, e.g. hold:5,left@560,340.
+	// (GameControls.OnMouseButtonRepeat every frame): hold:<seconds>,<click spec>, e.g. hold:5,left@hero:160,40.
 	// The host logs the hero position about every half second (HOLD pos ...).
 	KindHold Kind = "hold"
 	// KindWaitLog waits (up to WaitLogTimeout game seconds) until the game log

@@ -1,5 +1,6 @@
 scenario_name="ui layout (every panel's rectangles against the original's numbers)"
-scenario_env() { echo 'export OD2_AUTOUILAYOUT=1'; }
+# pinned to the legacy 800x600 layout the golden was made at (the interface column is the same at any size)
+scenario_env() { echo 'export OD2_AUTOUILAYOUT=1 OD2_DISPLAY=800x600'; }
 # scripts/verify.d/ui-layout.golden holds one expectation per line: "[~N ]<panel> <name> <x> <y> <w> <h>".
 # Without a prefix every number must match exactly; "~N" lets each number differ by up to N pixels (used for text: its
 # anchor is the centre of the drawn string, so a different font metric moves it by a pixel); "*" skips a number.

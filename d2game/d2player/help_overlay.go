@@ -14,18 +14,18 @@ import (
 )
 
 /*
-	the 800x600 help screen dc6 file frames look like this
-	the position we set for frames is the lower-left corner x,y
-	+----+------------------+-------------------+------------+----+
-	| 1  | 3                | 4                 | 5          | 6  |
-	|    |------------------+-------------------|            |    |
-	|    |                                      |            |    |
-	|    |                                      |            |    |
-	+----+                                      +------------+----+
-	| 2  |                                                   | 7  |
-	|    |                                                   |    |
-	|    |                                                   |    |
-	+----+                                                   +----+
+the 800x600 help screen dc6 file frames look like this
+the position we set for frames is the lower-left corner x,y
++----+------------------+-------------------+------------+----+
+| 1  | 3                | 4                 | 5          | 6  |
+|    |------------------+-------------------|            |    |
+|    |                                      |            |    |
+|    |                                      |            |    |
++----+                                      +------------+----+
+| 2  |                                                   | 7  |
+|    |                                                   |    |
+|    |                                                   |    |
++----+                                                   +----+
 */
 const (
 	// if you add up frame widths 1,3,4,5,6 you get (65+255+255+245+20) = 840

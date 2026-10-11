@@ -2,6 +2,7 @@ package d2player
 
 import (
 	"fmt"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2input/d2gamepad"
 	"math/rand"
 	"runtime"
@@ -573,13 +574,11 @@ func truncateFloat64(n float64) float64 {
 
 // OnMouseButtonRepeat handles repeated mouse clicks
 func (g *GameControls) OnMouseButtonRepeat(event d2interface.MouseEvent) bool {
-	const (
-		screenWidth, screenHeight         = 800, 600
-		halfScreenWidth, halfScreenHeight = screenWidth / 2, screenHeight / 2
-		subtilesPerTile                   = 5
-	)
+	const subtilesPerTile = 5
 
-	px, py := g.mapRenderer.ScreenToWorld(event.X(), event.Y())
+	halfScreenWidth, halfScreenHeight := d2display.W()/2, d2display.H()/2
+
+	px, py := g.mapRenderer.ScreenToWorld(d2display.ToScreen(event.X(), event.Y()))
 	px = truncateFloat64(px)
 	py = truncateFloat64(py)
 
@@ -649,6 +648,10 @@ func (g *GameControls) worldClick(button d2enum.MouseButton, mod d2enum.KeyMod, 
 	in.InTown = g.hero.IsInTown()
 
 	act := ResolveWorldClick(in)
+
+	hsx, hsy := g.mapRenderer.WorldToScreen(g.hero.GetPositionF())
+	hw := g.hero.Position.World()
+	g.Infof("INPUT world-pick world=(%.2f,%.2f) hero=(%.2f,%.2f) hero_screen=(%d,%d)", px, py, hw.X(), hw.Y(), hsx, hsy)
 	if button == d2enum.MouseButtonLeft && act == WorldCastLeft && d2gamepad.Default().Walking() {
 		act = WorldMove // the left stick walks, it does not cast the left skill
 	}
@@ -830,7 +833,7 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 		return true
 	}
 
-	px, py := g.mapRenderer.ScreenToWorld(mx, my)
+	px, py := g.mapRenderer.ScreenToWorld(d2display.ToScreen(mx, my))
 	px = truncateFloat64(px)
 	py = truncateFloat64(py)
 
@@ -1165,6 +1168,18 @@ func (g *GameControls) Load() {
 		questToggle:     g.toggleQuestLog,
 	}
 	g.hud.miniPanel.load(miniPanelActions)
+	g.logDisplay()
+}
+
+// logDisplay logs the display model once the interface is loaded (docs/DISPLAY.md): the logical screen, the
+// origin of the 800x600 interface column and the span of the bottom bar, for the display scenarios.
+func (g *GameControls) logDisplay() {
+	sz := d2display.Get()
+	ox, oy := d2display.ColumnOrigin()
+	hx, hy := g.mapRenderer.WorldToScreen(g.hero.GetPositionF())
+
+	g.Infof("DISPLAY size=%dx%d scale=%d column=(%d,%d) hud_x=%d..%d hud_bottom=%d hero_screen=(%d,%d)",
+		sz.W, sz.H, d2display.Scale(), ox, oy, ox, ox+d2display.BaseW, oy+d2display.BaseH, hx, hy)
 }
 
 // Advance advances the state of the GameControls
@@ -1271,7 +1286,11 @@ func (g *GameControls) isInActiveMenusRect(px, py int) bool {
 
 // Render draws the GameControls onto the target
 func (g *GameControls) Render(target d2interface.Surface) error {
+	// the automap covers the whole screen, not the interface column
+	ox, oy := d2display.ColumnOrigin()
+	target.PushTranslation(-ox, -oy)
 	g.automap.Render(target) // before the interface, as in the original
+	target.Pop()
 
 	if err := g.hud.Render(target); err != nil {
 		return err

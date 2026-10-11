@@ -1,6 +1,7 @@
 package d2screen
 
 import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 )
 
@@ -28,4 +29,10 @@ type ScreenRenderHandler interface {
 // ScreenAdvanceHandler is an exported interface
 type ScreenAdvanceHandler interface {
 	Advance(elapsed float64) error
+}
+
+// ScreenAnchorHandler is implemented by screens that stand the 800x600 interface column on the bottom of
+// the screen (the game); all other screens get the column centred (see d2display).
+type ScreenAnchorHandler interface {
+	DisplayAnchor() d2display.Anchor
 }

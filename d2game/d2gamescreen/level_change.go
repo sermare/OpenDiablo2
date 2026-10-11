@@ -188,7 +188,7 @@ func (v *Game) renderFade(screen d2interface.Surface) {
 		a = 1
 	}
 
-	screen.DrawRect(screenWidth, screenHeight, d2util.Color(uint32(a*255)))
+	fillScreen(screen, d2util.Color(uint32(a*255)))
 }
 
 func (v *Game) advanceFade(elapsed float64) {

@@ -2,6 +2,7 @@ package d2player
 
 import (
 	"fmt"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"math"
 	"strings"
 
@@ -468,7 +469,7 @@ func (h *HUD) renderLeftSkill(x, y int, target d2interface.Surface) {
 }
 
 func (h *HUD) renderRightSkill(x, _ int, target d2interface.Surface) {
-	_, height := target.GetSize()
+	height := d2display.BaseH // the bar stands on the bottom of the interface column
 
 	newSkillResourcePath := h.getSkillResourceByClass(h.hero.RightSkill.Charclass)
 	if newSkillResourcePath != h.rightSkillResource.SkillResourcePath {
@@ -585,7 +586,13 @@ func (h *HUD) setExperienceTooltipText() {
 }
 
 func (h *HUD) renderForSelectableEntitiesHovered(target d2interface.Surface) {
-	mx, my := h.lastMouseX, h.lastMouseY
+	// entity positions are screen positions: leave the interface column and use the screen cursor
+	ox, oy := d2display.ColumnOrigin()
+	target.PushTranslation(-ox, -oy)
+
+	defer target.Pop()
+
+	mx, my := d2display.ToScreen(h.lastMouseX, h.lastMouseY)
 
 	h.hoveredEntity = nil
 
@@ -638,7 +645,7 @@ func (h *HUD) renderAllItemLabels(target d2interface.Surface) {
 		}
 
 		sx, sy := h.mapRenderer.WorldToScreenF(entity.GetPositionF())
-		if sx < 0 || sy < 0 || sx > screenWidth || sy > screenHeight {
+		if sx < 0 || sy < 0 || sx > float64(d2display.W()) || sy > float64(d2display.H()) {
 			continue
 		}
 
@@ -657,8 +664,12 @@ func (h *HUD) Render(target d2interface.Surface) error {
 	h.renderForSelectableEntitiesHovered(target)
 
 	if h.isZoneTextShown {
+		// the zone name stands in the upper part of the screen, not of the interface column
+		_, oy := d2display.ColumnOrigin()
+		target.PushTranslation(0, -oy)
 		h.zoneChangeText.SetPosition(zoneChangeTextX, zoneChangeTextY)
 		h.zoneChangeText.Render(target)
+		target.Pop()
 	}
 
 	if h.skillSelectMenu.IsOpen() {

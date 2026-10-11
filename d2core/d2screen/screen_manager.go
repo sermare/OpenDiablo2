@@ -1,6 +1,7 @@
 package d2screen
 
 import (
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
@@ -111,4 +112,14 @@ func (sm *ScreenManager) Render(surface d2interface.Surface) {
 	if handler, ok := sm.currentScreen.(ScreenRenderHandler); ok {
 		handler.Render(surface)
 	}
+}
+
+// Anchor is where the 800x600 interface column of the current screen stands (centred by default,
+// and while a screen loads).
+func (sm *ScreenManager) Anchor() d2display.Anchor {
+	if h, ok := sm.currentScreen.(ScreenAnchorHandler); ok {
+		return h.DisplayAnchor()
+	}
+
+	return d2display.AnchorCenter
 }

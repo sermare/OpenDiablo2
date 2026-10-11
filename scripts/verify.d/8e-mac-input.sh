@@ -7,8 +7,8 @@ scenario_env() {
   echo "export OD2_CONFIG_DIR=\"$cfg\""
   # clicks land on the upper left of the screen (no NPC or object there); the hero starts with Attack on the left
   # button and Fire Ball on the right. Control+click is the right button on macOS (the game is run on macOS here).
-  local s='wait:2;click:left@120,120;click:right@120,120;click:left+ctrl@120,120;click:left+cmd@120,120;click:left+shift@120,120'
-  s="$s;skill:left=Fire Bolt;click:left@120,120;click:left+shift@120,120;skill:left=Attack"
+  local s='wait:2;click:left@hero:-280,-180;click:right@hero:-280,-180;click:left+ctrl@hero:-280,-180;click:left+cmd@hero:-280,-180;click:left+shift@hero:-280,-180'
+  s="$s;skill:left=Fire Bolt;click:left@hero:-280,-180;click:left+shift@hero:-280,-180;skill:left=Attack"
   s="$s;automap:off;press:Tab;press:Tab"
   s="$s;press:I;press:I;press:C;press:C;press:T;press:T;press:Q;press:Q;press:Escape;press:Escape"
   s="$s;say:bindkey ToggleInventoryPanel X;press:X;press:X;exit"

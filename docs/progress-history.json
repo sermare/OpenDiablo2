@@ -284,6 +284,57 @@
 "Game v1 complete": 68.61,
 "Game v1 complete (incl. branch work)": 69.94
 }
+},
+{
+"t": "2026-10-10T23:37:28+00:00",
+"v": {
+"Game.exe functions named in Ghidra": 100.0,
+"Hedged exe names re-verified against the decompile": 78.26,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 68.59,
+"Level generator proven equal to the real game": 100.0,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 100.0,
+"Acts playable end to end (scripted play)": 100.0,
+"Levels walked by a verify scenario": 66.91,
+"Main quests with logic implemented": 100.0,
+"Player skills with engine behaviour": 71.43,
+"Monster AI archetypes implemented": 97.97,
+"Monster AI archetypes ported faithfully": 64.86,
+"In-game UI panels matching the original layout": 57.14,
+"Item generation gaps closed vs the exe": 100.0,
+"Sound and music confirmed by a human listen": 0.0,
+"Multiplayer playable through the game screen": 75.0,
+"Mac app: build, Finder launch with real maps, disk image": 66.67,
+"Real full verify green (scenario sections per job, real parallel log)": 100.0,
+"Game v1 complete": 79.67,
+"Game v1 complete (incl. branch work)": 81.15
+}
+},
+{
+"t": "2026-10-10T23:38:24+00:00",
+"v": {
+"Game.exe functions named in Ghidra": 100.0,
+"Hedged exe names re-verified against the decompile": 78.26,
+"Original source files indexed": 100.0,
+"Source files studied in depth": 68.59,
+"Level generator proven equal to the real game": 100.0,
+"Real .d2s save: read and write verified": 90.0,
+"NPC interaction features": 100.0,
+"Acts playable end to end (scripted play)": 100.0,
+"Levels walked by a verify scenario": 66.91,
+"Main quests with logic implemented": 100.0,
+"Player skills with engine behaviour": 71.43,
+"Monster AI archetypes implemented": 97.97,
+"Monster AI archetypes ported faithfully": 64.86,
+"In-game UI panels matching the original layout": 57.14,
+"Item generation gaps closed vs the exe": 100.0,
+"Multiplayer playable through the game screen": 75.0,
+"Mac app: build, Finder launch with real maps, disk image": 66.67,
+"Real full verify green (scenario sections per job, real parallel log)": 100.0,
+"Game v1 complete": 85.36,
+"Game v1 complete (incl. branch work)": 86.95
+}
 }
 ]
 }

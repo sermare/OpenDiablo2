@@ -4,6 +4,7 @@ import (
 	"image/color"
 	"math"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
@@ -103,8 +104,12 @@ func (m *GuiManager) Render(target d2interface.Surface) error {
 	if m.loading {
 		m.renderLoadScreen(target)
 	} else if m.layout != nil {
-		m.layout.SetSize(target.GetSize())
+		// layouts are part of the 800x600 interface column
+		ox, oy := d2display.ColumnOrigin()
+		m.layout.SetSize(d2display.BaseW, d2display.BaseH)
+		target.PushTranslation(ox, oy)
 		m.layout.render(target)
+		target.Pop()
 	}
 
 	if m.cursorVisible {
@@ -137,7 +142,9 @@ func (m *GuiManager) renderCursor(target d2interface.Surface) {
 	_, height := m.cursorAnim.GetCurrentFrameSize()
 	pushCount := 0
 
-	target.PushTranslation(m.cursorX, m.cursorY)
+	// the cursor position comes from the input events in column space
+	cx, cy := d2display.ToScreen(m.cursorX, m.cursorY)
+	target.PushTranslation(cx, cy)
 	pushCount++
 
 	target.PushTranslation(0, -height)
