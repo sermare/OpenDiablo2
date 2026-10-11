@@ -494,33 +494,13 @@ func doDoubleThrowFn(c *cast) {
 	}
 }
 
-// doMultiHitFn is SRVDO_013_Fend (Zeal / Fury / Fend, U): Zeal and Fury hit
-// the target calc1 times with calc2 percent extra damage; Fend (start
-// function 9) hits up to calc1 enemies around the target once each.
+// doMultiHitFn is SRVDO_013_Fend (Zeal / Fury / Fend share it, VERIFIED
+// 0x5da910): one strike per attack animation event on a target in melee range,
+// else on any enemy within melee range + 4 other than the last victim; calc1
+// events in all (see Burst). With Options.EventBursts only the first event
+// runs here and DoResult.Burst carries the rest.
 func doMultiHitFn(c *cast) {
 	if !c.needTarget() {
-		return
-	}
-
-	o := c.meleeOpt()
-	o.pct = c.calc(2)
-
-	if c.sk.SrvStFunc == 9 { // Fend
-		foes := c.p.foes(c.tgt.UX, c.tgt.UY, 6)
-		max := c.calc(1)
-
-		for i, f := range foes {
-			if i >= max {
-				break
-			}
-
-			c.addMelee(c.p.strike(c.u, c.sk, c.lvl, f.Target, c.env, o))
-		}
-
-		if c.res.Melee == nil {
-			c.addMelee(c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o))
-		}
-
 		return
 	}
 
@@ -529,13 +509,25 @@ func doMultiHitFn(c *cast) {
 		n = 1
 	}
 
-	for i := 0; i < n; i++ {
-		if !c.tgt.Unit.Alive() {
-			break
+	b := c.p.newMeleeBurst(c, n)
+	b.opt.pct = c.calc(2)
+
+	if !c.p.BurstEvent(b, c.res) && c.res.Melee == nil {
+		// nobody in reach: the aimed target is struck anyway (the engine only
+		// starts the skill with a target)
+		c.addMelee(c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, b.opt))
+		b.left = 0
+	}
+
+	if c.p.Opt.EventBursts {
+		if !b.Done() {
+			c.res.Burst = b
 		}
 
-		c.addMelee(c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o))
+		return
 	}
+
+	c.p.RunBurst(b, c.res)
 }
 
 // foes lists enemies near a point; the pipeline without Near knows none.
@@ -595,7 +587,7 @@ func doSacrificeFn(c *cast) {
 // doChargedStrikeFn is SRVDO_011_ChargedStrike (0x5da4a0, VERIFIED): a Power-Strike style melee hit, then
 // calc1 charged bolts are created AT THE TARGET whether or not the hit landed (the exe never tests the
 // outcome). Their direction is the point mirrored through the target (2*target - self); the per-bolt
-// spread hook (0x5c7340) was not decoded, so the bolts keep the random 360 degree spread (UNVERIFIED).
+// per-bolt hook (0x5c7340) reseeds each bolt with destX+index (ChargedBoltAim); scatter width UNVERIFIED.
 func doChargedStrikeFn(c *cast) {
 	if !c.needTarget() {
 		return
@@ -606,8 +598,10 @@ func doChargedStrikeFn(c *cast) {
 	c.addMelee(c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o))
 
 	bolts := c.calc(1)
+	ux, uy := c.u.Pos()
+
 	for i := 0; i < bolts; i++ {
-		ang := float64(c.rollN(360)) * math.Pi / 180
+		ang := ChargedBoltAim(ux, uy, c.tgt.UX, c.tgt.UY, i)
 		x, y := c.tgt.UX, c.tgt.UY
 		tg := c.tgt
 		tg.Unit, tg.X, tg.Y = nil, x+int(math.Round(math.Cos(ang)*10)), y+int(math.Round(math.Sin(ang)*10))

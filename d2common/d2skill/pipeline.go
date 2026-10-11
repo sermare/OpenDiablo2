@@ -81,6 +81,12 @@ type Options struct {
 	// StaticFieldMinPct is DifficultyLevels StaticFieldMin: the percent of a
 	// monster's maximum life Static Field cannot reduce it below (U meaning).
 	StaticFieldMinPct int
+	// EventBursts makes multi-hit skills (Fend, Zeal) strike once per call and
+	// hand the rest to the engine as DoResult.Burst (one BurstEvent per attack
+	// animation event). Off: the whole burst runs inside Do.
+	EventBursts bool
+	// MeleeRange is the melee reach in subtiles for bursts (0 = 4, UNVERIFIED).
+	MeleeRange int
 }
 
 // Pipeline runs skills for casters.
@@ -414,6 +420,8 @@ type DoResult struct {
 	// first).
 	Melees  []*MeleeResult
 	Effects []Effect
+	// Burst is the rest of an event-driven multi-hit skill (nil when done).
+	Burst *Burst
 }
 
 // Do is SKILL_ServerRunSkillFunc: it runs at the animation's action frame.
