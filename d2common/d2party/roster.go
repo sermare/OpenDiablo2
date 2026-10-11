@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
@@ -19,6 +20,7 @@ var (
 	ErrInParty       = errors.New("party members cannot be hostile; leave the party first")
 	ErrLevelTooLow   = errors.New("both players need the hostile level")
 	ErrHostile       = errors.New("hostile players cannot party")
+	ErrHostileWait   = errors.New("hostility was declared less than a minute ago")
 )
 
 // Member is one player of the game.
@@ -38,8 +40,10 @@ type entry struct {
 	Member
 	party   int             // 0: none
 	hostile map[string]bool // ids this player has declared hostility to
-	body    bool            // state 7 (relations.go)
-	rel     map[string]*Relation
+	// hostileReady is the earliest moment of the next declaration.
+	hostileReady time.Time
+	body         bool // state 7 (relations.go)
+	rel          map[string]*Relation
 }
 
 // Roster holds the players of a game and their relations.
@@ -47,6 +51,20 @@ type Roster struct {
 	players map[string]*entry
 	invites map[string]string // invitee id -> inviter id
 	next    int
+	// Now is the clock of the hostility cooldown (time.Now when nil; tests inject one).
+	Now func() time.Time
+}
+
+// HostileCooldown is the minimum time between two hostility declarations of one
+// player (VERIFIED Game.exe 0x5a3870, 60000 ms).
+const HostileCooldown = 60 * time.Second
+
+func (r *Roster) now() time.Time {
+	if r.Now != nil {
+		return r.Now()
+	}
+
+	return time.Now()
 }
 
 // New returns an empty roster.
@@ -300,6 +318,57 @@ func (r *Roster) Leave(id string) bool {
 	return true
 }
 
+// Declared is the outcome of a hostility declaration.
+type Declared struct {
+	// Changed is false when from was already hostile to to (nothing happened).
+	Changed bool
+	// LeftParty is true when the two shared a party and from left it.
+	LeftParty bool
+}
+
+// PortalsToClose reports that a successful declaration destroys the declarer's
+// own town portals (VERIFIED Game.exe 0x5a3870 calls PLAYER_DestroyOwnPortals).
+func (d Declared) PortalsToClose() bool { return d.Changed }
+
+// DeclareHostile declares hostility of from to to. It refuses a second
+// declaration inside HostileCooldown of the last one (ErrHostileWait; the
+// stored time is left alone). On success the cooldown restarts, the pending
+// invitations of both are dropped, and a declarer who shared a party with the
+// target leaves it (VERIFIED 0x5a3870; that the declarer is the one leaving is
+// unverified). The exe also wants the declarer in a town room; the polarity of
+// that test is unresolved, so it is not enforced.
+func (r *Roster) DeclareHostile(from, to string) (Declared, error) {
+	if err := r.CanGoHostile(from, to); err != nil {
+		return Declared{}, err
+	}
+
+	f := r.players[from]
+	if f.hostile[to] {
+		return Declared{}, nil
+	}
+
+	if r.now().Before(f.hostileReady) {
+		return Declared{}, ErrHostileWait
+	}
+
+	if err := r.AddRelation(from, to); err != nil {
+		return Declared{}, err
+	}
+
+	f.hostileReady = r.now().Add(HostileCooldown)
+
+	d := Declared{Changed: true}
+	if r.SameParty(from, to) {
+		d.LeftParty = r.Leave(from)
+	}
+
+	f.hostile[to] = true
+	delete(r.invites, from) // no invitations with hostile players
+	delete(r.invites, to)
+
+	return d, nil
+}
+
 // CanGoHostile reports why from cannot be hostile to to (nil: it can).
 func (r *Roster) CanGoHostile(from, to string) error {
 	f, ok1 := r.players[from]
@@ -310,8 +379,6 @@ func (r *Roster) CanGoHostile(from, to string) error {
 		return ErrUnknownPlayer
 	case from == to:
 		return ErrSelf
-	case r.SameParty(from, to):
-		return ErrInParty
 	case f.Level < d2enum.PlayersHostileLevel || t.Level < d2enum.PlayersHostileLevel:
 		return ErrLevelTooLow
 	}
@@ -322,19 +389,9 @@ func (r *Roster) CanGoHostile(from, to string) error {
 // SetHostile declares (or withdraws) the hostility of from to to.
 func (r *Roster) SetHostile(from, to string, hostile bool) error {
 	if hostile {
-		if err := r.CanGoHostile(from, to); err != nil {
-			return err
-		}
+		_, err := r.DeclareHostile(from, to)
 
-		if err := r.AddRelation(from, to); err != nil {
-			return err
-		}
-
-		r.players[from].hostile[to] = true
-		delete(r.invites, from) // no invitations with hostile players
-		delete(r.invites, to)
-
-		return nil
+		return err
 	}
 
 	f, ok := r.players[from]

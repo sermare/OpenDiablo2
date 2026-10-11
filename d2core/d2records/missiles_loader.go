@@ -167,7 +167,7 @@ func missilesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 			},
 
 			Collision: MissileCollision{
-				CollisionType:          d.Number("CollideType"),
+				CollisionType:          ClampCollideType(d.Number("CollideType")),
 				DestroyedUponCollision: d.Number("CollideKill") > 0,
 				FriendlyFire:           d.Number("CollideFriend") > 0,
 				LastCollide:            d.Number("LastCollide") > 0,
@@ -319,4 +319,21 @@ func missilesLoader(r *RecordManager, d *d2txt.DataDictionary) error {
 
 func sanitizeMissilesKey(missileName string) string {
 	return strings.ToLower(strings.ReplaceAll(missileName, " ", ""))
+}
+
+// MaxCollideType is the largest CollideType the exe keeps: the loader
+// (MissileTbls, byte +0x183 of the 0x1a4-byte record) sets any larger value to 8.
+const MaxCollideType = 8
+
+// ClampCollideType limits a missiles.txt CollideType column to MaxCollideType.
+// The exe stores a byte; negative values cannot occur there and are kept at 0.
+func ClampCollideType(v int) int {
+	switch {
+	case v > MaxCollideType:
+		return MaxCollideType
+	case v < 0:
+		return 0
+	}
+
+	return v
 }

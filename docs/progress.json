@@ -12,10 +12,10 @@
     },
     {
       "label": "Hedged exe names re-verified against the decompile",
-      "done": 1518,
+      "done": 1633,
       "total": 1633,
       "pending": 0,
-      "note": "1,397 confirmed, 97 corrected, ~24 unclear; ~115 left (mostly EVENT_/UNIT_/SERVER_ helpers above 0x551b90 and thunks); batch 3 covered the server/client/save/arena helpers 0x528000-0x551b90, batch 2 covered the missile/CLTDO/CLTST block (~ estimate of the total)",
+      "note": "every hedged row now has a verdict; batch 4 (final) examined 173 table rows: 112 confirmed, 47 corrected in Ghidra, 14 unclear and still marked unverified; earlier batches 1-3 as before (~ estimate of the total)",
       "color": "#8f7cff"
     },
     {
@@ -27,9 +27,9 @@
     },
     {
       "label": "Source files studied in depth",
-      "done": 240,
+      "done": 277,
       "total": 277,
-      "note": "NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
+      "note": "last 37 (batches 11-13): gameplay files read, infrastructure and graphics backends only function-mapped; NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
       "color": "#2f9bff"
     },
     {

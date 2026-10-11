@@ -23,12 +23,14 @@ type social struct {
 	roster  *d2party.Roster
 	trades  map[string]*d2playertrade.Session // by player id; both traders map to the session
 	portals *d2portal.Registry                // open town portal pairs, one per owner
+	idle    *idleTracker                      // last message time per client (idle.go)
 	// size replaces the item size lookup of the game data (tests).
 	size d2playertrade.Sizer
 }
 
 func newSocial() *social {
-	return &social{roster: d2party.New(), trades: map[string]*d2playertrade.Session{}, portals: d2portal.NewRegistry()}
+	return &social{roster: d2party.New(), trades: map[string]*d2playertrade.Session{}, portals: d2portal.NewRegistry(),
+		idle: newIdleTracker(nil)}
 }
 
 // socialAddPlayer enters a player into the roster.
@@ -172,7 +174,7 @@ func (g *GameServer) onPartyCommand(client ClientConnection, packet d2netpacket.
 	case d2netpacket.PartyHostile, d2netpacket.PartyPeace:
 		if !found {
 			opErr = d2party.ErrUnknownPlayer
-		} else if opErr = r.SetHostile(me, target, p.Op == d2netpacket.PartyHostile); opErr == nil {
+		} else if opErr = g.setHostileLocked(me, target, p.Op == d2netpacket.PartyHostile); opErr == nil {
 			notice = fmt.Sprintf("%s is now %s toward %s", myName, map[string]string{
 				d2netpacket.PartyHostile: "hostile", d2netpacket.PartyPeace: "at peace"}[p.Op], g.nameOf(target))
 			g.Infof("PARTY %s name=%q toward=%q", p.Op, myName, g.nameOf(target))
@@ -191,6 +193,34 @@ func (g *GameServer) onPartyCommand(client ClientConnection, packet d2netpacket.
 	}
 
 	g.sendRoster(notice, forWho)
+
+	return nil
+}
+
+// setHostileLocked applies a hostility command. A new declaration destroys the
+// declarer's town portals and, against a party mate, takes the declarer out of
+// the party (VERIFIED Game.exe 0x5a3870). Call with soc.mu held.
+func (g *GameServer) setHostileLocked(me, target string, hostile bool) error {
+	r := g.soc.roster
+	if !hostile {
+		return r.SetHostile(me, target, false)
+	}
+
+	d, err := r.DeclareHostile(me, target)
+	if err != nil {
+		return err
+	}
+
+	if d.PortalsToClose() {
+		if _, ok := g.soc.portals.Close(me); ok {
+			g.Infof("PORTAL closed owner=%q (declared hostile)", g.nameOf(me))
+			g.broadcastPortals(fmt.Sprintf("%s's town portal closed", g.nameOf(me)))
+		}
+	}
+
+	if d.LeftParty {
+		g.Infof("PARTY leave name=%q (declared hostile to a party mate)", g.nameOf(me))
+	}
 
 	return nil
 }

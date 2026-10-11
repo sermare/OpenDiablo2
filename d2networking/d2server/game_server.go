@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -52,6 +53,7 @@ var (
 	errPlayerAlreadyExists = errors.New("player already exists")
 	errServerFull          = errors.New("server full") // Server currently at maximum TCP connections
 	errNoPlayerState       = errors.New("connection request without a hero")
+	errNameInUse           = errors.New("a player with that character name is already in the game")
 )
 
 // GameServer manages a copy of the map and entities as well as manages packet routing and connections.
@@ -373,6 +375,13 @@ func (g *GameServer) registerConnection(b []byte, conn net.Conn, mk func(id stri
 		return client, errPlayerAlreadyExists
 	}
 
+	// a second hero with the same name is refused (exe CCmd.cpp: packet 0xB4
+	// and a forced disconnect; the name compare is case-insensitive)
+	if nameInUse(g.connections, packet.PlayerState.HeroName) {
+		g.Errorf("%v: %q", errNameInUse, packet.PlayerState.HeroName)
+		return client, errNameInUse
+	}
+
 	// Client a new TCP Client Connection and add it to the connections map
 	if mk != nil {
 		client = mk(packet.ID)
@@ -385,6 +394,40 @@ func (g *GameServer) registerConnection(b []byte, conn net.Conn, mk func(id stri
 	g.OnClientConnected(client)
 
 	return client, nil
+}
+
+// charNameLen is the size of the exe's character name field (16 bytes, so 15
+// characters plus the terminator); longer names are cut when stored.
+const charNameLen = 15
+
+// sameCharName compares two character names the way the exe's name hash does:
+// ignoring case, on the stored (cut) length.
+func sameCharName(a, b string) bool {
+	cut := func(s string) string {
+		if len(s) > charNameLen {
+			s = s[:charNameLen]
+		}
+
+		return strings.ToLower(s)
+	}
+
+	return cut(a) == cut(b)
+}
+
+// nameInUse reports whether a connected hero already has the name. An empty
+// name is never "in use" (a hero without a name cannot clash).
+func nameInUse(conns map[string]ClientConnection, name string) bool {
+	if name == "" {
+		return false
+	}
+
+	for _, c := range conns {
+		if st := c.GetPlayerState(); st != nil && sameCharName(st.HeroName, name) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // OnClientConnected initializes the given ClientConnection. It sends the
@@ -526,6 +569,10 @@ func (g *GameServer) OnClientDisconnected(client ClientConnection) {
 	delete(g.connections, client.GetUniqueID())
 	g.socialRemovePlayer(client.GetUniqueID())
 
+	if g.soc != nil {
+		g.soc.idle.Forget(client.GetUniqueID())
+	}
+
 	if client.GetConnectionType() == d2clientconnectiontype.Local {
 		g.Info("Host disconnected, game server shuting down")
 
@@ -546,6 +593,10 @@ func (g *GameServer) OnClientDisconnected(client ClientConnection) {
 func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacket.NetPacket) error {
 	if g == nil {
 		return errors.New("game server is nil")
+	}
+
+	if g.soc != nil && client != nil {
+		g.soc.idle.Stamp(client.GetUniqueID()) // last-message time, as the exe does for every in-game message
 	}
 
 	switch packet.PacketType {

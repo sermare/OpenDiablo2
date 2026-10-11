@@ -149,18 +149,19 @@ func TestNoFriendlyFire(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := r.SetHostile("a", "b", true); err != ErrInParty {
-		t.Fatalf("hostility inside a party: %v", err)
-	}
-
 	if r.CanAttack("a", "b") || r.Relation("a", "b") != d2enum.PlayerRelationFriend {
 		t.Fatal("party members are friends and cannot attack each other")
 	}
 
-	r.Leave("b")
+	// declaring hostility against a party mate is allowed and leaves the party
+	// (VERIFIED 0x5a3870)
+	d, err := r.DeclareHostile("a", "b")
+	if err != nil || !d.Changed || !d.LeftParty || !d.PortalsToClose() {
+		t.Fatalf("hostility inside a party: %+v %v", d, err)
+	}
 
-	if err := r.SetHostile("b", "a", true); err != nil || !r.CanAttack("b", "a") {
-		t.Fatalf("after leaving the party they may fight: %v", err)
+	if r.SameParty("a", "b") || !r.CanAttack("a", "b") {
+		t.Fatal("after declaring, the declarer is out of the party and may fight")
 	}
 }
 

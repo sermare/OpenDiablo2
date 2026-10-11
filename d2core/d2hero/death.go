@@ -26,13 +26,13 @@ import (
 //	  ('JM' + count 0/1, then 12 header bytes the loader skips, then the items).
 //	UNVERIFIED:
 //	- the corpse also receives 75% of a stored value (client+0x508) as its
-//	  experience stat; its meaning (recoverable experience?) is not known and
-//	  is not modelled;
+//	  experience stat (Corpse.Experience, CorpseExperience); its meaning
+//	  (recoverable experience?) is not known;
 //	- the dead flag is cleared again when a softcore hero respawns (hardcore:
 //	  the character stays dead and the loader refuses it);
 //	- the life a respawned hero starts with (RespawnLifeFraction);
-//	- more than 15 corpses make the game drop the items on the ground instead
-//	  (the check is visible, the count is not modelled).
+//	VERIFIED too: more than 15 corpses make the game drop the items on the
+//	  ground instead (MaxCorpses; DeathInput.CorpseCount, DeathOutcome.DropToFloor).
 
 // RespawnLifeFraction is the share of the maximum life a respawned hero has.
 // UNVERIFIED: the binary was not searched for the respawn code.
@@ -56,6 +56,31 @@ type Corpse struct {
 	// ExpLost and GoldDropped record the penalties of that death.
 	ExpLost     int `json:"expLost"`
 	GoldDropped int `json:"goldDropped"`
+	// Experience is the corpse's experience stat (stat 0xd): 75% of the
+	// death-penalty value of the dying client (CorpseExperience). Its use is
+	// UNVERIFIED; it is only recorded.
+	Experience int `json:"experience,omitempty"`
+}
+
+// MaxCorpses is the corpse count above which the exe makes no new corpse and
+// drops the items on the floor instead (0x57d6f0: more than 0xf entries,
+// VERIFIED).
+const MaxCorpses = 15
+
+// CorpseOverCap reports whether a hero that already owns corpses corpses
+// gets no new one.
+func CorpseOverCap(corpses int) bool { return corpses > MaxCorpses }
+
+// CorpseExperience is the experience stat of a new corpse: 75% (0x4b/100) of
+// the client's death-penalty value, rounded down. The exe has three arithmetic
+// paths so big values do not overflow; this computes in 64 bits, which agrees
+// except possibly in the last unit for values above 0x100000 (UNVERIFIED).
+func CorpseExperience(penaltyValue int) int {
+	if penaltyValue <= 0 {
+		return 0
+	}
+
+	return int(int64(penaltyValue) * 75 / 100)
 }
 
 // DeathState is the persistent record of a hero's deaths. It rides along
@@ -82,6 +107,9 @@ type DeathInput struct {
 	ExpStart, ExpNext int
 	X, Y              int // subtile position of the death
 	Equipment         d2inventory.CharacterEquipment
+	// CorpseCount is how many corpses the hero already owns in the game and
+	// PenaltyValue the client's death-penalty value (see CorpseExperience).
+	CorpseCount, PenaltyValue int
 }
 
 // DeathOutcome is the result of a death.
@@ -93,6 +121,9 @@ type DeathOutcome struct {
 	// (hardcore).
 	CharacterDead bool
 	Corpse        *Corpse
+	// DropToFloor is true when no corpse was made (MaxCorpses reached): the
+	// cursor item, the equipped items and the gold lie on the floor.
+	DropToFloor bool
 }
 
 // ExpPenalty returns the experience lost to a death: percent of the span of
@@ -133,7 +164,15 @@ func (s *DeathState) Die(in DeathInput) DeathOutcome {
 
 	s.Deaths++
 	s.Died = true
-	s.Corpse = &Corpse{X: in.X, Y: in.Y, Equipment: in.Equipment, ExpLost: lost, GoldDropped: in.Gold}
+
+	if CorpseOverCap(in.CorpseCount) {
+		out.DropToFloor = true
+
+		return out
+	}
+
+	s.Corpse = &Corpse{X: in.X, Y: in.Y, Equipment: in.Equipment, ExpLost: lost, GoldDropped: in.Gold,
+		Experience: CorpseExperience(in.PenaltyValue)}
 	out.Corpse = s.Corpse
 
 	return out
