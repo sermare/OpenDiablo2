@@ -30,7 +30,7 @@ func (t Transparency) Alpha() float64 {
 
 // CellTransparency returns the draw mode of a cell whose frame is drawn at
 // window position (x, y) (bottom-left anchor) on a w x h window. shiftPx is the
-// horizontal panel shift of the origin (-w/4, +w/4 or 0).
+// horizontal panel shift of the origin (-200, +200 or 0: PanelShift.Pixels).
 //
 // With the fade option off every cell is normal (AutoMapFade, 0x452d80). With it
 // on, the mini map is drawn flat at mode 1; the full map fades the cells near the

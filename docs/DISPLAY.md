@@ -54,8 +54,11 @@ Size rules (`d2display.Resolve`, `d2display.Logical`):
   (`d2display.Origin`). In the game the column is centred horizontally and stands on the bottom edge
   (`AnchorBottom`: origin `((W-800)/2, H-600)`). So the bottom bar is centred at the bottom, left panels sit
   in the left half of the column and right panels in the right half, exactly as in the original relative to the
-  bar. The bar's art is 800 wide; on a wider screen the world is visible on both sides of it (the original frame
-  has no art for the sides, so nothing is faked, it is the look of D2 mods and Resurrected).
+  bar. The bar's art is 800 wide; on a wider screen the world is visible on both sides of it by default (the original
+  frame has no art for the sides, it is the look of D2 mods and Resurrected). `OD2_BAR_FILL=black` draws a black
+  strip of the bar's height on both sides; `OD2_BAR_FILL=tile` repeats the outermost 8 columns of the bar art (the
+  left edge of the left globe holder frame on the left, the right edge of the right globe holder on the right).
+  Layout: `d2display.BarFillSpans` (pure, tested), drawn by `HUD.renderBarFill`.
 * **Menus and full screen dialogs** (main menu, character select, credits, cinematics) centre the column on both axes
   (`AnchorCenter`) on black. Loading screens, level-change fades, the Help dim and other black overlays cover the
   whole screen. Cinematics are scaled as before (video code unchanged).
@@ -65,8 +68,13 @@ Size rules (`d2display.Resolve`, `d2display.Logical`):
   hero position use the real size (`d2gamepad.Controller.SetScreen`).
 * **Tooltips** clamp to the real screen, which in column space is `d2display.ScreenRectInColumn`.
 * **Automap** covers the whole screen (full size and the mini map in the top right corner of the screen); the
-  hero stands at the screen centre, with the panel shift of a quarter of the screen as before (approximate, see below).
-* **Zone name text** stands in the upper part of the screen, not of the column.
+  hero stands at the screen centre, with the panel shift of a quarter of the 800 column (200 px, `PanelShift.Pixels`),
+  the same distance the world camera moves the hero beside an open panel.
+* **Zone name text** and **notices** ("quest log updated", `NoticePlacement`) stand in the upper part of the screen,
+  centred on the screen, not on the column. NPC subtitles stand just above the bar (bottom of the column), centred.
+* **Cinematics**: `d2display.VideoRect` is the letterbox of a video of any size on the screen (largest size at the
+  native aspect, centred, black surround). The Bink decoder of this fork parses headers only and nothing draws video
+  frames yet, so there is no frame to place; the cinematic and intro screens use the centred-column layout on black.
 
 Screens opt in with `ScreenAnchorHandler.DisplayAnchor()`; only the game returns `AnchorBottom`. The app translates the
 screen and the widgets by the column origin and renders the world, the loading screen, the cursor and the console in
@@ -95,8 +103,11 @@ screen centre.
 
 ## Approximate / not done
 
-* The automap's panel shift is a quarter of the whole screen width, not of the column.
-* Notices and NPC speech subtitles are placed relative to the column top, not the top of the screen.
-* Cinematics and the intro videos are not re-laid out.
-* Very large screens (5120 wide) draw many tiles; the draw cost grows with the visible tile count.
-* The map-engine test screen (`map_engine_testing.go`) is a developer tool and keeps its 800x600 assumptions.
+* Cinematics and the intro videos: the layout function exists (`VideoRect`), the decoder does not output frames yet.
+* The tile range is a rectangle around the isometric diamond of the screen; `VisibleTileRows` cuts it per row to the
+  tiles whose origin is within 400 px of the screen sides (and 200 above / 450 below), all four passes use it. At
+  5120x1440 the rectangle has 2352 tiles and 1629 are drawn (69%); 1920x1080 960 -> 687. Measured at 5120x1440
+  (`95c-perf-5120`, real level 111, 120 monsters): update 0.26-0.33 ms, render pass 1.6-1.7 ms CPU, frame
+  ~16 ms wall (GPU present of the large target). Without the cull the drawn tiles were the whole rectangle (not timed).
+* The map-engine test screen (`map_engine_testing.go`) is a developer tool; it now draws the world over the whole screen
+  and picks in screen coordinates, its text overlay stays in the column.

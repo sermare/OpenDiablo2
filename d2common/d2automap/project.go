@@ -102,8 +102,13 @@ type Layout struct {
 }
 
 // PanelShift says which side panels are open: the real game moves the hero a
-// quarter of the screen away from the open panel (full-screen map only).
+// quarter of the 800 pixel interface column (200 px) away from the open panel
+// (full-screen map only). The panels live in that column, so the distance does not
+// grow with a wider screen (the world camera does the same, docs/DISPLAY.md).
 type PanelShift int
+
+// PanelShiftPixels is how far the hero moves from the open panel: 800/4.
+const PanelShiftPixels = 200
 
 // Panel shifts.
 const (
@@ -111,6 +116,19 @@ const (
 	PanelRight            // a panel on the right side is open: the map moves left
 	PanelLeft             // a panel on the left side is open: the map moves right
 )
+
+// Pixels is the horizontal shift of the map origin: -200 (a right panel is open), +200 or 0. It is a
+// quarter of the 800 pixel column whatever the screen width.
+func (s PanelShift) Pixels() int {
+	switch s {
+	case PanelRight:
+		return -PanelShiftPixels
+	case PanelLeft:
+		return PanelShiftPixels
+	}
+
+	return 0
+}
 
 // ComputeLayout reproduces FUN_00452bb0 / FUN_00452cd0 / FUN_00454de0 for a
 // screen of w x h and the hero at (heroCellX, heroCellY) in cell space.
@@ -149,12 +167,7 @@ func ComputeLayoutOffsets(size Size, w, h int, heroCellX, heroCellY float64, shi
 	var offX, offY int
 
 	if size == SizeFull {
-		switch shift {
-		case PanelRight:
-			offX = -(w / 4)
-		case PanelLeft:
-			offX = w / 4
-		}
+		offX = shift.Pixels()
 
 		l.Clip = Rect{0, 0, w, h}
 		offX = (hx - w/2) - offX

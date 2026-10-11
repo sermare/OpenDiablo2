@@ -3,7 +3,10 @@ package d2player
 import (
 	"fmt"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
+	"image"
+	"image/color"
 	"math"
+	"os"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -111,6 +114,7 @@ type HUD struct {
 	widgetLeftSkill    *d2ui.CustomWidget
 	widgetRightSkill   *d2ui.CustomWidget
 	panelBackground    *d2ui.CustomWidget
+	barFill            d2display.BarFill
 	addStatsButton     *d2ui.Button
 	addSkillButton     *d2ui.Button
 	panelGroup         *d2ui.WidgetGroup
@@ -221,6 +225,14 @@ func (h *HUD) loadCustomWidgets() {
 	if err != nil {
 		h.Error(err.Error())
 		return
+	}
+
+	if mode, ok := d2display.ParseBarFill(os.Getenv("OD2_BAR_FILL")); !ok {
+		h.Warningf("OD2_BAR_FILL=%q: want none, black or tile", os.Getenv("OD2_BAR_FILL"))
+	} else if mode != d2display.BarFillNone {
+		h.barFill = mode
+		h.Infof("BAR_FILL mode=%s tile_w=%d", os.Getenv("OD2_BAR_FILL"), barFillTileW)
+		h.panelGroup.AddWidget(h.uiManager.NewCustomWidget(h.renderBarFill, screenWidth, height))
 	}
 
 	h.panelBackground = h.uiManager.NewCustomWidgetCached(h.renderPanelStatic, screenWidth, height)
@@ -439,6 +451,52 @@ func (h *HUD) renderPanelStatic(target d2interface.Surface) {
 
 	h.mainPanel.SetPosition(offsetX, height)
 	h.mainPanel.Render(target)
+}
+
+// barFillTileW is the width of the tile that OD2_BAR_FILL=tile repeats beside the bar.
+const barFillTileW = 8
+
+// renderBarFill fills the screen beside the 800 pixel bar (OD2_BAR_FILL): black, or the outermost columns of the
+// bar art repeated. The bar is drawn in column space, so the sides have negative x on the left.
+func (h *HUD) renderBarFill(target d2interface.Surface) {
+	spans := d2display.BarFillSpans(d2display.Get(), barFillTileW)
+	if len(spans) == 0 {
+		return
+	}
+
+	// the left edge of the bar is frame 0, the right edge frame 5 (the empty mana globe holder)
+	_, barH, err := h.mainPanel.GetFrameSize(0)
+	if err != nil {
+		return
+	}
+
+	for _, sp := range spans {
+		if h.barFill == d2display.BarFillBlack {
+			target.PushTranslation(sp.X, screenHeight-barH)
+			target.DrawRect(sp.W, barH, color.Black)
+			target.Pop()
+
+			continue
+		}
+
+		frame := frameRightGlobeHolder
+		if sp.Left {
+			frame = 0
+		}
+
+		fw, fh, err := h.mainPanel.GetFrameSize(frame)
+		if err != nil || h.mainPanel.SetCurrentFrame(frame) != nil {
+			return
+		}
+
+		src := sp.SrcOff
+		if !sp.Left {
+			src += fw - barFillTileW
+		}
+
+		h.mainPanel.SetPosition(sp.X, screenHeight)
+		h.mainPanel.RenderSection(target, image.Rect(src, 0, src+sp.W, fh))
+	}
 }
 
 func (h *HUD) renderPanel(x, y int, target d2interface.Surface) error {

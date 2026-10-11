@@ -8,6 +8,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
@@ -249,7 +250,11 @@ const (
 
 // Render renders the Map Engine Test screen
 func (met *MapEngineTest) Render(screen d2interface.Surface) {
+	// the world fills the whole screen: leave the interface column the app translated into
+	ox, oy := d2display.ColumnOrigin()
+	screen.PushTranslation(-ox, -oy)
 	met.mapRenderer.Render(screen)
+	screen.Pop()
 
 	screen.PushTranslation(0, lineNormalOffsetY)
 	defer screen.Pop()
@@ -380,7 +385,8 @@ func (met *MapEngineTest) renderTileInfo(screen d2interface.Surface) {
 
 // OnMouseMove is the mouse move handler
 func (met *MapEngineTest) OnMouseMove(event d2interface.MouseMoveEvent) bool {
-	mx, my := event.X(), event.Y()
+	// the handlers receive column coordinates; the world uses screen coordinates
+	mx, my := d2display.ToScreen(event.X(), event.Y())
 	met.lastMouseX = mx
 	met.lastMouseY = my
 
@@ -423,7 +429,7 @@ func (met *MapEngineTest) handleLeftClick() {
 
 	camVect := met.mapRenderer.Camera.GetPosition().Vector
 
-	halfScreenWidth, halfScreenHeight := screenWidth>>1, screenHeight>>1
+	halfScreenWidth, halfScreenHeight := d2display.W()>>1, d2display.H()>>1
 
 	x := float64(met.lastMouseX-halfScreenWidth) / subtilesPerTile
 	y := float64(met.lastMouseY-halfScreenHeight) / subtilesPerTile

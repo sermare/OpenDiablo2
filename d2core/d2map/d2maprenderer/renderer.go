@@ -196,15 +196,19 @@ func (mr *MapRenderer) Render(target d2interface.Surface) {
 	}
 
 	mr.indexEntities()
-	mr.renderPass1(target, startX, startY, endX, endY)
-	mr.renderPass2(target, startX, startY, endX, endY)
+
+	// only the tiles that can be seen (the range is a rectangle around the isometric diamond of the screen)
+	rows := VisibleTileRows(mr.viewport, sz.W, sz.H, startX, startY, endX, endY)
+
+	mr.renderPass1(target, startY, endY, rows)
+	mr.renderPass2(target, startY, endY, rows)
 
 	if mr.mapDebugVisLevel > 0 {
 		mr.renderMapDebug(mr.mapDebugVisLevel, target, startX, startY, endX, endY)
 	}
 
-	mr.renderPass3(target, startX, startY, endX, endY)
-	mr.renderPass4(target, startX, startY, endX, endY)
+	mr.renderPass3(target, startY, endY, rows)
+	mr.renderPass4(target, startY, endY, rows)
 
 	if mr.entityDebugVisLevel > 0 {
 		mr.renderEntityDebug(target)
@@ -267,9 +271,11 @@ func (mr *MapRenderer) WorldToOrtho(x, y float64) (orthoX, orthoY float64) {
 
 // Floors of the whole view first, then lower walls (a wall must never be
 // overpainted by the floor of a later tile).
-func (mr *MapRenderer) renderPass1(target d2interface.Surface, startX, startY, endX, endY int) {
+func (mr *MapRenderer) renderPass1(target d2interface.Surface, startY, endY int, rows *TileRows) {
 	for tileY := startY; tileY < endY; tileY++ {
-		for tileX := startX; tileX < endX; tileX++ {
+		from, to := rows.Row(tileY)
+
+		for tileX := from; tileX < to; tileX++ {
 			tile := mr.mapEngine.TileAt(tileX, tileY)
 			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
 
@@ -284,7 +290,9 @@ func (mr *MapRenderer) renderPass1(target d2interface.Surface, startX, startY, e
 	}
 
 	for tileY := startY; tileY < endY; tileY++ {
-		for tileX := startX; tileX < endX; tileX++ {
+		from, to := rows.Row(tileY)
+
+		for tileX := from; tileX < to; tileX++ {
 			tile := mr.mapEngine.TileAt(tileX, tileY)
 			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
 
@@ -300,9 +308,11 @@ func (mr *MapRenderer) renderPass1(target d2interface.Surface, startX, startY, e
 }
 
 // Entities below walls.
-func (mr *MapRenderer) renderPass2(target d2interface.Surface, startX, startY, endX, endY int) {
+func (mr *MapRenderer) renderPass2(target d2interface.Surface, startY, endY int, rows *TileRows) {
 	for tileY := startY; tileY < endY; tileY++ {
-		for tileX := startX; tileX < endX; tileX++ {
+		from, to := rows.Row(tileY)
+
+		for tileX := from; tileX < to; tileX++ {
 			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
 
 			tile := mr.mapEngine.TileAt(tileX, tileY)
@@ -390,9 +400,11 @@ func (mr *MapRenderer) getEntitiesBelowWalls(tileX, tileY int) []d2interface.Map
 }
 
 // Upper wall tiles and entities above walls.
-func (mr *MapRenderer) renderPass3(target d2interface.Surface, startX, startY, endX, endY int) {
+func (mr *MapRenderer) renderPass3(target d2interface.Surface, startY, endY int, rows *TileRows) {
 	for tileY := startY; tileY < endY; tileY++ {
-		for tileX := startX; tileX < endX; tileX++ {
+		from, to := rows.Row(tileY)
+
+		for tileX := from; tileX < to; tileX++ {
 			tile := mr.mapEngine.TileAt(tileX, tileY)
 			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
 			mr.renderTilePass2(tile, target, tileX, tileY)
@@ -428,11 +440,13 @@ func (mr *MapRenderer) getEntitiesAboveWalls(tileX, tileY int) []d2interface.Map
 }
 
 // Roof tiles.
-func (mr *MapRenderer) renderPass4(target d2interface.Surface, startX, startY, endX, endY int) {
+func (mr *MapRenderer) renderPass4(target d2interface.Surface, startY, endY int, rows *TileRows) {
 	mr.updateRoofCover()
 
 	for tileY := startY; tileY < endY; tileY++ {
-		for tileX := startX; tileX < endX; tileX++ {
+		from, to := rows.Row(tileY)
+
+		for tileX := from; tileX < to; tileX++ {
 			tile := mr.mapEngine.TileAt(tileX, tileY)
 			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
 			mr.renderTilePass3(tile, target, tileX, tileY)

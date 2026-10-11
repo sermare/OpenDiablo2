@@ -4,6 +4,7 @@ import (
 	"image/color"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
@@ -38,6 +39,14 @@ type SpeechBubble struct {
 
 	notice     *d2ui.Label
 	noticeLeft float64
+}
+
+// NoticePlacement is the top left corner and the width of the notice box for a notice text of textW pixels
+// on a screen of the given logical size: centred on the screen, noticeTop pixels from the screen top.
+func NoticePlacement(screen d2display.Size, textW int) (x, y, boxW int) {
+	boxW = textW + 2*speechPadding
+
+	return (screen.W - boxW) / 2, noticeTop, boxW
 }
 
 // NewSpeechBubble creates an empty bubble.
@@ -103,13 +112,15 @@ func (s *SpeechBubble) Advance(elapsed float64) {
 func (s *SpeechBubble) Render(target d2interface.Surface) {
 	if s.noticeLeft > 0 && s.notice != nil {
 		w, _ := s.notice.GetTextMetrics(s.notice.GetText())
-		bw := w + 2*speechPadding
+		x, y, bw := NoticePlacement(d2display.Get(), w)
 
-		target.PushTranslation((800-bw)/2, noticeTop)
+		// the notice stands at the top of the screen: leave the interface column the app translated into
+		ox, oy := d2display.ColumnOrigin()
+		target.PushTranslation(x-ox, y-oy)
 		target.DrawRect(bw, speechLineHeight+speechPadding, speechBackground)
 		target.Pop()
 
-		s.notice.SetPosition((800-w)/2, noticeTop+speechLineHeight)
+		s.notice.SetPosition(x-ox+speechPadding, y-oy+speechLineHeight)
 		s.notice.Render(target)
 	}
 

@@ -138,14 +138,7 @@ func (a *Automap) Render(target d2interface.Surface) {
 
 func (a *Automap) drawCells(dest d2interface.Surface, sp *d2ui.Sprite, lay d2automap.Layout, ox, oy, sw, sh int, shift d2automap.PanelShift) {
 	fade := a.option("fade")
-	shiftPx := 0
-
-	switch shift {
-	case d2automap.PanelRight:
-		shiftPx = -(sw / 4)
-	case d2automap.PanelLeft:
-		shiftPx = sw / 4
-	}
+	shiftPx := shift.Pixels()
 
 	defer sp.SetColorMod(nil)
 
