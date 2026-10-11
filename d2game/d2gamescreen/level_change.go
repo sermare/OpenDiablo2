@@ -376,6 +376,11 @@ func nextToWaypoint(m *d2mapengine.MapEngine) (x, y float64, ok bool) {
 // resetLevelState drops everything tied to the old map.
 func (v *Game) resetLevelState() {
 	v.captureMerc()
+
+	if v.monsters != nil {
+		v.frameBase += v.monsters.Frame()
+	}
+
 	v.monsters, v.attackTarget, v.npcTarget = nil, nil, nil
 	v.ground.item, v.ground.chest = nil, nil
 	v.levels.use, v.levels.warpTarget, v.levels.wpObj, v.levels.exitWalk = nil, nil, nil, nil
