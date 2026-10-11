@@ -275,17 +275,10 @@ const (
 // choice (roll>64 wait 10; roll>64 and near walk up; else circle); farther
 // than 20: approach; in reach: roll>aip1 melee phase else burst.
 //
-// UNVERIFIED (read from the disassembly of the jump-table targets, which
-// Ghidra has no function for; the slot choice and thresholds are exact, the
-// glue calls are interpreted): the bodies of the phases. Burst: first step
-// retreats 3, then each cast picks among the used slots in equal shares
-// (share = 100/used): Blizzard when the hero is far (>30) and not in reach on
-// nightmare/hell, Frost Nova when within 15 (n/nm/h only) in the first share,
-// Mephisto Missile in the first two, Prime Bolt in the first three, Prime
-// Lightning otherwise.
+// The phase bodies (jump table 0x5f7000) are in ai_meph.go (VERIFIED from the
+// disassembly of the five targets).
 func thinkMephisto(c *Ctx) {
 	b, t := c.B, c.Target
-	p := b.Profile
 
 	if t == nil {
 		c.Sleep(10)
@@ -336,52 +329,7 @@ func thinkMephisto(c *Ctx) {
 		b.Scratch[0] = b.Roll(3) + mephBurstMin
 	}
 
-	switch phase {
-	case mephIdle:
-		b.Scratch[2] = mephApproach
-		c.Sleep(5)
-	case mephBackOff:
-		b.Scratch[2] = mephIdle
-		c.SetSpeed(50)
-
-		if c.WalkAway(*t, 8) {
-			return
-		}
-
-		if p.Skills[slot3].Used() {
-			c.Cast(slot3, *t)
-		} else {
-			c.Sleep(10)
-		}
-	case mephBurst:
-		mephBurstStep(c, *t, k)
-	case mephMelee:
-		b.Scratch[2] = mephIdle
-
-		switch {
-		case b.Roll(100) >= k+80:
-			c.SetSpeed(50)
-
-			if !c.WalkAway(*t, 3) {
-				c.Sleep(10)
-			}
-		case b.Roll(100) >= 80-k && p.Skills[slot1].Used():
-			c.Cast(slot1, *t)
-		default:
-			c.Attack(ModeAttack1, *t)
-		}
-	case mephApproach:
-		b.Scratch[2] = mephIdle
-		c.SetSpeed(50)
-
-		if c.WalkTo(*t, 6) {
-			return
-		}
-
-		if !c.WalkToRange(*t, 12, 6) {
-			c.Sleep(10)
-		}
-	}
+	mephRunPhase(c, *t, phase, k)
 }
 
 // mephIdleChoice is the "nothing to cast" tail of the selector (VERIFIED).
@@ -409,63 +357,6 @@ func mephIdleChoice(c *Ctx, t Target) {
 
 	if !c.Circle(t, 4) {
 		c.Sleep(10)
-	}
-}
-
-func mephBurstStep(c *Ctx, t Target, k int) {
-	b := c.B
-	p := b.Profile
-
-	b.Scratch[0]--
-	if b.Scratch[0] <= 0 {
-		b.Scratch[2] = mephIdle
-		b.Scratch[1] = 0
-	} else {
-		b.Scratch[2] = mephBurst
-	}
-
-	if b.Scratch[1] == 0 { // the first step of a burst steps back
-		b.Scratch[1] = 2
-		if b.Scratch[2] == mephBurst && c.WalkAway(t, 3) {
-			return
-		}
-	} else {
-		b.Scratch[1]++
-	}
-
-	used := 0
-
-	for i := 0; i < 8; i++ {
-		if !p.Skills[i].Used() {
-			break
-		}
-
-		used++
-	}
-
-	if used == 0 {
-		c.Attack(ModeAttack1, t)
-
-		return
-	}
-
-	share := 100 / used
-	r := b.Roll(100)
-	hard := b.Diff > Normal
-
-	switch {
-	case hard && c.Dist > 30 && !c.InRange && p.Skills[slot6].Used():
-		c.Cast(slot6, t) // Blizzard from afar
-	case hard && c.Dist < 15 && r < share && p.Skills[slot5].Used():
-		c.Cast(slot5, t) // Frost Nova up close
-	case r < 2*share && p.Skills[slot4].Used():
-		c.Cast(slot4, t)
-	case r < 3*share && p.Skills[slot2].Used():
-		c.Cast(slot2, t)
-	case p.Skills[slot1].Used():
-		c.Cast(slot1, t)
-	default:
-		c.Attack(ModeAttack1, t)
 	}
 }
 

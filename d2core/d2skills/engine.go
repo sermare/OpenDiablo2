@@ -160,7 +160,7 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 	e.pipe = &d2skill.Pipeline{
 		Skills: asset.Records.SkillTable(), Missiles: asset.Records.MissileTable(), Sim: e.sim,
 		Grid: monsters.Grid(), Frame: func() int { return e.frame },
-		Opt: d2skill.Options{IgnoreTown: opt.IgnoreTown, StaticFieldMinPct: staticFieldMin(asset, monsters)},
+		Opt: d2skill.Options{IgnoreTown: opt.IgnoreTown, StaticFieldMinPct: staticFieldMin(asset, monsters), EventBursts: true},
 	}
 	e.pipe.TeleportFlag = opt.TeleportFlag
 	e.pipe.ApplyState = e.applyMissileState
@@ -498,7 +498,35 @@ func (e *Engine) runDo(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, tg
 		e.effect(p, u, sk, &res.Effects[i])
 	}
 
+	e.scheduleBurst(p, sk, res.Burst)
+
 	return true
+}
+
+// burstEventFrames is the spacing of the attack animation events of a burst
+// (Fend, Zeal), in game frames. UNVERIFIED: the real spacing is the attack
+// animation's action-frame period of the hero's weapon class.
+const burstEventFrames = 8
+
+// scheduleBurst runs the remaining animation events of a multi-hit skill.
+func (e *Engine) scheduleBurst(p *d2mapentity.Player, sk *d2skill.Skill, b *d2skill.Burst) {
+	if b.Done() {
+		return
+	}
+
+	e.after(burstEventFrames, func() {
+		var res d2skill.DoResult
+
+		if !e.pipe.BurstEvent(b, &res) {
+			return
+		}
+
+		for _, m := range res.Melees {
+			e.meleeResult(p, sk, m)
+		}
+
+		e.scheduleBurst(p, sk, b)
+	})
 }
 
 func (e *Engine) castOverlay(p *d2mapentity.Player, rec *d2records.SkillRecord) {

@@ -851,6 +851,10 @@ type FBXOverseerHost interface {
 // the skill1 ready frame.
 func thinkOverseerB(c *Ctx) {
 	b, now := c.B, c.W.Frame()
+
+	// every think, before anything else: QUEST_A5_SiegeOnHarrogath_OnOverseerThink
+	// 0x5857e0 (hook only; the quest gate is boss number 0x2a)
+	c.questHook("overseer")
 	t := fbxTargetOrSelf(c)
 
 	var linked Target

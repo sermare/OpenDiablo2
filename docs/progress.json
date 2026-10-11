@@ -96,10 +96,10 @@
     },
     {
       "label": "Monster AI archetypes ported faithfully",
-      "done": 103,
+      "done": 105,
       "total": 148,
       "pending": 0,
-      "note": "~103 (estimate): batch 5 closed the documented gaps of Diablo, Vulture, BloodRaven, Nihlathak, UberIzual and made UberDiablo and UberMephisto the exe-faithful stops (7 newly counted; Izual, Summoner, Duriel, Andariel and Smith were re-read and only got hooks, not counted again); batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
+      "note": "~105 (estimate): batch 6 (branch feat/skills-ai-6) ported the WillOWisp dance (states 4-6) and the Mephisto phase bodies from the exe (2 newly counted); the Shadow Master scoring and candidate stack are ported too but no game host feeds them yet, so it is not counted; Overseer got its quest hook; batch 5 closed the documented gaps of Diablo, Vulture, BloodRaven, Nihlathak, UberIzual and made UberDiablo and UberMephisto the exe-faithful stops (7 newly counted; Izual, Summoner, Duriel, Andariel and Smith were re-read and only got hooks, not counted again); batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
       "color": "#6c8cff"
     },
     {

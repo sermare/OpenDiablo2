@@ -32,6 +32,16 @@ func profileFromRecord(r *d2records.MonStatRecord, diff d2monster.Difficulty) *d
 	p.AIP[6] = pick(r.AiParameterNormal6, r.AiParameterNightmare6, r.AiParameterHell6)
 	p.AIP[7] = pick(r.AiParameterNormal7, r.AiParameterNightmare7, r.AiParameterHell7)
 	p.AIP[8] = pick(r.AiParameterNormal8, r.AiParameterNightmare8, r.AiParameterHell8)
+	p.AIPRaw = [9][3]int{
+		1: {r.AiParameterNormal1, r.AiParameterNightmare1, r.AiParameterHell1},
+		2: {r.AiParameterNormal2, r.AiParameterNightmare2, r.AiParameterHell2},
+		3: {r.AiParameterNormal3, r.AiParameterNightmare3, r.AiParameterHell3},
+		4: {r.AiParameterNormal4, r.AiParameterNightmare4, r.AiParameterHell4},
+		5: {r.AiParameterNormal5, r.AiParameterNightmare5, r.AiParameterHell5},
+		6: {r.AiParameterNormal6, r.AiParameterNightmare6, r.AiParameterHell6},
+		7: {r.AiParameterNormal7, r.AiParameterNightmare7, r.AiParameterHell7},
+		8: {r.AiParameterNormal8, r.AiParameterNightmare8, r.AiParameterHell8},
+	}
 
 	names := [d2monster.NumSkills]string{r.SkillId1, r.SkillId2, r.SkillId3, r.SkillId4,
 		r.SkillId5, r.SkillId6, r.SkillId7, r.SkillId8}

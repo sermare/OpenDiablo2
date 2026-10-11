@@ -125,3 +125,27 @@ func (d *Director) raiseCorpse(caster *unit, id uint32) {
 	d.emit("raise", "MONSTER raise caster=%s id=%d corpse=%s corpse_id=%d", caster.m.Label(), caster.b.ID,
 		u.m.Label(), u.b.ID)
 }
+
+// WispFormation implements d2monster.WispFormer: the living Gloam (base class
+// 0x76, the only class the exe's filter 0x5f2920 accepts) within 0x20 subtiles
+// of the searching wisp, itself included, in the director's stable unit order.
+// The radius unit and the result order of the exe's search are UNVERIFIED.
+func (d *Director) WispFormation(b *d2monster.Brain) []d2monster.WispMate {
+	var out []d2monster.WispMate
+
+	for _, u := range d.sortedUnits() {
+		if u.merc != nil || u.ally != nil || !u.m.Alive() || !strings.EqualFold(u.m.Stat.BaseKey, "Gloam") {
+			continue
+		}
+
+		x, y := u.m.SubtilePos()
+		if dx, dy := b.X-x, b.Y-y; dx > 0x20 || dx < -0x20 || dy > 0x20 || dy < -0x20 {
+			continue
+		}
+
+		ub := u.b
+		out = append(out, d2monster.WispMate{B: ub, Wait: func(n int) { ub.Wake = d.frame + n }})
+	}
+
+	return out
+}

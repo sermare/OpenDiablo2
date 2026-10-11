@@ -39,7 +39,11 @@ type Profile struct {
 	AIDist int    // aidist (aggro radius, 0 = default)
 	Threat int
 	// AIP holds aip1..aip8 at indices 1..8 (index 0 unused).
-	AIP    [9]int
+	AIP [9]int
+	// AIPRaw holds the three per-difficulty words (normal, nightmare, hell) of
+	// aip1..aip8 as monstats stores them. The Shadow Master reads them at fixed
+	// offsets as separate parameters (+0x56 aip1 normal .. +0x60 aip2 hell).
+	AIPRaw [9][3]int
 	Skills [NumSkills]SkillSlot
 	// Melee is monstats flag bit 1 (isMelee, class flag test 0x452b20 bit 1).
 	// UNVERIFIED mapping of the bit's name; the bit index is VERIFIED.
