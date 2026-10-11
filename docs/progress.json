@@ -12,10 +12,10 @@
     },
     {
       "label": "Hedged exe names re-verified against the decompile",
-      "done": 1518,
+      "done": 1633,
       "total": 1633,
       "pending": 0,
-      "note": "1,397 confirmed, 97 corrected, ~24 unclear; ~115 left (mostly EVENT_/UNIT_/SERVER_ helpers above 0x551b90 and thunks); batch 3 covered the server/client/save/arena helpers 0x528000-0x551b90, batch 2 covered the missile/CLTDO/CLTST block (~ estimate of the total)",
+      "note": "every hedged row now has a verdict; batch 4 (final) examined 173 table rows: 112 confirmed, 47 corrected in Ghidra, 14 unclear and still marked unverified; earlier batches 1-3 as before (~ estimate of the total)",
       "color": "#8f7cff"
     },
     {
@@ -27,9 +27,9 @@
     },
     {
       "label": "Source files studied in depth",
-      "done": 240,
+      "done": 277,
       "total": 277,
-      "note": "NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
+      "note": "last 37 (batches 11-13): gameplay files read, infrastructure and graphics backends only function-mapped; NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
       "color": "#2f9bff"
     },
     {
@@ -80,10 +80,10 @@
     },
     {
       "label": "Player skills with engine behaviour",
-      "done": 157,
+      "done": 163,
       "total": 210,
       "pending": 0,
-      "note": "150 of 210 player skills have engine behaviour: Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry); skills batch 3 (branch feat/skills-3): Feral Rage and Maul stack by count, Wearwolf and Wearbear toggle, Leap Attack single victim, Dragon Claw and Dragon Tail follow the exe (+7); Leap, Dragon Flight, Thunder Storm, Conversion and the three totem auras re-read and corrected but still partial",
+      "note": "skills batch 4 (branch feat/skills-4, +6): Thunder Storm rotates through the targets, Leap (circle at the landing) and Dragon Flight (lands on the target) confirmed against the exe, Bone Prison 12-cell ring, Poison Explosion eight stationary clouds, Blessed Hammer spiral path plus Concentration scale; Static Field callback re-read (floor is a gate); earlier: 150 of 210 player skills have engine behaviour:Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry); skills batch 3 (branch feat/skills-3): Feral Rage and Maul stack by count, Wearwolf and Wearbear toggle, Leap Attack single victim, Dragon Claw and Dragon Tail follow the exe (+7); Leap, Dragon Flight, Thunder Storm, Conversion and the three totem auras re-read and corrected but still partial",
       "color": "#5fd0a5"
     },
     {
@@ -96,10 +96,10 @@
     },
     {
       "label": "Monster AI archetypes ported faithfully",
-      "done": 105,
+      "done": 117,
       "total": 148,
       "pending": 0,
-      "note": "~105 (estimate): batch 6 (branch feat/skills-ai-6) ported the WillOWisp dance (states 4-6) and the Mephisto phase bodies from the exe (2 newly counted); the Shadow Master scoring and candidate stack are ported too but no game host feeds them yet, so it is not counted; Overseer got its quest hook; batch 5 closed the documented gaps of Diablo, Vulture, BloodRaven, Nihlathak, UberIzual and made UberDiablo and UberMephisto the exe-faithful stops (7 newly counted; Izual, Summoner, Duriel, Andariel and Smith were re-read and only got hooks, not counted again); batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
+      "note": "~117 (estimate): batch 7 (branch feat/ai-faithful-7) re-read 28 ground, melee, ranged and caster handlers against the exe and corrected 12 (Fallen, Brute, Scarab, SkeletonMage, Fetish, FetishShaman, BatDemon, Megademon, Succubus, AbyssKnight, Bighead, CorruptRogue; 12 newly counted) and wired FB1Unit, AuraStateSource and LineChecker in the game host; the WispBlesser, Shadow Master feed and PlayerScaler hosts are still missing; batch 6 (branch feat/skills-ai-6) ported the WillOWisp dance (states 4-6) and the Mephisto phase bodies from the exe (2 newly counted); the Shadow Master scoring and candidate stack are ported too but no game host feeds them yet, so it is not counted; Overseer got its quest hook; batch 5 closed the documented gaps of Diablo, Vulture, BloodRaven, Nihlathak, UberIzual and made UberDiablo and UberMephisto the exe-faithful stops (7 newly counted; Izual, Summoner, Duriel, Andariel and Smith were re-read and only got hooks, not counted again); batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
       "color": "#6c8cff"
     },
     {
