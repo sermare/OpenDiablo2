@@ -99,6 +99,7 @@ type Totals struct {
 	CriticalStrike int
 	CrushingBlow   int
 	OpenWounds     int
+	SlowTarget     int // item_slow (150): slows the target of a hit by N percent
 	LifeSteal      int
 	ManaSteal      int
 
@@ -327,6 +328,7 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 	t.CriticalStrike = int(list.Get(StatCritical))
 	t.CrushingBlow = int(list.Get(StatCrushing))
 	t.OpenWounds = int(list.Get(StatOpenWounds))
+	t.SlowTarget = int(list.Get(StatSlowTarget))
 	t.LifeSteal = int(list.Get(StatLifeSteal))
 	t.ManaSteal = int(list.Get(StatManaSteal))
 	t.FasterAttack = int(list.Get(StatFasterAttack))

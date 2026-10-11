@@ -1215,6 +1215,10 @@ func doAuraFn(c *cast) {
 		}
 	}
 
+	if sk.SrvDoFunc == 65 { // friendly aura: the upkeep is the aura parameter (VERIFIED 0x5cd4b0 + 0x645ed0)
+		e.Cost = int(sk.calcMana(c.lvl, false))
+	}
+
 	if sk.SrvDoFunc == 82 { // Redemption
 		e.Mode = "redemption"
 		e.Heal, e.Dist = c.calc(2), c.calc(3)
