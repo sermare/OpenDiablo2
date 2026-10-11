@@ -10,6 +10,7 @@ a5=$tmp/act5deep
 # swings the flail and died on the Worldstone Keep); "restorevitals" on every arrival stands for the rest a player takes.
 # The sample character is a dead hardcore Sorceress; scripts/d2s-revive.go makes a living copy (needs D2_TABLES).
 scenario_warnings_ok=1
+scenario_turbo=1  # scripted autoplay, no wall-clock assertions (numbers: ~/git/d2-re-notes/turbo-mode.md)
 scenario_env() {
   mkdir -p $a5/s94 $a5/wb94; rm -f $a5/s94/Hero.d2s $a5/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && make_hero $a5/s94/Hero.d2s; then

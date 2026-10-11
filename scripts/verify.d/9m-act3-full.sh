@@ -7,6 +7,7 @@ a3=$tmp/act3m
 # lair and leaves through the red portal for the Pandemonium Fortress.
 # One game window, OD2_AUTOSPEED=8. "KILL giving up" warnings are part of fights in the undergrowth.
 scenario_warnings_ok=1
+scenario_turbo=1  # scripted autoplay, no wall-clock assertions (numbers: ~/git/d2-re-notes/turbo-mode.md)
 scenario_timeout=1200 # a long route: the borders of the whole act, the council, three Durance levels and Mephisto
 scenario_env() {
   mkdir -p $a3/s94 $a3/wb94; rm -f $a3/s94/*.d2s(N) $a3/wb94/*.d2s(N)

@@ -166,8 +166,10 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
       } > $cmd
       chmod +x $cmd; rm -f $log
       slot=$(./scripts/gameslot.sh acquire $$)
+      t_start=$SECONDS
       launch_game $cmd
       wait_run
+      echo "SCENARIO TIME ${n} ${turbo_v:+turbo=$turbo_v }attempt=$attempt wall=$((SECONDS - t_start))s"
       ./scripts/gameslot.sh release $slot
       sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
       scenario_check
