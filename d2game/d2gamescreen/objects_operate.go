@@ -28,6 +28,9 @@ type objInstance struct {
 	rearmAt float64          // game time at which a used shrine / well can be used again, 0 = never
 	uses    int
 
+	// variant is the object variant byte (unit +0x78) bit 0 of OBJECT_OperateLootContainer; its source in
+	// the original (the creating request) is not decoded, so it is false unless a caller sets it.
+	variant   bool
 	chestInit *d2object.ChestInit // lock and spawn handler rolled on first use (objects_gaps.go)
 
 	// wells: pulses left (counter in the object data byte +4 of the exe) and the game times at which a spent pulse

@@ -316,8 +316,12 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 	all := &diablo2item.Loot{}
 	tc := ""
 
+	if plan.sparkly || plan.variant {
+		all, tc = v.openChestForced(ob, id, co, plan)
+	}
+
 	// a locked chest rolls its treasure class twice (0x583e70)
-	for r := 0; r < plan.rolls; r++ {
+	for r := 0; r < plan.rolls && !plan.sparkly && !plan.variant; r++ {
 		v.ground.chestSeq++
 
 		loot, class, err := v.rollChestOnce(co, id, v.chestSeed()+v.ground.chestSeq)

@@ -266,6 +266,11 @@ func (d *Director) elementalHit(u *unit, p *d2mapentity.Player, atk d2mapentity.
 		return 0
 	}
 
+	// El#Pct: a chance below 100 is one percent roll on the unit's seed (0x5a2960), made before the damage
+	if atk.ElemPct > 0 && int(u.b.Seed.Roll(100)) >= atk.ElemPct {
+		return 0
+	}
+
 	e := atk.ElemMin + int(u.b.Seed.Roll(int32(atk.ElemMax-atk.ElemMin+1)))
 
 	return applyElemResist(e, atk.ElemType, p.Stats.Totals)

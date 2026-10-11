@@ -210,17 +210,7 @@ func (f *HeroStateFactory) RecalcStats(state *HeroState) {
 	st.Totals = &tot
 	st.MaxHealth, st.MaxMana, st.MaxStamina = tot.MaxLife, tot.MaxMana, tot.MaxStamina
 
-	if st.Health > st.MaxHealth {
-		st.Health = st.MaxHealth
-	}
-
-	if st.Mana > st.MaxMana {
-		st.Mana = st.MaxMana
-	}
-
-	if st.Stamina > float64(st.MaxStamina) {
-		st.Stamina = float64(st.MaxStamina)
-	}
+	st.ClampVitalsToMax()
 
 	st.Recalc = func() { f.RecalcStats(state) }
 }

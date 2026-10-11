@@ -288,6 +288,13 @@ func (e *Engine) trail(p *d2mapentity.Player, sk *d2skill.Skill, ef *d2skill.Eff
 // it (terror flees, stun/freeze hold, chill slows).
 func (e *Engine) applyMonsterState(m *d2mapentity.Monster, inst d2state.Instance) {
 	e.target(m)
+
+	// VERIFIED (0x5c1300): resist penalties on a monster that is immune to the element are cut to a fifth
+	if m.Stat != nil && len(inst.Mods) > 0 {
+		res := d2monsters.MonsterResists(m.Stat, m.Vitals.Difficulty)
+		inst.Mods = d2state.ReduceCurseMods(inst.Mods, false, func(i int) int { return res[i] })
+	}
+
 	e.setOf(m.ID()).Apply(e.frame, inst)
 	e.syncMonster(m)
 	e.forceFromMods(m, inst)
@@ -326,7 +333,15 @@ func (e *Engine) areaState(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill
 
 	n := 0
 
+	curse := curseDoFunc(sk.SrvDoFunc)
+
 	for _, m := range e.monstersNear(cx, cy, ef.Radius) {
+		if curse && !curseableMonster(m, ef.Stats) {
+			e.emit("state", "STATE curse refused skill=%q unit=%s (not curseable)", sk.Name, m.Label())
+
+			continue
+		}
+
 		n++
 
 		e.applyMonsterState(m, d2state.Instance{Name: ef.State, Until: e.frame + frames, Mods: statMods(ef.Stats),
@@ -1427,4 +1442,26 @@ func (e *Engine) overlayOn(ef *d2skill.Effect) {
 
 	e.overlayAt(ef.Overlay, x, y)
 	e.emit("state", "OVERLAY name=%s at=(%d,%d)", ef.Overlay, x, y)
+}
+
+// curseDoFunc says whether a srvdofunc is one of the curse callbacks (SRVDO_030 curses, 59 Attract, 61 Confuse).
+func curseDoFunc(n int) bool { return n == 30 || n == 59 || n == 61 }
+
+// curseableMonster is SKILL_IsCurseableUnit (0x5c11f0) for a monster plus the stat nullification of
+// SKILL_ApplyCurseToTarget (0x5c1380): it needs a walk animation, and a resist penalty that the immune
+// reduction cuts to zero leaves nothing to apply.
+func curseableMonster(m *d2mapentity.Monster, stats []d2skill.StatMod) bool {
+	if m.StatEx != nil && !d2state.CurseableMonster(m.StatEx.HasAnimationMode[d2state.WalkModeIndex]) {
+		return false
+	}
+
+	if m.Stat == nil {
+		return true
+	}
+
+	res := d2monsters.MonsterResists(m.Stat, m.Vitals.Difficulty)
+	orig := statMods(stats)
+	reduced := d2state.ReduceCurseMods(orig, false, func(i int) int { return res[i] })
+
+	return !d2state.CurseNullified(orig, reduced)
 }

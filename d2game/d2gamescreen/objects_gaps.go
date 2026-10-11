@@ -78,6 +78,9 @@ type containerPlan struct {
 	locked  bool
 	handler int
 	monster bool // a barrel releases a level monster
+	// sparkly and variant select the quality forcing branches of d2object.OpenSparkly / OpenGeneric,
+	// which make their own rolls (openChestForced).
+	sparkly, variant bool
 }
 
 // planContainer applies the operate functions of the loot containers (OperateFn 7, 5, 3, 4...) up to the
@@ -125,7 +128,14 @@ func (v *Game) planContainer(ob *d2mapentity.Object) containerPlan {
 
 		plan.monster = d2object.BarrelSpawnsMonster(rng)
 	case 4: // chests (0x583e70)
-		plan.rolls = d2object.ContainerDropRolls(ci.Locked, rng)
+		switch {
+		case rec.Index == d2object.SparklyChestIndex:
+			plan.sparkly, plan.rolls = true, 1
+		case v.objectInstance(ob).variant:
+			plan.variant, plan.rolls = true, 1
+		default:
+			plan.rolls = d2object.ContainerDropRolls(ci.Locked, rng)
+		}
 	}
 
 	return plan
