@@ -12,10 +12,10 @@
     },
     {
       "label": "Hedged exe names re-verified against the decompile",
-      "done": 1398,
+      "done": 1518,
       "total": 1633,
       "pending": 0,
-      "note": "1,296 confirmed, 82 corrected, ~20 unclear; ~235 left (server/client network and session helpers, library thunks, remaining game-logic rows); batch 2 covered the missile/CLTDO/CLTST block (~ estimate of the total)",
+      "note": "1,397 confirmed, 97 corrected, ~24 unclear; ~115 left (mostly EVENT_/UNIT_/SERVER_ helpers above 0x551b90 and thunks); batch 3 covered the server/client/save/arena helpers 0x528000-0x551b90, batch 2 covered the missile/CLTDO/CLTST block (~ estimate of the total)",
       "color": "#8f7cff"
     },
     {
@@ -27,7 +27,7 @@
     },
     {
       "label": "Source files studied in depth",
-      "done": 215,
+      "done": 240,
       "total": 277,
       "note": "NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
       "color": "#2f9bff"
@@ -96,10 +96,10 @@
     },
     {
       "label": "Monster AI archetypes ported faithfully",
-      "done": 103,
+      "done": 105,
       "total": 148,
       "pending": 0,
-      "note": "~103 (estimate): batch 5 closed the documented gaps of Diablo, Vulture, BloodRaven, Nihlathak, UberIzual and made UberDiablo and UberMephisto the exe-faithful stops (7 newly counted; Izual, Summoner, Duriel, Andariel and Smith were re-read and only got hooks, not counted again); batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
+      "note": "~105 (estimate): batch 6 (branch feat/skills-ai-6) ported the WillOWisp dance (states 4-6) and the Mephisto phase bodies from the exe (2 newly counted); the Shadow Master scoring and candidate stack are ported too but no game host feeds them yet, so it is not counted; Overseer got its quest hook; batch 5 closed the documented gaps of Diablo, Vulture, BloodRaven, Nihlathak, UberIzual and made UberDiablo and UberMephisto the exe-faithful stops (7 newly counted; Izual, Summoner, Duriel, Andariel and Smith were re-read and only got hooks, not counted again); batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
       "color": "#6c8cff"
     },
     {
