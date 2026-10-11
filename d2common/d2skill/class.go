@@ -507,7 +507,9 @@ func doMultiHitFn(c *cast) {
 
 	if c.sk.SrvStFunc == 9 { // Fend
 		foes := c.p.foes(c.tgt.UX, c.tgt.UY, 6)
-		max := c.calc(1)
+		// the hit count is min(calc1, enemies found) (CLTST_014); the search radius is the tuned 6 here
+		// (the exe uses melee range + 4, FendReach, around the caster; the weapon reach is not known here)
+		max := StrikeCount(c.calc(1), len(foes))
 
 		for i, f := range foes {
 			if i >= max {

@@ -14,6 +14,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2state"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2summon"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
@@ -137,6 +138,10 @@ type Engine struct {
 	monSeed *d2rand.Seed // rolls for monsters that own missiles (Rabies' plague carriers)
 
 	travel map[uint32]func() // missile id -> stop of its travel sound
+
+	reg     *d2summon.Targets // target registry (targetreg.go)
+	regIDs  map[string]uint32
+	regNext uint32
 }
 
 // New creates an engine for a map. monsters supplies targets and the grid.
@@ -341,6 +346,13 @@ func (e *Engine) CastAt(p *d2mapentity.Player, skillID, sx, sy int) bool {
 		return false
 	}
 
+	if !e.mayInterrupt(p, sk, rec0(e, skillID)) {
+		e.Counters.Refused++
+		e.lastRefusal = d2skill.ReasonBusy
+
+		return false
+	}
+
 	u := e.hero(p)
 	tg := e.targetAt(sx, sy)
 	st := e.pipe.Start(u, skillID, tg)
@@ -388,6 +400,26 @@ func (e *Engine) CastAt(p *d2mapentity.Player, skillID, sx, sy int) bool {
 	}
 
 	return true
+}
+
+func rec0(e *Engine, skillID int) *d2records.SkillRecord {
+	return e.asset.Records.Skill.Details[skillID]
+}
+
+// mayInterrupt applies PLRMODE_CanInterruptCurrentMode (0x57ceb0) when a cast arrives during a running
+// cast or swing: only the modes 7, 8, 10, 0xb, 0xd, 0x12 may break it, and only near the action frame.
+// The states 0x36 / 0x2a / 0xf and the dwBits4 hold bit are not modelled (unverified meaning).
+func (e *Engine) mayInterrupt(p *d2mapentity.Player, sk *d2skill.Skill, rec *d2records.SkillRecord) bool {
+	if !p.IsCasting() || rec == nil {
+		return true
+	}
+
+	ok, _ := d2skill.CanInterrupt(d2skill.InterruptInput{
+		CurrentMode: int(p.GetAnimationMode()), NewMode: int(rec.Anim), Flag: true, HasUsedSkill: true,
+		SkillBits4: sk.Bits4, ActionDue: p.ActionDueSoon(),
+	})
+
+	return ok
 }
 
 func reasonOf(r string) string {
@@ -787,6 +819,7 @@ func (e *Engine) hurt(m *d2mapentity.Monster, src *d2mapentity.Player, d *d2comb
 
 	if !m.Alive() {
 		set.Death("monster")
+		e.regRelease(m.ID())
 		e.Counters.Kills++
 		e.emit("damage", "KILL skill=%q target=%s", what, m.Label())
 
@@ -841,6 +874,7 @@ func divisorsFor(recs d2records.DifficultyLevels, diff int) (chill, freeze int) 
 // left alone.
 func (e *Engine) HeroDied(id string) {
 	e.setOf(id).Death("player")
+	e.regOwnerDied(id)
 
 	if a := e.auras[id]; a != nil && !e.setOf(id).Active(e.frame, a.ef.State) {
 		delete(e.auras, id)

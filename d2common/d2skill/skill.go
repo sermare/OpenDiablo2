@@ -45,6 +45,10 @@ type Skill struct {
 	Kick         bool
 	NoAmmo       bool
 	AttackNoMana bool
+	// AllowTownRoom is skills.txt dwBits4 & 0x100: the skill may target a town room (Bone Wall otherwise refused).
+	AllowTownRoom bool
+	// Bits4 is the raw dwBits4 word when known (interrupt.go reads bit 31).
+	Bits4 uint32
 
 	SrvStFunc, SrvDoFunc int
 	SrvMissile           string

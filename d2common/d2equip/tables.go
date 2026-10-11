@@ -19,6 +19,8 @@ type Type struct {
 	Quiver         string // weapon type a quiver of this type belongs to
 	Class          string // "Class" column (ama, sor, ...) for class specific types
 	Throwable      bool   // the "Throwable" column: javelins, throwing knives and axes are their own ammunition
+	Reload         bool   // the "Reload" column (bReload of the exe): a spent stack is replaced from the inventory
+	ReEquip        bool   // the "ReEquip" column (bReequip): a spent item is re-equipped (PLAYER_ServerReequipPendingItem)
 	// MaxSock1/25/40: socket limits by item level, see sockets.go
 	MaxSock1, MaxSock25, MaxSock40 int
 }
@@ -49,7 +51,8 @@ func ParseTypes(data []byte) (*Types, error) {
 			BodyLoc1: LocFromCode(cell(r, col, "bodyloc1")), BodyLoc2: LocFromCode(cell(r, col, "bodyloc2")),
 			Shoots: cell(r, col, "shoots"), Quiver: cell(r, col, "quiver"), Class: cell(r, col, "class"),
 			Throwable: cell(r, col, "throwable") == "1",
-			MaxSock1:  num(r, col, "maxsock1"), MaxSock25: num(r, col, "maxsock25"), MaxSock40: num(r, col, "maxsock40"),
+			Reload:    cell(r, col, "reload") == "1", ReEquip: cell(r, col, "reequip") == "1",
+			MaxSock1: num(r, col, "maxsock1"), MaxSock25: num(r, col, "maxsock25"), MaxSock40: num(r, col, "maxsock40"),
 		}
 	}
 

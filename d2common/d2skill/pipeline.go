@@ -22,6 +22,7 @@ const (
 	ReasonMissile  = "missile"   // missile creation failed
 	ReasonNoWeapon = "no_throwable"
 	ReasonNoCorpse = "no_corpse" // corpse skill without a corpse at the aim point
+	ReasonBusy     = "busy"      // the running action may not be interrupted (interrupt.go)
 )
 
 // srvst/srvdo function ids used by the implemented skills (skills.txt columns).
@@ -72,6 +73,13 @@ type Target struct {
 	// CorpseLevel is the corpse monster's level (Corpse Explosion scales its
 	// damage down when the corpse is above the caster).
 	CorpseLevel int
+
+	// Client start gates (clientgate.go); the zero values refuse nothing.
+	// TownRoom: the aim point lies in a town room (Bone Wall). Item: the item under the cursor (Iron Golem).
+	// Revive: the corpse under the cursor (Revive).
+	TownRoom bool
+	Item     *ItemTarget
+	Revive   *ReviveTarget
 }
 
 // Options tune the pipeline.
@@ -188,6 +196,10 @@ func (p *Pipeline) Start(u Unit, skillID int, tgt Target) StartResult {
 	cost := costOf(u, sk, lvl)
 	if u.IsPlayer() && cost > u.Mana() {
 		return StartResult{Reason: ReasonMana, Level: lvl}
+	}
+
+	if reason, ok := clientGate(sk, tgt); !ok {
+		return StartResult{Reason: reason, Level: lvl}
 	}
 
 	if sk.TargetCorpse && !tgt.Corpse {

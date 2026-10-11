@@ -183,7 +183,7 @@ func dueSupport(plan []fightSupport, last map[int]float64, now float64) (fightSu
 // refusalCounts says whether a refused cast counts against the skill: a cast refused for mana or because
 // its delay has not run out is no sign that the skill cannot be used.
 func refusalCounts(reason string) bool {
-	return reason != d2skill.ReasonMana && reason != d2skill.ReasonCooldown
+	return reason != d2skill.ReasonMana && reason != d2skill.ReasonCooldown && reason != d2skill.ReasonBusy
 }
 
 // fightPlan is what a fight casts, worked out at its first tick.
