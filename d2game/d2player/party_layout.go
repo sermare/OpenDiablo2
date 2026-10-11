@@ -36,3 +36,55 @@ func (m Mode) PartyCloseRect() UIRect {
 
 	return UIRect{"party", "close", ox + partyCloseDX, partyCloseBottom + oy - partyCloseSize, partyCloseSize, partyCloseSize}
 }
+
+// Row geometry (second pass, UI_RebuildPartyList 0x496ac0 + UI_InitPartyRowWidgets 0x496540 +
+// UI_DrawPartyScreenMemberRows 0x498a40 + UI_DrawPartyScreenButtonTooltips 0x4977f0, all verified).
+// The row y that the decompiler lost is EDI in UI_RebuildPartyList: it starts at 0x5a and grows by 0x26 for every
+// listed player (the own roster entry is skipped, at most 8 rows are drawn). All y values are the BOTTOM edge of
+// the picture, panel relative (add the panel offset y); the picture is 20 high (hit test: bottom-0x14 .. bottom).
+const (
+	partyRowFirstY    = 0x5a // bottom of the first row, panel relative
+	partyRowPitch     = 0x26
+	partyRowHostileDY = 7 // the toggle of relation bit 08 sits 7 below the row, the other widgets on the row
+	partyRowBtnH      = 0x14
+	partyInviteW      = 0x35 // hover width of the invite/accept/leave button (inclusive range 0..0x35)
+	partyToggleW      = 0x14 // hover width of the four toggles (inclusive range 0..0x14)
+	partyNameHoverX0  = 0x24 // row name hover x range (inclusive) from the panel left
+	partyNameHoverX1  = 0x8c
+	partyNameHoverTop = 0x1a // the hover rect spans [rowHover-0x1a, rowHover] where rowHover = rowY + 0xd
+	partyNameHoverDY  = 0xd
+	partyHeaderX      = 0xe3 // "party membership" header picture x (UI_DrawPartyMembershipHeader 0x496990)
+	partyHeaderHoverX = 0x118
+	partyHeaderTop    = 0x18 // hover y range, panel relative, inclusive (0x18..0x23)
+	partyHeaderBottom = 0x23
+)
+
+// PartyRowBottom returns the panel-relative bottom y of listed row i (0 based).
+func PartyRowBottom(i int) int { return partyRowFirstY + partyRowPitch*i }
+
+// PartyRowRects returns the screen rectangles of the widgets of row i (top left, 20 high; the invite button is
+// partyInviteW wide, the toggles partyToggleW). Names: "invite", "hostile" (relation bit 08, frames 4/6), "bit01"
+// (frames 12/14, only offered when the game-info flag 4 is set), "listen" (bit 02, frames 0/2), "mute" (bit 04, frames 8/10)
+// and "name_hover".
+func (m Mode) PartyRowRects(i int) []UIRect {
+	ox, oy := m.PanelOffset()
+	rowTop := PartyRowBottom(i) + oy - partyRowBtnH
+	inv, hostile, bit01, listen, mute := m.PartyRowX()
+
+	return []UIRect{
+		{"party", "invite", inv, rowTop, partyInviteW, partyRowBtnH},
+		{"party", "hostile", hostile, rowTop + partyRowHostileDY, partyToggleW, partyRowBtnH},
+		{"party", "bit01", bit01, rowTop, partyToggleW, partyRowBtnH},
+		{"party", "listen", listen, rowTop, partyToggleW, partyRowBtnH},
+		{"party", "mute", mute, rowTop, partyToggleW, partyRowBtnH},
+		{"party", "name_hover", ox + partyNameHoverX0, PartyRowBottom(i) + partyNameHoverDY - partyNameHoverTop + oy,
+			partyNameHoverX1 - partyNameHoverX0, partyNameHoverTop},
+	}
+}
+
+// PartyHeaderHover is the hover rectangle of the "party membership" header (shown when the hero has a party).
+func (m Mode) PartyHeaderHover() UIRect {
+	ox, oy := m.PanelOffset()
+
+	return UIRect{"party", "header_hover", ox + partyHeaderX, oy + partyHeaderTop, partyHeaderHoverX - partyHeaderX, partyHeaderBottom - partyHeaderTop}
+}

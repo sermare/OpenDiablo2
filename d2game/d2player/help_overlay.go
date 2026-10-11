@@ -67,7 +67,7 @@ const (
 
 	// the close button for the help panel
 	closeButtonX      = 685
-	closeButtonY      = 25
+	closeButtonY      = 24 // 0x38 - 32 (UI_DrawHelpCloseButton 0x491340)
 	closeButtonLabelX = 702
 	closeButtonLabelY = 60
 
@@ -75,12 +75,12 @@ const (
 	newStatsLabelX = 222
 	newStatsLabelY = 355
 	newStatsDotX   = 217
-	newStatsDotY   = 574
+	newStatsDotY   = 575
 
 	newSkillLabelX = 578
 	newSkillLabelY = 355
-	newSkillDotX   = 573
-	newSkillDotY   = 574
+	newSkillDotX   = 572
+	newSkillDotY   = 575
 
 	leftMouseLabelX = 135
 	leftMouseLabelY = 382
@@ -91,7 +91,7 @@ const (
 	leftSkillClickToChangeLabelX = 135
 	leftSkillClickToChangeLabelY = 412
 	leftSkillClickToChangeDotX   = 130
-	leftSkillClickToChangeDotY   = 565
+	leftSkillClickToChangeDotY   = 564
 
 	rightMouseLabelX = 675
 	rightMouseLabelY = 381
@@ -102,7 +102,7 @@ const (
 	rightSkillClickToChangeLabelX = 675
 	rightSkillClickToChangeLabelY = 411
 	rightSkillClickToChangeDotX   = 670
-	rightSkillClickToChangeDotY   = 562
+	rightSkillClickToChangeDotY   = 564
 
 	miniPanelLabelX = 450
 	miniPanelLabelY = 371
@@ -116,30 +116,30 @@ const (
 	otherScreensLabelX = 450
 	otherScreensLabelY = 417
 	otherScreensDotX   = 445
-	otherScreensDotY   = 539
+	otherScreensDotY   = 540
 
 	lifeOrbLabelX = 65
 	lifeOrbLabelY = 451
-	lifeOrbDotX   = 60
-	lifeOrbDotY   = 538
+	lifeOrbDotX   = 55
+	lifeOrbDotY   = 535
 
 	staminaBarLabelX = 315
 	staminaBarLabelY = 450
 	staminaBarDotX   = 310
-	staminaBarDotY   = 583
+	staminaBarDotY   = 585
 
 	manaOrbLabelX = 745
 	manaOrbLabelY = 451
 	manaOrbDotX   = 740
-	manaOrbDotY   = 538
+	manaOrbDotY   = 535
 
 	runWalkButtonLabelX = 264
 	runWalkButtonLabelY = 480
 
 	toggleLabelX = 264
 	toggleLabelY = 495
-	toggleDotX   = 259
-	toggleDotY   = 583
+	toggleDotX   = 260
+	toggleDotY   = 585
 
 	experienceLabelX = 370
 	experienceLabelY = 476
@@ -152,7 +152,7 @@ const (
 	beltLabelX = 535
 	beltLabelY = 490
 	beltDotX   = 530
-	beltDotY   = 568
+	beltDotY   = 569
 )
 
 const bullets = 8
@@ -248,62 +248,18 @@ func (h *HelpOverlay) Load() {
 }
 
 func (h *HelpOverlay) setupOverlayFrame() {
-	frames := []int{
-		frameTopLeft,
-		frameBottomLeft,
-		frameTopMiddleLeft,
-		frameTopMiddleRight,
-		frameTopRightNoCorner,
-		frameTopRight,
-		frameBottomRight,
-	}
-
-	left, top := 0, 0
-	firstFrameWidth := 0
-	prevY := 0
-	prevWidth := 0
-	currentX, currentY := left, top
-
-	for _, frameIndex := range frames {
+	// fixed positions of the original (UI_DrawHelpBackground800 0x4909d0): frame, x, bottom y
+	for _, hf := range HelpFrames800 {
 		f, err := h.uiManager.NewSprite(d2resource.HelpBorder, d2resource.PaletteSky)
 		if err != nil {
 			h.Error(err.Error())
 		}
 
-		err = f.SetCurrentFrame(frameIndex)
-		if err != nil {
+		if err = f.SetCurrentFrame(hf.Frame); err != nil {
 			h.Error(err.Error())
 		}
 
-		frameWidth, frameHeight := f.GetCurrentFrameSize()
-
-		switch frameIndex {
-		case frameTopLeft:
-			currentY += frameHeight
-			firstFrameWidth = frameWidth
-		case frameBottomLeft:
-			currentY += frameHeight
-		case frameTopMiddleLeft:
-			currentX = firstFrameWidth
-			currentY = top + frameHeight
-		case frameTopMiddleRight:
-			currentY = top + frameHeight
-			currentX += prevWidth
-			currentX += magicHelpBorderOffsetX
-		case frameTopRightNoCorner:
-			currentY = top + frameHeight
-			currentX += prevWidth
-		case frameTopRight:
-			currentY = top + frameHeight
-			currentX += prevWidth
-		case frameBottomRight:
-			currentY = prevY + frameHeight
-		}
-
-		prevY = currentY
-		prevWidth = frameWidth
-
-		f.SetPosition(currentX, currentY)
+		f.SetPosition(hf.X, hf.Bottom)
 
 		h.frames = append(h.frames, f)
 	}
@@ -402,7 +358,8 @@ func (h *HelpOverlay) setupBulletedList() {
 			h.Error(err.Error())
 		}
 
-		newDot.SetPosition(listBulletX, listBulletRootY+listItemOffsetY+bulletOffsetY)
+		bx, by := HelpLegendBullet(idx) // UI_DrawHelpLegendRows 0x490b10
+		newDot.SetPosition(bx, by)
 
 		h.frames = append(h.frames, newDot)
 	}
@@ -595,6 +552,12 @@ func (h *HelpOverlay) createCallout(c callout) {
 		MoveX:  0,
 		MoveY:  c.DotY - c.LabelY - hh - lineOffset,
 		Color:  color.White,
+	}
+
+	if lead, ok := HelpLeaderAt(c.DotX, c.DotY); ok {
+		// the original draws two one-pixel lines at dot x + 3 and + 4 (UI_DrawHelpLeaderLines800 0x490ef0)
+		l = line{StartX: lead.DotX + 3, StartY: lead.Y1, MoveX: 0, MoveY: lead.Y2 - lead.Y1, Color: color.White}
+		h.lines = append(h.lines, line{StartX: lead.DotX + 4, StartY: lead.Y1, MoveX: 0, MoveY: lead.Y2 - lead.Y1, Color: color.White})
 	}
 
 	h.lines = append(h.lines, l)

@@ -48,15 +48,16 @@ const (
 )
 
 const (
-	barX, baseBarY                                   = 90, 134 + panelShiftY
-	relationshipSwitcherX, baseRelationshipSwitcherY = 80 + partyRowRelationX, 150 + panelShiftY
-	listeningSwitcherX, baseListeningSwitcherY       = 80 + partyRowListenX, 140 + panelShiftY
-	seeingSwitcherX, baseSeeingSwitcherY             = 80 + partyRowSeeX, 140 + panelShiftY
+	barX, baseBarY = 90, 134 + panelShiftY
+	// widget tops from the original's row widgets (party_layout.go PartyRowRects, 800x600): bottom 0x5a + 60 minus 20
+	relationshipSwitcherX, baseRelationshipSwitcherY = 80 + partyRowRelationX, partyRowFirstY + 60 - partyRowBtnH + partyRowHostileDY
+	listeningSwitcherX, baseListeningSwitcherY       = 80 + partyRowListenX, partyRowFirstY + 60 - partyRowBtnH
+	seeingSwitcherX, baseSeeingSwitcherY             = 80 + partyRowSeeX, partyRowFirstY + 60 - partyRowBtnH
 	nameLabelX, baseNameLabelY                       = 115, 144 + panelShiftY
 	nameTooltipX, baseNameTooltipY                   = 100, 120 + panelShiftY
 	classLabelX, baseClassLabelY                     = 115, 158 + panelShiftY
 	levelLabelX, baseLevelLabelY                     = 386, 160 + panelShiftY
-	inviteAcceptButtonX, baseInviteAcceptButtonY     = 80 + partyRowInviteX, 147 + panelShiftY
+	inviteAcceptButtonX, baseInviteAcceptButtonY     = 80 + partyRowInviteX, partyRowFirstY + 60 - partyRowBtnH
 	indexOffset                                      = 0x26 // the row pitch of the original (UI_DrawPartyScreen 0x496540; up to 8 rows from panel y 0x5a)
 )
 
