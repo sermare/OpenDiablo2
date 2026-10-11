@@ -664,35 +664,68 @@ func (h *HUD) renderForSelectableEntitiesHovered(target d2interface.Surface) {
 			continue
 		}
 
-		entPos := entity.GetPosition()
-		entOffset := entPos.RenderOffset()
-		entScreenXf, entScreenYf := h.mapRenderer.WorldToScreenF(entity.GetPositionF())
-		entScreenX := int(math.Floor(entScreenXf))
-		entScreenY := int(math.Floor(entScreenYf))
-		entityWidth, entityHeight := entity.GetSize()
-		halfWidth, halfHeight := entityWidth>>1, entityHeight>>1
-		l, r := entScreenX-halfWidth-hoverLabelOuterPad, entScreenX+halfWidth+hoverLabelOuterPad
-		t, b := entScreenY-halfHeight-hoverLabelOuterPad, entScreenY+halfHeight-hoverLabelOuterPad
-		xWithin := (l <= mx) && (r >= mx)
-		yWithin := (t <= my) && (b >= my)
-		within := xWithin && yWithin
+		box := h.hoverBox(entity)
+		if !box.contains(mx, my) {
+			continue
+		}
 
-		if within {
-			xOff, yOff := int(entOffset.X()), int(entOffset.Y())
+		xOff, yOff := int(box.offX), int(box.offY)
 
-			h.nameLabel.SetText(entity.Label())
+		h.nameLabel.SetText(entity.Label())
 
-			xLabel, yLabel := entScreenX-xOff, entScreenY-yOff-entityHeight-hoverLabelOuterPad
-			h.nameLabel.SetPosition(xLabel, yLabel)
+		xLabel, yLabel := box.screenX-xOff, box.screenY-yOff-box.height-hoverLabelOuterPad
+		h.nameLabel.SetPosition(xLabel, yLabel)
 
-			h.nameLabel.Render(target)
-			entity.Highlight()
+		h.nameLabel.Render(target)
+		entity.Highlight()
 
-			h.hoveredEntity = entity
+		h.hoveredEntity = entity
 
-			break
+		break
+	}
+}
+
+// hoverRect is the screen rectangle in which the cursor selects an entity.
+type hoverRect struct {
+	l, r, t, b       int
+	screenX, screenY int
+	offX, offY       float64
+	height           int
+}
+
+func (b hoverRect) contains(mx, my int) bool {
+	return b.l <= mx && b.r >= mx && b.t <= my && b.b >= my
+}
+
+// hoverBox computes the rectangle of an entity (the renderer and the scripted clicks use the same test).
+func (h *HUD) hoverBox(entity d2interface.MapEntity) hoverRect {
+	entPos := entity.GetPosition()
+	entOffset := entPos.RenderOffset()
+	entScreenXf, entScreenYf := h.mapRenderer.WorldToScreenF(entity.GetPositionF())
+	entScreenX := int(math.Floor(entScreenXf))
+	entScreenY := int(math.Floor(entScreenYf))
+	entityWidth, entityHeight := entity.GetSize()
+	halfWidth, halfHeight := entityWidth>>1, entityHeight>>1
+
+	return hoverRect{
+		l: entScreenX - halfWidth - hoverLabelOuterPad, r: entScreenX + halfWidth + hoverLabelOuterPad,
+		t: entScreenY - halfHeight - hoverLabelOuterPad, b: entScreenY + halfHeight - hoverLabelOuterPad,
+		screenX: entScreenX, screenY: entScreenY, offX: entOffset.X(), offY: entOffset.Y(), height: entityHeight,
+	}
+}
+
+// entityAt finds the selectable entity under a position of the interface column, as the renderer's hover test
+// does, without drawing (scripted clicks arrive between two frames).
+func (h *HUD) entityAt(cx, cy int) d2interface.MapEntity {
+	mx, my := d2display.ToScreen(cx, cy)
+
+	for _, entity := range h.mapEngine.Entities() {
+		if entity.Selectable() && h.hoverBox(entity).contains(mx, my) {
+			return entity
 		}
 	}
+
+	return nil
 }
 
 // renderAllItemLabels draws the name of every ground item (the Alt / Option "show items" key).

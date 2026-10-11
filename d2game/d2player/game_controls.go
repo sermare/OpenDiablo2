@@ -371,8 +371,9 @@ type GameControls struct {
 	lastMouseY            int
 	lastLeftBtnActionTime float64
 	watchLog              func(format string, args ...interface{})
-	heroWatch             heroWatch // armed by the test-only heromoved/herostill commands (hero_watch.go)
-	autoHold              *autoHold // a button held by an OD2_AUTOSCRIPT hold: step (synthetic_input.go)
+	heroWatch             heroWatch                 // armed by the test-only heromoved/herostill commands (hero_watch.go)
+	autoHold              *autoHold                 // a button held by an OD2_AUTOSCRIPT hold: step (synthetic_input.go)
+	injector              d2interface.InputInjector // set by the game screen: scripted input goes through the input manager
 	// heldLeftWalk is true while the left button is held down on a click that began as a plain
 	// ground click (a walk or a skill use). Only such a hold repeats; a click that began on an NPC,
 	// object or item interacts once.

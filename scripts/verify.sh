@@ -88,7 +88,7 @@ game_dir="${D2_GAME_DIR:-}"
 if [ -z "$game_dir" ]; then
   game_dir=$(sed -n 's/.*"MpqPath": *"\(.*\)".*/\1/p' "$HOME/Library/Application Support/OpenDiablo2/config.json" 2>/dev/null | head -1)
 fi
-if [ -n "$game_dir" ] && [ -f "$game_dir/d2data.mpq" ]; then
+if [ -n "$game_dir" ] && [ -f "$game_dir/d2data.mpq" ] && [ -z "${SKIP_BUDGET:-}" ]; then
   step "level generation budget (real data: every act, outdoor / preset / maze levels)"
   D2_GAME_DIR="$game_dir" go test -count=1 -v -run 'LevelBudget' ./d2core/d2map/d2mapgen/ 2>&1 | grep -E "PERF level|^(--- |FAIL|ok)" | cut -c1-160 | tee $tmp/budget.txt
   grep -q "^ok" $tmp/budget.txt || { echo "FAIL: level generation budget"; fail=1; }

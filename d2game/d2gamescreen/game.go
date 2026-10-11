@@ -232,6 +232,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"setgold", "sets the hero's gold (saved to the .d2s on the next save)", []string{"amount"}, v.commandSetGold},
 		{"spawnchest", "spawns chests/barrels (objects.txt ids, default 7 1 5) next to the hero",
 			[]string{"id1", "id2", "id3"}, v.commandSpawnChest},
+		{"spawnground", "spawns a gold pile (gold <amount>) or a normal item (<code>) on a free ground cell next to the hero (scripted clicks)",
+			[]string{"gold|code", "amount|cell", "cell"}, v.commandSpawnGround},
 		{"spawnportal", "spawns a town portal object to the given level next to the hero",
 			[]string{"level"}, v.commandSpawnPortal},
 		{"setwaypoint", "activates (1) or clears (0) the waypoint of a level for the hero",
@@ -570,6 +572,11 @@ func (v *Game) bindGameControls() error {
 
 		if err := v.inputManager.BindHandler(v.gameControls); err != nil {
 			v.Error(bindControlsErrStr + player.ID())
+		}
+
+		// scripted clicks and keys (OD2_AUTOSCRIPT) travel the same handler chain as the window's events
+		if inj, ok := v.inputManager.(d2interface.InputInjector); ok {
+			v.gameControls.SetInputInjector(inj)
 		}
 
 		break

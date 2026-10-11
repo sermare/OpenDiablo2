@@ -3,6 +3,8 @@ package d2player
 import (
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
@@ -81,6 +83,7 @@ type autoHold struct {
 	t        float64 // seconds held
 	nextLog  float64
 	repeated int
+	hover    string // label of the entity under the cursor when last logged
 }
 
 // parseClick resolves the position forms of a click spec and returns the event in column space (what the
@@ -122,47 +125,179 @@ func (g *GameControls) parseClick(spec string) (d2enum.MouseButton, d2enum.KeyMo
 	return button, mod, cx, cy, nil
 }
 
-// resolveMonsterSpec replaces a "@monster" target of a click spec by the screen position of the living monster
-// nearest to the hero, and returns that monster (nil when the spec has no such target).
-func (g *GameControls) resolveMonsterSpec(spec string) (string, *d2mapentity.Monster, error) {
-	i := strings.Index(spec, "@monster")
+// entityTarget is an entity form of a click position: "@monster", "@npc[:label]", "@object:<id or label>" or
+// "@item[:label]", optionally followed by "*f" (f in [0,1]: the point that far from the hero towards the entity on
+// the screen, so "@npc:Akara*0.5" is ground half way to Akara and a hold started there walks up to her without
+// starting on her). The label is matched case-insensitively as a substring of the entity's label; objects also
+// by objects.txt id.
+type entityTarget struct {
+	kind  string
+	name  string
+	frac  float64
+	start int // index of the "@" in the spec
+}
+
+var entityKinds = []string{"monster", "npc", "object", "item"} //nolint:gochecknoglobals // constants
+
+// parseEntityTarget finds an entity target in a click spec. ok is false for the other position forms
+// (screen pixels, @hero:, @ui:) and for specs without a position.
+func parseEntityTarget(spec string) (t entityTarget, ok bool, err error) {
+	i := strings.Index(spec, "@")
 	if i < 0 {
-		return spec, nil, nil
+		return t, false, nil
+	}
+
+	rest := spec[i+1:]
+	frac := 1.0
+
+	if j := strings.LastIndex(rest, "*"); j >= 0 {
+		f, perr := strconv.ParseFloat(rest[j+1:], 64)
+		if perr != nil || f < 0 || f > 1 {
+			return t, false, fmt.Errorf("click position %q: want *f with f in 0..1", rest)
+		}
+
+		frac, rest = f, rest[:j]
+	}
+
+	kind, name := rest, ""
+	if j := strings.Index(rest, ":"); j >= 0 {
+		kind, name = rest[:j], rest[j+1:]
+	}
+
+	found := false
+
+	for _, k := range entityKinds {
+		found = found || kind == k
+	}
+
+	if !found {
+		return t, false, nil
+	}
+
+	if kind == "object" && strings.TrimSpace(name) == "" {
+		return t, false, errors.New("click @object: needs :<id or label>")
+	}
+
+	return entityTarget{kind: kind, name: strings.TrimSpace(name), frac: frac, start: i}, true, nil
+}
+
+// matches reports whether the entity is what the target names.
+func (t entityTarget) matches(e d2interface.MapEntity) bool {
+	switch v := e.(type) {
+	case *d2mapentity.Monster:
+		return t.kind == "monster" && v.Alive()
+	case *d2mapentity.NPC:
+		return t.kind == "npc" && labelHas(e, t.name)
+	case *d2mapentity.Item:
+		return t.kind == "item" && labelHas(e, t.name)
+	case *d2mapentity.Object:
+		if t.kind != "object" {
+			return false
+		}
+
+		if id, err := strconv.Atoi(t.name); err == nil {
+			return v.Record() != nil && v.Record().Index == id
+		}
+
+		return labelHas(e, t.name)
+	}
+
+	return false
+}
+
+func labelHas(e d2interface.MapEntity, sub string) bool {
+	return sub == "" || strings.Contains(strings.ToLower(e.Label()), strings.ToLower(sub))
+}
+
+// resolveEntitySpec replaces an entity target of a click spec by a screen position and returns the entity (nil
+// when the spec has no entity target, or the position is short of it: *f with f below 1). The entity is the one
+// nearest to the hero. Every resolved target is logged (CLICK target ...), the world position included, so a
+// scenario can place its expectations.
+func (g *GameControls) resolveEntitySpec(spec string) (string, d2interface.MapEntity, error) {
+	t, ok, err := parseEntityTarget(spec)
+	if err != nil || !ok {
+		return spec, nil, err
 	}
 
 	hx, hy := g.hero.GetPositionF()
 
-	var best *d2mapentity.Monster
+	var best d2interface.MapEntity
 
 	bestD := 0.0
 
 	for _, e := range g.mapEngine.Entities() {
-		m, ok := e.(*d2mapentity.Monster)
-		if !ok || !m.Alive() {
+		if !t.matches(e) {
 			continue
 		}
 
-		mx, my := m.GetPositionF()
+		mx, my := e.GetPositionF()
 		if d := (mx-hx)*(mx-hx) + (my-hy)*(my-hy); best == nil || d < bestD {
-			best, bestD = m, d
+			best, bestD = e, d
 		}
 	}
 
 	if best == nil {
-		return spec, nil, errors.New("click @monster: no living monster")
+		return spec, nil, fmt.Errorf("click %s: no such entity", spec[t.start:])
 	}
 
-	sx, sy := g.mapRenderer.WorldToScreen(best.GetPositionF())
+	wx, wy := best.GetPositionF()
+	ex, ey := g.mapRenderer.WorldToScreen(wx, wy)
+	sx, sy := g.mapRenderer.WorldToScreen(hx, hy)
 
-	return fmt.Sprintf("%s@%d,%d", spec[:i], sx, sy), best, nil
+	g.Infof("CLICK target kind=%s label=%q world=(%.2f,%.2f) hero=(%.2f,%.2f) dist=%.2f frac=%.2f", t.kind,
+		best.Label(), wx, wy, hx, hy, math.Sqrt(bestD), t.frac)
+
+	if t.frac < 1 {
+		ex, ey = sx+int(math.Round(float64(ex-sx)*t.frac)), sy+int(math.Round(float64(ey-sy)*t.frac))
+		best = nil
+	}
+
+	return fmt.Sprintf("%s@%d,%d", spec[:t.start], ex, ey), best, nil
 }
 
-// AutoClick sends a synthetic mouse click (down, then up) through the handlers
-// a real click reaches, for OD2_AUTOSCRIPT click: steps. A target "@monster" clicks the living monster
-// nearest to the hero; the monster is made the hovered entity directly (a real hover is only known after
-// the next rendered frame).
+// Pointer events of the script go through the input manager when it can inject them (the handlers of the window
+// system see them in priority order, the UI manager's buttons and the escape menu included), else straight to the
+// game controls (unit tests, hosts without a manager).
+
+func (g *GameControls) synthMove(x, y int) {
+	if g.injector != nil {
+		g.injector.InjectMouseMove(x, y, 0)
+		return
+	}
+
+	g.OnMouseMove(&synthEvent{x: x, y: y})
+}
+
+func (g *GameControls) synthButton(down bool, e *synthEvent) {
+	switch {
+	case g.injector != nil:
+		g.injector.InjectMouseButton(down, e.button, e.mod, e.x, e.y)
+	case down:
+		g.OnMouseButtonDown(e)
+	default:
+		g.OnMouseButtonUp(e)
+	}
+}
+
+func (g *GameControls) synthRepeat(e *synthEvent) {
+	if g.injector != nil {
+		g.injector.InjectMouseRepeat(e.button, e.mod, e.x, e.y)
+		return
+	}
+
+	g.OnMouseButtonRepeat(e)
+}
+
+// SetInputInjector makes the script's clicks and keys go through the input manager (see synthMove).
+func (g *GameControls) SetInputInjector(in d2interface.InputInjector) { g.injector = in }
+
+// AutoClick sends a synthetic mouse click (down, then up) through the handlers a real click reaches, for
+// OD2_AUTOSCRIPT click: steps. An entity target (@monster, @npc, @object:, @item, see entityTarget) clicks the
+// entity nearest to the hero and makes it the hovered entity directly (a real hover is only known after the next
+// rendered frame). Any other position finds its hovered entity by the same box test as the renderer, so a click
+// on the ground never inherits the hover of the previous position.
 func (g *GameControls) AutoClick(spec string) error {
-	spec, mon, err := g.resolveMonsterSpec(spec)
+	spec, ent, err := g.resolveEntitySpec(spec)
 	if err != nil {
 		return err
 	}
@@ -172,23 +307,35 @@ func (g *GameControls) AutoClick(spec string) error {
 		return err
 	}
 
-	g.OnMouseMove(&synthEvent{x: x, y: y})
-
-	if mon != nil {
-		g.hud.hoveredEntity = mon
-	}
+	g.synthMove(x, y)
+	g.setHovered(ent, x, y)
 
 	g.lastLeftBtnActionTime, g.lastRightBtnActionTime = 0, 0
-	g.OnMouseButtonDown(&synthEvent{button: button, mod: mod, x: x, y: y})
-	g.OnMouseButtonUp(&synthEvent{button: button, mod: mod, x: x, y: y})
+	g.synthButton(true, &synthEvent{button: button, mod: mod, x: x, y: y})
+	g.synthButton(false, &synthEvent{button: button, mod: mod, x: x, y: y})
+	g.logPanelState("click")
 
 	return nil
+}
+
+// setHovered fixes the hovered entity of a synthetic click: the entity when there is one, else whatever the
+// renderer's test finds at the column position.
+func (g *GameControls) setHovered(ent d2interface.MapEntity, cx, cy int) {
+	if g.hud == nil {
+		return
+	}
+
+	if ent == nil {
+		ent = g.hud.entityAt(cx, cy)
+	}
+
+	g.hud.hoveredEntity = ent
 }
 
 // AutoHoldStart presses a mouse button (spec as for click:) and keeps it down: AutoHoldTick then repeats it
 // like the input manager does for a real held button, until AutoHoldEnd.
 func (g *GameControls) AutoHoldStart(spec string) error {
-	spec, _, err := g.resolveMonsterSpec(spec)
+	spec, ent, err := g.resolveEntitySpec(spec)
 	if err != nil {
 		return err
 	}
@@ -201,10 +348,13 @@ func (g *GameControls) AutoHoldStart(spec string) error {
 	ev := synthEvent{button: button, mod: mod, x: x, y: y}
 	g.autoHold = &autoHold{ev: ev}
 
-	g.OnMouseMove(&synthEvent{x: x, y: y})
+	g.synthMove(x, y)
+	g.setHovered(ent, x, y)
+	g.autoHold.hover = g.hoveredLabel()
+
 	g.lastLeftBtnActionTime, g.lastRightBtnActionTime = 0, 0
-	g.Infof("HOLD start spec=%s", spec)
-	g.OnMouseButtonDown(&ev)
+	g.Infof("HOLD start spec=%s hover=%q", spec, g.autoHold.hover)
+	g.synthButton(true, &ev)
 	g.logHoldPos()
 
 	return nil
@@ -219,7 +369,14 @@ func (g *GameControls) AutoHoldTick(elapsed float64) {
 
 	h.t += elapsed
 	h.repeated++
-	g.OnMouseButtonRepeat(&h.ev)
+	g.synthRepeat(&h.ev)
+
+	// the entity under the cursor changes as the hero walks past it: log every change (HOLD hover), so a
+	// scenario can prove that an NPC or object really was under the cursor while the hold went on
+	if cur := g.hoveredLabel(); cur != h.hover {
+		h.hover = cur
+		g.Infof("HOLD hover t=%.1f %q", h.t, cur)
+	}
 
 	const logEvery = 0.5
 	if h.t >= h.nextLog+logEvery {
@@ -236,36 +393,86 @@ func (g *GameControls) AutoHoldEnd() {
 	}
 
 	g.logHoldPos()
-	g.OnMouseButtonUp(&h.ev)
+	g.synthButton(false, &h.ev)
 	g.Infof("HOLD end seconds=%.1f frames=%d", h.t, h.repeated)
 
 	g.autoHold = nil
 }
 
+func (g *GameControls) hoveredLabel() string {
+	if g.hud != nil && g.hud.hoveredEntity != nil {
+		return g.hud.hoveredEntity.Label()
+	}
+
+	return ""
+}
+
 func (g *GameControls) logHoldPos() {
 	p := g.hero.Position.World()
-	hover := ""
-	if g.hud != nil && g.hud.hoveredEntity != nil {
-		hover = g.hud.hoveredEntity.Label()
-	}
+	hover := g.hoveredLabel()
 
 	g.Infof("HOLD pos t=%.1f (%.2f,%.2f) town=%t hover=%q", g.autoHold.t, p.X(), p.Y(), g.hero.IsInTown(), hover)
 }
 
-// AutoKey sends a synthetic key press (down, then up) by key name ("Tab", "I", "Escape").
-func (g *GameControls) AutoKey(name string) error {
-	k, ok := KeyByName(name)
-	if !ok {
-		return fmt.Errorf("unknown key %q", name)
+// parseKeySpec reads "<Key>" or "shift+ctrl+<Key>" (modifiers shift, ctrl, cmd, alt).
+func parseKeySpec(spec string) (d2enum.Key, d2enum.KeyMod, error) {
+	var mod d2enum.KeyMod
+
+	parts := strings.Split(spec, "+")
+
+	for _, m := range parts[:len(parts)-1] {
+		switch strings.ToLower(strings.TrimSpace(m)) {
+		case "shift":
+			mod |= d2enum.KeyModShift
+		case "ctrl", "control":
+			mod |= d2enum.KeyModControl
+		case "cmd", "command", "super", "meta":
+			mod |= d2enum.KeyModSuper
+		case "alt", "option":
+			mod |= d2enum.KeyModAlt
+		default:
+			return 0, 0, fmt.Errorf("key modifier %q: want shift, ctrl, cmd or alt", m)
+		}
 	}
 
-	g.OnKeyDown(&synthEvent{key: k})
-	g.OnKeyUp(&synthEvent{key: k})
-	g.Infof("INPUT panels after %s: inventory=%t character=%t skills=%t quest=%t automap=%t menu=%t", name,
-		g.inventory.IsOpen(), g.heroStatsPanel.IsOpen(), g.skilltree.IsOpen(), g.questLog.IsOpen(),
-		g.automap.On(), g.escapeMenu.IsOpen())
+	name := strings.TrimSpace(parts[len(parts)-1])
+
+	k, ok := KeyByName(name)
+	if !ok {
+		return 0, 0, fmt.Errorf("unknown key %q", name)
+	}
+
+	return k, mod, nil
+}
+
+// AutoKey sends a synthetic key press (down, then up) by key name ("Tab", "I", "Escape", "F1"), optionally with
+// modifiers ("shift+F1"). It goes through the input manager like a real key.
+func (g *GameControls) AutoKey(spec string) error {
+	k, mod, err := parseKeySpec(spec)
+	if err != nil {
+		return err
+	}
+
+	if g.injector != nil {
+		g.injector.InjectKey(true, k, mod)
+		g.injector.InjectKey(false, k, mod)
+	} else {
+		g.OnKeyDown(&synthEvent{key: k, mod: mod})
+		g.OnKeyUp(&synthEvent{key: k, mod: mod})
+	}
+
+	g.logPanelState(spec)
 
 	return nil
+}
+
+// logPanelState logs which panels are open after a synthetic input, and the other state a click or key can change.
+func (g *GameControls) logPanelState(after string) {
+	g.Infof("INPUT panels after %s: inventory=%t character=%t skills=%t quest=%t automap=%t menu=%t stash=%t cube=%t "+
+		"running=%t cursor_item=%t skillmenu=%t", after,
+		g.inventory.IsOpen(), g.heroStatsPanel.IsOpen(), g.skilltree.IsOpen(), g.questLog.IsOpen(),
+		g.automap.On(), g.escapeMenu.IsOpen(), g.stash.IsOpen(), g.cube.IsOpen(),
+		g.hero.IsRunToggled(), g.inventory.CursorItem() != nil, g.hud.skillSelectMenu.IsOpen())
 }
 
 // commandBindKey is the console command "bindkey <event> <key>": it binds the
