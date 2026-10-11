@@ -51,6 +51,9 @@ type Options struct {
 	// difficulty (0 normal .. 2 hell); Find Potion reads both (nil Act: act 1).
 	Act        func() int
 	Difficulty int
+	// WearWeapon rolls the held weapon's durability loss after an Impale hit: chance percent, amount points
+	// (ITEM_ReduceDurabilityOrConsumeOnSkillUse). Nil: no wear.
+	WearWeapon func(chance, amount int)
 }
 
 // Counters tally what happened, for scenario summaries.

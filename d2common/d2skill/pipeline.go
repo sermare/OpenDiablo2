@@ -31,6 +31,7 @@ const (
 	stRanged   = 4 // SRVST_RangedAmmoCheck
 	stStrafe   = 8 // SRVST_008_Strafe (ammo check as well)
 	stJab      = 5
+	stImpale   = 7  // SRVST_007_Impale
 	stBash     = 32 // Bash, Stun, Concentrate...
 	stThrow    = 65
 	doAttack   = 1
@@ -278,6 +279,8 @@ type Effect struct {
 	CorpseHP int
 	// SelfDamagePct: percent of own maximum life the caster loses (Sacrifice).
 	SelfDamagePct int
+	// WearAmount is the durability points the "weapon_wear" effect (Impale) takes; Pct is its chance.
+	WearAmount int
 	// Heal is a one-off life gain in whole points.
 	Heal int
 	// Level and SkillID of the casting skill.
@@ -339,6 +342,9 @@ type SummonOrder struct {
 	Kind string
 	// Frames the summon lasts (0 = until it dies).
 	Frames int
+	// DrawsAggro lists the summon in the monsters' target list (TARGETS_AddEntryToList, VERIFIED for Dopplezon
+	// and Valkyrie only), so hostile monsters hunt it.
+	DrawsAggro bool
 	// TrapSkill is the monster skill a trap or totem uses (sumskill1).
 	TrapSkill string
 	// Stats from the skill's aurastat columns (damagepercent, tohit, armorclass).

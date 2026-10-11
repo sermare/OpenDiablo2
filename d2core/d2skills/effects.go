@@ -203,6 +203,10 @@ func (e *Engine) effect(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 		p.Stats.Health = maxInt(p.Stats.Health-loss, 1)
 		e.emit("damage", "DAMAGE skill=%q self hero=%s dmg=%d hero_hp=%d/%d", sk.Name, p.Name(), loss, p.Stats.Health,
 			p.Stats.MaxHealth)
+	case "weapon_wear":
+		if e.opt.WearWeapon != nil {
+			e.opt.WearWeapon(ef.Pct, ef.WearAmount)
+		}
 	case "clear_state":
 		e.setOf(p.ID()).Remove(ef.State)
 		e.emit("state", "STATE clear skill=%q unit=%s state=%s", sk.Name, p.Name(), ef.State)
@@ -767,7 +771,7 @@ func (e *Engine) summon(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, e
 	}
 
 	opt := d2monsters.MinionOptions{Owner: p, Kind: o.Kind, HPPct: o.HPPct, HPFlat: o.HPFlat, Frames: o.Frames, Tag: o.PetType,
-		Level: o.Level}
+		Level: o.Level, DrawsAggro: o.DrawsAggro}
 	if opt.Tag == "" || opt.Tag == "none" {
 		opt.Tag = stat.Key // the tag petworld.go gives such minions
 	}

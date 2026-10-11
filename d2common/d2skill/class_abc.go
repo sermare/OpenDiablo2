@@ -65,6 +65,7 @@ func doDopplezonFn(c *cast) {
 		o.HPPct = 0
 		o.OwnerHPPct = c.calc(3)
 		o.Frames = c.calc(2)
+		o.DrawsAggro = true
 	}
 }
 
@@ -81,6 +82,10 @@ func doValkyrieFn(c *cast) {
 	}
 
 	doSummonFn(c)
+
+	if n := len(c.res.Effects); n > 0 && c.res.Effects[n-1].Summon != nil {
+		c.res.Effects[n-1].Summon.DrawsAggro = true
+	}
 }
 
 // ---- Blade Fury ----

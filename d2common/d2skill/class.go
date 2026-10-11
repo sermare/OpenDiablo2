@@ -431,6 +431,12 @@ func doMeleeFn(c *cast) {
 	}
 
 	c.addMelee(m)
+
+	// Impale (SRVST_007, VERIFIED): on a hit the held weapon may wear down, chance calc2 percent, amount
+	// calc3 points (ITEM_ReduceDurabilityOrConsumeOnSkillUse 0x5d9580).
+	if c.sk.SrvStFunc == stImpale && m.Hit {
+		c.effect(Effect{Kind: "weapon_wear", Pct: c.calc(2), WearAmount: c.calc(3)})
+	}
 }
 
 func doAttackFn(c *cast) {
@@ -586,8 +592,10 @@ func doSacrificeFn(c *cast) {
 	}
 }
 
-// doChargedStrikeFn is SRVDO_011_ChargedStrike: a Power-Strike style melee hit;
-// on a hit calc1 charged bolts fly out of the target in random directions.
+// doChargedStrikeFn is SRVDO_011_ChargedStrike (0x5da4a0, VERIFIED): a Power-Strike style melee hit, then
+// calc1 charged bolts are created AT THE TARGET whether or not the hit landed (the exe never tests the
+// outcome). Their direction is the point mirrored through the target (2*target - self); the per-bolt
+// spread hook (0x5c7340) was not decoded, so the bolts keep the random 360 degree spread (UNVERIFIED).
 func doChargedStrikeFn(c *cast) {
 	if !c.needTarget() {
 		return
@@ -595,12 +603,7 @@ func doChargedStrikeFn(c *cast) {
 
 	o := c.meleeOpt()
 	o.skillElem = false
-	m := c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o)
-	c.addMelee(m)
-
-	if !m.Hit {
-		return
-	}
+	c.addMelee(c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o))
 
 	bolts := c.calc(1)
 	for i := 0; i < bolts; i++ {
@@ -615,8 +618,10 @@ func doChargedStrikeFn(c *cast) {
 	}
 }
 
-// doLightningStrikeFn is SRVDO_014_LightningStrike (U): a melee hit that
-// chains lightning through enemies near the target.
+// doLightningStrikeFn is SRVDO_014_LightningStrike (0x5dab30, VERIFIED): resolve the hit, then, hit or
+// miss, look for ONE other enemy within calc1 subtiles of the target and start a single chain bolt
+// there (calc2 = bolts allowed in the chain). Which enemy the exe's area scan returns first is not
+// known; the nearest to the target is used (UNVERIFIED).
 func doLightningStrikeFn(c *cast) {
 	if !c.needTarget() {
 		return
@@ -624,12 +629,30 @@ func doLightningStrikeFn(c *cast) {
 
 	o := c.meleeOpt()
 	o.skillElem = false
-	m := c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o)
-	c.addMelee(m)
+	c.addMelee(c.p.strike(c.u, c.sk, c.lvl, c.tgt.Unit, c.env, o))
 
-	if m.Hit {
-		c.chainFrom(c.tgt.UX, c.tgt.UY, c.tgt.Unit, c.sk.SrvMissileA, 3, 10)
+	var best *Foe
+
+	bd := 1 << 30
+
+	for _, f := range c.p.foes(c.tgt.UX, c.tgt.UY, c.calc(1)) {
+		f := f
+		if f.Target.ID() == c.tgt.Unit.ID() || !f.Target.Alive() {
+			continue
+		}
+
+		if d := cheb(f.X-c.tgt.UX, f.Y-c.tgt.UY); d < bd {
+			bd, best = d, &f
+		}
 	}
+
+	if best == nil {
+		return
+	}
+
+	cc := *c
+	cc.tgt = Target{Unit: best.Target, UX: best.X, UY: best.Y}
+	cc.castM(c.sk.SrvMissileA, castOpts{hasStart: true, startX: float64(best.X) + 0.5, startY: float64(best.Y) + 0.5, chainLeft: c.calc(2)})
 }
 
 // ---- ranged / missile families ----
@@ -675,14 +698,44 @@ func doHomingFn(c *cast) {
 	}
 }
 
-// doStrafeFn is SRVDO_012_Strafe (U): calc1 arrows, each at a different enemy
-// near the aim point, cycling when there are fewer enemies than arrows.
+// StrafeBurst is the number of arrows of a Strafe cast (SRVST_008, 0x5d9840, VERIFIED): with m =
+// min(calc1, calc3), it is min(calc1, max(found, m)) where found is the number of enemies in the scan.
+func StrafeBurst(calc1, calc3, found int) int {
+	m := calc3
+	if calc1 < m {
+		m = calc1
+	}
+
+	if found > m {
+		m = found
+	}
+
+	if calc1 < m {
+		return calc1
+	}
+
+	return m
+}
+
+// doStrafeFn is SRVDO_012_Strafe: one arrow per animation event at a (new) enemy within aurarangecalc of
+// the archer, the burst length from StrafeBurst. The exe spreads the arrows over attack events and picks
+// the next enemy as any other than the previous one; here the burst is fired in one call, alternating over
+// the enemies found, and with a single enemy only one arrow flies (the rescan excluding it ends the burst).
 func doStrafeFn(c *cast) {
-	ax, ay := c.aim()
-	foes := c.p.foes(ax, ay, 14)
-	n := c.calc(1)
+	rng := c.env.eval(c.sk.AuraRangeCalc)
+	if rng <= 0 {
+		rng = 14
+	}
+
+	ux, uy := c.u.Pos()
+	foes := c.p.foes(ux, uy, rng)
+	n := StrafeBurst(c.calc(1), c.calc(3), len(foes))
 
 	if n < 1 {
+		n = 1
+	}
+
+	if len(foes) == 1 && n > 1 {
 		n = 1
 	}
 
