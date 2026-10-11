@@ -150,7 +150,24 @@ var (
 	uiScale  = 1
 	inputOff [2]int
 	anchor   = AnchorBottom
+	fixed    bool
 )
+
+// SetFixed pins the logical size (OD2_DISPLAY): the window may then have any size, the picture is scaled to
+// fit it. Tests rely on this to get the same logical screen on every monitor.
+func SetFixed(f bool) {
+	mu.Lock()
+	fixed = f
+	mu.Unlock()
+}
+
+// Fixed reports whether the logical size is pinned.
+func Fixed() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	return fixed
+}
 
 // Get is the current logical screen size.
 func Get() Size {

@@ -80,6 +80,8 @@ func (a *App) displaySize() (d2display.Size, int) {
 
 	d2display.Set(size)
 	d2display.SetScale(scale)
+	// an explicit OD2_DISPLAY pins the logical size whatever the window turns out to be
+	d2display.SetFixed(err == nil && os.Getenv("OD2_DISPLAY") != "")
 	a.Infof("display %dx%d, ui scale %d", size.W, size.H, scale)
 
 	return size, scale

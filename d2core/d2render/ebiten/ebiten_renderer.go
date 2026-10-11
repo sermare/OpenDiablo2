@@ -78,6 +78,12 @@ func (r *Renderer) Draw(screen *ebiten.Image) {
 // Layout returns the logical screen size: the window (or full screen) size divided by the integer UI
 // scale, never below 800x600 (see d2display). At an 800x600 window it is the original fixed size.
 func (r *Renderer) Layout(outsideWidth, outsideHeight int) (width, height int) {
+	if d2display.Fixed() {
+		s := d2display.Get()
+
+		return s.W, s.H
+	}
+
 	s := d2display.Logical(outsideWidth, outsideHeight, d2display.Scale())
 	d2display.Set(s)
 
