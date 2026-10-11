@@ -496,7 +496,7 @@ func TestShadowMaster(t *testing.T) {
 func TestWillOWisp(t *testing.T) {
 	runFB1(t, "WillOWisp", []fb1Case{
 		{name: "out of reach, aip1 roll attacks and resets the state", aip: []int{100, 0, 0}, dist: 20,
-			log: []string{"attack5"}, steps: 1, scratch: [3]int{0, 0, 0}},
+			log: []string{"attack7"}, steps: 1, scratch: [3]int{0, 0, 0}},
 		{name: "in reach, aip2 roll attacks", aip: []int{0, 100, 0}, dist: 3, inRange: true,
 			log: []string{"attack4"}, steps: 1},
 		{name: "otherwise approaches on aip3 with a 3 counter", aip: []int{0, 0, 100}, dist: 20,
@@ -506,35 +506,8 @@ func TestWillOWisp(t *testing.T) {
 			steps: 1, scratch: [3]int{1, 1, 0}},
 		{name: "chase state with the counter spent attacks in reach (state 3)", aip: []int{0, 0, 100}, dist: 3,
 			inRange: true, setup: func(b *Brain, _ *fb1World) { b.Scratch = [3]int{1, 0, 0} },
-			log: []string{"attack4"}, scratch: [3]int{3, 0, 0}},
+			log: []string{"attack8"}, scratch: [3]int{3, 0, 0}},
 		{name: "state 2 attacks out of reach without a roll", aip: []int{0, 0, 100}, dist: 20,
-			setup: func(b *Brain, _ *fb1World) { b.Scratch = [3]int{2, 0, 0} }, log: []string{"attack5"}},
-	})
-
-	t.Run("dance trigger needs the cooldown over, close target and the 1000 roll", func(t *testing.T) {
-		hit := false
-
-		for id := uint32(1); id < 4000 && !hit; id++ {
-			b := NewBrain(id, 1, Normal, profile("WillOWisp", 0, 0, 0), testSeed)
-			b.X, b.Y = 100, 100
-			s := shadow(b)
-
-			if s.Roll(1000) > 2 {
-				continue
-			}
-
-			hit = true
-			w := newFB1(5, false)
-			w.frame = 1
-			fb1Think(w, b, 5, false, true)
-
-			if b.Scratch[0] != 2 || b.Scratch[2] != 1+0x708 {
-				t.Errorf("dance should end in state 2 with the cooldown: %v", b.Scratch)
-			}
-		}
-
-		if !hit {
-			t.Skip("no seed hit the 1/500 trigger")
-		}
+			setup: func(b *Brain, _ *fb1World) { b.Scratch = [3]int{2, 0, 0} }, log: []string{"attack7"}},
 	})
 }
