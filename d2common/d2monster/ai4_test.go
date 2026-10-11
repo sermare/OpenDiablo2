@@ -99,7 +99,7 @@ func TestMonsterAI4(t *testing.T) {
 			want:  []string{"attack4"}},
 		{name: "FetishBlowgun shoots", prof: profile("FetishBlowgun", 30, 0), dist: 8, inRange: true, want: []string{"attack4"}},
 		{name: "FetishShaman heals buddy", prof: withSkills(profile("FetishShaman", 100, 0, 15, 0, 30), 2), dist: 9,
-			setup: func(_ *Brain, w *worldX) { w.ally = &Target{ID: 3, X: 105, Y: 100, Size: 1}; w.allyD = 5 },
+			setup: func(_ *Brain, w *worldX) { w.corpse = &Target{ID: 3, X: 103, Y: 100, Size: 1} },
 			want:  []string{"cast2"}},
 		{name: "BatDemon takes off", prof: profile("BatDemon", 20, 20, 50, 50, 25), dist: 9, want: []string{"attack10"}},
 		{name: "Megademon attacks", prof: profile("Megademon", 0, 0, 100, 0, 0, 40), dist: 3, inRange: true, want: []string{"attack4"}},

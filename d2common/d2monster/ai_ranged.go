@@ -123,7 +123,13 @@ func thinkSkeletonMage(c *Ctx) {
 	b := c.B
 	pt := *c.Target
 
+	// The exe keeps one distance variable: AttackTarget overwrites it when it
+	// finds a unit, and the tail below reads that same variable (batch 7).
+	dist := c.Dist
+
 	if t, d, ok := c.W.AttackTarget(b); ok {
+		dist = d
+
 		if d > b.AIP(2) && b.Chance(b.AIP(3)) {
 			c.SetSpeed(10)
 
@@ -149,7 +155,7 @@ func thinkSkeletonMage(c *Ctx) {
 		}
 	}
 
-	if c.Dist > b.AIP(2) && b.Chance(b.AIP(3)) {
+	if dist > b.AIP(2) && b.Chance(b.AIP(3)) {
 		c.SetSpeed(10)
 
 		if c.WalkTo(pt, b.AIP(2)) {
