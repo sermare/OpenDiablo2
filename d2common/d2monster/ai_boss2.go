@@ -10,15 +10,10 @@ package d2monster
 // the comments come from the 1.14b monstats.txt (patch_d2).
 
 func init() {
-	register("Vulture", TargetStandard, thinkVulture)
 	register("Summoner", TargetStandard, thinkSummoner)
 	register("Duriel", TargetStandard, thinkDuriel)
 	register("Mephisto", TargetStandard, thinkMephisto)
-	register("UberMephisto", TargetStandard, thinkMephisto)
-	register("Diablo", TargetStandard, thinkDiablo)
-	register("UberDiablo", TargetStandard, thinkDiablo)
 	register("Izual", TargetStandard, thinkIzual)
-	register("UberIzual", TargetStandard, thinkIzual)
 	register("BaalMinion", TargetStandard, thinkBaalMinion)
 	register("SuicideMinion", TargetStandard, thinkSuicideMinion)
 }
@@ -86,8 +81,9 @@ func sqDist(ax, ay, bx, by int) int {
 // Frost Nova is ready again, Scratch[2] the frame the Fire Wall is.
 //
 // "Cold" is chosen when the hero's cold resistance is not higher than the fire
-// resistance; a roll above aip3 flips the choice. The first-tick call
-// FUN_00599f70 (Scratch[0]) is not ported (UNVERIFIED purpose).
+// resistance; a roll above aip3 flips the choice. The first-tick call is
+// QUEST_A2_TheSummoner_OnSummonerThink 0x599f70 (Scratch[0] marks it done),
+// delivered through QuestBossHook.
 func thinkSummoner(c *Ctx) {
 	b, t := c.B, c.Target
 	p := b.Profile
@@ -95,6 +91,8 @@ func thinkSummoner(c *Ctx) {
 
 	if b.Scratch[0] == 0 {
 		b.Scratch[0] = 1
+
+		c.questHook("summoner") // QUEST_A2_TheSummoner_OnSummonerThink
 	}
 
 	if t == nil {
@@ -185,17 +183,26 @@ func thinkSummoner(c *Ctx) {
 //
 // On the first tick the Holy Freeze aura is made active (the exe calls
 // FUN_0056bc60(aip1,1) and SERVER_SetPlayerActiveSkill(Skill4) while
-// FUN_00620480 says no skill is active; UNVERIFIED what that test reads, so
-// the aura is started once, tracked in Scratch[0]).
+// UNIT_GetRightSkill 0x620480 returns NULL, i.e. the unit has no active right
+// skill yet: RightSkillChecker; without it the aura is started once, tracked in
+// Scratch[0]).
 func thinkDuriel(c *Ctx) {
 	b, t := c.B, c.Target
 	p := b.Profile
 
-	if p.Skills[slot4].Used() && b.Scratch[0] == 0 {
-		b.Scratch[0] = 1
+	if p.Skills[slot4].Used() {
+		start := b.Scratch[0] == 0 // fallback: once
 
-		if as, ok := c.W.(AuraStarter); ok {
-			as.StartAura(b, slot4, b.AIP(1))
+		if rs, ok := c.W.(RightSkillChecker); ok {
+			start = !rs.HasRightSkill(b) // the exe: UNIT_GetRightSkill == NULL
+		}
+
+		if start {
+			b.Scratch[0] = 1
+
+			if as, ok := c.W.(AuraStarter); ok {
+				as.StartAura(b, slot4, b.AIP(1))
+			}
 		}
 	}
 
@@ -493,106 +500,6 @@ const (
 	diabloVeryFar = 0x69
 )
 
-// DiabloWeights returns the weight table of the decision for the current
-// situation (VERIFIED constants of FUN_005e7710; the situation flags that
-// depend on unread helpers are listed in the comment of thinkDiablo).
-func DiabloWeights(inSight, engaged, awayFromHome, farFromHome bool, hp, dist, fireRes, lightRes, others int, hasState0xb bool) [diaWeights]int {
-	var w [diaWeights]int
-
-	switch {
-	case inSight:
-		w[diaA1], w[diaA2], w[diaLight], w[diaFire], w[diaCold], w[diaWall] = 40, 70, 40, 24, 40, 15
-
-		if hp < 20 {
-			w[diaA1] = 50
-		}
-
-		if hasState0xb {
-			w[diaCold], w[diaWall] = 0, 0
-		}
-
-		if lightRes < fireRes {
-			w[diaFire] -= 10
-		}
-
-		if fireRes < lightRes {
-			w[diaFire] += 10
-		}
-
-		if !engaged {
-			w[diaLight], w[diaFire] = 0, 0
-		}
-	case engaged:
-		w[diaLight], w[diaFire], w[diaPrison], w[diaCircle], w[diaWall], w[diaRun] = 25, 25, 20, 20, 15, 10
-		if dist > 25 {
-			w[diaWall] -= 5
-			w[diaRun] = 20
-			w[diaLight] = 0
-		}
-
-		if lightRes < fireRes {
-			w[diaFire] -= 10
-			w[diaWall] -= 10
-		}
-
-		if fireRes < lightRes {
-			w[diaFire] += 10
-			w[diaWall] += 10
-		}
-
-		if others < 2 {
-			w[diaFire] -= 10
-		}
-
-		if others > 3 {
-			w[diaFire] += 5
-		}
-
-		if awayFromHome {
-			w[diaWalkHome], w[diaCircle], w[diaRun], w[diaFirewall] = 0, 10, 0, 15
-			if w[diaPrison] == 0 {
-				w[diaPrison] = 10
-			}
-		}
-
-		if farFromHome {
-			w[diaPrison], w[diaRunHome] = 20, 60
-		}
-	default:
-		w[diaAttack11], w[diaFire], w[diaWall], w[diaPrison], w[diaCircle] = 5, 25, 25, 40, 25
-
-		if others < 2 {
-			w[diaWall] -= 5
-			w[diaFire] = 0
-			w[diaWalkHome] = 25
-			w[diaPrison] = 0
-		}
-
-		if awayFromHome {
-			w[diaWalkHome], w[diaCircle], w[diaFirewall] = 0, 15, 25
-			if w[diaPrison] == 0 {
-				w[diaPrison] = 20
-			}
-
-			if others < 2 {
-				w[diaPrison] -= 5
-			}
-		}
-
-		if farFromHome {
-			w[diaRunHome] = 60
-		}
-	}
-
-	for i := range w {
-		if w[i] < 0 {
-			w[i] = 0
-		}
-	}
-
-	return w
-}
-
 // pickWeighted rolls over a weight table exactly like the exe: one roll
 // bounded by the sum, the first entry whose running total exceeds it wins;
 // the fallthrough result is 11 (wait).
@@ -619,184 +526,6 @@ func pickWeighted(b *Brain, w []int) int {
 	return diaWait
 }
 
-// thinkDiablo is MONAI_Think_Diablo 0x5e8150 plus the decision function
-// FUN_005e7710 (VERIFIED structure and weights).
-//
-// First tick: an anchor command (type 10) at the spawn point is queued
-// (VERIFIED). Scratch[0] holds the continuing action (the decision returns it
-// unchanged while it is non-zero: the DiabLight channel, VERIFIED).
-//
-// Slots (monstats.txt): Skill1 DiabLight, Skill2 DiabCold, Skill3 DiabFire,
-// Skill4 DiabWall, Skill5 DiabRun, Skill6 PrimeFirewall, Skill7 DiabPrison,
-// Skill8 Diablogeddon (clone only: kept up as a buff, not ported).
-//
-// "In sight" of the decision (FUN_00622e40) is read as "in reach" (the same
-// test State12 uses before a melee blow).
-//
-// UNVERIFIED simplifications: the decision's target is the tick's target (the
-// exe scores every hero in range with FUN_005e7420); "engaged" (FUN_005dbfd0)
-// is Brain.Aggressive; the flags derived from the target's current skill
-// (teleporting away) and the Chaos Sanctuary seal-position check are left out;
-// "others" (heroes in range) is 1; fire/lightning resistance come from
-// ResistFinder when the World has one. The levelled sleep of the default
-// case (12/8/4 frames by difficulty) is VERIFIED.
-func thinkDiablo(c *Ctx) {
-	b, t := c.B, c.Target
-	p := b.Profile
-
-	anchor := b.FindCommand(CmdAnchor)
-	if anchor == nil {
-		b.AppendCommand(Command{Type: CmdAnchor, X: b.X, Y: b.Y})
-		anchor = b.FindCommand(CmdAnchor)
-	}
-
-	if t == nil {
-		c.Sleep(10)
-
-		return
-	}
-
-	act := b.Scratch[0]
-
-	if act == 0 {
-		fire, light := 0, 0
-		if rf, ok := c.W.(ResistFinder); ok {
-			fire, _, light = rf.Resists(*t)
-		}
-
-		// FUN_00622e40 is the "can strike the target from here" test (State12
-		// uses it to decide on a melee blow): in reach, Diablo picks from the
-		// melee-and-spell table, out of reach from the spell-only ones.
-		sight := c.InRange
-
-		home := b.DistanceTo(anchor.X, anchor.Y)
-		w := DiabloWeights(sight, b.Aggressive, home > diabloAway, home > diabloVeryFar,
-			b.HPPercent, c.Dist, fire, light, 1, c.W.HasState(b, 0xb))
-		act = pickWeighted(b, w[:])
-	}
-
-	cast := func(slot int) bool {
-		if !p.Skills[slot].Used() {
-			return false
-		}
-
-		b.Scratch[0] = 0
-
-		return c.Cast(slot, *t)
-	}
-
-	switch act {
-	case diaWalkHome:
-		c.SetSpeed(0x14)
-		c.moveTo(Point{b.X, b.Y})
-
-		b.Scratch[0] = 0
-
-		return
-	case diaA1:
-		b.Scratch[0] = 0
-		c.Attack(ModeAttack1, *t)
-
-		return
-	case diaA2:
-		b.Scratch[0] = 0
-		c.Attack(ModeAttack2, *t)
-
-		return
-	case diaAttack11:
-		b.Scratch[0] = 0
-		c.Attack(Mode(0xb), *t)
-
-		return
-	case diaLight:
-		if p.Skills[slot1].Used() {
-			if !c.W.HasState(b, 0xc) {
-				b.Scratch[0] = diaLight
-				c.Cast(slot1, *t)
-
-				return
-			}
-			// state 0xc (left by the breath) is cleared and the channel ends
-			if sc, ok := c.W.(StateClearer); ok {
-				sc.ClearState(b, 0xc)
-			}
-		}
-	case diaFire:
-		if cast(slot3) {
-			return
-		}
-	case diaCold:
-		if cast(slot2) {
-			return
-		}
-	case diaWall:
-		if cast(slot4) {
-			return
-		}
-	case diaPrison, diaPrisonAny:
-		if act == diaPrisonAny && !t.IsPlayer {
-			c.Sleep(3)
-
-			b.Scratch[0] = 0
-
-			return
-		}
-
-		if cast(slot7) {
-			return
-		}
-	case diaRun:
-		if cast(slot5) {
-			return
-		}
-	case diaFirewall:
-		if cast(slot6) {
-			return
-		}
-	case diaCircle:
-		b.Scratch[0] = 0
-		c.Circle(*t, 4)
-
-		return
-	case diaRunHome:
-		c.SetSpeed(0x32)
-
-		if c.moveTo(Point{anchor.X, anchor.Y}) {
-			b.Scratch[0] = 0
-
-			return
-		}
-
-		c.Sleep(2)
-		b.Scratch[0] = 0
-
-		return
-	case diaWander:
-		c.SetSpeed(0x14)
-		c.Wander(5)
-
-		b.Scratch[0] = 0
-
-		return
-	default:
-		b.Scratch[0] = 0
-
-		switch b.Diff {
-		case Nightmare:
-			c.Sleep(8)
-		case Hell:
-			c.Sleep(4)
-		default:
-			c.Sleep(12)
-		}
-
-		return
-	}
-
-	b.Scratch[0] = 0
-	c.Sleep(2)
-}
-
 // ---------------------------------------------------------------- Izual
 
 // thinkIzual is MONAI_Think_Izual 0x5f7b30 (VERIFIED). Slot: Skill1 Frost
@@ -807,7 +536,6 @@ func thinkDiablo(c *Ctx) {
 // after a failed attack roll).
 func thinkIzual(c *Ctx) {
 	b, t := c.B, c.Target
-	p := b.Profile
 
 	if t == nil {
 		c.Sleep(10)
@@ -817,7 +545,19 @@ func thinkIzual(c *Ctx) {
 
 	if b.Scratch[0] == 0 {
 		b.Scratch[0] = 1
+
+		c.questHook("izual") // QUEST_A4_TheFallenAngel_IzualThinkHook 0x5f7b4c
 	}
+
+	izualBody(c, *t)
+}
+
+// izualBody is the part of Izual (0x5f7b30) and UberIzual (0x5f7df0) after
+// their prefaces: the stalled swing counter, the melee roll, the nova and the
+// approach, identical in both functions (VERIFIED by reading both).
+func izualBody(c *Ctx, tgt Target) {
+	b, t := c.B, &tgt
+	p := b.Profile
 
 	if b.Scratch[1] != 0 {
 		n := b.Scratch[1]
@@ -969,171 +709,3 @@ const (
 	vultureHoverStep = 12   // sleep between hover moves
 	vultureNearSq    = 121  // squared radius of the prey scan (11)
 )
-
-// thinkVulture is MONAI_Think_Vulture 0x5f2150, the flying circler. aip1
-// attack%, aip2 stall, aip3 prey hp% (wounded units it homes in on), aip4
-// circle%, aip5 move%. Scratch[0] is the number of laps left (24..25 after
-// take-off, -1 right after landing), Scratch[1]/Scratch[2] the current
-// waypoint.
-//
-// VERIFIED: the lap counter flow, the take-off rule (on the ground, no leader,
-// hero farther than 12 and 60%: take off, laps = 24+coin, fly to within 8),
-// the waypoint picking (a random point within (laps+8) of the target, pushed
-// out to at least clamp(2*laps, 12, 36) from the vulture), landing when the
-// laps run out (or it is within 5 and a roll of 15%), and the ground tail
-// (strike aip1%, else stall aip2 / circle aip4% / approach).
-//
-// UNVERIFIED: FUN_0064fb50 (a line test applied to the waypoint) is not
-// ported, so a pending waypoint is simply kept until reached; the vulture's
-// S1 "flying" move animation is a plain walk; hovering over a wounded unit
-// needs the World's PreyFinder, without which no prey is ever found.
-func thinkVulture(c *Ctx) {
-	b, t := c.B, c.Target
-	p := b.Profile
-	laps := b.Scratch[0]
-
-	fl, _ := c.W.(Flier)
-
-	takeOff := func() {
-		b.Airborne = true
-
-		if fl != nil {
-			fl.TakeOff(b)
-		}
-	}
-
-	land := func() bool {
-		if !b.Airborne {
-			return false
-		}
-
-		b.Airborne = false
-
-		if fl != nil {
-			fl.Land(b)
-		}
-
-		return true
-	}
-
-	if t == nil {
-		if laps < 1 {
-			c.Sleep(vultureHoverStep)
-
-			return
-		}
-
-		if land() {
-			b.Scratch[0] = -1
-			c.Sleep(vultureHoverStep)
-
-			return
-		}
-	}
-
-	var sq int
-	if t != nil {
-		sq = sqDist(b.X, b.Y, t.X, t.Y)
-	}
-
-	if laps == 0 && b.Leader == nil && t != nil && sq > vultureFarSq && b.Roll(100) < vultureTakeOff {
-		takeOff()
-
-		b.Scratch[0] = vultureLapsBase + int(b.Aux.Roll(2))
-		c.RunToRange(*t, 8, 8)
-		c.Sleep(vultureHoverStep)
-
-		return
-	}
-
-	var prey bool
-
-	if pf, ok := c.W.(PreyFinder); ok && t != nil {
-		_, prey = pf.NearestPrey(b, 11, b.AIP(3))
-	}
-
-	switch {
-	case laps >= 2:
-		if t != nil && !prey && (c.Dist > 5 || b.Roll(100) > 14) {
-			takeOff()
-
-			wx, wy := b.Scratch[1], b.Scratch[2]
-			if wx == 0 || wy == 0 || sqDist(b.X, b.Y, wx, wy) < 4 {
-				k := laps + 8
-				wx = t.X - k + b.Roll(2*k)
-				wy = t.Y - k + b.Roll(2*k)
-
-				min := clamp(laps*2, 12, 36)
-				for guard := 0; guard < 64 && EdgeDistance(b.X-wx, b.Y-wy, 0) < min; guard++ {
-					wx += sign(wx - b.X)
-					wy += sign(wy - b.Y)
-
-					if wx == b.X && wy == b.Y {
-						wx++
-						wy++
-					}
-				}
-
-				b.Scratch[1], b.Scratch[2] = wx, wy
-			}
-
-			b.Scratch[0] = laps - 1
-
-			c.SetSpeed(0)
-			c.moveTo(Point{b.Scratch[1], b.Scratch[2]})
-			c.Sleep(vultureHoverStep)
-
-			return
-		}
-
-		b.Scratch[0], laps = 1, 1
-
-		fallthrough
-	case laps == 1:
-		if land() && t != nil {
-			c.RunToRange(*t, 9, 2)
-			c.Sleep(vultureHoverStep)
-
-			b.Scratch[0] = -1
-
-			return
-		}
-
-		b.Scratch[0] = 8
-
-		c.Sleep(vultureHoverStep)
-	}
-
-	if t == nil {
-		c.Sleep(vultureHoverStep)
-
-		return
-	}
-
-	if c.InRange {
-		if b.Chance(b.AIP(1)) {
-			c.Attack(ModeAttack1, *t)
-		} else {
-			c.Sleep(b.AIP(2))
-		}
-
-		return
-	}
-
-	if laps != -1 && b.Roll(100) >= b.AIP(5) {
-		c.Sleep(b.AIP(2))
-
-		return
-	}
-
-	if b.Roll(100) < b.AIP(4) {
-		c.Circle(*t, 6)
-	} else {
-		c.WalkToRange(*t, 9, 0)
-	}
-
-	b.Scratch[0] = 0
-	c.Sleep(vultureHoverStep)
-
-	_ = p
-}
