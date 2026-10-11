@@ -241,7 +241,7 @@ func TestMephistoSelector(t *testing.T) {
 	b.Profile.AIDist = 55
 	Tick(w, b)
 
-	if w.last() != "walk-target/6" {
+	if !strings.HasPrefix(w.last(), "walk-to(") { // WalkNearTarget(6): a point beside the target
 		t.Fatalf("approach: %v", w.log)
 	}
 
@@ -253,8 +253,16 @@ func TestMephistoSelector(t *testing.T) {
 	w.failMove = true // cannot retreat
 	Tick(w, b)
 
-	if w.last() != "cast2" {
-		t.Fatalf("Poison Nova when it cannot back off: %v", w.log)
+	// 0x5f6c1c: the Poison Nova branch needs the target in reach, which the selector excludes for
+	// this phase, so a failed retreat always falls into one burst step (first step: flag 2, strafe)
+	if b.Scratch[1] != 2 || b.Scratch[2] != mephIdle {
+		t.Fatalf("cornered: scratch %v log %v", b.Scratch, w.log)
+	}
+
+	for _, l := range w.log {
+		if strings.HasPrefix(l, "cast") {
+			t.Fatalf("no cast when it cannot back off: %v", w.log)
+		}
 	}
 
 	// the same, free to move: it walks away
@@ -276,6 +284,68 @@ func TestMephistoSelector(t *testing.T) {
 
 	if b.Scratch[2] != mephIdle || len(w.log) != 1 {
 		t.Fatalf("melee phase: %v", w.log)
+	}
+}
+
+func TestMephistoMeleePhase(t *testing.T) {
+	// melee phase, k = 0: no retreat (r1 < 80), then r2 >= 80 casts Skill3 (Poison Nova, the exe's
+	// slot for the point-blank cast; the Go port had Skill1)
+	b := findBrain(t, mephProfile(0), func(s *d2rand.Seed) bool {
+		return s.Roll(100) > 0 && s.Roll(100) < 80 && s.Roll(100) >= 80
+	})
+	w := newFake2(3, true)
+	Tick(w, b)
+
+	if w.last() != "cast2" {
+		t.Fatalf("poison nova: %v", w.log)
+	}
+
+	// r1 >= 80: strafe (Circle) instead of walking away
+	b = findBrain(t, mephProfile(0), func(s *d2rand.Seed) bool {
+		return s.Roll(100) > 0 && s.Roll(100) >= 80
+	})
+	w = newFake2(3, true)
+	Tick(w, b)
+
+	if len(w.log) != 1 || !strings.HasPrefix(w.log[0], "walk-to(") {
+		t.Fatalf("strafe: %v", w.log)
+	}
+}
+
+func TestMephistoBurstSteps(t *testing.T) {
+	// first step: the flag becomes 2, the tick strafes and casts nothing
+	b := brainAt(mephProfile(15))
+	b.Scratch = [3]int{3, 0, mephBurst}
+	w := newFake2(10, false)
+	Tick(w, b)
+
+	if b.Scratch[0] != 2 || b.Scratch[1] != 2 || b.Scratch[2] != mephBurst {
+		t.Fatalf("scratch %v", b.Scratch)
+	}
+
+	for _, l := range w.log {
+		if strings.HasPrefix(l, "cast") {
+			t.Fatalf("first step must not cast: %v", w.log)
+		}
+	}
+
+	// second step, six skills (share 16): r in [32,48) is Skill2 (index 1)
+	b = findBrain(t, mephProfile(15), func(s *d2rand.Seed) bool { r := s.Roll(100); return r >= 32 && r < 48 })
+	b.Scratch = [3]int{3, 2, mephBurst}
+	w = newFake2(10, false)
+	Tick(w, b)
+
+	if w.last() != "cast1" {
+		t.Fatalf("burst cast: %v scratch %v", w.log, b.Scratch)
+	}
+
+	// the counter reaching zero ends the burst
+	b = brainAt(mephProfile(15))
+	b.Scratch = [3]int{1, 2, mephBurst}
+	Tick(newFake2(10, false), b)
+
+	if b.Scratch[2] != mephIdle {
+		t.Fatalf("burst should end: %v", b.Scratch)
 	}
 }
 
