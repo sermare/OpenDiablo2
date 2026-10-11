@@ -41,7 +41,7 @@ Quick start on a Mac: [docs/macos-quickstart.md](docs/macos-quickstart.md). The 
 
 ## Status board
 
-_Last updated: 2026-10-10 (v1 scope change: the human-tester and human-listen (sound) bars moved to v2, so the weighted headline reads about 85.4% on the same bars; after batches 8 and 9 (integration 1e283cd2; 7 clean full verifies in a row through batch 7; batch 8 had no clean full run on its final tree, so the streak after that interruption is 1 (batch 9)); earlier, after the pass6 landing; Game v1 complete 69%, 70% with held branches; fourth full verify run 77399: all jobs passed, no retry; earlier run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
+_Last updated: 2026-10-10 (batch 15 landed: integration d9a079d2, run 32062, six jobs ALL PASSED with no retry at 37/37/37/36/36/36 scenarios, every scenario now running at 1512x982 with 1920x1080 and ultrawide support, turbo mode on eight playthroughs, per-level multiplayer worlds, skills/AI/gap work from the exe; v1 weighted headline about 87.6%; v1 scope change: the human-tester and human-listen (sound) bars moved to v2, so the weighted headline reads about 85.4% on the same bars; after batches 8 and 9 (integration 1e283cd2; 7 clean full verifies in a row through batch 7; batch 8 had no clean full run on its final tree, so the streak after that interruption is 1 (batch 9)); earlier, after the pass6 landing; Game v1 complete 69%, 70% with held branches; fourth full verify run 77399: all jobs passed, no retry; earlier run 47389: 71 of 74 sections green, 3 red) · Claude updates this on every merged success._
 
 ### ✅ Working now (each one verified, not assumed)
 
