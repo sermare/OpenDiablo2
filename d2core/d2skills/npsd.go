@@ -141,11 +141,13 @@ func (e *Engine) leech(p *d2mapentity.Player, d *d2combat.Damage, dealt int) {
 }
 
 // CanConvert implements d2skill.Convertible: a monster that is not already
-// converted (alignment 0 in the exe, VERIFIED). U: act bosses and other
-// special bosses are refused here (the exe's SKILL_IsValidMonsterSkillTarget
-// goes through a monstats type flag that was not mapped).
+// converted (alignment 0 in the exe, VERIFIED) and not a unique or super
+// unique monster (VERIFIED, SKILL_IsValidMonsterSkillTarget 0x56c0a0 ends in
+// 0x5dc1e0 which refuses the +0x16 mask 0xa). U: act bosses and other special
+// bosses are refused as well (the monstats type test of 0x5dc1e0 was not
+// mapped).
 func (t *monsterTarget) CanConvert() bool {
-	if t.m.Stat == nil || t.m.Stat.IsSpecialBoss {
+	if t.m.Stat == nil || t.m.Stat.IsSpecialBoss || !canConvertMonster(t.m.TypeFlags) {
 		return false
 	}
 

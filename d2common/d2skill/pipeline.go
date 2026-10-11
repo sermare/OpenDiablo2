@@ -184,7 +184,7 @@ func (p *Pipeline) Start(u Unit, skillID int, tgt Target) StartResult {
 		return StartResult{Reason: ReasonCooldown, Level: lvl}
 	}
 
-	cost := sk.ManaCost(lvl)
+	cost := costOf(u, sk, lvl)
 	if u.IsPlayer() && cost > u.Mana() {
 		return StartResult{Reason: ReasonMana, Level: lvl}
 	}
@@ -308,6 +308,17 @@ type Effect struct {
 	// Knock makes a damage aura knock back the units it hurts (Sanctuary:
 	// result flag 8 of the skill row).
 	Knock bool
+
+	// ---- batch 3 (skills_batch3.go) ----
+
+	// NoGroup makes a self_state keep the other states of its States.txt group
+	// (Feral Rage and Maul: SRVDO_120 does not run the group clear that the
+	// form and armor casts do, VERIFIED 0x5c57c0).
+	NoGroup bool
+	// Toggle makes a self_state a switch: when the group clear ended a state of
+	// the group (itself included) nothing new is applied (Wearwolf, Werebear,
+	// VERIFIED 0x5c4e80 + 0x56a480).
+	Toggle bool
 }
 
 // Strike is one delayed hit of a "strikes" effect.
@@ -414,7 +425,7 @@ func (p *Pipeline) Do(u Unit, skillID int, tgt Target) DoResult {
 		return DoResult{Reason: ReasonNoSkill}
 	}
 
-	cost := sk.ManaCost(lvl)
+	cost := costOf(u, sk, lvl)
 	payHere := u.IsPlayer() && cost > 0 && !payAtStart(sk)
 
 	if payHere && cost > u.Mana() {
