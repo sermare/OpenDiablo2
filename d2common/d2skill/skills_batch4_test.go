@@ -20,6 +20,36 @@ func TestNextAfterRotation(t *testing.T) {
 	}
 }
 
+func TestPoisonExplosionLeavesEightClouds(t *testing.T) {
+	cf := newClassFixture(map[string]int{"Poison Explosion": 5})
+	id := cf.id("Poison Explosion")
+	tg := Target{X: 20, Y: 20, Corpse: true, CX: 20, CY: 20, CorpseID: "c", CorpseHP: 100}
+
+	if st := cf.p.Start(cf.u, id, tg); !st.OK {
+		t.Fatalf("start: %+v", st)
+	}
+
+	r := cf.p.Do(cf.u, id, tg)
+	if len(r.Missiles) != 8 {
+		t.Fatalf("%d clouds, want 8", len(r.Missiles))
+	}
+
+	e := effectOf(t, r, "area_hit")
+	if e.CorpseID != "c" || e.Desc != nil {
+		t.Errorf("the corpse is only consumed: %+v", e)
+	}
+
+	seen := map[[2]int]bool{}
+
+	for _, m := range r.Missiles {
+		seen[[2]int{int(m.X), int(m.Y)}] = true
+	}
+
+	if len(seen) != 8 {
+		t.Errorf("clouds on %d distinct cells", len(seen))
+	}
+}
+
 func TestStaticFieldDamage(t *testing.T) {
 	cases := []struct {
 		name                          string

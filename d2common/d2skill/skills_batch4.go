@@ -64,3 +64,15 @@ var BonePrisonOffsets = [12][2]int{
 	{-1, -4}, {1, -4}, {3, -3}, {4, -1}, {4, 1}, {3, 3},
 	{-1, 4}, {1, 4}, {-3, 3}, {-4, -1}, {-4, 1}, {-3, -3},
 }
+
+// PoisonExplosionCells are the cells, relative to the corpse, where
+// SRVDO_063 (0x5c3dc0, VERIFIED) puts its srvmissilea (poisonexplosioncloud)
+// through MISSILE_SpawnSubMissileFanFromTable (0x5a6d70): the helper walks the
+// two 16-entry tables at 0x6e39c0 (x) and 0x6e3980 (y), a square ring of
+// radius 2 around the corpse, with the stride 2 the skill passes, which keeps
+// every second entry. The cloud missile does not move (velocity 0) and lives
+// 60 frames, so the skill leaves eight stationary poison clouds instead of a
+// single instant area hit. The corpse gets state 0x76 (spent).
+var PoisonExplosionCells = [8][2]int{
+	{0, 2}, {2, 2}, {2, 0}, {2, -2}, {0, -2}, {-2, -2}, {-2, 0}, {-2, 2},
+}

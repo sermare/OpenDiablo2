@@ -1628,6 +1628,19 @@ func doCorpseExplosionFn(c *cast) {
 		CorpseHP: c.tgt.CorpseHP}
 
 	if c.sk.SrvDoFunc == 63 {
+		// VERIFIED (0x5c3dc0 + 0x5a6d70, batch 4): eight stationary clouds of srvmissilea around the corpse
+		if name := c.missileName(); name != "" && c.p.Missiles != nil && c.p.Missiles.ByName(name) != nil && c.p.Sim != nil {
+			for _, cell := range PoisonExplosionCells {
+				x, y := c.tgt.CX+cell[0], c.tgt.CY+cell[1]
+				c.tgt.X, c.tgt.Y = x, y
+				c.castM(name, castOpts{hasStart: true, startX: float64(x) + 0.5, startY: float64(y) + 0.5})
+			}
+
+			c.effect(Effect{Kind: "area_hit", Origin: "aim", X: c.tgt.CX, Y: c.tgt.CY, Radius: 0, CorpseID: c.tgt.CorpseID})
+
+			return
+		}
+
 		e.Desc = c.desc()
 		c.effect(e)
 
