@@ -7,6 +7,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
@@ -39,6 +40,7 @@ type Player struct {
 	isCasting         bool
 	isAttacking       bool // the cast in progress is a melee swing (animation A1)
 	onFinishedCasting func()
+	actionFiredFrame  int // animation frame at which the action callback ran (-1: not yet)
 	Act               int
 
 	// Death is the hero's death record (deaths, died flag, pending corpse). It
@@ -141,6 +143,7 @@ func (p *Player) Advance(tickTime float64) {
 		if (isHalfDoneCasting || played) && p.onFinishedCasting != nil {
 			p.onFinishedCasting()
 			p.onFinishedCasting = nil
+			p.actionFiredFrame = p.composite.GetCurrentFrame()
 		}
 	}
 
@@ -295,6 +298,20 @@ func (p *Player) IsCasting() bool {
 	return p.isCasting
 }
 
+// ActionDueSoon is PLRMODE_IsActionEventDueSoon (0x57cd60) for the running cast: the action frame has not
+// fired yet, or fired at most d2skill.ActionDueSlack frames ago.
+func (p *Player) ActionDueSoon() bool {
+	if !p.isCasting {
+		return false
+	}
+
+	if p.onFinishedCasting != nil || p.actionFiredFrame < 0 {
+		return true
+	}
+
+	return d2skill.ActionDue(p.composite.GetCurrentFrame(), p.actionFiredFrame)
+}
+
 // StartCasting sets a flag indicating the player is casting a skill and
 // sets the animation mode to the casting animation.
 // This handles all types of skills - melee, ranged, kick, summon, etc.
@@ -311,6 +328,7 @@ func (p *Player) StartCasting(animMode d2enum.PlayerAnimationMode, onFinishedCas
 
 	p.isCasting = true
 	p.onFinishedCasting = onFinishedCasting
+	p.actionFiredFrame = -1
 
 	if err := p.SetAnimationMode(animMode); err != nil {
 		fmtStr := "failed to set animationMode of player: %s to: %d, err: %v\n"

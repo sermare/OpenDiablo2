@@ -37,6 +37,12 @@ func (e *Engine) forceFromMods(m *d2mapentity.Monster, inst d2state.Instance) {
 		}
 
 		if ai, err := e.monsters.ForceMonster(m, kind, frames, 0); err == nil {
+			if kind == d2monster.ForcedAttract || kind == d2monster.ForcedConfuse {
+				id := m.ID()
+				e.regForced(id, kind == d2monster.ForcedAttract)
+				e.after(frames, func() { e.regRelease(id) })
+			}
+
 			e.emit("state", "STATE forced unit=%s kind=%s frames=%d ai=%s", m.Label(), kind, frames, ai)
 		}
 	}
@@ -105,12 +111,15 @@ func (e *Engine) convert(p *d2mapentity.Player, sk *d2skill.Skill, ef *d2skill.E
 		return
 	}
 
+	e.regConverted(p.ID(), m.ID())
 	e.setOf(m.ID()).Apply(e.frame, d2state.Instance{Name: ef.State, Until: e.frame + ef.Frames, Source: p.ID(),
 		SkillID: sk.ID, Level: ef.Level})
 	e.emit("state", "STATE convert skill=%q target=%s frames=%d ai=%s level=%d->%d scaled=%v hp=%d/%d", sk.Name, m.Label(),
 		ef.Frames, ai, oldLevel, lvl, scaled, v.HP, v.MaxHP)
 
 	e.after(ef.Frames, func() {
+		e.regRelease(m.ID())
+
 		if scaled && m.Alive() {
 			v.HP = RevertConverted(v.HP, v.MaxHP, oldMax)
 			v.Level, v.MaxHP = oldLevel, oldMax

@@ -10,8 +10,7 @@ import (
 // own stack. Nothing else counts. The stack sizes are the item quantities the save and the item generator
 // hold; UseAmmo takes one off the live item (the game saves the quantity with the other containers).
 //
-// UNVERIFIED against the exe: a thrown weapon whose stack reaches 0 stays in the hand with quantity 0 (the
-// original removes it) and "replenishes quantity" is not modelled.
+// A stack that reaches 0 is handled like the exe (ammo_depleted.go). UNVERIFIED: "replenishes quantity" timing.
 
 // ammoStack returns the worn stack the hero's ranged attack draws on, or nil.
 func (g *GameControls) ammoStack() *diablo2item.Item {
@@ -65,6 +64,10 @@ func (g *GameControls) UseAmmo() bool {
 
 	s.SetQuantity(s.Quantity() - 1)
 	resetThrownDurability(s)
+
+	if s.Quantity() == 0 {
+		g.handleDepletedAmmo(s)
+	}
 
 	return true
 }
