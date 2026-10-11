@@ -661,6 +661,8 @@ func (g *GameControls) worldClick(button d2enum.MouseButton, mod d2enum.KeyMod, 
 
 	g.Infof("INPUT world-click button=%d mod=%d action=%s left_skill=%d", button, mod, act, in.LeftSkillID)
 
+	g.watchLogf("WATCH world-click action=%s", act)
+
 	switch act {
 	case WorldAttack:
 		g.inputListener.OnPlayerAttack(g.hoveredMonster())

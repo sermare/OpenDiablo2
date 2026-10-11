@@ -166,6 +166,13 @@ func (v *Game) skillEngine() *d2skills.Engine {
 	}
 
 	v.skills.OnSound = v.onSkillSound
+	// the scenario runner only reads this logger: mirror the casts as a WATCH line (the engine's own CAST start line,
+	// which the scenario checks count, stays unchanged) so a script can wait for a cast with until:
+	v.skills.OnEvent = func(_, line string) {
+		if strings.HasPrefix(line, "CAST start") {
+			v.Infof("WATCH cast-start%s", strings.TrimPrefix(line, "CAST start"))
+		}
+	}
 
 	return v.skills
 }
