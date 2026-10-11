@@ -165,6 +165,7 @@ type Game struct {
 	autoSoundElapsed     float64
 	autoSoundDone        bool
 	ground               groundState
+	frameBase            int        // frames of the directors already dropped (level_persist.go)
 	levelStore           levelStore // state of the levels the hero has left (level_persist.go)
 	populated            int        // levels.changes+1 of the level that was populated with monsters
 	prisonDoors          int        // levels.changes+1 of the level whose cages got their prison doors
@@ -173,8 +174,8 @@ type Game struct {
 	autoGround           autoGround
 	monsters             *d2monsters.Director
 	petCarry             *d2monsters.CarriedPets // pets travelling to the next level of the act (pet_levelchange.go)
-	rankLeader           *d2mapentity.Monster // leader of the last spawnrank pack
-	realm                *realmState          // the monsters of a game played through the realm (realm_sync.go)
+	rankLeader           *d2mapentity.Monster    // leader of the last spawnrank pack
+	realm                *realmState             // the monsters of a game played through the realm (realm_sync.go)
 	monsterTest          *monsterTest
 	summonCheckAcc       float64 // seconds since the last SUMMONCHECK line (game_monsters.go)
 	aiTest               *aiAutoTest

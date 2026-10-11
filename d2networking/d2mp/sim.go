@@ -86,6 +86,8 @@ type pstate struct {
 	wps                map[uint16]bool
 	meleeMin, meleeMax int
 	tpPortals          [2]uint32
+	moves              levelMoves
+	protectUntil       uint32 // server ms until which state 0x6c holds
 }
 
 type mstate struct {
@@ -505,6 +507,7 @@ func (s *Sim) ChangeLevel(id uint32, level uint16) bool {
 	s.cancelTrade(id, "left the level")
 	delete(s.paths, id)
 	s.enterLevel(p, level, 0, 0, false)
+	s.protectAfterMove(p)
 
 	return true
 }

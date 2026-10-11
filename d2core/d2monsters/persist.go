@@ -17,6 +17,23 @@ import (
 // ParkedLevel is the set of living hostile monsters of one level.
 type ParkedLevel struct {
 	units []*unit
+	at    int // game frame of the departure (clock: Game.gameFrame)
+}
+
+// InactiveLifeFrames is how long a monster may stay out of its room and still
+// come back with the life it had (exe MONAI_RestoreInactiveMonster 0x5401d0,
+// 0x1d4c = 7500 frames, 5 minutes at 25 Hz). After that it returns at full
+// life.
+const InactiveLifeFrames = 7500
+
+// RestoredLife is the life a monster has when its room wakes again: the life
+// it left with when under InactiveLifeFrames frames passed, else the maximum.
+func RestoredLife(hp, maxHP, elapsed int) int {
+	if elapsed < InactiveLifeFrames && hp > 0 && hp <= maxHP {
+		return hp
+	}
+
+	return maxHP
 }
 
 // Len is the number of parked monsters.
@@ -32,8 +49,8 @@ func (p *ParkedLevel) Len() int {
 // entities stay valid but are no longer simulated) and returns them. Corpses,
 // mercenaries and summoned allies are not parked: corpses are gone after a
 // while anyway and the hero's followers travel with him.
-func (d *Director) ParkLevel() *ParkedLevel {
-	out := &ParkedLevel{}
+func (d *Director) ParkLevel(now int) *ParkedLevel {
+	out := &ParkedLevel{at: now}
 
 	for _, u := range d.sortedUnits() {
 		if u.friendly() || u.b.Allied || !u.m.Alive() {
@@ -52,13 +69,18 @@ func (d *Director) ParkLevel() *ParkedLevel {
 // RestoreLevel puts parked monsters back into the (rebuilt) map and the
 // director. They come back calm (no target, standing) where they were; their
 // hit points, level and group links are those they had. It returns how many
-// were restored.
-func (d *Director) RestoreLevel(p *ParkedLevel) int {
+// were restored. now is the game frame on the clock ParkLevel used; a level
+// left for InactiveLifeFrames or more brings its monsters back at full life.
+func (d *Director) RestoreLevel(p *ParkedLevel, now int) int {
 	if p == nil {
 		return 0
 	}
 
+	elapsed := now - p.at
+
 	for _, u := range p.units {
+		u.m.Vitals.HP = RestoredLife(u.m.Vitals.HP, u.m.Vitals.MaxHP, elapsed)
+
 		if u.m.Mode() == d2monster.ModeWalk || u.m.Mode() == d2monster.ModeRun {
 			u.m.StopMoving()
 		}

@@ -38,6 +38,8 @@ type entry struct {
 	Member
 	party   int             // 0: none
 	hostile map[string]bool // ids this player has declared hostility to
+	body    bool            // state 7 (relations.go)
+	rel     map[string]*Relation
 }
 
 // Roster holds the players of a game and their relations.
@@ -71,6 +73,7 @@ func (r *Roster) Remove(id string) {
 	}
 
 	r.Leave(id)
+	r.dropRelations(id)
 	delete(r.players, id)
 	delete(r.invites, id)
 
@@ -196,7 +199,12 @@ func (r *Roster) Invite(from, to string) error {
 		return ErrHostile
 	case f.party != 0 && r.partySize(f.party) >= d2enum.MaxPlayersInGame:
 		return ErrPartyFull
+	case f.body || t.body:
+		return ErrPlayerBody
 	}
+
+	_ = r.AddRelation(from, to)
+	_ = r.AddRelation(to, from)
 
 	r.invites[to] = from
 
@@ -236,6 +244,10 @@ func (r *Roster) Accept(id string) (int, error) {
 		return 0, ErrPartyFull
 	}
 
+	if f.body || t.body {
+		return 0, ErrPlayerBody
+	}
+
 	delete(r.invites, id)
 
 	if t.party != 0 {
@@ -256,6 +268,10 @@ func (r *Roster) Accept(id string) (int, error) {
 			delete(t.hostile, o.ID)
 		}
 	}
+
+	_ = r.AddRelation(from, id)
+	_ = r.AddRelation(id, from)
+	r.RefreshPartyBits()
 
 	return t.party, nil
 }
@@ -278,6 +294,8 @@ func (r *Roster) Leave(id string) bool {
 			}
 		}
 	}
+
+	r.RefreshPartyBits()
 
 	return true
 }
@@ -305,6 +323,10 @@ func (r *Roster) CanGoHostile(from, to string) error {
 func (r *Roster) SetHostile(from, to string, hostile bool) error {
 	if hostile {
 		if err := r.CanGoHostile(from, to); err != nil {
+			return err
+		}
+
+		if err := r.AddRelation(from, to); err != nil {
 			return err
 		}
 

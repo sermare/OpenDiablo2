@@ -289,6 +289,12 @@ func (s *Sim) damage(t *Unit, attacker uint32, dmg int) {
 		return
 	}
 
+	if t.Kind == KindPlayer {
+		if p := s.pl[t.ID]; p != nil && p.protectUntil > s.now {
+			return // state 0x6c (levelmove.go)
+		}
+	}
+
 	t.HP -= int32(dmg)
 	if t.HP < 0 {
 		t.HP = 0

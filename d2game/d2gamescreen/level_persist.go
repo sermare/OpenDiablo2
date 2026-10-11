@@ -66,6 +66,17 @@ func (s *levelStore) take(id int) *savedLevel {
 	return s.levels[id]
 }
 
+// gameFrame is the game clock in 25 Hz frames across level changes: the
+// director counts from zero on every map, so the frames of the departed ones
+// are accumulated in frameBase when the director is dropped.
+func (v *Game) gameFrame() int {
+	if v.monsters == nil {
+		return v.frameBase
+	}
+
+	return v.frameBase + v.monsters.Frame()
+}
+
 func persistEnabled() bool { return os.Getenv("OD2_NOPERSIST") != "1" }
 
 // persistable says whether the level with this id keeps its state: the real
@@ -90,7 +101,7 @@ func (v *Game) saveLevel(level int) {
 	sl := &savedLevel{opened: map[savedObject]bool{}, visits: 1}
 
 	if v.monsters != nil { // no director yet means nothing was ever spawned
-		sl.parked = v.monsters.ParkLevel()
+		sl.parked = v.monsters.ParkLevel(v.gameFrame())
 		sl.monsters = sl.parked.Len()
 	}
 
@@ -135,7 +146,7 @@ func (v *Game) restoreLevel(level int) {
 
 	engine := v.gameClient.MapEngine
 	discarded := dir.DiscardPlacements()
-	restored := dir.RestoreLevel(sl.parked)
+	restored := dir.RestoreLevel(sl.parked, v.gameFrame())
 
 	// the monsters the hero left alive come back as they were; the level must
 	// not be populated again
