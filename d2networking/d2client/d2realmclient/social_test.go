@@ -217,8 +217,9 @@ func TestLevelAndPartyThroughRealm(t *testing.T) {
 
 	hs.wait(t, "host learns the joiner's level", func() bool { l, ok := host.PeerLevel(peer); return ok && l == 2 })
 
-	if !host.SameLevel(peer) {
-		t.Error("the host has not reported a level yet: a peer counts as present")
+	// the realm told the host its starting town (level 1) when it joined
+	if host.SameLevel(peer) {
+		t.Error("host in the starting town and joiner in level 2 must differ")
 	}
 
 	lc, _ = d2netpacket.CreateChangeLevelPacket("host-id", 1, 0, 0)

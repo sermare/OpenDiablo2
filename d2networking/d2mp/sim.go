@@ -451,6 +451,62 @@ func (s *Sim) enterLevel(p *pstate, level uint16, x, y float64, first bool) {
 	}
 
 	s.toLevel(level, s.spawnEvent(u), u.ID)
+	s.announceHero(p, level, first)
+}
+
+// announceHero keeps the roster global while the world is per level: viewers
+// outside the hero's level learn who it is and where (EvHero; viewers inside
+// get the EvSpawn), and a joining hero learns the heroes of the other levels.
+// With every hero in one level nothing is sent.
+func (s *Sim) announceHero(p *pstate, level uint16, first bool) {
+	u := p.u
+	info := s.heroEvent(u)
+
+	for _, o := range s.sortedPlayers() {
+		if o.u.ID == u.ID {
+			continue
+		}
+
+		if o.u.Level != level {
+			s.send(o.u.ID, info)
+		}
+
+		if first && o.u.Level != level {
+			s.send(u.ID, s.heroEvent(o.u))
+		}
+	}
+}
+
+func (s *Sim) heroEvent(u *Unit) Event {
+	c := *u
+	c.Segs = nil
+
+	return Event{Type: EvHero, ID: u.ID, Unit: c}
+}
+
+// maxLevelID is the highest level id of the game's levels.txt (136, verified in d2level).
+const maxLevelID = 136
+
+// ChangeLevel hands a hero over to another level (the client walked through a
+// stair or door of its own map): it leaves the units of the old level, appears
+// at the level's spawn and receives the units of the new one. Returns false
+// for an unknown hero or level id. Moving to the level the hero is in is a
+// no-op.
+func (s *Sim) ChangeLevel(id uint32, level uint16) bool {
+	p, ok := s.pl[id]
+	if !ok || level == 0 || level > maxLevelID {
+		return false
+	}
+
+	if p.u.Level == level {
+		return true
+	}
+
+	s.cancelTrade(id, "left the level")
+	delete(s.paths, id)
+	s.enterLevel(p, level, 0, 0, false)
+
+	return true
 }
 
 // ---- digest ----

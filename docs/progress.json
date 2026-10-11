@@ -123,7 +123,7 @@
       "done": 3,
       "total": 4,
       "pending": 0,
-      "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; level changes and party commands now travel through the realm bridge with unit tests (feat/mp-and-mac-dmg), not yet seen in two game windows; trade works over the legacy path",
+      "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; the realm world is now per level (a hero only receives and affects its level, level change handoff, heroes in other levels hidden, party/roster global) with two-client unit tests (feat/realm-per-level), not yet seen in two game windows (96-multiplayer, 9j-realm-multiplayer, 9d-party-trade, 9f-pvp-skills-ear still to run alone); trade works over the legacy path",
       "color": "#ffb86b"
     },
     {
