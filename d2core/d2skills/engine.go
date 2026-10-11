@@ -66,6 +66,9 @@ type Counters struct {
 	// EmptyArea counts area states (curses) that landed on nobody: the target
 	// died or moved away between the aim and the effect.
 	EmptyArea int
+	// Busy counts casts turned away because the running action may not be interrupted yet (ReasonBusy). They
+	// are not Refused: nothing was wrong with the skill, the caller only has to ask again once the action ends.
+	Busy int
 	// PvPHits are skill hits on hostile heroes.
 	PvPHits   int
 	ManaSpent int // 8.8
@@ -347,7 +350,7 @@ func (e *Engine) CastAt(p *d2mapentity.Player, skillID, sx, sy int) bool {
 	}
 
 	if !e.mayInterrupt(p, sk, rec0(e, skillID)) {
-		e.Counters.Refused++
+		e.Counters.Busy++
 		e.lastRefusal = d2skill.ReasonBusy
 
 		return false

@@ -124,6 +124,16 @@ fi
 if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   save="${OD2_VERIFY_SAVE:-$tmp/save.d2s}"
   [ -f "$save" ] || cp "$D2S_SAMPLE_BODY" "$save"
+  # A private config folder per run unless OD2_VERIFY_CONFIG_DIR is set. The games import the sample .d2s into
+  # <config>/Saves, and an import of the same character (name + map seed) reuses the same .od2 file: parallel runs
+  # (verify_parallel.sh) shared one file, so a hero another game had moved to act 2 started "in Lut Gholein" in
+  # 9d-act1-sample-hero (batch 16 flake: LEVEL CHANGE from=1 to=40 via=load).
+  if [ -z "${OD2_VERIFY_CONFIG_DIR:-}" ]; then
+    default_cfg="$HOME/Library/Application Support/OpenDiablo2/config.json"
+    if [ -f "$default_cfg" ]; then
+      mkdir -p $tmp/cfg && cp "$default_cfg" $tmp/cfg/config.json && export OD2_VERIFY_CONFIG_DIR=$tmp/cfg
+    fi
+  fi
   # make_hero <out.d2s> for the level 94 playthroughs; OD2_HERO=barb picks the generated Barbarian (default: the Sorceress)
   source scripts/verify.d/lib/hero.sh
 
@@ -177,6 +187,16 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
         echo "FAIL: warnings/errors in the $scenario_name log"; fail=1
       fi
       [ $fail -eq $fail_before ] && break
+      # keep the failed first attempt's log: the retry overwrites $log, and a flake that passes on retry
+      # would otherwise leave no evidence of why it failed (batch 16 had four such flakes and no logs)
+      if [ $attempt -eq 1 ]; then
+        # (outside $tmp: a run that passed removes its scratch folder)
+        flake_dir="${OD2_VERIFY_FLAKE_DIR:-/tmp/od2-flake-logs}"; mkdir -p $flake_dir
+        flake_log=$flake_dir/${n}.$$.attempt1.txt
+        cp -f $log.txt $flake_log 2>/dev/null
+        echo "(first-attempt log kept in $flake_log; its last failure lines:)"
+        grep -E "AUTOSCRIPT .*FAIL|DEATH|CAST start .*ok=false|CAST do .*ok=false|AUTOCAST .*refused|\[(ERROR|WARNING)\]|panic|LEVEL CHANGE" $log.txt | tail -12 | cut -c1-220
+      fi
       [ $attempt -eq 1 ] && echo "RETRY: $scenario_name failed once; running it again (scenarios are timing sensitive on a loaded machine)"
     done
     [ $fail -eq $fail_before ] && scen_pass=$((scen_pass + 1))

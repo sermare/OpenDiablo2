@@ -74,7 +74,13 @@ func (it *castItem) missedHit(c d2skills.Counters) bool {
 }
 
 // castItemMaxRetries bounds how often a refused cast is repeated.
-const castItemMaxRetries = 5
+// Most refusals are a target that died or wandered off during the cast animation (no_target), which the
+// hero's own minions cause often; the batch 16 flake of 86-class-skills used up five retries in a row.
+const castItemMaxRetries = 12
+
+// castBusyWaitMax is how long (seconds) the scenario waits for a running action to end before it gives up on a
+// "busy" refusal and counts the cast as made.
+const castBusyWaitMax = 10.0
 
 // castItemMaxHitRetries bounds how often a mustHit skill is cast again.
 const castItemMaxHitRetries = 8
@@ -96,6 +102,7 @@ type castTest struct {
 	// infected holds every monster seen carrying the OD2_AUTOCAST_SPREAD state
 	infected map[string]bool
 	refused  int
+	busyWait float64 // seconds of "busy" refusals in a row (see busyRetry)
 	reported bool
 	finished bool
 	settle   float64
@@ -463,15 +470,43 @@ func (v *Game) autoCast(elapsed float64) {
 	t.crowdW = 0
 	it.casts++
 
-	if !eng.CastAt(v.localPlayer, it.id, aimX, aimY) {
-		t.refused++
+	if eng.CastAt(v.localPlayer, it.id, aimX, aimY) {
+		t.busyWait = 0
 
-		// the nearest zombie wandered off behind a wall (they wander unless they chase): a line-of-sight
-		// refusal would repeat at the same aim until the retries run out, so walk the hero to it
-		if refusalNeedsHero(eng.LastRefusal()) {
-			v.putHeroNear(aimX, aimY)
-		}
+		return
 	}
+
+	// a "busy" refusal (the running action may not be interrupted yet) is no failed cast: give the cast back,
+	// wait for the action to end and ask again; it counts against neither the skill nor its retries
+	if busyRetry(eng.LastRefusal(), &t.busyWait) {
+		it.casts--
+		t.since = castTestInterval
+
+		return
+	}
+
+	t.refused++
+
+	// the nearest zombie wandered off behind a wall (they wander unless they chase): a line-of-sight
+	// refusal would repeat at the same aim until the retries run out, so walk the hero to it
+	if refusalNeedsHero(eng.LastRefusal()) {
+		v.putHeroNear(aimX, aimY)
+	}
+}
+
+// busyRetry says whether a refused scenario cast is only to be asked again: the refusal is "busy" and the
+// scenario has not waited castBusyWaitMax seconds on it yet. wait accumulates the time and is reset by any
+// other refusal.
+func busyRetry(reason string, wait *float64) bool {
+	if reason != d2skill.ReasonBusy {
+		*wait = 0
+
+		return false
+	}
+
+	*wait += castTestInterval
+
+	return *wait <= castBusyWaitMax
 }
 
 // refusalNeedsHero is whether a refused scenario cast is cured by standing next to the target.
