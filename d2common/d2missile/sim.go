@@ -125,6 +125,10 @@ type Missile struct {
 	seed         d2rand.Seed
 	legX, legY   float64 // dest - source at creation: the length of a ground leg
 	parked       bool    // arrived at its aim point but still alive (hit func 10)
+	// Spiral is path type 0xe (Blessed Hammer): the missile walks the node list of SpiralNodes from where it
+	// starts instead of a straight line, and expires when the list is used up.
+	Spiral bool
+	spiral *spiral
 
 	// pathVel is the exe's path velocity: the creation velocity * 75/100
 	// (verified, 0x59d5d0). Accel is added to it every 5th frame (verified,
@@ -536,13 +540,28 @@ func (s *Sim) stepOne(m *Missile) {
 	ox, oy := m.X, m.Y
 	arrived := false
 
-	if m.ClampDist > 0 && m.Travel+stepSub >= m.ClampDist {
-		stepSub = m.ClampDist - m.Travel
-		arrived = true
+	if m.Spiral && m.spiral == nil {
+		m.spiral = newSpiral(m.X, m.Y)
 	}
 
-	m.X += m.DX * stepSub
-	m.Y += m.DY * stepSub
+	if m.spiral != nil {
+		if m.Travel+stepSub >= m.spiral.total {
+			stepSub = m.spiral.total - m.Travel
+			arrived = true
+		}
+
+		nx, ny, dx, dy := m.spiral.at(m.Travel + stepSub)
+		m.X, m.Y, m.DX, m.DY = nx, ny, dx, dy
+	} else {
+		if m.ClampDist > 0 && m.Travel+stepSub >= m.ClampDist {
+			stepSub = m.ClampDist - m.Travel
+			arrived = true
+		}
+
+		m.X += m.DX * stepSub
+		m.Y += m.DY * stepSub
+	}
+
 	m.Travel += stepSub
 	// path flag 8 (PATH_TestFlag08): the step entered at least one new subtile
 	m.entered = int(math.Floor(ox)) != int(math.Floor(m.X)) || int(math.Floor(oy)) != int(math.Floor(m.Y))

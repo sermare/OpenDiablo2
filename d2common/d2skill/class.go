@@ -969,11 +969,25 @@ func doRabiesFn(c *cast) {
 // 0x20 and its path is switched to path type 0xe (the spiral), and when
 // FUN_00647550 (a synergy/mastery test) holds, the missile's stats 0x34 and
 // 0x35 are scaled by a percent. The spiral and that scaling are not modelled
-// here: the hammer flies straight.
+// here. Batch 4: the spiral (path type 0xe, d2missile.SpiralNodes) is modelled;
+// the Concentration scaling of stats 0x34 / 0x35 (0x647550, VERIFIED: param1 times the
+// damage percent of the Concentration state over 8, added to 100 percent) is
+// applied through ConcentrationHolder.
 func doBlessedHammerFn(c *cast) {
-	if c.castM(c.missileName(), castOpts{}) == nil {
-		c.fail(ReasonMissile)
+	o := castOpts{}
+	if h, ok := c.u.(ConcentrationHolder); ok {
+		if s := HammerConcentrationScale(c.sk.Params[1], h.ConcentrationDamagePct()); s != 0 {
+			o.scalePct = 100 + s
+		}
 	}
+
+	m := c.castM(c.missileName(), o)
+	if m == nil {
+		c.fail(ReasonMissile)
+		return
+	}
+
+	m.Spiral = true
 }
 
 // doMineFn is SRVDO_043_ShockField (Shock Web, U): a stationary trap missile at
