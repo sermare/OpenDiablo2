@@ -5,7 +5,9 @@ scenario_name="party, trade and PvP (two processes over TCP with the d2gs protoc
 # Both scripts run in step with `waitlog:` steps (they wait for a line the other process caused in their own
 # log), so the timeline does not depend on how fast either process starts:
 #   1 joiner arrives; host invites; joiner accepts            (party)
-#   2 roster panel + automap markers; a swing at a party member is blocked; hostility inside a party is refused
+#   2 roster panel + automap markers; a swing at a party member is blocked (declaring hostility inside a party is no
+#     longer refused: it takes the declarer out of the party and starts a 60 s cooldown, d2party hostile_test.go,
+#     so this scenario must not declare before step 5)
 #   3 host kills a monster: the experience is split between both (PARTYXP)
 #   4 trade: host gives a large charm + 1000 gold, joiner gives a Town Portal Book + 400 gold (both 1x2 cells:
 #     the real hero's inventory is full)
@@ -54,7 +56,7 @@ scenario_env() {
   local hscript="wait:2;waitlog:SOCIAL roster n=2;say:roster"
   hscript+=";say:party invite $jn;waitlog:$jn joined the party"
   hscript+=";panel:party;wait:2;say:roster;say:capframe $tmp/9d-host-party.png;automap:stats;panel:close"
-  hscript+=";say:pvp $jn;say:hostile $jn 1;wait:1"
+  hscript+=";say:pvp $jn;wait:1"
   hscript+=";say:spawnmon zombie1;wait:1;say:killnear;waitlog:PARTYXP award"
   hscript+=";say:trade request $jn;waitlog:TRADE open with"
   hscript+=";say:trade add cm2;waitlog:yours=[Hellfire Torch];say:trade gold 1000;waitlog:gold=400 you_accepted;wait:1;say:capframe $tmp/9d-host-trade.png;wait:2;say:trade accept -"
@@ -77,6 +79,8 @@ scenario_env() {
   {
     echo '#!/bin/zsh'
     echo "$common OD2_JOIN=127.0.0.1:$OD2_PORT OD2_JOIN_RETRY=120"
+    # the joiner shares the host's private config folder (the runner exports it only into the host's command)
+    [ -n "${OD2_VERIFY_CONFIG_DIR:-}" ] && echo "export OD2_CONFIG_DIR=\"$OD2_VERIFY_CONFIG_DIR\""
     echo "export OD2_AUTOGAME=\"$jsave\""
     echo "export OD2_AUTOSCRIPT='$jscript'"
     echo "sleep 25  # the host imports its save first (two imports at once pick the same hero file name)"
@@ -111,10 +115,9 @@ scenario_check() {
   grep -qE "AUTOMAP marker other-player .*name=\"$jn\" party=true" $log.txt || { echo "FAIL: automap does not mark $jn as a party member (host)"; fail=1; }
   grep -qE "AUTOMAP marker other-player .*name=\"$hn\" party=true" $j || { echo "FAIL: automap does not mark $hn as a party member (joiner)"; fail=1; }
 
-  # no friendly fire, no hostility inside a party
+  # no friendly fire inside a party
   grep -q "PVP BLOCKED target=\"$jn\" reason=\"party members do not hurt each other\"" $log.txt || { echo "FAIL: swing at a party member was not blocked (host)"; fail=1; }
   grep -q "PVP BLOCKED target=\"$hn\" reason=\"party members do not hurt each other\"" $j || { echo "FAIL: swing at a party member was not blocked (joiner)"; fail=1; }
-  grep -q "PARTY refused op=hostile name=\"$hn\"" $log.txt || { echo "FAIL: hostility inside a party was not refused"; fail=1; }
 
   # 3 party experience: the server scales each member's share by the member's own level against the monster's
   # (VERIFIED), so the shares no longer add up to the kill's raw experience: each is positive and the sum does not exceed it
