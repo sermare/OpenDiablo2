@@ -80,10 +80,10 @@
     },
     {
       "label": "Player skills with engine behaviour",
-      "done": 157,
+      "done": 163,
       "total": 210,
       "pending": 0,
-      "note": "150 of 210 player skills have engine behaviour: Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry); skills batch 3 (branch feat/skills-3): Feral Rage and Maul stack by count, Wearwolf and Wearbear toggle, Leap Attack single victim, Dragon Claw and Dragon Tail follow the exe (+7); Leap, Dragon Flight, Thunder Storm, Conversion and the three totem auras re-read and corrected but still partial",
+      "note": "skills batch 4 (branch feat/skills-4, +6): Thunder Storm rotates through the targets, Leap (circle at the landing) and Dragon Flight (lands on the target) confirmed against the exe, Bone Prison 12-cell ring, Poison Explosion eight stationary clouds, Blessed Hammer spiral path plus Concentration scale; Static Field callback re-read (floor is a gate); earlier: 150 of 210 player skills have engine behaviour:Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry); skills batch 3 (branch feat/skills-3): Feral Rage and Maul stack by count, Wearwolf and Wearbear toggle, Leap Attack single victim, Dragon Claw and Dragon Tail follow the exe (+7); Leap, Dragon Flight, Thunder Storm, Conversion and the three totem auras re-read and corrected but still partial",
       "color": "#5fd0a5"
     },
     {

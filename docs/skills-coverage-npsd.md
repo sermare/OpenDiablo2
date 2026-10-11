@@ -10,7 +10,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | | F | P | S | M | T |
 |---|---|---|---|---|---|
 | before (start of feat/skills-npsd) | 59 | 42 | 3 | 8 | 8 |
-| after | 79 | 33 | 0 | 0 | 8 |
+| after | 83 | 29 | 0 | 0 | 8 |
 
 
 ## Necromancer
@@ -34,12 +34,12 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 80 | Raise Skeletal Mage | 31 | P | P | raised, but the mage melees (no ranged attack AI) |
 | 81 | Confuse | 61 | S | F | before: state only; now forces confuse (list 9, mode 3) |
 | 82 | Life Tap | 30 | F | F | heal via afterHit |
-| 83 | Poison Explosion | 63 | P | P | area poison hit instead of the poisonexplosioncloud sub-missile fan |
+| 83 | Poison Explosion | 63 | P | F | VERIFIED 0x5c3dc0 / 0x5a6d70: eight stationary poisonexplosioncloud missiles on the radius-2 square ring around the corpse (d2skill.PoisonExplosionCells), the corpse is consumed |
 | 84 | Bone Spear | - | F | F | generic missile path |
 | 85 | BloodGolem | 56 | P | P | golem; life-leech-to-owner behaviour not checked against the exe |
 | 86 | Attract | 59 | S | F | before: state only; now forces attract (list 9, alignment 1) |
 | 87 | Decrepify | 30 | F | F | state, slow and damage stats |
-| 88 | Bone Prison | 62 | P | P | ring of 8 pieces (exe uses a 12 cell offset table 0x6e45e0/0x6e4610 and links pieces to a leader) |
+| 88 | Bone Prison | 62 | P | F | VERIFIED 0x5c3c50: 12 pieces on the offset tables 0x6e45e0 / 0x6e4610 (d2skill.BonePrisonOffsets); the leader link of the pieces is not modelled |
 | 89 | Summon Resist | - | T | T |  |
 | 90 | IronGolem | 57 | M | P | do 57 added as a golem order; the consumed item and its derived stats are not simulated |
 | 91 | Lower Resist | 30 | F | F | state with resist stats |
@@ -68,7 +68,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 109 | Cleansing | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
 | 110 | Resist Lightning | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
 | 111 | Vengeance | 2 | F | F | elemental melee |
-| 112 | Blessed Hammer | 73 | P | P | missile without the spiral movement |
+| 112 | Blessed Hammer | 73 | P | F | VERIFIED 0x5ce5a0: path type 0xe spiral (PATH_ApplyAngleStepVelocity 0x67d050, d2missile.SpiralNodes) and the Concentration damage scale (0x647550) |
 | 113 | Concentration | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
 | 114 | Holy Freeze | 81 | F | F | enemy aura, cold damage + slow |
 | 115 | Vigor | 65 | F | F | friendly aura (do 65): stats re-applied every pulse |
@@ -108,7 +108,7 @@ The statuses come from reading the handlers and the scenario logs (`scripts/veri
 | 54 | Teleport | 27 | P | F | levels.txt Teleport flag (0 refuse, 2 no walls) added (verified 0x5c84d0) |
 | 55 | Glacial Spike | - | F | F | generic missile path |
 | 56 | Meteor | 28 | P | P | SRVDO_028 creates meteorcenter (hit 14: area damage + meteorfire burning ground with its own fire damage columns); bodies read |
-| 57 | Thunder Storm | 29 | P | P | VERIFIED 0x5c8650: radius Param7 and period perdelay ((100-dm56)*par4/100+par3) now used; still strikes the nearest enemy, the exe rotates through the targets |
+| 57 | Thunder Storm | 29 | P | F | VERIFIED 0x5c8650 + 0x569a80: radius Param7 (circle), perdelay period, strikes rotate through the units in range by id (d2skill.NextAfter) |
 | 58 | Energy Shield | 23 | P | F | VERIFIED aurafunc 24 (0x5c8840): absorb pct of damage, limited by mana*16/ratio, cost absorb*ratio/16, shield ends at 0 mana; per-type walk and the player-attacker exclusion simplified (U) |
 | 59 | Blizzard | 28 | P | P | SRVDO_028 creates blizzardcenter; SrvDoFunc 10 drops blizzard1 shards (calc1 radius, calc2 period); bodies read; blizzard1 hits only its own cell (missile Size not modelled) |
 | 60 | Chilling Armor | 18 | F | F | do 18 self state with chill on melee attackers |
