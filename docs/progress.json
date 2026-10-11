@@ -29,7 +29,7 @@
       "label": "Source files studied in depth",
       "done": 277,
       "total": 277,
-      "note": "NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
+      "note": "last 37 (batches 11-13): gameplay files read, infrastructure and graphics backends only function-mapped; NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
       "color": "#2f9bff"
     },
     {
