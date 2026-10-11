@@ -27,7 +27,7 @@
     },
     {
       "label": "Source files studied in depth",
-      "done": 240,
+      "done": 277,
       "total": 277,
       "note": "NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
       "color": "#2f9bff"
