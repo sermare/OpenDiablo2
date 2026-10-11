@@ -5,6 +5,7 @@ scenario_name="Quest walkthrough, Act 2: The Horadric Staff in the real world (M
 # here it is given) and hears Cain's confirmation. Needs D2_TABLES + D2S_SAMPLE_BODY.
 source scripts/quest_walk_lib.zsh
 scenario_warnings_ok=1
+scenario_turbo=1  # scripted autoplay, no wall-clock assertions (numbers: ~/git/d2-re-notes/turbo-mode.md)
 scenario_env() {
   local s="$(qw_begin 2)say:setwaypoint 43 1;say:setwaypoint 48 1;say:setwaypoint 57 1;"
   # Far Oasis has no waypoint object in this world (docs/PLAYTEST.md): the way back to the Halls is on foot

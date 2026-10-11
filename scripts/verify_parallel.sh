@@ -5,7 +5,9 @@
 # Exit 0 only if every job printed ALL CHECKS PASSED.
 jobs=${1:-6}
 cd "${0:A:h}/.." || exit 1
-slow=(9j-quest-staff 9j-quest-radament 9k-quest-siege 9k-quest-blade 9k-quest-lamesen 9k-quest-izual 9j-quest-taintedsun 9k-quest-rescue 9b-act1-playthrough 9e-act2-playthrough 9g-act3-durance 9h-act45-playthrough 9i-act5-caves-playthrough 99-act-travel 96-multiplayer 9j-realm-multiplayer 9d-party-trade 9f-pvp-skills-ear 9g-town-portals 83-cave-chain-persist 9f-act2-lutn 86-class-skills 94-perf-real-levels 9e-cube 9g-quest-rewards-uber 9c-act1-reload 98-skillbar)
+# slow-first order by wall seconds measured alone (turbo scenarios with their turbo time): the turbo ones (9e-act2, 9g-act3,
+# 9h-act45, 9i-*, 9j-quest-staff) dropped to 10-45 s and moved down; numbers in ~/git/d2-re-notes/turbo-mode.md
+slow=(9b-act1-playthrough 9f-pvp-skills-ear 9d-act1-sample-hero 9g-town-portals 9j-quest-radament 9d-party-trade 9k-quest-izual 9s-walk-act1-monastery 9n-act3-dungeons 9j-quest-taintedsun 86-class-skills 9s-walk-act1-caves 9k-quest-siege 9s-walk-act5-ice 9s-walk-act2-rest 9g-act3-durance 9j-chaos-sanctuary 86b-missile-skills 9k-quest-blade 9m-act3-full 9j-realm-multiplayer 83-cave-chain-persist 9l-walkability 95b-perf-camp 9k-reward-npcs 9k-quest-lamesen 83-menu-flow 9i-act5-caves-playthrough 9l-ingame-audio 90-ambient-audio 98-skillbar 99-act-travel 96-multiplayer 9f-act2-lutn 94-perf-real-levels 9e-cube 9g-quest-rewards-uber 9c-act1-reload 9k-quest-rescue)
 all=(${${(f)"$(ls scripts/verify.d/*.sh | sed 's#.*/##; s#\.sh$##')"}})
 ordered=($slow ${all:|slow})
 typeset -A grp

@@ -10,6 +10,7 @@ a2=$tmp/act2
 # "KILL giving up for now on <monster>" warnings are part of a fight in the desert (a monster behind a dune the
 # hero cannot get close to); errors still fail the scenario
 scenario_warnings_ok=1
+scenario_turbo=1  # scripted autoplay, no wall-clock assertions (numbers: ~/git/d2-re-notes/turbo-mode.md)
 scenario_env() {
   mkdir -p $a2/s94 $a2/wb94; rm -f $a2/s94/*.d2s(N) $a2/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && make_hero $a2/s94/Hero.d2s; then

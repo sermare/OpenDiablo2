@@ -4,6 +4,7 @@ a2=$tmp/act2full
 # the dungeon behind each of them (Maggot Lair 62-64, Ancient Tunnels 65, Claw Viper Temple 58 and 61), and the way back.
 # Fights happen on the way (the hero walks through what attacks him); the long clears are 9e's job.
 scenario_warnings_ok=1
+scenario_turbo=1  # scripted autoplay, no wall-clock assertions (numbers: ~/git/d2-re-notes/turbo-mode.md)
 scenario_env() {
   mkdir -p $a2/s94 $a2/wb94; rm -f $a2/s94/*.d2s(N) $a2/wb94/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && make_hero $a2/s94/Hero.d2s; then
