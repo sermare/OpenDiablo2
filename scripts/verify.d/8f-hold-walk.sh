@@ -12,7 +12,10 @@ scenario_env() {
   else
     echo "# no revived sample hero, using the default save" >&2
   fi
-  local s='wait:2;skill:left=Attack;say:heropos'
+  # warm-up: the first walk loads the walk animations lazily (seconds of stall on a busy machine, which would eat the hold);
+  # one click walk, then wait until the hero has moved and stopped (heromoved/herostill, hero_watch.go)
+  local s='wait:2;skill:left=Attack;say:heromoved'
+  s="$s;click:left@${HOLD_A:-hero:140,30};until:HERO moved,120;say:herostill;until:HERO still,120;say:heropos"
   s="$s;hold:4,left@${HOLD_A:-hero:140,30};wait:0.5;say:heropos"
   s="$s;hold:6,left@${HOLD_B:-hero:-200,-100};wait:0.5;say:heropos;exit"
   echo "export OD2_AUTOSCRIPT='$s'"

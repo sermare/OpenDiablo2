@@ -10,17 +10,19 @@ scenario_env() {
   else
     echo "# no revived sample hero, using the default save" >&2
   fi
-  local s='wait:2;say:learnskillid 55;skill:left=Glacial Spike;say:heropos'
-  s="$s;click:left@hero:160,40;wait:6;say:heropos"          # 1 left click, Glacial Spike: walks
+  # warm-up: the first walk loads the walk animations lazily (a stall of seconds on a busy machine), so walk once and wait
+  # for the hero to have moved and stopped (heromoved/herostill log lines, see hero_watch.go) instead of a fixed time
+  local s='wait:2;say:learnskillid 55;skill:left=Glacial Spike;say:heromoved;click:left@hero:-100,0;until:HERO moved,120;say:herostill;until:HERO still,120;say:heropos'
+  s="$s;say:heromoved;click:left@hero:160,40;until:HERO moved,120;say:herostill;until:HERO still,120;say:heropos"  # 1 left click, Glacial Spike: walks
   s="$s;click:right@hero:-100,60;wait:1;click:left+cmd@hero:-100,60;wait:3;say:heropos"  # 2 right click and Cmd+click: cast the right skill (refused in town), no move
-  s="$s;skill:left=Attack;click:left@hero:-100,0;wait:6;say:heropos;exit"  # 3 Attack: walks
+  s="$s;skill:left=Attack;say:heromoved;click:left@hero:-100,0;until:HERO moved,120;say:herostill;until:HERO still,120;say:heropos;exit"  # 3 Attack: walks
   echo "export OD2_AUTOSCRIPT='$s'"
 }
 scenario_check() {
   grep -E "INPUT world-click|HERO pos|CAST start|AUTOSCRIPT RESULT|SKILLBAR select" $log.txt | cut -c1-200 | head -30
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: town left click script did not pass"; fail=1; }
   actions=$(grep "INPUT world-click" $log.txt | sed 's/.*action=\([a-z-]*\) left_skill=\([0-9]*\)/\1:\2/' | tr -d '\r' | tr '\n' ' ')
-  want="move:55 cast-right:55 cast-right:55 move:0 "
+  want="move:55 move:55 cast-right:55 cast-right:55 move:0 "
   [ "$actions" = "$want" ] || { echo "FAIL: world click actions '$actions' want '$want'"; fail=1; }
   grep -E "CAST start.*reason=town" $log.txt | grep -q "Glacial Spike" && { echo "FAIL: Glacial Spike cast was attempted in town on a left click"; fail=1; }
   grep -q "HERO pos=.*town=true" $log.txt || { echo "FAIL: hero not in town"; fail=1; }

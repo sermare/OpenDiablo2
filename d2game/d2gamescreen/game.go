@@ -564,6 +564,8 @@ func (v *Game) bindGameControls() error {
 		v.gameControls.Automap().SetLevelSource(v.currentLevel, v.levelName)
 		v.gameControls.SetEquipSound(v.playHeroUISound)
 		v.gameControls.SetQuestItemUse(v.useQuestItem)
+		// the scenario runner only reads this logger's lines: the hero motion watches report through it
+		v.gameControls.SetWatchLog(v.Infof)
 
 		if err := v.inputManager.BindHandler(v.gameControls); err != nil {
 			v.Error(bindControlsErrStr + player.ID())

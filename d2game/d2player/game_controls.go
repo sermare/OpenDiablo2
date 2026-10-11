@@ -370,6 +370,8 @@ type GameControls struct {
 	lastMouseX            int
 	lastMouseY            int
 	lastLeftBtnActionTime float64
+	watchLog              func(format string, args ...interface{})
+	heroWatch             heroWatch // armed by the test-only heromoved/herostill commands (hero_watch.go)
 	autoHold              *autoHold // a button held by an OD2_AUTOSCRIPT hold: step (synthetic_input.go)
 	// heldLeftWalk is true while the left button is held down on a click that began as a plain
 	// ground click (a walk or a skill use). Only such a hold repeats; a click that began on an NPC,
@@ -1184,6 +1186,8 @@ func (g *GameControls) logDisplay() {
 
 // Advance advances the state of the GameControls
 func (g *GameControls) Advance(elapsed float64) error {
+	g.advanceHeroWatch(elapsed)
+
 	g.mapRenderer.Advance(elapsed)
 	g.hud.Advance(elapsed)
 	g.inventory.Advance(elapsed)
@@ -1444,6 +1448,20 @@ func (g *GameControls) bindTerminalCommands(term d2interface.Terminal) error {
 		return nil
 	}); err != nil {
 		return err
+	}
+
+	// test-only: arm a one-shot watch that logs "HERO moved"/"HERO still" (see hero_watch.go)
+	for name, kind := range map[string]heroWatchKind{"heromoved": heroWatchMoved, "herostill": heroWatchStill} {
+		kind := kind
+
+		if err := term.Bind(name, "arm a one-shot hero motion log line, for scenarios", nil, func([]string) error {
+			p := g.hero.Position.World()
+			g.heroWatch.arm(kind, p.X(), p.Y())
+
+			return nil
+		}); err != nil {
+			return err
+		}
 	}
 
 	if err := term.Bind("setleftskill", "set skill to fire on left click", []string{"id"}, g.commandSetLeftSkill(term)); err != nil {
