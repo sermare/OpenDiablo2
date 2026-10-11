@@ -99,11 +99,15 @@ type Monster struct {
 	// stat 0x43 by 0x5a3d70): a percent added to the base speed, in -126..126.
 	overridePct int
 	selectable  bool
+	cskill      *clientScript // bound client skill, see monster_clientskill.go
 
 	// Blocker, if set, is asked before the monster enters a new subtile; true
 	// refuses the step and the monster stays where it was (unit-vs-unit
 	// collision, see d2monsters).
 	Blocker func(x, y int) bool
+
+	// ClientNear says whether the monster's target is within the given table distance (client skill scripts).
+	ClientNear func(dist int) bool
 }
 
 // subtile speed of a monstats velocity: V/16 subtile per 25 Hz frame
@@ -379,6 +383,7 @@ func (m *Monster) Advance(tickTime float64) {
 		return
 	}
 
+	m.runClientSkill()
 	m.checkEvents(tickTime)
 }
 

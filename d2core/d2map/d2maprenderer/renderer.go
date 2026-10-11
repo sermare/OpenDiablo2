@@ -75,6 +75,7 @@ type MapRenderer struct {
 	shadeVals           []color.RGBA // scratch for renderShadedImage
 	stats               DrawStats
 	roofCover           map[[2]int]bool // roof tiles fading out because the hero is under them
+	shake               screenShake     // view shake of a Siege Beast stomp, see shake.go
 
 	*d2util.Logger
 }
@@ -193,6 +194,11 @@ func (mr *MapRenderer) Render(target d2interface.Surface) {
 	mr.stats = DrawStats{Lit: mr.light.active()}
 	if mr.light.active() {
 		mr.stats.LightSources = 1 + len(mr.light.input.Extra)
+	}
+
+	if dx, dy := mr.shake.offset(shakeRand.Intn); dx != 0 || dy != 0 {
+		target.PushTranslation(dx, dy)
+		defer target.Pop()
 	}
 
 	mr.indexEntities()
@@ -874,6 +880,7 @@ func (mr *MapRenderer) Advance(elapsed float64) {
 	}
 
 	mr.Camera.Advance(elapsed)
+	mr.shake.advance(elapsed)
 	mr.advanceLighting(elapsed)
 }
 

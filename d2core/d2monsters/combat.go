@@ -100,6 +100,7 @@ func (d *Director) monsterStrike(u *unit, mode d2monster.Mode) {
 	}
 
 	d.closeIn(u)
+	d.stompShake(u)
 
 	atk, ok := d.attackOf(u, mode)
 	if !ok {
@@ -744,6 +745,7 @@ func (d *Director) creditOwnerMerc(src *d2mapentity.Player, victim *unit, baseXP
 }
 
 func (d *Director) kill(u *unit, src *d2mapentity.Player) {
+	d.bindDeathClientSkill(u)
 	u.m.Die()
 	d.fp.Remove(u.b.ID) // a dying monster stops blocking (UNVERIFIED); the corpse flag is set when DT ends
 	d.Counters.Deaths++

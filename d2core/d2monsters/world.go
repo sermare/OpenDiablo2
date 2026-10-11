@@ -271,6 +271,8 @@ func (d *Director) Attack(b *d2monster.Brain, mode d2monster.Mode, t d2monster.T
 		u.skill = d.resolveSkill(b.Profile, skillSlotFor(b.Profile, mode, slot))
 	}
 
+	d.bindClientSkill(u)
+
 	if u.ally != nil { // the pet AI names its victim by unit id
 		u.ally.strikeAt = d.units[t.ID]
 	}
