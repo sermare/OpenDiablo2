@@ -19,6 +19,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2party"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2portal"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
@@ -666,22 +667,18 @@ func (g *GameClient) createMissileEntities(
 	player *d2mapentity.Player,
 	castX, castY float64,
 ) ([]*d2mapentity.Missile, error) {
-	missileRecords := []*d2records.MissileRecord{
-		g.asset.Records.GetMissileByName(skillRecord.Cltmissile),
-		g.asset.Records.GetMissileByName(skillRecord.Cltmissilea),
-		g.asset.Records.GetMissileByName(skillRecord.Cltmissileb),
-		g.asset.Records.GetMissileByName(skillRecord.Cltmissilec),
-		g.asset.Records.GetMissileByName(skillRecord.Cltmissiled),
-	}
+	caster := d2skill.SubPoint{X: int(player.Position.X()), Y: int(player.Position.Y())}
+	target := d2skill.SubPoint{X: int(castX), Y: int(castY)}
 
 	missileEntities := make([]*d2mapentity.Missile, 0)
 
-	for _, missileRecord := range missileRecords {
+	for _, shot := range planClientShots(skillRecord, g.clientSkillLevel(player, skillRecord), caster, target) {
+		missileRecord := g.asset.Records.GetMissileByName(cltSlotName(skillRecord, shot.slot))
 		if missileRecord == nil {
 			continue
 		}
 
-		missileEntity, err := g.createMissileEntity(missileRecord, player, castX, castY)
+		missileEntity, err := g.createMissileEntity(missileRecord, shot.from, shot.to)
 		if err != nil {
 			return nil, err
 		}
@@ -692,25 +689,38 @@ func (g *GameClient) createMissileEntities(
 	return missileEntities, nil
 }
 
+// clientSkillLevel is the level used to evaluate a skill's calc columns on the
+// client: the local hero's points in the skill, else 1.
+func (g *GameClient) clientSkillLevel(player *d2mapentity.Player, rec *d2records.SkillRecord) int {
+	if player != nil && player.ID() == g.PlayerID {
+		if st := g.LocalHeroState(); st != nil {
+			if sk := st.Skills[rec.ID]; sk != nil && sk.SkillPoints > 0 {
+				return sk.SkillPoints
+			}
+		}
+	}
+
+	return 1
+}
+
 func (g *GameClient) createMissileEntity(
 	missileRecord *d2records.MissileRecord,
-	player *d2mapentity.Player,
-	castX, castY float64,
+	from, to d2skill.SubPoint,
 ) (*d2mapentity.Missile, error) {
 	if missileRecord == nil {
 		return nil, nil
 	}
 
 	radians := d2math.GetRadiansBetween(
-		player.Position.X(),
-		player.Position.Y(),
-		castX,
-		castY,
+		float64(from.X),
+		float64(from.Y),
+		float64(to.X),
+		float64(to.Y),
 	)
 
 	missileEntity, err := g.MapEngine.NewMissile(
-		int(player.Position.X()),
-		int(player.Position.Y()),
+		from.X,
+		from.Y,
 		g.asset.Records.Missiles[missileRecord.Id],
 	)
 

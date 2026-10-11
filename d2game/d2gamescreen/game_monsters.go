@@ -57,6 +57,7 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 		PlayersFunc:   func() int { return len(v.gameClient.Players) },
 		ForcedPlayers: d2monsters.ForcedPlayersFromEnv(os.Getenv("OD2_PLAYERS")),
 		OnSound:       v.onMonsterSound,
+		OnShake:       func(s d2monster.Shake) { v.mapRenderer.StartShake(s) },
 		// worn items lose durability when the hero is hit or hits (d2equip)
 		OnHeroHit: func(p *d2mapentity.Player) {
 			if v.gameControls != nil && p == v.localPlayer {

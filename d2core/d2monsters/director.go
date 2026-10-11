@@ -67,6 +67,10 @@ type Options struct {
 	// OnSound, if set, receives the monsters' MonSounds.txt sounds (attack,
 	// weapon, skill, hit, death, taunt, neutral, footstep) with their position.
 	OnSound func(SoundEvent)
+
+	// OnShake, if set, receives the screen shake of a Siege Beast stomp
+	// (cltdofunc 75, see d2monster.StompShake).
+	OnShake func(d2monster.Shake)
 	// OnHeroHit, if set, is called when a monster's attack hit a hero (after the
 	// damage was applied): the hero's armor may lose durability.
 	OnHeroHit func(p *d2mapentity.Player)
@@ -368,6 +372,7 @@ func (d *Director) spawn(stat *d2records.MonStatRecord, subX, subY int, ally *al
 	d.fp.Move(b.ID, subX, subY, d2path.FlagMonster)
 
 	u := &unit{m: m, b: b, ally: ally}
+	m.ClientNear = func(dist int) bool { return d.targetWithin(u, dist) }
 	d.units[b.ID] = u
 	d.byEntity[m.ID()] = u
 	d.engine.AddEntity(m)
