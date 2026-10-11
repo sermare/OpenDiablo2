@@ -44,9 +44,14 @@ type OverlayRecord struct {
 	// PreDraw controls overlay drawing precedence
 	PreDraw bool
 
+	// LoopWaitTime, NumDirections and LocalBlood are copied by the exe
+	// (DATATBL_LoadOverlayTable 0x666b10) at +0x78, +0x80 and +0x81; what the
+	// engine does with them is not traced.
+	LoopWaitTime  int
+	NumDirections int
+	LocalBlood    int
+
 	// Unknown fields, commenting out for now
-	// NumDirections int
-	// LocalBlood    int
 	// OneOfN int
 	// Dir  bool
 	// Open bool
@@ -54,6 +59,5 @@ type OverlayRecord struct {
 
 	// Apparently unused
 	// Character string
-	// LoopWaitTime int
 	// Frames int
 }
