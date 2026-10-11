@@ -473,6 +473,11 @@ func TestBossQuestHooks(t *testing.T) {
 		{"Izual", 3, "izual"},
 		{"Summoner", 3, "summoner"},
 		{"Nihlathak", 3, "nihlathak nihlathak nihlathak"},
+		// Siege of Harrogath: the Overseer's think calls 0x5857e0 first, every tick
+		{"Overseer", 3, "overseer overseer overseer"},
+		// no quest call in the exe (Ghidra callees of 0x5f4960 and 0x5df2a0)
+		{"Andariel", 3, ""},
+		{"HighPriest", 3, ""},
 	} {
 		w := newF5(5, true)
 		b := brainAt(withSkills(profile(c.ai, 100, 100, 100, 100, 100, 100), 0, 1, 2, 3, 4))
