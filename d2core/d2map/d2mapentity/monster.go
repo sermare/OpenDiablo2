@@ -57,6 +57,9 @@ type MonsterAttack struct {
 	// resistance; ElemType is "fire", "cold", "ltng", "mag" or "pois".
 	ElemType         string
 	ElemMin, ElemMax int
+	// ElemPct is the chance in percent that the element comes with the hit (monstats El#Pct); 0 means
+	// always, as for the skill and missile columns.
+	ElemPct int
 }
 
 // Monster is a hostile unit: an animated composite driven by a
@@ -84,15 +87,18 @@ type Monster struct {
 	LeaderID uint32
 	name     string
 
-	mode       d2monster.Mode
-	hitFired   bool
-	events     []MonsterEvent
-	dead       bool
-	deadTime   float64
-	walkSpeed  float64
-	runSpeed   float64
-	slowPct    int // movement speed change in percent (negative slows), skills states
-	selectable bool
+	mode      d2monster.Mode
+	hitFired  bool
+	events    []MonsterEvent
+	dead      bool
+	deadTime  float64
+	walkSpeed float64
+	runSpeed  float64
+	slowPct   int // movement speed change in percent (negative slows), skills states
+	// overridePct is the AI move speed override (MONAI_SetMoveSpeedOverride 0x5dcf80, applied as velocity
+	// stat 0x43 by 0x5a3d70): a percent added to the base speed, in -126..126.
+	overridePct int
+	selectable  bool
 
 	// Blocker, if set, is asked before the monster enters a new subtile; true
 	// refuses the step and the monster stays where it was (unit-vs-unit
@@ -259,11 +265,12 @@ func (m *Monster) MoveAlong(path []d2vector.Position, run bool) bool {
 }
 
 func (m *Monster) slowed(speed float64) float64 {
-	if m.slowPct == 0 {
+	pct := m.slowPct + m.overridePct
+	if pct == 0 {
 		return speed
 	}
 
-	f := float64(100+m.slowPct) / 100
+	f := float64(100+pct) / 100
 	if f < 0.05 {
 		f = 0.05
 	}
@@ -275,7 +282,36 @@ func (m *Monster) slowed(speed float64) float64 {
 // restores it), also while the monster is walking.
 func (m *Monster) SetSlow(pct int) {
 	m.slowPct = pct
+	m.refreshSpeed()
+}
 
+// MaxSpeedOverride is the limit of the AI move speed override either way (0x5dcf80 accepts -126..126).
+const MaxSpeedOverride = 126
+
+// SetSpeedOverride sets the move speed percent the AI asks for (Diablo's walk home 20, run home 50). Values
+// outside -126..126 are clamped. The exe leaves the stat as it was when the request is 0; here 0 clears it
+// (UNVERIFIED which of the two the original does after the command ends).
+func (m *Monster) SetSpeedOverride(pct int) {
+	if pct > MaxSpeedOverride {
+		pct = MaxSpeedOverride
+	}
+
+	if pct < -MaxSpeedOverride {
+		pct = -MaxSpeedOverride
+	}
+
+	if m.overridePct == pct {
+		return
+	}
+
+	m.overridePct = pct
+	m.refreshSpeed()
+}
+
+// SpeedOverride is the current AI speed override percent.
+func (m *Monster) SpeedOverride() int { return m.overridePct }
+
+func (m *Monster) refreshSpeed() {
 	switch m.mode {
 	case d2monster.ModeWalk:
 		m.SetSpeed(m.slowed(m.walkSpeed))

@@ -47,6 +47,9 @@ type DropOptions struct {
 	// roll (chests use their tier, see d2drop.Chest).
 	QualityLevel    int
 	UseQualityLevel bool
+	// ForcedQuality, if set, replaces the quality roll of every item the drop makes (containers force
+	// magic, rare or unique, see d2object.OpenGeneric).
+	ForcedQuality d2drop.Quality
 	// GoldFind is the gold find of the killer plus that of its owner, applied to
 	// the gold amounts of DropAll.
 	GoldFind int
@@ -262,6 +265,7 @@ func (f *ItemFactory) rollEntries(tcName string, opts DropOptions) ([]LootEntry,
 		RNG: rng, ILvl: opts.ILvl, UpgradeLevel: opts.UpgradeLevel, Players: opts.Players,
 		MagicFind: opts.MagicFind, MaxDrops: opts.MaxDrops, Classic: opts.Classic,
 		QualityLevel: opts.QualityLevel, UseQualityLevel: opts.UseQualityLevel,
+		ForcedQuality: opts.ForcedQuality,
 	}, tcName)
 	if err != nil {
 		return nil, fmt.Errorf("rolling %q: %w", tcName, err)

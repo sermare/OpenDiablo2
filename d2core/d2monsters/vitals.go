@@ -125,10 +125,15 @@ func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain)
 	// first elemental damage column, scaled like physical damage. Poison and
 	// cold lengths are not modelled (the hit is instant). UNVERIFIED reading
 	// of El1*.
-	if v.A1.Max == 0 && r.ElementAttackMode1 == "A1" {
+	casterFallback := v.A1.Max == 0 && r.ElementAttackMode1 == "A1"
+	if casterFallback {
 		v.A1 = MonsterAttackFrom(scale(lv.th, 100),
 			scale(lv.dm, pick(r.ElementDamageMin1Normal, r.ElementDamageMin1Nightmare, r.ElementDamageMin1Hell)),
 			scale(lv.dm, pick(r.ElementDamageMax1Normal, r.ElementDamageMax1Nightmare, r.ElementDamageMax1Hell)))
+	}
+
+	if !casterFallback {
+		attachElements(&v, r, int(diff), lv.dm)
 	}
 
 	if v.A1.ToHit == 0 {
@@ -144,6 +149,76 @@ func (d *Director) computeVitals(r *d2records.MonStatRecord, b *d2monster.Brain)
 	}
 
 	return v
+}
+
+// attachElements gives the attacks their El1..El3 element (0x5a2960: a slot belongs to the attack whose
+// mode its El#Mode names). The monlvl DM value scales the damage unless the class has noRatio (the groups
+// 0x40, 0x80 and 0x100 of 0x6551e0, d2monstats.ScaleElement). The engine carries one element per attack, so
+// the first slot of a mode wins; only fire, lightning, magic, cold and poison are damage here (steals, stun,
+// random and freeze are not modelled). Poison is dealt at once as its total.
+func attachElements(v *d2mapentity.MonsterVitals, r *d2records.MonStatRecord, diff, dm int) {
+	pick := func(n, nm, h int) int { return [3]int{n, nm, h}[diff] }
+	slots := [3]struct {
+		mode, typ                 string
+		pct, minD, maxD, duration int
+	}{
+		{r.ElementAttackMode1, r.ElementType1,
+			pick(r.ElementChance1Normal, r.ElementChance1Nightmare, r.ElementChance1Hell),
+			pick(r.ElementDamageMin1Normal, r.ElementDamageMin1Nightmare, r.ElementDamageMin1Hell),
+			pick(r.ElementDamageMax1Normal, r.ElementDamageMax1Nightmare, r.ElementDamageMax1Hell),
+			pick(r.ElementDuration1Normal, r.ElementDuration1Nightmare, r.ElementDuration1Hell)},
+		{r.ElementAttackMode2, r.ElementType2,
+			pick(r.ElementChance2Normal, r.ElementChance2Nightmare, r.ElementChance2Hell),
+			pick(r.ElementDamageMin2Normal, r.ElementDamageMin2Nightmare, r.ElementDamageMin2Hell),
+			pick(r.ElementDamageMax2Normal, r.ElementDamageMax2Nightmare, r.ElementDamageMax2Hell),
+			pick(r.ElementDuration2Normal, r.ElementDuration2Nightmare, r.ElementDuration2Hell)},
+		{r.ElementAttackMode3, r.ElementType3,
+			pick(r.ElementChance3Normal, r.ElementChance3Nightmare, r.ElementChance3Hell),
+			pick(r.ElementDamageMin3Normal, r.ElementDamageMin3Nightmare, r.ElementDamageMin3Hell),
+			pick(r.ElementDamageMax3Normal, r.ElementDamageMax3Nightmare, r.ElementDamageMax3Hell),
+			pick(r.ElementDuration3Normal, r.ElementDuration3Nightmare, r.ElementDuration3Hell)},
+	}
+
+	for _, s := range slots {
+		kind := d2monstats.ParseElementKind(s.typ)
+		if !kind.Damaging() || s.pct <= 0 {
+			continue
+		}
+
+		var atk *d2mapentity.MonsterAttack
+
+		switch s.mode {
+		case "A1":
+			atk = &v.A1
+		case "A2":
+			atk = &v.A2
+		case "S1":
+			atk = &v.S1
+		default:
+			continue
+		}
+
+		if atk.ElemType != "" {
+			continue
+		}
+
+		e := d2monstats.ScaleElement(kind, s.pct, s.minD, s.maxD, s.duration, dm, r.IgnoreMonLevelTxt)
+		if kind == d2monstats.ElemPoison {
+			e.Min, e.Max = e.PoisonTotal()
+		}
+
+		if e.Max <= 0 {
+			continue
+		}
+
+		atk.ElemType = map[d2monstats.ElementKind]string{d2monstats.ElemFire: "fire", d2monstats.ElemLightning: "ltng",
+			d2monstats.ElemMagic: "mag", d2monstats.ElemCold: "cold", d2monstats.ElemPoison: "pois"}[kind]
+		atk.ElemMin, atk.ElemMax = e.Min, e.Max
+
+		if e.Pct < 100 {
+			atk.ElemPct = e.Pct
+		}
+	}
 }
 
 // MonsterAttackFrom builds an attack, keeping Max >= Min.

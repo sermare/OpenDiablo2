@@ -349,9 +349,13 @@ func (d *Director) MoveTo(b *d2monster.Brain, dest d2monster.Point, target *d2mo
 	return d.moveTo(u, dest, target, reach, run)
 }
 
-// SetSpeed implements d2monster.Actor; the argument's semantics are
-// UNVERIFIED (monster-ai-2.md) so velocity stays at the monstats value.
-func (d *Director) SetSpeed(*d2monster.Brain, int) {}
+// SetSpeed implements d2monster.Actor: MONAI_SetMoveSpeedOverride (0x5dcf80) queues a percent over the base
+// speed (stat 0x43, range -126..126) for the next moves; Diablo uses 20 walking and 50 running home.
+func (d *Director) SetSpeed(b *d2monster.Brain, pct int) {
+	if u := d.unitOf(b); u != nil && u.m != nil {
+		u.m.SetSpeedOverride(pct)
+	}
+}
 
 // Shout implements d2monster.Shouter.
 func (d *Director) Shout(b *d2monster.Brain) {
