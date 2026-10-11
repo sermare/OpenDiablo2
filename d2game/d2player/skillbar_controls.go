@@ -438,7 +438,15 @@ func (g *GameControls) AutoHotkey(key, name string) error {
 // AutoPress implements press:F1: the key goes through the same handler as a
 // real key press (including the assignment while hovering a skill).
 func (g *GameControls) AutoPress(key string) error {
+	if strings.Contains(key, "+") {
+		return g.AutoKey(key) // press:shift+F1: a key with modifiers
+	}
+
 	slot := g.slotOfKeyName(key)
+	if k, ok := KeyByName(key); ok && slot >= 0 && g.slotOfKey(k) == slot && g.injector != nil {
+		return g.AutoKey(key) // the key event reaches the hotkey through the key map and the input manager
+	}
+
 	if slot < 0 {
 		// not a skill hotkey: press the key like the keyboard would (Tab, I, Escape...)
 		if _, ok := KeyByName(key); ok {
