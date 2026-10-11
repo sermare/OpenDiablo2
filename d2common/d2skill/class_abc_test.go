@@ -266,7 +266,7 @@ func TestDragonFlight(t *testing.T) {
 		t.Fatalf("flight at a target: ok=%v %q", r.OK, r.Reason)
 	}
 
-	if e := effectOf(t, r, "move"); e.Mode != "teleport" || e.X != 19 || e.Y != 0 {
+	if e := effectOf(t, r, "move"); e.Mode != "teleport" || e.X != 20 || e.Y != 0 {
 		t.Errorf("landing %+v", e)
 	}
 

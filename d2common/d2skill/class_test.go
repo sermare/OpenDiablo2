@@ -57,6 +57,7 @@ func init() {
 		row{"skill": "Corpse Explosion", "Id": "315", "srvstfunc": "17", "srvdofunc": "55", "aurarangecalc": "ln34",
 			"calc1": "par1", "calc2": "par2", "Param1": "70", "Param2": "120", "Param3": "8", "Param4": "1", "EType": "fire", "calc3": "par5", "Param5": "50",
 			"TargetCorpse": "1", "manashift": "8"},
+		row{"skill": "Poison Explosion", "Id": "392", "srvstfunc": "17", "srvdofunc": "63", "srvmissilea": "poisonexplosioncloud", "aurarangecalc": "ln34", "TargetCorpse": "1", "manashift": "8"},
 		row{"skill": "Chain Lightning", "Id": "316", "srvdofunc": "26", "srvmissilea": "chainlightning",
 			"aurarangecalc": "par1", "calc1": "ln34 / 5", "Param1": "20", "Param3": "26", "Param4": "1", "EType": "ltng",
 			"EMin": "10", "EMax": "20", "HitShift": "8", "manashift": "8"},
@@ -100,6 +101,7 @@ func classMissiles() missileTable {
 		SubMissile: [3]string{"blizzard1"}}
 	m["blizzard1"] = &d2missile.Spec{ID: 159, Name: "blizzard1", SrvDoFunc: 3, Range: 9, CollideType: 3,
 		LastCollide: true, AlwaysExplode: true, Size: 2}
+	m["poisonexplosioncloud"] = &d2missile.Spec{ID: 160, Name: "poisonexplosioncloud", SrvDoFunc: 1, Range: 60, CollideType: 3, LastCollide: true, Size: 2}
 	m["meteorcenter"] = &d2missile.Spec{ID: 101, Name: "meteorcenter", SrvDoFunc: 1, SrvHitFunc: 14, Range: 60,
 		LastCollide: true, AlwaysExplode: true, SHitPar: [3]int{0, 1}, HitSubMissile: [4]string{"meteorfire"}}
 

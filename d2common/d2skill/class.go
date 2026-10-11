@@ -44,7 +44,7 @@ func init() {
 		doStatic: func(c *cast) {
 			c.res.Effects = append(c.res.Effects, Effect{
 				Kind: "area_damage", Radius: c.env.eval(c.sk.AuraRangeCalc), Filter: c.sk.AuraFilter,
-				Pct: c.env.eval(c.sk.Calc[1]), MinDamage: c.env.eval(c.sk.Calc[2]), FloorPct: c.p.Opt.StaticFieldMinPct,
+				Pct: c.env.eval(c.sk.Calc[1]), MinDamage: c.env.eval(c.sk.Calc[2]) /* raw 8.8, see StaticFieldDamage */, FloorPct: c.p.Opt.StaticFieldMinPct,
 				EType: c.sk.EType, ELen: c.sk.ElemLen(c.env, c.lvl),
 			})
 		},
@@ -969,11 +969,25 @@ func doRabiesFn(c *cast) {
 // 0x20 and its path is switched to path type 0xe (the spiral), and when
 // FUN_00647550 (a synergy/mastery test) holds, the missile's stats 0x34 and
 // 0x35 are scaled by a percent. The spiral and that scaling are not modelled
-// here: the hammer flies straight.
+// here. Batch 4: the spiral (path type 0xe, d2missile.SpiralNodes) is modelled;
+// the Concentration scaling of stats 0x34 / 0x35 (0x647550, VERIFIED: param1 times the
+// damage percent of the Concentration state over 8, added to 100 percent) is
+// applied through ConcentrationHolder.
 func doBlessedHammerFn(c *cast) {
-	if c.castM(c.missileName(), castOpts{}) == nil {
-		c.fail(ReasonMissile)
+	o := castOpts{}
+	if h, ok := c.u.(ConcentrationHolder); ok {
+		if s := HammerConcentrationScale(c.sk.Params[1], h.ConcentrationDamagePct()); s != 0 {
+			o.scalePct = 100 + s
+		}
 	}
+
+	m := c.castM(c.missileName(), o)
+	if m == nil {
+		c.fail(ReasonMissile)
+		return
+	}
+
+	m.Spiral = true
 }
 
 // doMineFn is SRVDO_043_ShockField (Shock Web, U): a stationary trap missile at
@@ -1570,7 +1584,7 @@ func doSummonFn(c *cast) {
 // perpendicular to the cast line placing calc2/2 walls each (calc2 = "# of
 // walls - 1", Param3 = 8 in the table); a skill without that missile (or
 // calc2 < 2) keeps the older line of Param3 pieces (UNVERIFIED layout). Bone
-// Prison (U) is a ring of 8 around the target. Walls last Param2 frames
+// Prison (0x5c3c50, VERIFIED) is the 12-cell ring of BonePrisonOffsets. Walls last Param2 frames
 // (MAX duration) and have calc1 percent extra life (skills.txt "hp %
 // adjustment").
 func doWallFn(c *cast) {
@@ -1579,7 +1593,7 @@ func doWallFn(c *cast) {
 		Frames: c.sk.Params[2], HPPct: c.calc(1), X: ax, Y: ay, Mode: c.sk.SumMode}
 
 	if c.sk.SrvDoFunc == 62 {
-		o.Count = 8
+		o.Count = len(BonePrisonOffsets) // 0x5c3c50, VERIFIED batch 4
 		o.Mode = "ring"
 	}
 
@@ -1628,6 +1642,19 @@ func doCorpseExplosionFn(c *cast) {
 		CorpseHP: c.tgt.CorpseHP}
 
 	if c.sk.SrvDoFunc == 63 {
+		// VERIFIED (0x5c3dc0 + 0x5a6d70, batch 4): eight stationary clouds of srvmissilea around the corpse
+		if name := c.missileName(); name != "" && c.p.Missiles != nil && c.p.Missiles.ByName(name) != nil && c.p.Sim != nil {
+			for _, cell := range PoisonExplosionCells {
+				x, y := c.tgt.CX+cell[0], c.tgt.CY+cell[1]
+				c.tgt.X, c.tgt.Y = x, y
+				c.castM(name, castOpts{hasStart: true, startX: float64(x) + 0.5, startY: float64(y) + 0.5})
+			}
+
+			c.effect(Effect{Kind: "area_hit", Origin: "aim", X: c.tgt.CX, Y: c.tgt.CY, Radius: 0, CorpseID: c.tgt.CorpseID})
+
+			return
+		}
+
 		e.Desc = c.desc()
 		c.effect(e)
 

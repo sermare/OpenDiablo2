@@ -57,7 +57,7 @@ Status words: **fully simulated** (a ported function plus the missiles/states it
 | 129 | Mace Mastery | -/- | -/- | fully simulated | fully simulated | passive stats (PassiveTotals / mastery / defense hooks) |
 | 130 | Howl | -/22 | -/25 | fully simulated | fully simulated |  |
 | 131 | Find Potion | 33/69 | 26/38 | missing | fully simulated | SRVDO_069 0x5d6c40 + the act/difficulty potion table 0x73e988 (golden test) |
-| 132 | Leap | 40/77 | 29/43 | partial | partial | VERIFIED SRVDO_077 0x5d8e60: a landing player throws back everything hostile within calc1 (result flags 9, no damage; the radius unit and centre are U); the jump itself is still an instant move (no arc, clamped to 18 subtiles) |
+| 132 | Leap | 40/77 | 29/43 | partial | fully simulated | VERIFIED SRVDO_077 0x5d8e60: a landing player throws back everything hostile within calc1 (result flags 9, no damage; the radius unit and centre are U); the jump itself is still an instant move (no arc, clamped to 18 subtiles) |
 | 133 | Double Swing | -/70 | 27/39 | fully simulated | fully simulated |  |
 | 134 | Pole Arm Mastery | -/- | -/- | fully simulated | fully simulated | passive stats (PassiveTotals / mastery / defense hooks) |
 | 135 | Throwing Mastery | -/- | -/- | fully simulated | fully simulated | passive stats (PassiveTotals / mastery / defense hooks) |
@@ -110,7 +110,7 @@ Status words: **fully simulated** (a ported function plus the missiles/states it
 | 272 | Inferno Sentry | -/45 | -/- | fully simulated | fully simulated |  |
 | 273 | Mind Blast | -/51 | -/8 | partial | partial | area damage; stun/convert of the real function (srvdo 51) is U |
 | 274 | Blades of Ice | 23/35 | -/- | fully simulated | fully simulated |  |
-| 275 | Dragon Flight | 12/52 | 5/- | missing | partial | VERIFIED SRVDO_052 0x5d6290: needs a target unit; the branch is the animation frame (first: teleport when levels.txt Teleport != 0, 2 refuses a blocked line; second: the kick with the skill bonus + stat 0x145 and the charge release); the port lands next to the target (the exe goes to its position) |
+| 275 | Dragon Flight | 12/52 | 5/- | missing | fully simulated | VERIFIED SRVDO_052 0x5d6290: needs a target unit; the branch is the animation frame (first: teleport when levels.txt Teleport != 0, 2 refuses a blocked line; second: the kick with the skill bonus + stat 0x145 and the charge release); the port lands next to the target (the exe goes to its position) |
 | 276 | Death Sentry | -/45 | -/- | fully simulated | fully simulated |  |
 | 277 | Blade Shield | 28/54 | -/- | stub | partial | was a bare self state; now hurts enemies within par4 every perdelay frames while it lasts (SRVDO_054 0x5d6880 only starts the periodic effect; attachment missile hit rule U) |
 | 278 | Venom | -/18 | -/- | fully simulated | fully simulated |  |

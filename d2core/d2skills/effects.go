@@ -47,6 +47,7 @@ type stormRun struct {
 	ef    d2skill.Effect
 	until int
 	next  int
+	last  string // Thunder Storm: id of the unit struck last (the skill's target type slot)
 }
 
 type trapRun struct {
@@ -497,21 +498,27 @@ func (e *Engine) stormsTick() {
 
 		switch s.ef.Mode {
 		case "nearest":
-			var best *d2mapentity.Monster
+			// SRVDO_029 (0x5c8650): the next unit AFTER the one struck last, in id order, inside the
+			// Param7 circle; none in range resets the rotation (VERIFIED).
+			ids := map[string]*d2mapentity.Monster{}
+			keys := []string{}
 
-			bd := s.ef.Radius + 1
-
-			for _, m := range e.monstersNear(hx, hy, s.ef.Radius) {
-				mx, my := m.SubtilePos()
-				if d := chebyshev(mx-hx, my-hy); d < bd {
-					best, bd = m, d
-				}
+			for _, m := range e.monstersWithin(hx, hy, s.ef.Radius) {
+				ids[m.ID()] = m
+				keys = append(keys, m.ID())
 			}
 
-			if best != nil {
-				bx, by := best.SubtilePos()
-				e.hitArea(s.p, s.u, s.ef.SkillName, bx, by, 2, s.ef.Desc, "")
+			i := d2skill.NextAfter(keys, s.last)
+			if i < 0 {
+				s.last = ""
+
+				break
 			}
+
+			best := ids[keys[i]]
+			s.last = keys[i]
+			bx, by := best.SubtilePos()
+			e.hitArea(s.p, s.u, s.ef.SkillName, bx, by, 2, s.ef.Desc, "")
 		case "scatter":
 			a := float64(s.u.seed.Roll(360)) * math.Pi / 180
 			r := math.Sqrt(float64(s.u.seed.Roll(1000))/1000) * float64(s.ef.Radius)
@@ -946,6 +953,12 @@ func (e *Engine) onWallSummon(m *d2missile.Missile, leader d2missile.Target) {
 // wallCell is the i-th of n wall pieces: a line across the cast direction, or
 // a ring of radius 2 around the aim.
 func wallCell(hx, hy, x, y, i, n int, mode string) (int, int) {
+	if mode == "ring" && n == len(d2skill.BonePrisonOffsets) { // Bone Prison, 0x5c3c50
+		o := d2skill.BonePrisonOffsets[i%n]
+
+		return x + o[0], y + o[1]
+	}
+
 	if mode == "ring" {
 		a := 2 * math.Pi * float64(i) / float64(n)
 		return x + int(math.Round(math.Cos(a)*2)), y + int(math.Round(math.Sin(a)*2))

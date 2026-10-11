@@ -279,7 +279,7 @@ func TestDragonFlightRules(t *testing.T) {
 		t.Fatalf("flight: %+v", r)
 	}
 
-	if e := effectOf(t, r, "move"); e.Mode != "teleport" || e.X != 9 || e.Y != 0 {
+	if e := effectOf(t, r, "move"); e.Mode != "teleport" || e.X != 10 || e.Y != 0 {
 		t.Errorf("landing %+v", e)
 	}
 }

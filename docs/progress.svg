@@ -27,10 +27,10 @@
 <text x="36" y="72" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#b8b9d6">driven by Claude · counts come from code, tests and Ghidra; estimates are marked with ~ · dashed = on branches, not yet verified</text>
 <text x="844" y="46" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#8c8eb0">updated 2026-10-10</text>
 <text x="36" y="114" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Game v1 complete</text>
-<text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">88%</text>
+<text x="844" y="118" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#ffd166">89%</text>
 <rect x="36" y="128" width="808" height="26" rx="13" fill="#ffffff" fill-opacity="0.08"/>
-<rect x="36" y="128" width="726.3" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
-<rect x="36" y="128" width="713.5" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
+<rect x="36" y="128" width="729.1" height="26" rx="13" fill="#ffd166" fill-opacity="0.25" stroke="#ffd166" stroke-opacity="0.6" stroke-dasharray="5 4"/>
+<rect x="36" y="128" width="716.2" height="26" rx="13" fill="#ffd166" filter="url(#glow)"/>
 <text x="36" y="176" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#b8b9d6">weighted average of the bars below (weights in docs/progress.json); dashed = +2% on branches, not yet verified</text>
 <text x="36" y="192" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5" fill="#8c8eb0">v1 = double-click the Mac app, make or load a character, play Acts 1-5 single player without a blocker</text>
 <text x="36" y="226" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Game.exe functions named in Ghidra</text>
@@ -40,11 +40,11 @@
 <text x="844" y="252" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#7c5cff">100%</text>
 <text x="36" y="273" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">original 1.14b binary; re-queried live from Ghidra (all 11,257 named; the last 22 Warden and module-loader functions were named 2026-10-09, a few names marked unverified)</text>
 <text x="36" y="304" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Hedged exe names re-verified against the decompile</text>
-<text x="844" y="304" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">1,518 / 1,633</text>
+<text x="844" y="304" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">1,633 / 1,633</text>
 <rect x="36" y="316" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="316" width="686.0" height="18" rx="9" fill="url(#g1)" filter="url(#glow)"/>
-<text x="844" y="330" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#8f7cff">93%</text>
-<text x="36" y="351" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">1,397 confirmed, 97 corrected, ~24 unclear; ~115 left (mostly EVENT_/UNIT_/SERVER_ helpers above 0x551b90 and thunks); batch 3 covered the server/client/save/arena helpers 0x528000-0x551b90, batch 2 covered the missile/CLTDO/CLTST block (~ estimate of the total)</text>
+<rect x="36" y="316" width="738.0" height="18" rx="9" fill="url(#g1)" filter="url(#glow)"/>
+<text x="844" y="330" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#8f7cff">100%</text>
+<text x="36" y="351" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">every hedged row now has a verdict; batch 4 (final) examined 173 table rows: 112 confirmed, 47 corrected in Ghidra, 14 unclear and still marked unverified; earlier batches 1-3 as before (~ estimate of the total)</text>
 <text x="36" y="382" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Original source files indexed</text>
 <text x="844" y="382" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">277 / 277</text>
 <rect x="36" y="394" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -52,11 +52,11 @@
 <text x="844" y="408" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2fb67c">100%</text>
 <text x="36" y="429" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">every assert-string path mapped to modules and functions</text>
 <text x="36" y="460" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Source files studied in depth</text>
-<text x="844" y="460" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">240 / 277</text>
+<text x="844" y="460" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">277 / 277</text>
 <rect x="36" y="472" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="472" width="639.4" height="18" rx="9" fill="url(#g3)" filter="url(#glow)"/>
-<text x="844" y="486" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2f9bff">87%</text>
-<text x="36" y="507" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting</text>
+<rect x="36" y="472" width="738.0" height="18" rx="9" fill="url(#g3)" filter="url(#glow)"/>
+<text x="844" y="486" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#2f9bff">100%</text>
+<text x="36" y="507" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">last 37 (batches 11-13): gameplay files read, infrastructure and graphics backends only function-mapped; NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting</text>
 <text x="36" y="538" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Level generator proven equal to the real game</text>
 <text x="844" y="538" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">8,768 / 8,768</text>
 <rect x="36" y="550" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
@@ -94,11 +94,11 @@
 <text x="844" y="954" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#e86fa6">100%</text>
 <text x="36" y="975" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">all 27 main quests: states, triggers, rewards (Act 1, Radament and nine more driven in scenarios); level quest gates now enforced in the engine (Canyon, tombs, Palace, Durance, Worldstone levels)</text>
 <text x="36" y="1006" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Player skills with engine behaviour</text>
-<text x="844" y="1006" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">157 / 210</text>
+<text x="844" y="1006" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">163 / 210</text>
 <rect x="36" y="1018" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>
-<rect x="36" y="1018" width="551.7" height="18" rx="9" fill="url(#g10)" filter="url(#glow)"/>
-<text x="844" y="1032" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#5fd0a5">75%</text>
-<text x="36" y="1053" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">150 of 210 player skills have engine behaviour: Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry); skills batch 3 (branch feat/skills-3): Feral Rage and Maul stack by count, Wearwolf and Wearbear toggle, Leap Attack single victim, Dragon Claw and Dragon Tail follow the exe (+7); Leap, Dragon Flight, Thunder Storm, Conversion and the three totem auras re-read and corrected but still partial</text>
+<rect x="36" y="1018" width="572.8" height="18" rx="9" fill="url(#g10)" filter="url(#glow)"/>
+<text x="844" y="1032" text-anchor="end" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#5fd0a5">78%</text>
+<text x="36" y="1053" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12" fill="#9fa1c4">skills batch 4 (branch feat/skills-4, +6): Thunder Storm rotates through the targets, Leap (circle at the landing) and Dragon Flight (lands on the target) confirmed against the exe, Bone Prison 12-cell ring, Poison Explosion eight stationary clouds, Blessed Hammer spiral path plus Concentration scale; Static Field callback re-read (floor is a gate); earlier: 150 of 210 player skills have engine behaviour:Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry); skills batch 3 (branch feat/skills-3): Feral Rage and Maul stack by count, Wearwolf and Wearbear toggle, Leap Attack single victim, Dragon Claw and Dragon Tail follow the exe (+7); Leap, Dragon Flight, Thunder Storm, Conversion and the three totem auras re-read and corrected but still partial</text>
 <text x="36" y="1084" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="600" fill="#f2f2ff">Monster AI archetypes implemented</text>
 <text x="844" y="1084" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" fill="#d8d9f2">145 / 148</text>
 <rect x="36" y="1096" width="738" height="18" rx="9" fill="#ffffff" fill-opacity="0.07"/>

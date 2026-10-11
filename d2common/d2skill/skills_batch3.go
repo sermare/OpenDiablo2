@@ -306,14 +306,9 @@ func doDragonFlightExeFn(c *cast) {
 		return
 	}
 
-	// land on the side of the target the caster comes from
-	lx, ly := x+sign(hx-x), y+sign(hy-y)
-	if c.p.Walkable != nil && !c.p.Walkable(lx, ly) {
-		lx, ly = hx, hy
-	}
-
-	if lx != hx || ly != hy {
-		c.effect(Effect{Kind: "move", Mode: "teleport", X: lx, Y: ly})
+	// the exe moves the caster to the target's own position (VERIFIED, batch 4), no side offset
+	if x != hx || y != hy {
+		c.effect(Effect{Kind: "move", Mode: "teleport", X: x, Y: y})
 	}
 
 	o := c.meleeOpt()
@@ -331,8 +326,7 @@ func doDragonFlightExeFn(c *cast) {
 // the one struck last, make the srvmissilea at a strike position near it and
 // process its hit on that target at once. The period is the skill's perdelay
 // ((100 - dm56) * par4 / 100 + par3 frames in the table), not a fixed number.
-// U: the port still strikes the nearest enemy (the exe rotates through the
-// ones in range).
+// The engine rotates through the units in range (NextAfter, VERIFIED).
 func doThunderStormFn(c *cast) {
 	doStormFn(c)
 

@@ -631,35 +631,18 @@ func (e *Engine) meleeResult(p *d2mapentity.Player, sk *d2skill.Skill, r *d2skil
 	}
 }
 
-// staticField is SRVDO_StaticField's callback (U): every monster in the
-// radius loses Pct percent of its current life, never going below FloorPct of
-// its maximum life, and at least MinDamage when it can afford it.
+// staticField is SRVDO_StaticField's callback (0x5c7750, VERIFIED, see
+// d2skill.StaticFieldDamage): every monster in the radius above FloorPct of
+// its maximum life loses Pct percent of its current life (one life point is
+// always left).
 func (e *Engine) staticField(p *d2mapentity.Player, u *heroUnit, sk *d2skill.Skill, ef *d2skill.Effect) {
 	hx, hy := u.Pos()
 	n := 0
 
-	for _, m := range e.monsters.Monsters() {
-		mx, my := m.SubtilePos()
-		if !m.Alive() || chebyshev(mx-hx, my-hy) > ef.Radius {
-			continue
-		}
-
+	for _, m := range e.monstersWithin(hx, hy, ef.Radius) { // the exe circle (SKILL_ForEachUnitInRadius)
 		v := &m.Vitals
-		dmg := v.HP * ef.Pct / 100
-
-		if dmg < ef.MinDamage {
-			dmg = ef.MinDamage
-		}
-
 		floorPct := e.staticFieldFloor(m, ef.FloorPct)
-
-		if floor := v.MaxHP * floorPct / 100; v.HP-dmg < floor {
-			dmg = v.HP - floor
-		}
-
-		if dmg < 0 {
-			dmg = 0
-		}
+		dmg := d2skill.StaticFieldDamage(v.HP, v.MaxHP, ef.Pct, ef.MinDamage, floorPct)
 
 		res := e.resistFrom(m, p, "ltng")
 		dmg, _ = d2combat.ReduceComponent(dmg, 0, res, false, false, 0, 0)
