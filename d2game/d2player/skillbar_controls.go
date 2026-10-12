@@ -471,8 +471,10 @@ func (g *GameControls) AutoPress(key string) error {
 // skillTreeClick handles a mouse click on an icon of the open skill tree: the
 // left button puts an unused point into the skill, the right button selects it
 // as the right skill (if the hero can use it there). It reports whether
-// the click was on an icon. (UNVERIFIED: the original's exact click rules of
-// the tree were not read from the binary.)
+// the click was on an icon. PARTLY VERIFIED (UI_HandleSkillTreeMouseDown 0x4a7f40 / MouseUp 0x4a8380): the exe
+// needs unspent points (stat 5) and spends one when the button is RELEASED over the same 48x48 icon it was pressed on
+// (and only if the skill's skpoints requirement and max level allow); this port spends on press, and the right
+// button selection is OD2 design (the exe's right-button handler was not read).
 func (g *GameControls) skillTreeClick(event d2interface.MouseEvent) bool {
 	si := g.skilltree.iconAt(event.X(), event.Y())
 	if si == nil {

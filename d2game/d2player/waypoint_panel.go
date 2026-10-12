@@ -332,8 +332,9 @@ func (p *WaypointPanel) Render(target d2interface.Surface) {
 }
 
 // renderArt draws the act tabs and the close button. The original draws a tab for every act whose quest flag is set
-// (flags 7, 0xf, 0x17, 0x1a for acts 2..5); the engine does not carry those flags here, so the tabs of the acts up to
-// the panel's own are drawn (UNVERIFIED approximation); the panel's act is the selected one (frame 2*i, else 2*i+1).
+// (flags 7, 0xf, 0x17, 0x1a for acts 2..5). The game screen always passes those rules through SetTabs (level_change.go),
+// so the first branch is the exe's behaviour. The else branch is an OD2-only fallback for a panel built without SetTabs
+// (tests, tools): it draws the tabs of the acts up to the panel's own. The panel's act is the selected one (frame 2*i, else 2*i+1).
 func (p *WaypointPanel) renderArt(target d2interface.Surface) {
 	if p.tabs != nil && p.tabOK != nil {
 		for i := 0; i < p.tabCount && i < len(wpTabXs); i++ {

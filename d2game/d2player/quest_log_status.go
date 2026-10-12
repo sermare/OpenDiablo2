@@ -120,7 +120,12 @@ func (s *QuestLog) DescriptionText(act, index int) string {
 
 // pageCounts are the numbers the pages with a "%d" show ("Rescue %d more Soldiers in the Frigid Highlands",
 // "Break the remaining %d seals"): the quest system does not keep the counts yet, so the page shows the starting number
-// (three groups of five soldiers; four seals after the first). UNVERIFIED. The panel showed the raw "%d" before.
+// (three groups of five soldiers; four seals after the first). OD2 STAND-IN: in the exe (UI_BuildQuestLogEntries 0x49e060)
+// the "Rescue %d more Soldiers" page (string 0x5860 under header 0x585e) is formatted with DAT_007b7334, a count the server
+// sends in a quest info packet (UI_HandleQuestInfoPacket 0x49f3a0, sub-id 0x20), and the page falls back to the generic
+// string 0xe91 while that count is 0. The starting numbers here replace the missing server value. The seals page is NOT
+// formatted by that function (only Den of Evil's 0xe82 pages 3/4 append DAT_007b732c), so the seal count is unverified.
+// The panel showed the raw "%d" before.
 var pageCounts = map[string]int{"qstsa5q22": 15, "qstsa4q23": 4}
 
 func fillCount(key, text string) string {

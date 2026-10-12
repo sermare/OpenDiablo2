@@ -15,7 +15,10 @@ const (
 	NPCActionSailWest   // Meshif (act 3 stage): "sail west"
 	// NPCActionTravelEast and NPCActionSailEast are the rows Warriv (Act 1)
 	// and Meshif (Act 2) get once the act's last quest is done; they are not
-	// in the static table (UNVERIFIED how the client adds them).
+	// in the static table: VERIFIED by reading all 48 records at 0x725d60 (Warriv act 1 = txt 155 has only Talk and Cancel,
+	// Warriv act 2 = 175 has Talk, 0xd37 west, Cancel) and UI_BuildNpcMenu 0x4b1050 adds no east rows. How the exe
+	// offers the eastward trip (probably as a Talk topic or a quest message) was not traced, so these two rows are OD2
+	// menu rows, not exe rows.
 	NPCActionTravelEast
 	NPCActionSailEast
 	// NPCActionTravelHarrogath is Tyrael's row of the expansion (string 0x58d2): VERIFIED, 0x4b2f20 adds it to his

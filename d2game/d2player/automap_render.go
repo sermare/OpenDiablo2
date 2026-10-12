@@ -16,8 +16,10 @@ import (
 // values (FUN_00455d30); the values below are the entries of the Act 1 palette
 // that this gives (computed offline with the exe's metric, D2CMP_FindNearestPaletteIndex 0x604300: squared RGB
 // distance, first minimum wins; checked against all five act palettes: only the corpse colour (act 2: 252,20,248)
-// and the portal colour (act 4: 252,224,52) differ between acts. Which act's palette the exe's table at 0x8166f0
-// holds is UNVERIFIED, the Act 1 entries are used).
+// and the portal colour (act 4: 252,224,52) differ between acts. VERIFIED: the table at 0x8166f0 is the current act's
+// pal.dat (PAL_LoadPaletteAndPl2 0x4f87c0 copies it there; PAL_LoadActPalette 0x4f8a70 picks act%d) and the colours are
+// recomputed on every act load (AUTOMAP_InitMarkerPaletteColors 0x455d30, called from CLIENT_LoadActDungeon), so
+// corpse and portal follow the act: see automapCorpseColor / automapPortalColor).
 var (
 	automapColorSelf    = color.RGBA{36, 96, 216, 255}   // (0,0,255): the hero's cross
 	automapColorOther   = color.RGBA{252, 44, 0, 255}    // (255,0,0): other players, not in the party
@@ -199,6 +201,24 @@ func (a *Automap) playerColor(p *d2mapentity.Player) color.Color {
 	return automapColorOther
 }
 
+// automapCorpseColor is the corpse colour (255,0,255) nearest entry of the act's palette: act 2 differs.
+func automapCorpseColor(act int) color.RGBA {
+	if act == 2 {
+		return color.RGBA{252, 20, 248, 255}
+	}
+
+	return automapColorCorpse
+}
+
+// automapPortalColor is the portal colour (0xf4,0xf4,0) nearest entry of the act's palette: act 4 differs.
+func automapPortalColor(act int) color.RGBA {
+	if act == 4 {
+		return color.RGBA{252, 224, 52, 255}
+	}
+
+	return automapColorPortal
+}
+
 func (a *Automap) markerColor(c d2automap.ColorID) color.Color {
 	switch c {
 	case d2automap.ColorSelf:
@@ -210,9 +230,9 @@ func (a *Automap) markerColor(c d2automap.ColorID) color.Color {
 	case d2automap.ColorNPC:
 		return automapColorNPC
 	case d2automap.ColorCorpse:
-		return automapColorCorpse
+		return automapCorpseColor(a.eng.LevelType().Act)
 	case d2automap.ColorPortal:
-		return automapColorPortal
+		return automapPortalColor(a.eng.LevelType().Act)
 	case d2automap.ColorBlack:
 		return color.RGBA{0, 0, 0, 255}
 	}
@@ -349,7 +369,7 @@ func (a *Automap) drawText(target d2interface.Surface, w int) {
 
 	for _, l := range d2automap.TextStack(d2automap.BuildLines(in, str), w, width) {
 		a.label.SetText(l.Text)
-		a.label.SetPosition(l.X, l.Y-lh) // the engine's y is the text baseline (UNVERIFIED)
+		a.label.SetPosition(l.X, l.Y-lh) // the engine's y is the text baseline: D2WIN_DrawFormattedText 0x4ff270 blits each glyph cel at (x,y) and cels are bottom-left anchored (verified call chain, anchor rule is the cel blitter's)
 		a.label.Render(target)
 	}
 }

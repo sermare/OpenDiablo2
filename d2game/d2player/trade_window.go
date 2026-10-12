@@ -129,8 +129,8 @@ type TradeWindow struct {
 	// (INV_HandleGridClick 0x48c3c0, TRADE_CheckItemSellable false).
 	OnImpossible func()
 	// OnCantCarry plays the hero's "cantcarry" line (voice 0x17) when a purchase finds no room. The exe says it
-	// for trade command 9 / 10 (UI_HandleTradeUiCommand 0x4b5640, VERIFIED); using it for a vendor purchase
-	// without room is UNVERIFIED.
+	// for trade command 9 (the player) / 10 (the other unit) of UI_HandleTradeUiCommand 0x4b5640, VERIFIED; using it
+	// for a vendor purchase without room is an OD2 choice (the exe's NPC buy-failure path was not traced).
 	OnCantCarry func()
 	// autoBelt puts a bought potion on the belt when it has room (TRADE_ServerBuyItem tries ITEMACT_ServerItemToBelt
 	// before the inventory); nil: inventory only.
@@ -405,9 +405,8 @@ func (t *TradeWindow) realise(stock *d2vendor.Stock, seed uint32) {
 
 		item.Identify()
 
-		// UNVERIFIED for anything but ammo (a full stack is verified there):
-		// other stackable items (throwing weapons, keys) are made full stacks
-		// too. Tomes are skipped (their scroll count is not modelled).
+		// OD2 simplification: a full stack is verified for ammo only; other stackable items (throwing weapons,
+		// keys) are made full stacks too, the exe's per-item vendor quantity rules were not traced. Tomes are skipped (their scroll count is not modelled).
 		if rec := item.CommonRecord(); e.Quantity == 0 && rec.Stackable && rec.MaxStack > 0 && rec.Type != "book" {
 			e.Quantity = rec.MaxStack
 		}
@@ -1163,8 +1162,11 @@ func (t *TradeWindow) Render(target d2interface.Surface) {
 // The item tabs of a vendor window (UI_DrawNpcShopPanelAndTabs 0x484570, verified unless said otherwise): four tabs
 // of buyselltabs.dc6 standing on y 91 (H + oy - 0x1c1) at x = 80 + 0x50*i, frame i for the selected tab and i+4 for
 // the others, captioned with the strings 0xfc4..0xfc7 (Armor, Weapons, Magic, Misc: the static table repeats 0xfc5 for
-// the third entry, which is UNVERIFIED and read as Magic); the caption stands at y 80 (UNVERIFIED anchor: bottom of
-// the text). The stock is split into pages by the item type's StorePage (d2vendor.Item.Page); a tab without items is not drawn.
+// the third entry; VERIFIED in the static table at 0x7215b0, stride 0x12 {x,y,id}: ids 0xfc4, 0xfc5, 0xfc5, 0xfc7 at
+// x 42, 121, 201, 281, never rewritten at run time. Which key each id has was not checked against string.tbl, so the
+// port keeps the four named keys, an OD2 reading that may differ from the exe for the third tab); the caption stands at
+// y 80: VERIFIED, the DrawText y operand is record y 20 + oy + H - 0x1e0, i.e. 11 above the tab's bottom (H + oy - 0x1c1),
+// and D2WIN_DrawText's y is the text baseline. The stock is split into pages by the item type's StorePage (d2vendor.Item.Page); a tab without items is not drawn.
 const (
 	vendorTabs       = 4
 	vendorTabsSprite = "/data/global/ui/panel/buyselltabs.dc6"

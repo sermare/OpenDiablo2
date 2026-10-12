@@ -127,8 +127,15 @@ var resistValueY = [4]int{400, 424, 448, 472}
 // The row triples are {x1, y, x2}, six rows per hand (the right hand's start at row 6, 24 px lower). The damage and
 // attack rating of a skill come from a per skill function of skilldesc.txt (descdam / descatt); this port prints the
 // weapon's damage and the character's attack rating for skills that attack with the weapon and leaves other skills
-// with the name only (UNVERIFIED: spell damage lines). Pixels of the anchors inside the lines are UNVERIFIED (the
-// exe's draw calls pass them in registers): captions centred in x1..x2, text bottoms at the table y.
+// with the name only. NOT PORTED (read in SKILLDESC_DrawSkillDescription 0x4ea490): the exe shows the Damage line when
+// the skill is usable (SKILL_GetSkillUsabilityStatus in {0,1,6,8}, via CLIENT_GetPlayerCastAnimMode 0x4d6d40, which
+// is a usability code and not an animation mode) and the skilldesc descdam id has a function in the table at 0x72bf20
+// (ids 1..24 and 37..41, 29 functions at 0x4e61xx..0x4e8exx), and the Attack Rating block when the descatt id (table
+// 0x72bfb0, 0x48 entries) has one. Those functions include spells, so spell damage lines exist in the exe; this port
+// has only the weapon and thrown skills (Anim attack/throw), a known gap. Anchors: the x is centred in x1..x2 (UI_DrawTextLine
+// 0x4a3750, w44) and the y handed to D2WIN_DrawText is the table y, a baseline; the row table at 0x72bff8
+// ({x1,y,x2}, 12 bytes) reads 93/101/98 for name/caption/value, rows 3,4,5 = 160/163/160 for the two attack rating caption
+// lines and the value. Which of rows 3/4 each caption line takes was not recoverable (register arguments).
 const (
 	handBoxNameX1, handBoxNameX2     = 162, 258
 	handDamageValueX1, handDamageX2  = 263, 307
@@ -631,7 +638,8 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 
 	capDamage := s.asset.TranslateString("strchrskm")
 	// string 0xfe1 ("strchrrat") is the caption when the skill has no to-hit element, 0xfdf ("%s\nAttack Rating") otherwise
-	capAR := strings.ReplaceAll(s.asset.TranslateString("strchrrat"), "%s", "Attack") // the %s argument is UNVERIFIED
+	capAR := strings.ReplaceAll(s.asset.TranslateString("strchrrat"), "%s", "Attack") // the %s argument: the exe passes a wide string buffer (auStack_268, SKILLDESC_DrawSkillDescription 0x4ea490) that the
+	// descatt function fills (its 4th output); which word it holds was not read, "Attack" is an OD2 guess
 
 	for h, l := range s.hands {
 		if l.name == nil {
@@ -678,7 +686,7 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 
 		l.damageCaption.SetText(dcap)
 		l.damage.SetText(damage)
-		// a two line caption: the lines stand 8 px apart around the box middle (anchor UNVERIFIED)
+		// a two line caption: the lines stand 8 px apart around the box middle (OD2 layout: the exe's rows 3 and 4 of the table at 0x72bff8 are y 160 and 163, see above; the row each caption line uses was not recovered)
 		first, second := acap, ""
 		if i := strings.Index(acap, "\n"); i >= 0 {
 			first, second = acap[:i], acap[i+1:]
