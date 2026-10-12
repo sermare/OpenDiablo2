@@ -17,7 +17,7 @@ import "fmt"
 // Panel-relative numbers are shifted by the panel offset ((80,60) at 800x600, (0,0) at 640x480).
 // Second pass (disassembly + memory read): the label table is {x1, x2, y, id}, a label rect's W is x2 - x1
 // (0 = left-anchored caption) and the name x is offset + 0xf. Value table 0x721648 is {flag, x1, y, x2, stat};
-// the anchor of its flag == 0 rows (left or right edge) is UNVERIFIED. The panel pictures themselves are a stand-in (the character panel
+// its flag == 0 rows are right-aligned at x (VERIFIED w47, see mercValue.Anchor). The panel pictures themselves are a stand-in (the character panel
 // pictures), the original loads its own file (DAT_007b4f10) that this layout does not name.
 
 const (
@@ -58,7 +58,8 @@ func (m Mode) MercSlots() []MercSlotRect {
 // mercLabel is a row of the label table 0x6dab08: 12 records of 14 bytes {x1 int, x2 int, y int, string id u16}
 // (read from the executable's memory; the earlier version of this file read the table one field off). x2 == 0 means a
 // plain left-anchored caption at x1; otherwise UI_DrawTextLine draws it between x1 and x2 (centred: see TextLineX, the rounding is VERIFIED). UI_DrawMercStatLabels adds the panel offset to x2 before the zero test, so at 800x600 every record
-// takes the x2 branch with a degenerate range for x2 == 0; that quirk is NOT reproduced (UNVERIFIED how it looks).
+// takes the x2 branch with a degenerate range (x2 = 80 < x1) for x2 == 0; TextLineX then starts the text at x1, which is the left
+// anchored caption this port draws (VERIFIED w47: 0x4a3750 only centres when the text is narrower than the box, and a box of x2-x1+1 <= 0 never is).
 type mercLabel struct {
 	Name   string
 	X1, X2 int
@@ -80,6 +81,30 @@ type mercValue struct {
 	Flag, X, Y int
 	W          int
 	Stat       int
+}
+
+// Anchor is the text anchor of a value row (panel relative), UI_DrawMercStatValues 0x486ab0 (VERIFIED in the
+// disassembly, w47): the line's bottom y is the table y - 2 (+1 more when the text is wider than the box w and the
+// small font is taken, not modelled); a row whose first field (flag) is 0 is RIGHT-aligned: it ends at x (the text
+// starts at x minus its width, GetTextWidth 0x4ff010); a row with a flag is centred between flag and x like
+// UI_DrawTextLine does (life: 210..305), so the anchor returned for it is the box centre.
+func (v mercValue) Anchor() (x, y int) {
+	if v.Flag == 0 {
+		return v.X, v.Y - 2
+	}
+
+	return v.Flag + (v.X-v.Flag+1)/2, v.Y - 2
+}
+
+// mercValueByName returns the value row of that name.
+func mercValueByName(name string) (mercValue, bool) {
+	for _, v := range mercValues {
+		if v.Name == name {
+			return v, true
+		}
+	}
+
+	return mercValue{}, false
 }
 
 var mercValues = []mercValue{ //nolint:gochecknoglobals // data
@@ -123,7 +148,8 @@ func (m Mode) MercPanelRects() []UIRect {
 	}
 
 	for _, v := range mercValues {
-		rs = append(rs, UIRect{"merc", "value_" + v.Name, v.X + ox, v.Y + oy, v.W, 0})
+		x, y := v.Anchor()
+		rs = append(rs, UIRect{"merc", "value_" + v.Name, x + ox, y + oy, v.W, 0})
 	}
 
 	return rs

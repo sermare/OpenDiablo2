@@ -28,8 +28,8 @@ func TestMercPanelKeyRects(t *testing.T) {
 			"slot_weapon":    {"merc", "slot_weapon", 100, 107, 55, 112},
 			"slot_head":      {"merc", "slot_head", 215, 68, 54, 51},
 			"name":           {"merc", "name", 95, 274, 160, 0},
-			"value_strength": {"merc", "value_strength", 234, 342, 48, 0},
-			"value_fire":     {"merc", "value_fire", 389, 342, 48, 0},
+			"value_strength": {"merc", "value_strength", 234, 340, 48, 0},
+			"value_fire":     {"merc", "value_fire", 389, 340, 48, 0},
 			"label_fire":     {"merc", "label_fire", 260, 341, 65, 0},
 			"label_level":    {"merc", "label_level", 225, 296, 0, 0},
 			"label_life":     {"merc", "label_life", 260, 274, 0, 0},
@@ -103,6 +103,28 @@ func TestMercTablesStats(t *testing.T) {
 
 	if len(mercLabels) != 12 || len(mercValues) != 12 {
 		t.Errorf("tables have %d labels and %d values, want 12 and 12", len(mercLabels), len(mercValues))
+	}
+}
+
+// TestMercValueAnchor pins UI_DrawMercStatValues 0x486ab0 (w47): y is the table y - 2, a flag 0 row ends at x and the
+// life row (flag 210, x 305) is centred between them.
+func TestMercValueAnchor(t *testing.T) {
+	tests := []struct {
+		name         string
+		wantX, wantY int
+	}{
+		{"experience", 120, 252}, {"strength", 154, 280}, {"fire", 309, 280}, {"life", 258, 213},
+	}
+
+	for _, tt := range tests {
+		v, ok := mercValueByName(tt.name)
+		if !ok {
+			t.Fatalf("no value row %q", tt.name)
+		}
+
+		if x, y := v.Anchor(); x != tt.wantX || y != tt.wantY {
+			t.Errorf("%s: anchor (%d,%d), want (%d,%d)", tt.name, x, y, tt.wantX, tt.wantY)
+		}
 	}
 }
 

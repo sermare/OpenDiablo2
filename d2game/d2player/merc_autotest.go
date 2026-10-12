@@ -1,5 +1,7 @@
 package d2player
 
+import "os"
+
 // AutoMercUI is the interface half of the OD2_AUTOMERC_UI probe (scenario 84-mercenary): it drops a healing potion on the
 // portrait, gives and takes gear through the portrait and the merc screen, and tries an item the merc cannot wear. It
 // uses the code paths a click does and logs "MERC ui ..." lines. The caller has hurt the merc first.
@@ -32,6 +34,11 @@ func (g *GameControls) AutoMercUI(log func(format string, a ...interface{})) {
 	// right click opens the merc's screen, a second one closes it
 	g.mercPortraitClick(false, px, py)
 	log("MERC ui right click merc_screen_open=%v", g.mercPanel.IsOpen())
+
+	// OD2_AUTOMERC_UI_HOLD=1 leaves the merc screen open (for a frame by OD2_AUTOSHOT) and skips the rest of the probe
+	if os.Getenv("OD2_AUTOMERC_UI_HOLD") != "" && g.mercPanel.IsOpen() {
+		return
+	}
 
 	// gear dropped on the portrait is worn (a cap), taken off by the screen's slot and put back
 	if cap := g.newItem("cap"); cap != nil {

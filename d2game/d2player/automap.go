@@ -142,14 +142,6 @@ func (a *Automap) Toggle() {
 	a.SetOn(!a.on)
 }
 
-// ToggleOption flips one automap option (center, fade, party, names) like the F9..F12 commands 8..11 of
-// the exe's key table (strings 0xf5b 0xf8f 0xf91 0xf90). The exe stores the result in the registry; here
-// it is a session override.
-func (a *Automap) ToggleOption(key string) {
-	a.override[key] = !a.option(key)
-	a.Infof("AUTOMAP option %s=%v", key, a.override[key])
-}
-
 // SetOn shows or hides the map.
 func (a *Automap) SetOn(on bool) {
 	a.on, a.miniSeen = on, false

@@ -72,10 +72,14 @@ const (
 
 const (
 	newStatsRemainingPointsFieldX, newStatsRemainingPointsFieldY = 83, 430
-	newStatsRemainingPointsLabelX                                = 92
-	newStatsRemainingPointsLabel1Y                               = 411
-	newStatsRemainingPointsLabel2Y                               = 418
-	newStatsRemainingPointsValueX, newStatsRemainingPointsValueY = 188, 411
+	// UI_DrawCharacterStatsPanel 0x4a43f0 (VERIFIED, w47): the caption "Stat Points" (string 0xfeb) and "Remaining"
+	// (0xfec) are centred in the box x 11..89 of the panel and stand at table y 355 and 363 (8 apart; the earlier 7 was a
+	// guess); the count (font 1) is centred in x 92..128 at y 360. Go's constants are the table y + 53 (captions) and
+	// + 49 (the number, a taller font), like every other caption and value of this panel.
+	newStatsRemainingPointsLabelX                                = 130
+	newStatsRemainingPointsLabel1Y                               = 408
+	newStatsRemainingPointsLabel2Y                               = 416
+	newStatsRemainingPointsValueX, newStatsRemainingPointsValueY = 190, 409
 )
 
 // PanelText represents text on the panel
@@ -127,8 +131,8 @@ var resistValueY = [4]int{400, 424, 448, 472}
 // The row triples are {x1, y, x2}, six rows per hand (the right hand's start at row 6, 24 px lower). The damage and
 // attack rating of a skill come from a per skill function of skilldesc.txt (descdam / descatt); this port prints the
 // weapon's damage and the character's attack rating for skills that attack with the weapon and leaves other skills
-// with the name only (UNVERIFIED: spell damage lines). Pixels of the anchors inside the lines are UNVERIFIED (the
-// exe's draw calls pass them in registers): captions centred in x1..x2, text bottoms at the table y.
+// with the name only (UNVERIFIED: spell damage lines). The anchors inside the rows are VERIFIED from the draw calls of 0x4ea490 (w47).
+// Captions are centred in x1..x2 (UI_DrawTextLine), text bottoms at the table y.
 const (
 	handBoxNameX1, handBoxNameX2     = 162, 258
 	handDamageValueX1, handDamageX2  = 263, 307
@@ -137,6 +141,7 @@ const (
 
 	handNameY, handCaptionY, handDamageValueY = 93, 101, 98
 	handARY                                   = 160
+	handARLineGap                             = 4  // the two lines of the attack rating caption stand at the row y -4 and +4
 	handRowShift                              = 24 // the right hand's rows are 24 px lower (y 117/125/122, AR 184)
 	panelColumnX                              = 80 // table x to panel x (the art's left edge)
 	panelTextY                                = 53 // table y to the label y of the Go panel
@@ -145,6 +150,7 @@ const (
 // HandSkillInfo describes a hand skill for the character sheet.
 type HandSkillInfo struct {
 	Name   string // translated skill name (empty: no skill)
+	ID     int    // skills.txt row (0 is Attack: its attack rating caption differs)
 	Weapon bool   // the skill attacks with the weapon: damage and attack rating are listed
 	// Per skill numbers of the boxes (0x4e5860, 0x4e62b0; wave 46). SrcDam is skills.txt srcdam (0: unknown, the
 	// whole weapon range); ToHitBonus is SKILL_GetToHitBonus at the skill's level (percent added to the attack
@@ -208,6 +214,8 @@ type HeroStatsPanel struct {
 	panelGroup      *d2ui.WidgetGroup
 	newStatPoints   *d2ui.WidgetGroup
 	remainingPoints *d2ui.Label
+	pointsCaption1  *d2ui.Label // the "Stat Points" / "Remaining" captions (kept for the layout dump)
+	pointsCaption2  *d2ui.Label
 
 	originX int
 	originY int
@@ -261,13 +269,17 @@ func (s *HeroStatsPanel) loadNewStatPoints() {
 
 	label1 := s.uiManager.NewLabel(d2resource.Font6, d2resource.PaletteSky)
 	label1.SetPosition(newStatsRemainingPointsLabelX, newStatsRemainingPointsLabel1Y+panelShiftY)
+	label1.Alignment = d2ui.HorizontalAlignCenter
 	label1.SetText(s.asset.TranslateString("strchrstat"))
+	s.pointsCaption1 = label1
 	label1.Color[0] = d2util.Color(d2gui.ColorRed)
 	s.newStatPoints.AddWidget(label1)
 
 	label2 := s.uiManager.NewLabel(d2resource.Font6, d2resource.PaletteSky)
 	label2.SetPosition(newStatsRemainingPointsLabelX, newStatsRemainingPointsLabel2Y+panelShiftY)
+	label2.Alignment = d2ui.HorizontalAlignCenter
 	label2.SetText(s.asset.TranslateString("strchrrema"))
+	s.pointsCaption2 = label2
 	label2.Color[0] = d2util.Color(d2gui.ColorRed)
 	s.newStatPoints.AddWidget(label2)
 
@@ -536,8 +548,8 @@ func (s *HeroStatsPanel) initStatValueLabels() {
 			name:          mk(nameX, handNameY),
 			damageCaption: mk(nameX, handCaptionY),
 			damage:        mk(mid(handDamageValueX1, handDamageX2), handDamageValueY),
-			arCaption:     mk(arX, handARY-3),
-			arCaption2:    mk(arX, handARY+5),
+			arCaption:     mk(arX, handARY-handARLineGap),
+			arCaption2:    mk(arX, handARY+handARLineGap),
 			ar:            mk(mid(handARValueX1, handARValueX2), handARY),
 		}
 	}
@@ -651,8 +663,9 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 	}
 
 	capDamage := s.asset.TranslateString("strchrskm")
-	// string 0xfe1 ("strchrrat") is the caption when the skill has no to-hit element, 0xfdf ("%s\nAttack Rating") otherwise
-	capAR := strings.ReplaceAll(s.asset.TranslateString("strchrrat"), "%s", "Attack") // the %s argument is UNVERIFIED
+	// SKILLDESC_DrawSkillDescription 0x4ea490 (VERIFIED, w47): the caption is string 0xfe1 ("strchrrat", "%s\nRating")
+	// for skill id 0 (Attack) and 0xfdf ("strchratr", "%s\nAttack Rating") for every other skill; %s is the skill's name
+	// (the skilldesc name string), so the first line of the caption is the skill name.
 
 	for h, l := range s.hands {
 		if l.name == nil {
@@ -709,7 +722,12 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 
 			if sk.Weapon {
 				rating = strconv.Itoa(rt)
-				acap = capAR
+				key := "strchratr"
+				if sk.ID == 0 {
+					key = "strchrrat"
+				}
+
+				acap = strings.ReplaceAll(s.asset.TranslateString(key), "%s", sk.Name)
 			}
 		}
 
@@ -720,7 +738,7 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 			s.lastBoxLog[h] = line
 			s.Infof("HANDBOX hand=%d %s", h, line)
 		}
-		// a two line caption: the lines stand 8 px apart around the box middle (anchor UNVERIFIED)
+		// a two line caption: "<skill name>\nAttack Rating" (SKILLDESC_DrawSkillDescription 0x4ea490, VERIFIED w47)
 		first, second := acap, ""
 		if i := strings.Index(acap, "\n"); i >= 0 {
 			first, second = acap[:i], acap[i+1:]
@@ -728,6 +746,18 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 
 		l.arCaption.SetText(first)
 		l.arCaption2.SetText(second)
+
+		// 0x4ea490 (VERIFIED, w47): a caption with a newline is drawn as two lines at the row's y - 4 and y + 4, one
+		// without at the row's y (the value beside it stands at the same y)
+		cx, _ := l.arCaption.GetPosition()
+		_, ry := l.ar.GetPosition()
+
+		if second == "" {
+			l.arCaption.SetPosition(cx, ry)
+		} else {
+			l.arCaption.SetPosition(cx, ry-handARLineGap)
+		}
+
 		l.ar.SetText(rating)
 		setStatColour(l.damage, dmgCol)
 		setStatColour(l.ar, arCol)

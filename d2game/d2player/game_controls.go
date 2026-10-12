@@ -1299,6 +1299,7 @@ func (g *GameControls) handSkillInfo() [2]HandSkillInfo {
 		}
 
 		out[i].Thrown = sk.Anim == d2enum.PlayerAnimationModeThrow
+		out[i].ID = sk.ID
 		out[i].SrcDam = sk.SkillRecord.SrcDam
 
 		// the effective level (points plus +skills items) feeds SKILL_GetToHitBonus 0x645da0 (ToHitCalc included)
