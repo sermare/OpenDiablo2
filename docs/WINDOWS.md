@@ -83,6 +83,11 @@ Findings from the trial on branch `feat/w36-ebiten-upgrade` (wave 36):
   no-op, so `go.mod` carries `godebug randseednop=0` to keep the seeded behaviour.
 - Windows needs no cgo with v2.10.5 either (it uses purego/`x/sys`), so `CGO_ENABLED=0` still works; macOS uses purego for Metal and
   oto v3 (CoreAudio), so only the repo's own `cmdkey_darwin.go` still needs cgo there.
+- One more breaking change found by running the game: Ebiten >= 2.1 panics on `NewImage` with a zero size (an empty text
+  label asked for 0x0). `Renderer.NewSurface` now clamps to 1x1 (branch only).
+- Scenario results on the upgrade branch (macOS 14.3, Apple Silicon): `a1-display-1512x982` passes; `8e-mac-input` passes
+  every check except "Q opens the quest log", which fails the same way on the unmodified wave 35 tree (not caused by Ebiten).
+  Because 8e is not fully green the upgrade is **not merged** into the Windows branch; it stays on its own branch.
 - Not checked on this machine: audio output differences (new oto backend), cursor and key repeat changes, gamepad mapping
   (the Gamepad API was reworked after 2.0), and anything on Windows itself. See `docs/WINDOWS.md` history and the wave 36 notes
   for the scenario results.
