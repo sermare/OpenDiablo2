@@ -31,6 +31,12 @@ scenario_check() {
     "AUTOMERC ui: hire click had_merc=true confirm_open=true rows=2 title=\"This Mercenary will replace your current one\\.\"" \
     "AUTOMERC ui: hire click answered No: menu_open=false" \
     "MERC hire message code=12 text=\"You do not have enough gold for that\\.\"" "AUTOMERC ui: hire click broke: message_open=true rows=1" \
+    "AUTOMERC ui: hire waiting open=true pending=true rows=0 text=\"Waiting for confirmation of transaction\\.\\.\\.\"" \
+    "MERC txn reply kind=0 code=12 " "MERC txn reply kind=0 code=5 " "MERC txn reply kind=1 code=5 " \
+    "AUTOMERC ui: hire wheel entries=([7-9]|10) first=1" \
+    "AUTOMERC ui: hire title with stash=\"Your Gold: 1000000 +Hire which Mercenary\\?\"" \
+    "AUTOMERC ui: hire paid from stash purse=0 stash=1000000->[0-9]+ merc_screen=true" \
+    "MERC first hire: mercenary screen opened" "AUTOMERC revive txn: cost=[0-9]+ " \
     "MERC ui right click merc_screen_open=true" "MERC give decision=ok item=hp5 consumed=true" "MERC ui gear gear=cap@1" "MERC ui shield item=tow on_cursor=true"; do
     grep -qE "$pat" $log.txt || { echo "FAIL: no '$pat' in the merc log"; fail=1; }
   done

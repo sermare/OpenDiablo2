@@ -31,6 +31,10 @@ func (c *Connection) applySave(sp d2netpacket.SavePlayerPacket) {
 	st.Stats = sp.Player.Stats
 	st.Gold = sp.Player.Gold
 
+	if sg := sp.Player.StashGold; sg != 0 || st.StashGold != nil { // deposits, withdrawals and mercenary payments
+		st.StashGold = &sg
+	}
+
 	if m := sp.Player.Merc; m != nil {
 		st.Merc = m
 	}

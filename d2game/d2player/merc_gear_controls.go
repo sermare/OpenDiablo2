@@ -332,3 +332,13 @@ func (g *GameControls) mercPortraitClick(left bool, mx, my int) bool {
 
 	return true
 }
+
+// OpenMercPanel opens the mercenary screen if it is closed (the first hire does it once: PopupHireling).
+func (g *GameControls) OpenMercPanel() {
+	if g.hero.Merc != nil && !g.mercPanel.IsOpen() {
+		g.openLeftPanel(g.mercPanel)
+	}
+}
+
+// IsMercPanelOpen says whether the mercenary screen is showing.
+func (g *GameControls) IsMercPanelOpen() bool { return g.mercPanel.IsOpen() }

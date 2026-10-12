@@ -42,6 +42,9 @@ const (
 	OptCinematics = "cinematics"
 	// OptIntroSeen is not shown in a menu: the opening movie plays on the first launch only (0 = not yet).
 	OptIntroSeen = "introseen"
+	// OptPopupHireling is the registry value PopupHireling of the exe ("Diablo II" key, written by UI_DrawHirelingPortraitStrip 0x4904f0
+	// after the first hire opened the mercenary screen by itself): 0 = not yet shown.
+	OptPopupHireling = "popuphireling"
 )
 
 // OptionDef describes one row of the options menu.
@@ -80,6 +83,7 @@ func OptionDefs() []OptionDef {
 		OptionDef{OptFullscreen, onOff, 0},
 		OptionDef{OptCinematics, onOff, 0},
 		OptionDef{OptIntroSeen, []string{"NO", "YES"}, 0},
+		OptionDef{OptPopupHireling, []string{"NO", "YES"}, 0},
 	)
 
 	// one remap row per gamepad button: the value is the action name
@@ -233,3 +237,6 @@ func (c *Configuration) Cinematics() bool { return c.OptionIndex(OptCinematics) 
 
 // IntroSeen reports that the opening movie was already shown on an earlier launch.
 func (c *Configuration) IntroSeen() bool { return c.OptionIndex(OptIntroSeen) == 1 }
+
+// HirelingPopupSeen reports that the first-hire mercenary screen was already shown once (PopupHireling).
+func (c *Configuration) HirelingPopupSeen() bool { return c.OptionIndex(OptPopupHireling) == 1 }
