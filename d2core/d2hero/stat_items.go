@@ -78,6 +78,9 @@ func statItem(it *d2s.Item, bases d2statlist.Bases, charm bool, resolve SetResol
 		si.Weapon, si.BaseBlock, si.GemKind, si.BaseSpeed = b.Weapon, b.BaseBlock, b.GemKind, b.Speed
 	}
 
+	// a weapon at 0 durability has no broken flag (ITEM_RollDurabilityLoss 0x557d90, VERIFIED) and keeps its stat list
+	si.Broken = si.Broken && si.Weapon == nil
+
 	for _, l := range it.SetProperties {
 		si.SetLists = append(si.SetLists, props(l))
 	}

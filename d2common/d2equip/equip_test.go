@@ -348,6 +348,11 @@ func TestRollLoss(t *testing.T) {
 		PropertiesOff(&Item{}) {
 		t.Error("PropertiesOff")
 	}
+
+	// w49: a weapon at 0 durability has no broken flag in the exe (0x557d90 breaks armor only) and keeps its stats
+	if PropertiesOff(&Item{Weapon: true, MaxDurability: 20}) || !(&Item{Weapon: true, MaxDurability: 20}).Broken() {
+		t.Error("a plain weapon at 0 keeps its properties")
+	}
 }
 
 func TestWeaponSets(t *testing.T) {

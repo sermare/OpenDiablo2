@@ -22,6 +22,10 @@ const (
 	QualityRare    uint8 = 6
 	QualityUnique  uint8 = 7
 	QualityCrafted uint8 = 8
+	// QualityTempered is quality 9. ITEM_GetQuality case 9 in INV_BuildItemNameTooltipLines (0x488260) names it like a
+	// rare or crafted item (VERIFIED); its save layout is assumed to be the rare one (UNVERIFIED, the generator
+	// never produces it).
+	QualityTempered uint8 = 9
 )
 
 // Item storage locations (Item.Location).
@@ -392,7 +396,7 @@ func (it *Item) readExtended(r *bitReader, t *ItemTables) error {
 		it.SetID = uint16(rd(12))
 	case QualityUnique:
 		it.UniqueID = uint16(rd(12))
-	case QualityRare, QualityCrafted:
+	case QualityRare, QualityCrafted, QualityTempered:
 		it.RareName1 = uint8(rd(8))
 		it.RareName2 = uint8(rd(8))
 

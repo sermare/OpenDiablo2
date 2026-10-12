@@ -560,7 +560,8 @@ func (g *GameControls) itemTooltipLines(it InventoryItem) []string {
 		return nil
 	}
 
-	if cur, maxDur := item.Durability(); maxDur > 0 {
+	// an item described from its saved form (d2itemdesc) already has its durability and set lines
+	if cur, maxDur := item.Durability(); maxDur > 0 && item.Origin() == nil {
 		label := g.asset.TranslateString("ItemStats1d")
 		if label == "" || label == "ItemStats1d" {
 			label = "Durability:"
@@ -584,6 +585,10 @@ func (g *GameControls) itemTooltipLines(it InventoryItem) []string {
 
 	if note := g.requirementNote(item); note != "" {
 		lines = append(lines, d2ui.ColorTokenize(note, d2ui.ColorTokenRed))
+	}
+
+	if item.Origin() != nil {
+		return lines
 	}
 
 	return append(lines, g.setTooltipLines(item)...)

@@ -159,7 +159,7 @@ func (f *HeroStateFactory) statItemOfStored(s *StoredItem, loc d2equip.Loc, base
 	}
 
 	si.Slot = int(loc)
-	si.Broken = eq.Broken()
+	si.Broken = d2equip.PropertiesOff(&eq)
 
 	return si
 }

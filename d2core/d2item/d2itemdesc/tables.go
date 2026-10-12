@@ -96,8 +96,10 @@ type SetItemDef struct {
 	Set      string
 	Code     string
 	LevelReq int
-	// Partial are the bonus lists of the item (aprop1a/1b .. aprop5a/5b):
-	// list i is active when i+2 pieces of the set are worn.
+	// AddFunc is the "add func" column: 1 = list k is active with the k-th other piece worn, 2 = list i is
+	// active when i+2 pieces are worn, 0 = the item has no partial bonus (INV_BuildSetBonusLines, VERIFIED).
+	AddFunc int
+	// Partial are the bonus lists of the item (aprop1a/1b .. aprop5a/5b).
 	Partial [5][]PropSpec
 }
 
@@ -469,7 +471,8 @@ func (t *Tables) loadSets(sets, items *tsv) {
 			continue
 		}
 
-		si := SetItemDef{Index: idx, Set: items.str(r, "set"), Code: items.str(r, "item"), LevelReq: items.num(r, "lvl req")}
+		si := SetItemDef{Index: idx, Set: items.str(r, "set"), Code: items.str(r, "item"), LevelReq: items.num(r, "lvl req"),
+			AddFunc: items.num(r, "add func")}
 
 		for i := 0; i < 5; i++ {
 			n := strconv.Itoa(i + 1)

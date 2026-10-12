@@ -30,10 +30,37 @@ func (g *GameControls) describeContext() *d2itemdesc.Context {
 		return ctx
 	}
 
+	ctx.CarriedSetItems = make(map[string]bool)
+
 	for l := d2equip.Loc(1); l < d2equip.NumLocs; l++ {
 		if it, ok := g.inventory.WornAt(l).(*diablo2item.Item); ok && it != nil && it.Origin() != nil {
 			if name := tables.SetItemIndex(it.Origin()); name != "" {
-				ctx.WornSetItems[name] = true
+				ctx.CarriedSetItems[name] = true
+
+				// INV_CountEquippedSetMates 0x62a4e0 (VERIFIED) leaves out a broken piece and one with flag 0x4000
+				// (a weapon at 0 durability carries no broken flag, so the right hand never counts as broken)
+				if !it.HasBrokenFlag() && !(it.IsBroken() && l != d2equip.LocRightHand) {
+					ctx.WornSetItems[name] = true
+				}
+			}
+		}
+	}
+
+	// the piece list of the set tooltip paints a piece green for any identified copy the hero carries: backpack,
+	// cube, stash (INV_FindSetItemMatchInInventory 0x4828e0, VERIFIED)
+	for _, grid := range []*ItemGrid{g.inventory.grid, g.stash.grid, g.cube.grid} {
+		if grid == nil {
+			continue
+		}
+
+		for _, gi := range grid.Items() {
+			it, ok := gi.(*diablo2item.Item)
+			if !ok || it == nil || it.Origin() == nil || !(it.Origin().Identified || it.IsIdentified()) {
+				continue
+			}
+
+			if name := tables.SetItemIndex(it.Origin()); name != "" {
+				ctx.CarriedSetItems[name] = true
 			}
 		}
 	}
