@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2state"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
@@ -144,6 +145,13 @@ const (
 type HandSkillInfo struct {
 	Name   string // translated skill name (empty: no skill)
 	Weapon bool   // the skill attacks with the weapon: damage and attack rating are listed
+	// Per skill numbers of the boxes (0x4e5860, 0x4e62b0; wave 46). SrcDam is skills.txt srcdam (0: unknown, the
+	// whole weapon range); ToHitBonus is SKILL_GetToHitBonus at the skill's level (percent added to the attack
+	// rating pool); Bit8 and StateBonus are the state based damage bonus of a skill with flag bit 8 (the blue
+	// colour); SkillMin/SkillMax are the skill's own physical damage in whole points.
+	SrcDam, ToHitBonus, StateBonus int
+	Bit8, Thrown                   bool
+	SkillMin, SkillMax             int
 }
 
 // handLabels are the labels of one hand's pair of boxes.
@@ -566,6 +574,17 @@ func resistLineStates(shown, maxTotal int, raised, lowered bool) (string, int) {
 }
 
 // setStatColour tints a value label with one of the exe's font colour indices.
+func boxFont(c d2statlist.BoxColour) int {
+	switch c {
+	case d2statlist.BoxRed:
+		return StatFontRed
+	case d2statlist.BoxBlue:
+		return StatFontBlue
+	}
+
+	return StatFontWhite
+}
+
 func setStatColour(l *d2ui.Label, idx int) {
 	l.Color[0] = StatFontRGBA(idx)
 }
@@ -623,9 +642,36 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 
 		damage, rating, dcap, acap := "", "", "", ""
 
+		dmgCol, arCol := DefenseColour(flags.DamageBlue(), flags.DamageRed()), DefenseColour(flags.AttackBlue(), flags.AttackRed())
+
 		if sk.Name != "" && sk.Weapon {
-			damage = strconv.Itoa(dmin) + "-" + strconv.Itoa(dmax)
-			rating = strconv.Itoa(ar)
+			lo, hi, rt := dmin, dmax, ar
+
+			if t := s.heroState.Totals; t != nil {
+				srcDam := sk.SrcDam
+				if srcDam == 0 {
+					srcDam = 128 // unknown: the whole weapon range
+				}
+
+				if tmin, tmax, ok := t.ThrownBox(0); ok && sk.Thrown {
+					lo, hi = tmin, tmax // 0x4e7470: the thrown range, no flat damage
+				} else {
+					box := t.SkillDamageBox(d2statlist.SkillBox{
+						SrcDam: srcDam, SkillMin: sk.SkillMin, SkillMax: sk.SkillMax, Bit8: sk.Bit8, StateBonus: sk.StateBonus,
+						DmgBlue: flags.DamageBlue(), DmgRed: flags.DamageRed(),
+					})
+					lo, hi, dmgCol = box.Min, box.Max, boxFont(box.Colour)
+				}
+
+				var col d2statlist.BoxColour
+
+				rt, col = d2statlist.SkillAttackRating(t.AttackRatingFlat, t.ToHitPct, 0, sk.ToHitBonus, false,
+					flags.AttackBlue(), flags.AttackRed())
+				arCol = boxFont(col)
+			}
+
+			damage = strconv.Itoa(lo) + "-" + strconv.Itoa(hi)
+			rating = strconv.Itoa(rt)
 			dcap, acap = capDamage, capAR
 		}
 
@@ -640,8 +686,8 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 		l.arCaption.SetText(first)
 		l.arCaption2.SetText(second)
 		l.ar.SetText(rating)
-		setStatColour(l.damage, DefenseColour(flags.DamageBlue(), flags.DamageRed()))
-		setStatColour(l.ar, DefenseColour(flags.AttackBlue(), flags.AttackRed()))
+		setStatColour(l.damage, dmgCol)
+		setStatColour(l.ar, arCol)
 	}
 }
 

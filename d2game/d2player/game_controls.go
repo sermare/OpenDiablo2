@@ -1274,6 +1274,14 @@ func (g *GameControls) handSkillInfo() [2]HandSkillInfo {
 		case d2enum.PlayerAnimationModeAttack1, d2enum.PlayerAnimationModeAttack2, d2enum.PlayerAnimationModeThrow:
 			out[i].Weapon = true
 		}
+
+		out[i].Thrown = sk.Anim == d2enum.PlayerAnimationModeThrow
+		out[i].SrcDam = sk.SkillRecord.SrcDam
+
+		// SKILL_GetToHitBonus 0x645da0: ToHit + (level-1) * LevToHit (the ToHitCalc column is not evaluated here)
+		if lvl := sk.SkillPoints; lvl > 0 && sk.SkillRecord.ToHitCalc == nil {
+			out[i].ToHitBonus = sk.SkillRecord.ToHit + (lvl-1)*sk.SkillRecord.LevToHit
+		}
 	}
 
 	return out

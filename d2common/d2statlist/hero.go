@@ -90,6 +90,9 @@ type Totals struct {
 	// GearDamagePct and GearToHitPct are stats 25 and 119 from the items only (the skill engine's own states
 	// supply the skills' share).
 	GearDamagePct, GearToHitPct int
+	// DamagePct and ToHitPct are stats 25 and 119 of the whole list (items, skills, states): the pools of the
+	// character screen's skill boxes (skillbox.go).
+	DamagePct, ToHitPct int
 	// ShieldWorn is set when the left hand holds a shield (item type 0x33, the clause of the defense colour rule).
 	ShieldWorn bool
 	BlockPct   int // block chance with shield and dexterity, capped at 75
@@ -326,6 +329,7 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 	t.DamageMin, t.DamageMax = weaponDamageClass(active, list, h.Class.ID, t.Str, t.Dex)
 	t.Weapon = weaponParts(active, list, h.Class.ID, t.Str, t.Dex)
 	t.GearDamagePct, t.GearToHitPct = int(gear.Get(StatDamagePct)), int(gear.Get(StatToHitPct))
+	t.DamagePct, t.ToHitPct = int(list.Get(StatDamagePct)), int(list.Get(StatToHitPct))
 
 	shield := shieldOf(active)
 
