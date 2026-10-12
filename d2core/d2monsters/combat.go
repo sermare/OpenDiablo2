@@ -1003,9 +1003,10 @@ func (d *Director) dropLootFrom(u *unit, tc string) {
 
 	// the treasure class moves along its level group with the monster level
 	// only in the expansion above Normal (VERIFIED, 0x558d80)
+	// (and not for noRatio or boss classes: the exe tests monstats flag bits 2 and 6)
 	flags := 0
-	if u.m.Stat != nil && u.m.Stat.IgnoreMonLevelTxt {
-		flags |= d2drop.MonStatsNoRatio
+	if u.m.Stat != nil {
+		flags = d2drop.MonStatsFlags(u.m.Stat.IgnoreMonLevelTxt, u.m.Stat.IsSpecialBoss)
 	}
 
 	upgrade := d2drop.MonsterUpgradeLevel(d.opt.Expansion, int(d.opt.Difficulty), true, flags, level)
