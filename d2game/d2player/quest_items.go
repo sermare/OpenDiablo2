@@ -1,6 +1,10 @@
 package d2player
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
+)
 
 // ItemCountsByCode counts the items of the inventory grid and the cursor by
 // their base code (used by the quest system to know which quest items the
@@ -40,6 +44,10 @@ func (g *GameControls) RemoveItemByCode(code string) bool {
 // SetQuestItemUse installs the hook that gives the usable quest items (Book of Skill, Potion of Life, Scroll
 // of Resistance) their effect: it gets the item code and reports whether the item took effect and is consumed.
 func (g *GameControls) SetQuestItemUse(use func(code string) bool) { g.questItemUse = use }
+
+// SetStatePotion installs the hook that starts the timed state of an antidote, thawing or stamina potion on the
+// hero (the skill engine's state set, so the stats reach the totals) and returns the names of the states it cured.
+func (g *GameControls) SetStatePotion(f func(p d2inventory.StatePotion) []string) { g.statePotion = f }
 
 // SetHealShare installs the Blood Golem's share of the healing the hero drinks (ITEM_ShareHealingWithPlayerGolem,
 // 0x5c4800): it receives the points about to be healed and returns what the hero still receives.

@@ -203,3 +203,38 @@ func TestApplyInstant(t *testing.T) {
 		t.Errorf("clamped = %d", got)
 	}
 }
+
+// A column is compatible by the exe's three code lists (0x628c00), and a pickup of an item whose autobelt is 0
+// (stamina, antidote, thawing) joins an existing column but never claims a front cell (0x561370 / 0x628d50).
+func TestBeltGroupAndAutobeltPickup(t *testing.T) {
+	for code, want := range map[string]string{
+		"hp1": "hp", "hp5": "hp", "mp3": "mp", "rvs": "rv", "rvl": "rv", "vps": "vps", "yps": "yps", "wms": "wms",
+	} {
+		if got := BeltGroup(code); got != want {
+			t.Errorf("BeltGroup(%s) = %s, want %s", code, got, want)
+		}
+	}
+
+	var k BeltKinds
+	k[0], k[1] = BeltGroup("yps"), BeltGroup("hp5")
+
+	// antidote joins its own column even without autobelt
+	if c, ok := FindBeltSlotOpt(&k, 16, BeltGroup("yps"), false); !ok || c != 4 {
+		t.Errorf("antidote behind antidote: %d %v, want 4 true", c, ok)
+	}
+
+	// a stamina potion has no column and no autobelt: it stays out of the belt
+	if _, ok := FindBeltSlotOpt(&k, 16, BeltGroup("vps"), false); ok {
+		t.Error("stamina potion without autobelt must not take a front cell")
+	}
+
+	// with autobelt it takes the first empty front cell
+	if c, ok := FindBeltSlotOpt(&k, 16, BeltGroup("vps"), true); !ok || c != 2 {
+		t.Errorf("stamina with autobelt: %d %v, want 2 true", c, ok)
+	}
+
+	// a Light Healing Potion goes behind a Greater Healing Potion (same list)
+	if c, ok := FindBeltSlotOpt(&k, 16, BeltGroup("hp2"), true); !ok || c != 5 {
+		t.Errorf("hp2 behind hp5: %d %v, want 5 true", c, ok)
+	}
+}
