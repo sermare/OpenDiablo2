@@ -42,9 +42,9 @@
     },
     {
       "label": "Real .d2s save: read and write verified",
-      "done": 9,
+      "done": 10,
       "total": 10,
-      "note": "9 sections read; whole file written back byte-for-byte (golem section unverified)",
+      "note": "all 10 sections read and written back byte-for-byte; golem section ('kf', every expansion class) checked against the exe writer and reader",
       "color": "#f2a81d"
     },
     {
@@ -64,10 +64,10 @@
     },
     {
       "label": "Levels walked by a verify scenario",
-      "done": 91,
+      "done": 116,
       "total": 136,
       "pending": 0,
-      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); includes the whole Act 3 chain (Travincal, Council, Durance, Mephisto, red portal); the 9s-walk scenarios add 39: Act 1 caves, Burial Grounds, Crypt, Mausoleum, Forgotten Tower and Cellars, Monastery to Catacombs 2, Act 2 Palace Cellar 2 / Stony Tombs / Halls 3, Act 3 temples, Act 5 ice caves and Nihlathak temple chain",
+      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); includes the whole Act 3 chain (Travincal, Council, Durance, Mephisto, red portal); the 9s-walk scenarios add 64 (the w23 ones: Stony Field to Tamoe Highland, Tristram, Moo Moo Farm, Tal Rasha tombs 1-7, Spider Cave, Swampy Pit 2-3, Flayer Dungeon 2-3, Worldstone Chamber, Pandemonium 1-3, Uber Tristram, Hell 1-3 rows; the older ones: Act 1 caves, Burial Grounds, Crypt, Mausoleum, Forgotten Tower and Cellars, Monastery to Catacombs 2, Act 2 Palace Cellar 2 / Stony Tombs / Halls 3, Act 3 temples, Act 5 ice caves and Nihlathak temple chain)",
       "color": "#ff9f43"
     },
     {
@@ -83,7 +83,7 @@
       "done": 177,
       "total": 210,
       "pending": 0,
-      "note": "wave 20 Druid (branch feat/w20-skills-druid, +6): path type 10 is PATH_ApplyDirectionStepVelocity 0x67d160 (Firestorm, Twister, Tornado wobble along the 8-way heading), Vine Attack under the target with the vine trail missiles (SrvDoFunc 26, hit 50) for the Plague Poppy, Cycle of Life and Vines restore life / mana through the recycler delay missiles (SrvDoFunc 29 / 33); skills batch 9 (branch feat/skills-ai-9, +3): Armageddon follows the state active function 0x5c65b0 (Param4 period, five square-random tries, armageddoncontrol rocks), Hurricane the sibling 0x5c63f0, Blood Golem shares damage with its owner (Param5) and healing with the golem (Param6); Firestorm and Twister cast structure read (not counted: the path-type-10 stepper is decoded but its heading offset is open); skills batch 5 (branch feat/skills-5, +5): Raise Skeletal Mage shoots its missile, Iron Golem takes a ground item target (golem stands at the item, item consumed), Oak Sage / Heart of Wolverine / Spirit of Barbs reach minions and the mercenary through the exe target filter (all filter bits decoded), summon level formula for skeletons and golems, corpse rules; skills batch 4 (branch feat/skills-4, +6): Thunder Storm rotates through the targets, Leap (circle at the landing) and Dragon Flight (lands on the target) confirmed against the exe, Bone Prison 12-cell ring, Poison Explosion eight stationary clouds, Blessed Hammer spiral path plus Concentration scale; Static Field callback re-read (floor is a gate); earlier: 150 of 210 player skills have engine behaviour:Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry); skills batch 3 (branch feat/skills-3): Feral Rage and Maul stack by count, Wearwolf and Wearbear toggle, Leap Attack single victim, Dragon Claw and Dragon Tail follow the exe (+7); Leap, Dragon Flight, Thunder Storm, Conversion and the three totem auras re-read and corrected but still partial",
+      "note": "wave 22 (branch feat/w22-skills-b, count unchanged: these skills already ran): Shock Wave fan is now the exe geometry (0x5d9fe0 with the helpers 0x56b0e0 / 0x56b120) and counts as fully simulated; Molten Boulder knockback (SrvDmgFunc 14) and the monstats2 small / large class bits, Holy Freeze slow clamp by monster cold effect (0x5cd240), Conversion type filter (switchai, not boss, walk mode), Grim Ward start missile by corpse size, Whirlwind base walk speed and refused state, Charge velocity formula read; Eruption crack, Volcano and Fist of the Heavens re-read (no server side gaps beyond the Size footprint); wave 20 Druid (branch feat/w20-skills-druid, +6): path type 10 is PATH_ApplyDirectionStepVelocity 0x67d160 (Firestorm, Twister, Tornado wobble along the 8-way heading), Vine Attack under the target with the vine trail missiles (SrvDoFunc 26, hit 50) for the Plague Poppy, Cycle of Life and Vines restore life / mana through the recycler delay missiles (SrvDoFunc 29 / 33); skills batch 9 (branch feat/skills-ai-9, +3): Armageddon follows the state active function 0x5c65b0 (Param4 period, five square-random tries, armageddoncontrol rocks), Hurricane the sibling 0x5c63f0, Blood Golem shares damage with its owner (Param5) and healing with the golem (Param6); Firestorm and Twister cast structure read (not counted: the path-type-10 stepper is decoded but its heading offset is open); skills batch 5 (branch feat/skills-5, +5): Raise Skeletal Mage shoots its missile, Iron Golem takes a ground item target (golem stands at the item, item consumed), Oak Sage / Heart of Wolverine / Spirit of Barbs reach minions and the mercenary through the exe target filter (all filter bits decoded), summon level formula for skeletons and golems, corpse rules; skills batch 4 (branch feat/skills-4, +6): Thunder Storm rotates through the targets, Leap (circle at the landing) and Dragon Flight (lands on the target) confirmed against the exe, Bone Prison 12-cell ring, Poison Explosion eight stationary clouds, Blessed Hammer spiral path plus Concentration scale; Static Field callback re-read (floor is a gate); earlier: 150 of 210 player skills have engine behaviour:Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry); skills batch 3 (branch feat/skills-3): Feral Rage and Maul stack by count, Wearwolf and Wearbear toggle, Leap Attack single victim, Dragon Claw and Dragon Tail follow the exe (+7); Leap, Dragon Flight, Thunder Storm, Conversion and the three totem auras re-read and corrected but still partial",
       "color": "#5fd0a5"
     },
     {
@@ -104,10 +104,10 @@
     },
     {
       "label": "In-game UI panels matching the original layout",
-      "done": 12,
+      "done": 13,
       "total": 14,
       "pending": 0,
-      "note": "8 of 14 panels checked in a real game window against the original numbers (163 rectangles, 0 deviating, scenario 9f-ui-layout, now with the waypoint row boxes from the exe table); 4 more (party screen rows, mercenary panel, help screen, move-gold dialog) have layouts read from the exe and unit tested against golden numbers, not yet seen in a running window; the NPC menu geometry has a pure tested function; one panel still unchecked",
+      "note": "wave 23: skill tree layout now pure and golden tested from the exe (close button table 0x723eac, icon grid, tab title lines per class, points anchor; checked in the running window by 9f-ui-layout), escape menu option pages (sound, video, automap: pitch 45, strip 34, pentagram 49) read from the descriptors and planned by pure functions but the Go rows still come from the gui layout (pentagram placement opt-in), quest description wraps at 270 px; 8 of 14 panels checked in a real game window against the original numbers (163 rectangles, 0 deviating, scenario 9f-ui-layout, now with the waypoint row boxes from the exe table); 4 more (party screen rows, mercenary panel, help screen, move-gold dialog) have layouts read from the exe and unit tested against golden numbers, not yet seen in a running window; the NPC menu geometry has a pure tested function; one panel still unchecked",
       "color": "#c58bff"
     },
     {
