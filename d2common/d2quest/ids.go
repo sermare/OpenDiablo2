@@ -99,7 +99,7 @@ const (
 	NPCGidbinnBoss    = 407 // fetish11, the boss the Gidbinn object wakes (D2MOO MONSTER_FETISH11)
 	NPCWussie         = 534 // act5pow, the caged barbarian (0x216 in the Rescue handler)
 	NPCNihlathakBoss  = 526
-	NPCAnyaFrozen     = 527 // "Drehya outside town", the frozen Anya (UNVERIFIED)
+	NPCAnyaFrozen     = 527 // monstats "drehyaiced" (hcIdx 527), the frozen Anya outside town
 	NPCAncientStatue1 = 537
 	NPCAncientStatue2 = 538
 	NPCAncientStatue3 = 539

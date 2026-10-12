@@ -256,7 +256,7 @@ func (v *Game) levelGate(from, to int, via string) error {
 	}
 
 	switch d2level.GateVia(via) {
-	case d2level.GateWarp, d2level.GateWaypoint:
+	case d2level.GateWarp: // not the waypoint: the exe's waypoint trip reads no QuestFlag (0x547450, 0x582e30)
 		return d2level.CheckLevelGate(from, to, d2level.GateVia(via), v.heroExpansion(), q)
 	}
 

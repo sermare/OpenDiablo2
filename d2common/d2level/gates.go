@@ -119,9 +119,11 @@ var extraGates = []Gate{
 		Why: "Hellforge object (objects 376 operates quest id 24, quests.md)"},
 	// River of Flame -> Chaos Sanctuary needs no quest: level 108 is in neither
 	// the warp-tile gate list (0x543a70) nor Levels.txt QuestFlag (VERIFIED). The
-	// seals only call up Diablo (D2MOO, UNVERIFIED in the exe); Terror's End just
-	// watches levels 0x67 and 0x6c = 108 (0x5b2ad0). This entry is a feature
-	// marker, not an entry gate.
+	// seal dummies spawn the super uniques Infector of Souls, Lord De Seis and the
+	// Grand Vizier (hcIdx 36, 37, 38), and Diablo arrives once all five flags are
+	// set and the kill counter is 3 (VERIFIED, 0x5b3360 / 0x5b31a0, notes
+	// verify-diablo-hellforge.md); Terror's End just watches levels 0x67 and
+	// 0x6c = 108 (0x5b2ad0). This entry is a feature marker, not an entry gate.
 	{To: 108, Act: 4, Quest: 2, Why: "Chaos Sanctuary seals: feature marker only, not an entry gate; Terror's End watches level 0x6c (0x5b2ad0)"},
 }
 

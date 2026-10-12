@@ -231,7 +231,8 @@ func newMalachai() *Quest {
 // ---- Act 5 ----
 
 // A5Q1 Siege on Harrogath (Larzuk): Shenk the Overseer in the Bloody
-// Foothills; Larzuk sockets an item. Level 110 is Bloody Foothills in Levels.txt (w28, table check); the super name is UNVERIFIED.
+// Foothills; Larzuk sockets an item. Level 110 is Bloody Foothills in Levels.txt (w28, table check); the super is the superuniques.txt row
+// "Siege Boss", displayed "Shenk the Overseer" (string.tbl).
 func newSiege() *Quest {
 	return newSpecQuest(&spec{
 		id: QuestSiege, slot: 35, act: 4, logIndex: 1, name: "Siege on Harrogath", label: "A5Q1",

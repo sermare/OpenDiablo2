@@ -678,7 +678,9 @@ func reward(name string, value int, note string) Effect {
 }
 
 // questSupers are the super unique monsters of the later acts that quests wait
-// for, by the label the engine gives them (UNVERIFIED spelling).
+// for, by the label the engine gives them. The spelling is the display name of string.tbl (expansionstring.tbl
+// holds "Shenk the Overseer" and "Eldritch the Rectifier"); their superuniques.txt rows are "Siege Boss" and
+// "Megaflow Rectifier".
 //
 //nolint:gochecknoglobals // static lookup data
 var questSupers = map[string]bool{"Shenk the Overseer": true, "Eldritch the Rectifier": true}
