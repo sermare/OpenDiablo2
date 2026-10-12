@@ -90,9 +90,11 @@ type Totals struct {
 	// GearDamagePct and GearToHitPct are stats 25 and 119 from the items only (the skill engine's own states
 	// supply the skills' share).
 	GearDamagePct, GearToHitPct int
-	BlockPct                    int // block chance with shield and dexterity, capped at 75
-	Resist                      [4]int
-	MaxResist                   [4]int // the cap (75 plus max resist bonuses, at most 95)
+	// ShieldWorn is set when the left hand holds a shield (item type 0x33, the clause of the defense colour rule).
+	ShieldWorn bool
+	BlockPct   int // block chance with shield and dexterity, capped at 75
+	Resist     [4]int
+	MaxResist  [4]int // the cap (75 plus max resist bonuses, at most 95)
 	// ResistShown is Resist after the difficulty penalty and the cap, which
 	// is what the character panel prints.
 	ResistShown [4]int
@@ -326,6 +328,12 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 	t.GearDamagePct, t.GearToHitPct = int(gear.Get(StatDamagePct)), int(gear.Get(StatToHitPct))
 
 	shield := shieldOf(active)
+
+	for i := range active {
+		if active[i].Slot == SlotLeftHand && active[i].Weapon == nil && !active[i].Charm {
+			t.ShieldWorn = true
+		}
+	}
 	t.BlockPct = d2combat.PlayerBlockChance(d2combat.PlayerBlockInput{
 		HasShield: shield != nil, ToBlock: shieldBlock(shield) + int(list.Get(StatToBlock)),
 		ClassBlockFactor: h.Class.BlockFactor, Dex: t.Dex, Level: h.Level, IncludeDex: true,
@@ -507,6 +515,10 @@ type WeaponParts struct {
 	// BonusPct is the weapon's strength and dexterity bonus in percent (ITEM_GetStrBonus / ITEM_GetDexBonus
 	// times the attribute, divided by 100, 0x64ca60).
 	BonusPct int
+	// Flat is the weapon's own item_normaldamage (stat 0x6f, the "+N to damage" property dmg): added after the
+	// percent pool in the character screen box (0x4e5860 reads STATS_GetUnitFullStat of the weapon item) and before
+	// it in the hit roll (0x579120). VERIFIED wave 45; the skill engine does not use it yet.
+	Flat int
 }
 
 func weaponDamageClass(active []Item, list *List, class, str, dex int) (min, max int) {
@@ -517,12 +529,26 @@ func weaponDamageClass(active []Item, list *List, class, str, dex int) (min, max
 		bonus += int64(str) // bare hands: strength counts as percent (VERIFIED 0x579120)
 	}
 
-	if bonus < -90 { // VERIFIED 0x579120: the percent is floored at -90
+	if bonus < -90 { // VERIFIED 0x579120 and 0x4e5860: the percent is floored at -90
 		bonus = -90
 	}
 
-	min = int(int64(wp.Min) * (100 + bonus) / 100)
-	max = int(int64(wp.Max) * (100 + bonus) / 100)
+	// The character screen box (SKILLDESC_ComputeWeaponDamageRange 0x4e5860, VERIFIED): the unit range is floored at
+	// 1 / 2 BEFORE the percent pool, then
+	//	value = base * (100 + pool) / 100 + item_normaldamage of the weapon
+	// (the flat "+N to damage" is added after the percent in this description path; the hit roll 0x579120 adds it
+	// before the percent).
+	baseMin, baseMax := int64(wp.Min), int64(wp.Max)
+	if baseMin < 1 {
+		baseMin = 1
+	}
+
+	if baseMax < 2 {
+		baseMax = 2
+	}
+
+	min = int(baseMin*(100+bonus)/100) + wp.Flat
+	max = int(baseMax*(100+bonus)/100) + wp.Flat
 
 	if min < 1 {
 		min = 1
@@ -587,6 +613,7 @@ func weaponParts(active []Item, list *List, class, str, dex int) WeaponParts {
 		wp.BonusPct = str*wb.StrBonus/100 + dex*wb.DexBonus/100
 		props := w.ownProps()
 		edMin, edMax = sumID(props, StatMinDmgPct), sumID(props, StatMaxDmgPct)
+		wp.Flat = int(sumID(props, StatNormalDamage))
 
 		if wb.MisMax > 0 {
 			wp.Throwing = true

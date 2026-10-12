@@ -45,6 +45,8 @@ type Def struct {
 	ColorPri, ColorShift int
 	Overlay1             string
 	Stat                 string
+	// Panel is the character screen colour columns (armblue, rfred ...), see panel_colour.go.
+	Panel PanelFlags
 }
 
 // Defs maps a state name (lower case, as skills.txt writes it) to its row.
@@ -72,7 +74,7 @@ func ParseDefs(data []byte) (defs Defs, err error) {
 			PlrStayDeath: d.Number("plrstaydeath") > 0, MonStayDeath: d.Number("monstaydeath") > 0,
 			BossStayDeath: d.Number("bossstaydeath") > 0, Shatter: d.Number("shatter") > 0,
 			UDead: d.Number("udead") > 0, Blue: d.Number("blue") > 0, ColorPri: d.Number("colorpri"), ColorShift: d.Number("colorshift"),
-			Overlay1: d.String("overlay1"), Stat: d.String("stat"),
+			Overlay1: d.String("overlay1"), Stat: d.String("stat"), Panel: panelFlagsOf(func(c string) bool { return d.Number(c) > 0 }),
 		}
 		id++
 	}
@@ -133,4 +135,41 @@ func (d Defs) BitStays(name, kind string) bool {
 	}
 
 	return df.MonStayDeath
+}
+
+// panelColumns maps the states.txt column names to their flags.
+var panelColumns = []struct {
+	col  string
+	flag PanelFlags
+}{
+	{"armblue", PanelArmBlue}, {"armred", PanelArmRed},
+	{"rfblue", PanelFireBlue}, {"rcblue", PanelColdBlue}, {"rlblue", PanelLightBlue}, {"rpblue", PanelPoisonBlue},
+	{"rfred", PanelFireRed}, {"rcred", PanelColdRed}, {"rlred", PanelLightRed}, {"rpred", PanelPoisonRed},
+	{"dmgblue", PanelDmgBlue}, {"dmgred", PanelDmgRed}, {"attblue", PanelAttBlue}, {"attred", PanelAttRed},
+}
+
+func panelFlagsOf(has func(col string) bool) PanelFlags {
+	var f PanelFlags
+
+	for _, c := range panelColumns {
+		if has(c.col) {
+			f |= c.flag
+		}
+	}
+
+	return f
+}
+
+// PanelFlagsFromColumns builds the flags from the booleans of a states record, in the order armblue, armred, rfblue,
+// rcblue, rlblue, rpblue, rfred, rcred, rlred, rpred, dmgblue, dmgred, attblue, attred.
+func PanelFlagsFromColumns(cols [14]bool) PanelFlags {
+	var f PanelFlags
+
+	for i, on := range cols {
+		if on {
+			f |= panelColumns[i].flag
+		}
+	}
+
+	return f
 }

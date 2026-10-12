@@ -280,6 +280,17 @@ func (e *Engine) HasState(unitID, state string) bool {
 	return e.setOf(unitID).Active(e.frame, state)
 }
 
+// PanelStates returns the character screen colour flags of the unit's active states and whether Holy Shield (state
+// 0x65) is on (VERIFIED, d2state/panel_colour.go).
+func (e *Engine) PanelStates(unitID string) (d2state.PanelFlags, bool) {
+	st := e.sets[unitID]
+	if st == nil {
+		return 0, false
+	}
+
+	return st.Panel(e.frame), st.HolyShield(e.frame)
+}
+
 // StateStats is the sum of the stat mods of the unit's active states, by
 // ItemStatCost name: the aurastat1..6 lists of its buffs and auras (each
 // statlist adds to the unit's stats, verified at 0x5c4c60). Passive skills
@@ -337,6 +348,8 @@ func (e *Engine) stateDefs() d2state.Defs {
 			PlrStayDeath: r.PlrStayDeath, MonStayDeath: r.MonStayDeath, BossStayDeath: r.BossStayDeath,
 			Shatter: r.Shatter, UDead: r.UDead, Blue: r.Blue, ColorPri: r.ColorPri, ColorShift: r.ColorShift,
 			Overlay1: r.Overlay1, Stat: r.Stat,
+			Panel: d2state.PanelFlagsFromColumns([14]bool{r.ArmBlue, r.ArmRed, r.RfBlue, r.RcBlue, r.RlBlue, r.RpBlue,
+				r.RfRed, r.RcRed, r.RlRed, r.RpRed, r.DmgBlue, r.DmgRed, r.AttBlue, r.AttRed}),
 		}
 	}
 

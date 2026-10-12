@@ -11,6 +11,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2path"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2state"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2skills"
@@ -198,6 +199,7 @@ func (v *Game) skillEngine() *d2skills.Engine {
 
 	if st := v.localPlayer.Stats; st != nil {
 		id, eng := v.localPlayer.ID(), v.skills
+		st.PanelStates = func() (d2state.PanelFlags, bool) { return eng.PanelStates(id) }
 		st.SkillStats = func() map[string]int {
 			out := eng.StateStats(id)
 
