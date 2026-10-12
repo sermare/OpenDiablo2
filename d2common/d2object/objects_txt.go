@@ -15,22 +15,22 @@ import (
 // takes it as the class selector of its roll (ShrineClassForParm0, 0x54d840), a well as its refill delay in frames
 // (0x5837b0); its meaning for other rows is not decoded.
 type Def struct {
-	ID             int
-	Name           string
-	SpawnMax       int
-	TrapProb       int // objects.txt TrapProb; not read by the scatter code (550680) nor by the container init (0x54db00), which rolls monLvl/8+5 (TrapChancePct)
-	Act            int // bit mask: 1..8 = acts 1..4 classic, 16 = act 5 (expansion); 15 = acts 1-4
-	SubClass       int // 1 shrine, 2 obelisk, 4 portal, 8 container, 16 sanctuary gate, 32 well, 64 waypoint, 128 jail door
-	OperateFn      int
-	PopulateFn     int
-	InitFn         int
-	OperateRange   int
-	Lockable       bool
-	RestoreVirgins bool
-	Parm0          int
-	Parm1, Parm3   int // wells: Parm1 heal per pulse /256, Parm3 life/mana flags (VERIFIED, WellPulse)
-	Damage         int
-	Selectable0    bool
+	ID                  int
+	Name                string
+	SpawnMax            int
+	TrapProb            int // objects.txt TrapProb; not read by the scatter code (550680) nor by the container init (0x54db00), which rolls monLvl/8+5 (TrapChancePct)
+	Act                 int // bit mask: 1..8 = acts 1..4 classic, 16 = act 5 (expansion); 15 = acts 1-4
+	SubClass            int // 1 shrine, 2 obelisk, 4 portal, 8 container, 16 sanctuary gate, 32 well, 64 waypoint, 128 jail door
+	OperateFn           int
+	PopulateFn          int
+	InitFn              int
+	OperateRange        int
+	Lockable            bool
+	RestoreVirgins      bool
+	Parm0               int
+	Parm1, Parm2, Parm3 int // wells: Parm1 heal per pulse /256, Parm3 life/mana flags (VERIFIED, WellPulse)
+	Damage              int
+	Selectable0         bool
 	// SizeX, SizeY are the footprint in sub-tiles (the scatter's placement tests) and Orientation the
 	// column that picks the room-edge rule of the shrine handler (1: top/bottom band, 2: left/right band).
 	SizeX, SizeY, Orientation int
@@ -77,6 +77,10 @@ func ParseObjects(data []byte) ([]Def, error) {
 		}
 
 		f := strings.Split(ln, "\t")
+		if strings.TrimSpace(f[0]) == "Expansion" {
+			continue // the exe's compiled table drops the marker row, so the ids after it are one lower than the text rows
+		}
+
 		num := func(name string) int {
 			i, ok := col[name]
 			if !ok || i >= len(f) {
@@ -93,7 +97,7 @@ func ParseObjects(data []byte) ([]Def, error) {
 			SpawnMax: num("spawnmax"), TrapProb: num("trapprob"), Act: num("act"), SubClass: num("subclass"),
 			OperateFn: num("operatefn"), PopulateFn: num("populatefn"), InitFn: num("initfn"),
 			OperateRange: num("operaterange"), Lockable: num("lockable") != 0,
-			RestoreVirgins: num("restorevirgins") != 0, Parm0: num("parm0"), Parm1: num("parm1"), Parm3: num("parm3"), Damage: num("damage"),
+			RestoreVirgins: num("restorevirgins") != 0, Parm0: num("parm0"), Parm1: num("parm1"), Parm2: num("parm2"), Parm3: num("parm3"), Damage: num("damage"),
 			Selectable0: num("selectable0") != 0,
 			SizeX:       num("sizex"), SizeY: num("sizey"), Orientation: num("orientation"),
 			PreOperate: num("preoperate") != 0, XSpace: num("xspace"), YSpace: num("yspace"),

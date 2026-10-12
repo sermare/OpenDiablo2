@@ -234,8 +234,8 @@ func TestRealObjects(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(defs) != 574 {
-		t.Fatalf("rows %d want 574", len(defs))
+	if len(defs) != 573 { // 574 text rows minus the Expansion marker (the exe table holds 573)
+		t.Fatalf("rows %d want 573", len(defs))
 	}
 
 	// every waypoint object maps to a real waypoint level in its own act

@@ -90,7 +90,7 @@ func (p *popLevel) newRoomObjects(game *d2monreg.Game, total int) *roomObjects {
 		return nil
 	}
 
-	lv := d2object.LevelRow{ID: p.level, Themes: rec.Themes}
+	lv := d2object.LevelRow{ID: p.level, Themes: rec.Themes, MonLvl1: rec.MonLvl[0][0]}
 	any := false
 
 	for i := 0; i < 8; i++ {

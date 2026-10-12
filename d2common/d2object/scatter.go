@@ -38,15 +38,15 @@ import (
 // 7 four fixed corpse / pole patterns with a 29% companion (0x54f140), 8
 // tracked scatter (0x54f650), 9 one scatter (0x54f500).
 //
-// Object initialisation (OBJECT_InitServerObject 0x54d420): the InitFn
-// handlers read for rows the scatter makes (shrine type 0x54d840, chest and
-// urn variants 0x54da20 / 0x54db00 with their trap and lock rolls) all draw on
-// the new unit's own seed, which is derived by the one room-seed step the
-// creation takes, so they never touch the room or game stream. The only
-// stream effect is the PreOperate flag (+0x13d): one game-seed Roll(14) per
-// such object (a zero opens it). The engine's collision grid is replaced by
-// the Collider interface, and the room link test of ShouldSpawn by
-// Room.NoObjects (UNVERIFIED).
+// Object initialisation (OBJECT_InitServerObject 0x54d420, run by the creation right after the unit's room-seed
+// step): the InitFn handlers get a context whose seed is the GAME seed (VERIFIED: ctx+0xc is the pointer returned by
+// MONREGION_GetGameRegionData), so their rolls advance the same stream the scatter handlers use. Replayed here (see
+// initDraws): shrine type (1), the variant roll of urns and similar (2), chests (3: variant, lock, unit seed), the rare
+// variant (27); then the PreOperate Roll(14). Draw-free handlers: 0, 16 (wells), 17 (waypoint), 22, 33, 51. NOT replayed:
+// 46 (a dummy that spawns filler monsters) and the 5 unread handlers of rows no objgroup refers to.
+//
+// The engine's collision grid is replaced by the Collider interface, and the room test of ShouldSpawn by
+// Room.NoObjects (the caller applies the room flags, see d2mapgen roomHasNoObjects).
 
 // Rect is a room rectangle in sub-tiles.
 type Rect struct{ X, Y, W, H int }
@@ -85,10 +85,11 @@ func (r *Region) quota(count, max int) bool { // QuotaCheckA / B: true = full
 
 // LevelRow is what the scatter needs of a levels.txt row.
 type LevelRow struct {
-	ID     int
-	Groups [8]int
-	Probs  [8]int
-	Themes int
+	ID      int
+	Groups  [8]int
+	Probs   [8]int
+	Themes  int
+	MonLvl1 int // levels.txt MonLvl1 (+0x10), read by the chest / urn variant roll of the object init
 }
 
 // RoomCtx is one room being populated.
@@ -115,6 +116,15 @@ type Scatter struct {
 	// Unmodelled counts handler calls of the unmodelled kinds by PopulateFn.
 	Unmodelled map[int]int
 	Made       []Placed
+	// Shrines is the shrines.txt table indexed by code (row 0 = none) for the shrine type roll of the object init;
+	// nil: DefaultShrines.
+	Shrines []Shrine
+
+	cur      LevelRow // the level being populated (set by Room)
+	lastData int      // the unit data byte (+4) the InitFn of the last created object left: shrine type, well flags
+
+	// Trace, when set, sees every handler call (PopulateFn, object id) before it runs.
+	Trace func(fn, id int)
 }
 
 // ErrDensity is the exe's fatal error for an objgroup density byte of 0x80 or more.
@@ -131,6 +141,7 @@ func (s *Scatter) def(id int) Def {
 // Room runs OBJRGN_SpawnRoomObjects for one room and returns the objects made.
 func (s *Scatter) Room(lv LevelRow, room *RoomCtx) (int, error) {
 	before := len(s.Made)
+	s.cur = lv
 
 	if !s.shouldSpawn(lv, room) {
 		return 0, nil
@@ -228,6 +239,10 @@ func (s *Scatter) shouldSpawn(lv LevelRow, room *RoomCtx) bool {
 }
 
 func (s *Scatter) handle(fn int, lv LevelRow, room *RoomCtx, density, id int) {
+	if s.Trace != nil {
+		s.Trace(fn, id)
+	}
+
 	switch fn {
 	case 1:
 		s.groupByClass(room, density, id)
@@ -242,11 +257,12 @@ func (s *Scatter) handle(fn int, lv LevelRow, room *RoomCtx, density, id int) {
 	case 7:
 		s.patterns(room, id)
 	case 6:
-		if s.densityA(room, density, id) != nil {
-			if int(s.Game.Step()%100) > 0x46 {
-				p := s.Made[len(s.Made)-1]
-				s.create(room, p.ID, p.X, p.Y)
-			}
+		if s.Trace != nil {
+			s.Trace(3, id) // 0x54f620 calls the density scatter
+		}
+
+		if p := s.densityA(room, density, id); p != nil {
+			s.companion(room, *p)
 		}
 	case 8:
 		s.tracked(lv, room, id)
@@ -268,6 +284,8 @@ func (s *Scatter) create(room *RoomCtx, id, x, y int) *Placed {
 
 	p := Placed{id, x, y}
 	s.Made = append(s.Made, p)
+
+	s.lastData = s.initDraws(id)
 
 	if s.def(id).PreOperate { // OBJECT_InitServerObject: RAND_RollSeedBounded(game seed, 14)
 		s.Game.Roll(14)
@@ -306,7 +324,7 @@ func (s *Scatter) atRandomPoint(room *RoomCtx, id int) *Placed {
 	return nil
 }
 
-// densityA is 0x54f3e0 (handler 3): the whole count is tried, the last result is returned.
+// densityA is 0x54f3e0 (handler 3): the whole count is tried, the result of the last attempt is returned.
 func (s *Scatter) densityA(room *RoomCtx, density, id int) *Placed {
 	if int(s.Game.Step()%100) > 100 {
 		return nil
@@ -315,9 +333,7 @@ func (s *Scatter) densityA(room *RoomCtx, density, id int) *Placed {
 	var last *Placed
 
 	for n := count(room.Rect, density); n > 0; n-- {
-		if p := s.atRandomPoint(room, id); p != nil {
-			last = p
-		}
+		last = s.atRandomPoint(room, id) // the exe returns the result of the LAST attempt, even a failed one
 	}
 
 	return last
@@ -417,9 +433,11 @@ func (s *Scatter) shrine(_ LevelRow, room *RoomCtx, id int) {
 			continue
 		}
 
-		// UNVERIFIED: the exe raises the shrine counter only for a forced shrine (or an object whose
-		// data byte is already 2); a forced shrine also becomes a destroyed variant with a new shrine roll.
-		if forced {
+		// VERIFIED (0x550bc0 against the emulator): MONREGION_IncrementSpawnedCount runs for an object whose unit data
+		// byte is 2 (a rolled Health Boost shrine, a well with Parm2 1) and for a forced shrine. UNVERIFIED: the forced
+		// path also turns the object into the destroyed variant and rolls a new shrine type (extra game-seed draws, not
+		// replayed).
+		if forced || s.lastData == 2 {
 			g.Shrine++
 		}
 
@@ -445,9 +463,9 @@ func (s *Scatter) nearEdge(room *RoomCtx, id int, d Def) *Placed {
 		switch d.Orientation {
 		case 1:
 			x = int(sd.Roll(int32(r.W/2))) + r.W/4 + r.X
-			y = int(sd.Roll(2)) + r.Y
+			y = rollRange1to2(sd) + r.Y
 		case 2:
-			x = int(sd.Roll(2)) + r.X
+			x = rollRange1to2(sd) + r.X
 			y = int(sd.Roll(int32(r.H/2))) + r.H/4 + r.Y
 		default:
 			x = int(sd.Roll(int32(r.W-d.SizeX-1))) + r.X
@@ -491,19 +509,22 @@ func (s *Scatter) groupByClass(room *RoomCtx, density, id int) {
 		return
 	}
 
-	tries, pre, ring, base := 12, 3, 5, 5
+	// the id lists at 0x72f70c / 0x72f718 / 0x72f720 / 0x72f734 / 0x72f73c: every object of a cluster is a
+	// Roll(len) pick from the list of the group's class (the picked ids, not the row id, are made)
+	tries, ring, base := 12, 5, 5
+	list := []int{79, 53, 1}
 
 	switch id {
 	case 3:
-		tries, pre = 18, 2
+		tries, list = 18, []int{3, 28}
 	case 0x4f, 1:
 		// defaults
 	case 4:
-		pre, ring, base = 5, 0, 1
+		list, ring, base = urnList[:], 0, 1
 	case 0x59:
-		pre = 2
+		list = []int{89, 284}
 	case 0xd0, 0xd1:
-		pre, ring, base = 2, 0, 1
+		list, ring, base = []int{208, 209}, 0, 1
 	default:
 		return
 	}
@@ -524,9 +545,7 @@ func (s *Scatter) groupByClass(room *RoomCtx, density, id int) {
 	}
 
 	for ; tries > 0 && n > 0; tries-- {
-		if pre > 0 {
-			g.Step()
-		}
+		pick := list[g.Roll(int32(len(list)))]
 
 		x := int(g.Roll(int32(r.W-d.SizeX-1))) + r.X
 		y := int(g.Roll(int32(r.H-d.SizeY-1))) + r.Y
@@ -535,7 +554,7 @@ func (s *Scatter) groupByClass(room *RoomCtx, density, id int) {
 			continue
 		}
 
-		s.create(room, id, x, y)
+		s.create(room, pick, x, y)
 
 		made, found := 1, true
 
@@ -577,11 +596,7 @@ func (s *Scatter) groupByClass(room *RoomCtx, density, id int) {
 				continue // the exe loops back to the halving roll with the same count
 			}
 
-			if pre > 0 {
-				g.Step()
-			}
-
-			s.create(room, id, x, y)
+			s.create(room, list[g.Roll(int32(len(list)))], x, y)
 
 			made++
 		}
@@ -803,8 +818,125 @@ func (s *Scatter) patterns(room *RoomCtx, rowID int) {
 		id := 57 + int(g.Step()&1)
 		s.create(room, id, x, y)
 
-		if int(g.Step()%100) > 0x46 { // OBJRGN_MaybeSpawnCompanionObject
-			s.create(room, 103, x, y)
+		s.companion(room, Placed{id, x, y})
+	}
+}
+
+// companion is OBJRGN_MaybeSpawnCompanionObject (0x54f090): a game-seed step and, above 70, a dummy object (row 103) at
+// the unit's place.
+func (s *Scatter) companion(room *RoomCtx, p Placed) {
+	if int(s.Game.Step()%100) > 0x46 {
+		s.create(room, 103, p.X, p.Y)
+	}
+}
+
+// rollRange1to2 is SEED_RollRangeFromSeed(min 1, max 2) (0x4b8e00): one seed step, the result is always 1 (the edge band of
+// the shrine placement sits one sub-tile inside the room).
+func rollRange1to2(sd *d2rand.Seed) int {
+	sd.Step()
+
+	return 1
+}
+
+// initDraws replays the game-seed draws of the object's InitFn (see the comment at the top of the file).
+func (s *Scatter) initDraws(id int) int {
+	d := s.def(id)
+	g := s.Game
+
+	switch d.InitFn {
+	case 1:
+		return s.shrineInit(d)
+	case 16: // 0x550ba0: the well's data byte is twice its Parm2 byte
+		return d.Parm2 * 2 & 0xff
+	case 2: // OBJINIT_RollRandomVariantByLevel 0x54da20
+		s.variantDraws()
+	case 3: // OBJINIT_RollVariantWithHighFlag 0x54db00
+		s.variantDraws()
+
+		if d.Lockable {
+			g.Step() // the lock roll
+		}
+
+		g.Step() // the value that seeds the unit's own seed
+	case 27: // OBJINIT_RollRareVariant 0x54dab0
+		g.Step()
+	}
+
+	return 0
+}
+
+// variantDraws is 0x54da20: one step and, below MonLvl1 / 8 + 5 percent, SEED_RollRangeFromSeed(1, 9) (one more step).
+func (s *Scatter) variantDraws() {
+	m := s.cur.MonLvl1
+	if m < 0 {
+		m += 7
+	}
+
+	if int(s.Game.Step()%100) < (m>>3)+5 {
+		s.Game.Step()
+	}
+}
+
+// shrineInit is OBJECT_ChooseShrineType (0x54d840) with OBJECT_RollShrineForLevel (0x54d5c0): the shrine row is rolled
+// on the game seed, at most 8 times while its LevelMin is above the level id.
+func (s *Scatter) shrineInit(d Def) int {
+	rows := s.Shrines
+	if rows == nil {
+		rows = DefaultShrines
+	}
+
+	g := s.Game
+	level := s.cur.ID
+	idx := 0
+
+	if d.Parm0 == 0 {
+		for tries := ShrineRetries; len(rows) > 1; {
+			idx = 1 + int(g.Roll(int32(len(rows)-1)))
+			if level >= rows[idx].LevelMin {
+				break
+			}
+
+			if tries--; tries <= 0 {
+				break
+			}
+		}
+	} else {
+		class := 4
+
+		switch d.Parm0 {
+		case 1:
+			class = 2
+		case 2:
+			class = 3
+		default:
+			if g.Step()%10 == 0 {
+				class = 1
+			}
+		}
+
+		var list []int
+
+		for i, r := range rows {
+			if r.EffectClass == class && r.Code != ShrineNone {
+				list = append(list, i)
+			}
+		}
+
+		for tries := ShrineRetries; len(list) > 0; {
+			idx = list[g.Roll(int32(len(list)))]
+			if idx == 0 {
+				idx = 1
+			}
+
+			if level >= rows[idx].LevelMin {
+				break
+			}
+
+			if tries--; tries <= 0 {
+				break
+			}
 		}
 	}
+
+	return RemapShrineCode(idx) // the data byte the exe stores: 5 -> 3, 4 -> 2, 0x10 -> 0x12
 }
