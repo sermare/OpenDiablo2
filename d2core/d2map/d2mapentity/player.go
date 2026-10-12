@@ -320,6 +320,11 @@ func (p *Player) GetAnimationMode() d2enum.PlayerAnimationMode {
 	return d2enum.PlayerAnimationModeNeutral
 }
 
+// AnimationFrame is the current frame and the frame count of the animation being played (the footsteps follow it).
+func (p *Player) AnimationFrame() (frame, count int) {
+	return p.composite.GetCurrentFrame(), p.composite.GetFrameCount()
+}
+
 // SetAnimationMode sets the Composite's animation mode weapon class and direction.
 func (p *Player) SetAnimationMode(animationMode d2enum.PlayerAnimationMode) error {
 	return p.composite.SetMode(p.modeFor(animationMode), p.composite.GetWeaponClass())

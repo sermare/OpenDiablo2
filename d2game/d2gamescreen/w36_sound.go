@@ -120,6 +120,10 @@ func (v *Game) playHeroAnimSounds(skillID int, mode d2enum.PlayerAnimationMode) 
 		m = d2monster.ModeSkill3
 	case d2enum.PlayerAnimationModeSkill4:
 		m = d2monster.ModeSkill4
+	case d2enum.PlayerAnimationModeKick:
+		v.playHeroKick()
+
+		return
 	default:
 		return
 	}
@@ -130,7 +134,67 @@ func (v *Game) playHeroAnimSounds(skillID int, mode d2enum.PlayerAnimationMode) 
 
 	if skillID != 0 && (m == d2monster.ModeAttack1 || m == d2monster.ModeAttack2) {
 		v.playWeaponSwing()
+
+		return
 	}
+
+	// the Barbarian's S3 and the Assassin's S4 modes swing the weapon like an attack (VERIFIED w48,
+	// UNITSND_HandleUnitModeSound 0x4c9030 modes 0xf and 0x10 for classes 4 and 6)
+	if (m == d2monster.ModeSkill3 || m == d2monster.ModeSkill4) &&
+		d2audio.SwingInSkillMode(skillModeNumber(m), v.localPlayer.ClassNumber()) {
+		v.playWeaponSwing()
+	}
+}
+
+// skillModeNumber is 3 for S3 and 4 for S4 (0 for any other mode).
+func skillModeNumber(m d2monster.Mode) int {
+	switch m {
+	case d2monster.ModeSkill3:
+		return 3
+	case d2monster.ModeSkill4:
+		return 4
+	}
+
+	return 0
+}
+
+// playHeroKick plays the kick sound of the KK mode (row 0xff; the Assassin delays it 4 ticks, VERIFIED w48).
+func (v *Game) playHeroKick() {
+	if v.localPlayer == nil || v.localPlayer.InForm() {
+		return
+	}
+
+	v.playSoundAtPos(d2audio.KickHandle, v.localPlayer.GetPosition(), d2audio.PlayOpts{
+		Emitter: heroEmitter, Hero: true, Kind: "hero-kick", Who: v.localPlayer.Name(),
+		Delay: d2audio.KickDelay(v.localPlayer.ClassNumber()),
+	})
+}
+
+// onHeroBlockMode plays the block sound when the local hero's block animation starts: row 0x18e for a weapon hit
+// class 1..9 (an unarmed hero included), row 0x191 for bows and crossbows (VERIFIED w48, UNITSND_GetHitClassSoundId
+// 0x4c7310). Which item's hit class the exe reads is UNVERIFIED (the right hand weapon here).
+func (v *Game) onHeroBlockMode(p *d2mapentity.Player) {
+	if p != v.localPlayer || v.localPlayer == nil || v.localPlayer.InForm() {
+		return
+	}
+
+	hitClass := ""
+
+	if eq := v.localPlayer.Equipment; eq != nil && eq.RightHand != nil {
+		if rec := v.asset.Records.Item.Weapons[eq.RightHand.GetItemCode()]; rec != nil {
+			hitClass = rec.HitClass
+		}
+	}
+
+	h := d2audio.BlockHandle(hitClass)
+	if h == "" {
+		return
+	}
+
+	v.Infof("HEROVOICE block handle=%s hitclass=%q", h, hitClass)
+	v.heroSoundTick = v.soundEngine.Ticks()
+	v.playSoundAtPos(h, v.localPlayer.GetPosition(),
+		d2audio.PlayOpts{Emitter: heroEmitter, Hero: true, Kind: "hero-block", Who: v.localPlayer.Name()})
 }
 
 // playObjectSound plays a Sounds.txt handle at an object.

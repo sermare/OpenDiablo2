@@ -204,10 +204,10 @@ type Game struct {
 	attackTarget         *d2mapentity.Monster
 	attackRepathAcc      float64
 	soundTraceSet        bool
-	initSounds           map[int]*d2audio.Sound // looping monster Init vocals by emitter
-	soundHandles         map[int]string         // Sounds.txt index -> handle (built on first use)
-	heroStepAcc          float64
-	speech               *d2audio.Sound // the NPC voice line playing, if any
+	initSounds           map[int]*d2audio.Sound  // looping monster Init vocals by emitter
+	soundHandles         map[int]string          // Sounds.txt index -> handle (built on first use)
+	heroSteps            d2audio.FootstepTracker // footsteps follow the walk animation frames (w48)
+	speech               *d2audio.Sound          // the NPC voice line playing, if any
 	ambientTest          *ambientTest
 	regionEnvs           map[int]int
 	autoPanel            autoPanelState

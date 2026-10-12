@@ -116,10 +116,20 @@ func TestBlockAnimGate(t *testing.T) {
 		t.Fatalf("cooldown: %q anims=%d", note, d.Counters.BlockAnims)
 	}
 
+	// wave 48: the block sound hook runs exactly when the block mode is entered
+	entered := 0
+	d.OnHeroBlockMode = func(*d2mapentity.Player) { entered++ }
+
 	d.frame += 40
 
-	if note := d.noteBlockAnim(p); d.Counters.BlockAnims != 1 || note != " block_anim=true" {
-		t.Fatalf("allowed: %q anims=%d", note, d.Counters.BlockAnims)
+	if note := d.noteBlockAnim(p); d.Counters.BlockAnims != 1 || note != " block_anim=true" || entered != 1 {
+		t.Fatalf("allowed: %q anims=%d hook=%d", note, d.Counters.BlockAnims, entered)
+	}
+
+	d.frame += 3 // within the cooldown: no mode, no sound
+
+	if d.noteBlockAnim(p); entered != 1 {
+		t.Fatalf("hook ran %d times, want 1", entered)
 	}
 }
 

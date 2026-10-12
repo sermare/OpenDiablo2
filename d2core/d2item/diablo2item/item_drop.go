@@ -53,6 +53,9 @@ type DropOptions struct {
 	// GoldFind is the gold find of the killer plus that of its owner, applied to
 	// the gold amounts of DropAll.
 	GoldFind int
+	// CowDropper: the dropper is a hell bovine (class 391), which sets request flag 1 and so lets the
+	// Cow King's Leathers set items drop.
+	CowDropper bool
 	// Difficulty is 0 normal, 1 nightmare, 2 hell; it limits sockets and
 	// scales item creation.
 	Difficulty int
@@ -281,7 +284,7 @@ func (f *ItemFactory) rollEntries(tcName string, opts DropOptions) ([]LootEntry,
 			continue
 		}
 
-		if item := f.itemFromDrop(t, rng, &drops[i], dropGame{classic: opts.Classic, difficulty: opts.Difficulty}); item != nil {
+		if item := f.itemFromDrop(t, rng, &drops[i], dropGame{classic: opts.Classic, difficulty: opts.Difficulty, cow: opts.CowDropper}); item != nil {
 			if opts.RollExtras && item.rolled == nil {
 				f.rollExtras(t, item, opts.Difficulty) // creator-made items already have their ethereal and sockets
 			}
@@ -314,6 +317,7 @@ func goldDrop(rng *d2rand.Seed, drop *d2drop.Drop, goldFind int) int {
 type dropGame struct {
 	classic    bool
 	difficulty int
+	cow        bool
 }
 
 // itemFromDrop creates one dropped item with the item creator: the quality,
@@ -328,6 +332,10 @@ func (f *ItemFactory) itemFromDrop(_ *dropTables, rng *d2rand.Seed, drop *d2drop
 	p := CreateParams{
 		Code: drop.Code, ILvl: drop.ILvl, Quality: drop.Quality, Name: drop.ForcedID,
 		Difficulty: g.difficulty, Classic: g.classic, Rng: rng,
+	}
+
+	if g.cow {
+		p.Flags |= d2drop.FlagCowDropper
 	}
 
 	if drop.EFlag {

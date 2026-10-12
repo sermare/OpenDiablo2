@@ -1028,6 +1028,7 @@ func (d *Director) dropLootFrom(u *unit, tc string) {
 		Seed: u.b.Seed.Step(), ILvl: level, UpgradeLevel: upgrade, Players: d.PlayerCount(),
 		MagicFind: mf, GoldFind: gf,
 		RollExtras: true, Difficulty: int(d.opt.Difficulty), Classic: !d.opt.Expansion,
+		CowDropper: u.m.Stat != nil && u.m.Stat.Key == "hellbovine",
 	}, 0)
 	if err != nil {
 		d.emit("drop", "MONSTER drop name=%s tc=%q error=%v", u.m.Label(), tc, err)
@@ -1123,6 +1124,10 @@ func (d *Director) noteBlockAnim(p *d2mapentity.Player) string {
 		}
 
 		d.Counters.BlockAnims++
+
+		if d.OnHeroBlockMode != nil {
+			d.OnHeroBlockMode(p)
+		}
 	}
 
 	return fmt.Sprintf(" block_anim=%v", play)

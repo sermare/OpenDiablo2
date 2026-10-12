@@ -263,12 +263,17 @@ func (v *Game) pickUp(it *d2mapentity.Item) {
 		before := v.localPlayer.Gold
 		pile := goldPileFuncs{
 			remove: func() { v.gameClient.MapEngine.RemoveEntity(it) },
-			leave:  func(amount int) { v.dropGoldOverflow(it, amount) },
+			leave: func(amount int) {
+				v.dropGoldOverflow(it, amount)
+				// ITEMMODE_PickupGoldFromGround 0x55a5f0: leftover gold -> the cantcarry line (VERIFIED w48)
+				v.sayHero(d2audio.VoiceCantCarry)
+			},
 		}
 
 		if !pickUpGoldPile(v.gameControls, pile, it.Gold) {
 			// the purse is full: the pile stays where it is (the original leaves the overflow on the ground)
 			v.Infof("gold pickup refused: carrying the maximum (%d)", before)
+			v.sayHero(d2audio.VoiceCantCarry) // UNVERIFIED for a pile that does not fit at all
 			return
 		}
 

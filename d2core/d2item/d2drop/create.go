@@ -18,6 +18,10 @@ const (
 	FlagForceEthereal RequestFlags = 0x4
 	FlagNoSockets     RequestFlags = 0x8
 	FlagForceSockets  RequestFlags = 0x10
+	// FlagCowDropper (0x1) is set by the creation when the dropping unit is a monster of class 391
+	// (hellbovine); it unlocks the Cow King's Leathers set. VERIFIED, Game.exe 0x558460 tests unit
+	// type 1 and class 0x187 (the cow level monsters and the Cow King are that class).
+	FlagCowDropper RequestFlags = 0x1
 )
 
 // Request describes the creation of one item, like the request structure
