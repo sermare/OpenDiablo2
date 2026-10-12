@@ -65,7 +65,7 @@ func levels() []string {
 
 var (
 	onOff = []string{"ON", "OFF"}
-	yesNo = []string{"YES", "NO"}
+	yesNo = []string{"NO", "YES"} // index 1 = YES = on (automapOptionOn reads index 1)
 )
 
 // OptionDefs lists every option in menu order. The slider options (volumes,

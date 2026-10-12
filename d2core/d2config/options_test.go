@@ -46,7 +46,7 @@ func TestOptionDefaultsAndRoundTrip(t *testing.T) {
 	}
 
 	for key, want := range map[string]string{OptSound: "40%", OptMusic: "70%", OptGamma: "80%", OptAutomapSize: "MINI",
-		OptNpcSpeech: "TEXT ONLY", OptAutomapNames: "NO", OptContrast: "50%"} {
+		OptNpcSpeech: "TEXT ONLY", OptAutomapNames: "YES", OptContrast: "50%"} {
 		if got := back.OptionValue(key); got != want {
 			t.Errorf("%s after reload = %s, want %s", key, got, want)
 		}

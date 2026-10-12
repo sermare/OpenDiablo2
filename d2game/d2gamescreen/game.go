@@ -632,6 +632,7 @@ func (v *Game) bindGameControls() error {
 		v.gameControls.SetCubePortalCheck(v.cubePortalCheck)
 		v.gameControls.BindGamepad()
 		v.gameControls.Automap().SetLevelSource(v.currentLevel, v.levelName)
+		v.gameControls.Automap().SetPersistence(v.automapSidecar())
 		v.gameControls.Automap().SetDifficultySource(func() int { return int(v.gameClient.LevelDifficulty()) })
 		v.gameControls.SetEquipSound(v.playHeroUISound)
 		v.gameControls.SetHeroVoice(v.sayHero)
