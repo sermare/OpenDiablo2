@@ -7,12 +7,13 @@ import (
 )
 
 // Numeric string ids as the exe uses them (AUTOMAP_DrawAutomap 0x4564a0 and others): ids below 10000
-// read string.tbl, 10000.. expansionstring.tbl and 20000.. patchstring.tbl, each by the node's own
-// id (UNVERIFIED for the two offsets: the usual D2 convention, not read from the exe here; a real
-// string.tbl check of ids 0x1055 0x1056 0x1057 0x1422 0x1423 0xf9b is VERIFIED).
+// read string.tbl, 10000.. patchstring.tbl and 20000.. expansionstring.tbl, each by the node's own
+// id minus the base; a table that lacks the node falls through to the next lower one (VERIFIED w50 from
+// STRTABLE_GetStringById and the real tables: 0x58cb = expansionstring node 2731 "EXPANSION CHARACTER",
+// 0x2aaf = patch_d2 patchstring node 927 "LADDER CHARACTER"; the w44 note had the two bases swapped).
 const (
-	stringIDExpansionBase = 10000
-	stringIDPatchBase     = 20000
+	stringIDPatchBase     = 10000
+	stringIDExpansionBase = 20000
 )
 
 type idTable struct {
@@ -48,12 +49,27 @@ func (am *AssetManager) addIDTable(tablePath string, data []byte) {
 // StringByID returns the text of a numeric string id (for example 0x1055, the automap "Game: " line)
 // and whether it exists.
 func (am *AssetManager) StringByID(id int) (string, bool) {
-	for _, t := range am.idTables {
-		if id < t.base {
+	best := func(base int) (string, bool) {
+		for _, t := range am.idTables {
+			if t.base != base {
+				continue
+			}
+
+			if s, ok := t.m[id-base]; ok {
+				return s, true
+			}
+		}
+
+		return "", false
+	}
+
+	// highest base first, like the exe: expansion, then patch, then the base table
+	for _, base := range []int{stringIDExpansionBase, stringIDPatchBase, 0} {
+		if id < base {
 			continue
 		}
 
-		if s, ok := t.m[id-t.base]; ok {
+		if s, ok := best(base); ok {
 			return s, true
 		}
 	}

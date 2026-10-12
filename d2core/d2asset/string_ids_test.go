@@ -18,8 +18,8 @@ func TestStringByID(t *testing.T) {
 		want string
 		ok   bool
 	}{
-		{0x1055, "Game: ", true}, {0x1422, "Hell", true}, {20005, "patched", true},
-		{10007, "exp", true}, {0x58ca, "", false}, {-3, "", false},
+		{0x1055, "Game: ", true}, {0x1422, "Hell", true}, {10005, "patched", true},
+		{20007, "exp", true}, {0x58ca, "", false}, {-3, "", false},
 	}
 
 	for _, tc := range tests {
@@ -28,7 +28,7 @@ func TestStringByID(t *testing.T) {
 		}
 	}
 
-	if idTableBase("data\\local\\lng\\eng\\patchstring.tbl") != 20000 || idTableBase("x/string.tbl") != 0 {
+	if idTableBase("data\\local\\lng\\eng\\patchstring.tbl") != 10000 || idTableBase("x/string.tbl") != 0 {
 		t.Error("table bases")
 	}
 }

@@ -38,11 +38,6 @@ const (
 	// deathTestSeconds ends the scenario if the hero somehow survives.
 	deathTestSeconds = 60.0
 	deathTestSettle  = 1.0
-
-	// The exe shows no text: it draws the pictures UI\<lang>\youdiedinst (softcore) and
-	// UI\<lang>\youdiedhardcore (strings at 0x6d746c / 0x6d7484, found w28). The text is a stand-in
-	// until those pictures are drawn (UNVERIFIED placement).
-	deathMessage = "You have died"
 )
 
 // deathState is the Game's runtime state of the death system.
@@ -230,14 +225,40 @@ func (v *Game) heroDies() {
 	if p.Hardcore {
 		v.Infof("DEATH hardcore: the character is dead (d2s status died=0x08), the character select refuses it")
 
-		if v.gameControls != nil {
-			v.gameControls.SetZoneChangeText(deathMessage)
-			v.gameControls.ShowZoneChangeText()
-		}
 	}
+
+	v.showDeathOverlay(p.Hardcore, gp.Lost, out.ExpLost > 0)
 
 	// the original saves at once when a hero dies
 	v.saveBeforeExit()
+}
+
+// showDeathOverlay prints the exe's death texts (see deathOverlayText); the hardcore one stays, the softcore ones
+// are hidden again at the respawn.
+func (v *Game) showDeathOverlay(hardcore bool, goldLost int, expLost bool) {
+	if v.gameControls == nil {
+		return
+	}
+
+	str := func(id int, fallback string) string {
+		if s, ok := v.asset.StringByID(id); ok {
+			return s
+		}
+
+		return fallback
+	}
+
+	text := deathOverlayText(hardcore, goldLost, expLost,
+		str(deathGoldStringID, "Death takes its toll of %d Gold"),
+		str(deathExpStringID, "You have lost experience"),
+		str(deathHardcoreStringID, "Your deeds of valor will be remembered"))
+	if text == "" {
+		return
+	}
+
+	v.gameControls.SetZoneChangeText(text)
+	v.gameControls.ShowZoneChangeText()
+	v.Infof("DEATH overlay %q", strings.ReplaceAll(text, "\n", " | "))
 }
 
 // takeGold removes the carried gold and drops it as a pile beside the corpse.
@@ -310,6 +331,10 @@ func (v *Game) respawnHero() {
 	p.Stats.Mana = p.Stats.MaxMana // 0x549f10: life, mana and stamina to their maximum
 	p.Stats.Stamina = float64(p.Stats.MaxStamina)
 	st.dead = false
+
+	if v.gameControls != nil {
+		v.gameControls.HideZoneChangeText()
+	}
 
 	v.Infof("DEATH respawn pos=(%d,%d) town_start=(%d,%d) hp=%d/%d mana=%d gold=%d equipment=%s corpse_at=(%d,%d) corpse_items=%s",
 		int(p.Position.X()), int(p.Position.Y()), st.townX, st.townY, p.Stats.Health, p.Stats.MaxHealth, p.Stats.Mana,
