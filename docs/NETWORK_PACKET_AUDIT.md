@@ -61,3 +61,36 @@ skill select, chat, item/trade/NPC ids by number only (no field structs for the 
 - Verify the remaining C2S lengths from handler bodies (0x543xxx-0x55xxxx range) and extend `clientSizes`.
 - Type the unit-action family (0c/0d/0e/10/4c/67-6d) so remote monsters can be mirrored natively.
 - Re-read the Huffman frequency table against the exe and pin it in a test.
+
+## w48 pass: typed unit-action, attribute, skill and world packets
+
+Layouts read read-only from the client handlers (Ghidra, handler addresses in the Go comments) and
+the server senders 0x538ff0 (0d), 0x53b250 (4c), 0x539a70 (1d-1f), 0x539e20 (20), 0x53b720 +
+0x582d00 (63), 0x53b7d0 + 0x59daa0 (73). New typed messages, all with round-trip tests that also
+check the exe length table (`d2gs/unit_action_msgs.go`, `stat_world_msgs.go`, `DecodeServer`):
+S2C 0c, 0d, 0e, 10, 4c (+99), 67-6d, 19-1f (`AttrUpdate`: 19/1a/1b add gold/exp, 1c sets exp,
+1d-1f set a stat; width chosen by the sender at <0xff, <0xffff), 20, 21, 23, 7b, 63, 73.
+Byte-sized fields whose meaning was not decoded are carried verbatim and marked UNVERIFIED.
+
+Corrections to earlier notes: 0x4c has the target type at @9 and target id at @10 (not a skill
+location); 0x68 and 0x6b/0x6c apply a position correction (0x47c320) before the action; 0x6b = 0x69
+layout + correction at @12/@14, 0x6c = 0x6a layout + correction; 0x6d has no mode byte.
+
+Client -> server lengths verified from the handlers (each rejects other lengths with code 3) and
+added to `clientSizes` with typed messages (`client_msgs3.go`): 0b:1, 3d:5, 3e:5, 3f:3, 40:1,
+41:1, 44:17, 46:13, 47:13, 48:1, 49:9 (take waypoint), 4b:9, 4c:5, 4d:3, 4f:7, 50:9, 53:1, 54:1,
+60:1, 61:3, 62:5, 63:5. Handled ids whose handler ignores or always rejects any length (so no
+length exists to read): 2c, 2d, 2e, 39, 42, 43, 45, 52, 66; they stay SizeUnknown. 0x14/0x15 are variable.
+
+Port multiplayer wiring (decided per packet; nothing new is sent or consumed on the wire, so the
+9j/96/9d scenarios are unchanged):
+- Attributes, skill level/slot/active skill: the port syncs hero state through the tunnelled
+  AddPlayer/Save packets; no engine packet carries single stat changes, so emitting 19-23/7b would
+  have no consumer.
+- Waypoint menu 63 / take waypoint 49: the port's waypoint flow is the engine SetWaypoint packet
+  (activation), the menu is local UI; no equivalent exists to translate.
+- Missile create 73: missiles are simulated locally by each client from the cast packet (0x4d); 73
+  would double-spawn them.
+- Unit actions 0c-10, 4c, 67-6d: the monster simulation travels as RealmUnit (appear/move/hit/die
+  with OD2 fields these packets cannot carry). Mapping move/stop to 67/6d is possible later but needs
+  an id table for realm monsters and a client consumer; left out to keep the scenarios stable.

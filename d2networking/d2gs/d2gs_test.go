@@ -48,11 +48,12 @@ func TestExpectedSizeClient(t *testing.T) {
 		kind SizeKind
 	}{
 		{0x00, 0, SizeInvalid},
-		{0x01, 5, SizeFixed}, // (G) walk: 0x5475b0 rejects len != 5
-		{0x02, 9, SizeFixed}, // (G) 0x547740 rejects len != 9
-		{0x0b, 0, SizeUnknown},
-		{0x3c, 9, SizeFixed}, // (G) 0x549ca0 rejects len != 9
-		{0x13, 9, SizeFixed}, // (G) handler 0x548990 rejects len != 9
+		{0x01, 5, SizeFixed},   // (G) walk: 0x5475b0 rejects len != 5
+		{0x02, 9, SizeFixed},   // (G) 0x547740 rejects len != 9
+		{0x0b, 1, SizeFixed},   // (G) 0x547eb0 rejects len != 1
+		{0x42, 0, SizeUnknown}, // handler ignores any length
+		{0x3c, 9, SizeFixed},   // (G) 0x549ca0 rejects len != 9
+		{0x13, 9, SizeFixed},   // (G) handler 0x548990 rejects len != 9
 		{0x16, 13, SizeFixed},
 		{0x1c, 3, SizeFixed},
 		{0x33, 17, SizeFixed}, // (G) handler 0x549960 rejects len != 0x11
@@ -255,7 +256,7 @@ func TestDecoderErrors(t *testing.T) {
 		{"s2c invalid id", ServerToClient, []byte{0x17, 0, 0}, ErrInvalidID},
 		{"s2c id too high", ServerToClient, []byte{0xb5}, ErrInvalidID},
 		{"s2c bad variable", ServerToClient, []byte{0x3e, 1}, ErrBadLength},
-		{"c2s unknown size", ClientToServer, []byte{0x0b, 0, 0, 0, 0}, ErrUnknownSize},
+		{"c2s unknown size", ClientToServer, []byte{0x42, 0, 0, 0, 0}, ErrUnknownSize},
 		{"c2s control id", ClientToServer, []byte{0x67}, ErrInvalidID},
 		{"c2s zero id", ClientToServer, []byte{0x00}, ErrInvalidID},
 	}
@@ -354,6 +355,14 @@ func TestClientMessagesRoundTrip(t *testing.T) {
 		&SetHotkey{Slot: 3, Skill: 0x24, Right: true, ItemID: 0xffffffff}, &NpcTrade{1, 2, 3},
 		&PartyRequest{Action: 5, PlayerID: 77}, &PartyRelation{Action: 4, Flag: 1, PlayerID: 78},
 		&SetQuestFlag{Index: 41}, &NpcInteractParams{1, 9, 16, 32}, &MoveChecked{X: 300, Y: 500},
+		// verified in the w48 pass (client_msgs3.go; more cases in unit_action_test.go)
+		&ObjectMode{ObjectID: 1}, &QuestItemUse{ItemID: 2}, &SetUnitMode{Mode: 0x1b},
+		&ObjectItemUse{ObjectID: 1, ItemID: 2, Action: 3}, &PetCommandUnit{UnitID: 7, Command: 4},
+		&PetCommandPoint{X: 100, Y: 200}, &TakeWaypoint{ObjectID: 5, Dest: 39}, &ClaimUnit{UnitType: 1, UnitID: 9},
+		&FinishConvert{ItemID: 3}, &NpcIntroFlag{MonsterClass: 150}, &ClickButton{Button: 1, Arg1: 2, Arg2: 3},
+		&DropGold{PlayerID: 4, Amount: 5000}, &GiveItemToMerc{BodyLoc: 3}, &ReviveMerc{MercID: 8},
+		&PickItemToBelt{ItemID: 6}, &BareCommand{ID: 0x0b}, &BareCommand{ID: 0x40}, &BareCommand{ID: 0x41},
+		&BareCommand{ID: 0x48}, &BareCommand{ID: 0x53}, &BareCommand{ID: 0x54}, &BareCommand{ID: 0x60},
 	}
 	seen := map[byte]bool{}
 	for _, m := range msgs {
@@ -415,7 +424,7 @@ func TestClientDecodeTruncation(t *testing.T) {
 			t.Errorf("id %#x oversize: expected error", id)
 		}
 	}
-	if _, err := DecodeClient([]byte{0x0b, 0, 0, 0, 0}); !errors.Is(err, ErrUnknownSize) {
+	if _, err := DecodeClient([]byte{0x42, 0, 0, 0, 0}); !errors.Is(err, ErrUnknownSize) {
 		t.Errorf("untyped id: %v", err)
 	}
 }

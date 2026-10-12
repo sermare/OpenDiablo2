@@ -483,7 +483,9 @@ func DecodeClient(b []byte) (Message, error) {
 	case C2SMoveChecked:
 		m = &MoveChecked{}
 	default:
-		return nil, fmt.Errorf("%w: no typed decoder for client id %#x", ErrUnknownSize, b[0])
+		if m = decodeClientExtra(b[0]); m == nil {
+			return nil, fmt.Errorf("%w: no typed decoder for client id %#x", ErrUnknownSize, b[0])
+		}
 	}
 	want, _ := ExpectedSize(b[0], ClientToServer)
 	if len(b) != want {
