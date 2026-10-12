@@ -262,6 +262,7 @@ func (menu *KeyBindingMenu) getBindingGroups() [][]keyBindingSetting {
 		{
 			{menu.asset.TranslateString("CfgAutoMap"), d2enum.ToggleAutomap},
 			{menu.asset.TranslateString("CfgAutoMapCenter"), d2enum.CenterAutomap},
+			{menu.asset.TranslateString("CfgAutoMapFade"), d2enum.FadeAutomap},
 			{menu.asset.TranslateString("CfgAutoMapParty"), d2enum.TogglePartyOnAutomap},
 			{menu.asset.TranslateString("CfgAutoMapNames"), d2enum.ToggleNamesOnAutomap},
 			{menu.asset.TranslateString("CfgToggleminimap"), d2enum.ToggleMiniMap},

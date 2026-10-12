@@ -282,7 +282,8 @@ func (km *KeyMap) ResetToDefault() {
 		d2enum.HoldShowPortraits:   {d2enum.KeyZ, -1},
 
 		d2enum.ToggleAutomap:        {d2enum.KeyTab, -1},
-		d2enum.CenterAutomap:        {d2enum.KeyHome, -1},
+		d2enum.CenterAutomap:        {d2enum.KeyF9, -1},
+		d2enum.FadeAutomap:          {d2enum.KeyF10, -1},
 		d2enum.TogglePartyOnAutomap: {d2enum.KeyF11, -1},
 		d2enum.ToggleNamesOnAutomap: {d2enum.KeyF12, -1},
 		d2enum.ToggleMiniMap:        {d2enum.KeyV, -1},

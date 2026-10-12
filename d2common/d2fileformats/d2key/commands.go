@@ -21,16 +21,18 @@ type Command struct {
 }
 
 // Commands lists the command ids whose meaning is inferred, keyed by id.
-// Ids 8-11 (F9-F12) and 46-53 are deliberately absent: unidentified.
+// Ids 46-53 are deliberately absent: unidentified.
 var Commands = map[uint32]Command{
-	0:  {0, "CharacterPanel", Likely},
-	1:  {1, "InventoryPanel", Likely},
-	2:  {2, "PartyPanel", Likely},
-	3:  {3, "MessageLog", Likely},
-	4:  {4, "QuestLog", Likely},
-	5:  {5, "ChatBox", Likely},
-	6:  {6, "HelpScreen", Likely},
-	7:  {7, "Automap", Likely},
+	0: {0, "CharacterPanel", Likely},
+	1: {1, "InventoryPanel", Likely},
+	2: {2, "PartyPanel", Likely},
+	3: {3, "MessageLog", Likely},
+	4: {4, "QuestLog", Likely},
+	5: {5, "ChatBox", Likely},
+	6: {6, "HelpScreen", Likely},
+	7: {7, "Automap", Likely},
+	// 8..11 (F9..F12): the automap group of the key panel; texts CfgAutoMapCenter/Fade/Party/Names read from string.tbl (w44).
+	8: {8, "AutomapCenter", Likely}, 9: {9, "AutomapFade", Likely}, 10: {10, "AutomapParty", Likely}, 11: {11, "AutomapNames", Likely},
 	12: {12, "SkillTree", Likely},
 	13: {13, "RightSkillSelector", Guess},
 	14: {14, "UseSkill1", Likely}, 15: {15, "UseSkill2", Likely}, 16: {16, "UseSkill3", Likely},

@@ -12,7 +12,8 @@ import (
 var realCommandEvents = map[uint32]d2enum.GameEvent{
 	0: d2enum.ToggleCharacterPanel, 1: d2enum.ToggleInventoryPanel, 2: d2enum.TogglePartyPanel,
 	3: d2enum.ToggleMessageLog, 4: d2enum.ToggleQuestLog, 5: d2enum.ToggleChatBox,
-	6: d2enum.ToggleHelpScreen, 7: d2enum.ToggleAutomap, 12: d2enum.ToggleSkillTreePanel,
+	6: d2enum.ToggleHelpScreen, 7: d2enum.ToggleAutomap,
+	8: d2enum.CenterAutomap, 9: d2enum.FadeAutomap, 10: d2enum.TogglePartyOnAutomap, 11: d2enum.ToggleNamesOnAutomap, 12: d2enum.ToggleSkillTreePanel,
 	13: d2enum.ToggleRightSkillSelector,
 	14: d2enum.UseSkill1, 15: d2enum.UseSkill2, 16: d2enum.UseSkill3, 17: d2enum.UseSkill4,
 	18: d2enum.UseSkill5, 19: d2enum.UseSkill6, 20: d2enum.UseSkill7, 21: d2enum.UseSkill8,

@@ -54,14 +54,12 @@ func TestExeDefaultKeysNamed(t *testing.T) {
 // knownKeyDifferences are the places where the Go defaults and the exe table
 // disagree on purpose or for lack of an input source: the three secondaries are
 // mouse buttons 3, 4 and 5, which the input manager does not report as keys
-// (so a binding there would never fire), and F9..F12 are bound in the exe to
-// commands 8..11 (the automap group, UNVERIFIED which is which) while Go binds
-// Home, F11 and F12 to its own automap events.
+// (so a binding there would never fire). F9..F12 are commands 8..11 = Center,
+// Fade, Party, Names (strings 0xf5b 0xf8f 0xf91 0xf90 read from string.tbl).
 var knownKeyDifferences = map[d2enum.GameEvent]string{
-	d2enum.ToggleAutomap:        "secondary mouse button 3",
-	d2enum.ToggleRunWalk:        "secondary mouse button 5",
-	d2enum.HoldShowGroundItems:  "secondary mouse button 4",
-	d2enum.TogglePartyOnAutomap: "not in the exe table by this name",
+	d2enum.ToggleAutomap:       "secondary mouse button 3",
+	d2enum.ToggleRunWalk:       "secondary mouse button 5",
+	d2enum.HoldShowGroundItems: "secondary mouse button 4",
 	// OD2 layout asked for by the owner: number keys pick skills, Q drinks the potions in order, L is the quest log
 	d2enum.UseSkill1: "OD2 number key", d2enum.UseSkill2: "OD2 number key", d2enum.UseSkill3: "OD2 number key",
 	d2enum.UseSkill4: "OD2 number key", d2enum.UseBeltSlot1: "OD2: Q drinks", d2enum.UseBeltSlot2: "OD2: Q drinks",
