@@ -142,7 +142,7 @@ func (g *ItemGrid) drawCellTint(target d2interface.Surface, item InventoryItem) 
 
 	m := g.tint(item)
 	if g.hovered != nil && g.hovered == item {
-		m = HoverMode(false, false) // the identify cursor is not wired (UNVERIFIED)
+		m = HoverMode(false, false) // the identify cursor is not wired in this port
 	}
 
 	w, h := item.InventoryGridSize()

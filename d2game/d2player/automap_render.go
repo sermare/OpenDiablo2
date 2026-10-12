@@ -14,15 +14,17 @@ import (
 
 // Marker colours: the engine asks for the palette entry nearest to these RGB
 // values (FUN_00455d30); the values below are the entries of the Act 1 palette
-// that this gives (computed offline, which palette the engine searches is
-// UNVERIFIED but the colours only differ slightly between acts).
+// that this gives (computed offline with the exe's metric, D2CMP_FindNearestPaletteIndex 0x604300: squared RGB
+// distance, first minimum wins; checked against all five act palettes: only the corpse colour (act 2: 252,20,248)
+// and the portal colour (act 4: 252,224,52) differ between acts. Which act's palette the exe's table at 0x8166f0
+// holds is UNVERIFIED, the Act 1 entries are used).
 var (
 	automapColorSelf    = color.RGBA{36, 96, 216, 255}   // (0,0,255): the hero's cross
 	automapColorOther   = color.RGBA{252, 44, 0, 255}    // (255,0,0): other players, not in the party
 	automapColorParty   = color.RGBA{24, 252, 0, 255}    // (0,255,0): party members
 	automapColorMinion  = color.RGBA{68, 112, 116, 255}  // (0x44,0x70,0x74): own mercenary and minions
-	automapColorNPC     = color.RGBA{244, 244, 244, 255} // (0xf4,0xf4,0xf4) DAT_0079d23e: town folk (monsters with the monstats flag); UNVERIFIED nearest palette entry
-	automapColorCorpse  = color.RGBA{252, 0, 252, 255}   // (255,0,255) DAT_0079d23a: a corpse that holds items; UNVERIFIED nearest palette entry
+	automapColorNPC     = color.RGBA{244, 244, 244, 255} // (0xf4,0xf4,0xf4) DAT_0079d23e: town folk (monsters with the monstats flag); an exact palette entry (index 32) in every act
+	automapColorCorpse  = color.RGBA{164, 32, 252, 255}  // (255,0,255) DAT_0079d23a: a corpse that holds items; Act 1 nearest entry is index 155
 	automapColorPortal  = color.RGBA{244, 192, 76, 255}  // (0xf4,0xf4,0): portals
 	automapColorTextGld = color.RGBA{199, 179, 119, 255}
 )
@@ -355,7 +357,9 @@ func (a *Automap) drawText(target d2interface.Surface, w int) {
 // textLines are the lines drawn over the automap, in the engine's order: the level name, the version line and, in
 // Nightmare and Hell, the difficulty line (AUTOMAP_DrawAutomap 0x4564a0 / 0x4558b0; the string-table texts
 // "automapdif" = "Difficulty: %s" and the names behind ids 0x1423 / 0x1422 were read from the real string table).
-// UNVERIFIED: that the panel flag byte of the exe equals the game's difficulty index.
+// The byte AUTOMAP_DrawDifficultyText reads (UI_GetPanelFlagByte 0x449240, DAT_00798694: 1 shows 0x1423, 2 shows 0x1422)
+// is the game difficulty: the same byte scales the monsters on creation and the skill description damage (VERIFIED
+// by those readers, w44).
 func (a *Automap) textLines() []string {
 	name := ""
 	if a.nameFn != nil {

@@ -9,8 +9,8 @@ import (
 // The scroll and the tome of town portal (misc.txt "tsc" and "tbk"). Opening
 // the portal itself is the game screen's job; this file finds the item that
 // pays for it. A scroll is used up, a tome loses one scroll of its quantity.
-// UNVERIFIED: the tome's scroll count is kept in the item quantity like the
-// tome of identify's (the original keeps it in stat 0x46).
+// The tome's scroll count is the item quantity, like the tome of identify's: the
+// original keeps it in stat 0x46, which ItemStatCost.txt names "quantity" (w44).
 const (
 	townPortalScrollCode = "tsc"
 	townPortalTomeCode   = "tbk"

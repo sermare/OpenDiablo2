@@ -52,7 +52,7 @@ var (
 		// the expansion stash (Big Bank, 6x8) is used when the game data has it; the classic one is 6x4
 		records: []string{"Big Bank Page2", "Bank Page2"},
 		expArt:  "/data/global/ui/PANEL/TradeStash.DC6",
-		// fallback = the classic 6x4 stash and its picture (Bank Page2, UNVERIFIED without the data)
+		// fallback = the classic 6x4 stash and its picture (the "Bank Page2" record: 6x4 cells at (154,333); checked against Inventory.txt by TestStashFallbackMatchesInventoryRecord)
 		cols: 6, rows: 4, left: 154, top: 333,
 		acceptsCube: true,
 	}

@@ -37,7 +37,8 @@ func popupVisible(s *d2hero.HeroSkill, left bool) bool {
 
 	// The general skills other than Attack (Throw, Unsummon, the scrolls and books) exist only while the
 	// hero has the item or minion they belong to; the engine does not model that yet, so they are hidden
-	// (UNVERIFIED how the original decides, see session-core.md section 6).
+	// (the original lists exactly the skills in the unit's own skill list, CLIENT_BuildSkillSelectPopup 0x4a6aa0, VERIFIED
+	// w44: charges and item granted skills are entries of that list, so they appear only while the hero has them).
 	if s.Charclass == "" && s.ID != attackSkillID {
 		return false
 	}

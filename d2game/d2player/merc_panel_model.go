@@ -31,7 +31,7 @@ var MercRowOrder = []string{ //nolint:gochecknoglobals // static
 
 // Values gives the text of every value row: plain numbers, the damage as "min-max" and the life as
 // "current/max" (the original prints the damage with "%d-%d"; the life format string is at 0x6dadb0 and
-// is read as "%d / %d": UNVERIFIED).
+// is "%d / %d": VERIFIED by reading the bytes).
 func (v MercView) Values() map[string]string {
 	hp := v.HP
 	if v.Dead {

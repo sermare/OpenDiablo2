@@ -54,8 +54,8 @@ func TestExeDefaultKeysNamed(t *testing.T) {
 // knownKeyDifferences are the places where the Go defaults and the exe table
 // disagree on purpose or for lack of an input source: the three secondaries are
 // mouse buttons 3, 4 and 5, which the input manager does not report as keys
-// (so a binding there would never fire). F9..F12 are commands 8..11 = Center,
-// Fade, Party, Names (strings 0xf5b 0xf8f 0xf91 0xf90 read from string.tbl).
+// (so a binding there would never fire). F9..F12 are commands 8..11 = Center, Fade and the Names / Party toggles
+// (strings 0xf5b 0xf8f 0xf90 0xf91 read from string.tbl; the order of the last two is claimed both ways in the notes, see d2key).
 var knownKeyDifferences = map[d2enum.GameEvent]string{
 	d2enum.ToggleAutomap:       "secondary mouse button 3",
 	d2enum.ToggleRunWalk:       "secondary mouse button 5",

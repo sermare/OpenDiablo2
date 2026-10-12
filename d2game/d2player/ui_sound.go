@@ -14,7 +14,8 @@ func SetUISoundHook(fn func(handle, kind string)) { uiSoundHook = fn }
 // 0x47ad40, INV_HandleMouseDown 0x48d6c0, UI_HandleStatButtonMouseDown
 // 0x4a2e12, UI_HandleSkillButtonMouseDown 0x4a2eb2); cursor_pass (1) when a
 // game menu selection moves; cursor_switch (6) on a skill tree tab change.
-// The panel open/close sounds were not found (UNVERIFIED: none).
+// There is no panel open/close sound: UI_SetPanelState 0x4515f0, UI_OnPanelOpened 0x450de0 and UI_OnPanelClosed
+// 0x4511a0 (the only code that runs when a panel opens or closes) make no sound call (VERIFIED, w44).
 func playUISound(handle, kind string) bool {
 	if uiSoundHook == nil {
 		return false

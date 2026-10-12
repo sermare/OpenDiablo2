@@ -1850,7 +1850,7 @@ func (g *GameControls) OpenTrade(v d2vendor.Vendor, seed uint32) {
 	g.NPCMenu.Close()
 	g.clearScreen()
 	g.inventory.Open()
-	g.Trade.Open(v, seed, nil) // quest overrides: the quest record is not available here (UNVERIFIED path)
+	g.Trade.Open(v, seed, nil) // quest overrides: the quest record is not available here, a gap of this port
 	g.updateLayout()
 }
 

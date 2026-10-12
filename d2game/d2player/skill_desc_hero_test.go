@@ -150,7 +150,7 @@ func TestKind13SummonLife(t *testing.T) {
 }
 
 // Kind 31: calcA frames divided by the difficulty's curse divisor (source
-// column UNVERIFIED), shown as seconds.
+// column AiCurseDivisor, +0x1c of the exe record), shown as seconds.
 func TestKind31CurseDivisor(t *testing.T) {
 	rows := []d2skilldesc.Row{{Kind: d2skilldesc.KindCurseDuration, TextA: "Dur: ", CalcA: "200"}}
 	div := func(d int) int { return []int{1, 2, 4}[d] }

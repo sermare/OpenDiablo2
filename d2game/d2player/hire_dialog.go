@@ -21,8 +21,9 @@ const (
 )
 
 // hireDescKeys maps the HireDesc column of hireling.txt to the string key of the second line (table at 0x6ef9c0, ids
-// 0xd2b, 0xd2c, then the expansion ids of Combat, Defensive, Offensive, then 0xd31/0xd30/0xd2f). The order of the three
-// expansion entries is UNVERIFIED (read from the ids, not from the data).
+// 0xd2b, 0xd2c, then the expansion ids of Combat, Defensive, Offensive, then 0xd31/0xd30/0xd2f). The three
+// expansion entries are 0x2b52 Combat, 0x2b50 Defensive, 0x2b51 Offensive (patch string table texts, VERIFIED to equal
+// the StrMercEx15 / 12 / 14 texts used below).
 var hireDescKeys = map[string]string{ //nolint:gochecknoglobals // static
 	"farw": "strhirespecial1", "carw": "strhirespecial2", "comb": "StrMercEx15", "def": "StrMercEx12",
 	"off": "StrMercEx14", "fire": "strhirespecial7", "cold": "strhirespecial6", "ltng": "strhirespecial5",
@@ -34,7 +35,8 @@ func HireDialogTitle(tr func(string) string, gold int) string {
 }
 
 // ReviveLine fills the "Resurrect %s: %d" string with the name and the price ("Resurrect name: price" if the text has no
-// placeholders, e.g. a missing translation). The exe's own use of that string is UNVERIFIED.
+// placeholders, e.g. a missing translation). The exe uses it (key hireresurrect2, id 0x58a8) in UI_BuildNpcMenu 0x4b1050 for the merc revive row
+// (arguments: the mercenary name, the price; VERIFIED, w44).
 func ReviveLine(format, name string, cost int) string {
 	if !strings.Contains(format, "%s") || !strings.Contains(format, "%d") {
 		return fmt.Sprintf("Resurrect %s: %d", name, cost)

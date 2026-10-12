@@ -18,7 +18,7 @@ import (
 
 // The player-to-player trade window. The rules and the item transfer are in
 // package d2playertrade (and run on the server); this is only what a player
-// sees and clicks. UNVERIFIED design: the original draws two inventory-like
+// sees and clicks. OD2 design (a deliberate departure, not a claim about the exe): the original draws two inventory-like
 // grids ("Trade Page 1/2" of inventory.txt) that items are dragged into; this
 // window lists both offers as text rows, an inventory item is put into (or
 // taken out of) the offer with a right click, the gold row adds 100 on a left
