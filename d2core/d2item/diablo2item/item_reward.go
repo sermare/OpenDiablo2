@@ -49,7 +49,7 @@ func (i *Item) SocketInfo() d2reward.SocketItem {
 	si := d2reward.SocketItem{
 		Code: i.CommonCode, ItemLevel: i.ItemLevel(), Sockets: i.NumSockets(), Quest: i.IsQuestItem(),
 		Gems: len(i.SocketCodes) + len(i.sockets) + len(i.socketed), Quality: int(i.quality),
-		Gold: i.TypeCode == "gold",
+		Gold: i.TypeCode == "gold", Broken: i.IsBroken(),
 	}
 
 	if rec := i.CommonRecord(); rec != nil {
