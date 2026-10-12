@@ -61,8 +61,8 @@ func TestPvPParts(t *testing.T) {
 }
 
 func TestPvPEar(t *testing.T) {
-	if PvPKillGivesEar(false) || !PvPKillGivesEar(true) {
-		t.Fatal("ears only for hardcore victims")
+	if !PvPKillGivesEar(false) || !PvPKillGivesEar(true) {
+		t.Fatal("the exe drops an ear for every PvP death, softcore too")
 	}
 }
 
