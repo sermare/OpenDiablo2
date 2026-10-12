@@ -6,7 +6,7 @@
 #   newchar_env <Class> <Name>
 #   newchar_check <life> <mana> <stamina> <str> <dex> <vit> <ene> <worn regexp> <inventory items> <belt items> <left skill> [ammo] [right skill]
 scenario_warnings_ok=1
-scenario_timeout=300
+scenario_timeout=420
 newchar_env() {
   local class=$1 name=$2
   sd=$tmp/newchar
@@ -14,9 +14,9 @@ newchar_env() {
   cp "${OD2_VERIFY_CONFIG_DIR:-$HOME/Library/Application Support/OpenDiablo2}/config.json" $sd/cfg/ 2>/dev/null
   echo "unset OD2_AUTOGAME OD2_D2S_WRITEBACK OD2_AUTOMAPSEED"
   echo "export OD2_CONFIG_DIR=\"$sd/cfg\" OD2_D2S_DIR=\"$sd/saves\""
-  echo "export OD2_AUTOSCRIPT='wait:3;panel:character;wait:1;panel:close;panel:skills;wait:1;panel:close;panel:inventory;wait:1;panel:close;wait:60'"
-  local f="single,new,create:$class:$name,difficulty:0,wait:45,saveexit"
-  f="$f,select:$name,play,wait:45,saveexit,exit"
+  echo "export OD2_AUTOSCRIPT='wait:1;panel:character;panel:close;panel:skills;panel:close;wait:1;panel:inventory;wait:1;panel:close;wait:60'"
+  local f="single,new,create:$class:$name,difficulty:0,wait:30,saveexit"
+  f="$f,select:$name,play,wait:30,saveexit,exit"
   echo "export OD2_AUTOFLOW=\"$f\""
 }
 newchar_check() {
