@@ -74,8 +74,8 @@ func (f *ItemFactory) MonsterDrops(o MonsterDropOptions) (*DropResult, error) {
 	}
 
 	flags := 0
-	if ms := f.asset.Records.Monster.Stats[o.Monster]; ms != nil && ms.IgnoreMonLevelTxt {
-		flags |= d2drop.MonStatsNoRatio
+	if ms := f.asset.Records.Monster.Stats[o.Monster]; ms != nil {
+		flags = d2drop.MonStatsFlags(ms.IgnoreMonLevelTxt, ms.IsSpecialBoss)
 	}
 
 	opts := o.DropOptions

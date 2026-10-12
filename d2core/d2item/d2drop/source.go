@@ -18,11 +18,27 @@ const (
 // MonStats flag bits (record byte +0xc) that stop the monster level upgrade of
 // its treasure class. 0x04 is "NoRatio"; both bits are tested by
 // ITEMGEN_DropFromTreasureClass (0x558d80, VERIFIED), only the column behind
-// 0x40 is unnamed.
+// 0x40 is the monstats "boss" column (MONSTER_IsBossMonster 0x63fa40, VERIFIED w27).
 const (
 	MonStatsNoRatio      = 0x04
-	monStatsNoUpgradeBit = 0x40
+	MonStatsBoss         = 0x40
+	monStatsNoUpgradeBit = MonStatsBoss
 )
+
+// MonStatsFlags builds the flag word MonsterUpgradeLevel expects from the
+// noRatio and boss columns of a monstats row.
+func MonStatsFlags(noRatio, boss bool) int {
+	f := 0
+	if noRatio {
+		f |= MonStatsNoRatio
+	}
+
+	if boss {
+		f |= MonStatsBoss
+	}
+
+	return f
+}
 
 // MonsterTreasureInput describes a killed monster.
 type MonsterTreasureInput struct {
