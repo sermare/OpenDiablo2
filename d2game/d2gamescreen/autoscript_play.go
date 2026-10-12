@@ -100,6 +100,14 @@ func (h autoScriptHost) WalkToObject(name string) error {
 
 // Menu chooses a row of the open NPC menu by its label or action name.
 func (h autoScriptHost) Menu(row string) error {
+	// the mercenary hire list is its own dialog (not the NPC menu); its only row a script can choose is Cancel
+	if hl := h.v.gameControls.HireList; hl.IsOpen() && strings.Contains(strings.ToLower("cancel"), strings.ToLower(row)) {
+		h.v.Infof("AUTOSCRIPT menu row cancel of the hire list")
+		hl.Choose(len(hl.Entries()))
+
+		return nil
+	}
+
 	menu := h.v.gameControls.NPCMenu
 	if !menu.IsOpen() {
 		return fmt.Errorf("no NPC menu is open")
