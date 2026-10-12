@@ -271,6 +271,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"0|1"}, v.commandTravelFree},
 		{"travel", "travels to the town of an act through the act travel rules",
 			[]string{"act"}, v.commandTravel},
+		{"npctravel", "runs a server NPC travel action no menu sends (520: Cain in Harrogath to level 103)",
+			[]string{"class"}, v.commandNPCTravel},
 		{"walkprobe", "logs how many lava/water tiles of the level the hero can walk to and whether a walk order onto lava ends on it (debug)",
 			nil, v.commandWalkProbe},
 		{"players", "logs the players of the game with their positions", []string{}, v.commandPlayers},
@@ -869,7 +871,6 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 		// already played when the menu opened
 		opened := v.talkSubmenu(npc)
 		v.Infof("NPC menu: Talk with %q (submenu %v)", npc.Label(), opened)
-		v.travelOnTalk(npc)
 		v.endConversationUnlessMenuOpen()
 	case d2player.NPCActionIntro:
 		v.npcIntro(npc)
@@ -888,7 +889,8 @@ func (v *Game) onNPCMenuChoice(npc d2interface.MapEntity, row d2player.NPCMenuRo
 		v.openGamble(npc, v.stockSeed(npc, true))
 	case d2player.NPCActionIdentify:
 		v.openIdentify(npc)
-	case d2player.NPCActionTravelWest, d2player.NPCActionSailWest, d2player.NPCActionTravelEast, d2player.NPCActionSailEast:
+	case d2player.NPCActionTravelWest, d2player.NPCActionSailWest, d2player.NPCActionTravelEast, d2player.NPCActionSailEast,
+		d2player.NPCActionTravelHarrogath:
 		v.travelFromNPC(npc, row)
 	case d2player.NPCActionReward, d2player.NPCActionRespec:
 		v.onRewardRow(npc, row)

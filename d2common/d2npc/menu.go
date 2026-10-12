@@ -226,7 +226,8 @@ type Ctx struct {
 	// RespecRowPresent: Akara's table row has the third (respec) string. Nothing in the exe's static code sets it
 	// (the setter at 0x4b3630 has no caller in the analysis, UNVERIFIED how it runs), so the game decides.
 	RespecRowPresent bool
-	// RespecPanelFlag is UI_GetPanelFlagByte() == 2 (UNVERIFIED meaning; false by default).
+	// RespecPanelFlag is UI_GetPanelFlagByte() == 2. VERIFIED (w47): the byte is the game difficulty (0x798694, written
+	// by CLIENT_SetGameDifficulty 0x4491e0), so this is "the game is Hell"; RespecPanelFlagFor derives it.
 	RespecPanelFlag bool
 }
 
@@ -242,6 +243,17 @@ func IdentifyCost(c Ctx) int {
 	}
 
 	return c.Unidentified * identifyPerItem
+}
+
+// RespecPanelFlagFor is the value of Ctx.RespecPanelFlag for a difficulty (0 Normal, 1 Nightmare, 2 Hell).
+func RespecPanelFlagFor(difficulty int) bool { return difficulty == 2 }
+
+// HellRespecGrant is the server's Hell-only grant of the free respec (TRADE_ServerHandleNpcMenuAction 0x577b70, Akara
+// 0x94): in Hell a hero with quest slot 1 bit 0 set (Den of Evil) and neither bit 0 nor bit 1 of slot 0x29 gets bits
+// 0xd and 1 of slot 0x29 set (0x58daf0), which makes the reset that follows run. The client row shows in Hell on its own
+// (RespecShown with RespecPanelFlag), the grant happens when the row's action reaches the server.
+func HellRespecGrant(difficulty int, c Ctx) bool {
+	return difficulty == 2 && c.flag(1, 0) && !c.flag(0x29, 0) && !c.flag(0x29, 1)
 }
 
 // RespecShown is the string-0x2ba0 branch of UI_BuildNpcMenu: skipped when quest slot 0x29 bit 0 is set;

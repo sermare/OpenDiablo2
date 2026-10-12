@@ -94,7 +94,8 @@ func (v *Game) npcQuestFlag(quest, bit int) bool {
 
 // npcCtx collects what the menu rules read from the game.
 func (v *Game) npcCtx() d2npc.Ctx {
-	c := d2npc.Ctx{Expansion: v.heroExpansion(), Quest: v.npcQuestFlag}
+	c := d2npc.Ctx{Expansion: v.heroExpansion(), Quest: v.npcQuestFlag,
+		RespecPanelFlag: d2npc.RespecPanelFlagFor(v.questDifficulty())}
 
 	if v.localPlayer != nil && v.localPlayer.Stats != nil {
 		c.HeroLevel = v.localPlayer.Stats.Level

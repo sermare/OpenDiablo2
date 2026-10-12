@@ -155,7 +155,7 @@ func (v *Game) respecAvailable() bool {
 	}
 
 	// UI_BuildNpcMenu's gate for string 0x2ba0: quest slot 0x29 bit 0 (done) hides the row, bit 1 shows it
-	return d2npc.RespecShown(d2npc.Ctx{Quest: r.g.Rec.Get})
+	return d2npc.RespecShown(d2npc.Ctx{Quest: r.g.Rec.Get, RespecPanelFlag: d2npc.RespecPanelFlagFor(v.questDifficulty())})
 }
 
 // akaraRespec resets the attributes to the class base and refunds every spent
@@ -165,6 +165,17 @@ func (v *Game) respecAvailable() bool {
 // menu action for a hero that finished the Den of Evil (slot 1 bit 0) and has neither bit of slot 0x29 (0x58daf0).
 func (v *Game) akaraRespec() error {
 	if !v.respecAvailable() {
+		return fmt.Errorf("Akara has no reset to offer")
+	}
+
+	// the Hell-only grant (VERIFIED 0x577b70): runs before the server tests bit 1 of slot 0x29
+	if rec := v.questRT.g.Rec; d2npc.HellRespecGrant(v.questDifficulty(), d2npc.Ctx{Quest: rec.Get}) {
+		rec.Set(d2s.QuestSlotAkaraRespec, d2s.QuestBitUpdated)
+		rec.Set(d2s.QuestSlotAkaraRespec, d2s.QuestBitRewardPending)
+		v.Infof("REWARD respec granted by the Hell rule (Den of Evil done, slot 41 bits 13 and 1 set)")
+	}
+
+	if !v.questRT.g.Rec.Get(d2s.QuestSlotAkaraRespec, d2s.QuestBitRewardPending) {
 		return fmt.Errorf("Akara has no reset to offer")
 	}
 

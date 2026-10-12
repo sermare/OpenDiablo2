@@ -18,6 +18,9 @@ const (
 	// in the static table (UNVERIFIED how the client adds them).
 	NPCActionTravelEast
 	NPCActionSailEast
+	// NPCActionTravelHarrogath is Tyrael's row of the expansion (string 0x58d2): VERIFIED, 0x4b2f20 adds it to his
+	// entry and its callback sends the travel action 0 for level 0x6d.
+	NPCActionTravelHarrogath
 	NPCActionCancel
 	// NPCActionTopic is a quest topic of the Talk submenu (a mode 2 message);
 	// the message id is in NPCMenuRow.StringID and the text in Fallback.
@@ -42,7 +45,7 @@ const (
 // String names the action for logs.
 func (a NPCMenuAction) String() string {
 	names := [...]string{
-		"Talk", "Trade", "TradeRepair", "Gamble", "Hire", "Identify", "TravelWest", "SailWest", "TravelEast", "SailEast", "Cancel",
+		"Talk", "Trade", "TradeRepair", "Gamble", "Hire", "Identify", "TravelWest", "SailWest", "TravelEast", "SailEast", "TravelHarrogath", "Cancel",
 		"Topic", "HireOffer", "ReviveMerc", "Reward", "Respec", "Introduction", "Gossip",
 	}
 
@@ -80,6 +83,8 @@ const (
 	strIDGoEast   = 0xd36
 	strIDSailEast = 0xd38
 	strIDCancel   = 0xd48
+	// strIDTravelHarrogath is Tyrael's expansion row (expansionstring.tbl key "Travel To Harrogath", VERIFIED).
+	strIDTravelHarrogath = 0x58d2
 	// strIDRespec is the patch string of Akara's reset row (ui-npc.md: 0x2ba0, "Reset Stat/Skill Points").
 	strIDRespec = 0x2ba0
 )
@@ -98,6 +103,10 @@ var (
 	// RowGoEast and RowSailEast are the dynamic east-bound travel rows.
 	RowGoEast   = NPCMenuRow{strIDGoEast, "WarrivMenu1b", "Go East", NPCActionTravelEast}
 	RowSailEast = NPCMenuRow{strIDSailEast, "MeshifMenuEast", "Sail East", NPCActionSailEast}
+
+	// RowTravelHarrogath is the row the client adds to Tyrael (Act 4) in the expansion; the server accepts it once
+	// quest slot 0x1a has its done bit.
+	RowTravelHarrogath = NPCMenuRow{strIDTravelHarrogath, "Travel To Harrogath", "Travel To Harrogath", NPCActionTravelHarrogath}
 
 	// RowRespec is Akara's reset row; string 0x2ba0 is the key "respec" of the patch string table (VERIFIED, w44:
 	// UI_BuildNpcMenu 0x4b1050 shows it only while quest record 0x29 flag 0 is clear and flag 1 is set, or on

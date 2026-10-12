@@ -23,10 +23,14 @@ scenario_env() {
   # act 4: Pandemonium Fortress
   s+=";refuse:5;move:npc=Tyrael;wait:10;expect:log=class=367 known=true rows=[talk cancel]"
   s+=";move:npc=Halbu;until:class=257 known=true rows=[trade/repair cancel],60;expect:log=class=257 known=true rows=[trade/repair cancel]"
-  s+=";say:completequest 4 2;travel:5;expect:level=109;wait:2"
+  # Tyrael's expansion row "Travel To Harrogath" (string 0x58d2, added by the client, 0x4b2f20) shows once Diablo is done
+  s+=";say:completequest 4 2;move:npc=Halbu;wait:6;move:npc=Tyrael;wait:10;expect:log=class=367 known=true rows=[talk travel to harrogath cancel]"
+  s+=";travel:5;expect:level=109;wait:2"
   # act 5: Harrogath
   s+=";move:npc=Larzuk;until:class=511 known=true rows=[talk trade/repair cancel],60;expect:log=class=511 known=true rows=[talk trade/repair cancel]"
   s+=";move:npc=Malah;until:class=513 known=true rows=[talk trade cancel],60;expect:log=class=513 known=true rows=[talk trade cancel]"
+  # Cain (class 520) has a server travel action to level 103 that no client menu sends (0x577b70), run from the console
+  s+=";say:npctravel 520;expect:level=103;wait:2;say:travelfree 1;travel:5;expect:level=109;wait:2;say:travelfree 0"
   # the way back: no NPC exists for 5->4 and 4->3 (debug mode), 3->2 and 2->1 are Meshif and Warriv
   s+=";refuse:4;say:travelfree 1;travel:4;expect:level=103;wait:1;travel:3;expect:level=75;wait:1;say:travelfree 0"
   s+=";travel:2;expect:level=40;wait:1;travel:1;expect:level=1;wait:1;exit"

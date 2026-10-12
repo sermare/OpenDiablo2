@@ -130,9 +130,31 @@ func LinksFrom(level int) []Link {
 	return out
 }
 
+// repeatedWarpSlots are the Vis slots (slot -> level, empty slots omitted) of the levels whose Levels.txt Warp ids
+// repeat across slots with different destinations: the Underground Passage 1 (warp 4 leads to 4 and 5), the Jail 3
+// (13 to 30 and 32) and the Sewers 1 of Act 3 (58 and 59 each to 80 and 81). The Act 3 jungle and Kurast levels are in
+// act3Slots. VERIFIED (w47, DRLG_ProcessLevelWarpsAfterGenerate 0x643860 and DRLG_LinkNeighborAndWarp 0x66eb40): the
+// exe does not look the tile up by warp id; a room carries the flag bit 0x10<<k of the Vis slot k (raised by the style
+// k of the DS1 special tile), the loop walks the bits 0x10..0x800 and links the room to Vis[k] with Warp[k]. The warp
+// id only selects the LvlWarp graphic. TestRepeatedWarpSlotsMatchLevelsTxt compares this table with a real Levels.txt.
+var repeatedWarpSlots = map[int]map[int]int{
+	10: {0: 4, 1: 5, 4: 14},
+	31: {0: 30, 1: 32},
+	92: {0: 80, 1: 80, 2: 81, 3: 81, 4: 93},
+}
+
+// VisSlotDestination returns the level in Vis slot slot of a level whose warp ids repeat (repeatedWarpSlots).
+func VisSlotDestination(level, slot int) (int, bool) {
+	to, ok := repeatedWarpSlots[level][slot]
+
+	return to, ok
+}
+
 // Destination returns the level a tile with LvlWarp id warp leads to from
-// level: the first Vis slot whose Warp slot matches (UNVERIFIED when several
-// slots share a warp id, see SourceLevelsTxt).
+// level: the first Vis slot whose Warp slot matches. It is a stand-in for the
+// exe's rule (the room's Vis slot, see repeatedWarpSlots), exact where the warp
+// ids of a level are distinct; for the repeated ones use VisSlotDestination
+// with the tile's style.
 func Destination(level, warp int) (int, bool) {
 	for _, l := range allLinks {
 		if l.From == level && l.Kind == KindTile && l.Warp == warp {
@@ -391,6 +413,11 @@ func TileDestination(level, style int) (int, bool) {
 	// and sub_6FD77BB0), Vis0 = 18 Crypt, Vis1 = 19 Mausoleum: VERIFIED from the DS1 and Levels.txt data.
 	// (styles 6 and 7 stay with the LvlWarp id rule below, which callers other than the DS1 tiles pass)
 	if to, ok := burialGroundsDestination(level, style); ok {
+		return to, true
+	}
+
+	// levels whose warp ids repeat: the style is the Vis slot (VERIFIED, see repeatedWarpSlots)
+	if to, ok := VisSlotDestination(level, style); ok {
 		return to, true
 	}
 
