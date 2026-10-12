@@ -17,6 +17,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2lightmap"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapengine"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
 
 const (
@@ -417,15 +418,44 @@ func (mr *MapRenderer) renderEntitiesBySubtile(target d2interface.Surface, ents 
 
 	mr.subKeys = keys
 
-	for k := int8(0); k < 25; k++ {
-		for i, e := range ents {
-			if keys[i] != k {
-				continue
-			}
+	// state overlays (aura circles, curses) draw behind (-1) or in front of (+1) the unit they surround
+	ordered := false
 
-			target.PushTranslation(mr.viewport.GetTranslationScreen())
-			mr.renderLitEntity(target, e)
-			target.Pop()
+	for _, e := range ents {
+		if _, ok := e.(interface{ DrawOrder() int }); ok {
+			ordered = true
+
+			break
+		}
+	}
+
+	first, last := 0, 0
+	if ordered {
+		first, last = d2mapentity.DrawBehind, d2mapentity.DrawFront
+	}
+
+	for k := int8(0); k < 25; k++ {
+		for order := first; order <= last; order++ {
+			for i, e := range ents {
+				if keys[i] != k {
+					continue
+				}
+
+				if ordered {
+					eo := 0
+					if d, ok := e.(interface{ DrawOrder() int }); ok {
+						eo = d.DrawOrder()
+					}
+
+					if eo != order {
+						continue
+					}
+				}
+
+				target.PushTranslation(mr.viewport.GetTranslationScreen())
+				mr.renderLitEntity(target, e)
+				target.Pop()
+			}
 		}
 	}
 }
@@ -667,8 +697,31 @@ func (mr *MapRenderer) heroBehind(t d2enum.TileType, tileX, tileY int) bool {
 func (mr *MapRenderer) renderLitEntity(target d2interface.Surface, e d2interface.MapEntity) {
 	mr.stats.Entities++
 
+	st, tinted := e.(interface {
+		StateTint() (r, g, b float64, on bool)
+	})
+
+	var sr, sg, sb float64
+
+	if tinted {
+		var on bool
+
+		if sr, sg, sb, on = st.StateTint(); !on {
+			tinted = false
+		}
+	}
+
 	if !mr.light.active() {
+		if tinted {
+			target.PushColor(d2mapentity.MulStateTint(color.RGBA{R: 255, G: 255, B: 255, A: 255}, sr, sg, sb))
+			e.Render(target)
+			target.Pop()
+
+			return
+		}
+
 		e.Render(target)
+
 		return
 	}
 
@@ -681,7 +734,12 @@ func (mr *MapRenderer) renderLitEntity(target d2interface.Surface, e d2interface
 		cell.Intensity = d2lightmap.HoverIntensity(cell.Intensity)
 	}
 
-	target.PushColor(mr.light.tint(cell))
+	lit := mr.light.tint(cell)
+	if tinted {
+		lit = d2mapentity.MulStateTint(lit, sr, sg, sb)
+	}
+
+	target.PushColor(lit)
 	e.Render(target)
 	target.Pop()
 }

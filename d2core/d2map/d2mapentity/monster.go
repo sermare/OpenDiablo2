@@ -70,6 +70,7 @@ type MonsterAttack struct {
 // loot rules live in the owner (d2monsters).
 type Monster struct {
 	mapEntity
+	StateTinted
 	composite *d2asset.Composite
 	Stat      *d2records.MonStatRecord
 	StatEx    *d2records.MonStat2Record

@@ -17,6 +17,7 @@ import (
 // Player is the player character entity.
 type Player struct {
 	mapEntity
+	StateTinted
 	name          string
 	animationMode string
 	composite     *d2asset.Composite

@@ -8,6 +8,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2combat"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2pl2"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2missile"
@@ -124,10 +125,15 @@ type Engine struct {
 	mercCasters map[string]*heroUnit // hireling casters by id (merc.go)
 	targets     map[string]*monsterTarget
 	visuals     map[uint32]*d2mapentity.Missile
-	fx          map[*d2mapentity.Missile]int // explosion entities and the frame they vanish at
-	sets        map[string]*d2state.Set      // unit id -> states and DoT streams
-	modeBound   []*modeBoundState            // states that end on the hero's next mode change (modebound.go)
-	defs        d2state.Defs                 // states.txt rules shared by the sets
+	fx          map[*d2mapentity.Missile]int             // explosion entities and the frame they vanish at
+	sets        map[string]*d2state.Set                  // unit id -> states and DoT streams
+	stateFx     map[overlayKey]*d2mapentity.StateOverlay // looping state overlays (state_visuals.go)
+	pl2         *d2pl2.PL2
+	pl2Act      int
+	hueCache    map[int][4]float64
+	visFrame    int
+	modeBound   []*modeBoundState // states that end on the hero's next mode change (modebound.go)
+	defs        d2state.Defs      // states.txt rules shared by the sets
 	timers      []timer
 
 	auras  map[string]*auraRun // hero id -> the aura it keeps on
@@ -191,7 +197,7 @@ func New(asset *d2asset.AssetManager, mapEngine *d2mapengine.MapEngine, monsters
 		Logger: d2util.NewLogger(), asset: asset, mapEngine: mapEngine, monsters: monsters, opt: opt,
 		heroes: map[string]*heroUnit{}, mercCasters: map[string]*heroUnit{}, targets: map[string]*monsterTarget{},
 		visuals: map[uint32]*d2mapentity.Missile{}, fx: map[*d2mapentity.Missile]int{},
-		sets: map[string]*d2state.Set{}, auras: map[string]*auraRun{}, pets: map[string][]*d2mapentity.Monster{}, dots: map[string]dotTotal{},
+		sets: map[string]*d2state.Set{}, stateFx: map[overlayKey]*d2mapentity.StateOverlay{}, auras: map[string]*auraRun{}, pets: map[string][]*d2mapentity.Monster{}, dots: map[string]dotTotal{},
 		walls: map[string]*wallRun{}, monSeed: d2rand.New(opt.Seed ^ 0x6d6f6e73),
 		travel: map[uint32]func(){}, stamps: newCellStamps(),
 	}
@@ -1476,6 +1482,8 @@ func describeDesc(d *d2missile.DamageDesc) string {
 // ---- drawing ----
 
 func (e *Engine) syncVisuals() {
+	e.syncStateVisuals()
+
 	ms := e.sim.Missiles()
 	sort.Slice(ms, func(i, j int) bool { return ms[i].ID < ms[j].ID })
 
