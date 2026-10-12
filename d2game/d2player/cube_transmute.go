@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2equip"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2rand"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2cube"
@@ -436,6 +437,15 @@ func (g *GameControls) SocketItem(target, filler *diablo2item.Item) (*diablo2ite
 	data, err := g.cubeTables()
 	if err != nil {
 		return nil, "", err
+	}
+
+	// INV_ServerTrySocketItem 0x560470 (VERIFIED): both items must be identified.
+	// The other conditions (filler type, free socket) are checked by the paths below.
+	if r := d2equip.SocketRefusal(d2equip.SocketAttempt{
+		TargetIdentified: target.IsIdentified(), TargetSocketed: true, TargetHasInv: true,
+		Sockets: 1, Filled: 0, FillerIsSocket: true, FillerIdentified: filler.IsIdentified(),
+	}); r != "" {
+		return nil, "", errors.New(r)
 	}
 
 	if target.Rolled() != nil {
