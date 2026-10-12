@@ -190,7 +190,7 @@ var matrixCache = map[matrixKey]ebiten.ColorM{}
 func effectEditsMatrix(e d2enum.DrawEffect) bool {
 	switch e {
 	case d2enum.DrawEffectPctTransparency25, d2enum.DrawEffectPctTransparency50, d2enum.DrawEffectPctTransparency75,
-		d2enum.DrawEffectMod2XTrans, d2enum.DrawEffectMod2X:
+		d2enum.DrawEffectBurn, d2enum.DrawEffectMod2XTrans, d2enum.DrawEffectMod2X:
 		return true
 	}
 
@@ -372,10 +372,13 @@ func (s *ebitenSurface) handleStateEffect(opts *ebiten.DrawImageOptions) {
 		opts.ColorM.Translate(0, 0, 0, -transparency75)
 	case d2enum.DrawEffectModulate:
 		opts.CompositeMode = ebiten.CompositeModeLighter
-	// Burn is the multiplicative PL2 table E (dst*src): ebiten's multiply keeps the
-	// destination where the source is transparent.
+	// Burn is the multiplicative PL2 table E (dst*src). ebiten's multiply is src*dst with no term for the
+	// destination under a transparent source, so every transparent pixel of the sprite turned the
+	// destination black (the flies of Duriel's Lair were solid 40x45 black boxes, w51): the matrix makes
+	// the transparent pixels white, the neutral factor.
 	case d2enum.DrawEffectBurn:
 		opts.CompositeMode = ebiten.CompositeModeMultiply
+		opts.ColorM.Concat(burnFillMatrix())
 	case d2enum.DrawEffectNormal:
 		opts.CompositeMode = ebiten.CompositeModeSourceOver
 	// Mod2XTrans is PL2 table G: the pixel blends over the destination with a weight that rises
@@ -610,4 +613,20 @@ func (s *ebitenSurface) RenderShadedGrid(sfc d2interface.Surface, cols, rows int
 	s.image.DrawTriangles(vertices, shadedIndices(cols, rows), src, &ebiten.DrawTrianglesOptions{
 		ColorM: opts.ColorM, CompositeMode: opts.CompositeMode, Filter: opts.Filter,
 	})
+}
+
+// burnFillMatrix maps a pixel to (rgb + (1 - alpha), alpha 1): opaque pixels keep their colour, fully
+// transparent ones become opaque white, which is the identity of the multiplicative blend.
+func burnFillMatrix() ebiten.ColorM {
+	var m ebiten.ColorM
+
+	for c := 0; c < 3; c++ { //nolint:gomnd // r, g, b
+		m.SetElement(c, 3, -1)
+		m.SetElement(c, 4, 1)
+	}
+
+	m.SetElement(3, 3, 0)
+	m.SetElement(3, 4, 1)
+
+	return m
 }

@@ -30,7 +30,7 @@ func (t *TradeWindow) RunAutoTest() {
 
 	t.autoBuySell()
 
-	if t.vendor.Repairs {
+	if t.showsRepair() {
 		t.autoRepair()
 	}
 

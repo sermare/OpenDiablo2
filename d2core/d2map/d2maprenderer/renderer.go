@@ -77,6 +77,7 @@ type MapRenderer struct {
 	light               *lighting
 	entBuckets          map[[2]int]*entityBucket // per-frame entity index, see indexEntities
 	entFree             []*entityBucket
+	diagTiles           []TileRef                     // scratch of renderPass1
 	subKeys             []int8                        // scratch of renderEntitiesBySubtile
 	shadeVals           []color.RGBA                  // scratch for renderShadedImage
 	shadeGrids          map[shadeGridKey][]shadePoint // subtile offsets of the vertices of a grid, per image size
@@ -285,42 +286,59 @@ func (mr *MapRenderer) WorldToOrtho(x, y float64) (orthoX, orthoY float64) {
 	return mr.viewport.WorldToOrtho(x, y)
 }
 
-// Floors of the whole view first, then lower walls (a wall must never be
-// overpainted by the floor of a later tile).
+// Floors and lower walls, tile by tile in depth order (the exe draws the floor/lower-wall list bucket by bucket
+// in depth order, notes renderer.md b1). A lower wall follows the floor of its own tile and the floors of tiles
+// of a greater depth cover it. Row-major order drew the tall cliff faces of the Arreat Summit (style 0 of
+// expansion\siege\cliff.dt1, orientations 16-19, 700-860 px high, fading to white mist) after floors that lie
+// further down the screen, and two of them stood as translucent white bands over the ring (w51).
 func (mr *MapRenderer) renderPass1(target d2interface.Surface, startY, endY int, rows *TileRows) {
-	for tileY := startY; tileY < endY; tileY++ {
-		from, to := rows.Row(tileY)
+	mr.diagTiles = rows.DiagonalOrder(startY, endY, mr.diagTiles)
 
-		for tileX := from; tileX < to; tileX++ {
-			tile := mr.mapEngine.TileAt(tileX, tileY)
-			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
+	// the black filler floors (Blank.dt1) only stand for "nothing here": everything else is drawn above them,
+	// whatever the order (a filler of a later tile must not black out a cliff face, w51)
+	for _, ref := range mr.diagTiles {
+		tileX, tileY := int(ref.X), int(ref.Y)
+		tile := mr.mapEngine.TileAt(tileX, tileY)
 
-			for _, floor := range tile.Components.Floors {
-				if !floor.Hidden() && floor.Prop1 != 0 {
-					mr.renderFloor(floor, target, tileX, tileY)
-				}
+		for _, floor := range tile.Components.Floors {
+			if isBlankFloor(&floor) {
+				mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
+				mr.renderFloor(floor, target, tileX, tileY)
+				mr.viewport.PopTranslation()
 			}
-
-			mr.viewport.PopTranslation()
 		}
 	}
 
-	for tileY := startY; tileY < endY; tileY++ {
-		from, to := rows.Row(tileY)
+	for _, ref := range mr.diagTiles {
+		tileX, tileY := int(ref.X), int(ref.Y)
+		tile := mr.mapEngine.TileAt(tileX, tileY)
+		mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
 
-		for tileX := from; tileX < to; tileX++ {
-			tile := mr.mapEngine.TileAt(tileX, tileY)
-			mr.viewport.PushTranslationWorld(float64(tileX), float64(tileY))
-
-			for idx, wall := range tile.Components.Walls {
-				if !wall.Hidden() && wall.Prop1 != 0 && wall.Type.LowerWall() {
-					mr.renderWall(wall, mr.viewport, target, tileX, tileY, idx, false)
-				}
+		for _, floor := range tile.Components.Floors {
+			if !floor.Hidden() && floor.Prop1 != 0 && !isBlankFloor(&floor) {
+				mr.renderFloor(floor, target, tileX, tileY)
 			}
-
-			mr.viewport.PopTranslation()
 		}
+
+		for idx, wall := range tile.Components.Walls {
+			if !wall.Hidden() && wall.Prop1 != 0 && wall.Type.LowerWall() {
+				mr.renderWall(wall, mr.viewport, target, tileX, tileY, idx, false)
+			}
+		}
+
+		mr.viewport.PopTranslation()
 	}
+}
+
+// blankFloorStyle and blankFloorSequence are the DS1 convention for "no floor" (Blank.dt1, a black diamond).
+const (
+	blankFloorStyle    = 30
+	blankFloorSequence = 0
+)
+
+// isBlankFloor reports whether a floor cell is a black filler.
+func isBlankFloor(t *d2ds1.Tile) bool {
+	return !t.Hidden() && t.Prop1 != 0 && t.Style == blankFloorStyle && t.Sequence == blankFloorSequence
 }
 
 // Entities below walls.

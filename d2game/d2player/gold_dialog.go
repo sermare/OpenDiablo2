@@ -27,7 +27,7 @@ type stashCoin struct {
 
 // loadStashCoin builds the stash coin button (UI_DrawGoldAmountAndTooltip 0x484250, GoldStash variant).
 func (g *GameControls) loadStashCoin() {
-	lay := Mode800.Gold(GoldStash, false)
+	lay := Mode800.Gold(GoldStash, true) // the stash is open, so UI_GetOpenPanelMask != 0: the amount stands in the box under the title (w51)
 
 	c := &stashCoin{group: g.ui.NewWidgetGroup(d2ui.RenderPriorityInventory)}
 
