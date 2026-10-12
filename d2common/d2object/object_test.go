@@ -53,8 +53,8 @@ func TestInstant(t *testing.T) {
 		want Vitals
 	}{
 		{ShrineRefill, Vitals{100, 100, 50, 50}},
-		{ShrineHealth, Vitals{60, 100, 10, 50}},
-		{ShrineMana, Vitals{30, 100, 20, 50}},
+		{ShrineHealth, Vitals{100, 100, 10, 50}},
+		{ShrineMana, Vitals{30, 100, 50, 50}},
 		{ShrineHealthExchange, Vitals{15, 100, 50, 50}}, // 15 taken * 5 = 75 mana, capped at 50
 		{ShrineManaExchange, Vitals{100, 100, 5, 50}},   // 5 taken * 5 = 25 -> 55 capped... 30+25
 	}
@@ -225,7 +225,7 @@ func TestRollShrine(t *testing.T) {
 	}
 
 	for _, s := range DefaultShrines {
-		if s.Code != ShrineNone && !s.Out && !seen[s.Code] {
+		if (s.EffectClass == 4 || s.EffectClass == 1) && s.Code != ShrineNone && s.Code != ShrineEnirhs && !seen[s.Code] {
 			t.Errorf("%s never rolled", s.Name)
 		}
 	}

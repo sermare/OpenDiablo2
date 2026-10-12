@@ -48,9 +48,9 @@ type Shrine struct {
 	Rarity        int
 	EffectClass   int // 1 magic, 2 health, 3 mana, 4 refill and boosters
 	LevelMin      int
-	// Out marks rows whose description says "(OUT)" (cut features; the
-	// binary still has an effect function for them, whether they spawn is
-	// UNVERIFIED).
+	// Out marks rows whose description says "(OUT)" (text of cut features). VERIFIED (0x54d5c0, 0x54d840): the roll
+	// does not skip them; the exchange rows 4 and 5 and the Enirhs row 16 are remapped to rows 2, 3 and 18
+	// (RemapShrineCode), and rows 2 and 3 are the real health and mana shrines.
 	Out bool
 	// Sound is the Sounds.txt handle played when the shrine is used
 	// (ESOUND_SHRINE_*; which shrine plays which is UNVERIFIED but the names
@@ -289,16 +289,6 @@ func RollShrine(rows []Shrine, r *Roller, levelID, parm0 int, includeOut bool) (
 	}
 
 	return ShrineByCode(rows, RemapShrineCode(pick.Code))
-}
-
-func containsInt(a []int, v int) bool {
-	for _, x := range a {
-		if x == v {
-			return true
-		}
-	}
-
-	return false
 }
 
 // ShrineRetries is the number of rerolls the exe allows when a rolled shrine's LevelMin exceeds the

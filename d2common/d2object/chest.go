@@ -21,9 +21,10 @@ type ChestState struct {
 // ErrAlreadyOpened is returned when a used container is operated again.
 var ErrAlreadyOpened = errors.New("object: already opened")
 
-// NewChest builds the state of a freshly spawned container. Lockable rows are
-// locked (UNVERIFIED: no key item, a click unlocks) and TrapProb is the percent
-// chance of a trap (UNVERIFIED reading of the column).
+// NewChest builds the state of a freshly spawned container the simple way: Lockable rows are locked and TrapProb
+// is the percent chance of a trap. The exe does it differently (VERIFIED, init 0x54da20 / 0x54db00, see
+// RollChestInit in gaps.go): the trap chance is monLvl/8+5, the lock chance monLvl/2+8, and a locked container needs
+// a key item (ContainerDropRolls); the engine uses RollChestInit, this helper stays for the tools and tests.
 func NewChest(def Def, r *Roller) ChestState {
 	return ChestState{
 		Locked: def.Lockable,

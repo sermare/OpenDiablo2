@@ -25,9 +25,14 @@ func TestCheckActTravel(t *testing.T) {
 	}{
 		{"1->2 without Andariel", 1, 2, &d2s.QuestRecord{}, true, false, ErrQuestNotDone},
 		{"1->2 with Andariel", 1, 2, done(slotAndariel), false, false, nil},
-		{"1->2 reward pending counts", 1, 2, func() *d2s.QuestRecord {
+		{"1->2 reward pending is not enough (0x577b70 tests bit 0)", 1, 2, func() *d2s.QuestRecord {
 			q := &d2s.QuestRecord{}
 			q.Set(slotAndariel, d2s.QuestBitRewardPending)
+			return q
+		}(), false, false, ErrQuestNotDone},
+		{"3->4 portal accepts reward pending", 3, 4, func() *d2s.QuestRecord {
+			q := &d2s.QuestRecord{}
+			q.Set(slotMephisto, d2s.QuestBitRewardPending)
 			return q
 		}(), false, false, nil},
 		{"2->3 without Duriel", 2, 3, done(slotAndariel), false, false, ErrQuestNotDone},
@@ -90,6 +95,16 @@ func TestActStartLevelsOfRules(t *testing.T) {
 	for _, r := range ActRules {
 		if ActStartLevel(r.To) == 0 || !IsTown(ActStartLevel(r.To)) {
 			t.Errorf("rule %d->%d has no town destination", r.From, r.To)
+		}
+	}
+}
+
+func TestNPCTravelSlots(t *testing.T) {
+	// the slots 0x577b70 tests: Warriv 6, Meshif 0xe, Tyrael 0x1a
+	for class, slot := range map[int]int{ClassWarriv1: 6, ClassMeshif1: 0xe, ClassTyrael2: 0x1a} {
+		r, ok := RuleForNPC(class)
+		if !ok || r.QuestSlot != slot {
+			t.Errorf("class %d: slot %d, want %d", class, r.QuestSlot, slot)
 		}
 	}
 }

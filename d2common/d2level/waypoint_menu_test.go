@@ -146,8 +146,8 @@ func TestValidateTravel(t *testing.T) {
 		{"ok", func(*TravelRequest) {}, TravelOK},
 		{"object missing", func(r *TravelRequest) { r.ObjectFound = false }, TravelNoObject},
 		{"other act object", func(r *TravelRequest) { r.ObjectAct = 2 }, TravelNotActive},
-		{"far", func(r *TravelRequest) { r.Far = true }, TravelBadRequest},
-		{"far beats close menu", func(r *TravelRequest) { r.Far, r.Target = true, 0 }, TravelBadRequest},
+		{"far", func(r *TravelRequest) { r.Far = true }, TravelNoObject},
+		{"far beats close menu", func(r *TravelRequest) { r.Far, r.Target = true, 0 }, TravelNoObject},
 		{"close menu", func(r *TravelRequest) { r.Target = 0 }, TravelOK},
 		{"not activated", func(r *TravelRequest) { r.Target = 4 }, TravelNotActive},
 		{"level without waypoint", func(r *TravelRequest) { r.Target = 2 }, TravelBadRequest},
@@ -244,3 +244,18 @@ func TestNpcWaypoints(t *testing.T) {
 
 // Warriv's menu entry needs the slot of Sisters to the Slaughter's reward: slot 6 (Act I quest 6 is slot 6 + the prologue).
 func slotAndarielForTest() int { return 6 }
+
+func TestWaypointReach(t *testing.T) {
+	if WaypointReachTiles(0) != 2 || WaypointReachTiles(1) != 4.4 || WaypointReachTiles(6) != 2 {
+		t.Fatal("reach by class")
+	}
+
+	for _, c := range []struct {
+		dx, dy, r int
+		far       bool
+	}{{10, 10, 10, false}, {11, 0, 10, true}, {-11, 0, 10, true}, {0, -10, 10, false}, {8, 8, 10, false}, {22, 22, 22, false}, {0, 23, 22, true}} {
+		if FarFromWaypoint(c.dx, c.dy, c.r) != c.far {
+			t.Fatalf("%+v", c)
+		}
+	}
+}

@@ -25,8 +25,7 @@
 //     133, 134, 135 ("Pandemonium 1..3") and 136 ("Pandemonium Finale"); the
 //     CubeMain.txt rows that open the portals (see d2cube).
 //   - UNVERIFIED (community knowledge, nothing in the data): which of the three
-//     areas a key set opens (modelled as an injected choice), the keys' drop
-//     sources (Hell Andariel, Duriel and Mephisto), the order and delays in
+//     areas a key set opens (modelled as an injected choice), the order and delays in
 //     which the three Tristram bosses arrive, the Standard of Heroes (item
 //     code "std", not in the tables) and the red portal object.
 package d2uber
@@ -54,13 +53,6 @@ const (
 	ClassLilith       = 707 // monstats id "uberandariel"
 	ClassUberDuriel   = 708
 	ClassUberBaal     = 709
-)
-
-// Normal-game bosses that drop the keys (UNVERIFIED), by exe class.
-const (
-	classAndariel = 156
-	classDuriel   = 211
-	classMephisto = 242
 )
 
 // Item codes the event drops besides the organs and keys of d2cube.
@@ -117,22 +109,16 @@ func AreaOf(level int) (Area, bool) {
 	return Area{}, false
 }
 
-// KeyDrop returns the key a normal-game boss drops in Hell (UNVERIFIED).
-func KeyDrop(class, difficulty int) (string, bool) {
-	if difficulty < 2 {
-		return "", false
-	}
-
-	switch class {
-	case classAndariel:
-		return CodeKeyTerror, true
-	case classDuriel:
-		return CodeKeyHate, true
-	case classMephisto:
-		return CodeKeyDestr, true
-	}
-
-	return "", false
+// KeyTreasureClasses names the Hell treasure classes of treasureclassex.txt that carry a Pandemonium key (VERIFIED in
+// the table: only the Hell classes of the Countess, the Summoner and Nihlathak list pk1, pk2 and pk3).
+// The keys therefore come out of the ordinary super unique treasure class roll (d2drop), at the table's chance, and
+// not from Andariel, Duriel and Mephisto (their Hell classes carry the essences). The engine adds no separate key drop.
+//
+//nolint:gochecknoglobals // static lookup data
+var KeyTreasureClasses = map[string]string{
+	"Countess Item (H)": CodeKeyTerror,
+	"Summoner (H)":      CodeKeyHate,
+	"Nihlathak (H)":     CodeKeyDestr,
 }
 
 // Event is the Pandemonium event; it implements d2boss.Encounter.

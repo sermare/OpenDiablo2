@@ -256,7 +256,7 @@ func (v *Game) levelGate(from, to int, via string) error {
 	}
 
 	switch d2level.GateVia(via) {
-	case d2level.GateWarp, d2level.GateWaypoint:
+	case d2level.GateWarp: // not the waypoint: the exe's waypoint trip reads no QuestFlag (0x547450, 0x582e30)
 		return d2level.CheckLevelGate(from, to, d2level.GateVia(via), v.heroExpansion(), q)
 	}
 
@@ -743,7 +743,7 @@ func (v *Game) onWaypointChosen(level int) {
 		PlayerAct: d2level.ActOfLevel(cur),
 		ObjectAct: d2level.ActOfLevel(v.levels.wpLevel),
 		Distance:  dist,
-		Range:     objectRange(d2level.ObjectWaypoint),
+		Range:     d2level.WaypointReachTiles(v.heroExeClass()) + objectReachSlack,
 		Target:    level,
 		Diff:      d2level.Difficulty(v.gameClient.Difficulty),
 		Waypoints: v.gameClient.Progress.Waypoints,

@@ -8,8 +8,12 @@ package d2quest
 // mode of the forge to 3, clears the progress bits of slot 27, sets bits 0xd and 1 (reward pending), sets the
 // shower tier to 4 and the quest state to 4. The hammer is destroyed with the smash (0x5b3710 removes "hfh "
 // and "mss "). The hammer drop of Hephasto is in a345.go's history (0x5b4190).
-// UNVERIFIED in the exe (D2MOO ACT4Q3): Cain's message 679 creates the soulstone when the hero has none, the
-// leave-town and start bits, the log pages.
+// VERIFIED (0x5b3d00, wave 44): Cain's message 679 (0x2a7) creates the soulstone ("mss ") with
+// QUEST_GiveQuestItemToPlayer, which does not look for an existing one; the quest data byte +2 and +0x1c are set
+// and the state goes to 2 when it was lower, only if the item was created. Message 678 (0x2a6) sets +2 and state 2;
+// message 680 (0x2a8) needs bits 1 and 0xd of slot 27. Whether the hero already holds a stone is decided by the
+// speech (0x5b3ec0), not by the handler.
+// UNVERIFIED in the exe (D2MOO ACT4Q3): the leave-town and start bits, the log pages.
 
 type forgeData struct {
 	hits           int
@@ -95,11 +99,10 @@ func newHellforge() *Quest {
 
 			g.setState(q, 2)
 		case 679:
-			// Cain makes a new soulstone for a hero who has none
-			if !g.hasItem(ItemMephistoSoulstone) {
-				g.emit(Effect{Kind: EffectGiveItem, Quest: q.ID, Code: ItemMephistoSoulstone,
-					Note: "Cain gives a soulstone (UNVERIFIED in the exe, D2MOO ACT4Q3)"})
-			}
+			// VERIFIED (0x5b3d00): the handler always creates a soulstone; the speech offers the line only to a
+			// hero without one
+			g.emit(Effect{Kind: EffectGiveItem, Quest: q.ID, Code: ItemMephistoSoulstone,
+				Note: "Cain gives a soulstone (0x5b3d00 message 0x2a7)"})
 
 			d.cainActivated, d.stoneGiven = true, true
 

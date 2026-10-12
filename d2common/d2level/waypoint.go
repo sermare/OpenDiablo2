@@ -103,8 +103,8 @@ func WaypointList(wp d2s.Waypoints, diff Difficulty, act int, canLoad func(level
 }
 
 // Waypoint travel errors. The original returns small integers
-// (SERVER_ValidateWaypointTravel 0x547450: 0 ok, 1..3 errors); their exact
-// numbering is UNVERIFIED, so they are named here instead.
+// (SERVER_ValidateWaypointTravel 0x547450: 0 ok, 1..3 errors, VERIFIED: see
+// TravelCode in waypoint_menu.go); the errors are named here instead.
 var (
 	ErrWaypointCooldown     = errors.New("waypoint: less than 10 s since the last level change")
 	ErrWaypointWrongAct     = errors.New("waypoint: object is in another act than the player")
@@ -114,10 +114,41 @@ var (
 )
 
 // WaypointRange is the distance (tiles) within which the waypoint object can
-// be used. The original reads the range from objects.txt OperateRange via
-// 0x546de0 (value in a register, UNVERIFIED); 2 matches the column for the
-// waypoint objects.
+// be used. VERIFIED (0x547450): the range is not read from objects.txt; the
+// validator loads 10 subtiles (2 tiles) into the radius register of
+// UNIT_IsFarFromPoint 0x546de0, and 0x16 = 22 subtiles when the hero's class
+// id is 1 (the sorceress). The test is per axis (|dx| and |dy| each within the
+// radius), not Euclidean.
 const WaypointRange = 2.0
+
+// Waypoint reach in subtiles (VERIFIED, 0x547450 loads EBX before the call to 0x546de0).
+const (
+	WaypointReachSubtiles          = 10
+	WaypointReachSorceressSubtiles = 22
+	waypointSorceressClass         = 1
+)
+
+// WaypointReachTiles is the range in tiles for a hero of the exe class id (0 amazon, 1 sorceress ...).
+func WaypointReachTiles(heroClass int) float64 {
+	if heroClass == waypointSorceressClass {
+		return WaypointReachSorceressSubtiles / 5.0
+	}
+
+	return WaypointReachSubtiles / 5.0
+}
+
+// FarFromWaypoint is UNIT_IsFarFromPoint (0x546de0, VERIFIED): far when |dx| or |dy| (subtiles) exceeds the radius.
+func FarFromWaypoint(dx, dy, radius int) bool {
+	if dx < 0 {
+		dx = -dx
+	}
+
+	if dy < 0 {
+		dy = -dy
+	}
+
+	return dx > radius || dy > radius
+}
 
 // WaypointRequest is a C2S 0x49 (take waypoint) as the server sees it.
 type WaypointRequest struct {

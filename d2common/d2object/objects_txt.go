@@ -11,13 +11,14 @@ import (
 // table at DAT_009654b0 has a 0x1c0-byte stride and is indexed by the unit's
 // class id; see notes units.md). PopulateFn is VERIFIED (550680): the byte at
 // record +0x1b2 (< 10) indexes the handler table at 72f6b8, called with
-// (density, object id, 100). The meaning of Parm0 is UNVERIFIED (not read
-// by the population code).
+// (density, object id, 100). Parm0 is not read by the population code; where the exe reads it (VERIFIED): a shrine
+// takes it as the class selector of its roll (ShrineClassForParm0, 0x54d840), a well as its refill delay in frames
+// (0x5837b0); its meaning for other rows is not decoded.
 type Def struct {
 	ID             int
 	Name           string
 	SpawnMax       int
-	TrapProb       int // percent chance a Lockable/trappable container is trapped (UNVERIFIED use; not read by the scatter code, 550680)
+	TrapProb       int // objects.txt TrapProb; not read by the scatter code (550680) nor by the container init (0x54db00), which rolls monLvl/8+5 (TrapChancePct)
 	Act            int // bit mask: 1..8 = acts 1..4 classic, 16 = act 5 (expansion); 15 = acts 1-4
 	SubClass       int // 1 shrine, 2 obelisk, 4 portal, 8 container, 16 sanctuary gate, 32 well, 64 waypoint, 128 jail door
 	OperateFn      int

@@ -16,8 +16,9 @@ import (
 // 0x58ae70) concerns a flagged level that a plain warp reaches. The engine applies the table like this:
 //   - Portal: VERIFIED w37 (0x582700): only another hero's town portal object is tested, bit 0 only (CheckPortalGate); the
 //     game screen no longer routes portals through CheckLevelGate (the entry below stays for the tests and tools).
-//   - Waypoint: the table, UNVERIFIED (the exe was not seen to read it there; a hero cannot have the waypoint
-//     of a flagged level without having walked in, so the rule only guards forged states).
+//   - Waypoint: VERIFIED w44 that the exe does not read the column: SERVER_ValidateWaypointTravel (0x547450) and
+//     SERVER_ExecuteWaypointTravel (0x582e30) test the act, the distance and the activated waypoint bit only. The
+//     game screen therefore no longer gates waypoint trips (CheckLevelGate still accepts GateWaypoint for the tools).
 //   - Warp: only the Worldstone Keep levels 128..132 (the exe's warp list names 128 from 120 and 132; both
 //     wait on the Rite of Passage node, UNVERIFIED for 132 whose exe check reads another byte, +0x86 of the
 //     Eve of Destruction node, not decoded). The other flagged levels (the Durance, Duriel's lair, the

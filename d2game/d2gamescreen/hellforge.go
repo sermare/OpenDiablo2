@@ -14,9 +14,9 @@ import (
 // every pulse that produced an item, pulses are 0x14 frames apart, and at stage
 // 0 an expansion game gets one rune of the difficulty (roll of 11).
 //
-// UNVERIFIED: the number of items per pulse (the exe reads it from quest data
-// +0x14; hellforgeCount is a guess) and the start stage 4. The items fall at
-// the hero's feet, not at the anvil object.
+// VERIFIED (0x5b3820 operate, 0x5b42d0 tick, notes verify-diablo-hellforge.md): the smash sets the stage to 4 and
+// the items per pulse (node data +0x14) to 1. The exe drops the items from the forge object itself; here they fall
+// at the hero's feet (an engine placement, not the exe's).
 const hellforgeCount = 1
 
 // forgeShower is a running shower and its clock.

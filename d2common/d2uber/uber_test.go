@@ -1,6 +1,8 @@
 package d2uber
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -224,18 +226,39 @@ func TestUseCube(t *testing.T) {
 	}
 }
 
-func TestKeyDrop(t *testing.T) {
-	tests := []struct {
-		class, diff int
-		want        string
-	}{
-		{156, 2, "pk1"}, {211, 2, "pk2"}, {242, 2, "pk3"}, {156, 1, ""}, {243, 2, ""},
+func TestKeyTreasureClasses(t *testing.T) {
+	dir := os.Getenv("D2_TABLES")
+	if dir == "" {
+		t.Skip("D2_TABLES not set")
 	}
 
-	for _, tt := range tests {
-		got, ok := KeyDrop(tt.class, tt.diff)
-		if got != tt.want || ok != (tt.want != "") {
-			t.Errorf("KeyDrop(%d,%d) = %q,%v", tt.class, tt.diff, got, ok)
+	raw, err := os.ReadFile(filepath.Join(dir, "itemgen", "patch_d2", "TreasureClassEx.txt"))
+	if err != nil {
+		t.Skip(err)
+	}
+
+	found := map[string]string{}
+
+	for _, line := range strings.Split(string(raw), "\n")[1:] {
+		f := strings.Split(line, "\t")
+		if len(f) < 2 || strings.HasPrefix(f[0], "Pandemonium Key") {
+			continue
+		}
+
+		for _, c := range f[1:] {
+			if c == CodeKeyTerror || c == CodeKeyHate || c == CodeKeyDestr {
+				found[f[0]] = c
+			}
+		}
+	}
+
+	if len(found) != len(KeyTreasureClasses) {
+		t.Fatalf("table rows %v, KeyTreasureClasses %v", found, KeyTreasureClasses)
+	}
+
+	for tc, code := range KeyTreasureClasses {
+		if found[tc] != code {
+			t.Errorf("%s: table %q, want %q", tc, found[tc], code)
 		}
 	}
 }
