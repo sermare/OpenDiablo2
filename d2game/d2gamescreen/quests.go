@@ -144,7 +144,8 @@ func (v *Game) quests() *questRuntime {
 		p.Stats.SkillPoints, p.Stats.StatsPoints, p.Gold)
 
 	for _, l := range r.g.Log() {
-		v.Infof("QUEST LOG act=%d quest=%d status=%d page=%d", l.Act, l.Index, l.Status, l.Page)
+		v.Infof("QUEST LOG act=%d quest=%d status=%d page=%d view=%d/%d/%s", l.Act, l.Index, l.Status, l.Page,
+			l.View.Cat, l.View.Page, l.View.Key)
 	}
 
 	r.dirty = true
@@ -571,37 +572,41 @@ func (v *Game) syncQuestLog() {
 	r.dirty = false
 
 	statuses := map[int]int{}
+	texts := map[int]d2player.QuestText{}
 	changed := false
 
 	for _, l := range r.g.Log() {
 		key := d2player.QuestLogKey(l.Act, l.Index)
 
+		// the icon class and the text come from the client rules of the original (d2quest.ClientLogView)
 		st := d2enum.QuestStatusNotStarted
 
-		switch l.Status {
-		case d2quest.LogCompleted:
+		switch l.View.Cat {
+		case d2quest.LogCatAnimating:
+			st = d2enum.QuestStatusCompleting // the log plays the completion animation once
+		case d2quest.LogCatDone:
 			st = d2enum.QuestStatusCompleted
-			if l.Unseen {
-				st = d2enum.QuestStatusCompleting // the log plays the completion animation once
-			}
-		case d2quest.LogInProgress, d2quest.LogCompleting:
-			st = l.Page
+		case d2quest.LogCatActive:
+			st = l.View.Page
 			if st < 1 {
 				st = d2enum.QuestStatusInProgress
 			}
 		}
 
 		statuses[key] = st
+		texts[key] = d2player.QuestText{Key: l.View.Key, Count: l.View.Count, Append: l.View.Append}
 
 		if old, seen := r.logSeen[key]; seen && old != st {
 			changed = true
 
-			v.Infof("QUEST LOG act=%d quest=%d status=%d page=%d (was %d)", l.Act, l.Index, l.Status, l.Page, old)
+			v.Infof("QUEST LOG act=%d quest=%d status=%d page=%d view=%d/%d/%s (was %d)", l.Act, l.Index, l.Status, l.Page,
+				l.View.Cat, l.View.Page, l.View.Key, old)
 		}
 
 		r.logSeen[key] = st
 	}
 
+	v.gameControls.QuestLog().SetTexts(texts)
 	v.gameControls.QuestLog().SetStatuses(statuses)
 
 	if changed {

@@ -164,7 +164,7 @@ var npcMenuTable = map[int][]NPCMenuRow{
 	150: {rowTalk},                    // Kashya: Talk only in the static table (0x725d60); the exe adds Hire from hero level 8 (d2npc.Options)
 	198: {rowTalk, rowHire},           // Greiz
 	252: {rowTalk, rowHire, rowTrade}, // Asheara
-	515: {rowTalk, rowHire},           // Qual-Kehk (quest-gated in HIRE_ProcessHireOffer)
+	515: {rowTalk, rowHire},           // Qual-Kehk: the exe row has only Talk (w50: the reset routine 0x4ae9f0 and the revive filter 0x4b2ce0 add nothing else); Hire is kept on purpose (UNVERIFIED how the original reaches his list)
 
 	// No Talk row
 	257: {rowTradeRepair},      // Halbu
@@ -181,8 +181,9 @@ var npcMenuTable = map[int][]NPCMenuRow{
 	175: {rowTalk, rowGoWest},   // Warriv2
 	264: {rowTalk, rowSailWest}, // Meshif2
 
-	// GUESS: the notes say 0x202 lists Talk + Gamble but flag the
-	// oddity as unverified (the price code treats it as a buy vendor).
+	// VERIFIED (w50): the static table row of 0x202 is count 3 with the strings 0xd35 and 0xd46 (Talk, Gamble), and the
+	// server (TRADE_ServerHandleNpcMenuAction 0x577b70) opens a gamble session for 0x202 but no trade session (its trade
+	// list ends at 0x201).
 	514: {rowTalk, rowGamble}, // Nihlathak (town)
 }
 

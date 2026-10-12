@@ -455,13 +455,13 @@ func (g *Game) anyaLine(q *Quest, complete func(*Game, *Quest, string)) {
 // Anya opens the portal to his temple after her first line.
 func newBetrayal() *Quest {
 	q := newSpecQuest(&spec{
-		id: QuestBetrayal, slot: 38, act: 4, logIndex: 4, name: "Betrayal of Harrogath", label: "A5Q4",
+		id: QuestBetrayal, slot: 38, act: 4, logIndex: 4, name: "Betrayal of Harrogath", label: "A5Q4", logPage: betrayalLogPage,
 		start: 0, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 2}, rp: 3, done: 4,
 		steps: []step{{from: 1, npc: NPCDrehya, msg: 20137, to: 2, fx: func(g *Game, q *Quest) []Effect {
 			return []Effect{{Kind: EffectPortal, Quest: q.ID, Value: LevelNihlathakTemple, Note: "Anya opens the portal to Nihlathak's Temple"}}
 		}}},
 		trigs: []trig{
-			{ev: EvAreaChanged, level: LevelNihlathakTemple, max: 3, to: 3},
+			{ev: EvAreaChanged, level: LevelNihlathakTemple, max: 3, to: 3, bit: -1}, // VERIFIED 0x589900: only the state changes, bit 4 is Anya's
 			{ev: EvMonsterKilled, monster: NPCNihlathakBoss, goal: true, cond: func(g *Game, q *Quest) bool {
 				p := g.byID[QuestPrison]
 

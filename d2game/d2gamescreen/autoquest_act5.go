@@ -105,7 +105,8 @@ func (a *autoQuest) stageBetrayal() {
 		a.move(h, d2quest.LevelHarrogath)
 		a.offer(h, id, d2quest.NPCDrehya, 20137)
 		a.move(h, d2quest.LevelNihlathakTemple)
-		a.expect(h, "ENTERAREA bit, state 3", a.bit(h, id, d2quest.FlagEnterArea) && a.quest(h, id).State == 3)
+		// VERIFIED 0x589900: the area only moves the state; bit 4 is set by Anya's later line (20148)
+		a.expect(h, "state 3, no ENTERAREA bit yet", !a.bit(h, id, d2quest.FlagEnterArea) && a.quest(h, id).State == 3)
 		// D2MOO ACT5Q4_UnitIterate_SetRewardPending: Nihlathak counts once Prison of Ice is done or pending
 		if !a.bit(h, d2quest.QuestPrison, d2quest.FlagRewardGranted) && !a.bit(h, d2quest.QuestPrison, d2quest.FlagRewardPending) {
 			a.kill(h, d2quest.Event{Monster: d2quest.NPCNihlathakBoss})

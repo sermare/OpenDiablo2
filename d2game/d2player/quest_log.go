@@ -2,6 +2,7 @@ package d2player
 
 import (
 	"fmt"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2quest"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
@@ -108,6 +109,7 @@ func NewQuestLog(asset *d2asset.AssetManager,
 		tab:           tabs,
 		quests:        quests,
 		questStatus:   qs,
+		texts:         map[int]QuestText{},
 		maxPlayersAct: mpa,
 		audioProvider: audioProvider,
 	}
@@ -138,6 +140,7 @@ type QuestLog struct {
 	questDescr    *d2ui.Label
 	quests        [d2enum.ActsNumber]*questEntire
 	questStatus   map[int]int
+	texts         map[int]QuestText
 	maxPlayersAct int
 
 	originX int
@@ -165,10 +168,14 @@ func (s *QuestLog) questIconsTable(act, number int) string {
 	return fmt.Sprintf(d2resource.QuestLogAQuestAnimation, act, number+1)
 }
 
+// The frames of a quest picture (UI_DrawQuestLogPanel 0x49fc00): 0..23 the completion animation, 24 done, 26 not
+// available. A quest with a page shows frame 0 and, while it is the selected quest, frame 25 (VERIFIED: the draw call
+// picks (selected != socket) - 1 & 0x19, i.e. 0x19 for the selected socket and 0 otherwise).
 const (
-	completedFrame  = 24
-	inProgresFrame  = 25
-	notStartedFrame = 26
+	completedFrame      = 24
+	inProgresFrame      = 25
+	inProgressIdleFrame = 0
+	notStartedFrame     = 26
 )
 
 const (
@@ -300,7 +307,14 @@ func (s *QuestLog) loadQuestBoard(act int) (wg *d2ui.WidgetGroup, icons []*d2ui.
 
 	for n := 0; n < questsInAct; n++ {
 		cw := n
-		x, y := getPositionForSocket(n)
+
+		// VERIFIED 0x49fc00 / table 0x723230: the socket and the picture of a quest are not its title number everywhere
+		socketNo, art := n, n
+		if sk, pic, ok := d2quest.LogPlacement(act, n+1); ok {
+			socketNo, art = sk, pic-1
+		}
+
+		x, y := getPositionForSocket(socketNo)
 
 		socket, err := s.uiManager.NewSprite(d2resource.QuestLogSocket, d2resource.PaletteSky)
 		if err != nil {
@@ -310,7 +324,7 @@ func (s *QuestLog) loadQuestBoard(act int) (wg *d2ui.WidgetGroup, icons []*d2ui.
 		socket.SetPosition(x, y+iconOffsetY+questOffsetY)
 		sockets = append(sockets, socket)
 
-		icon, err := s.makeQuestIconForAct(act, n, x, y)
+		icon, err := s.makeQuestIconForAct(act, n, art, x, y)
 		if err != nil {
 			s.Error(err.Error())
 		}
@@ -369,8 +383,8 @@ func (s *QuestLog) loadQuestBoard(act int) (wg *d2ui.WidgetGroup, icons []*d2ui.
 	return wg, icons, buttons, sockets
 }
 
-func (s *QuestLog) makeQuestIconForAct(act, n, x, y int) (*d2ui.Sprite, error) {
-	iconResource := s.questIconsTable(act, n)
+func (s *QuestLog) makeQuestIconForAct(act, n, art, x, y int) (*d2ui.Sprite, error) {
+	iconResource := s.questIconsTable(act, art)
 
 	icon, err := s.uiManager.NewSprite(iconResource, d2resource.PaletteSky)
 	if err != nil {
@@ -386,7 +400,7 @@ func (s *QuestLog) makeQuestIconForAct(act, n, x, y int) (*d2ui.Sprite, error) {
 	case d2enum.QuestStatusNotStarted:
 		err = icon.SetCurrentFrame(notStartedFrame)
 	default:
-		err = icon.SetCurrentFrame(inProgresFrame)
+		err = icon.SetCurrentFrame(inProgressIdleFrame)
 	}
 
 	icon.SetPosition(x+questOffsetX, y+questOffsetY+iconOffsetY)
@@ -434,31 +448,20 @@ func (s *QuestLog) setQuestLabel() {
 	if s.selectedQuest == d2enum.QuestNone {
 		s.questName.SetText("")
 		s.questDescr.SetText("")
+		s.refreshIconFrames()
 
 		return
 	}
 
 	s.questName.SetText(s.asset.TranslateString(fmt.Sprintf("qstsa%dq%d", s.selectedTab+1, s.selectedQuest)))
 
-	status := s.questStatus[s.cordsToQuestID(s.selectedTab+1, s.selectedQuest)-1]
-	switch status {
-	case d2enum.QuestStatusCompleted, d2enum.QuestStatusCompleting:
-		s.questDescr.SetText(
-			s.wrapQuestDescription(s.asset.TranslateString("qstsprevious")),
-		)
-	case d2enum.QuestStatusNotStarted:
+	if descr := s.DescriptionText(s.selectedTab+1, s.selectedQuest); descr != "" {
+		s.questDescr.SetText(s.wrapQuestDescription(descr))
+	} else {
 		s.questDescr.SetText("")
-	default:
-		str := fmt.Sprintf("qstsa%dq%d%d", s.selectedTab+1, s.selectedQuest, status)
-		descr := fillCount(str, s.asset.TranslateString(str))
-
-		// if description not found
-		if str == descr {
-			s.questDescr.SetText("")
-		} else {
-			s.questDescr.SetText(s.wrapQuestDescription(descr))
-		}
 	}
+
+	s.refreshIconFrames()
 }
 
 // switch all socket (in current tab) to normal state

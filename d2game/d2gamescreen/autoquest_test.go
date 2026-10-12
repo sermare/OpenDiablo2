@@ -55,6 +55,7 @@ func (h *fakeHost) ImbuePending() bool {
 	return h.imbue
 }
 func (h *fakeHost) LogText(act, index int) string { return "" }
+func (h *fakeHost) OpenLog(act, index int)        {}
 func (h *fakeHost) FoesAlive() int                { return h.foes }
 func (h *fakeHost) Fight()                        {}
 func (h *fakeHost) SpawnFoes(n int)               { h.foes = n }
@@ -151,7 +152,7 @@ func TestAutoQuestScenarios(t *testing.T) {
 	for _, spec := range []string{"den", "burial", "tools", "cain", "tower", "andariel", "radament", "act1", "1", "Den of Evil",
 		"staff", "sun", "arcane", "summoner", "tombs", "lamesen", "khalim", "blade", "bird", "temple", "guardian",
 		"fallen", "terror", "hellforge", "siege", "rescue", "prison", "betrayal", "rite", "eve",
-		"act2", "act3", "act4", "act5", "acts2-5"} {
+		"act2", "act3", "act4", "act5", "acts2-5", "questlog"} {
 		spec := spec
 
 		t.Run(spec, func(t *testing.T) {
