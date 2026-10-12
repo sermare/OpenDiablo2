@@ -47,6 +47,7 @@ func (v *Game) hookNetwork() {
 	v.gameClient.OnPartyXP = v.onPartyXP
 	v.gameClient.OnPartyHeal = v.onPartyHeal
 	v.gameClient.OnPartyGold = v.onPartyGold
+	v.gameClient.OnGroundItem = v.onGroundItem
 	v.gameClient.OnQuestShare = v.onQuestShare
 	v.gameClient.OnRoster = v.onRoster
 	v.hookPortals()

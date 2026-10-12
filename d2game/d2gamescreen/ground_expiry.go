@@ -88,6 +88,7 @@ func (v *Game) advanceGroundExpiry() {
 		}
 
 		if d2groundexp.LiveExpired(g.stamp[it], frame) {
+			v.expireGround(it)
 			engine.RemoveEntity(it)
 			delete(g.stamp, it)
 

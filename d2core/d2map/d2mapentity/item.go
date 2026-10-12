@@ -22,6 +22,10 @@ type Item struct {
 	// gold from the world (monsters, chests). A player-owned pile is not shared with the
 	// party: it goes to the picker alone.
 	DropOwner string
+	// NetID is the server's id of the item in a multiplayer game ("" in single player, or before the server
+	// answered the drop); NetKey identifies the drop for the server's dedup; NetPending: a pickup was asked.
+	NetID, NetKey string
+	NetPending    bool
 	// DropSound is the Sounds.txt handle played when the item lands.
 	DropSound string
 }

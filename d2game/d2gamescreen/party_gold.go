@@ -45,6 +45,7 @@ func (v *Game) onPartyGold(p d2netpacket.PartyGoldPacket) {
 		if ent, err := v.gameClient.MapEngine.NewGoldPile(over, v.asset.TranslateString("gld"),
 			int(math.Round(x*subtilesInTile)), int(math.Round(y*subtilesInTile))); err == nil {
 			v.gameClient.MapEngine.AddEntity(ent)
+			v.announceGround(ent, "")
 		}
 	}
 

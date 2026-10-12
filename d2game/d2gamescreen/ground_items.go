@@ -245,6 +245,10 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 // pickUp moves a ground item to the cursor (packet 0x16, item mode 3 -> 4) or,
 // for gold, straight into the hero's purse.
 func (v *Game) pickUp(it *d2mapentity.Item) {
+	if v.requestGroundPickup(it) {
+		return // a multiplayer game: the server decides who gets it (ground_net.go)
+	}
+
 	if it.IsGold() {
 		if v.partyGold(it) {
 			v.playSoundAt("item_gold", it.GetPosition(), "pickup")
@@ -284,6 +288,11 @@ func (v *Game) pickUp(it *d2mapentity.Item) {
 	}
 
 	v.gameClient.MapEngine.RemoveEntity(it)
+	v.takeGroundItem(it)
+}
+
+// takeGroundItem puts a ground item (already off the ground) on the cursor and, with quick pickup, away.
+func (v *Game) takeGroundItem(it *d2mapentity.Item) {
 	v.gameControls.SetCursorItem(it.Item)
 	v.playSoundAt("item_pickup", it.GetPosition(), "pickup") // row 0xeb: item enters the cursor (ITEM_InitClientItem 0x4be1f0)
 	v.Infof("AUTOGROUND pickup name=%q quality=%s -> cursor", plainLabel(it.Label()), it.Item.QualityName())
@@ -561,6 +570,7 @@ func (v *Game) spawnGroundItem(it *diablo2item.Item, c d2ground.Cell) (*d2mapent
 	}
 
 	v.gameClient.MapEngine.AddEntity(ent)
+	v.announceGround(ent, "")
 	v.playGroundDrop(it, ent)
 
 	return ent, nil
@@ -579,6 +589,7 @@ func (v *Game) dropGoldOverflow(from *d2mapentity.Item, amount int) {
 	}
 
 	v.gameClient.MapEngine.AddEntity(ent)
+	v.announceGround(ent, "")
 	v.Infof("gold pickup: %d did not fit, left on the ground", amount)
 }
 
@@ -591,6 +602,7 @@ func (v *Game) spawnGoldPile(amount int, c d2ground.Cell) (*d2mapentity.Item, er
 	}
 
 	v.gameClient.MapEngine.AddEntity(ent)
+	v.announceGround(ent, "")
 	v.playSoundAt(ent.DropSound, ent.GetPosition(), "drop")
 
 	return ent, nil
