@@ -75,7 +75,7 @@ func (m *GuiManager) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 		return false
 	}
 
-	return m.layout.onMouseButtonDown(event)
+	return m.layout.onMouseButtonDown(shiftedEvent{event})
 }
 
 // OnMouseButtonUp handles the mouse button release events
@@ -84,7 +84,7 @@ func (m *GuiManager) OnMouseButtonUp(event d2interface.MouseEvent) bool {
 		return false
 	}
 
-	return m.layout.onMouseButtonUp(event)
+	return m.layout.onMouseButtonUp(shiftedEvent{event})
 }
 
 // OnMouseMove handles mouse movement events
@@ -96,7 +96,7 @@ func (m *GuiManager) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 		return false
 	}
 
-	return m.layout.onMouseMove(event)
+	return m.layout.onMouseMove(shiftedMove{event})
 }
 
 // Render renders the GuiManager to the given surface
@@ -107,7 +107,7 @@ func (m *GuiManager) Render(target d2interface.Surface) error {
 		// layouts are part of the 800x600 interface column
 		ox, oy := d2display.ColumnOrigin()
 		m.layout.SetSize(d2display.BaseW, d2display.BaseH)
-		target.PushTranslation(ox, oy)
+		target.PushTranslation(ox, oy+d2display.CenterShiftY()) // centred on the screen like the original menu
 		m.layout.render(target)
 		target.Pop()
 	}
@@ -201,3 +201,13 @@ func (m *GuiManager) clear() {
 	m.SetLayout(nil)
 	m.HideLoadScreen()
 }
+
+// shiftedEvent and shiftedMove give the layout the cursor in the space it is drawn in (centred on the screen, see
+// Render): the input manager reports column space, whose origin is the bottom anchored column.
+type shiftedEvent struct{ d2interface.MouseEvent }
+
+func (e shiftedEvent) Y() int { return e.MouseEvent.Y() - d2display.CenterShiftY() }
+
+type shiftedMove struct{ d2interface.MouseMoveEvent }
+
+func (e shiftedMove) Y() int { return e.MouseMoveEvent.Y() - d2display.CenterShiftY() }

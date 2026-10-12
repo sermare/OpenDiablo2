@@ -347,6 +347,8 @@ func (a *App) Run() (err error) {
 		a.captureState, a.capturePath, a.captureFrames = captureStateFrame, path, nil
 	}
 
+	d2gamescreen.AutoFlowCmd = a.autoFlowCmd
+
 	if os.Getenv("OD2_AUTOSCRIPT") != "" && os.Getenv("OD2_AUTOGAME") == "" && os.Getenv("OD2_AUTOFLOW") == "" {
 		a.Warning("OD2_AUTOSCRIPT needs OD2_AUTOGAME: the script only runs inside a game")
 	}
@@ -517,6 +519,7 @@ func (a *App) advance() error {
 	a.lastTime = current
 
 	a.advanceAutoShot(elapsedUnscaled)
+	d2gamescreen.AutoFlowTick(elapsedUnscaled)
 
 	elapsedLastScreenAdvance := (current - a.lastScreenAdvance) * a.timeScale
 	a.lastScreenAdvance = current

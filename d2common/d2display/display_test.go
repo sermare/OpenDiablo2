@@ -75,6 +75,28 @@ func TestResolve(t *testing.T) {
 	}
 }
 
+func TestCenterShiftY(t *testing.T) {
+	defer func() { Set(Base); SetAnchor(AnchorBottom) }()
+
+	for _, c := range []struct {
+		size   Size
+		anchor Anchor
+		want   int
+	}{
+		{Size{800, 600}, AnchorBottom, 0},
+		{Size{1920, 1080}, AnchorBottom, -240}, // column origin y 480, centred origin 240
+		{Size{3440, 1440}, AnchorBottom, -420},
+		{Size{1920, 1080}, AnchorCenter, 0}, // already centred
+	} {
+		SetAnchor(c.anchor)
+		Set(c.size)
+
+		if got := CenterShiftY(); got != c.want {
+			t.Errorf("%v anchor %v: shift %d, want %d", c.size, c.anchor, got, c.want)
+		}
+	}
+}
+
 func TestColumnRoundTrip(t *testing.T) {
 	Set(Size{1920, 1080})
 	SetAnchor(AnchorBottom)

@@ -102,6 +102,16 @@ town built (TownE1 for the sample hero) is the same on a second load; a new char
 screenshots in the run directory). `9f-ui-layout` is pinned to `OD2_DISPLAY=800x600` (the golden of rectangles is in
 column coordinates).
 
+## Display QA wave 45 (a1-display-qa2-*)
+
+Three scenarios take their shots into `OD2_QA_DIR` (outside the repo) for a look by eye; they check that the flow ran and that each shot has the window size (menu shots: centred 4:3).
+`a1-display-qa2-menus` (`OD2_QA2_SIZE`, default 1920x1080): main menu, credits, cinematics, character select, hero creation, escape menu, options, video, sound, automap, accessibility pages.
+`a1-display-qa2-game` (`OD2_QA2_SIZE`, `OD2_BAR_FILL`): town, character + inventory, skills + quests, automap, waypoint at 3440x1440 and 1440x1080 (4:3) with fill none, tile, black.
+`a1-display-qa2-window` (nothing pinned): window resize (1280x720, 4:3, 1000x600, 800x600), full screen on and off, UI scale 2 in full screen.
+New `OD2_AUTOFLOW` steps for them: `goto:credits|cinematics|mainmenu|charselect`, `resize:WxH`, `fullscreen:on|off|toggle`, `uiscale:N`, `pause:S` (they run on any screen, `AutoFlowTick`).
+Found and fixed: the escape menu and its option pages stood in the bottom anchored column (low on a 1920x1080 screen); they are now centred on the screen like the original (`d2display.CenterShiftY`, mouse shifted to match).
+Looked at, no fault: menus at 1920x1080, bar fill tile/black at 3440x1440 / 1440x1080, panels, resize, 4:3, full screen. Notes: the Video Options page still shows the row "800x600" whatever the window; the Cinematics screen shows the small trademark dot of the logo without the logo.
+
 ## Scenario scripts
 
 `scripts/verify.sh` exports `OD2_DISPLAY=1512x982` for every scenario unless `OD2_DISPLAY` is set. `click:` and `hold:` steps take

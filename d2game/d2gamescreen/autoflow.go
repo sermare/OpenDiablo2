@@ -35,7 +35,12 @@ import (
 //	exit                         anywhere: quit the program
 //	escmenu:Page                 in game: open the escape menu on a page (main, options, sound, video, automap, accessibility)
 //	mainmenu                   main menu: leave the trademark screen, wait for the real main menu
-//	shot:/path/x.png             anywhere: save a screenshot of the window (what the player sees)
+//	goto:Screen                  anywhere: credits, cinematics, mainmenu or charselect (AutoFlowCmd, display QA)
+//	resize:WxH                   anywhere: resize the window to W x H pixels
+//	fullscreen:on|off|toggle     anywhere: full screen, as Cmd+Enter does
+//	uiscale:N                    anywhere: the integer UI scale (the retina 2x)
+//	pause:Seconds                anywhere: wait (for screens that have no flow code of their own)
+//	shot:/path/x.png            anywhere: save a screenshot of the window (what the player sees)
 //
 // Every step is logged as "AUTOFLOW step <n> <step>".
 const autoFlowSettleSeconds = 1.5
@@ -47,6 +52,7 @@ type autoFlowState struct {
 	settle  float64 // seconds since the last step was taken
 	waiting float64 // seconds of an active wait: step
 	loaded  bool
+	ticked  bool // a screen already counted this frame's time (see AutoFlowTick)
 }
 
 //nolint:gochecknoglobals // the one flow of the process, set from the environment
@@ -90,6 +96,7 @@ func autoFlowNext(elapsed float64, verbs ...string) (args []string, ok bool) {
 
 	autoFlow.load()
 	autoFlow.settle += elapsed
+	autoFlow.ticked = true
 
 	if autoFlow.index >= len(autoFlow.steps) || autoFlow.settle < autoFlowSettleSeconds {
 		return nil, false
@@ -146,6 +153,58 @@ func autoFlowWait(elapsed float64, seconds string) bool {
 	autoFlow.waiting += elapsed
 
 	return autoFlow.waiting >= secs
+}
+
+// AutoFlowCmd is set by the app: it performs the screen-independent steps goto, resize, fullscreen and uiscale.
+//
+//nolint:gochecknoglobals // set once at start
+var AutoFlowCmd func(verb, arg string)
+
+// AutoFlowTick is called by the app every frame. It runs the screen-independent steps (goto, resize, fullscreen,
+// uiscale, pause) of OD2_AUTOFLOW, which the screens without flow code of their own (credits, cinematics) cannot,
+// and takes a shot: step when no screen asked for it.
+func AutoFlowTick(elapsed float64) {
+	autoFlow.Lock()
+	autoFlow.load()
+
+	if !autoFlow.ticked {
+		autoFlow.settle += elapsed
+	}
+
+	autoFlow.ticked = false
+
+	if autoFlow.index >= len(autoFlow.steps) {
+		autoFlow.Unlock()
+
+		return
+	}
+
+	step := autoFlow.steps[autoFlow.index]
+	ready := autoFlow.settle >= autoFlowSettleSeconds
+	autoFlow.Unlock()
+
+	verb, arg, _ := strings.Cut(step, ":")
+
+	switch verb {
+	case "pause":
+		if autoFlowWait(elapsed, arg) {
+			autoFlowDone()
+		}
+	case "goto", "resize", "fullscreen", "uiscale":
+		if ready {
+			autoFlowDone()
+
+			if AutoFlowCmd != nil {
+				AutoFlowCmd(verb, arg)
+			}
+		}
+	case "shot":
+		autoFlowNext(0, "shot")
+
+		autoFlow.Lock()
+		autoFlow.ticked = false // this call is not a screen: the next tick counts the time
+		autoFlow.Unlock()
+	}
 }
 
 // autoFlowExit performs an exit step.
