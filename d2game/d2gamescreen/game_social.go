@@ -66,6 +66,7 @@ func (v *Game) advanceSocial(_ float64) {
 	v.gameControls.OnSpeechSkip = v.skipSpeechByKey
 	v.syncPortals() // pairs that arrived while the map was still loading
 	v.gameControls.SetRelationSource(v.relationOf)
+	v.gameControls.OnDropGold = v.dropHeroGold
 
 	if pp := v.gameControls.PartyPanel; pp != nil {
 		pp.SetHooks(d2playerPartyHooks(v))

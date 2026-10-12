@@ -28,7 +28,7 @@ func TestGoldDialogGolden(t *testing.T) {
 	}
 
 	w := GoldDialog(GoldDlgWithdraw, 250, 150)
-	if w.TextID != 0xfd2 || w.StatLimit != 15 || w.PacketArg != 0x14 {
+	if w.TextID != 0xfd2 || w.StatLimit != 15 || w.PacketArg != 0x13 {
 		t.Errorf("withdraw: %+v", w)
 	}
 }

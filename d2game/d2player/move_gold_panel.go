@@ -1,12 +1,13 @@
 package d2player
 
 import (
-	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
 )
 
@@ -54,6 +55,12 @@ type MoveGoldPanel struct {
 	actionLabel2 *d2ui.Label
 	value        *d2ui.TextBox
 	ok, cancel   *d2ui.Button
+
+	// kind and limit describe the open dialog (UI_OpenPanelByIndex 0x44f7b0): the kind picks the text and the
+	// request, the limit is the purse the amount is taken from. onConfirm gets the amount of a pressed OK.
+	kind      d2inventory.GoldDialogKind
+	limit     int
+	onConfirm func(kind d2inventory.GoldDialogKind, amount int)
 
 	originX int
 	originY int
@@ -104,7 +111,7 @@ func (s *MoveGoldPanel) Load() {
 
 	s.value = s.uiManager.NewTextbox()
 	s.value.SetFilter(goldValueFilter)
-	s.value.SetText(fmt.Sprintln(s.gold))
+	s.value.SetText("")
 	s.value.Activate()
 	s.value.SetNumberOnly(s.gold)
 	s.value.SetPosition(lay.Edit.X, lay.Edit.Y+lay.Edit.H)
@@ -141,53 +148,68 @@ func (s *MoveGoldPanel) Load() {
 	s.panelGroup.SetVisible(false)
 }
 
+// SetOnConfirm sets the receiver of the amount of a pressed OK.
+func (s *MoveGoldPanel) SetOnConfirm(cb func(kind d2inventory.GoldDialogKind, amount int)) {
+	s.onConfirm = cb
+}
+
+// Amount is the amount typed in the edit box, held to the digits and the limit of the edit box.
+func (s *MoveGoldPanel) Amount() int {
+	return d2inventory.ClampGoldInput(strings.TrimSpace(s.value.GetText()), s.limit)
+}
+
 func (s *MoveGoldPanel) action() {
-	value, err := strconv.Atoi(s.value.GetText())
-	if err != nil {
-		s.Errorf("Invalid value in textbox (%s): %s", s.value.GetText(), err)
-		return
+	amount := s.Amount()
+
+	if d2inventory.GoldDialogRequest(s.kind, amount) && s.onConfirm != nil {
+		s.onConfirm(s.kind, amount)
 	}
 
-	// here should be placed move action (drop, deposite e.t.c.)
-
-	s.gold -= value
-	s.value.SetText(fmt.Sprintln(s.gold))
-	s.value.SetNumberOnly(s.gold)
 	s.Close()
 }
 
-func (s *MoveGoldPanel) increase() {
-	currentValue, err := strconv.Atoi(s.value.GetText())
-	if err != nil {
-		s.Errorf("Incorrect value in textbox (cannot be converted into intager) %s", err)
-		return
+func (s *MoveGoldPanel) setAmount(v int) {
+	if v < 0 {
+		v = 0
 	}
 
-	if currentValue < s.gold {
-		s.value.SetText(fmt.Sprintln(currentValue + 1))
+	if v > s.limit {
+		v = s.limit
 	}
+
+	s.value.SetText(strconv.Itoa(v))
 }
 
-func (s *MoveGoldPanel) decrease() {
-	currentValue, err := strconv.Atoi(s.value.GetText())
-	if err != nil {
-		s.Errorf("Incorrect value in textbox (cannot be converted into intager) %s", err)
-		return
+func (s *MoveGoldPanel) increase() { s.setAmount(s.Amount() + 1) }
+
+func (s *MoveGoldPanel) decrease() { s.setAmount(s.Amount() - 1) }
+
+// Texts of the four dialog kinds (string ids 0xfc1, 0xfce, 0xfd1, 0xfd2) with their English fallbacks.
+var goldDialogTexts = map[d2inventory.GoldDialogKind][2]string{ //nolint:gochecknoglobals // static
+	d2inventory.GoldDialogDrop:     {"strDropGoldHowMuch", "How much Gold would you like to drop?"},
+	d2inventory.GoldDialogTrade:    {"strOfferGoldHowMuch", "How much Gold would you like to offer?"},
+	d2inventory.GoldDialogDeposit:  {"strBankGoldDeposit", "How much Gold would you like to deposit?"},
+	d2inventory.GoldDialogWithdraw: {"strBankGoldWithdraw", "How much Gold would you like to withdraw?"},
+}
+
+// GoldDialogText is the question of a dialog kind.
+func GoldDialogText(tr func(string) string, kind d2inventory.GoldDialogKind) string {
+	e := goldDialogTexts[kind]
+	if s := tr(e[0]); s != "" && s != e[0] {
+		return s
 	}
 
-	if currentValue > 0 {
-		s.value.SetText(fmt.Sprintln(currentValue - 1))
-	}
+	return e[1]
 }
 
 func (s *MoveGoldPanel) setActionText() {
-	dropGoldStr := d2util.SplitIntoLinesWithMaxWidth(s.asset.TranslateString("strDropGoldHowMuch"), 20)
-	// nolint:gocritic // it will be used
-	// depositeGoldStr := d2util.SplitIntoLinesWithMaxWidth(s.asset.TranslateString("strBankGoldDeposit"), 20)
-	// witherawGoldStr := d2util.SplitIntoLinesWithMaxWidgh(s.asset.TranslateString("strBankGoldWithdraw"), 20)
+	lines := d2util.SplitIntoLinesWithMaxWidth(GoldDialogText(func(k string) string { return s.asset.TranslateString(k) }, s.kind), 20)
+	for len(lines) < 2 {
+		lines = append(lines, "")
+	}
 
-	s.actionLabel1.SetText(d2ui.ColorTokenize(dropGoldStr[0], d2ui.ColorTokenGold))
-	s.actionLabel2.SetText(d2ui.ColorTokenize(dropGoldStr[1], d2ui.ColorTokenGold))
+	s.actionLabel1.SetText(d2ui.ColorTokenize(lines[0], d2ui.ColorTokenGold))
+	s.actionLabel2.SetText(d2ui.ColorTokenize(lines[1], d2ui.ColorTokenGold))
 }
 
 // IsOpen returns true if the move gold panel is opened
@@ -204,8 +226,24 @@ func (s *MoveGoldPanel) Toggle() {
 	}
 }
 
-// Open opens the move gold panel
+// Open opens the move gold panel as the drop dialog of the carried gold.
 func (s *MoveGoldPanel) Open() {
+	s.OpenKind(d2inventory.GoldDialogDrop, s.gold, 0)
+}
+
+// OpenKind opens the dialog of a kind (UI_OpenPanelByIndex 0x44f7b0): limit is the purse it takes from
+// (d2inventory.GoldDialogLimit); the deposit opens with the whole limit typed in (d2inventory.GoldDialogPrefill).
+func (s *MoveGoldPanel) OpenKind(kind d2inventory.GoldDialogKind, limit, _ int) {
+	s.kind, s.limit = kind, limit
+	s.value.SetNumberOnly(limit)
+
+	if d2inventory.GoldDialogPrefill(kind) {
+		s.setAmount(limit)
+	} else {
+		s.value.SetText("")
+	}
+
+	s.setActionText()
 	s.isOpen = true
 	s.panelGroup.SetVisible(true)
 }
@@ -214,7 +252,10 @@ func (s *MoveGoldPanel) Open() {
 func (s *MoveGoldPanel) Close() {
 	s.isOpen = false
 	s.panelGroup.SetVisible(false)
-	s.onCloseCb()
+
+	if s.onCloseCb != nil {
+		s.onCloseCb()
+	}
 }
 
 // SetOnCloseCb the callback run on closing the HeroStatsPanel

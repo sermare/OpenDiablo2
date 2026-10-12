@@ -271,6 +271,10 @@ func NewGameControls(
 	gc.stash = NewContainerPanel(asset, ui, l, inventory, stashKind, gc.saveHero)
 	gc.cube = NewContainerPanel(asset, ui, l, inventory, cubeKind, gc.saveHero)
 	gc.cube.SetOnTransmute(gc.onTransmuteButton)
+	gc.loadStashCoin()
+	gc.inventory.goldClick = gc.onInventoryGoldClick
+	gc.inventory.moveGoldPanel.SetOnConfirm(func(k d2inventory.GoldDialogKind, n int) { gc.GoldMove(k, n) })
+	trade.SetStashGold(&hero.StashGold)
 	gc.stash.itemHook, gc.cube.itemHook = gc.itemTooltipLines, gc.itemTooltipLines
 	gc.Trade.compareHook = gc.compareLines
 	gc.cmpTooltip = ui.NewTooltip(d2resource.FontFormal11, d2resource.PaletteStatic, d2ui.TooltipXCenter, d2ui.TooltipYBottom)
@@ -358,10 +362,14 @@ type GameControls struct {
 	Trade             *TradeWindow
 	Identify          *IdentifyWindow
 	// OnTownPortal is called when a scroll or tome of town portal is right clicked.
-	OnTownPortal          func(src *diablo2item.Item)
-	PTrade                *PlayerTradeWindow // trade with another player
-	relation              func(p *d2mapentity.Player) d2enum.PlayersRelationships
-	stash                 *ContainerPanel
+	OnTownPortal func(src *diablo2item.Item)
+	PTrade       *PlayerTradeWindow // trade with another player
+	relation     func(p *d2mapentity.Player) d2enum.PlayersRelationships
+	stash        *ContainerPanel
+	stashCoin    *stashCoin
+
+	// OnDropGold leaves a gold pile of the amount on the ground at the hero (the drop gold dialog; set by the game screen).
+	OnDropGold            func(amount int)
 	cube                  *ContainerPanel
 	cubeData              *cubeData
 	cubePortal            func(kind string) error
@@ -1391,6 +1399,7 @@ func (g *GameControls) Advance(elapsed float64) error {
 	g.mapRenderer.Advance(elapsed)
 	g.hud.Advance(elapsed)
 	g.inventory.Advance(elapsed)
+	g.advanceStashCoin()
 	g.advancePotions(elapsed)
 	g.advanceNaturalRegen(elapsed)
 	g.advanceAmmo(elapsed)

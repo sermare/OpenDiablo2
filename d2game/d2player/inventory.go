@@ -90,7 +90,9 @@ type Inventory struct {
 	onCloseCb     func()
 	gold          int
 	moveGoldPanel *MoveGoldPanel
-	cursor        InventoryItem
+	// goldClick, when set, handles the click on the coin button (the game controls pick the dialog kind).
+	goldClick func()
+	cursor    InventoryItem
 	// savedItems is set when the hero's saved containers fill the grid, which
 	// then starts without the placeholder items.
 	savedItems bool
@@ -262,6 +264,13 @@ func (g *Inventory) SetOnCloseCb(cb func()) {
 
 func (g *Inventory) onGoldClicked() {
 	g.Info("Move gold action clicked")
+
+	if g.goldClick != nil {
+		g.goldClick()
+
+		return
+	}
+
 	g.toggleMoveGoldPanel()
 }
 

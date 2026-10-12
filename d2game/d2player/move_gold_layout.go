@@ -12,8 +12,8 @@ package d2player
 //
 //	0, 1  drop gold            text 0xfc1, amount limit = carried gold (stat 14)
 //	2     gold offer in trade  text 0xfce, amount limit = carried gold; OK sends the trade offer (0x4b5a60)
-//	3     bank deposit         text 0xfd1, limit = carried gold (stat 14); OK sends packet 0x4f with arg 0x13
-//	4     bank withdraw        text 0xfd2, limit = stash gold (stat 15); OK sends packet 0x4f with arg 0x14
+//	3     bank deposit         text 0xfd1, limit = carried gold (stat 14); OK sends packet 0x4f with arg 0x14 (server action 0x14 = deposit, w48 VERIFIED; the first reading had the two swapped)
+//	4     bank withdraw        text 0xfd2, limit = stash gold (stat 15); OK sends packet 0x4f with arg 0x13 (server action 0x13 = withdraw)
 //
 // OK on kinds 0/1 sends packet 0x50 with the amount (server SERVER_HandleC2S50_DropPlayerGold 0x54a620).
 // The amount typed is limited to the stat value and 10 digits.
@@ -118,9 +118,9 @@ func GoldDialogSized(kind GoldDlgKind, frameW, frameH int, sz GoldDlgSizes) Gold
 	case GoldDlgTrade:
 		l.TextID = 0xfce
 	case GoldDlgDeposit:
-		l.TextID, l.Packet, l.PacketArg = 0xfd1, 0x4f, 0x13
+		l.TextID, l.Packet, l.PacketArg = 0xfd1, 0x4f, 0x14
 	case GoldDlgWithdraw:
-		l.TextID, l.Packet, l.PacketArg, l.StatLimit = 0xfd2, 0x4f, 0x14, 15
+		l.TextID, l.Packet, l.PacketArg, l.StatLimit = 0xfd2, 0x4f, 0x13, 15
 	}
 
 	return l

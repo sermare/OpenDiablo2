@@ -10,7 +10,7 @@ func TestGoldDialogSized(t *testing.T) {
 		t.Errorf("sized: %v %v %v", l.Ok, l.Cancel, l.Spinner)
 	}
 
-	if l.Packet != 0x4f || l.PacketArg != 0x13 {
+	if l.Packet != 0x4f || l.PacketArg != 0x14 {
 		t.Errorf("packet %+v", l)
 	}
 }

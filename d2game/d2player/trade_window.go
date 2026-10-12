@@ -37,7 +37,6 @@ const (
 	tradePanelPad    = 8
 	tradeTitleY      = 100
 	tradeGoldY       = 420
-	tradeMsgY        = 486 // the reply message line under the buttons (UNVERIFIED anchor: the original opens a modal dialog)
 	tradeRepairX     = 195 // slot 0 of the strip of 0x721608: panel x 0x74 + 80 - 1
 	tradeRepairY     = 445 // the strip stands on y 477 (UI_DrawTradePanel 0x484570), 32 high
 	tradeRepairW     = 120
@@ -94,7 +93,7 @@ type TradeWindow struct {
 	tooltip    *d2ui.Tooltip
 	title      *d2ui.Label
 	goldLabel  *d2ui.Label
-	msgLabel   *d2ui.Label // the vendor's reply message (UI_ApplyNpcTransactionResultA 0x4b1c50), cleared on the next action
+	msgDlg     *NpcMessageDialog // the vendor's reply message, a modal dialog (UI_ApplyNpcTransactionResultA 0x4b1c50)
 	repairBtn  *d2ui.Button
 	closeBtn   *d2ui.Button
 	tabSprite  *d2ui.Sprite // buyselltabs.dc6: frames 0..3 selected, 4..7 other
@@ -215,12 +214,8 @@ func (t *TradeWindow) Load() {
 	t.title.Color[0] = color.RGBA{R: 255, G: 215, B: 0, A: 255}
 	t.panelGroup.AddWidget(t.title)
 
-	t.msgLabel = t.ui.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
-	t.msgLabel.Alignment = d2ui.HorizontalAlignLeft
-	t.msgLabel.SetPosition(left, tradeMsgY)
-	t.msgLabel.Color[0] = color.RGBA{R: 255, G: 80, B: 80, A: 255}
-	t.msgLabel.SetVisible(false)
-	t.panelGroup.AddWidget(t.msgLabel)
+	t.msgDlg = NewNpcMessageDialog(t.asset, t.ui)
+	t.msgDlg.Load()
 
 	t.goldLabel = t.ui.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
 	t.goldLabel.Alignment = d2ui.HorizontalAlignLeft
@@ -743,12 +738,23 @@ func (t *TradeWindow) tomeFor(item *diablo2item.Item) *diablo2item.Item {
 	}
 
 	for _, it := range t.inv.grid.items {
-		if tome, isItem := it.(*diablo2item.Item); isItem && tome.GetItemCode() == code && tome.Quantity() < tome.StackLimit() {
+		tome, isItem := it.(*diablo2item.Item)
+		if !isItem || tome.GetItemCode() != code || d2trade.TomeRoom(tome.Quantity(), tome.StackLimit()) == 0 {
+			continue
+		}
+
+		// ITEM_HaveSameAffixes 0x55d400: the exe pairs by affixes, tomeOf is the code stand-in for the suffix
+		if d2trade.TomeMatches(itemAffixes(item), itemAffixes(tome)) {
 			return tome
 		}
 	}
 
 	return nil
+}
+
+// itemAffixes is the affix identity of an item for d2trade.TomeMatches.
+func itemAffixes(it *diablo2item.Item) d2trade.AffixSet {
+	return d2trade.AffixesOf(it.PrefixCodes, it.SuffixCodes, "")
 }
 
 // buyIntoTome adds the scrolls to a tome of the inventory; false when the item is no scroll or no tome has room.
@@ -846,20 +852,20 @@ func (t *TradeWindow) fail(err error, code int) error {
 		msg := t.text(key, text)
 		t.Infof("vendor message: code=%#x %q (%v)", code, msg, err)
 
-		if t.msgLabel != nil {
-			t.msgLabel.SetText(msg)
-			t.msgLabel.SetVisible(true)
-		}
+		t.msgDlg.Open(msg)
 	}
 
 	return err
 }
 
+// ShowReply shows the modal message of a trade reply code (scripted scenarios).
+func (t *TradeWindow) ShowReply(code int) {
+	_ = t.fail(nil, code)
+	t.Infof("vendor dialog open=%v text=%q", t.msgDlg.IsOpen(), t.msgDlg.Text())
+}
+
 func (t *TradeWindow) clearMessage() {
-	if t.msgLabel != nil {
-		t.msgLabel.SetText("")
-		t.msgLabel.SetVisible(false)
-	}
+	t.msgDlg.Close()
 }
 
 // Sell sells one of the player's inventory items (TRADE_ServerSellItem
@@ -1090,6 +1096,11 @@ func (t *TradeWindow) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 func (t *TradeWindow) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	if !t.isOpen {
 		return false
+	}
+
+	// the reply message is modal: the shop ignores the mouse until Continue is pressed
+	if t.msgDlg.IsOpen() {
+		return true
 	}
 
 	mx, my := event.X(), event.Y()
