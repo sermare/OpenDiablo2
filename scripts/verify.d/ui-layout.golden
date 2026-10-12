@@ -49,10 +49,15 @@ cube grid 198 199 87 116
 ~1 character text.stamina 281 305 0 0
 ~1 character text.life 281 329 0 0
 ~1 character text.mana 281 367 0 0
-~1 character text.fire2 309 406 0 0
-~1 character text.cold2 309 430 0 0
-~1 character text.lightning2 309 455 0 0
-~1 character text.poison2 309 479 0 0
+~1 character text.fire2 309 410 0 0
+~1 character text.cold2 309 434 0 0
+~1 character text.lightning2 309 459 0 0
+~1 character text.poison2 309 483 0 0
+# "Stat Points" / "Remaining" captions centred in x 11..89 at table y 355 / 363 and the count centred in x 92..128 at y 360
+# (UI_DrawCharacterStatsPanel 0x4a43f0, w47: 8 apart); (x, bottom y) = box centre + 80, table y + 60
+~1 character text.statpoints.caption1 130 415 0 0
+~1 character text.statpoints.caption2 130 423 0 0
+~1 character text.statpoints.value 190 420 0 0
 ~1 character value.level 113 119 0 0
 ~1 character value.experience 203 119 0 0
 ~1 character value.nextlevel 331 119 0 0

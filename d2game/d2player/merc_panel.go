@@ -64,10 +64,28 @@ func (p *MercPanel) SetOnCloseCb(cb func()) {
 // IsOpen reports whether the panel is shown.
 func (p *MercPanel) IsOpen() bool { return p != nil && p.open }
 
-func (p *MercPanel) label(font string, x, y int, centre bool) *d2ui.Label {
+func (p *MercPanel) newLabel(font string, centre bool) *d2ui.Label {
 	lb := p.ui.NewLabel(font, d2resource.PaletteStatic)
 	if centre {
 		lb.Alignment = d2ui.HorizontalAlignCenter
+	}
+
+	return lb
+}
+
+func (p *MercPanel) label(font string, x, y int, centre bool) *d2ui.Label {
+	return p.place(p.newLabel(font, centre), x, y, font)
+}
+
+// place positions a label. The original's text y is the bottom of the line while a Label's y is its top: font is the
+// font of a bottom-anchored text ("" for a label placed by its middle). The heights are the ones the character
+// panel's constants differ from its tables by (font6 7, font16 11).
+func (p *MercPanel) place(lb *d2ui.Label, x, y int, font string) *d2ui.Label {
+	switch font {
+	case d2resource.Font6:
+		y -= 7
+	case d2resource.Font16:
+		y -= 11
 	}
 
 	lb.SetPosition(x, y)
@@ -113,11 +131,20 @@ func (p *MercPanel) Load() {
 			id, _ := MercLabelString(r.Name[6:])
 			// x2 != 0: centred between x1 and x2 (UI_DrawTextLine); else left-anchored at x1
 			lb := p.label(d2resource.Font6, r.X+r.W/2, r.Y, r.W > 0)
-			lb.SetText(p.asset.TranslateString(id))
+			text, _ := p.asset.StringByID(id) // the exe id of string.tbl (TranslateString(int) is the OD2 label numbering)
+			lb.SetText(text)
 		case len(r.Name) > 6 && r.Name[:6] == "value_":
-			p.values[r.Name[6:]] = p.label(d2resource.Font6, r.X, r.Y, false)
+			// flag == 0 rows end at the table x (right-aligned); the life row is centred in its box (mercValue.Anchor)
+			lb := p.ui.NewLabel(d2resource.Font6, d2resource.PaletteStatic)
+			lb.Alignment = d2ui.HorizontalAlignRight
+
+			if v, ok := mercValueByName(r.Name[6:]); ok && v.Flag != 0 {
+				lb.Alignment = d2ui.HorizontalAlignCenter
+			}
+
+			p.values[r.Name[6:]] = p.place(lb, r.X, r.Y, d2resource.Font6)
 		case len(r.Name) > 5 && r.Name[:5] == "slot_":
-			p.slots[r.Name[5:]] = p.label(d2resource.Font6, r.X+r.W/2, r.Y+r.H/2, true)
+			p.slots[r.Name[5:]] = p.place(p.newLabel(d2resource.Font6, true), r.X+r.W/2, r.Y+r.H/2, "")
 		}
 	}
 

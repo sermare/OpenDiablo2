@@ -10,7 +10,7 @@ import (
 // textAnchor is where a text label really stands on the screen, as the pair the original's text tables use: the
 // horizontal centre of the drawn text and the bottom edge of its line (the original's text y is the bottom of the
 // line, and its tables hold the x1..x2 box the text is centred in). w and h of the result are 0.
-// UNVERIFIED: that the original centres every caption in its box (it is how the table reads).
+// VERIFIED (w47, 0x4a43f0 and 0x486ab0): the original centres each caption in its box x1..x2 when the text is narrower.
 func textAnchor(panel, name string, l *d2ui.Label) UIRect {
 	x, y := l.GetPosition()
 	w, h := l.GetSize()
@@ -65,6 +65,15 @@ func (s *HeroStatsPanel) layoutRects() []UIRect {
 
 	for _, v := range values {
 		rs = append(rs, textAnchor("character", "value."+v.name, v.l))
+	}
+
+	for _, e := range []struct {
+		name string
+		l    *d2ui.Label
+	}{{"statpoints.caption1", s.pointsCaption1}, {"statpoints.caption2", s.pointsCaption2}, {"statpoints.value", s.remainingPoints}} {
+		if e.l != nil {
+			rs = append(rs, textAnchor("character", "text."+e.name, e.l))
+		}
 	}
 
 	return rs

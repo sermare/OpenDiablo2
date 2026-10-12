@@ -1276,6 +1276,7 @@ func (g *GameControls) handSkillInfo() [2]HandSkillInfo {
 		}
 
 		out[i].Thrown = sk.Anim == d2enum.PlayerAnimationModeThrow
+		out[i].ID = sk.ID
 		out[i].SrcDam = sk.SkillRecord.SrcDam
 
 		// SKILL_GetToHitBonus 0x645da0: ToHit + (level-1) * LevToHit (the ToHitCalc column is not evaluated here)

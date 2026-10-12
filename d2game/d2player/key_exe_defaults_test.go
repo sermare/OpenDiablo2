@@ -55,8 +55,8 @@ func TestExeDefaultKeysNamed(t *testing.T) {
 // disagree on purpose or for lack of an input source: the three secondaries are
 // mouse buttons 3, 4 and 5, which the input manager does not report as keys
 // (so a binding there would never fire). F9..F12 are bound in the exe to
-// commands 8..11 = Center, Fade, Party, Names (ExeAutomapKeyRows, VERIFIED): Go binds
-// F11 and F12 the same way, centres on Home instead of F9 and has no Fade key yet.
+// commands 8..11 = Center, Fade, Party, Names (ExeAutomapKeyRows, VERIFIED); Go binds them the same way (F9 Center,
+// F10 Fade, F11 Party, F12 Names; checked w47, nothing left to differ).
 var knownKeyDifferences = map[d2enum.GameEvent]string{
 	d2enum.ToggleAutomap:       "secondary mouse button 3",
 	d2enum.ToggleRunWalk:       "secondary mouse button 5",
