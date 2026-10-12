@@ -329,3 +329,14 @@ func withRevive(rows []Option, c Ctx) []Option {
 
 	return append(append([]Option{}, rows...), row)
 }
+
+// TableClasses lists the monster classes of the static table in table order (duplicates included: the exe's search is linear
+// and the first row wins, 0x257 appears twice).
+func TableClasses() []int {
+	out := make([]int, len(menuTable))
+	for i, r := range menuTable {
+		out[i] = r.class
+	}
+
+	return out
+}
