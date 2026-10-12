@@ -76,8 +76,9 @@ type PartyHooks struct {
 	// OnButton runs when the row's button is pressed (op as above).
 	OnButton func(p *d2mapentity.Player, op string)
 	// GameInfoFlag4 reports the game-info flag that the original tests (UI_IsGameInfoFlag4Set) before it draws the
-	// relation bit 01 toggle (x 325, frames 12/14). Nil means not set, so the toggle stays hidden. Which game
-	// mode sets the flag is UNVERIFIED.
+	// relation bit 01 toggle (x 325, frames 12/14). Nil means not set, so the toggle stays hidden. The flag
+	// is the hardcore bit: UI_LoadYouDiedSprites picks the string 0x13e8 "Your deeds of valor will be remembered"
+	// (Harddeathmessage) instead of the gold-loss message when it is set.
 	GameInfoFlag4 func() bool
 	// OnLoot runs when the bit 01 toggle is pressed (on = the face for "allowed").
 	OnLoot func(p *d2mapentity.Player, on bool)

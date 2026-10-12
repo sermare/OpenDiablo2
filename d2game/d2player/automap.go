@@ -33,7 +33,7 @@ import (
 // d2automap.CellTransparency), centre (see d2automap.MiniBoxOffsets), show party
 // and show names (markers, d2automap.Classify). The revealed cells are kept per
 // level for the session; they are not saved with the character (the original
-// does not keep them in the .d2s either). UNVERIFIED: the percentages of the fade.
+// does not keep them in the .d2s either). UNVERIFIED: the opacity percentages of the three fade modes (driver DLL); the distance steps are verified.
 
 const (
 	automapPathFull = "/data/global/ui/automap/maximap.dc6"

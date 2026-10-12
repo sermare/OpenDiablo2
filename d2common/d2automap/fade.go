@@ -3,7 +3,7 @@ package d2automap
 // Transparency is the engine's per-cell draw mode (the last argument of
 // GFX_DrvSlot98 in AUTOMAP_DrawCellNodeTree 0x454b00). 5 is the normal automap
 // draw; 0, 1 and 2 are passed by the fade option. VERIFIED that these values
-// are passed; that 0/1/2 mean about 25/50/75 percent opaque is UNVERIFIED.
+// are passed; that 0/1/2 mean about 25/50/75 percent opaque is UNVERIFIED (the blend lives in the video driver DLL).
 type Transparency int
 
 // Transparency values.
@@ -37,8 +37,9 @@ func (t Transparency) Alpha() float64 {
 // hero so that the world shows through: inside a box of 0x8c either side of the
 // centre and -0x96..+0x82 vertically, within 0x96 on the isometric metric
 // (min*2+max)/2, mode 0 below 50, 1 below 100, else 2. The box and 0x96 are read
-// from the code; the 50/100 steps compare a register the decompiler lost and
-// are UNVERIFIED.
+// from the code. The steps are VERIFIED in the disassembly (0x454cdb..0x454d0b): with d the
+// metric halved, d >= 0x96 leaves the cell normal, d >= 100 gives 2 (1 when the option is 2),
+// d >= 50 gives 1 and below 50 gives 0.
 func CellTransparency(fade bool, size Size, x, y, w, h, shiftPx int) Transparency {
 	if !fade {
 		return TransNormal

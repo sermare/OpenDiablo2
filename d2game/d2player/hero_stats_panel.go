@@ -50,18 +50,19 @@ const (
 	labelLifeX, labelLifeY       = 281, 322
 	labelManaX, labelManaY       = 281, 360
 
-	// the two-line resistance captions: the last line's bottom is the table's y (UNVERIFIED: how the original
-	// anchors a two-line string; the lines here are 7 apart)
-	labelResFireLine1X, labelResFireLine1Y = 310, 392
-	labelResFireLine2X, labelResFireLine2Y = 310, 399
+	// the two-line resistance captions: UI_DrawCharacterStatsPanel 0x4a43f0 splits a caption at its newline and draws the
+	// first line at the table's y - 4 and the second at y + 4 (the lines stand 8 apart around the table's y; VERIFIED
+	// in the disassembly: "y + -4" before the first draw, "y + 4" before the second)
+	labelResFireLine1X, labelResFireLine1Y = 310, 395
+	labelResFireLine2X, labelResFireLine2Y = 310, 403
 	// the original lists the resistances fire, cold, lightning, poison from top to bottom (string ids 4071 to 4074 at
 	// y 346, 370, 395, 419 of the panel, 0x723a5c; stats 39, 43, 41, 45 at 0x723b70)
-	labelResColdLine1X, labelResColdLine1Y   = 310, 416
-	labelResColdLine2X, labelResColdLine2Y   = 310, 423
-	labelResLightLine1X, labelResLightLine1Y = 310, 441
-	labelResLightLine2X, labelResLightLine2Y = 310, 448
-	labelResPoisLine1X, labelResPoisLine1Y   = 310, 465
-	labelResPoisLine2X, labelResPoisLine2Y   = 310, 472
+	labelResColdLine1X, labelResColdLine1Y   = 310, 419
+	labelResColdLine2X, labelResColdLine2Y   = 310, 427
+	labelResLightLine1X, labelResLightLine1Y = 310, 444
+	labelResLightLine2X, labelResLightLine2Y = 310, 452
+	labelResPoisLine1X, labelResPoisLine1Y   = 310, 468
+	labelResPoisLine2X, labelResPoisLine2Y   = 310, 476
 )
 
 const (

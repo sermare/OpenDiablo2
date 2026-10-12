@@ -47,7 +47,7 @@ func vkToKey(vk uint16) (d2enum.Key, bool) {
 		0x0d: d2enum.KeyEnter, 0x09: d2enum.KeyTab, 0x1b: d2enum.KeyEscape, 0x20: d2enum.KeySpace,
 		0x10: d2enum.KeyShift, 0x11: d2enum.KeyControl, 0x12: d2enum.KeyAlt,
 		0x2c: d2enum.KeyPrintScreen, 0xc0: d2enum.KeyTilde,
-		0x100: d2enum.KeyMouse3, 0x101: d2enum.KeyMouse4, 0x102: d2enum.KeyMouse5, // order UNVERIFIED (key_exe_defaults.go)
+		0x100: d2enum.KeyMouse3, 0x101: d2enum.KeyMouse4, 0x102: d2enum.KeyMouse5, // order VERIFIED (key_exe_defaults.go)
 		0x103: d2enum.KeyMouseWheelUp, 0x104: d2enum.KeyMouseWheelDown,
 	}
 

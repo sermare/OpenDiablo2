@@ -14,7 +14,8 @@ import (
 // The hireling portrait of the HUD (UI_DrawHirelingPortraitStrip 0x4904f0 -> UI_DrawHirelingPortraitEntry 0x4902d0): a
 // small picture of the mercenary class at the top left of the screen (x 15, bottom edge 60, 0x38 pixels between
 // entries) with a life bar over its top (UI_DrawPortraitLifeBar 0x48feb0). The name under the picture
-// (UI_DrawHirelingTypeName) is the pettype name string, not read here (UNVERIFIED), so it is not drawn.
+// (UI_DrawHirelingTypeName 0x48f4a0) is the pettype name column, which is empty for the hireable type in the shipped
+// pettype.txt (patch_d2), so nothing is drawn there.
 const (
 	mercPortraitX       = 15 // local_210 of the strip
 	mercPortraitBottom  = 60 // GFX_DrvSlot84(.., x, 0x3c): the bottom edge of the picture
@@ -66,9 +67,11 @@ func MercPortraitBar(hp, maxHP int) (fill int, c color.RGBA, drawn bool) {
 }
 
 // MercPortraitIcon is the picture file (under data\global\ui\hireables) of a hireling class. The exe reads the file name
-// from the pettype table (UI_LoadHirelingIconForRecord 0x48f700, "hireables\%s"); pettype.txt is not in the MPQs we
-// extracted, so this mapping from the monster class to the picture is UNVERIFIED: the four pictures in the archives
-// are named after the four hireling kinds.
+// from the pettype record (UI_LoadHirelingIconForRecord 0x48f700, "hireables\%s"): the icon of the first of mclass1..4
+// that equals the unit's class, else baseicon. The hireable row of pettype.txt (patch_d2) reads baseicon rogueicon,
+// mclass1 338 act2hireableicon, mclass2 359 act3hireableicon, mclass3 561 barbhirable_icon (hireling.txt has the
+// classes 271, 338, 359, 561 only). VERIFIED. An unknown class would get baseicon in the exe; "" here means "not a
+// hireling" for the callers.
 func MercPortraitIcon(class int) string {
 	switch class {
 	case 271: // Rogue Scout
@@ -77,7 +80,7 @@ func MercPortraitIcon(class int) string {
 		return "act2hireableicon"
 	case 359: // Iron Wolf
 		return "act3hireableicon"
-	case 560, 561: // Barbarian (Act 5)
+	case 561: // Barbarian (Act 5)
 		return "barbhirable_icon"
 	}
 
