@@ -32,11 +32,16 @@ func PvPReceive(scaled, physResist, reduce int) int {
 	return d
 }
 
-// PvPKillGivesEar reports whether killing a hero leaves the killer an ear.
-// UNVERIFIED (public game knowledge, not the binary): ears exist only for
-// hardcore kills; a softcore kill has no special drop and the dead hero
-// handles its own corpse and items as for any death.
-func PvPKillGivesEar(victimHardcore bool) bool { return victimHardcore }
+// PvPKillGivesEar reports whether the death of a hero killed by another hero
+// (or by a pet or mercenary led by another hero) leaves an ear on the ground
+// at the victim's feet. VERIFIED w44 (Game.exe 0x57efc4 caller, 0x558160): the
+// death handler drops the ear whenever the victim is a player and the killer is
+// a different player or a monster led by a different player; neither the
+// handler nor the item builder (0x557cd0, 0x556e50) tests hardcore. The ear
+// carries the victim's current level (stat 0xc) and name; only the item's
+// 0x8000 flag (ladder) is copied from the victim's character. The flag
+// argument stays for callers and is ignored.
+func PvPKillGivesEar(victimHardcore bool) bool { return true }
 
 // PvPParts is a skill hit on a hero by damage type, in whole points.
 type PvPParts struct{ Phys, Fire, Light, Magic, Cold int }

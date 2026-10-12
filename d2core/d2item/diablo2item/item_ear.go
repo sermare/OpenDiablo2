@@ -35,7 +35,7 @@ func (i *Item) Ear() *EarInfo {
 	return i.ear
 }
 
-// NewEar makes the ear a hardcore player kill gives (d2combat.PvPKillGivesEar):
+// NewEar makes the ear a player kill gives (d2combat.PvPKillGivesEar):
 // a player ear (misc.txt "ear") of the victim, with the victim's name, class
 // and level. The item level is the victim's level.
 func (f *ItemFactory) NewEar(name string, class, level int) (*Item, error) {
