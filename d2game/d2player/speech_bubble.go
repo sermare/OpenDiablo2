@@ -36,6 +36,7 @@ type SpeechBubble struct {
 	name    *d2ui.Label
 	lines   []*d2ui.Label
 	left    float64 // seconds left of the speech
+	age     float64 // seconds since Show
 
 	notice     *d2ui.Label
 	noticeLeft float64
@@ -81,6 +82,7 @@ func (s *SpeechBubble) Show(speaker, text string, seconds float64) {
 	}
 
 	s.left = seconds
+	s.age = 0
 }
 
 // Notice displays a one line message near the top of the screen.
@@ -93,6 +95,17 @@ func (s *SpeechBubble) Notice(text string, seconds float64) {
 
 // Clear removes the speech at once (the hero left the NPC: another level).
 func (s *SpeechBubble) Clear() { s.left = 0 }
+
+// speechSkipGrace is how long after a line starts a skip key is swallowed without cutting it: the exe's
+// speech key handler (table 0x721940, handler 0x49de80) compares GetTickCount with the tick stored when the
+// line opened (0x7b72b4) and only acts after 0x64 = 100 ms (VERIFIED).
+const speechSkipGrace = 0.1
+
+// Active reports whether a line is on screen.
+func (s *SpeechBubble) Active() bool { return s.left > 0 }
+
+// Skippable reports whether a skip key would cut the line now (it is on screen for 100 ms or more).
+func (s *SpeechBubble) Skippable() bool { return s.left > 0 && s.age >= speechSkipGrace }
 
 // Text returns the speech currently shown ("" when none).
 func (s *SpeechBubble) Text() string {
@@ -112,6 +125,7 @@ func (s *SpeechBubble) Text() string {
 func (s *SpeechBubble) Advance(elapsed float64) {
 	if s.left > 0 {
 		s.left -= elapsed
+		s.age += elapsed
 	}
 
 	if s.noticeLeft > 0 {

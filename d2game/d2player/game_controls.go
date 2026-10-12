@@ -404,6 +404,8 @@ type GameControls struct {
 
 	// Speech shows the subtitle of NPC speech and short notices (quest log updated).
 	Speech *SpeechBubble
+	// OnSpeechSkip is called when Esc or Space cuts an NPC line (voice and subtitle); set by the game screen.
+	OnSpeechSkip func()
 
 	*d2util.Logger
 }
@@ -467,6 +469,27 @@ func (g *GameControls) OnKeyRepeat(event d2interface.KeyEvent) bool {
 	return false
 }
 
+// skipSpeechOnKey is the exe's speech key handler (input table 0x721940: keys 0x1b Esc and 0x20 Space ->
+// handler 0x49de80, VERIFIED): while an NPC line is on screen the key is consumed, so Esc does not open the
+// game menu nor Space clear the screen; after 100 ms it also cuts the line (voice and subtitle) and ends the
+// talk. The next Esc then behaves as usual.
+func (g *GameControls) skipSpeechOnKey(key d2enum.Key) bool {
+	if (key != d2enum.KeyEscape && key != d2enum.KeySpace) || g.Speech == nil || !g.Speech.Active() {
+		return false
+	}
+
+	if g.Speech.Skippable() {
+		g.Speech.Clear()
+
+		if g.OnSpeechSkip != nil {
+			g.OnSpeechSkip()
+		}
+
+	}
+
+	return true
+}
+
 // OnKeyDown handles key presses
 func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 	if event.Key() == d2enum.KeyEscape && g.Waypoints.IsOpen() {
@@ -480,6 +503,10 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 	}
 
 	if g.NPCMenu.IsOpen() && g.NPCMenu.OnKeyDown(event) {
+		return true
+	}
+
+	if g.skipSpeechOnKey(event.Key()) {
 		return true
 	}
 
