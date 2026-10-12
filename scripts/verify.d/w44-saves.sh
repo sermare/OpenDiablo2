@@ -12,7 +12,7 @@ w44=$tmp/w44
 w44_class=${OD2_W44_CLASS:-Sorceress}
 w44_name=Wsave${w44_class[1,4]} # letters only: the game strips digits from names, and select: must find it
 typeset -A w44_skill
-w44_skill=(Amazon "Magic Arrow" Sorceress "Fire Bolt" Necromancer "Teeth" Paladin "Sacrifice" Barbarian "Bash" Druid "Firestorm" Assassin "Fire Blast")
+w44_skill=(Amazon "Magic Arrow" Sorceress "Fire Bolt" Necromancer "Teeth" Paladin "Sacrifice" Barbarian "Bash" Druid "Firestorm" Assassin "Fire Trauma")
 w44_play() { # $1 difficulty-specific extras
   local s="wait:2;say:levelup 6;wait:1;panel:character;wait:1"
   s+=";click:left@ui:221,151;wait:1;click:left@ui:221,151;wait:1;click:left@ui:221,213;wait:1;click:left@ui:221,299;wait:1;click:left@ui:221,299;wait:1;click:left@ui:221,361;wait:1;panel:close"
