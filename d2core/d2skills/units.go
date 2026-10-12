@@ -151,7 +151,7 @@ func (h *heroUnit) Stat(name string) int {
 var itemStatIDs = map[string]int{
 	"firemindam": 48, "firemaxdam": 49, "lightmindam": 50, "lightmaxdam": 51, "magicmindam": 52, "magicmaxdam": 53,
 	"coldmindam": 54, "coldmaxdam": 55, "coldlength": 56, "poisonmindam": 57, "poisonmaxdam": 58, "poisonlength": 59,
-	"lifedrainmindam": 60, "manadrainmindam": 62, "item_deadlystrike": 141, "passive_critical_strike": 337,
+	"item_normaldamage": 111, "lifedrainmindam": 60, "manadrainmindam": 62, "item_deadlystrike": 141, "passive_critical_strike": 337,
 }
 
 // itemStat is what the worn items add to a name of itemStatIDs.
