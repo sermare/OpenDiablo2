@@ -3,6 +3,7 @@ package d2hero
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2herostats"
@@ -45,7 +46,7 @@ func (f *HeroStateFactory) equippedStatItems(state *HeroState, hero d2statlist.H
 	// the worn items the game keeps (HeroContainers.Equipped) win: they follow every change
 	// of the body, and the activation pass switches off what the hero cannot use
 	if c := state.Containers; c != nil && c.EquippedSet {
-		items, status := f.ResolveEquipped(c, hero, f.charmStatItems(state))
+		items, status := f.ResolveEquipped(c, hero, f.charmStatItems(state, hero.Level))
 		if len(status) > 0 || items != nil {
 			f.lastEquipStatus = status
 			return items
@@ -121,18 +122,23 @@ func (f *HeroStateFactory) equippedStatItems(state *HeroState, hero d2statlist.H
 }
 
 // charmStatItems returns the charms in the inventory page of the containers.
-func (f *HeroStateFactory) charmStatItems(state *HeroState) []d2statlist.Item {
+func (f *HeroStateFactory) charmStatItems(state *HeroState, level int) []d2statlist.Item {
 	if state.Containers == nil {
 		return nil
 	}
 
 	bases := f.loadStatBases()
+	_, eqBases, _ := f.EquipRules()
 
 	var out []d2s.Item
 
 	for i := range state.Containers.Items {
 		s := &state.Containers.Items[i]
 		if s.D2S != nil && s.Page == PageInventory && isCharm(s.D2S.Code) {
+			if !CharmActive(s.Identified || s.D2S.Identified, eqBases[strings.TrimSpace(s.D2S.Code)].ReqLevel, level) {
+				continue
+			}
+
 			it := *s.D2S
 			it.Location, it.Page = d2s.LocationStored, PageInventory
 			out = append(out, it)
@@ -192,7 +198,7 @@ func (f *HeroStateFactory) RecalcStats(state *HeroState) {
 		BaseLife: life, BaseMana: mana, BaseStam: stam, Difficulty: int(state.Difficulty),
 		Classic: !state.Expansion,
 	}
-	items := append(append([]d2statlist.Item{}, f.equippedStatItems(state, hero)...), f.charmStatItems(state)...)
+	items := append(append([]d2statlist.Item{}, f.equippedStatItems(state, hero)...), f.charmStatItems(state, hero.Level)...)
 	items = append(items, resistScrollItem(state.Progress.ResistScrollBonus())...)
 
 	env := f.skillEnv(st)

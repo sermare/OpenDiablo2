@@ -74,13 +74,16 @@ func (i *Item) ResaleInfo() d2trade.ResaleInfo {
 
 // Refill restores what TRADE_RefillItemForResale (0x573fb0) restores on a
 // repairable item: the quantity of stacked throwing weapons and the
-// durability (a broken item is repaired too). Skill charges are restored by
-// the original as well; the engine does not model them (UNVERIFIED gap).
+// durability (a broken item is repaired too). Skill charges are restored too
+// (ITEM_UpdateSkillChargesToMax 0x55dc40: every stat 0xcc entry with cur < max is
+// raised to max; VERIFIED in Game.exe): chargesFull makes priceStats report them full.
 func (i *Item) Refill() {
 	ti := i.TradeItem()
 	if !ti.Repairable {
 		return
 	}
+
+	i.chargesFull = true
 
 	if ti.Throwable && ti.Stackable {
 		if limit := i.StackLimit(); limit > 0 {

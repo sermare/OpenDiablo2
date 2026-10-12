@@ -617,7 +617,8 @@ func (d *desc) durabilityLine() (Line, bool) {
 	}
 
 	// INV_BuildDurabilityLine 0x480eb0: no red here (a broken item shows it in its name colour);
-	// the maximum is blue when the item has the stat 0x4b (not split out here, UNVERIFIED).
+	// the maximum number is blue when a stat list raises it (stat 0x4b bonus, VERIFIED 0x480eb0);
+	// Line has one colour, so the renderer asks Tables.DurabilityMaxBlue.
 	return Line{fmt.Sprintf("%s %d %s %d", d.t.tr("ItemStats1d"), it.Durability, d.t.tr("ItemStats1j"), it.MaxDurability), White}, true
 }
 
@@ -808,6 +809,20 @@ func (d *desc) potionLines() []Line {
 
 	return nil
 }
+
+// DurabilityMaxBlue reports whether the maximum durability in the tooltip is drawn blue: the item has a
+// maximum-durability-percent bonus (stat 0x4b) in its lists (INV_BuildDurabilityLine 0x480eb0, VERIFIED).
+func (t *Tables) DurabilityMaxBlue(it *d2s.Item) bool {
+	for _, s := range t.ItemStats(it) {
+		if s.ID == statMaxDurPercent {
+			return true
+		}
+	}
+
+	return false
+}
+
+const statMaxDurPercent = 0x4b
 
 // ItemStats returns the merged stats of an item: its own, its runeword's and
 // the effects of what is socketed into it.
