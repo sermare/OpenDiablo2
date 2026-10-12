@@ -28,5 +28,9 @@ scenario_check() {
   grep -qE "DURABILITY hit item=.* [0-9]+->[0-9]+/[0-9]+" $log.txt || { echo "FAIL: no armor durability loss from simulated hits"; fail=1; }
   # a broken armor piece stops counting: the defense drops
   grep -qE "EQUIP auto durability break item=.* broken=true before=\[def=([0-9]+) .*after=\[def=" $log.txt || { echo "FAIL: armor did not break"; fail=1; }
+  # w46: a weapon's last point takes it to 0 (no break flag, no stack in this save)
+  if grep -q "EQUIP auto durability weapon" $log.txt; then
+    grep -qE "EQUIP auto durability weapon item=.* zero=true" $log.txt || { echo "FAIL: weapon did not reach 0"; fail=1; }
+  fi
   go test ./d2common/d2equip/ 2>&1 | grep -v "ld: warning\|^# " | grep -v "^ok" && fail=1
 }
