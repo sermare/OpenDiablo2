@@ -138,3 +138,22 @@ func (p *Pipeline) ChannelActionEnd(u Unit) int {
 
 	return 0
 }
+
+// ChannelBridge keeps the channel list of u alive across a render stall (HOST ADAPTATION, UNVERIFIED, w47): in the
+// exe the held button asks again on every game frame, so a request always lands inside the window. The port asks
+// once per rendered frame, and on a loaded machine one frame can cover more game ticks than the window is long
+// (found by scenario w42-inferno-hold under load: a second wind-up in the middle of a hold). A list that ended
+// after `since` (the first tick of the render frame the request belongs to) did so inside that one frame, so the
+// request would have reached it in the exe: the list lives on. It reports whether it bridged.
+func (p *Pipeline) ChannelBridge(u Unit, since int) bool {
+	c := p.channels[u.ID()]
+	now := p.frame()
+
+	if c == nil || c.until > now || c.until <= since {
+		return false
+	}
+
+	c.until = now + 1
+
+	return true
+}
