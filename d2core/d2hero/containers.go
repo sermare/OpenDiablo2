@@ -56,6 +56,12 @@ type StoredItem struct {
 	Crafted  bool        `json:"crafted,omitempty"`
 	Mods     []StoredMod `json:"mods,omitempty"`
 
+	// Starter marks an item the class handed out to a new hero (item flag 0x20000, set by
+	// PLAYER_GiveStartingItemEntry 0x5327a0); StartSkill is the skill id the first starting item gives +1 to (stat 107
+	// item_singleskill, from CharStats StartSkill: PLAYER_CreateStartingItem 0x5326c0), 0 for none.
+	Starter    bool `json:"starter,omitempty"`
+	StartSkill int  `json:"startSkill,omitempty"`
+
 	// Origin is set for an item imported from a .d2s: the item is created
 	// from Code, Quality, ILvl and Seed with the item generator, which is an
 	// APPROXIMATION of the real item (the save's affix ids are not mapped to
@@ -202,6 +208,7 @@ func finishStored(it *d2s.Item, page int, known func(code string) bool) (s Store
 		Identified: it.Identified || it.Simple,
 		Ethereal:   it.Ethereal,
 		Origin:     true,
+		Starter:    it.Starter,
 	}
 
 	if it.Quantity > 0 {

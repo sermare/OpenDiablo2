@@ -69,6 +69,7 @@ func (f *HeroStateFactory) CreateNewHero(name string, hero d2enum.Hero, expansio
 	// the class' starting kit (CharStats item1..item10): worn weapon and shield, belt potions, scrolls
 	state.Containers = f.StartingContainers(hero)
 	f.wearStartingEquipment(state, hero)
+	f.startSkillRight(state, hero)
 	// every character gets its own level generator seed, stored in the .od2 and in the .d2s header: the
 	// town and the levels are then the same every time this character is played
 	state.MapSeed = NewMapSeed(rand.Uint32)

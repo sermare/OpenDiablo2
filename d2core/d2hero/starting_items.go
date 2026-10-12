@@ -32,14 +32,22 @@ func (f *HeroStateFactory) StartingContainers(hero d2enum.Hero) *HeroContainers 
 		return nil
 	}
 
-	return startingKit(rec.StartItem[:], rec.StartItemLocation[:], rec.StartItemCount[:], func(code string) (int, bool) {
+	startSkill := f.startSkillID(rec, hero)
+
+	return startingKitStacks(rec.StartItem[:], rec.StartItemLocation[:], rec.StartItemCount[:], func(code string) (int, bool) {
 		item := f.asset.Records.Item.All[code]
 		if item == nil {
 			return 0, false
 		}
 
 		return item.InventoryWidth, true
-	})
+	}, func(code string) int {
+		if item := f.asset.Records.Item.All[code]; item != nil && item.Stackable {
+			return item.MaxStack
+		}
+
+		return 0
+	}, startSkill)
 }
 
 // startingKit lays out the item1..item10 columns of a CharStats row: the items
@@ -50,6 +58,34 @@ func (f *HeroStateFactory) StartingContainers(hero d2enum.Hero) *HeroContainers 
 // Equipped with EquippedSet, so the body of a new hero is exactly the kit and
 // nothing else (no placeholder gear); all items are identified, normal quality.
 func startingKit(codes, locs []string, counts []int, widthOf func(code string) (int, bool)) *HeroContainers {
+	return startingKitStacks(codes, locs, counts, widthOf, nil, 0)
+}
+
+// startingKitStacks is startingKit with the stack size of stackable base items: the exe gives a stackable starting
+// item a full stack (PLAYER_CreateStartingItem 0x5326c0: ITEM_IsStackable -> stat 0x46 quantity = ITEM_GetMaxStack,
+// VERIFIED in the decompilation), so the Amazon's javelin starts as a stack of 60 (weapons.txt maxstack). maxStackOf
+// gives the max stack of a stackable base item and 0 for any other. Every item is flagged Starter (0x20000), and the
+// item of the first row gets +1 to startSkill (a skill id, 0 for none): PLAYER_CreateStartingItem 0x5326c0 attaches
+// stat 107 item_singleskill (param = CharStats StartSkill, value 1) to the item of row 0 (the Sorceress' Fire Bolt on the
+// staff, the Necromancer's Raise Skeleton on the wand).
+func startingKitStacks(codes, locs []string, counts []int, widthOf func(code string) (int, bool), maxStackOf func(code string) int,
+	startSkill int) *HeroContainers {
+	stack := func(code string) int {
+		if maxStackOf == nil {
+			return 0
+		}
+
+		return maxStackOf(code)
+	}
+
+	rowSkill := func(row, skill int) int {
+		if row == 0 {
+			return skill
+		}
+
+		return 0
+	}
+
 	out := &HeroContainers{Items: []StoredItem{}, Equipped: []StoredItem{}, EquippedSet: true}
 	belt, invX := 0, 0
 
@@ -73,7 +109,8 @@ func startingKit(codes, locs []string, counts []int, widthOf func(code string) (
 			if slot := starterSlot(loc); slot > 0 {
 				out.Equipped = append(out.Equipped, StoredItem{
 					Code: code, Page: PageEquipped, X: slot, ILvl: 1, Quality: int(d2drop.QualityNormal),
-					Seed: int64(1000*i + 1), Identified: true, Origin: true,
+					Seed: int64(1000*i + 1), Identified: true, Origin: true, Quantity: stack(code),
+					Starter: true, StartSkill: rowSkill(i, startSkill),
 				})
 			}
 
@@ -90,7 +127,8 @@ func startingKit(codes, locs []string, counts []int, widthOf func(code string) (
 		}
 
 		for n := 0; n < count; n++ {
-			s := StoredItem{Code: code, ILvl: 1, Quality: int(d2drop.QualityNormal), Seed: int64(1000*i + n + 1), Identified: true, Origin: true}
+			s := StoredItem{Code: code, ILvl: 1, Quality: int(d2drop.QualityNormal), Seed: int64(1000*i + n + 1), Identified: true, Origin: true, Quantity: stack(code), Starter: true,
+				StartSkill: rowSkill(i, startSkill)}
 
 			if isPotion(code) && belt < startBeltCells {
 				s.Page, s.X = PageBelt, belt
@@ -152,9 +190,9 @@ func freshHero(state *HeroState) bool {
 
 // giveStartingItemsToFreshHero puts the starting potions and scrolls of the
 // class into a hero that has never been played (see freshHero).
-func (f *HeroStateFactory) giveStartingItemsToFreshHero(state *HeroState, hero d2enum.Hero) {
+func (f *HeroStateFactory) giveStartingItemsToFreshHero(state *HeroState, hero d2enum.Hero) bool {
 	if !freshHero(state) {
-		return
+		return false
 	}
 
 	if c := f.StartingContainers(hero); c != nil && len(c.Items)+len(c.Equipped) > 0 {
@@ -162,6 +200,27 @@ func (f *HeroStateFactory) giveStartingItemsToFreshHero(state *HeroState, hero d
 	}
 
 	f.wearStartingEquipment(state, hero)
+
+	return true
+}
+
+// startSkillRight puts the class' start skill (the Sorceress' Fire Bolt, the Necromancer's Raise Skeleton) on the
+// right button of a hero that begins its first game, as SERVER_CreateFreshPlayer 0x52ff20 does with
+// SERVER_SetPlayerActiveSkill(hand 0 = right); the left button stays Attack. The exe does it only when the hero
+// has the skill (the +1 of the first starting item) - StartingContainers gives that item the bonus.
+func (f *HeroStateFactory) startSkillRight(state *HeroState, hero d2enum.Hero) {
+	id := f.startSkillID(f.asset.Records.Character.Stats[hero], hero)
+	if id <= 0 || state.Skills[id] == nil {
+		return
+	}
+
+	state.RightSkill = id
+
+	if state.SkillBar == nil {
+		state.SkillBar = NewSkillBar()
+	}
+
+	state.SkillBar.Right.Skill = id
 }
 
 // starterBodyItem is a starting item of CharStats.txt that is worn (location rarm, larm, tors, ...).

@@ -218,6 +218,15 @@ func (f *HeroStateFactory) RecalcStats(state *HeroState) {
 
 	st.ClampVitalsToMax()
 
+	for _, sk := range state.Skills {
+		if sk != nil && sk.SkillRecord != nil {
+			sk.ItemLevel = tot.SingleSkillBonus(sk.ID)
+			if sk.Shallow != nil {
+				sk.Shallow.ItemLevel = sk.ItemLevel // HydrateSkills copies it back
+			}
+		}
+	}
+
 	st.Recalc = func() { f.RecalcStats(state) }
 }
 

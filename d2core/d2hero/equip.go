@@ -158,6 +158,11 @@ func (f *HeroStateFactory) statItemOfStored(s *StoredItem, loc d2equip.Loc, base
 		si.Defense = (b.MinAC + b.MaxAC) / 2
 	}
 
+	if s.StartSkill > 0 && s.D2S == nil && s.Stat == nil {
+		// the first starting item of a new hero gives +1 to the class' start skill (item_singleskill)
+		si.Props = append(si.Props, d2statlist.Prop{ID: d2statlist.StatSingleSkill, Param: s.StartSkill, Value: 1})
+	}
+
 	si.Slot = int(loc)
 	si.Broken = d2equip.PropertiesOff(&eq)
 
