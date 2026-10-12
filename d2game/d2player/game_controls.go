@@ -260,6 +260,7 @@ func NewGameControls(
 
 	gc.Trade = trade
 	trade.OnImpossible = func() { gc.sayHeroVoice(0x13) }
+	trade.OnCantCarry = func() { gc.sayHeroVoice(0x17) }
 	gc.PTrade = newPlayerTradeWindow(asset, ui, l, gc)
 	gc.Identify = NewIdentifyWindow(asset, ui, l, inventory, hero, gc.saveHero, gc.onCloseTrade)
 

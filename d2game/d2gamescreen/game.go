@@ -150,6 +150,7 @@ type Game struct {
 	escapeMenu           *d2player.EscapeMenu
 	soundEngine          *d2audio.SoundEngine
 	heroVoiceGate        d2audio.VoiceGate // hero voice suppression (game_hero_voice.go)
+	formSoundTick        int64             // tick of the last monster-branch sound of a hero form (DAT_007c0944, 15 tick vocal spacing)
 	heroSoundTick        int64             // tick of the hero's last hit grunt, voice or swing (the exe's unit field +0x7c)
 	areaVoice            areaVoiceState
 	soundEnv             d2audio.SoundEnvironment

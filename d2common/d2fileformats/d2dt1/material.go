@@ -31,6 +31,28 @@ func NewMaterialFlags(data uint16) MaterialFlags {
 	}
 }
 
+// FootstepSurface returns the footstep surface index of the flags in the order of the exe
+// (UNITSND_GetFootstepSurfaceType 0x4c7820, VERIFIED): 1 dirt, 2 inside stone, 3 outside stone, 4 sand, 6 wood,
+// 5 snow, tested in that order; 0 when none is set.
+func (m MaterialFlags) FootstepSurface() int {
+	switch {
+	case m.Dirt:
+		return 1
+	case m.InsideStone:
+		return 2
+	case m.OutsideStone:
+		return 3
+	case m.Sand:
+		return 4
+	case m.Wood:
+		return 6
+	case m.Snow:
+		return 5
+	}
+
+	return 0
+}
+
 // Encode encodes MaterialFlags back to uint16
 func (m *MaterialFlags) Encode() uint16 {
 	var b uint16 = 0x000

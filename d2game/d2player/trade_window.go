@@ -124,7 +124,11 @@ type TradeWindow struct {
 	// OnImpossible plays the hero's "impossible" line (voice 0x13): ctrl-clicking an item the vendor does not buy
 	// (INV_HandleGridClick 0x48c3c0, TRADE_CheckItemSellable false).
 	OnImpossible func()
-	stocks       map[string]*d2vendor.Stock
+	// OnCantCarry plays the hero's "cantcarry" line (voice 0x17) when a purchase finds no room. The exe says it
+	// for trade command 9 / 10 (UI_HandleTradeUiCommand 0x4b5640, VERIFIED); using it for a vendor purchase
+	// without room is UNVERIFIED.
+	OnCantCarry func()
+	stocks      map[string]*d2vendor.Stock
 
 	// gamble is true while the window shows the vendor's gamble stock.
 	gamble bool
@@ -811,6 +815,10 @@ func (t *TradeWindow) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 		if item, ok := t.grid.ItemAtScreen(mx, my).(*diablo2item.Item); ok {
 			if _, err := t.Buy(item); err != nil {
 				t.Infof("buy %q: %v", item.Label(), err)
+
+				if errors.Is(err, ErrNoRoom) && t.OnCantCarry != nil {
+					t.OnCantCarry()
+				}
 			}
 
 			return true
