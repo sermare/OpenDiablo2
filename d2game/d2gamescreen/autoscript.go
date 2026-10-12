@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -85,6 +86,11 @@ func (c *logCapture) containsSince(mark int, substr string) bool {
 	return false
 }
 
+// autoScriptGames counts the games of the process that ran initAutoScript (OD2_AUTOSCRIPT_<n>).
+//
+//nolint:gochecknoglobals // one counter per process
+var autoScriptGames int
+
 type autoScriptState struct {
 	runner  *d2autoscript.Runner
 	log     *logCapture
@@ -95,6 +101,13 @@ type autoScriptState struct {
 // A malformed script is reported and fails the run at once.
 func (v *Game) initAutoScript() {
 	spec := os.Getenv("OD2_AUTOSCRIPT")
+
+	// OD2_AUTOSCRIPT_<n> is the script of the n-th game of the process (1 = first), for flows that play a hero,
+	// save and exit, and play it again from the menus (the reload must not repeat the first game's script)
+	autoScriptGames++
+	if s, ok := os.LookupEnv("OD2_AUTOSCRIPT_" + strconv.Itoa(autoScriptGames)); ok {
+		spec = s
+	}
 	if spec == "" && os.Getenv("OD2_AUTOSAVE") == "1" {
 		// change the gold, then exit; the exit saves the hero back to a .d2s
 		spec = "wait:1;say:setgold " + autosaveTestGold + ";wait:1;exit"
