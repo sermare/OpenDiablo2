@@ -20,7 +20,7 @@ func (t *TradeWindow) layoutRects() []UIRect {
 		rs = append(rs, widgetRect("trade", "close", t.closeBtn))
 	}
 
-	if t.repairBtn != nil && t.vendor.Repairs {
+	if t.repairBtn != nil && t.showsRepair() {
 		x, y := t.repairBtn.GetPosition()
 		rs = append(rs, UIRect{"trade", "repair_all", x, y, 0, 0})
 	}

@@ -325,7 +325,7 @@ func (t *TradeWindow) open(v d2vendor.Vendor, seed uint32, quests *d2s.QuestReco
 
 	t.rebuildGrid()
 	t.title.SetText(v.Name)
-	t.repairBtn.SetVisible(v.Repairs)
+	t.repairBtn.SetVisible(t.showsRepair())
 	t.panelGroup.SetVisible(true)
 	t.clearMessage()
 	t.isOpen = true
@@ -945,7 +945,7 @@ func (t *TradeWindow) repairable() []*diablo2item.Item {
 // RepairAll repairs every damaged item of the player and returns the total
 // price (the server sums the per item prices, VERIFIED in the notes).
 func (t *TradeWindow) RepairAll() (total int, err error) {
-	if !t.vendor.Repairs {
+	if !t.showsRepair() {
 		return 0, ErrNotRepairer
 	}
 
@@ -1064,6 +1064,12 @@ func (t *TradeWindow) inventoryPriceLines(it InventoryItem) []string {
 	return lines
 }
 
+// showsRepair reports whether the Repair All button belongs to the open window: the gamble window of a vendor
+// that repairs (Jamella, Halbu...) has no repair strip (w51; the exe shows the strip only for the regular shop).
+func (t *TradeWindow) showsRepair() bool {
+	return t.vendor.Repairs && !t.gamble
+}
+
 // OnMouseMove tracks the pointer and shows vendor item tooltips.
 func (t *TradeWindow) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 	if !t.isOpen {
@@ -1071,7 +1077,14 @@ func (t *TradeWindow) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 	}
 
 	t.mouseX, t.mouseY = event.X(), event.Y()
+	t.refreshTooltip()
 
+	return t.Contains(t.mouseX, t.mouseY)
+}
+
+// refreshTooltip shows the tooltip of the vendor item under the last pointer position and hides it when
+// there is none. Also called after a click that changed the grid (a bought item must not keep its tooltip).
+func (t *TradeWindow) refreshTooltip() {
 	it := t.grid.ItemAtScreen(t.mouseX, t.mouseY)
 	if item, ok := it.(*diablo2item.Item); ok {
 		lines := item.GetItemDescription()
@@ -1087,8 +1100,6 @@ func (t *TradeWindow) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 	} else {
 		t.tooltip.SetVisible(false)
 	}
-
-	return t.Contains(t.mouseX, t.mouseY)
 }
 
 // OnMouseButtonDown buys on a click on a vendor item and sells on a click on
@@ -1097,6 +1108,10 @@ func (t *TradeWindow) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	if !t.isOpen {
 		return false
 	}
+
+	defer t.refreshTooltip()
+
+	t.mouseX, t.mouseY = event.X(), event.Y()
 
 	// the reply message is modal: the shop ignores the mouse until Continue is pressed
 	if t.msgDlg.IsOpen() {

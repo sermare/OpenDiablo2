@@ -26,6 +26,10 @@ const (
 	panelCloseOffset = 256 // x = panel + 0x110 (FUN_0048b150 0x48b150)
 	panelCloseY      = 448
 	panelTitleY      = 84 + panelShiftY
+	// The stash art has two boxes under each other: the upper one holds the coin button and the gold amount
+	// (UI_DrawGoldAmountAndTooltip 0x484250, drawn by the stash coin), the title stands in the lower one. The
+	// distance of the boxes is measured on the picture; the title position inside the lower box is UNVERIFIED.
+	stashTitleDY = 25
 
 	cubeItemCode = "box"
 )
@@ -195,7 +199,12 @@ func (p *ContainerPanel) Load() {
 	p.title.SetText(p.kind.title)
 
 	tw, _ := p.title.GetTextMetrics(p.kind.title)
-	p.title.SetPosition(p.originX+(320-tw)/2, panelTitleY) //nolint:gomnd // the panel is 320 wide
+	titleY := panelTitleY
+	if p.kind.page == d2hero.PageStash {
+		titleY += stashTitleDY
+	}
+
+	p.title.SetPosition(p.originX+(320-tw)/2, titleY) //nolint:gomnd // the panel is 320 wide
 	p.panelGroup.AddWidget(p.title)
 
 	if p.kind.page == d2hero.PageCube {

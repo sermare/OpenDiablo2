@@ -86,3 +86,69 @@ func VisibleTileRows(v *Viewport, width, height, startX, startY, endX, endY int)
 		-sideMargin, -extraViewTop, float64(width+sideMargin), float64(height+extraViewBottom),
 		startX, startY, endX, endY)
 }
+
+// TileRef is the position of one visible tile.
+type TileRef struct{ X, Y int32 }
+
+// DiagonalOrder lists the visible tiles of rows in depth order: by diagonal x+y (the screen row of an isometric
+// tile), then by x. The exe draws its floor and lower wall lists bucket by bucket in depth order (renderer.md b1);
+// row-major order (all of y=0 first) put a tile far down the screen before tiles above it. buf is reused when it
+// is big enough. The counting sort is linear in the number of tiles.
+func (r *TileRows) DiagonalOrder(startY, endY int, buf []TileRef) []TileRef {
+	buf = buf[:0]
+	minD, maxD, n := math.MaxInt, math.MinInt, 0
+
+	for y := startY; y < endY; y++ {
+		from, to := r.Row(y)
+		if to <= from {
+			continue
+		}
+
+		n += to - from
+
+		if d := from + y; d < minD {
+			minD = d
+		}
+
+		if d := to - 1 + y; d > maxD {
+			maxD = d
+		}
+	}
+
+	if n == 0 {
+		return buf
+	}
+
+	// start offset of every diagonal; rows are visited by increasing y, so the tiles of one diagonal arrive
+	// in decreasing x: fill each diagonal from its end to leave them in increasing x
+	ends := make([]int, maxD-minD+2)
+
+	for y := startY; y < endY; y++ {
+		from, to := r.Row(y)
+		for x := from; x < to; x++ {
+			ends[x+y-minD+1]++
+		}
+	}
+
+	for i := 1; i < len(ends); i++ {
+		ends[i] += ends[i-1]
+	}
+
+	if cap(buf) < n {
+		buf = make([]TileRef, n)
+	}
+
+	buf = buf[:n]
+
+	// ends[d+1] is now the end of diagonal d (exclusive): fill backwards
+	for y := startY; y < endY; y++ {
+		from, to := r.Row(y)
+		for x := from; x < to; x++ {
+			d := x + y - minD
+			ends[d+1]--
+			buf[ends[d+1]] = TileRef{int32(x), int32(y)}
+		}
+	}
+
+	return buf
+}
