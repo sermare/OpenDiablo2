@@ -25,8 +25,14 @@ package d2vendor
 //   - 0x574cf0 VendorSells: hp4/hp5/mp4/mp5 count as sold on non-normal
 //     difficulty; the potions arrive through the difficulty upgrade of
 //     0x574110 (NightmareUpgrade / HellUpgrade, player level >= 26).
-//   - 0x534c20 restocks flag a vendor when the hero LEAVES town and the last
-//     stock is more than 240000 ms old; consumed at the next window open.
+//   - 0x534c20 runs when a player leaves a town: with nobody left in that
+//     town (always, in one hero games) every opened vendor of the act is
+//     flagged; with others still there only the vendors whose last stock is
+//     more than 240000 ms old (LeaveTownRestock). The flag is consumed at the
+//     next regular window open, which also frees the gamble inventories (w44).
+//   - Vendor pages are 10 x 10 grids ("Monster" record; the 10 x 4 "Trade
+//     Page" records are the player-to-player trade); a sold weapon whose page
+//     is full goes to page 2, an item without store page is not kept (w44).
 //   - RNG: the game's single shared generator (0x534510 returns game+0x1d24+8),
 //     not a per-NPC seed. The quality, count and upgrade rolls all use it.
 //   - 0x629e40 is bit 0 of the load-time flag word at base record +0xdc.

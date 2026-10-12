@@ -34,6 +34,8 @@ func (t *TradeWindow) RunAutoTest() {
 		t.autoRepair()
 	}
 
+	t.autoW44()
+
 	t.hero.Gold = start
 	t.syncGold()
 	t.changed()

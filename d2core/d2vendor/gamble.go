@@ -207,3 +207,15 @@ func GenerateGamble(rng d2drop.RNG, pool []GambleBase, ring, amulet GambleBase, 
 // than RestockInterval). A caller models the original by calling it when the
 // hero leaves town and remembering the flag until the vendor is next opened.
 func RestockDue(elapsedMs int64) bool { return elapsedMs > RestockInterval }
+
+// LeaveTownRestock is the per vendor decision of SUNITPROXY_RefreshVendorsByTier (0x534c20), run for the vendors
+// of the town just left (SERVER_HandleTownTransition 0x534d40, called with the level left and the level entered
+// whenever a player's room changes level). VERIFIED: the callback 0x534200 counts the players still standing in
+// the town that was left; when nobody is left (townEmpty, always true in a one player game) every vendor of that
+// act that was opened before is reset (flag +0x27, or its lists are freed outright) whatever its age. Only when
+// another player stays in town does the four minute rule (RestockDue) apply. The flag is consumed by the next
+// regular (non-gamble) window open, which also frees the per player gamble inventories (0x5346d0); a gamble open
+// never consumes it.
+func LeaveTownRestock(townEmpty bool, elapsedMs int64) bool {
+	return townEmpty || RestockDue(elapsedMs)
+}

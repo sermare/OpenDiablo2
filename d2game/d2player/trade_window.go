@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"image/color"
+	"strings"
 	"time"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
@@ -18,6 +19,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2itemdesc"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2vendor"
 )
@@ -35,6 +37,7 @@ const (
 	tradePanelPad    = 8
 	tradeTitleY      = 100
 	tradeGoldY       = 420
+	tradeMsgY        = 486 // the reply message line under the buttons (UNVERIFIED anchor: the original opens a modal dialog)
 	tradeRepairX     = 195 // slot 0 of the strip of 0x721608: panel x 0x74 + 80 - 1
 	tradeRepairY     = 445 // the strip stands on y 477 (UI_DrawTradePanel 0x484570), 32 high
 	tradeRepairW     = 120
@@ -52,6 +55,7 @@ var (
 	ErrNotSellable   = errors.New("the vendor does not buy this")
 	ErrNoRepair      = errors.New("nothing to repair")
 	ErrNotRepairer   = errors.New("this vendor does not repair")
+	ErrCursorBusy    = errors.New("the cursor holds an item")
 )
 
 // settle subtracts a price from a gold amount.
@@ -90,6 +94,7 @@ type TradeWindow struct {
 	tooltip    *d2ui.Tooltip
 	title      *d2ui.Label
 	goldLabel  *d2ui.Label
+	msgLabel   *d2ui.Label // the vendor's reply message (UI_ApplyNpcTransactionResultA 0x4b1c50), cleared on the next action
 	repairBtn  *d2ui.Button
 	closeBtn   *d2ui.Button
 	tabSprite  *d2ui.Sprite // buyselltabs.dc6: frames 0..3 selected, 4..7 other
@@ -124,7 +129,10 @@ type TradeWindow struct {
 	// OnImpossible plays the hero's "impossible" line (voice 0x13): ctrl-clicking an item the vendor does not buy
 	// (INV_HandleGridClick 0x48c3c0, TRADE_CheckItemSellable false).
 	OnImpossible func()
-	stocks       map[string]*d2vendor.Stock
+	// autoBelt puts a bought potion on the belt when it has room (TRADE_ServerBuyItem tries ITEMACT_ServerItemToBelt
+	// before the inventory); nil: inventory only.
+	autoBelt func(InventoryItem) bool
+	stocks   map[string]*d2vendor.Stock
 
 	// gamble is true while the window shows the vendor's gamble stock.
 	gamble bool
@@ -203,6 +211,13 @@ func (t *TradeWindow) Load() {
 	t.title.Color[0] = color.RGBA{R: 255, G: 215, B: 0, A: 255}
 	t.panelGroup.AddWidget(t.title)
 
+	t.msgLabel = t.ui.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
+	t.msgLabel.Alignment = d2ui.HorizontalAlignLeft
+	t.msgLabel.SetPosition(left, tradeMsgY)
+	t.msgLabel.Color[0] = color.RGBA{R: 255, G: 80, B: 80, A: 255}
+	t.msgLabel.SetVisible(false)
+	t.panelGroup.AddWidget(t.msgLabel)
+
 	t.goldLabel = t.ui.NewLabel(d2resource.Font16, d2resource.PaletteStatic)
 	t.goldLabel.Alignment = d2ui.HorizontalAlignLeft
 	t.goldLabel.SetPosition(left, tradeGoldY)
@@ -268,6 +283,15 @@ func (t *TradeWindow) open(v d2vendor.Vendor, seed uint32, quests *d2s.QuestReco
 		stock = nil
 		t.due[key] = false
 		t.restocks[key]++
+
+		if !gamble {
+			// TRADE_OpenVendorSession 0x577240 frees the vendor's lists (0x5346d0), the gamble inventories included.
+			gk := v.Name + gambleKeySuffix
+			if t.stocks[gk] != nil {
+				delete(t.stocks, gk)
+				t.restocks[gk]++
+			}
+		}
 	}
 
 	seed += t.restocks[key]
@@ -304,6 +328,7 @@ func (t *TradeWindow) open(v d2vendor.Vendor, seed uint32, quests *d2s.QuestReco
 	t.title.SetText(v.Name)
 	t.repairBtn.SetVisible(v.Repairs)
 	t.panelGroup.SetVisible(true)
+	t.clearMessage()
 	t.isOpen = true
 	t.inv.SetPriceHook(t.inventoryPriceLines)
 	t.syncGold()
@@ -311,20 +336,23 @@ func (t *TradeWindow) open(v d2vendor.Vendor, seed uint32, quests *d2s.QuestReco
 		len(stock.Items), t.hero.Gold, t.tab, t.pageCount(0), t.pageCount(1), t.pageCount(2), t.pageCount(3))
 }
 
-// LeaveTown is the town-leaving restock check (0x534c20, called from the
-// town transition 0x534d40 with the act of the town being left, VERIFIED): a
-// vendor of that act whose stamp is more than d2vendor.RestockInterval old is
-// flagged and restamped; its stock is rebuilt when its window is next
-// opened. Entering a town, or staying in it, never restocks.
-func (t *TradeWindow) LeaveTown(act int) {
+// LeaveTown is the town-leaving restock check (SUNITPROXY_RefreshVendorsByTier 0x534c20, called from the town
+// transition 0x534d40 with the act of the town being left, VERIFIED). othersInTown says whether another player
+// still stands in that town: when nobody does (always, in a one player game) every vendor of the act that was
+// opened before is flagged whatever the age of its stock; with players left behind only the vendors whose stamp
+// is more than d2vendor.RestockInterval old are flagged and restamped (d2vendor.LeaveTownRestock). The flag is
+// consumed when the vendor's regular window is next opened, which also drops its gamble stock (the per player
+// gamble inventories are freed with the vendor's lists); a gamble window never consumes it. Entering a town, or
+// staying in it, never restocks.
+func (t *TradeWindow) LeaveTown(act int, othersInTown bool) {
 	now := t.now()
 
 	for key, v := range t.keyVendor {
-		if d2vendor.ActIndex(v) != act {
+		if d2vendor.ActIndex(v) != act || strings.HasSuffix(key, gambleKeySuffix) {
 			continue
 		}
 
-		if d2vendor.RestockDue(now.Sub(t.stamp[key]).Milliseconds()) {
+		if d2vendor.LeaveTownRestock(!othersInTown, now.Sub(t.stamp[key]).Milliseconds()) {
 			t.due[key] = true
 			t.stamp[key] = now
 		}
@@ -338,6 +366,7 @@ func (t *TradeWindow) Close() {
 	}
 
 	t.isOpen = false
+	t.clearMessage()
 	t.panelGroup.SetVisible(false)
 	t.repairBtn.SetVisible(false)
 	t.tooltip.SetVisible(false)
@@ -533,34 +562,62 @@ func (t *TradeWindow) heroLevel() int {
 	return 1
 }
 
-// Buy purchases a vendor item: the price is paid, the item leaves the stock
-// and goes to the first free spot of the inventory (the original puts it on
-// the cursor; the engine has no cursor item yet).
+// Buy purchases a vendor item with a plain click (see BuyMulti).
 func (t *TradeWindow) Buy(item *diablo2item.Item) (price int, err error) {
+	return t.BuyMulti(item, false)
+}
+
+// BuyMulti is TRADE_ServerBuyItem 0x575640 (VERIFIED unless said otherwise). The cursor must be empty. Gold is the
+// inventory plus the stash gold. An item the vendor always sells (permanent stock, and the tier 4 and 5 potions on
+// Nightmare and Hell) is not taken from the stock: the player gets a copy. Anything else leaves the stock. A scroll
+// goes into a tome of its kind that has room (one scroll, or with shift as many as the gold pays and the tome
+// holds); a potion goes on the belt before the inventory. Shift (the packet's bit 31) is only sent for items.txt
+// "multibuy" rows and only kept for items the vendor always sells: an auto stack item (arrows, bolts, throwing
+// weapons) then tops up the player's partial stack or makes a full stack as far as the gold goes, a beltable potion
+// is bought again and again until the belt, the inventory or the gold gives out. The price paid is the sum.
+// Failures show the vendor's message (d2trade.ResultMessage).
+func (t *TradeWindow) BuyMulti(item *diablo2item.Item, shift bool) (price int, err error) {
+	t.clearMessage()
+
 	e := t.entries[item]
 	if e == nil {
-		return 0, ErrNotSellable
+		return 0, t.fail(ErrNotSellable, d2trade.ResultBusy)
 	}
 
-	price = t.BuyPrice(item)
-
-	if !t.canPay(price) {
-		return price, ErrNotEnoughGold
+	if t.inv.CursorItem() != nil {
+		return 0, t.fail(ErrCursorBusy, d2trade.ResultBusy)
 	}
 
-	if !t.inv.grid.CanAutoPlace(item, true) {
-		return price, ErrNoRoom
+	unit := t.BuyPrice(item)
+
+	if !t.canPay(unit) {
+		return unit, t.fail(ErrNotEnoughGold, d2trade.ResultNoGold)
 	}
 
-	t.stock.Remove(e)
-	t.grid.Remove(item)
-	delete(t.entries, item)
-	t.fixTab()
+	keep := !t.gamble && t.vendorSells(e.Code)
+	multi := d2trade.MultiBuy(shift, item.CommonRecord().Multibuy, keep)
 
-	t.inv.grid.AutoPlace(item, true)
+	var total int
 
-	if err := t.pay(price); err != nil {
-		return price, err
+	switch {
+	case t.buyIntoTome(item, unit, multi, &total):
+	case multi && t.isAutoStack(item) && t.buyStack(item, unit, &total):
+	default:
+		total, err = t.buyCopies(item, e, unit, keep, multi && t.isBeltable(item))
+		if err != nil {
+			return unit, err
+		}
+	}
+
+	if total == 0 {
+		return unit, t.fail(ErrNotEnoughGold, d2trade.ResultNoGold)
+	}
+
+	if !keep {
+		t.stock.Remove(e)
+		t.grid.Remove(item)
+		delete(t.entries, item)
+		t.fixTab()
 	}
 
 	if t.gamble {
@@ -569,9 +626,236 @@ func (t *TradeWindow) Buy(item *diablo2item.Item) (price int, err error) {
 
 	t.syncGold()
 	t.changed()
-	t.Infof("bought %q for %d, gold %d", item.Label(), price, t.hero.Gold)
+	t.Infof("bought %q for %d, gold %d", item.Label(), total, t.hero.Gold)
 
-	return price, nil
+	return total, nil
+}
+
+// buyCopies delivers the bought item (the stock item itself when it leaves the stock, else a copy) and repeats the
+// purchase for a multi buy while the next one still fits the belt or inventory and the gold. It reports the gold paid.
+func (t *TradeWindow) buyCopies(item *diablo2item.Item, e *d2vendor.Item, unit int, keep, repeat bool) (int, error) {
+	total := 0
+
+	for {
+		piece := item
+
+		if keep {
+			c, err := t.copyOf(item, e)
+			if err != nil {
+				t.Errorf("vendor copy %q: %v", e.Code, err)
+
+				if total == 0 {
+					return 0, t.fail(ErrNoRoom, d2trade.ResultInvalid)
+				}
+
+				break
+			}
+
+			piece = c
+		}
+
+		if !t.canPay(unit) {
+			if total == 0 {
+				return 0, t.fail(ErrNotEnoughGold, d2trade.ResultNoGold)
+			}
+
+			break
+		}
+
+		if !t.deliver(piece) {
+			if total == 0 {
+				return 0, t.fail(ErrNoRoom, d2trade.ResultNoRoom)
+			}
+
+			break
+		}
+
+		if err := t.pay(unit); err != nil {
+			return total, err
+		}
+
+		total += unit
+
+		if !repeat {
+			break
+		}
+	}
+
+	return total, nil
+}
+
+// deliver puts a bought item on the belt (potions) or in the first free spot of the inventory (the original puts it
+// on the cursor; the engine has no cursor item yet).
+func (t *TradeWindow) deliver(it *diablo2item.Item) bool {
+	if t.autoBelt != nil && t.autoBelt(it) {
+		return true
+	}
+
+	return t.inv.grid.AutoPlace(it, true)
+}
+
+// copyOf makes the copy of a permanent stock item that the player receives (ITEM_CloneItemViaSavedBits): the same
+// base, quality, level, seed and stack size.
+func (t *TradeWindow) copyOf(item *diablo2item.Item, e *d2vendor.Item) (*diablo2item.Item, error) {
+	t.factory.Difficulty = t.difficulty
+	t.factory.Classic = t.classic
+
+	c, err := t.factory.ItemFromCodeForVendor(e.Code, e.Quality, e.ILvl, uint32(item.Seed), t.difficulty)
+	if err != nil {
+		return nil, err
+	}
+
+	c.Identify()
+
+	if q := item.Quantity(); q > 0 {
+		c.SetQuantity(q)
+	}
+
+	return c, nil
+}
+
+func (t *TradeWindow) itemType(item *diablo2item.Item) *d2records.ItemTypeRecord {
+	return t.asset.Records.Item.Types[item.CommonRecord().Type]
+}
+
+func (t *TradeWindow) isAutoStack(item *diablo2item.Item) bool {
+	ty := t.itemType(item)
+
+	return item.IsStackable() && ty != nil && ty.AutoStack
+}
+
+func (t *TradeWindow) isBeltable(item *diablo2item.Item) bool {
+	ty := t.itemType(item)
+
+	return ty != nil && ty.Beltable && item.CommonRecord().AutoBelt
+}
+
+// tomeFor is the player's tome that takes a bought scroll: the same kind (d2player tomeOf) with room left
+// (TRADE_FindStackableTomeInInventory).
+func (t *TradeWindow) tomeFor(item *diablo2item.Item) *diablo2item.Item {
+	code, ok := tomeOf[item.GetItemCode()]
+	if !ok {
+		return nil
+	}
+
+	for _, it := range t.inv.grid.items {
+		if tome, isItem := it.(*diablo2item.Item); isItem && tome.GetItemCode() == code && tome.Quantity() < tome.StackLimit() {
+			return tome
+		}
+	}
+
+	return nil
+}
+
+// buyIntoTome adds the scrolls to a tome of the inventory; false when the item is no scroll or no tome has room.
+func (t *TradeWindow) buyIntoTome(item *diablo2item.Item, unit int, multi bool, paid *int) bool {
+	tome := t.tomeFor(item)
+	if tome == nil {
+		return false
+	}
+
+	qty := 1
+
+	if multi {
+		room := tome.StackLimit() - tome.Quantity()
+		if q, _, ok := d2trade.StackBuy(unit, t.hero.Gold+t.stash(), room, true); ok {
+			qty = q
+		}
+	}
+
+	cost := qty * unit
+	if t.pay(cost) != nil {
+		return false
+	}
+
+	tome.SetQuantity(tome.Quantity() + qty)
+	*paid = cost
+
+	return true
+}
+
+// buyStack is the shift buy of an auto stack item: it tops up the player's partial stack of the same kind, or makes
+// a new stack of up to the maximum, as far as the gold goes (the unit price is the price of one piece).
+func (t *TradeWindow) buyStack(item *diablo2item.Item, price int, paid *int) bool {
+	qty := item.Quantity()
+	if qty < 1 {
+		qty = 1
+	}
+
+	unit := price / qty
+	if unit < 1 {
+		unit = 1
+	}
+
+	limit := item.StackLimit()
+	room, topUp := limit, false
+
+	var target *diablo2item.Item
+
+	for _, it := range t.inv.grid.items {
+		if o, ok := it.(*diablo2item.Item); ok && o != item && o.GetItemCode() == item.GetItemCode() &&
+			o.Quality() == item.Quality() && o.Quantity() < o.StackLimit() {
+			target, room, topUp = o, o.StackLimit()-o.Quantity(), true
+
+			break
+		}
+	}
+
+	n, cost, ok := d2trade.StackBuy(unit, t.hero.Gold+t.stash(), room, topUp)
+	if !ok || !t.canPay(cost) {
+		return false
+	}
+
+	if target != nil {
+		if t.pay(cost) != nil {
+			return false
+		}
+
+		target.SetQuantity(target.Quantity() + n)
+		*paid = cost
+
+		return true
+	}
+
+	e := t.entries[item]
+
+	piece, err := t.copyOf(item, e)
+	if err != nil {
+		return false
+	}
+
+	piece.SetQuantity(n)
+
+	if !t.deliver(piece) || t.pay(cost) != nil {
+		return false
+	}
+
+	*paid = cost
+
+	return true
+}
+
+// fail shows the vendor's message for a reply code and returns err.
+func (t *TradeWindow) fail(err error, code int) error {
+	key, text := d2trade.ResultMessage(code)
+	if key != "" {
+		msg := t.text(key, text)
+		t.Infof("vendor message: code=%#x %q (%v)", code, msg, err)
+
+		if t.msgLabel != nil {
+			t.msgLabel.SetText(msg)
+			t.msgLabel.SetVisible(true)
+		}
+	}
+
+	return err
+}
+
+func (t *TradeWindow) clearMessage() {
+	if t.msgLabel != nil {
+		t.msgLabel.SetText("")
+		t.msgLabel.SetVisible(false)
+	}
 }
 
 // Sell sells one of the player's inventory items (TRADE_ServerSellItem
@@ -598,7 +882,8 @@ func (t *TradeWindow) Sell(item *diablo2item.Item) (price int, err error) {
 		e.W, e.H = item.InventoryGridSize()
 		e.Page = d2vendor.StorePageOf(t.asset.Records, item.CommonCode)
 
-		if t.stock.Place(e) {
+		// the weapons page overflows to the magic page, an unpaged type is not kept (PlaceSold, 0x577320)
+		if t.stock.PlaceSold(e) {
 			if e.Page == t.visiblePage() {
 				if err := t.grid.Set(e.X, e.Y, item); err == nil {
 					t.entries[item] = e
@@ -659,12 +944,14 @@ func (t *TradeWindow) RepairAll() (total int, err error) {
 		return 0, ErrNoRepair
 	}
 
+	t.clearMessage()
+
 	for _, it := range items {
 		total += t.RepairPrice(it)
 	}
 
 	if err := t.pay(total); err != nil {
-		return total, err
+		return total, t.fail(err, d2trade.ResultNoGold)
 	}
 
 	for _, it := range items {
@@ -691,6 +978,8 @@ func (t *TradeWindow) Repair(item *diablo2item.Item) (paid int, err error) {
 	if price <= 0 {
 		return 0, ErrNoRepair
 	}
+
+	t.clearMessage()
 
 	if t.canPay(price) {
 		if err := t.pay(price); err != nil {
@@ -722,7 +1011,7 @@ func (t *TradeWindow) Repair(item *diablo2item.Item) (paid int, err error) {
 		}
 	}
 
-	return price, ErrNotEnoughGold
+	return price, t.fail(ErrNotEnoughGold, d2trade.ResultNoGold)
 }
 
 func (t *TradeWindow) changed() {
@@ -809,7 +1098,7 @@ func (t *TradeWindow) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 		}
 
 		if item, ok := t.grid.ItemAtScreen(mx, my).(*diablo2item.Item); ok {
-			if _, err := t.Buy(item); err != nil {
+			if _, err := t.BuyMulti(item, event.KeyMod() == d2enum.KeyModShift); err != nil {
 				t.Infof("buy %q: %v", item.Label(), err)
 			}
 
