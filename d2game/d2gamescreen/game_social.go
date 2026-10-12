@@ -63,6 +63,7 @@ func (v *Game) advanceSocial(_ float64) {
 
 	v.gameControls.SetTradeHandler(v)
 	v.gameControls.OnTownPortal = v.useTownPortalItem
+	v.gameControls.OnSpeechSkip = v.skipSpeechByKey
 	v.syncPortals() // pairs that arrived while the map was still loading
 	v.gameControls.SetRelationSource(v.relationOf)
 

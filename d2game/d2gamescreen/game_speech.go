@@ -97,3 +97,10 @@ func (v *Game) interruptSpeech() {
 		v.gameControls.Speech.Clear()
 	}
 }
+
+// skipSpeechByKey is Esc / Space during an NPC line (exe handler 0x49de80 -> 0x49d090, VERIFIED): the voice and
+// the subtitle are cut and the talk ends.
+func (v *Game) skipSpeechByKey() {
+	v.interruptSpeech()
+	v.Infof("NPC speech skipped by key")
+}
