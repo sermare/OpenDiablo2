@@ -291,6 +291,9 @@ type Director struct {
 	// hit BEFORE the damage roll (the exe's order). It reports whether the hit
 	// was avoided, with a log note. melee is false for projectiles.
 	HeroBlockAnim func(p *d2mapentity.Player) bool // wave 24: may the hero enter the block mode now (0x57ceb0)? nil: always
+	// OnHeroBlockMode, if set, is called when a hero's block animation starts (mode BL): the client plays the block
+	// sound of the weapon's hit class then (UNITSND_HandleUnitModeSound 0x4c9030, wave 48).
+	OnHeroBlockMode func(p *d2mapentity.Player)
 
 	HeroAvoid func(p *d2mapentity.Player, attacker *d2mapentity.Monster, melee bool) (bool, string)
 

@@ -91,6 +91,7 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 	v.monsters.PartyXP = v.partyXP
 	v.monsters.PartyXPAt = v.partyXPAt
 	v.monsters.OnMirrorHit = v.onMirrorHit
+	v.monsters.OnHeroBlockMode = v.onHeroBlockMode
 	v.hookEndgameMonsters()
 
 	return v.monsters

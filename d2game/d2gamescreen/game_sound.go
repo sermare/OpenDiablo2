@@ -18,9 +18,6 @@ import (
 const (
 	heroEmitter = 1 << 24 // emitter id of the local hero (monsters use their brain ids)
 
-	heroWalkStepSeconds = 0.32 // time between hero footsteps while walking (engine choice)
-	heroRunStepSeconds  = 0.22
-
 	// beyond the largest Falloff radius nothing can be heard: skip the call
 	farthestAudible = 2000.0
 )
@@ -141,32 +138,34 @@ func (v *Game) onMonsterSound(ev d2monsters.SoundEvent) {
 
 // advanceHeroFootsteps plays the hero's footsteps while the walk or run
 // animation is showing: <weight>_walk|run_<surface>_1, the weight by hero class and the surface by the floor tile
-// (see footstepSurface). The step timing is an engine choice (the exe steps on animation frames, UNVERIFIED).
-func (v *Game) advanceHeroFootsteps(elapsed float64) {
+// (see footstepSurface). The steps fall on animation frames like the exe's (UNITSND_PlayModeEndSound 0x4c7a20,
+// VERIFIED wave 48, d2audio.FootstepTracker): 2 per cycle for a hero, FsCnt / FsOff of the MonSounds row for a form.
+func (v *Game) advanceHeroFootsteps(_ float64) {
 	mode := v.localPlayer.GetAnimationMode()
 
-	step := heroWalkStepSeconds
-
 	switch mode {
-	case d2enum.PlayerAnimationModeWalk, d2enum.PlayerAnimationModeTownWalk:
-	case d2enum.PlayerAnimationModeRun:
-		step = heroRunStepSeconds
+	case d2enum.PlayerAnimationModeWalk, d2enum.PlayerAnimationModeTownWalk, d2enum.PlayerAnimationModeRun:
 	default:
-		v.heroStepAcc = 0
+		v.heroSteps.Reset()
 		return
 	}
 
-	v.heroStepAcc += elapsed
-	if v.heroStepAcc < step {
-		return
+	steps, offset := 2, 0
+
+	rec := v.formSoundRecord()
+	if rec != nil {
+		steps, offset = rec.FootstepCount, rec.FootstepOffset
 	}
 
-	v.heroStepAcc = 0
+	frame, count := v.localPlayer.AnimationFrame()
+	if count < 1 || !v.heroSteps.Observe(frame, count, steps, offset) {
+		return
+	}
 
 	run := mode == d2enum.PlayerAnimationModeRun
 	surface := v.footstepSurface()
 
-	if rec := v.formSoundRecord(); rec != nil {
+	if rec != nil {
 		v.playFormFootstep(rec, surface, run)
 		return
 	}
