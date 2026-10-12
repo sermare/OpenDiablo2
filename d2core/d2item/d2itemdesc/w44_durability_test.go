@@ -6,6 +6,21 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
 )
 
+func TestSplitDurabilityLine(t *testing.T) {
+	tb := testTables()
+	it := &d2s.Item{Code: "cap", MaxDurability: 24, Durability: 12}
+	text := tb.tr("ItemStats1d") + " 12 " + tb.tr("ItemStats1j") + " 24"
+
+	head, mx, ok := tb.SplitDurabilityLine(it, Line{text, White})
+	if !ok || mx != "24" || head+mx != text {
+		t.Errorf("split: %q %q %v", head, mx, ok)
+	}
+
+	if _, _, ok := tb.SplitDurabilityLine(it, Line{"Defense: 24", White}); ok {
+		t.Error("a defense line must not split")
+	}
+}
+
 // INV_BuildDurabilityLine 0x480eb0: the maximum is blue only when stat 0x4b contributes.
 func TestDurabilityMaxBlue(t *testing.T) {
 	tb := testTables()
