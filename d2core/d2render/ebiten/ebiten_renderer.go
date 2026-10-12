@@ -11,7 +11,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
@@ -55,11 +54,8 @@ func (r *Renderer) Update() error {
 		return errors.New("no update callback defined for ebiten renderer")
 	}
 
-	// Cmd+Enter (macOS) or Alt+Enter toggles fullscreen, like the original game
-	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) &&
-		(commandHeld() || ebiten.IsKeyPressed(ebiten.KeyAlt)) {
-		ebiten.SetFullscreen(!ebiten.IsFullscreen())
-	}
+	// Cmd+Enter (macOS) / Alt+Enter (Windows, Linux) are handled once in handleWindowShortcuts above; a second toggle
+	// here would undo the first on the same tick.
 
 	if d2util.TurboEnabled() {
 		return r.turboUpdate()

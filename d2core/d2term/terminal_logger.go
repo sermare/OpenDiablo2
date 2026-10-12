@@ -31,11 +31,11 @@ func (tl *terminalLogger) Write(p []byte) (int, error) {
 
 	switch {
 	case strings.Index(lineLower, "error") > 0:
-		tl.terminal.Errorf(line)
+		tl.terminal.Errorf("%s", line)
 	case strings.Index(lineLower, "warning") > 0:
-		tl.terminal.Warningf(line)
+		tl.terminal.Warningf("%s", line)
 	default:
-		tl.terminal.Printf(line)
+		tl.terminal.Printf("%s", line)
 	}
 
 	return tl.writer.Write(p)

@@ -207,10 +207,10 @@ func (t *Terminal) processCommand() {
 	t.commandHistory = t.commandHistory[:n]
 	t.commandHistory = append(t.commandHistory, t.command)
 
-	t.Printf(t.command)
+	t.Printf("%s", t.command)
 
 	if err := t.Execute(t.command); err != nil {
-		t.Errorf(err.Error())
+		t.Errorf("%s", err.Error())
 	}
 
 	t.commandIndex = len(t.commandHistory) - 1

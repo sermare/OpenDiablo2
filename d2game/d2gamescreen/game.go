@@ -322,12 +322,12 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 
 	for _, cmd := range commands {
 		if err := v.terminal.Bind(cmd.name, cmd.desc, cmd.args, cmd.fn); err != nil {
-			v.Errorf(err.Error())
+			v.Errorf("%s", err.Error())
 		}
 	}
 
 	if err := v.asset.BindTerminalCommands(v.terminal); err != nil {
-		v.Errorf(err.Error())
+		v.Errorf("%s", err.Error())
 	}
 }
 

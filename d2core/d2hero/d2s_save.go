@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -131,7 +132,7 @@ func writeFileAtomic(path string, data []byte) error {
 	}
 
 	if err == nil {
-		err = os.Rename(tmp, path)
+		err = renameReplace(tmp, path)
 	}
 
 	if err != nil {
@@ -306,4 +307,22 @@ func laterQuestSlots(b *d2s.Body, difficulty int) string {
 	}
 
 	return "[" + strings.Join(parts, " ") + "]"
+}
+
+// renameReplace renames tmp over path. On Windows the replace fails with "access denied" for a moment while another
+// process (a second game, an antivirus scan, the file indexer) holds the target open, so it retries a few times there.
+// Other systems rename once.
+func renameReplace(tmp, path string) error {
+	err := os.Rename(tmp, path)
+	if runtime.GOOS != "windows" {
+		return err
+	}
+
+	for i := 0; err != nil && i < 10; i++ {
+		time.Sleep(20 * time.Millisecond)
+
+		err = os.Rename(tmp, path)
+	}
+
+	return err
 }

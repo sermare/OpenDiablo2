@@ -1614,7 +1614,7 @@ func (g *GameControls) commandLearnSkillID(term d2interface.Terminal) func(args 
 
 		g.hero.Skills[skill.ID] = skill
 		g.hud.skillSelectMenu.RegenerateImageCache()
-		g.Infof("Learned skill: " + skill.Skill)
+		g.Infof("Learned skill: %s", skill.Skill)
 
 		return nil
 	}
