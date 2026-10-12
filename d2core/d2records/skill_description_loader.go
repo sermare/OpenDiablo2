@@ -173,7 +173,7 @@ func descRows(d *d2txt.DataDictionary) d2skilldesc.Desc {
 	}
 
 	return d2skilldesc.Desc{
-		DescDam: d.Number("descdam"),
-		Lines:   group("desc", 6), Lines2: group("dsc2", 4), Lines3: group("dsc3", 7),
+		DescDam: d.Number("descdam"), DdamCalc1: d.String("ddam calc1"), DdamCalc2: d.String("ddam calc2"),
+		Lines: group("desc", 6), Lines2: group("dsc2", 4), Lines3: group("dsc3", 7),
 	}
 }

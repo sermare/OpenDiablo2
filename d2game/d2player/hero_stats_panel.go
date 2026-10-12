@@ -153,6 +153,10 @@ type HandSkillInfo struct {
 	SrcDam, ToHitBonus, StateBonus int
 	Bit8, Thrown                   bool
 	SkillMin, SkillMax             int
+	// DescDam, when set, is the input of the skill's descdam function (d2statlist.DescDamBox); it replaces the
+	// generic weapon box for the ported descdam indexes. SkillMin / SkillMax stay 0: the exe hands the box code empty
+	// accumulators and adds the skill's own damage after the percent (VERIFIED wave 47, 0x4e7ce0 / 0x4e6fd0).
+	DescDam *d2statlist.DescDamInput
 }
 
 // handLabels are the labels of one hand's pair of boxes.
@@ -198,6 +202,7 @@ type HeroStatsPanel struct {
 	heroClass       d2enum.Hero
 	labels          *StatsPanelLabels
 	hands           [2]handLabels
+	lastBoxLog      [2]string
 	handSkills      func() [2]HandSkillInfo
 	onCloseCb       func()
 	panelGroup      *d2ui.WidgetGroup
@@ -577,6 +582,10 @@ func resistLineStates(shown, maxTotal int, raised, lowered bool) (string, int) {
 // setStatColour tints a value label with one of the exe's font colour indices.
 func boxFont(c d2statlist.BoxColour) int {
 	switch c {
+	case d2statlist.BoxGreen:
+		return StatFontGreen
+	case d2statlist.BoxYellow:
+		return StatFontYellow
 	case d2statlist.BoxRed:
 		return StatFontRed
 	case d2statlist.BoxBlue:
@@ -619,6 +628,18 @@ func (s *HeroStatsPanel) setDerivedValues() {
 	}
 }
 
+// descDamBox runs the ported descdam function with the hero's damage state masks.
+func descDamBox(t *d2statlist.Totals, in *d2statlist.DescDamInput, flags d2state.PanelFlags) (d2statlist.DamageBox, bool) {
+	if in == nil {
+		return d2statlist.DamageBox{}, false
+	}
+
+	c := *in
+	c.DmgBlue, c.DmgRed = flags.DamageBlue(), flags.DamageRed()
+
+	return t.DescDamBox(c)
+}
+
 // SetHandSkills gives the panel the hero's left and right skills.
 func (s *HeroStatsPanel) SetHandSkills(f func() [2]HandSkillInfo) { s.handSkills = f }
 
@@ -645,8 +666,11 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 
 		dmgCol, arCol := DefenseColour(flags.DamageBlue(), flags.DamageRed()), DefenseColour(flags.AttackBlue(), flags.AttackRed())
 
-		if sk.Name != "" && sk.Weapon {
+		// the exe draws the damage box for every usable skill whose descdam entry exists (0x4ea490); the attack rating box
+		// needs a descatt entry, which this port models as the weapon skills only (UNVERIFIED)
+		if sk.Name != "" && (sk.Weapon || sk.DescDam != nil) {
 			lo, hi, rt := dmin, dmax, ar
+			descText := ""
 
 			if t := s.heroState.Totals; t != nil {
 				srcDam := sk.SrcDam
@@ -656,6 +680,9 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 
 				if tmin, tmax, ok := t.ThrownBox(0); ok && sk.Thrown {
 					lo, hi = tmin, tmax // 0x4e7470: the thrown range, no flat damage
+				} else if box, ok := descDamBox(t, sk.DescDam, flags); ok {
+					lo, hi, dmgCol = box.Min, box.Max, boxFont(box.Colour)
+					descText = d2statlist.MinMaxText(lo, hi)
 				} else {
 					box := t.SkillDamageBox(d2statlist.SkillBox{
 						SrcDam: srcDam, SkillMin: sk.SkillMin, SkillMax: sk.SkillMax, Bit8: sk.Bit8, StateBonus: sk.StateBonus,
@@ -664,20 +691,35 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 					lo, hi, dmgCol = box.Min, box.Max, boxFont(box.Colour)
 				}
 
-				var col d2statlist.BoxColour
+				if sk.Weapon {
+					var col d2statlist.BoxColour
 
-				rt, col = d2statlist.SkillAttackRating(t.AttackRatingFlat, t.ToHitPct, 0, sk.ToHitBonus, false,
-					flags.AttackBlue(), flags.AttackRed())
-				arCol = boxFont(col)
+					rt, col = d2statlist.SkillAttackRating(t.AttackRatingFlat, t.ToHitPct, 0, sk.ToHitBonus, false,
+						flags.AttackBlue(), flags.AttackRed())
+					arCol = boxFont(col)
+				}
 			}
 
 			damage = strconv.Itoa(lo) + "-" + strconv.Itoa(hi)
-			rating = strconv.Itoa(rt)
-			dcap, acap = capDamage, capAR
+			if descText != "" {
+				damage = descText
+			}
+
+			dcap = capDamage
+
+			if sk.Weapon {
+				rating = strconv.Itoa(rt)
+				acap = capAR
+			}
 		}
 
 		l.damageCaption.SetText(dcap)
 		l.damage.SetText(damage)
+
+		if line := fmt.Sprintf("skill=%q descdam=%t damage=%s ar=%s", sk.Name, sk.DescDam != nil, damage, rating); line != s.lastBoxLog[h] {
+			s.lastBoxLog[h] = line
+			s.Infof("HANDBOX hand=%d %s", h, line)
+		}
 		// a two line caption: the lines stand 8 px apart around the box middle (anchor UNVERIFIED)
 		first, second := acap, ""
 		if i := strings.Index(acap, "\n"); i >= 0 {
