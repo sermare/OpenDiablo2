@@ -127,7 +127,13 @@ func skillDescTexts(tr func(string) string, reg *d2skill.Registry, sk *d2skill.S
 					int(sk.PhysMax(env, level, hero.Weapon[1], true) >> 8)
 			},
 			Elem: func() (int, int, int) {
-				return int(sk.ElemMin(env, level) >> 8), int(sk.ElemMax(env, level) >> 8), elemType(sk.EType)
+				et, pct := elemType(sk.EType), 0
+				if hero.ElemPct != nil {
+					pct = hero.ElemPct(et)
+				}
+
+				return withElemMastery(int(sk.ElemMin(env, level)), pct) >> 8,
+					withElemMastery(int(sk.ElemMax(env, level)), pct) >> 8, et
 			},
 			ElemLen: func() int { return sk.ElemLen(env, level) },
 			// kind 31: divisor is AiCurseDivisor, see heroInputs.CurseDiv.

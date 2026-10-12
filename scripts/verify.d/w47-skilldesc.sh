@@ -16,6 +16,7 @@ scenario_check() {
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: script did not pass"; fail=1; }
   grep -qE 'HANDBOX hand=0 skill="Fire Bolt" descdam=true damage=[0-9]+-[0-9]+' $log.txt || { echo "FAIL: Fire Bolt did not use its descdam function"; fail=1; }
   grep -qE 'HANDBOX hand=1 skill="Meteor" descdam=true damage=[0-9]+-[0-9]+' $log.txt || { echo "FAIL: Meteor did not use its descdam function"; fail=1; }
+  [ -n "${OD2_KEEP_FRAMES:-}" ] && cp $tmp/w47-*.png "$OD2_KEEP_FRAMES"/ 2>/dev/null   # optional: keep the frames for a look
   for f in char popup tree; do
     [ -s $tmp/w47-$f.png ] || { echo "FAIL: no frame $f"; fail=1; }
   done

@@ -63,7 +63,14 @@ func TestHeroInputsFrom(t *testing.T) {
 				cd = div
 			}
 
-			if got := heroInputsFrom(tc.st, nil, cd); !reflect.DeepEqual(got, tc.want) {
+			got := heroInputsFrom(tc.st, nil, cd)
+			if tc.st != nil && tc.st.Totals != nil && got.ElemPct == nil {
+				t.Fatal("no elemental mastery getter")
+			}
+
+			got.ElemPct = nil // a func cannot be compared
+
+			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got %+v want %+v", got, tc.want)
 			}
 		})
@@ -203,5 +210,20 @@ func TestNoWeaponNoItemsKeepsNonDamageLines(t *testing.T) {
 
 	if len(before) < 4 {
 		t.Fatalf("expected several lines, got %v", before)
+	}
+}
+
+func TestElemMasteryPct(t *testing.T) {
+	tt := &d2statlist.Totals{}
+	tt.Elem.Elem[0].Pct, tt.Elem.Elem[1].Pct, tt.Elem.Elem[2].Pct, tt.Elem.Poison.Pct = 10, 20, 30, 40
+
+	for et, want := range map[int]int{1: 10, 2: 20, 3: 0, 4: 30, 5: 40, 0: 0} {
+		if got := elemMasteryPct(tt, et); got != want {
+			t.Fatalf("etype %d: got %d want %d", et, got, want)
+		}
+	}
+
+	if elemMasteryPct(nil, 1) != 0 || withElemMastery(200, 50) != 300 || withElemMastery(7, 50) != 10 {
+		t.Fatal("nil totals / mastery arithmetic")
 	}
 }

@@ -666,7 +666,9 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 
 		dmgCol, arCol := DefenseColour(flags.DamageBlue(), flags.DamageRed()), DefenseColour(flags.AttackBlue(), flags.AttackRed())
 
-		if sk.Name != "" && sk.Weapon {
+		// the exe draws the damage box for every usable skill whose descdam entry exists (0x4ea490); the attack rating box
+		// needs a descatt entry, which this port models as the weapon skills only (UNVERIFIED)
+		if sk.Name != "" && (sk.Weapon || sk.DescDam != nil) {
 			lo, hi, rt := dmin, dmax, ar
 			descText := ""
 
@@ -689,11 +691,13 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 					lo, hi, dmgCol = box.Min, box.Max, boxFont(box.Colour)
 				}
 
-				var col d2statlist.BoxColour
+				if sk.Weapon {
+					var col d2statlist.BoxColour
 
-				rt, col = d2statlist.SkillAttackRating(t.AttackRatingFlat, t.ToHitPct, 0, sk.ToHitBonus, false,
-					flags.AttackBlue(), flags.AttackRed())
-				arCol = boxFont(col)
+					rt, col = d2statlist.SkillAttackRating(t.AttackRatingFlat, t.ToHitPct, 0, sk.ToHitBonus, false,
+						flags.AttackBlue(), flags.AttackRed())
+					arCol = boxFont(col)
+				}
 			}
 
 			damage = strconv.Itoa(lo) + "-" + strconv.Itoa(hi)
@@ -701,8 +705,12 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFla
 				damage = descText
 			}
 
-			rating = strconv.Itoa(rt)
-			dcap, acap = capDamage, capAR
+			dcap = capDamage
+
+			if sk.Weapon {
+				rating = strconv.Itoa(rt)
+				acap = capAR
+			}
 		}
 
 		l.damageCaption.SetText(dcap)

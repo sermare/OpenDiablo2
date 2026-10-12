@@ -58,6 +58,11 @@ func descDamInputFor(asset *d2asset.AssetManager, hs *d2hero.HeroSkill, level in
 		return env.Eval(d2calc.Compile(src, d2calc.KindSkill))
 	}
 
+	var pct int
+	if stats != nil {
+		pct = elemMasteryPct(stats.Totals, elemType(sk.EType))
+	}
+
 	in = d2statlist.DescDamInput{
 		DescDam: desc.DescDam,
 		SrcDam:  hs.SkillRecord.SrcDam,
@@ -66,8 +71,8 @@ func descDamInputFor(asset *d2asset.AssetManager, hs *d2hero.HeroSkill, level in
 		Calc2:   eval(desc.DdamCalc2),
 		PhysMin: int(sk.PhysMin(env, level, 0, false) >> 8),
 		PhysMax: int(sk.PhysMax(env, level, 0, false) >> 8),
-		ElemMin: int(sk.ElemMin(env, level)),
-		ElemMax: int(sk.ElemMax(env, level)),
+		ElemMin: withElemMastery(int(sk.ElemMin(env, level)), pct),
+		ElemMax: withElemMastery(int(sk.ElemMax(env, level)), pct),
 		ElemLen: sk.ElemLen(env, level),
 		Bit8:    hs.SkillRecord.Finishing,
 	}
@@ -114,3 +119,28 @@ func skillToHitBonus(asset *d2asset.AssetManager, hs *d2hero.HeroSkill, level in
 
 	return sk.ToHitBonus(d2skill.NewEnv(sk, level, tooltipUnit{level: heroLevel, points: pts}, reg), level)
 }
+
+// elemMasteryPct is the stat SKILL_GetElementMasteryBonusPct (0x646040) reads for a skill's element: 0x149 fire,
+// 0x14a lightning, 0x14b cold (etype 4 and 0xc), 0x14c poison, none for magic. SKILL_GetElementalMin/MaxDamage with
+// the flag set (0x646100 / 0x646200, VERIFIED) add value * pct / 100 to their result.
+func elemMasteryPct(t *d2statlist.Totals, etype int) int {
+	if t == nil {
+		return 0
+	}
+
+	switch etype {
+	case 1:
+		return t.Elem.Elem[0].Pct
+	case 2:
+		return t.Elem.Elem[1].Pct
+	case 4:
+		return t.Elem.Elem[2].Pct
+	case 5:
+		return t.Elem.Poison.Pct
+	}
+
+	return 0
+}
+
+// withElemMastery is v + v*pct/100 (MATH_MulDiv, truncating).
+func withElemMastery(v, pct int) int { return v + v*pct/100 }

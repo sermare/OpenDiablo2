@@ -26,6 +26,9 @@ type heroInputs struct {
 	// the +0x1c field of the 0x58-byte difficulty record (getter 0x610fd0) is that column in the loader
 	// DATATBL_LoadDifficultyLevelsTable 0x617870 (structs-tables.md).
 	CurseDiv int
+	// ElemPct is the hero's elemental mastery percent of an element type (0x646040), added to the skill's elemental
+	// damage by the flag-1 getters 0x646100 / 0x646200.
+	ElemPct func(etype int) int
 }
 
 // heroInputsFrom reads the inputs from the hero's stats. A nil hero, or one
@@ -40,6 +43,7 @@ func heroInputsFrom(st *d2hero.HeroStatsState, tpl *d2summon.Templates, curseDiv
 
 	if t := st.Totals; t != nil {
 		in.Weapon = [2]int{t.DamageMin, t.DamageMax}
+		in.ElemPct = func(etype int) int { return elemMasteryPct(t, etype) }
 	}
 
 	in.Diff = d2summon.Difficulty(st.Difficulty)
