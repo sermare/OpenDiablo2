@@ -31,6 +31,7 @@ func (v *Game) compareCommands() []struct {
 		{"tooltiplog", "logs the tooltip lines with colour tokens of a worn item or of an item of inv|stash|cube|vendor (scripts)",
 			[]string{"where", "code"}, v.commandTooltipLog},
 		{"openvendor", "opens the trade window of a vendor next to the hero (scripts)", []string{"vendor"}, v.commandOpenVendor},
+		{"itemtext", "logs the whole tooltip text of every item in the inventory (scripts)", []string{"tag"}, v.commandItemText},
 		{"stashgive", "creates an identified item and puts it into the stash (scripts)", []string{"code"}, v.commandStashGive},
 	}
 }
@@ -99,4 +100,18 @@ func (v *Game) commandTooltipLog(args []string) error {
 	_, err := v.gameControls.TooltipLog(args[0], args[1])
 
 	return err
+}
+
+// commandItemText is "itemtext <tag>": one ITEMTEXT log line per inventory item with its whole tooltip, so that
+// the tooltips before and after a save and reload can be compared (scripts/verify.d/w51-rare-*.sh).
+func (v *Game) commandItemText(args []string) error {
+	if v.gameControls == nil {
+		return errors.New("not in a game")
+	}
+
+	for i, text := range v.gameControls.InventoryTooltips() {
+		v.Infof("ITEMTEXT tag=%s #%d %s", args[0], i, text)
+	}
+
+	return nil
 }

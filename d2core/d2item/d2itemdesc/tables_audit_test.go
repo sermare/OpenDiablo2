@@ -305,15 +305,25 @@ func TestAuditAffixAndBonusProps(t *testing.T) {
 		rows []AffixDef
 	}{{"magicprefix.txt", tb.Prefixes}, {"magicsuffix.txt", tb.Suffixes}} {
 		raw := rawTable(t, f.file)
-		if len(raw.rows) != len(f.rows) {
-			t.Errorf("%s: %d rows loaded, %d in the table", f.file, len(f.rows), len(raw.rows))
+
+		// index 0 is "none"; the "Expansion" separator row has no id
+		var rows [][]string
+
+		for _, r := range raw.rows {
+			if !strings.EqualFold(raw.str(r, "Name"), "Expansion") {
+				rows = append(rows, r)
+			}
+		}
+
+		if len(rows)+1 != len(f.rows) {
+			t.Errorf("%s: %d rows loaded, %d in the table", f.file, len(f.rows)-1, len(rows))
 
 			continue
 		}
 
-		for i, r := range raw.rows {
-			if f.rows[i].Name != raw.str(r, "Name") || f.rows[i].LevelReq != raw.num(r, "levelreq") {
-				t.Errorf("%s row %d: loaded %+v", f.file, i, f.rows[i])
+		for i, r := range rows {
+			if f.rows[i+1].Name != raw.str(r, "Name") || f.rows[i+1].LevelReq != raw.num(r, "levelreq") {
+				t.Errorf("%s id %d: loaded %+v", f.file, i+1, f.rows[i+1])
 			}
 		}
 	}

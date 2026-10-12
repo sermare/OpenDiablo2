@@ -44,6 +44,29 @@ func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2it
 		return f.ItemFromSpec(rolled)
 	}
 
+	if s.D2S != nil {
+		// an item of a .d2s: rebuild it from its real affixes and properties
+		if exact, err := f.SpecFromD2S(s.D2S); err == nil {
+			exact.Identified, exact.Ethereal = spec.Identified, spec.Ethereal
+
+			if spec.Quantity > 0 {
+				exact.Quantity = spec.Quantity
+			}
+
+			if spec.Durability >= 0 {
+				exact.Durability = spec.Durability
+			}
+
+			if spec.Personal != "" {
+				exact.Personal = spec.Personal
+			}
+
+			if it, err := f.ItemFromSpec(exact); err == nil {
+				return it, nil
+			}
+		}
+	}
+
 	if s.Origin {
 		// imported from a .d2s: roll the base item with the item generator (an
 		// approximation, see StoredItem.Origin), then keep what that rolled

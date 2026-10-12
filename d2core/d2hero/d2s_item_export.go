@@ -83,9 +83,18 @@ func D2SItemFromStored(s *StoredItem, tables *d2s.ItemTables, ids *AffixIDs) (it
 		it.Location, it.Page = d2s.LocationStored, uint8(s.Page)
 	}
 
-	why = applyQuality(&it, s, ids)
-	if why != "" {
+	if s.Facts.Save != nil {
+		// an item made with the item creator: the quality is stored as is
+		it.Quality = uint8(clampInt(s.Quality, 0, 15))
+		if it.Quality == 0 {
+			it.Quality = d2s.QualityNormal
+		}
+	} else if why = applyQuality(&it, s, ids); why != "" {
 		return it, 0, why
+	}
+
+	if s.Personal != "" {
+		it.Personalized, it.PersonalName = true, s.Personal
 	}
 
 	f := s.Facts
@@ -109,6 +118,15 @@ func D2SItemFromStored(s *StoredItem, tables *d2s.ItemTables, ids *AffixIDs) (it
 
 	if f.Sockets > 0 {
 		it.TotalSockets = uint8(clampInt(f.Sockets, 0, 6))
+	}
+
+	if f.Save != nil {
+		built, dropped, err := diablo2item.D2SItemFromFacts(it, f, tables)
+		if err != nil {
+			return it, 0, err.Error()
+		}
+
+		return built, dropped, ""
 	}
 
 	stats := append(append([]diablo2item.ExportStat(nil), f.Affix...), f.Unique...)

@@ -51,6 +51,10 @@ type Spec struct {
 
 	// Personal is the name Anya's reward personalized the item with.
 	Personal string
+
+	// Defense is the base defense of an armor piece as a save keeps it (ethereal
+	// bonus included); 0 = leave the rolled one. Set for items read from a .d2s.
+	Defense int `json:"defense,omitempty"`
 }
 
 // intn rolls a property value. While an item with a seed is being built the
@@ -209,6 +213,10 @@ func (f *ItemFactory) restoreState(item *Item, s Spec) {
 
 	if s.MaxDurability > 0 && item.attributes.durable {
 		item.attributes.durability.max = s.MaxDurability
+	}
+
+	if s.Defense > 0 {
+		item.attributes.defense = s.Defense
 	}
 
 	if s.Quantity > 0 {

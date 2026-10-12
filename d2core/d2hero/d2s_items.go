@@ -49,9 +49,26 @@ func (f *HeroStateFactory) loadAffixNames() *affixNames {
 	return &affixNames{
 		unique: read(d2resource.UniqueItems, "index"),
 		set:    read(d2resource.SetItems, "index"),
-		prefix: read(d2resource.MagicPrefix, "Name"),
-		suffix: read(d2resource.MagicSuffix, "Name"),
+		prefix: affixIDList(read(d2resource.MagicPrefix, "Name")),
+		suffix: affixIDList(read(d2resource.MagicSuffix, "Name")),
 	}
+}
+
+// affixIDList turns the rows of MagicPrefix or MagicSuffix into a list indexed
+// by the id a save keeps: the 1-based position among the rows the game loads,
+// which has no "Expansion" separator row (ITEM_WriteSavedItemProperties
+// 0x630170 VERIFIED, and every row compared with the item creator's table by
+// the diablo2item tests). Index 0 is "no affix".
+func affixIDList(rows []string) []string {
+	out := []string{""}
+
+	for _, n := range rows {
+		if !strings.EqualFold(n, "Expansion") {
+			out = append(out, n)
+		}
+	}
+
+	return out
 }
 
 func nameAt(list []string, id int) string {
