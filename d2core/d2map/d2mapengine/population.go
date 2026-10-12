@@ -41,3 +41,17 @@ func (m *MapEngine) SetPopulation(p []PlannedMonster) { m.population = p }
 // Population returns the planned natural monsters of the loaded level, nil
 // when the generator did not plan any (the old generators).
 func (m *MapEngine) Population() []PlannedMonster { return m.population }
+
+// PlannedObject is one random room object of a level (objgroup scatter of
+// d2common/d2object.Scatter, the port of OBJRGN_SpawnRoomObjects).
+type PlannedObject struct {
+	// ID is the objects.txt row, X and Y the position in sub-tiles.
+	ID, X, Y int
+}
+
+// SetRoomObjects stores the random room objects of the loaded level; the game
+// screen creates them when it populates the level. Cleared by ResetMap.
+func (m *MapEngine) SetRoomObjects(o []PlannedObject) { m.roomObjects = o }
+
+// RoomObjects returns the planned random room objects, nil when none were planned.
+func (m *MapEngine) RoomObjects() []PlannedObject { return m.roomObjects }

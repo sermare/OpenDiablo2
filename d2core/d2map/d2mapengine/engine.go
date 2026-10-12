@@ -46,6 +46,7 @@ type MapEngine struct {
 	world         World       // where this map sits in the Act 1 world (see SetWorld)
 	warpDest      map[[2]int]int
 	population    []PlannedMonster // natural monsters of the level (see SetPopulation)
+	roomObjects   []PlannedObject  // random room objects of the level (see SetRoomObjects)
 
 	// https://github.com/OpenDiablo2/OpenDiablo2/issues/789
 	IsLoading bool // (temp) Whether we have processed the GenerateMapPacket(only for remote client)
@@ -124,6 +125,7 @@ func (m *MapEngine) ResetMap(levelType d2enum.RegionIdType, width, height int) {
 	m.warpDest = nil
 	m.gridPaths = false
 	m.population = nil
+	m.roomObjects = nil
 
 	for idx := range m.levelType.Files {
 		m.addDT1(m.levelType.Files[idx])

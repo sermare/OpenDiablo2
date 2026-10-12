@@ -31,6 +31,9 @@ type Def struct {
 	Parm1, Parm3   int // wells: Parm1 heal per pulse /256, Parm3 life/mana flags (VERIFIED, WellPulse)
 	Damage         int
 	Selectable0    bool
+	// SizeX, SizeY are the footprint in sub-tiles (the scatter's placement tests) and Orientation the
+	// column that picks the room-edge rule of the shrine handler (1: top/bottom band, 2: left/right band).
+	SizeX, SizeY, Orientation int
 }
 
 // SubClass bits of objects.txt.
@@ -88,6 +91,7 @@ func ParseObjects(data []byte) ([]Def, error) {
 			OperateRange: num("operaterange"), Lockable: num("lockable") != 0,
 			RestoreVirgins: num("restorevirgins") != 0, Parm0: num("parm0"), Parm1: num("parm1"), Parm3: num("parm3"), Damage: num("damage"),
 			Selectable0: num("selectable0") != 0,
+			SizeX:       num("sizex"), SizeY: num("sizey"), Orientation: num("orientation"),
 		})
 	}
 

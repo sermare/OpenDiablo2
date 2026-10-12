@@ -29,8 +29,9 @@ import (
 //   - the collision tests of the placement use the engine's walkability, the
 //     room "cells" are the whole room rectangle, and "near an exit" is the
 //     distance to a special (warp) tile;
-//   - the object spawning stage of the room population is not modelled, so
-//     the room seed stream is exact only up to it.
+//   - the random room objects run on the same seeds (real_objects.go), but the
+//     objects' own initialisation draws are not replayed, so the room seed
+//     stream is exact only up to the first object.
 const (
 	roomNoPopulate = 0x800000 // room flag of a LvlPrest row with Populate=0
 
@@ -373,6 +374,7 @@ func (p *popLevel) run() {
 	}()
 
 	ctx := &drlgpop.Ctx{LevelID: p.level, Difficulty: int(p.diff), Counter: new(int)}
+	objs := p.newRoomObjects(game, game.RoomCount(p.level))
 
 	for _, r := range p.rooms {
 		room := &d2monreg.Room{Level: p.level, NoPopulate: r.noPop, Seed: r.seed,
@@ -403,6 +405,9 @@ func (p *popLevel) run() {
 			p.createPreset(game, w, room, drlgpop.Requests(nodes, r.x, r.y, ctx, p.env.nm))
 		}
 
+		// OBJRGN_SpawnRoomObjects runs before MONREGION_SpawnRoomMonsters (ROOM_ActivateRoomUnits)
+		objs.room(p, r, room)
+
 		var pop d2monreg.Population
 
 		game.PopulateNatural(w, room, &pop)
@@ -417,6 +422,7 @@ func (p *popLevel) run() {
 	}
 
 	g.engine.SetPopulation(p.plan)
+	objs.finish(p)
 }
 
 // createPreset makes the monsters of one room's preset requests.
