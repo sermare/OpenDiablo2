@@ -16,8 +16,8 @@ import (
 //	- a corpse is created where the hero fell (unit mode 0x11 = dead); the
 //	  cursor item and the equipped items (slots 0..12) move onto the corpse,
 //	  the inventory and stash stay with the hero;
-//	- ALL carried gold is taken away (stat 14 is set to 0) and dropped as gold
-//	  piles (at most 2,000,000,000 per pile, at most 32 piles) next to the corpse;
+//	- the carried gold is taken away (stat 14 is set to 0); min(level,20)% of carried+stash is lost for
+//	  good and the rest is dropped as gold piles (at most 32) next to the corpse (DeathGoldPenalty, 0x5331e0);
 //	- the experience penalty (levels above 1 only) is
 //	  DeathExpPenalty percent of the experience span of the current level, never
 //	  taking the hero below the start of the level; DeathExpPenalty comes from
