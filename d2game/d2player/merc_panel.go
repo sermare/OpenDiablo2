@@ -91,8 +91,13 @@ func (p *MercPanel) Load() {
 	frame := p.ui.NewUIFrame(d2ui.FrameLeft)
 	p.group.AddWidget(frame)
 
-	if p.panel, err = p.ui.NewSprite(d2resource.InventoryCharacterPanel, d2resource.PaletteSky); err != nil {
-		p.Error(err.Error())
+	// the hireling screen has its own picture (NpcInv.dc6, expansion only); the character panel stands in when it is missing
+	if p.panel, err = p.ui.NewSprite(mercPanelArt(), d2resource.PaletteSky); err != nil {
+		p.Warning("NpcInv.dc6 missing, using the character panel: " + err.Error())
+
+		if p.panel, err = p.ui.NewSprite(d2resource.InventoryCharacterPanel, d2resource.PaletteSky); err != nil {
+			p.Error(err.Error())
+		}
 	}
 
 	w, h := frame.GetSize()
@@ -217,3 +222,6 @@ func (p *MercPanel) refresh() {
 		lb.SetText(code)
 	}
 }
+
+// mercPanelArt is the picture of the hireling screen.
+func mercPanelArt() string { return d2resource.InventoryMercenaryPanel }

@@ -73,7 +73,17 @@ func (m *NPCMenu) Rows() []NPCMenuRow {
 // Open shows the menu for an NPC at the given screen position (the centre
 // of the NPC's head). The Cancel row is appended automatically.
 func (m *NPCMenu) Open(name string, rows []NPCMenuRow, anchorX, anchorY int, onClick func(NPCMenuRow)) {
-	m.rows = append(append([]NPCMenuRow{}, rows...), RowCancel)
+	m.open2(name, append(append([]NPCMenuRow{}, rows...), RowCancel), anchorX, anchorY, onClick)
+}
+
+// OpenPrompt shows a question or message dialog (UI_CreateNpcItemConfirmDialog 0x4af750 and the error dialogs of 0x4b1ea0): the
+// title line and exactly the given rows (no implicit Cancel); the last row is what Escape picks. The caller moves it with SetAnchor.
+func (m *NPCMenu) OpenPrompt(text string, rows []NPCMenuRow, onClick func(NPCMenuRow)) {
+	m.open2(text, append([]NPCMenuRow{}, rows...), 0, 0, onClick)
+}
+
+func (m *NPCMenu) open2(name string, rows []NPCMenuRow, anchorX, anchorY int, onClick func(NPCMenuRow)) {
+	m.rows = rows
 	m.onClick = onClick
 	m.hover = -1
 	m.open = true

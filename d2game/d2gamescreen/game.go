@@ -759,8 +759,9 @@ func (v *Game) advanceNPCInteraction(_ float64) {
 		return
 	}
 
-	if menu.IsOpen() {
+	if menu.IsOpen() || v.gameControls.HireList.IsOpen() {
 		if dist > npcMenuLeaveDistance {
+			v.gameControls.HireList.Close()
 			v.Infof("NPC menu closed: walked away from %q", v.npcTarget.Label())
 			menu.Close()
 			v.questClose(v.npcTarget)
