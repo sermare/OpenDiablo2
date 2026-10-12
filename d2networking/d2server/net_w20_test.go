@@ -91,8 +91,8 @@ func TestPartyHealRelay(t *testing.T) {
 func TestPvPTownSafeZone(t *testing.T) {
 	g, a, b := testServer()
 	g.soc.hitQueueOn = true
-	g.socialArea("a", 2)
-	g.socialArea("b", 2)
+	g.socialArea("a", 1)
+	g.socialArea("b", 1)
 
 	g.soc.mu.Lock()
 	_ = g.setHostileLocked("a", "b", true)
@@ -106,7 +106,14 @@ func TestPvPTownSafeZone(t *testing.T) {
 		t.Fatalf("a hit from town was queued (%v)", err)
 	}
 
+	// w45: a victim standing in town is safe from a hero outside (COMBAT_ApplyDamageToUnit 0x57a640 tests the victim's room)
 	g.socialArea("a", 2)
+
+	if err := g.onPvPHit(a, hit); err != nil || g.soc.hits.Pending("b") != 0 {
+		t.Fatalf("a hit on a hero in town was queued (%v)", err)
+	}
+
+	g.socialArea("b", 2)
 
 	if err := g.onPvPHit(a, hit); err != nil || g.soc.hits.Pending("b") != 1 {
 		t.Fatalf("a hit from the wilderness was refused (%v)", err)

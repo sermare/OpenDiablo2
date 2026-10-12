@@ -24,12 +24,15 @@ func pvpCount(c *fakeConn) int {
 func TestAttackerLeavingPurgesPendingHits(t *testing.T) {
 	g, a, b := testServer()
 	g.soc.hitQueueOn = true
-	g.socialArea("a", 2)
-	g.socialArea("b", 2)
+	g.socialArea("a", 1)
+	g.socialArea("b", 1)
 
 	g.soc.mu.Lock()
 	_ = g.setHostileLocked("a", "b", true)
 	g.soc.mu.Unlock()
+
+	g.socialArea("a", 2) // declared in town, fought in the field
+	g.socialArea("b", 2)
 
 	hit, _ := d2netpacket.CreatePvPHitPacket(d2netpacket.PvPHitPacket{Target: "b", Damage: 9, Raw: 50})
 	for i := 0; i < 3; i++ {

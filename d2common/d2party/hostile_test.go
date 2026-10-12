@@ -78,30 +78,38 @@ func TestDeclareAcrossPartiesKeepsParty(t *testing.T) {
 	}
 }
 
-// afield is game() with a, b and c outside the towns (hostility is refused in town).
-func afield() *Roster {
-	r := game()
-	for _, id := range []string{"a", "b", "c"} {
-		r.SetArea(id, 2)
-	}
+// afield is game() with a, b and c in a town (hostility is declared and withdrawn in town, w45).
+func afield() *Roster { return game() }
 
-	return r
-}
-
-func TestHostileRefusedInTown(t *testing.T) {
+func TestHostileOnlyInTown(t *testing.T) {
 	r := game() // a and b stand in area 1, the Rogue Encampment
-
-	if _, err := r.DeclareHostile("a", "b"); err != ErrHostileTown {
-		t.Fatalf("in town: %v want ErrHostileTown", err)
-	}
-
-	if r.Hostile("a", "b") {
-		t.Fatal("declared in town")
-	}
 
 	r.SetArea("a", 2)
 
+	if _, err := r.DeclareHostile("a", "b"); err != ErrHostileTown {
+		t.Fatalf("afield: %v want ErrHostileTown", err)
+	}
+
+	if r.Hostile("a", "b") {
+		t.Fatal("declared outside town")
+	}
+
+	r.SetArea("a", 1)
+
 	if _, err := r.DeclareHostile("a", "b"); err != nil {
-		t.Fatalf("afield: %v", err)
+		t.Fatalf("in town: %v", err)
+	}
+
+	// peace uses the same gate: refused afield, the flag stays
+	r.SetArea("a", 2)
+
+	if err := r.SetHostile("a", "b", false); err != ErrHostileTown || !r.Hostile("a", "b") {
+		t.Fatalf("peace afield: %v hostile=%v", err, r.Hostile("a", "b"))
+	}
+
+	r.SetArea("a", 40) // Lut Gholein is a town too
+
+	if err := r.SetHostile("a", "b", false); err != nil || r.Hostile("a", "b") {
+		t.Fatalf("peace in town: %v", err)
 	}
 }

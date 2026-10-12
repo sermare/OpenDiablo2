@@ -104,18 +104,19 @@ func TestServerPartyAndPvP(t *testing.T) {
 	// declarer is destroyed
 	g.soc.portals.Open(d2portal.Pair{Owner: "a", OwnerName: "Ann"})
 
-	// N21: in town (everybody starts in the Rogue Encampment) the declaration is refused
+	// w45 (VERIFIED 0x5a3870): outside a town the declaration is refused
+	g.socialArea("a", 2)
 	party(t, g, a, d2netpacket.PartyHostile, "b")
 
 	if g.soc.roster.Hostile("a", "b") || !g.soc.roster.SameParty("a", "b") {
-		t.Fatal("hostility declared in town")
+		t.Fatal("hostility declared outside town")
 	}
 
 	if u := lastRoster(t, a); !strings.Contains(u.Notice, "town") {
 		t.Fatalf("no town refusal notice: %+v", u)
 	}
 
-	g.socialArea("a", 2)
+	g.socialArea("a", 1) // the Rogue Encampment
 	party(t, g, a, d2netpacket.PartyHostile, "b")
 
 	if u := lastRoster(t, a); !strings.Contains(u.Notice, "hostile") || u.Player != "" && u.Player != "a" || !g.soc.roster.Hostile("a", "b") {
@@ -145,6 +146,8 @@ func TestServerPartyAndPvP(t *testing.T) {
 		t.Fatal("allowed again after the cooldown")
 	}
 
+	g.socialArea("a", 2) // the fight happens in the field (a hit from or at a town is refused)
+	g.socialArea("b", 2)
 	hit, _ := d2netpacket.CreatePvPHitPacket(d2netpacket.PvPHitPacket{Attacker: "spoofed", Target: "b", Damage: 17, Raw: 100})
 	before := len(a.got)
 

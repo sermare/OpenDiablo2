@@ -9,9 +9,9 @@ import (
 
 func relRoster() *Roster {
 	r := New()
-	r.Add(Member{ID: "a", Name: "A", Level: d2enum.PlayersHostileLevel})
-	r.Add(Member{ID: "b", Name: "B", Level: d2enum.PlayersHostileLevel})
-	r.Add(Member{ID: "c", Name: "C", Level: d2enum.PlayersHostileLevel})
+	r.Add(Member{ID: "a", Name: "A", Level: d2enum.PlayersHostileLevel, Area: 1})
+	r.Add(Member{ID: "b", Name: "B", Level: d2enum.PlayersHostileLevel, Area: 1})
+	r.Add(Member{ID: "c", Name: "C", Level: d2enum.PlayersHostileLevel, Area: 1})
 
 	return r
 }
