@@ -246,6 +246,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"setgold", "sets the hero's gold (saved to the .d2s on the next save)", []string{"amount"}, v.commandSetGold},
 		{"spawnchest", "spawns chests/barrels (objects.txt ids, default 7 1 5) next to the hero",
 			[]string{"id1", "id2", "id3"}, v.commandSpawnChest},
+		{"groundrace", "asks the server for the nearest networked ground item (item|gold) at once, without walking (race tests)",
+			[]string{"item|gold"}, v.commandGroundRace},
 		{"spawnground", "spawns a gold pile (gold <amount>) or a normal item (<code>) on a free ground cell next to the hero (scripted clicks)",
 			[]string{"gold|code", "amount|cell", "cell"}, v.commandSpawnGround},
 		{"spawnportal", "spawns a town portal object to the given level next to the hero",

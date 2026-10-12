@@ -23,6 +23,7 @@ import (
 // against monsters.
 type social struct {
 	mu         sync.Mutex
+	ground     *groundBook // server-owned ground items (ground.go)
 	roster     *d2party.Roster
 	trades     map[string]*d2playertrade.Session // by player id; both traders map to the session
 	portals    *d2portal.Registry                // open town portal pairs, one per owner
@@ -39,7 +40,7 @@ type social struct {
 
 func newSocial() *social {
 	return &social{roster: d2party.New(), trades: map[string]*d2playertrade.Session{}, portals: d2portal.NewRegistry(),
-		idle: newIdleTracker(nil), hits: newHitQueue(), lastTrade: map[string]time.Time{}}
+		idle: newIdleTracker(nil), hits: newHitQueue(), ground: newGroundBook(), lastTrade: map[string]time.Time{}}
 }
 
 // socialAddPlayer enters a player into the roster.
@@ -691,6 +692,8 @@ func (g *GameServer) socialPacket(client ClientConnection, packet d2netpacket.Ne
 		return true, g.onPartyGold(client, packet)
 	case d2netpackettype.PartyHeal:
 		return true, g.onPartyHeal(client, packet)
+	case d2netpackettype.GroundItem:
+		return true, g.onGroundItem(client, packet)
 	case d2netpackettype.QuestShare:
 		return true, g.onQuestShare(client, packet)
 	case d2netpackettype.PortalOpen:
@@ -722,6 +725,8 @@ func (g *GameServer) socialArea(id string, area int) {
 	g.soc.mu.Lock()
 	g.soc.roster.SetArea(id, area)
 	g.soc.mu.Unlock()
+
+	g.groundSync(id, area)
 }
 
 // onPartyGold shares a gold pickup among the picker's party (ITEMMODE_PickupGoldFromGround
@@ -737,6 +742,11 @@ func (g *GameServer) onPartyGold(client ClientConnection, packet d2netpacket.Net
 
 	p.Picker = client.GetUniqueID()
 
+	return g.shareGold(p)
+}
+
+// shareGold splits a pickup among the picker's party and answers each member.
+func (g *GameServer) shareGold(p d2netpacket.PartyGoldPacket) error {
 	if p.Amount <= 0 {
 		g.Infof("PARTYGOLD refused amount=%d from %q", p.Amount, g.nameOf(p.Picker))
 		return nil

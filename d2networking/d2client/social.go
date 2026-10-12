@@ -203,3 +203,16 @@ func (g *GameClient) handleQuestSharePacket(packet d2netpacket.NetPacket) error 
 
 	return nil
 }
+
+func (g *GameClient) handleGroundItemPacket(packet d2netpacket.NetPacket) error {
+	p, err := d2netpacket.UnmarshalGroundItem(packet.PacketData)
+	if err != nil {
+		return err
+	}
+
+	if g.OnGroundItem != nil {
+		g.OnGroundItem(p)
+	}
+
+	return nil
+}

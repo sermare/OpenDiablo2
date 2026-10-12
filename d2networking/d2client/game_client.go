@@ -113,6 +113,8 @@ type GameClient struct {
 	OnPvPHit    func(d2netpacket.PvPHitPacket)
 	OnPartyXP   func(d2netpacket.PartyXPPacket)
 	OnPartyGold func(d2netpacket.PartyGoldPacket)
+	// OnGroundItem receives the server's ground item operations (placed, bind, remove, deny, sync).
+	OnGroundItem func(d2netpacket.GroundItemPacket)
 	// OnQuestShare receives this hero's share of a quest finished by another player (Rite of Passage).
 	OnQuestShare func(d2netpacket.QuestSharePacket)
 	OnJoinSync   func(d2netpacket.JoinSyncPacket)
@@ -393,6 +395,8 @@ func (g *GameClient) handlePacket(packet d2netpacket.NetPacket) error {
 		return g.handlePartyHealPacket(packet)
 	case d2netpackettype.PartyGold:
 		return g.handlePartyGoldPacket(packet)
+	case d2netpackettype.GroundItem:
+		return g.handleGroundItemPacket(packet)
 	case d2netpackettype.QuestShare:
 		return g.handleQuestSharePacket(packet)
 	case d2netpackettype.JoinSync:
