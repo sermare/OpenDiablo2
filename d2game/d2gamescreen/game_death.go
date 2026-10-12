@@ -600,6 +600,15 @@ func (v *Game) startDeathTest(t *deathTest) {
 		p.Stats.Health = n
 	}
 
+	// OD2_AUTODEATH_STASH=<n> gives the hero that much stash gold, OD2_AUTODEATH_PK=1 makes the death a player kill
+	if n, err := strconv.Atoi(os.Getenv("OD2_AUTODEATH_STASH")); err == nil && n >= 0 {
+		p.StashGold = &n
+	}
+
+	if os.Getenv("OD2_AUTODEATH_PK") != "" {
+		st.killedByPlayer = true
+	}
+
 	if p.Gold < 1000 && v.gameControls != nil {
 		v.gameControls.AddGold(1000 - p.Gold)
 	}

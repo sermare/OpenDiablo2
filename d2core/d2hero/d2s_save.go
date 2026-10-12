@@ -264,10 +264,10 @@ func SummarizeD2S(data []byte, tables *d2s.ItemTables) string {
 	skills := fmt.Sprintf("skills=left%d/right%d swap=%d/%d hotkeys=%v spent=%d unused=%d ", bar.Left.Skill, bar.Right.Skill,
 		bar.LeftSwap.Skill, bar.RightSwap.Skill, hotkeyIDs(bar), spent, a.UnusedSkillPoints)
 
-	return fmt.Sprintf("name=%s class=%v level=%d exp=%d gold=%d str=%d dex=%d vit=%d ene=%d hp=%d mana=%d "+
+	return fmt.Sprintf("name=%s class=%v level=%d exp=%d gold=%d stash=%d str=%d dex=%d vit=%d ene=%d hp=%d mana=%d "+
 		"difficulty=%d act=%d seed=%d items=%d equipped=%v status=0x%X hardcore=%v died=%v corpse=%d "+
 		"%swaypoints=%#x %sact1quests=%s laterquests=%s checksum=ok",
-		c.Header.Name, c.Header.Class, a.Level, a.Experience, a.Gold, a.Strength, a.Dexterity, a.Vitality,
+		c.Header.Name, c.Header.Class, a.Level, a.Experience, a.Gold, a.StashedGold, a.Strength, a.Dexterity, a.Vitality,
 		a.Energy, a.MaxHP, a.MaxMana, diff, act+1, c.Header.MapSeed, len(c.Items), eq, c.Header.Status,
 		c.Header.IsHardcore(), c.Header.IsDead(), len(c.Corpse), skills, c.Body.Waypoints[diff], merc, act1QuestSlots(c.Body, diff), laterQuestSlots(c.Body, diff))
 }
