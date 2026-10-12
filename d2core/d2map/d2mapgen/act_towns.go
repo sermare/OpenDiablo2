@@ -278,19 +278,28 @@ func (g *MapGenerator) townHasNPC(class int) bool {
 }
 
 // jerhynPlaceholder is the objects.txt row of the first "Jerhyn, placeholder" object of Lut Gholein (121; 122 is the
-// second). The DS1 holds no Jerhyn monster, only these two marker objects, and the original puts the NPC at one of
-// them (wave 41 hunt: Lut Gholein had no Jerhyn at all). Which marker the original uses when is UNVERIFIED: the first
-// one is taken.
+// second). The DS1 holds no Jerhyn monster, only these two marker objects. VERIFIED in Game.exe: the markers have
+// different init functions (InitFn 18 and 19, table 0x72f578 -> 0x542790 / 0x5427c0), both of which find the
+// Seven Tombs quest node (quest id 13) and call QUEST_A2_ArcaneSanctuary_SpawnGuardOnEvent (0x59cf20) or
+// ..._OnObjectOperatedSpawn (0x59cfe0). Marker #1 spawns Jerhyn (monster class 0xc9) in a free cell around it only
+// while the quest node is enabled with a state below 2; marker #2 spawns him in every other case. So by default he
+// stands at marker #2 (14.2,29.6) and waits at marker #1 (29.4,38.2) while the Seven Tombs is offered and not yet
+// taken.
 const jerhynPlaceholder, jerhynPlaceholder2 = 121, 122
 
-// placeJerhyn creates the Jerhyn NPC at his placeholder object when the town has none.
+// placeJerhyn creates the Jerhyn NPC at the placeholder object the quest state selects when the town has none.
 func (g *MapGenerator) placeJerhyn() {
 	stats := g.asset.Records.Monster.Stats["jerhyn"]
 	if stats == nil || g.townHasNPC(stats.ID) {
 		return
 	}
 
-	var at d2interface.MapEntity
+	want := jerhynPlaceholder2
+	if g.JerhynAtQuestMarker != nil && g.JerhynAtQuestMarker() {
+		want = jerhynPlaceholder
+	}
+
+	var at, other d2interface.MapEntity
 
 	for _, e := range g.engine.Entities() {
 		ob, ok := e.(*d2mapentity.Object)
@@ -298,19 +307,23 @@ func (g *MapGenerator) placeJerhyn() {
 			continue
 		}
 
-		if idx := ob.Record().Index; idx == jerhynPlaceholder || idx == jerhynPlaceholder2 {
-			mx, my := ob.GetPositionF()
-			g.Infof("act town: Jerhyn placeholder object %d at (%.1f,%.1f)", idx, mx, my)
+		idx := ob.Record().Index
+		if idx != jerhynPlaceholder && idx != jerhynPlaceholder2 {
+			continue
 		}
 
-		switch ob.Record().Index {
-		case jerhynPlaceholder:
+		mx, my := ob.GetPositionF()
+		g.Infof("act town: Jerhyn placeholder object %d at (%.1f,%.1f)", idx, mx, my)
+
+		if idx == want {
 			at = e
-		case jerhynPlaceholder2:
-			if at == nil {
-				at = e
-			}
+		} else {
+			other = e
 		}
+	}
+
+	if at == nil {
+		at = other
 	}
 
 	if at == nil {

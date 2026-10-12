@@ -44,6 +44,10 @@ type MapGenerator struct {
 	// population, no monsters (see BuildBackdrop)
 	backdrop bool
 
+	// JerhynAtQuestMarker tells whether Jerhyn stands at the first of his two Lut Gholein marker objects (121,
+	// InitFn 18) instead of the second (122, InitFn 19); nil means the second (see placeJerhyn).
+	JerhynAtQuestMarker func() bool
+
 	*d2util.Logger
 }
 

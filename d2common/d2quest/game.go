@@ -258,6 +258,23 @@ func New(rec *d2s.QuestRecord, npc *d2s.NPCBlock, difficulty int) *Game {
 // Quest returns a quest node by id.
 func (g *Game) Quest(id int) *Quest { return g.byID[id] }
 
+// SevenTombsOffered reports whether the Seven Tombs node is enabled with a state below 2 for a record: the
+// condition under which Jerhyn waits at his first Lut Gholein marker object (VERIFIED in the init functions
+// of the markers, 0x59cf20). The record is copied, the caller's bits are not touched.
+func SevenTombsOffered(rec *d2s.QuestRecord, difficulty int) bool {
+	if rec == nil {
+		return false
+	}
+
+	cp := *rec
+	g := New(&cp, &d2s.NPCBlock{}, difficulty)
+	g.Start()
+
+	q := g.Quest(QuestSevenTombs)
+
+	return q != nil && q.State >= 1 && q.State < 2
+}
+
 // Start is the player-joined-game sequence (QUEST_SyncPlayerOnGameEnter and
 // QUESTS_SequenceCycler): completed quests become inert, every node restores
 // its state from the flag bits, and the quest chains are walked so that the

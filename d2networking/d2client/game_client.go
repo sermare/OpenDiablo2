@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2quest"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapgen"
@@ -158,6 +159,14 @@ func Create(connectionType d2clientconnectiontype.ClientConnectionType,
 	}
 
 	result.mapGen = mapGen
+	// Jerhyn of Lut Gholein stands at one of two marker objects, chosen by the Seven Tombs quest state
+	mapGen.JerhynAtQuestMarker = func() bool {
+		if result.Progress == nil {
+			return false
+		}
+
+		return d2quest.SevenTombsOffered(result.Progress.QuestRecord(result.QuestDifficultyIndex()), result.QuestDifficultyIndex())
+	}
 
 	switch {
 	case connectionType != d2clientconnectiontype.Local && d2realmclient.Enabled():
@@ -852,4 +861,13 @@ func (g *GameClient) visibleEnemies() clientExtras {
 	sort.Slice(ex.Enemies, func(i, j int) bool { return ex.Enemies[i].ID < ex.Enemies[j].ID })
 
 	return ex
+}
+
+// QuestDifficultyIndex is the difficulty (0 normal, 1 nightmare, 2 hell) of the quest record the local hero plays.
+func (g *GameClient) QuestDifficultyIndex() int {
+	if g.Difficulty < 0 || g.Difficulty > 2 {
+		return 0
+	}
+
+	return int(g.Difficulty)
 }

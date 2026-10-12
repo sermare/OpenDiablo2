@@ -233,80 +233,62 @@ func (s *Roller) Roll(n int) int {
 // NewRoller returns a deterministic generator for shrine and well rolls.
 func NewRoller(seed uint32) *Roller { r := Roller(seed) + 1; return &r }
 
-// effectClassesFor maps the objects.txt Parm0 of a shrine object (1, 2 or 3)
-// to the shrines.txt EffectClass values it can show. UNVERIFIED hypothesis:
-// the manashrine rows (249, 302) have Parm0 2 and the visual classes seem to
-// be 1 magic, 2 recharge (health/mana), 3 booster/refill.
-func effectClassesFor(parm0 int) []int {
+// EffectClassForParm0 is the shrines.txt EffectClass list a shrine object with Parm0 1..n draws from
+// (VERIFIED, OBJECT_ChooseShrineType 0x54d840: Parm0 1 selects the class 2 list, Parm0 2 the class 3 list, any
+// other non-zero value consumes one room-seed step and picks class 1 (magic) when step % 10 == 0, else class 4
+// (refill and the boosters)). The class index is handed to OBJECT_RollShrineForLevel in AL. In shrines.txt class
+// 2 holds Health Boost and Health Exchange, class 3 Mana Boost and Mana Exchange (both remapped to the boost),
+// class 1 the magic shrines, class 4 Refill and the boosters. r is only used for Parm0 not 1 or 2.
+func EffectClassForParm0(parm0 int, r *Roller) int {
 	switch parm0 {
 	case 1:
-		return []int{1}
+		return 2
 	case 2:
-		return []int{2, 3}
-	case 3:
-		return []int{4}
+		return 3
 	}
 
-	return nil
+	if r.Roll(10) == 0 {
+		return 1
+	}
+
+	return 4
 }
 
-// RollShrine picks the shrine type of a new shrine object: among the rows
-// whose LevelMin does not exceed the area level (and whose EffectClass fits
-// the object's Parm0), weighted by 4-Rarity (rarity 1 is the most common). The
-// original's weighting is UNVERIFIED. Rows marked Out are skipped unless
-// includeOut is set. It returns false when nothing qualifies.
-func RollShrine(rows []Shrine, r *Roller, areaLevel, parm0 int, includeOut bool) (Shrine, bool) {
-	classes := effectClassesFor(parm0)
+// RollShrine picks the shrine type of a new shrine object with a non-zero Parm0 (VERIFIED, 0x54d5c0 and 0x54d840).
+// The class list is every row of shrines.txt with the drawn EffectClass; the pick is uniform (rarity is not read),
+// repeated up to ShrineRetries times while the row's LevelMin exceeds levelID (the LEVEL ID of levels.txt, not a
+// monster level), the last draw is kept even if too low, then RemapShrineCode. includeOut is ignored: the
+// "(OUT)" rows are reachable and become their replacements through the remap. It returns false only when the
+// class list is empty.
+func RollShrine(rows []Shrine, r *Roller, levelID, parm0 int, includeOut bool) (Shrine, bool) {
+	class := EffectClassForParm0(parm0, r)
 
-	pick := func(filterClass bool) (Shrine, bool) {
-		total := 0
+	var list []Shrine
 
-		var cand []Shrine
-
-		for _, s := range rows {
-			if s.Code == ShrineNone || s.LevelMin > areaLevel || (s.Out && !includeOut) {
-				continue
-			}
-
-			if filterClass && !containsInt(classes, s.EffectClass) {
-				continue
-			}
-
-			cand = append(cand, s)
-			total += weight(s)
-		}
-
-		if len(cand) == 0 {
-			return Shrine{}, false
-		}
-
-		n := r.Roll(total)
-		for _, s := range cand {
-			if n < weight(s) {
-				return s, true
-			}
-
-			n -= weight(s)
-		}
-
-		return cand[len(cand)-1], true
-	}
-
-	if len(classes) > 0 {
-		if s, ok := pick(true); ok {
-			return s, true
+	for _, s := range rows {
+		if s.EffectClass == class && s.Code != ShrineNone {
+			list = append(list, s)
 		}
 	}
 
-	return pick(false)
-}
-
-func weight(s Shrine) int {
-	if w := 4 - s.Rarity; w > 0 {
-		return w
+	if len(list) == 0 {
+		return Shrine{}, false
 	}
 
-	return 1
+	pick := list[0]
+
+	for tries := ShrineRetries; ; {
+		pick = list[r.Roll(len(list))]
+		if levelID >= pick.LevelMin {
+			break
+		}
+
+		if tries--; tries <= 0 {
+			break
+		}
+	}
+
+	return ShrineByCode(rows, RemapShrineCode(pick.Code))
 }
 
 func containsInt(a []int, v int) bool {

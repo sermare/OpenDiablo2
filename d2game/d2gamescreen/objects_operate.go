@@ -330,12 +330,12 @@ func (v *Game) operateShrine(ob *d2mapentity.Object) {
 		)
 
 		if rec.Parm[0] == 0 {
-			s, ok = d2object.RollShrineUniform(v.shrineTable(), r, v.areaLevel()) // VERIFIED path (0x54d840)
+			s, ok = d2object.RollShrineUniform(v.shrineTable(), r, v.currentLevel()) // VERIFIED path (0x54d840), level ID not monster level
 		} else {
-			s, ok = d2object.RollShrine(v.shrineTable(), r, v.areaLevel(), rec.Parm[0], false)
+			s, ok = d2object.RollShrine(v.shrineTable(), r, v.currentLevel(), rec.Parm[0], false) // VERIFIED (0x54d840, 0x54d5c0)
 		}
 		if !ok {
-			v.Warningf("OBJECT shrine %d: no shrine type fits area level %d", rec.Index, v.areaLevel())
+			v.Warningf("OBJECT shrine %d: no shrine type fits level id %d", rec.Index, v.currentLevel())
 			return
 		}
 
