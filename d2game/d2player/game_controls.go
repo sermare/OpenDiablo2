@@ -361,6 +361,7 @@ type GameControls struct {
 	cube                  *ContainerPanel
 	cubeData              *cubeData
 	cubePortal            func(kind string) error
+	cubePortalCheck       func(kind string) error
 	cubeRNG               *d2rand.Seed
 	cubeClassic           bool
 	cubeLadder            bool

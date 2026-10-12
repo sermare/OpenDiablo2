@@ -211,6 +211,10 @@ type TransmuteResult struct {
 // recipe ("Cow Portal", "Pandemonium Portal", "Pandemonium Finale Portal").
 func (g *GameControls) SetCubePortalHandler(f func(kind string) error) { g.cubePortal = f }
 
+// SetCubePortalCheck sets the function that says whether a portal recipe may work now; an error leaves the cube's
+// items alone (Game.exe: a failing portal output function means nothing is consumed or made).
+func (g *GameControls) SetCubePortalCheck(f func(kind string) error) { g.cubePortalCheck = f }
+
 // SetCubeSeed makes the transmute rolls reproducible (autotests).
 func (g *GameControls) SetCubeSeed(seed uint32) { g.cubeRNG = d2rand.New(seed) }
 
@@ -256,6 +260,16 @@ func (g *GameControls) Transmute() (*TransmuteResult, error) {
 	res, err := data.cat.Execute(m, ctx, cubeItems, rng)
 	if err != nil {
 		return nil, err
+	}
+
+	if g.cubePortalCheck != nil {
+		for i := range res.Products {
+			if kind := res.Products[i].Portal; kind != "" {
+				if cerr := g.cubePortalCheck(kind); cerr != nil {
+					return nil, fmt.Errorf("recipe %q: %w", res.Recipe.Description, cerr)
+				}
+			}
+		}
 	}
 
 	// build every product before touching the grid, so a failure keeps the items

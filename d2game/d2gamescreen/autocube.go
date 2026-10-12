@@ -38,6 +38,24 @@ const (
 	finaleLevel      = 136
 )
 
+// cubePortalCheck says whether a portal recipe may work now (the exe's cube output function returns 0 otherwise and
+// the cube keeps its items). The Cow Level rules are read from Game.exe (d2quest.CowPortalCheck).
+func (v *Game) cubePortalCheck(kind string) error {
+	switch kind {
+	case "Cow Portal":
+		if r := v.quests(); r != nil && r.g != nil {
+			return r.g.CowPortalCheck(v.currentLevel())
+		}
+	case d2uber.PortalPandemonium, d2uber.PortalFinale:
+		u := v.uberRT()
+		u.ev.ExeStub = os.Getenv("OD2_UBER_EXE") != ""
+
+		return u.ev.Check(kind)
+	}
+
+	return nil
+}
+
 // cubePortal opens the portal a cube recipe asked for. UNVERIFIED: which of the
 // three Pandemonium areas the keys open is random here.
 func (v *Game) cubePortal(kind string) error {
@@ -54,6 +72,10 @@ func (v *Game) cubePortal(kind string) error {
 	switch kind {
 	case "Cow Portal":
 		level = cowLevel
+
+		if r := v.quests(); r != nil && r.g != nil {
+			r.g.CowPortalMade()
+		}
 	case "Pandemonium Portal":
 		// nolint:gosec // not security relevant
 		level = pandemoniumFirst + rand.Intn(pandemoniumLast-pandemoniumFirst+1)

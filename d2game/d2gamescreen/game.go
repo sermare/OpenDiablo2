@@ -614,6 +614,7 @@ func (v *Game) bindGameControls() error {
 		v.Infof("GAME MODE %s (fromSave=%v expansion=%v)", map[bool]string{true: "expansion", false: "classic"}[v.heroExpansion()],
 			v.gameClient.FromSave, v.gameClient.Expansion)
 		v.gameControls.SetCubePortalHandler(v.cubePortal)
+		v.gameControls.SetCubePortalCheck(v.cubePortalCheck)
 		v.gameControls.BindGamepad()
 		v.gameControls.Automap().SetLevelSource(v.currentLevel, v.levelName)
 		v.gameControls.Automap().SetDifficultySource(func() int { return int(v.gameClient.LevelDifficulty()) })
