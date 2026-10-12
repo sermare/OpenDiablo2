@@ -1,7 +1,7 @@
 # Known gaps
 
 Everything we know is missing, approximate or wrong in this fork, in plain words, so play-testers do not have to
-report it again. Written 2026-10-09 from [STATUS_MATRIX.md](STATUS_MATRIX.md), [PLAYTEST.md](PLAYTEST.md) (Part 2 logs),
+report it again. First written 2026-10-09, refreshed 2026-10-12 for waves 36-43 (tree `land/w38`, fork/integration 20a31960) from [STATUS_MATRIX.md](STATUS_MATRIX.md), [PLAYTEST.md](PLAYTEST.md) (Part 2 logs),
 [tile-diagnosis.md](tile-diagnosis.md), [verification-status.md](verification-status.md) and
 [wave2-gameplay-changes.md](wave2-gameplay-changes.md). Where those pages disagree with the code, the code wins.
 "UNVERIFIED" means ported from reverse-engineering notes and never compared with the running original game.
@@ -34,10 +34,9 @@ How to test: [PLAYTEST.md](PLAYTEST.md). If you find something not on this list,
 |---|---|---|
 | Unique and champion packs | Packs may be rarer, or their modifiers different, than in the original | Natural champion and unique packs with `monumod` modifiers are planned by `d2monreg` (`PopulateNatural`, `assignMods`, `uniquePack`) and counted in the population log line (`packs with modifiers`). Frequencies are not compared with the original; nests and some group kinds are still skipped (`real_pop.go`). |
 | Monsters with a stand-in AI | Behaviour that is recognisable but not the original's | Every `monai.txt` AI has at least a stand-in (melee chaser, caster, flyer, turret or inert, `d2monster/ai_rest.go`); Tentacle, TentacleHead and Frog Demon are ported. An AI that is not registered at all still logs `AI not ported: stands still`. |
-| Monsters in some levels | Empty or nearly empty levels | Kurast Causeway (82) was empty and now gets natural monsters (check it); Arreat Plateau on Normal and Bloody Foothills have none or only preset monsters; Swampy Pits and Flayer Dungeons (86-91) skip their blocks; Travincal only has the council monsters its data names. Packs in other Act 3 levels were thin until recently. |
 | Unique and champion packs | Natural champion and rare packs appear with their modifiers; some modifier effects are missing | The init callbacks of the exe (life bonus per rank, +3 levels, Extra Strong/Fast, Fire/Lightning/Cold/Poison Enchanted, Mana Burn, resist caps, Stone Skin, Ghostly, Fanatic, Possessed, Berserk) are ported and applied (`d2monreg/umodfx.go`, `d2monsters/umodfx.go`). Not yet: the skills of Teleportation and Aura Enchanted are recorded but the AI does not use them, Cursed and Multishot, the random name, and the timer event of modifier 41. |
 | Monsters with no AI | None known (stale row removed in wave 38) | Every `monai.txt` AI is registered; Quill Rat, Tentacle and Frog Demon are ported from the exe. The Hireable (mercenary) think is an approximation of the exe's 1108-byte function; the quest-log hooks of Izual, Summoner and Nihlathak are not hosted. |
-| Monsters in some levels | Empty or nearly empty levels | Kurast Causeway (82) has none; Arreat Plateau on Normal and Bloody Foothills have none or only preset monsters; Swampy Pits and Flayer Dungeons (86-91) skip their blocks; Travincal only has the council monsters its data names. Packs in other Act 3 levels were thin until recently. |
+| Monsters in some levels | Empty or nearly empty levels | Kurast Causeway (82): earlier notes disagree (empty, or natural monsters added in wave 20); **unverified, check it**. Arreat Plateau on Normal and Bloody Foothills have none or only preset monsters; Swampy Pits and Flayer Dungeons (86-91) skip their blocks; Travincal only has the council monsters its data names. |
 | Summons and their caster | Monster-cast summons (nest spawn, minion spawner, Hydra) stay alive when their caster dies; player summons follow or are dropped when the owner changes level | Verified against the exe: a monster leader's death hands its minions to the first minion or detaches them, nothing is killed (0x58d4a0). Player minions, totems, traps and Hydras vanish when the owner dies (0x57dcc0 -> 0x573980) and on an act change; inside an act, pets that warp follow the owner and range-type pets farther than 40 subtiles are dropped (0x5732b0; the `warp` column is flag bit 0 and `range` bit 1, VERIFIED from the table loader 0x618a30). The rule is in `d2summon.LevelChangeFate` and `Director.OwnerChangedLevel`, and the game screen applies it on a level change inside an act (`pet_levelchange.go`: `TakePetsForLevelChange` / `AdoptPets`; warp pets are placed next to the hero, others released; a range pet within 40 subtiles cannot stay behind because pets are not parked, so it is released too). Wired statically, not yet run in a live scenario. |
 | Monster versus monster | Monsters do not fight each other, except when charmed, converted, attracted or confused | No general infighting is implemented; the forced states are in `d2monsters/forced.go`. Whether the original has any other monster hostility is not recorded. |
 | Combat accuracy | Damage, hit chance, defence and some skill numbers may differ from the original | The formulas are read from the game's code but only partly compared with the running game. Hero defence uses dexterity only in the monster glue. Telekinesis is only a damage hit on a targeted monster (item pickup and object use are not simulated); Find Item is implemented (`d2skills/effects_abc.go`). Missile homing exists; periodic area effects are partial. Several skill formulas are marked unverified. |
@@ -79,6 +78,26 @@ How to test: [PLAYTEST.md](PLAYTEST.md). If you find something not on this list,
 | TCP join | Works between two copies of this game only | Not compatible with the real Diablo II servers or clients; the join packet layout is unverified. Party invitations, the level 9 requirement and player trade rules are modelled on visible behaviour. |
 | Real Battle.net | Not supported and not planned | |
 
+## Waves 36-43: what changed, what is still open
+
+Landed in the tree these pages describe (full verify run 813: 291 scenarios in 6 jobs, all passed; details in
+[STATUS_LOG.md](STATUS_LOG.md) and [RELEASE_NOTES.md](RELEASE_NOTES.md)). "Passed" means a scripted check, not a person.
+
+| Area | Still open or not confirmed |
+|---|---|
+| Not in this tree | `feat/w43-fullgame` (a Normal to Hell chain scenario) is on its own branch: it broke Nightmare scenarios and was reverted out of the landed tree. Nobody has shown a Normal to Hell run end to end. |
+| Cinematics | Now on by default in normal play (opening movie on first launch, act-change movies, Baal). Audio and video sync were checked by clock, never by ear or eye. The Cinematics menu path has no human check. |
+| Classic (non-LoD) game | The game mode is wired into monsters, loot, vendors, the cube and the Act V gate. Whether a classic game plays right by hand is unconfirmed. **unverified** |
+| Full screen by default | Normal launches start full screen whatever `config.json` says; use Cmd+Enter or `OD2_WINDOWED=1` for a window. Multi-monitor and notch behaviour were not looked at. **unverified** |
+| Mercenaries | The hire list, portrait with life bar and potion drop on it exist, and the Hireable thinker is ported from the exe. Look and feel is checked in logs, not side by side with the original. |
+| Monster missiles | Boss and monster missile skills now hit the hero (log-checked). Damage numbers are only partly compared with the original. |
+| Light and backdrop | The occluded light painter is ported from the exe and the neighbour-level backdrop hides the black void at the map edge; the look was not compared visually. Turn off with `OD2_LIGHT_QUALITY=0` / `OD2_BACKDROP=0` to see if it is the cause. |
+| Lut Gholein | Jerhyn is a placeholder object (his town data is missing), found by name when a script walks to him. |
+| Ubers | Uber Diablo and Uber Mephisto stand still, as the exe is read; fighting Ubers need two `register` lines restored in `ai_boss2.go`. |
+| Windows | Experimental cross-compiled build only, never run on Windows; the newer Ebiten is on `feat/w36-ebiten-upgrade`, not landed. |
+| Input | Mouse wheel and keyboard item moving exist; a first-attempt retry is still needed by a few real-input scenarios (a click that lands mid-cast becomes a walk). |
+| Saves | One validated, locked, atomic `.d2s` writer with rotating backups and a recovery offer is in. Damaged-save recovery by hand was not tried by a person. |
+
 ## What is verified (so you know what to trust)
 
 Verified against the original game: the character file format (byte-identical round trip), the random number
@@ -87,6 +106,8 @@ the preset and outdoor levels), the monster scaling tables, and the packet size 
 [STATUS_MATRIX.md](STATUS_MATRIX.md) as "approximate" is a best reading of the original, not a proof.
 
 ## Open items
+
+(Carried over from waves 20 to 26; not re-measured in waves 36 to 43.)
 
 - Lava levels still thin (partly fixed in w20). The placement test used a square of half-width SizeX around the spot
   (3x3 to 7x7); the exe tests the spot, a cross or a 3x3 square by SizeX 1, 2, 3 (`d2monreg.Footprint`). River of

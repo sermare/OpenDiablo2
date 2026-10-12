@@ -1,6 +1,6 @@
 # Where help is needed
 
-Status handoff (2026-10-10, integration 694b5da0). The fork is a native Apple-Silicon macOS Diablo II built on OpenDiablo2 (Go + Ebiten),
+Status handoff (refreshed 2026-10-12 for waves 36-43; tree `land/w38`, fork/integration 20a31960, full verify run 813: 291 scenarios x 6 jobs passed). The fork is a native Apple-Silicon macOS Diablo II built on OpenDiablo2 (Go + Ebiten),
 using the owner's own 1.14b + Lord of Destruction files. Nothing in this repository contains game data or Blizzard
 code. Every number in the engine comes from reading the original executable (read-only, in Ghidra) or from public
 format documentation; items marked UNVERIFIED in code or in `docs/KNOWN_GAPS.md` are guesses.
@@ -28,7 +28,7 @@ Recent fixes you can verify by hand: menus scale to the window at any size; a ch
   burst and the client Strafe / Lightning Strike extras. Blood Golem, Fire Golem absorb, Armageddon and the Holy Bolt party
   packet were already in; the only leftovers there are the Holy Fire pulse timing of the Fire Golem and the host
   `ChannelAnimSlack` of the Inferno channel (both marked UNVERIFIED in the code).
-- Monster AI: 134 of 148 are ported faithfully. w24 re-read the open pieces in the exe: the Zealot fear gate, the
+- Monster AI: 141 of 148 are ported faithfully (progress.json; waves 38 and 40 re-read many more against the exe). The older wave 24 notes follow. w24 re-read the open pieces in the exe: the Zealot fear gate, the
   Regurgitator and Siege Tower scan filters, the Fallen Shaman scan and Diablo's player-count output are ported and
   hosted (the unit-flag bits 1 and 9 of the Regurgitator filter are only approximated); the Bat Demon flight boost
   works once monsters carry the regeneration stat (branch feat/w23-difficulty). The Assassin's Shadow Warrior and
@@ -47,9 +47,9 @@ Recent fixes you can verify by hand: menus scale to the window at any size; a ch
 
 ## Features not started or parked
 
-- Windows build: a zig cross-compile worked once (needs the Unix-only `autoperf.go` split); not committed.
-- Cinematics: Bink video and audio decode exist (`d2common/d2data/d2video`, off by default `OD2_PLAY_VIDEOS=1`);
-  audio sync was only checked by clock, not by ear; the Cinematics menu path is untested.
+- Windows build: `scripts/make-windows.sh` cross-compiles an experimental amd64 build ([WINDOWS.md](WINDOWS.md)); nobody has run it on Windows. A newer Ebiten (windows/arm64 too) is on `feat/w36-ebiten-upgrade`, not landed. A tester with a Windows PC is the missing piece.
+- Cinematics: Bink video and audio decode (`d2common/d2data/d2video`) now play by default in normal play (opening movie, act changes, Baal; `OD2_PLAY_VIDEOS=0` or Options, Accessibility turns them off);
+  audio sync was only checked by clock, not by ear; the Cinematics menu path has no human check.
 - Widescreen: the bar side fill is `none` by default (the world shows beside the bar; `OD2_BAR_FILL=tile` repeats the bar art, which looks wrong on very wide screens); the subtitle box is centred on the column (golden numbers); ultrawide not looked at by eye.
 - Scenario hardening: `scripts/verify.d/wip/8g-click-dungeon.sh` (Jail Level 1 click matrix) does not pass yet;
   three real-input scenarios need a retry on first attempt (a click that lands mid-cast becomes a walk).
@@ -57,6 +57,16 @@ Recent fixes you can verify by hand: menus scale to the window at any size; a ch
   scenarios; it made the party/PvP scenario fail (`panel "party" did not open`), so it was left out. Start there.
 - Hit-queue purge (N16) is on by default (`OD2_HITQUEUE=0` turns it off); `9f-pvp-skills-ear` passes with it (6 of 6). The purge on a unit mode change is not ported (see d2-re-notes/w24-hitqueue.md).
 - The in-repo Bink tables credit FFmpeg (LGPL-2.1-or-later); pin a release tag if provenance matters.
+
+## Waves 36-43: open and worth a look
+
+- **`feat/w43-fullgame`** (Normal to Hell chain scenario) is on its own branch: it broke Nightmare scenarios and was reverted out of the landed tree. Start there if you want a full-difficulty-chain check.
+- **Classic (non-LoD) game mode** is wired into monsters, loot, vendors, the cube and the Act V gate but only checked by scenarios; a human classic game is unconfirmed.
+- **Full screen is the default** now: please report notch, multi-monitor or Retina oddities (Cmd+Enter for a window).
+- **Cinematics, tooltips compare, vendor tabs, mercenary hire list and portrait, mouse wheel, item moving by keyboard**: all new since wave 36 and scenario-checked only. A hand play of each is the most useful report.
+- **Mac Gatekeeper path** (the disk image, right-click Open on a Mac that did not build the app) needs a human on a second Mac ([PLAYTEST.md](PLAYTEST.md)).
+- Flaky scenarios: [TESTING.md](TESTING.md#5b-parallel-verify-and-flake-tooling) shows how to measure one with `scripts/flake_loop.sh`.
+- Every `OD2_*` variable is listed in [ENV.md](ENV.md).
 
 ## Wave 20 notes (2026-10-11)
 

@@ -10,7 +10,7 @@ Layers, cheapest first:
 2. [Real-data tests](#2-real-data-tests-environment-variables) (your own game data, skipped otherwise)
 3. [Oracle tests](#3-oracle-tests-the-level-generator-ground-truth) (committed golden numbers from the real game)
 4. [The in-game harness](#4-the-in-game-harness-od2_auto) (`OD2_AUTO*`, runs the real engine)
-5. [`scripts/verify.sh`](#5-scriptsverifysh-and-scenarios) (the gate that runs 1-4 together)
+5. [`scripts/verify.sh`](#5-scriptsverifysh-and-scenarios) (the gate that runs 1-4 together; parallel run and flake tools: [5b](#5b-parallel-verify-and-flake-tooling))
 
 What each layer is evidence for, feature by feature: [STATUS_MATRIX.md](STATUS_MATRIX.md).
 
@@ -370,6 +370,51 @@ that `9b-act1-playthrough` exported.
    hand with your env and the launch rules in section 4.1.
 5. Prove it can fail: break the behaviour (or the expected value) and confirm the scenario goes red.
 6. No edits to `verify.sh` are needed. Update the table in `macos-quickstart.md` if you added a new `OD2_*` variable.
+
+## 5b. Parallel verify and flake tooling
+
+All of these need a GUI session on a Mac with your own game files and the sample save (see section 5). Nothing here
+runs on CI.
+
+**`scripts/verify_parallel.sh [jobs]`** (default 6) is the full gate. It splits the scenarios of `scripts/verify.d/`
+round-robin, slowest first (a hard-coded list in the script, so the slow ones land in different jobs), over `jobs`
+independent `verify.sh` runs, each with its own port, scratch folder and fresh copy of the sample save. Job 0 also does
+the build, unit tests and oracle tests; the others set `SKIP_UNIT=1`. It sets `OD2_QUIET=1` unless you override it, so the
+windows open behind your other windows and ignore the real mouse and keyboard. Logs: `/tmp/verify-par-<pid>-<n>.log`. It
+prints, per job, `SCENARIOS RUN`, the pass line and any `FAIL` lines, then `PARALLEL VERIFY: ALL JOBS PASSED` (exit 0) or
+`FAILED`. A job that ran 0 scenarios is a failure. The last landed full run (run 813, tree `land/w38`) passed 291
+scenarios in 6 jobs.
+
+**Retry and flake evidence.** `verify.sh` runs a failing scenario once more (`RETRY:` line); a pass on the second try counts
+as a pass but is a flake. Every failed attempt's log is copied to `$OD2_VERIFY_FLAKE_DIR` (default `/tmp/od2-flake-logs`)
+as `<n>.<pid>.attempt<k>.txt` with its last failure lines printed, so a flake leaves evidence. A passing run deletes its
+scratch folder `/tmp/od2-verify.XXXXXX`; a failed run keeps it (`OD2_VERIFY_KEEP=1` keeps it always; folders older than 6 h
+are pruned).
+
+**`scripts/flake_loop.sh <scenario> <runs> [parallel=1]`** measures how flaky one scenario is. It builds once, then runs
+`verify.sh` for just that scenario (`OD2_VERIFY_ONLY`) `<runs>` times, `<parallel>` at a time, and prints
+
+```
+FLAKELOOP <scenario> runs=N first_attempt_failed=A final_failed=B
+```
+
+`A` counts runs that printed `RETRY:`, `B` runs that never printed `ALL CHECKS PASSED`. Output per run:
+`/tmp/od2-flakeloop.<tag>.<scenario>.<n>.txt` (`OD2_FLAKE_TAG`). `OD2_FLAKE_BURNER=1` adds CPU burner loops to imitate a
+loaded machine. It defaults the sample save to `~/git/nokka-d2s-ref/examples/nokkasorc` and `D2_TABLES` to `~/git/d2-tables`
+(the author's layout: set `D2S_SAMPLE_BODY`, `D2S_SAMPLE_BODY_JSON` and `D2_TABLES` yourself), and uses
+`OD2_VERIFY_CONFIG_DIR` as a private config folder (default `./cfgw36` in the repo root; do not commit it).
+
+**Keeping a shared Mac sane.** `scripts/gameslot.sh acquire|release` caps simultaneously running game windows machine-wide
+(`OD2_MAX_GAMES`, default effectively no cap). `scripts/reap_games.sh [minutes]` kills leftover test games that run from a
+`/tmp/od2-verify.*` folder and are older than the limit (default 8); it never touches a game you started yourself.
+`scripts/close_idle_terminals.sh` closes idle Terminal windows left by the `open` fallback.
+
+**Faster and slower variants.** `scripts/smoke.sh` is the roughly 10 minute subset (hygiene, build, vet, unit tests, six
+scenarios; `SMOKE_SKIP_GAMES=1` runs no game). `scripts/verify_classes.sh` is the slow nightly class matrix (7 classes x 5
+scenarios, 4 to 5 hours, only with `OD2_VERIFY_NIGHTLY=1`, refuses to start while `verify_parallel.sh` runs); it writes
+[class-matrix.md](class-matrix.md). `scripts/check_repo_hygiene.sh` checks that no game data is tracked.
+
+All variables: [ENV.md](ENV.md).
 
 ## 6. CI
 
