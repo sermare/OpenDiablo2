@@ -13,18 +13,19 @@ type Color uint8
 
 // Tooltip colors.
 const (
-	White  Color = iota // normal items, base stats
-	Blue                // magic properties and modified base stats
-	Yellow              // rare items
-	Gold                // unique items, set name
-	Green               // set items and active set bonuses
-	Orange              // crafted items and runes
-	Gray                // low quality, ethereal and socketed normal items
-	Red                 // unmet requirements, unidentified, missing set pieces
+	White     Color = iota // normal items, base stats
+	Blue                   // magic properties and modified base stats
+	Yellow                 // rare items
+	Gold                   // unique items, set name
+	Green                  // set items and active set bonuses
+	Orange                 // crafted items and runes
+	Gray                   // low quality, ethereal and socketed normal items
+	Red                    // unmet requirements, unidentified, missing set pieces
+	DarkGreen              // tempered items (quality 9), colour code 10
 )
 
 func (c Color) String() string {
-	return [...]string{"white", "blue", "yellow", "gold", "green", "orange", "gray", "red"}[c]
+	return [...]string{"white", "blue", "yellow", "gold", "green", "orange", "gray", "red", "darkgreen"}[c]
 }
 
 // Line is one coloured tooltip line.
@@ -46,6 +47,13 @@ type Context struct {
 	// WornSetItems are the setitems.txt index names of the set pieces the
 	// hero wears (the described item included, when it is worn).
 	WornSetItems map[string]bool
+
+	// CarriedSetItems are the setitems.txt index names of the identified set pieces the hero carries anywhere
+	// (equipped, backpack, cube, stash). INV_FindSetItemMatchInInventory 0x4828e0 (VERIFIED) paints a piece
+	// green in the piece list of the set tooltip for any of those; the bonus counts use only the worn ones
+	// (INV_CountEquippedSetMates 0x62a4e0: node page 3, not broken, not flag 0x4000). nil: only the worn
+	// pieces count as present.
+	CarriedSetItems map[string]bool
 }
 
 // Class codes of ItemTypes.txt's Class column.
@@ -221,6 +229,9 @@ func (d *desc) qualityColor() Color {
 		return Yellow
 	case d2s.QualityCrafted:
 		return Orange
+	case d2s.QualityTempered:
+		// INV_BuildPanelAndItemTooltips 0x48a090: the jump table sends quality 9 to colour 10 (VERIFIED).
+		return DarkGreen
 	case d2s.QualitySet:
 		return Green
 	case d2s.QualityUnique:
@@ -333,7 +344,7 @@ func (d *desc) nameLines() []Line {
 	case d2s.QualityMagic:
 		pre, suf := d.affixName(t.Prefixes, int(it.MagicPrefix)), d.affixName(t.Suffixes, int(it.MagicSuffix))
 		add(t.format2("MagicFormat", "%0 %1 %2", pre, base, suf), Blue)
-	case d2s.QualityRare, d2s.QualityCrafted:
+	case d2s.QualityRare, d2s.QualityCrafted, d2s.QualityTempered:
 		add(t.format2("RareFormat", "%0 %1", d.rareName(1), d.rareName(2)), col)
 		lines = append(lines, Line{base, col})
 	case d2s.QualityUnique:
@@ -346,9 +357,10 @@ func (d *desc) nameLines() []Line {
 	case d2s.QualitySet:
 		if int(it.SetID) < len(t.SetItems) {
 			add(t.tr(t.SetItems[it.SetID].Index), Green)
-			// the base item of a set item is gold (recollection of the
-			// original tooltip, unverified)
-			lines = append(lines, Line{base, Gold})
+			// VERIFIED (INV_BuildSetItemTooltip 0x489440 and INV_BuildPanelAndItemTooltips 0x48a090): the whole
+			// name block is one buffer painted with a single colour code, green for a set item (red when
+			// broken), so the base item line is green too, not gold.
+			lines = append(lines, Line{base, Green})
 		} else {
 			add(base, Green)
 		}
@@ -495,7 +507,7 @@ func (d *desc) levelReq() int {
 	case d2s.QualityMagic:
 		upd(affixLevel(t.Prefixes, int(it.MagicPrefix)))
 		upd(affixLevel(t.Suffixes, int(it.MagicSuffix)))
-	case d2s.QualityRare, d2s.QualityCrafted:
+	case d2s.QualityRare, d2s.QualityCrafted, d2s.QualityTempered:
 		for i, a := range it.RareAffixes {
 			if it.RareMask&(1<<uint(i)) == 0 {
 				continue
@@ -667,26 +679,47 @@ func (d *desc) propertyLines() []Line {
 	return lines
 }
 
-// footLines: ethereal and socket count.
+// footLines: the ethereal and socket text. INV_BuildEtherealSocketedText 0x480ae0 (VERIFIED) builds ONE line,
+// "Ethereal (Cannot be Repaired), Socketed (n)": the ethereal text, then ", " when both apply, then the
+// socketed word, a space and "(n)" with the socket count.
 func (d *desc) footLines() []Line {
-	var lines []Line
+	var text string
 
 	if d.it.Ethereal {
-		lines = append(lines, Line{d.t.EtherealText, Blue})
+		text = d.t.EtherealText
 	}
 
 	if d.it.Socketed && d.it.TotalSockets > 0 {
-		lines = append(lines, Line{fmt.Sprintf("%s (%d)", d.t.tr("Socketable"), d.it.TotalSockets), Blue})
+		if text != "" {
+			text += ", "
+		}
+
+		text += fmt.Sprintf("%s (%d)", d.t.tr("Socketable"), d.it.TotalSockets)
 	}
 
-	return lines
+	if text == "" {
+		return nil
+	}
+
+	return []Line{{text, Blue}}
 }
 
-// setLines: the item's active set bonuses (green), then the set with its
-// pieces (worn: green, missing: red) and the active set wide bonuses.
+// setLines is the set part of INV_BuildSetItemTooltip 0x489440 (VERIFIED, colours from the colour codes in its
+// disassembly). The exe concatenates the buffers bottom up (the tooltip is drawn from its last line upwards:
+// D2WIN_DrawFormattedText moves the row up at every newline), so the on-screen order, top to bottom, is:
+//
+//	the item's own set bonus lists, green (INV_BuildSetBonusLines 0x4e35f0)
+//	a blank line
+//	the full set bonus, gold, with a blank line below it (INV_BuildFullSetBonusLines 0x4e3710), only when the
+//	  hovered item is worn (item mode 1)
+//	the set name, gold
+//	the pieces of the set, last piece first, each green when the hero carries it identified (backpack, cube,
+//	  stash or worn: INV_FindSetItemMatchInInventory 0x4828e0) and red when not
+//
+// An unidentified set item goes through the plain item path instead and shows no set text at all.
 func (d *desc) setLines() []Line {
 	it, t := d.it, d.t
-	if it.Quality != d2s.QualitySet || int(it.SetID) >= len(t.SetItems) {
+	if it.Quality != d2s.QualitySet || int(it.SetID) >= len(t.SetItems) || !d.identified() {
 		return nil
 	}
 
@@ -698,7 +731,9 @@ func (d *desc) setLines() []Line {
 		worn = d.ctx.WornSetItems
 	}
 
-	if it.Location == d2s.LocationEquipped && !worn[si.Index] {
+	equipped := it.Location == d2s.LocationEquipped
+
+	if equipped && !worn[si.Index] {
 		w := map[string]bool{si.Index: true}
 		for k, v := range worn {
 			w[k] = v
@@ -707,61 +742,148 @@ func (d *desc) setLines() []Line {
 		worn = w
 	}
 
-	count := 0
-
-	if set != nil {
-		for _, name := range set.Items {
-			if worn[name] {
-				count++
-			}
-		}
-	}
-
 	var lines []Line
 
-	// the item's own bonus lists, one per set bit; list n needs n+2 pieces
-	ln := 0
-
-	for i := 0; i < 5; i++ {
-		if it.SetListMask&(1<<uint(i)) == 0 {
-			continue
-		}
-
-		if ln < len(it.SetProperties) && count >= i+2 {
-			for _, s := range t.StatLines(toStats(it.SetProperties[ln]), d.ctx) {
-				lines = append(lines, Line{s, Green})
-			}
-		}
-
-		ln++
+	if set != nil {
+		lines = append(lines, d.setItemBonusLines(si, set, worn)...)
+		lines = append(lines, d.setWideBonusLines(set, worn)...)
 	}
+
+	lines = append(lines, Line{"", White})
 
 	if set == nil {
 		return lines
 	}
 
-	lines = append(lines, Line{"", White}, Line{t.tr(set.Name), Gold})
+	if equipped && len(set.Items) > 0 && countWorn(set, worn) >= len(set.Items) {
+		lines = append(lines, d.specLines(set.Full, Gold)...)
+		lines = append(lines, Line{"", White})
+	}
 
-	for _, name := range set.Items {
+	lines = append(lines, Line{t.tr(set.Name), Gold})
+
+	have := worn
+	if d.ctx != nil && d.ctx.CarriedSetItems != nil {
+		have = map[string]bool{}
+		for k := range worn {
+			have[k] = true
+		}
+
+		for k := range d.ctx.CarriedSetItems {
+			have[k] = true
+		}
+	}
+
+	for i := len(set.Items) - 1; i >= 0; i-- {
+		name := set.Items[i]
 		c := Red
-		if worn[name] {
+
+		if have[name] {
 			c = Green
 		}
 
 		lines = append(lines, Line{t.tr(name), c})
 	}
 
-	for i, specs := range set.Partial {
-		if count >= i+2 {
-			lines = append(lines, d.specLines(specs, Green)...)
+	return lines
+}
+
+func countWorn(set *SetDef, worn map[string]bool) int {
+	n := 0
+
+	for _, name := range set.Items {
+		if worn[name] {
+			n++
 		}
 	}
 
-	if len(set.Items) > 0 && count >= len(set.Items) {
-		lines = append(lines, d.specLines(set.Full, Gold)...)
+	return n
+}
+
+// setItemBonusLines are the item's own bonus lists (aprop1a..5b, stored in the save), green. INV_BuildSetBonusLines
+// reads "add func" of the set item row (VERIFIED): 1 shows list k when the k-th OTHER piece of the set is worn
+// (k counts the set's pieces without this one), 2 shows the first (worn pieces, this one included when worn, minus
+// one) lists, anything else shows none. The buffer is built in list order, so on screen the last list comes
+// first; the lines of one list keep the descpriority order.
+func (d *desc) setItemBonusLines(si SetItemDef, set *SetDef, worn map[string]bool) []Line {
+	it := d.it
+	lists := map[int][]d2s.Property{} // bit of SetListMask -> list
+
+	n := 0
+
+	for bit := 0; bit < 5; bit++ {
+		if it.SetListMask&(1<<uint(bit)) == 0 {
+			continue
+		}
+
+		if n < len(it.SetProperties) {
+			lists[bit] = it.SetProperties[n]
+		}
+
+		n++
 	}
 
-	return lines
+	var show []int
+
+	switch si.AddFunc {
+	case 1:
+		own := -1
+
+		for i, name := range set.Items {
+			if name == si.Index {
+				own = i
+			}
+		}
+
+		for i, name := range set.Items {
+			if i == own || !worn[name] {
+				continue
+			}
+
+			k := i
+			if own >= 0 && i > own {
+				k = i - 1
+			}
+
+			show = append(show, k)
+		}
+	case 2:
+		for k := 0; k < countWorn(set, worn)-1; k++ {
+			show = append(show, k)
+		}
+	}
+
+	var out []Line
+
+	for i := len(show) - 1; i >= 0; i-- {
+		props, ok := lists[show[i]]
+		if !ok {
+			continue
+		}
+
+		for _, s := range d.t.StatLines(toStats(props), d.ctx) {
+			out = append(out, Line{s, Green})
+		}
+	}
+
+	return out
+}
+
+// setWideBonusLines are the sets.txt partial bonuses (2..5 pieces worn). UNVERIFIED: none of the three tooltip
+// builders of the exe was found to print them (the full bonus is read from the hero's state lists); they stay in
+// the green block, after the item's own lists, as the port showed them before.
+func (d *desc) setWideBonusLines(set *SetDef, worn map[string]bool) []Line {
+	count := countWorn(set, worn)
+
+	var out []Line
+
+	for i, specs := range set.Partial {
+		if count >= i+2 {
+			out = append(out, d.specLines(specs, Green)...)
+		}
+	}
+
+	return out
 }
 
 func (d *desc) specLines(specs []PropSpec, c Color) []Line {

@@ -248,8 +248,8 @@ func describeTables() *Tables {
 	t.Runewords = make([]RunewordDef, 200)
 	t.Runewords[155-runewordIDBase] = RunewordDef{Key: "Runeword130", Display: "Spirit"}
 	t.SetItems = []SetItemDef{
-		{Index: "Civerb's Ward", Set: "Civerb's Vestments", Code: "lrg", LevelReq: 9},
-		{Index: "Civerb's Icon", Set: "Civerb's Vestments", Code: "rin", LevelReq: 9},
+		{Index: "Civerb's Ward", Set: "Civerb's Vestments", Code: "lrg", LevelReq: 9, AddFunc: 2},
+		{Index: "Civerb's Icon", Set: "Civerb's Vestments", Code: "rin", LevelReq: 9, AddFunc: 1},
 	}
 	t.Sets["Civerb's Vestments"] = &SetDef{
 		Index: "Civerb's Vestments", Name: "Civerb's Vestments", Items: []string{"Civerb's Ward", "Civerb's Icon"},
@@ -371,29 +371,125 @@ func TestDescribeSetBonuses(t *testing.T) {
 		Properties:    []d2s.Property{{ID: 16, Value: 15}},
 		SetProperties: [][]d2s.Property{{{ID: 7, Value: 21}}}}
 
-	head := []Line{{"Civerb's Ward", Green}, {"Large Shield", Gold}, {"Defense: 16", Blue}, {"Chance to Block: 24%", White},
+	// VERIFIED (INV_BuildSetItemTooltip 0x489440): the base item line is part of the green name block.
+	head := []Line{{"Civerb's Ward", Green}, {"Large Shield", Green}, {"Defense: 16", Blue}, {"Chance to Block: 24%", White},
 		{"Durability: 24 of 24", White}, {"Required Strength: 34", White}, {"Required Level: 9", White}, {"+15% Enhanced Defense", Blue}}
 
 	tests := []struct {
 		name string
-		worn map[string]bool
+		loc  uint8
+		ctx  *Context
 		want []Line
 	}{
-		{"nothing worn: all pieces missing, no bonus", nil, append(append([]Line{}, head...),
-			Line{"", White}, Line{"Civerb's Vestments", Gold}, Line{"Civerb's Ward", Red}, Line{"Civerb's Icon", Red})},
-		{"two pieces: item and set bonus active", map[string]bool{"Civerb's Ward": true, "Civerb's Icon": true},
-			append(append([]Line{}, head...), Line{"+21 to Life", Green},
-				Line{"", White}, Line{"Civerb's Vestments", Gold}, Line{"Civerb's Ward", Green}, Line{"Civerb's Icon", Green},
-				Line{"+4 to Strength", Green}, Line{"+50 to Life", Gold})},
+		{"nothing worn: all pieces missing, no bonus", d2s.LocationStored, &Context{}, append(append([]Line{}, head...),
+			Line{"", White}, Line{"Civerb's Vestments", Gold}, Line{"Civerb's Icon", Red}, Line{"Civerb's Ward", Red})},
+		{"two pieces worn, hovered one in the backpack: bonus list and no full bonus", d2s.LocationStored,
+			&Context{WornSetItems: map[string]bool{"Civerb's Ward": true, "Civerb's Icon": true}},
+			append(append([]Line{}, head...), Line{"+21 to Life", Green}, Line{"+4 to Strength", Green},
+				Line{"", White}, Line{"Civerb's Vestments", Gold}, Line{"Civerb's Icon", Green}, Line{"Civerb's Ward", Green})},
+		{"worn hovered piece: the full bonus shows, gold, above the set name", d2s.LocationEquipped,
+			&Context{WornSetItems: map[string]bool{"Civerb's Icon": true}},
+			append(append([]Line{}, head...), Line{"+21 to Life", Green}, Line{"+4 to Strength", Green},
+				Line{"", White}, Line{"+50 to Life", Gold}, Line{"", White},
+				Line{"Civerb's Vestments", Gold}, Line{"Civerb's Icon", Green}, Line{"Civerb's Ward", Green})},
+		{"a carried (not worn) piece is green in the list but gives no bonus", d2s.LocationStored,
+			&Context{CarriedSetItems: map[string]bool{"Civerb's Icon": true}},
+			append(append([]Line{}, head...),
+				Line{"", White}, Line{"Civerb's Vestments", Gold}, Line{"Civerb's Icon", Green}, Line{"Civerb's Ward", Red})},
 	}
 
 	for _, tc := range tests {
 		it := ward
-		got := tb.Describe(&it, &Context{WornSetItems: tc.worn})
+		it.Location = tc.loc
+		got := tb.Describe(&it, tc.ctx)
 
 		if !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("%s:\n got %v\nwant %v", tc.name, fmtLines(got), fmtLines(tc.want))
 		}
+	}
+}
+
+// The "add func" column picks the bonus lists: 1 = the list of the k-th other piece, 2 = by number of worn
+// pieces, anything else none (INV_BuildSetBonusLines 0x4e35f0, VERIFIED).
+func TestSetBonusAddFunc(t *testing.T) {
+	tb := describeTables()
+	lists := [][]d2s.Property{{{ID: 7, Value: 1}}, {{ID: 7, Value: 2}}, {{ID: 7, Value: 3}}}
+	icon := d2s.Item{Code: "rin", Quality: d2s.QualitySet, Identified: true, SetID: 1, SetListMask: 0b00111, SetProperties: lists}
+	both := &Context{WornSetItems: map[string]bool{"Civerb's Ward": true, "Civerb's Icon": true}}
+
+	bonus := func(addFunc int, ctx *Context) []string {
+		tb.SetItems[1].AddFunc = addFunc
+		it := icon
+
+		var out []string
+
+		for _, l := range tb.Describe(&it, ctx) {
+			if l.Color == Green && strings.HasPrefix(l.Text, "+") {
+				out = append(out, l.Text)
+			}
+		}
+
+		return out
+	}
+
+	tests := []struct {
+		name    string
+		addFunc int
+		ctx     *Context
+		want    []string
+	}{
+		// the icon is piece 1; its only other piece (the ward, piece 0) selects list 0
+		{"func 1 with the other piece worn", 1, both, []string{"+1 to Life", "+4 to Strength"}},
+		{"func 1 with only itself worn", 1, &Context{WornSetItems: map[string]bool{"Civerb's Icon": true}}, nil},
+		{"func 2 with two pieces worn shows the first list", 2, both, []string{"+1 to Life", "+4 to Strength"}},
+		{"func 0 shows no list", 0, both, []string{"+4 to Strength"}},
+	}
+
+	for _, tc := range tests {
+		if got := bonus(tc.addFunc, tc.ctx); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s: got %q want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestUnidentifiedSetItemHasNoSetText(t *testing.T) {
+	tb := describeTables()
+	it := d2s.Item{Code: "lrg", Quality: d2s.QualitySet, Identified: false, SetID: 0, Defense: 14, MaxDurability: 24, Durability: 24}
+	got := tb.Describe(&it, &Context{})
+
+	for _, l := range got {
+		if strings.Contains(l.Text, "Vestments") {
+			t.Fatalf("unidentified set item shows set text: %v", fmtLines(got))
+		}
+	}
+
+	if got[0].Color != Green {
+		t.Errorf("name colour = %v, want green", got[0].Color)
+	}
+}
+
+// Quality 9 is named like a rare item and painted colour 10 (INV_BuildPanelAndItemTooltips 0x48a090 jump table
+// and the shared case 6/8/9 of INV_BuildItemNameTooltipLines 0x488260, VERIFIED).
+func TestTemperedItem(t *testing.T) {
+	tb := describeTables()
+	it := d2s.Item{Code: "cap", Quality: d2s.QualityTempered, Identified: true, RareName1: 156, RareName2: 1, Defense: 4, MaxDurability: 12, Durability: 12,
+		Properties: []d2s.Property{{ID: 7, Value: 10}}}
+	want := []Line{{"Beast Hold", DarkGreen}, {"Cap", DarkGreen}, {"Defense: 4", White}, {"Durability: 12 of 12", White}, {"+10 to Life", Blue}}
+
+	if got := tb.Describe(&it, nil); !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v want %v", fmtLines(got), fmtLines(want))
+	}
+}
+
+// INV_BuildEtherealSocketedText 0x480ae0 (VERIFIED): one line, "Ethereal (Cannot be Repaired), Socketed (n)".
+func TestEtherealSocketedIsOneLine(t *testing.T) {
+	tb := describeTables()
+	it := d2s.Item{Code: "plt", Quality: d2s.QualityNormal, Identified: true, Ethereal: true, Socketed: true, TotalSockets: 3,
+		Defense: 180, MaxDurability: 30, Durability: 30}
+	got := tb.Describe(&it, nil)
+
+	if last := got[len(got)-1]; last.Text != "Ethereal (Cannot be Repaired), Socketed (3)" || last.Color != Blue {
+		t.Errorf("last line = %+v", last)
 	}
 }
 

@@ -471,7 +471,7 @@ func (it *Item) writeExtended(w *bitSink, t *ItemTables) error {
 		w.write(uint64(it.SetID), 12)
 	case QualityUnique:
 		w.write(uint64(it.UniqueID), 12)
-	case QualityRare, QualityCrafted:
+	case QualityRare, QualityCrafted, QualityTempered:
 		w.write(uint64(it.RareName1), 8)
 		w.write(uint64(it.RareName2), 8)
 

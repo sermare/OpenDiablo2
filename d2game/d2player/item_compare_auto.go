@@ -121,3 +121,61 @@ func (g *GameControls) HoverGround(label string) error {
 
 	return nil
 }
+
+// wornSlotWithCode finds the equipment slot that holds an item with this base code.
+func (g *GameControls) wornSlotWithCode(code string) (EquipmentSlot, error) {
+	if !g.inventory.isOpen {
+		g.inventory.Open()
+	}
+
+	for _, slot := range g.inventory.grid.equipmentSlots {
+		if slot.item != nil && slot.item.GetItemCode() == code {
+			return slot, nil
+		}
+	}
+
+	return EquipmentSlot{}, fmt.Errorf("no worn item with code %s", code)
+}
+
+// HoverWorn moves the pointer onto the worn item with this base code (scenarios).
+func (g *GameControls) HoverWorn(code string) error {
+	slot, err := g.wornSlotWithCode(code)
+	if err != nil {
+		return err
+	}
+
+	// slot.y is the bottom edge of the slot (checkEquippedSlotsHover)
+	px, py := slot.x+slot.width/2, slot.y-slot.height/2
+
+	g.synthMove(px, py)
+	g.Infof("HOVERWORN code=%s at=(%d,%d)", code, px, py)
+
+	return nil
+}
+
+// TooltipLog logs the item tooltip text of a worn item (where "worn") or of the first item with this base code
+// in a container, one line per row with its colour token ("[green]Name | [white]..."), for the tooltip scenarios.
+func (g *GameControls) TooltipLog(where, code string) ([]string, error) {
+	var it InventoryItem
+
+	if where == "worn" {
+		slot, err := g.wornSlotWithCode(code)
+		if err != nil {
+			return nil, err
+		}
+
+		it = slot.item
+	} else {
+		found, _, err := g.itemWithCode(where, code)
+		if err != nil {
+			return nil, err
+		}
+
+		it = found
+	}
+
+	lines := it.GetItemDescription()
+	g.Infof("TOOLTIP where=%s code=%s lines=%d [%s]", where, code, len(lines), strings.Join(lines, " | "))
+
+	return lines, nil
+}

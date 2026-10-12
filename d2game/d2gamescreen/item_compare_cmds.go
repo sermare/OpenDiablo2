@@ -26,6 +26,10 @@ func (v *Game) compareCommands() []struct {
 			[]string{"where", "code"}, v.commandCompareLog},
 		{"hoverground", "moves the pointer onto the ground item whose label contains the text (scripts)",
 			[]string{"label"}, v.commandHoverGround},
+		{"hoverworn", "moves the pointer onto the worn item with this base code (scripts)",
+			[]string{"code"}, v.commandHoverWorn},
+		{"tooltiplog", "logs the tooltip lines with colour tokens of a worn item or of an item of inv|stash|cube|vendor (scripts)",
+			[]string{"where", "code"}, v.commandTooltipLog},
 		{"openvendor", "opens the trade window of a vendor next to the hero (scripts)", []string{"vendor"}, v.commandOpenVendor},
 		{"stashgive", "creates an identified item and puts it into the stash (scripts)", []string{"code"}, v.commandStashGive},
 	}
@@ -77,4 +81,22 @@ func (v *Game) commandOpenVendor(args []string) error {
 	}
 
 	return fmt.Errorf("no vendor %s here", args[0])
+}
+
+func (v *Game) commandHoverWorn(args []string) error {
+	if v.gameControls == nil {
+		return errors.New("not in a game")
+	}
+
+	return v.gameControls.HoverWorn(args[0])
+}
+
+func (v *Game) commandTooltipLog(args []string) error {
+	if v.gameControls == nil {
+		return errors.New("not in a game")
+	}
+
+	_, err := v.gameControls.TooltipLog(args[0], args[1])
+
+	return err
 }

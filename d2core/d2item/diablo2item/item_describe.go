@@ -55,6 +55,8 @@ var tokenOfColor = map[d2itemdesc.Color]d2ui.ColorToken{
 	d2itemdesc.Orange: d2ui.ColorTokenOrange,
 	d2itemdesc.Gray:   d2ui.ColorTokenGrey,
 	d2itemdesc.Red:    d2ui.ColorTokenRed,
+
+	d2itemdesc.DarkGreen: d2ui.ColorTokenDarkGreen,
 }
 
 // Tokenize turns description lines into tooltip strings with color tokens.

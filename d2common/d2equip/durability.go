@@ -161,9 +161,9 @@ func RollWear(it *Item, percent, chance, amount int) (dur int, broke, lost bool)
 // it is a stackable or throwable magical-or-better weapon whose quantity ran
 // out. So a plain weapon at 0 keeps its stat list in the exe; whether its
 // damage is then reduced elsewhere is UNVERIFIED (the damage code was not
-// read). We still treat broken weapons like broken armor (the conservative
-// choice, matching the community statement that nothing works).
-func PropertiesOff(it *Item) bool { return it.Broken() }
+// read). w49: the port follows the exe, a plain weapon at 0 keeps its properties (the stat list is only
+// removed together with the broken flag, which a durability of 0 does not set on a weapon).
+func PropertiesOff(it *Item) bool { return it.Broken() && !it.Weapon }
 
 // LossResult is the outcome of RollLossStack.
 type LossResult struct {
