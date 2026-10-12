@@ -114,6 +114,7 @@ type SocketItem struct {
 	Height      int // inventory height of the base item in cells
 	Quest       bool
 	NonSellable bool // item flag 0x1000
+	Broken      bool // item flag 0x100 (ITEM_CanAddSocketsAtNpc 0x62c8d0 refuses it, VERIFIED w49)
 	Gold        bool // item type 4
 }
 
@@ -173,7 +174,7 @@ func sizeCap(it SocketItem) int {
 // that already have sockets or gems, and when the level maximum is 0.
 func LarzukRange(it SocketItem) (lo, hi int, err error) {
 	switch {
-	case it.Gold, it.NonSellable:
+	case it.Gold, it.NonSellable, it.Broken:
 		return 0, 0, ErrNotSocketable("this item cannot be socketed")
 	case it.Quest:
 		return 0, 0, ErrNotSocketable("quest items cannot be socketed")

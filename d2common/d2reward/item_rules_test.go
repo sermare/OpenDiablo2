@@ -39,6 +39,7 @@ func TestLarzukRange(t *testing.T) {
 		{"quest item", func(i *SocketItem) { i.Quest = true }, 0, 0, true},
 		{"non-sellable item", func(i *SocketItem) { i.NonSellable = true }, 0, 0, true},
 		{"gold", func(i *SocketItem) { i.Gold = true }, 0, 0, true},
+		{"broken item (flag 0x100)", func(i *SocketItem) { i.Broken = true }, 0, 0, true},
 	}
 
 	for _, tt := range tests {
