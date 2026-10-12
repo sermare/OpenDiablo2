@@ -22,7 +22,7 @@ var (
 	ErrLevelTooLow   = errors.New("both players need the hostile level")
 	ErrHostile       = errors.New("hostile players cannot party")
 	ErrHostileWait   = errors.New("hostility was declared less than a minute ago")
-	ErrHostileTown   = errors.New("hostility cannot be declared in town")
+	ErrHostileTown   = errors.New("hostility can only be declared or withdrawn in town")
 )
 
 // Member is one player of the game.
@@ -42,6 +42,7 @@ type entry struct {
 	Member
 	party   int             // 0: none
 	hostile map[string]bool // ids this player has declared hostility to
+	loot    map[string]bool // ids allowed to loot this player's corpse (loot.go)
 	// hostileReady is the earliest moment of the next declaration.
 	hostileReady time.Time
 	body         bool // state 7 (relations.go)
@@ -339,18 +340,25 @@ func (d Declared) PortalsToClose() bool { return d.Changed }
 // stored time is left alone). On success the cooldown restarts, the pending
 // invitations of both are dropped, and a declarer who shared a party with the
 // target leaves it (VERIFIED 0x5a3870; that the declarer is the one leaving is
-// unverified). The exe tests the declarer's room with ROOM_IsTownRoom; the
-// raw decompile reads as "refuse unless the room is a town" but that polarity
-// contradicts the game (no hostility in town), so a declarer standing in a
-// town level is refused with ErrHostileTown (polarity decided by the game
-// rule, not resolved in the exe).
+// unverified).
+//
+// VERIFIED w45: the handler (packet 0x5d/0x5e table entry 4 at 0x6e36d8,
+// reached through PARTY_ProcessPartyAction 0x5a3a10) refuses unless the
+// declarer's room is a town room (ROOM_IsTownRoom 0x61a850 -> LEVEL_IsTownLevelId
+// 0x643b50: levels 1, 40, 75, 103, 109) and both base levels are >= 9. A
+// refusal writes *out = 1 and the packet handler then returns 3, the same
+// value as an unknown packet id in CCMD_DispatchClientPacket: the stock client
+// never sends the request elsewhere, so a refusal is a protocol violation, not
+// a message. The port answers with ErrHostileTown. Hostility is therefore
+// declared (and withdrawn) in town and fought out in the field, where
+// pvpTownLocked lets the attacker hit.
 func (r *Roster) DeclareHostile(from, to string) (Declared, error) {
 	if err := r.CanGoHostile(from, to); err != nil {
 		return Declared{}, err
 	}
 
 	f := r.players[from]
-	if d2level.IsTown(f.Area) {
+	if !d2level.IsTown(f.Area) {
 		return Declared{}, ErrHostileTown
 	}
 	if f.hostile[to] {
@@ -424,6 +432,12 @@ func (r *Roster) SetHostile(from, to string, hostile bool) error {
 	f, ok := r.players[from]
 	if !ok || r.players[to] == nil {
 		return ErrUnknownPlayer
+	}
+
+	// VERIFIED w45: the peace request goes through the same handler, so the
+	// same town gate applies (0x5a3870 refuses before it reads the request).
+	if !d2level.IsTown(f.Area) {
+		return ErrHostileTown
 	}
 
 	delete(f.hostile, to)

@@ -47,8 +47,11 @@ scenario_env() {
   local hscript="wait:2;say:dropinv cm1;say:dropinv cm1;waitlog:SOCIAL roster n=2;say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3"
   hscript+=";wait:15;say:pvpwalk 6 0;wait:4;say:players"
   hscript+=";say:pvpcast Fire_Ball $jn;wait:3"
-  hscript+=";say:hostile $jn 1;waitlog:$hn is now hostile toward $jn;wait:1"
-  hscript+=";$(_9f_casts Fire_Ball 4);say:pvpcast Meteor $jn;wait:6;say:pvpcast Blizzard $jn;wait:8"
+  # w45 (VERIFIED Game.exe 0x5a3870): hostility can only be declared in a town, so the host steps back to the Rogue Encampment
+  # for the declaration and returns to the fight
+  hscript+=";say:spawnportal 1;use:Portal;waitlog:LEVEL CHANGE from=3 to=1;wait:2;say:hostile $jn 1;waitlog:$hn is now hostile toward $jn;wait:6"
+  hscript+=";say:spawnportal 3;use:Portal;wait:20;say:pvpwalk 6 0;wait:4"
+  hscript+=";$(_9f_casts Fire_Ball 4);say:pvpcast Meteor $jn;wait:6;say:pvpcast Blizzard $jn;wait:8;say:pvpcast Blizzard $jn;wait:8;say:pvpcast Blizzard $jn;wait:8"
   # The victim heals (its worn items have Replenish Life, and the natural regeneration applies to it): the 12 Fire
   # Balls that once just killed it (43 of 1241 life left before the last one without regeneration) leave it alive
   # with it. 24 casts is plenty; casts after the kill are skipped by pvpcast (the victim left the game).
@@ -63,6 +66,8 @@ scenario_env() {
   # centre x + {-4,0,4} and the column of the hero gets shards on the rows next to it. The scenario owns this
   # position, it is not an engine rule (d2missile hitCandidates / d2skills TargetsWithin are).
   jscript+=";wait:2;say:pvpwalk 0.8 0;wait:2"
+  # the host returns to town to declare (w45) and re-enters the level, which puts the victim back on the arrival cell: step again
+  jscript+=";waitlog:$hn is now hostile toward $jn;wait:24;say:pvpwalk 0.8 0;wait:2"
   # the victim may die before the host's last Fire Ball (Meteor's burning ground keeps hurting): it stays in the
   # game until the host has picked the ear up, so the host's casts and the loot still find it
   jscript+=";waitlog:PVP HIT attacker;waitlog:PVP KILLED;waitlog:eartaken;wait:1;exit"

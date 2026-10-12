@@ -245,9 +245,19 @@ func (g *GameServer) setHostileLocked(me, target string, hostile bool) error {
 // verified) tests the room of the ATTACKER with ROOM_IsTownRoom and, in a town,
 // answers "not hostile" for two players, whatever the relation flags say. The
 // server keeps the area of every hero (socialArea). Call with soc.mu held.
-func (g *GameServer) pvpTownLocked(attacker string) string {
+//
+// w45 (VERIFIED): the server side is COMBAT_ApplyDamageToUnit 0x57a640: when the
+// room of the VICTIM is a town room the damage is cancelled (bit 1 of the result
+// flags cleared), unless the attacker is a monster whose monstats flag 0x400 is
+// set; so a field attacker cannot hurt a hero standing in town either. Either
+// end in a town refuses the hit here.
+func (g *GameServer) pvpTownLocked(attacker, target string) string {
 	if m, ok := g.soc.roster.Member(attacker); ok && d2level.IsTown(m.Area) {
 		return "the attacker is in a town"
+	}
+
+	if m, ok := g.soc.roster.Member(target); ok && d2level.IsTown(m.Area) {
+		return "the target is in a town"
 	}
 
 	return ""
@@ -286,7 +296,7 @@ func (g *GameServer) onPvPHit(client ClientConnection, packet d2netpacket.NetPac
 	if p.Kill { // the victim reports its death to the killer, who must have been allowed to hit it
 		reason = g.pvpBlockedLocked(p.Target, p.Attacker)
 	} else if reason == "" {
-		reason = g.pvpTownLocked(p.Attacker)
+		reason = g.pvpTownLocked(p.Attacker, p.Target)
 	}
 
 	an, tn := g.nameOf(p.Attacker), g.nameOf(p.Target)

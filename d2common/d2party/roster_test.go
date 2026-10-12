@@ -175,6 +175,7 @@ func TestRemoveClearsRelations(t *testing.T) {
 	_ = r.Invite("a", "b")
 	_, _ = r.Accept("b")
 	_ = r.Invite("a", "c")
+	r.SetArea("d", 1)
 	_ = r.SetHostile("d", "a", true)
 	r.Remove("a")
 
@@ -238,6 +239,7 @@ func TestSnapshotRoundTrip(t *testing.T) {
 	_ = r.Invite("a", "b")
 	_, _ = r.Accept("b")
 	_ = r.Invite("a", "c")
+	r.SetArea("d", 1)
 	_ = r.SetHostile("d", "a", true)
 
 	c := New()
