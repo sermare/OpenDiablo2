@@ -1,5 +1,7 @@
 # OpenDiablo2 on Windows (experimental, never run on Windows yet)
 
+Refreshed in wave 36 from the wave 35 tree: `go vet` clean for windows/amd64, PE32+ rebuilt.
+
 Status, stated plainly: the Windows `.exe` is **cross-compiled from a Mac and has never been started on a Windows
 machine**. What was checked: `go vet` for `GOOS=windows GOARCH=amd64` is clean, the build succeeds, and `file` reports a
 PE32+ x86-64 executable. What was not checked: everything at run time (window, input, audio, the first-run dialogs, saves).
@@ -65,12 +67,34 @@ To check by hand: `GOOS=windows GOARCH=amd64 go vet ./... && file dist/windows-a
 
 ## Windows on ARM
 
-`GOARCH=arm64` does **not** build: Ebiten v2.0.2 embeds `glfw.dll` for amd64 and 386 only
-(`internal/glfw/load_windows.go: undefined: glfwDLLCompressed`), and the pinned `golang.org/x/sys` is also too old for
-windows/arm64 (bumping it to v0.1.0 fixes that part only). Windows 11 on ARM runs the amd64 `.exe` under emulation, which is
-the supported route until Ebiten is upgraded (a project-wide change, not done here).
+On the pinned Ebiten v2.0.2 `GOARCH=arm64` does **not** build (no embedded `glfw.dll` for arm64, and the old `golang.org/x/sys`
+lacks windows/arm64). Windows 11 on ARM runs the amd64 `.exe` under emulation, which is the supported route. With Ebiten
+v2.10.5 (wave 36 branch `feat/w36-ebiten-upgrade`, see the section below) `GOOS=windows GOARCH=arm64` builds and vets clean and
+produces a PE32+ Aarch64 file, so a native ARM build becomes possible once that branch is merged; it has not been run either.
+
+## Ebiten upgrade (v2.0.2 to v2.10.5)
+
+Findings from the trial on branch `feat/w36-ebiten-upgrade` (wave 36):
+
+- The source needed **no API changes**: all uses (`ebiten`, `audio`, `audio/wav`, `ebitenutil`, `inpututil`) compile unchanged
+  against v2.10.5 (deprecated calls still exist).
+- `go.mod` moves to `go 1.25.0` (Ebiten's floor). Two consequences, both handled: the newer `go vet` printf check flagged 8
+  non-constant format strings (fixed, one of them was a real bug: log text containing `%`), and Go 1.24+ turns `rand.Seed` into a
+  no-op, so `go.mod` carries `godebug randseednop=0` to keep the seeded behaviour.
+- Windows needs no cgo with v2.10.5 either (it uses purego/`x/sys`), so `CGO_ENABLED=0` still works; macOS uses purego for Metal and
+  oto v3 (CoreAudio), so only the repo's own `cmdkey_darwin.go` still needs cgo there.
+- Not checked on this machine: audio output differences (new oto backend), cursor and key repeat changes, gamepad mapping
+  (the Gamepad API was reworked after 2.0), and anything on Windows itself. See `docs/WINDOWS.md` history and the wave 36 notes
+  for the scenario results.
 
 ## Known untested or unsupported on Windows
+
+- Full screen: the game now starts full screen every time (`alwaysFullscreen`, unless an `OD2_*` test variable or
+  `OD2_WINDOWED=1` is set). On Windows that is Ebiten's borderless full screen at the monitor size; Alt+Enter toggles it (a
+  duplicate toggle that cancelled itself was removed in wave 36), and the `fullscreen` console command saves the choice.
+- Saves are written through a temp file and renamed over the target; on Windows the rename is retried for about 200 ms because
+  another process holding the file open (antivirus, a second game) makes it fail briefly.
+- `OD2_AUTOCAST` test heroes use `os.TempDir()` (`%TEMP%`); the `/tmp/od2-slots` machine cap belongs to the Mac test scripts only.
 
 - First-run dialogs (`d2app/d2setup/ui_native_windows.go`) use PowerShell with `System.Windows.Forms`; the Yes/No box maps
   the two buttons to the "use this / choose another" choices and says so in the text.

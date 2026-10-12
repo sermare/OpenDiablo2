@@ -75,7 +75,7 @@ The long history (every landing, dated) is in [docs/STATUS_LOG.md](docs/STATUS_L
   `d2sfx.mpq`, `d2speech.mpq`, `d2video.mpq`, `patch_d2.mpq` plus `d2exp.mpq`, `d2xmusic.mpq`, `d2xtalk.mpq`,
   `d2xvideo.mpq`. The easiest way to get them on a Mac is Blizzard's official downloader run once under Wine:
   [docs/macos-quickstart.md](docs/macos-quickstart.md).
-* Windows (amd64) is an experimental cross-compiled build (`scripts/make-windows.sh`, [docs/WINDOWS.md](docs/WINDOWS.md)); nobody has run it on Windows yet.
+* Windows (amd64) is an experimental cross-compiled build (`scripts/make-windows.sh`, [docs/WINDOWS.md](docs/WINDOWS.md)); nobody has run it on Windows yet. Wave 36 rebuilt it from the current tree and fixed the Alt+Enter full screen toggle; a newer Ebiten (v2.10.5, also enables windows/arm64) builds on branch `feat/w36-ebiten-upgrade`, see [docs/WINDOWS.md](docs/WINDOWS.md).
 * To build from source: `brew install go` and the Xcode command line tools (the engine needs CGO).
 * Optional: a real `.d2s` character from the original game (found automatically, see below).
 

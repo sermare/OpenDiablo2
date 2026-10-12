@@ -5,7 +5,7 @@
 #   ZIP=1 scripts/make-windows.sh           also write dist/OpenDiablo2-<describe>-windows-amd64.zip
 #   WINGUI=1 scripts/make-windows.sh        build for the GUI subsystem (no console window; log lines are then
 #                                           invisible, so the default keeps the console for the first test runs)
-#   ARCH=arm64 scripts/make-windows.sh      Windows on ARM: NOT SUPPORTED, see docs/WINDOWS.md (the script stops)
+#   ARCH=arm64 scripts/make-windows.sh      Windows on ARM: only with Ebiten >= 2.10 (the script checks), see docs/WINDOWS.md
 #
 # No C compiler is needed: with CGO_ENABLED=0 the pinned Ebiten (v2.0.2) talks to Windows through x/sys/windows and an
 # embedded glfw.dll, and the audio backend (oto) uses winmm. A zig or mingw toolchain is therefore NOT required. (Earlier
@@ -20,8 +20,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ARCH=${ARCH:-amd64}
 
-if [ "$ARCH" != "amd64" ]; then
-	echo "error: only ARCH=amd64 builds. windows/arm64 fails in the pinned Ebiten v2.0.2 (internal/glfw has no embedded" >&2
+EBITEN=$(sed -n 's|.*hajimehoshi/ebiten/v2 v\(.*\)|\1|p' go.mod | head -1)
+if [ "$ARCH" != "amd64" ] && [ "${EBITEN#2.0.}" != "$EBITEN" ]; then
+	echo "error: only ARCH=amd64 builds with Ebiten v$EBITEN. windows/arm64 fails in the pinned Ebiten v2.0.2 (internal/glfw has no embedded" >&2
 	echo "       glfw.dll for arm64: 'undefined: glfwDLLCompressed'). Run the amd64 build on Windows-on-ARM (x64 emulation)," >&2
 	echo "       or upgrade Ebiten first. See docs/WINDOWS.md." >&2
 	exit 2
