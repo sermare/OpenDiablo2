@@ -28,6 +28,9 @@ scenario_check() {
   for pat in "AUTOMERC ui: hire seller=150 ok=true title=\"Your Gold: [0-9]+ +Hire which Mercenary\\?\" rows=[0-9]+ first=\".* - Lvl: +[0-9]+  Life: +[0-9]+  Def: +[0-9]+  Cost: +[0-9]+" \
     "AUTOMERC ui: hire seller=198 ok=true" "AUTOMERC ui: hire seller=252 ok=true" "AUTOMERC ui: hire seller=515 ok=true" \
     "MERC ui portrait shown tooltip=" "MERC ui potion drop handled=true cursor_empty=true" "MERC potion name=.*(instant=[1-9]|over_time=[1-9])" \
+    "AUTOMERC ui: hire click had_merc=true confirm_open=true rows=2 title=\"This Mercenary will replace your current one\\.\"" \
+    "AUTOMERC ui: hire click answered No: menu_open=false" \
+    "MERC hire message code=12 text=\"You do not have enough gold for that\\.\"" "AUTOMERC ui: hire click broke: message_open=true rows=1" \
     "MERC ui right click merc_screen_open=true" "MERC give decision=ok item=hp5 consumed=true" "MERC ui gear gear=cap@1" "MERC ui shield item=tow on_cursor=true"; do
     grep -qE "$pat" $log.txt || { echo "FAIL: no '$pat' in the merc log"; fail=1; }
   done

@@ -246,6 +246,9 @@ const (
 
 	Frame                     = "/data/global/ui/PANEL/800borderframe.dc6"
 	InventoryCharacterPanel   = "/data/global/ui/PANEL/invchar6.DC6"
+	// InventoryMercenaryPanel is the hireling screen (expansion archive): four frames of 256x256, 64x256, 256x176 and 64x176, the
+	// same cut as the character panel (INV_LoadPanelSprites 0x482a20 loads it into DAT_007b4f10 for expansion games).
+	InventoryMercenaryPanel = "/data/global/ui/PANEL/NpcInv.dc6"
 	PartyPanel                = "/data/global/ui/MENU/party.dc6"
 	PartyButton               = "/data/global/ui/MENU/partybuttons.dc6"
 	PartyBoxes                = "/data/global/ui/MENU/partyboxes.dc6"

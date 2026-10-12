@@ -92,6 +92,7 @@ type MercPortrait struct {
 	ui    *d2ui.UIManager
 	icons map[string]*d2ui.Sprite
 	tip   []*d2ui.Label
+	name  *d2ui.Label
 }
 
 // NewMercPortrait creates the portrait.
@@ -125,6 +126,8 @@ func (p *MercPortrait) Render(target d2interface.Surface, v MercView) {
 		s.SetPosition(mercPortraitX, mercPortraitBottom)
 		s.Render(target)
 	}
+
+	p.renderName(target, v.TypeName)
 
 	hp := v.HP
 	if v.Dead {
@@ -183,4 +186,35 @@ func (p *MercPortrait) RenderTooltip(target d2interface.Surface, lines []string,
 		p.tip[i].SetPosition(x+12, y+28+14*i)
 		p.tip[i].Render(target)
 	}
+}
+
+// mercPortraitNameW is the widest the type name under the picture may be (UI_DrawClippedPortraitName 0x48f420 cuts characters off
+// the end until the text is at most 0x42 pixels wide).
+const mercPortraitNameW = 0x42
+
+// ClipPortraitName cuts the name at the end until measure says it fits in 0x42 pixels.
+func ClipPortraitName(name string, measure func(string) int) string {
+	r := []rune(name)
+	for len(r) > 0 && measure(string(r)) > mercPortraitNameW {
+		r = r[:len(r)-1]
+	}
+
+	return string(r)
+}
+
+// renderName draws the type name (UI_DrawHirelingTypeName 0x48f4a0: the name string of the pettype record, nothing for string id 0
+// or 0x1506 "an evil force") right under the picture. The row of the text is UNVERIFIED (the decompiler lost the argument).
+func (p *MercPortrait) renderName(target d2interface.Surface, name string) {
+	if name == "" {
+		return
+	}
+
+	if p.name == nil {
+		p.name = p.ui.NewLabel(d2resource.Font6, d2resource.PaletteStatic)
+	}
+
+	name = ClipPortraitName(name, func(s string) int { w, _ := p.name.GetTextMetrics(s); return w })
+	p.name.SetText(name)
+	p.name.SetPosition(mercPortraitX, mercPortraitBottom+14)
+	p.name.Render(target)
 }

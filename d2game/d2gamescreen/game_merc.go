@@ -207,7 +207,7 @@ func (v *Game) mercView(p *d2mapentity.Player) (d2player.MercView, bool) {
 		Name: v.mercDisplayName(info.Rec, int(info.Save.NameID)), Level: info.Level,
 		Exp: int(info.Save.Experience), NextExp: info.Stats.NextXP,
 		Str: info.Stats.Str, Dex: info.Stats.Dex, DmgMin: info.Stats.DmgMin, DmgMax: info.Stats.DmgMax,
-		Defense: info.Stats.Defense, Resist: info.Gear.Resist, HP: info.HP, MaxHP: info.MaxHP, Dead: info.Save.Dead, Class: info.Rec.Class,
+		Defense: info.Stats.Defense, Resist: info.Gear.Resist, HP: info.HP, MaxHP: info.MaxHP, Dead: info.Save.Dead, Class: info.Rec.Class, TypeName: v.tr(info.Rec.Hireling),
 	}, true
 }
 
@@ -352,17 +352,44 @@ func (v *Game) tr(key string) string {
 // menuLine is the text of one row of the hire list in the form of the exe's dialog (UI_OpenMercHireDialog 0x4b24c0):
 // "<name> - Lvl: N  Life: N  Def: N  Cost: N", then the HireDesc label of the row.
 func (v *Game) menuLine(r d2hireling.MenuRow) string {
+	line, desc := v.menuLines(r)
+	if desc != "" {
+		line += "  (" + desc + ")"
+	}
+
+	return line
+}
+
+// menuLines are the two lines of a list entry of the exe's dialog: the numbers and the HireDesc label ("" for none).
+func (v *Game) menuLines(r d2hireling.MenuRow) (line, desc string) {
 	name := r.NameKey
 	if s := v.asset.TranslateString(r.NameKey); s != "" && s != r.NameKey {
 		name = s
 	}
 
-	line := d2player.HireDialogLine(v.tr, name, r.Level, r.HP, r.Defense, r.Price)
-	if d := d2player.HireDialogDesc(v.tr, r.HireDesc); d != "" {
-		line += "  (" + d + ")"
+	return d2player.HireDialogLine(v.tr, name, r.Level, r.HP, r.Defense, r.Price), d2player.HireDialogDesc(v.tr, r.HireDesc)
+}
+
+// hireEntries gives the entries of the list box: two lines per offer (the numbers, then the HireDesc label) and the revive row.
+func (v *Game) hireEntries(seller int, rows []d2player.NPCMenuRow) []d2player.HireListEntry {
+	o := v.offerTable(seller)
+	if o == nil {
+		return nil
 	}
 
-	return line
+	menu := v.hirelingTable().HireMenu(o.table, v.localPlayer.Stats.Level, nil)
+	entries := make([]d2player.HireListEntry, 0, len(rows))
+
+	for i, row := range rows {
+		e := d2player.HireListEntry{Line1: row.Fallback, Row: row}
+		if row.Action == d2player.NPCActionHireOffer && i < len(menu) {
+			e.Line1, e.Line2 = v.menuLines(menu[i])
+		}
+
+		entries = append(entries, e)
+	}
+
+	return entries
 }
 
 func skillNames(sk []d2hireling.SkillAt) string {
@@ -398,10 +425,11 @@ func (v *Game) openHire(npc d2interface.MapEntity) {
 		return
 	}
 
-	v.gameControls.NPCMenu.Open(title, rows, 0, 0, func(row d2player.NPCMenuRow) {
+	// the exe replaces the NPC menu by a list box dialog (UI_OpenMercHireDialog 0x4b24c0); Cancel returns to the NPC menu
+	v.gameControls.NPCMenu.Close()
+	v.gameControls.HireList.Open(title, v.tr(d2player.HireKeyCancel), v.hireEntries(seller, rows), func(row d2player.NPCMenuRow) {
 		v.onHireChoice(seller, row)
 	})
-	v.anchorNPCMenu(v.gameControls.NPCMenu, npc)
 
 	v.Infof("MERC hire dialog title=%q rows=%d", title, len(lines))
 	v.Infof("MERC offers seller=%d npc=%q difficulty=%d owner_level=%d count=%d", seller, npc.Label(), v.mercDifficulty(),
@@ -471,7 +499,13 @@ func (v *Game) openRevive(npc d2interface.MapEntity) {
 	v.anchorNPCMenu(v.gameControls.NPCMenu, npc)
 }
 
-func (v *Game) onHireChoice(seller int, row d2player.NPCMenuRow) {
+// errNotEnoughGold is returned by hireOfferFor when the hero cannot pay (reply code 12 of the exe, string 0xd22).
+var errNotEnoughGold = errors.New("not enough gold")
+
+func (v *Game) onHireChoice(seller int, row d2player.NPCMenuRow) { v.hireChoice(seller, row, false) }
+
+// hireChoice is a click on an entry of the hire list (confirmed: the answer Yes of the replace dialog).
+func (v *Game) hireChoice(seller int, row d2player.NPCMenuRow, confirmed bool) {
 	switch row.Action {
 	case d2player.NPCActionHireOffer:
 		if !v.hireGateOpen(seller) {
@@ -480,7 +514,23 @@ func (v *Game) onHireChoice(seller int, row d2player.NPCMenuRow) {
 			break
 		}
 
-		if err := v.hireOffer(seller, row.StringID); err != nil {
+		if !confirmed && d2player.HireClick(v.localPlayer != nil && v.localPlayer.Merc != nil) == d2player.HireConfirmReplace {
+			v.confirmHireReplace(seller, row)
+			v.Infof("MERC hire click slot=%d: confirm %q", row.StringID, v.tr(d2player.HireKeyReplace))
+
+			return
+		}
+
+		err := v.hireOffer(seller, row.StringID)
+
+		switch {
+		case err == nil:
+		case errors.Is(err, errNotEnoughGold):
+			v.Infof("MERC hire failed: %v", err)
+			v.hireMessage(seller, d2player.HireReplyNoGold)
+
+			return
+		default:
 			v.Infof("MERC hire failed: %v", err)
 		}
 	case d2player.NPCActionReviveMerc:
@@ -489,10 +539,59 @@ func (v *Game) onHireChoice(seller int, row d2player.NPCMenuRow) {
 		}
 	default:
 		v.Infof("NPC menu: Cancel")
+
+		// Cancel and "No" return to the NPC menu (UI_ReturnToNpcMenu 0x4b2480)
+		if npc := v.npcTarget; npc != nil && seller != d2hireling.SellerTyrael {
+			v.gameControls.HireList.Close()
+			v.openNPCMenu(v.gameControls.NPCMenu, npc)
+
+			return
+		}
 	}
 
 	v.gameControls.NPCMenu.Close()
+	v.gameControls.HireList.Close()
 	v.npcTarget = nil
+}
+
+// confirmHireReplace is the dialog of mode 5 (UI_CreateNpcItemConfirmDialog 0x4af750): the title says the new mercenary replaces the
+// current one, the answers are Yes and No.
+func (v *Game) confirmHireReplace(seller int, row d2player.NPCMenuRow) {
+	yes := row
+	yes.Fallback = v.tr(d2player.HireKeyYes)
+	no := d2player.NPCMenuRow{Fallback: v.tr(d2player.HireKeyNo), Action: d2player.NPCActionCancel}
+
+	v.gameControls.HireList.Close()
+	v.gameControls.NPCMenu.OpenPrompt(v.tr(d2player.HireKeyReplace), []d2player.NPCMenuRow{yes, no}, func(r d2player.NPCMenuRow) {
+		v.gameControls.NPCMenu.Close()
+		v.hireChoice(seller, r, true)
+	})
+
+	if v.npcTarget != nil {
+		v.anchorNPCMenu(v.gameControls.NPCMenu, v.npcTarget)
+	}
+}
+
+// hireMessage shows the text of a reply code of the hire request with a Continue button (UI_ApplyNpcTransactionResultB 0x4b1ea0).
+func (v *Game) hireMessage(seller, code int) {
+	key := d2player.HireReplyKey(code)
+	if key == "" {
+		return
+	}
+
+	text := v.tr(key)
+	ok := d2player.NPCMenuRow{Fallback: v.tr(d2player.HireKeyOK), Action: d2player.NPCActionCancel}
+
+	v.gameControls.HireList.Close()
+	v.gameControls.NPCMenu.OpenPrompt(text, []d2player.NPCMenuRow{ok}, func(r d2player.NPCMenuRow) {
+		v.gameControls.NPCMenu.Close()
+		v.hireChoice(seller, r, true)
+	})
+	v.Infof("MERC hire message code=%d text=%q", code, text)
+
+	if v.npcTarget != nil {
+		v.anchorNPCMenu(v.gameControls.NPCMenu, v.npcTarget)
+	}
 }
 
 // hireGateOpen is the quest gate of HIRE_ProcessHireOffer (VERIFIED): Qual-Kehk
@@ -539,7 +638,7 @@ func (v *Game) hireOfferFor(seller, slot int, free bool) error {
 	}
 
 	if p.Gold < offer.Cost {
-		return fmt.Errorf("not enough gold: %d < %d", p.Gold, offer.Cost)
+		return fmt.Errorf("%w: %d < %d", errNotEnoughGold, p.Gold, offer.Cost)
 	}
 
 	save := d2monsters.MercSave{
@@ -853,6 +952,8 @@ func (v *Game) mercTestUI() {
 		v.Infof("AUTOMERC ui: hire seller=%d ok=%v title=%q rows=%d first=%q", seller, ok, title, len(rows), first)
 	}
 
+	v.mercTestHireClicks()
+
 	info, ok := d.Merc(p)
 	if !ok {
 		v.Infof("AUTOMERC ui: no living merc")
@@ -869,6 +970,50 @@ func (v *Game) mercTestUI() {
 
 	healed, _ := d.Merc(p)
 	v.Infof("AUTOMERC ui: potion hp %d -> %d healed=%v", hurt.HP, healed.HP, healed.HP > hurt.HP)
+}
+
+// mercTestHireClicks drives the click flow of the hire list (w44): with a mercenary the click asks for the replace confirmation
+// (answer No leaves everything as it was), and a hero without the gold gets the not-enough-gold message.
+func (v *Game) mercTestHireClicks() {
+	p := v.localPlayer
+	_, rows, _, ok := v.hireDialog(d2hireling.SellerKashya)
+
+	if !ok || len(rows) == 0 || p == nil {
+		v.Infof("AUTOMERC ui: hire click: no offers")
+
+		return
+	}
+
+	menu := v.gameControls.NPCMenu
+	had := p.Merc != nil
+
+	if !had {
+		v.Infof("AUTOMERC ui: hire click: no mercenary to replace, skipped")
+
+		return
+	}
+
+	v.hireChoice(d2hireling.SellerKashya, rows[0], false)
+
+	asked := menu.IsOpen() && len(menu.Rows()) == 2 && menu.RowLabel(menu.Rows()[0]) == v.tr(d2player.HireKeyYes)
+	v.Infof("AUTOMERC ui: hire click had_merc=%v confirm_open=%v rows=%d title=%q", had, asked, len(menu.Rows()), v.tr(d2player.HireKeyReplace))
+
+	if asked {
+		menu.Choose(1) // No
+	}
+
+	v.Infof("AUTOMERC ui: hire click answered No: menu_open=%v gold=%d", menu.IsOpen(), p.Gold)
+
+	gold := p.Gold
+	p.Gold = 0
+
+	v.hireChoice(d2hireling.SellerKashya, rows[0], true)
+	v.Infof("AUTOMERC ui: hire click broke: message_open=%v rows=%d", menu.IsOpen(), len(menu.Rows()))
+	menu.Close()
+	v.gameControls.HireList.Close()
+
+	p.Gold = gold
+	v.npcTarget = nil
 }
 
 // mercTestSpawn puts the scenario's hostile monsters in a ring around the hero.

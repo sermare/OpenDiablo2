@@ -206,10 +206,12 @@ func (m *MercState) MercItemAt(loc d2equip.Loc) *StoredItem {
 
 // exportMercItems writes the merc's gear into the 'jf' list. The list of the file is left
 // alone until the gear was changed in the game (ItemsDirty), so a save the player did not
-// touch stays byte-exact even if some items could not be imported. Items made in the game
-// have no bit-exact form (the writer needs the property list, which the item model does
-// not keep) and are reported, not written, like the container items.
-func exportMercItems(c *d2s.Character, state *HeroState, warn func(string, ...interface{})) {
+// touch stays byte-exact even if some items could not be imported. An item made in the game is
+// written from its rolled values like a new worn item (D2SItemFromStored, w44), so loot given to
+// the merc reaches the 'jf' section; one without rolled values (or without the tables to write
+// it) is reported, not written, like the container items.
+func exportMercItems(c *d2s.Character, state *HeroState, tables *d2s.ItemTables, ids *AffixIDs,
+	warn func(string, ...interface{})) {
 	m := state.Merc
 	if m == nil || !m.ItemsDirty || c.Header.Mercenary.ID == 0 {
 		return
@@ -220,7 +222,11 @@ func exportMercItems(c *d2s.Character, state *HeroState, warn func(string, ...in
 	for i := range m.Items {
 		s := &m.Items[i]
 		if s.D2S == nil {
-			warn("merc item %q (slot %d) was made in the game, not written", s.Code, s.X)
+			it, ok := mercItemMadeInGame(s, tables, ids, warn)
+			if ok {
+				out = append(out, it)
+			}
+
 			continue
 		}
 
@@ -247,6 +253,30 @@ func exportMercItems(c *d2s.Character, state *HeroState, warn func(string, ...in
 	}
 
 	c.MercItems = out
+}
+
+// mercItemMadeInGame builds the save form of a merc item that has none from the game (picked up, bought).
+func mercItemMadeInGame(s *StoredItem, tables *d2s.ItemTables, ids *AffixIDs, warn func(string, ...interface{})) (d2s.Item, bool) {
+	if tables == nil || ids == nil || s.Facts == nil {
+		warn("merc item %q (slot %d) was made in the game, not written", s.Code, s.X)
+
+		return d2s.Item{}, false
+	}
+
+	it, dropped, why := D2SItemFromStored(s, tables, ids)
+	if why != "" {
+		warn("merc item %q (slot %d) not written: %s", s.Code, s.X, why)
+
+		return d2s.Item{}, false
+	}
+
+	if dropped > 0 {
+		warn("merc item %q: %d stat(s) the save cannot hold were left out", s.Code, dropped)
+	}
+
+	it.Location, it.Page, it.X, it.Y, it.Equipped = d2s.LocationEquipped, 0, 0, 0, uint8(s.X)
+
+	return it, true
 }
 
 // MercItemsSummary is a log line of the gear.

@@ -20,7 +20,8 @@ type MercView struct {
 	Resist       [4]int // fire, cold, lightning, poison
 	HP, MaxHP    int
 	Dead         bool
-	Class        int // monster class of the unit (271, 338, 359, 560/561): picks the HUD portrait
+	Class        int    // monster class of the unit (271, 338, 359, 560/561): picks the HUD portrait
+	TypeName     string // the hireling kind written under the portrait (UNVERIFIED which string the exe takes: pettype +0xc)
 }
 
 // MercRowOrder lists the value rows of the panel in the order of the tables of the original.

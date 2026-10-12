@@ -226,6 +226,7 @@ func NewGameControls(
 		questLog:       questLog,
 		HelpOverlay:    helpOverlay,
 		NPCMenu:        NewNPCMenu(asset, ui),
+		HireList:       NewHireList(ui),
 		Speech:         NewSpeechBubble(ui),
 		Waypoints:      NewWaypointPanel(asset, ui),
 		keyMap:         keyMap,
@@ -350,6 +351,7 @@ type GameControls struct {
 	questLog          *QuestLog
 	HelpOverlay       *HelpOverlay
 	NPCMenu           *NPCMenu
+	HireList          *HireList
 	Waypoints         *WaypointPanel
 	Trade             *TradeWindow
 	Identify          *IdentifyWindow
@@ -494,6 +496,10 @@ func (g *GameControls) skipSpeechOnKey(key d2enum.Key) bool {
 func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 	if event.Key() == d2enum.KeyEscape && g.Waypoints.IsOpen() {
 		g.Waypoints.Close()
+		return true
+	}
+
+	if g.HireList.IsOpen() && g.HireList.OnKeyDown(event) {
 		return true
 	}
 
@@ -792,6 +798,7 @@ func (g *GameControls) OnMouseMove(event d2interface.MouseMoveEvent) bool {
 	}
 
 	g.NPCMenu.OnMouseMove(event)
+	g.HireList.OnMouseMove(event)
 	g.Waypoints.OnMouseMove(event)
 	g.Trade.OnMouseMove(event)
 	g.PTrade.OnMouseMove(event)
@@ -901,6 +908,10 @@ func (g *GameControls) OnMouseButtonDown(event d2interface.MouseEvent) bool {
 	}
 
 	if g.Waypoints.OnMouseButtonDown(event) {
+		return true
+	}
+
+	if g.HireList.OnMouseButtonDown(event) {
 		return true
 	}
 
@@ -1153,6 +1164,7 @@ func (g *GameControls) AutoPanel(name string) error {
 	case "close":
 		g.clearScreen()
 		g.NPCMenu.Close()
+		g.HireList.Close()
 		g.Trade.Close()
 
 		if g.inventory.moveGoldPanel.IsOpen() {
@@ -1500,6 +1512,7 @@ func (g *GameControls) Render(target d2interface.Surface) error {
 	g.stash.Render(target)
 	g.cube.Render(target)
 	g.NPCMenu.Render(target)
+	g.HireList.Render(target)
 	g.Speech.Render(target)
 	g.Waypoints.Render(target)
 
