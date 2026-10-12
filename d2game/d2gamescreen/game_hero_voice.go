@@ -3,7 +3,6 @@ package d2gamescreen
 import (
 	"strings"
 
-	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2skill"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 )
@@ -135,17 +134,31 @@ func (v *Game) sayHeroVocal(death bool) {
 
 	v.Infof("HEROVOICE %s handle=%s", kind, h)
 	v.heroSoundTick = v.soundEngine.Ticks()
-	v.playSoundAtPos(h, v.localPlayer.GetPosition(), d2audio.PlayOpts{
-		Emitter: heroEmitter, Hero: true, Kind: "hero-voice", Who: v.localPlayer.Name(),
-	})
+
+	opts := d2audio.PlayOpts{Emitter: heroEmitter, Hero: true, Kind: "hero-voice", Who: v.localPlayer.Name()}
+
+	if rec := v.formSoundRecord(); rec != nil {
+		// a form is a monster for the sound code: its sounds set the global monster sound tick (DAT_007c0944)
+		// and carry the MonSounds delay (+0x38 hit, +0x40 death), UNITSND_PlayUnitModeStartSound 0x4c8e90
+		v.formSoundTick = v.soundEngine.Ticks()
+		opts.Delay = rec.HitDelay
+
+		if death {
+			opts.Delay = rec.DeaDelay
+		}
+	} else if death {
+		opts.Delay = 1 // the player branch passes delay 1 for death and 2 for a hit (same function)
+	} else {
+		opts.Delay = 2
+	}
+
+	v.playSoundAtPos(h, v.localPlayer.GetPosition(), opts)
 }
 
-// onSkillRefused maps a refused cast to the hero's complaint (needmana, not in town).
+// onSkillRefused maps a refused cast to the hero's complaint (d2audio.RefusalVoice: needmana, impossible,
+// not in town; the other refusals are silent, VERIFIED in PLAYER_PlayCastFailSound 0x45c830).
 func (v *Game) onSkillRefused(reason string) {
-	switch reason {
-	case d2skill.ReasonMana:
-		v.sayHero(d2audio.VoiceNeedMana)
-	case d2skill.ReasonTown:
-		v.sayHero(d2audio.VoiceNotInTown)
+	if id := d2audio.RefusalVoice(reason); id != 0 {
+		v.sayHero(id)
 	}
 }

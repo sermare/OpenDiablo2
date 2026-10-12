@@ -2,6 +2,7 @@ package d2gamescreen
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"sort"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2monsters"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2skills"
 )
 
@@ -24,10 +26,9 @@ const (
 )
 
 // surfaces are the footstep materials of Sounds.txt (light|medium|heavy_walk_<surface>_n).
-// SoundEnviron.txt Material 1/2 index them from 1; the order is inferred from
-// the rows (Act 2 town 3/4 = outdoor stone/sand, Act 5 snow barricade 6 = snow,
-// town 5 = wood) and is UNVERIFIED.
-var surfaces = []string{"dirt", "istone", "ostone", "sand", "wood", "snow"}
+// the exe indexes them from 1 (a Sounds.txt row offset of 4 rows per surface, UNITSND_GetStepSoundId 0x4c7970,
+// VERIFIED against the rows): dirt, istone, ostone, sand, snow, wood. SoundEnviron Material 1 is the fallback index.
+var surfaces = []string{"dirt", "istone", "ostone", "sand", "snow", "wood"}
 
 // weaponSwings maps the hero's weapon class (COF code) to the swing sound.
 // Which Sounds.txt row the real game plays per item type is not in the notes
@@ -139,9 +140,8 @@ func (v *Game) onMonsterSound(ev d2monsters.SoundEvent) {
 }
 
 // advanceHeroFootsteps plays the hero's footsteps while the walk or run
-// animation is showing: <weight>_walk_<surface>_1 with the surface from the
-// area's SoundEnviron Material 1. The armor weight class is not modelled;
-// medium is used (UNVERIFIED which class the real game picks).
+// animation is showing: <weight>_walk|run_<surface>_1, the weight by hero class and the surface by the floor tile
+// (see footstepSurface). The step timing is an engine choice (the exe steps on animation frames, UNVERIFIED).
 func (v *Game) advanceHeroFootsteps(elapsed float64) {
 	mode := v.localPlayer.GetAnimationMode()
 
@@ -163,20 +163,82 @@ func (v *Game) advanceHeroFootsteps(elapsed float64) {
 
 	v.heroStepAcc = 0
 
-	handle := heroFootstepHandle("medium", v.soundEnv.Environment().Material1)
+	run := mode == d2enum.PlayerAnimationModeRun
+	surface := v.footstepSurface()
+
+	if rec := v.formSoundRecord(); rec != nil {
+		v.playFormFootstep(rec, surface, run)
+		return
+	}
+
+	handle := heroFootstepHandle(d2audio.HeroFootstepWeight(v.heroClassPrefix()), surface, run)
 	v.playSoundAtPos(handle, v.localPlayer.GetPosition(),
 		d2audio.PlayOpts{Emitter: heroEmitter, Hero: true, Kind: "hero-footstep", Who: v.localPlayer.Name()})
 }
 
-// heroFootstepHandle names the footstep sound for an armor weight and a
-// SoundEnviron Material column (0 or unknown falls back to dirt).
-func heroFootstepHandle(weight string, material int) string {
-	surface := surfaces[0]
-	if material >= 1 && material <= len(surfaces) {
-		surface = surfaces[material-1]
+// footstepSurface is the surface index (1..6) of the ground under the hero: the floor tile's material flags, else the
+// area's SoundEnviron Material 1 when it is 1..6, else 1 (UNITSND_GetFootstepSoundIndex 0x4c7870, VERIFIED order).
+func (v *Game) footstepSurface() int {
+	if v.gameClient != nil && v.gameClient.MapEngine != nil && v.localPlayer != nil {
+		pos := v.localPlayer.Position
+		if s := v.gameClient.MapEngine.FloorSurface(int(pos.X()), int(pos.Y())); s != 0 {
+			return s
+		}
 	}
 
-	return fmt.Sprintf("%s_walk_%s_1", weight, surface)
+	if m := v.soundEnv.Environment().Material1; m >= 1 && m <= len(surfaces) {
+		return m
+	}
+
+	return 1
+}
+
+// playFormFootstep plays the footstep of a hero form (a monster for the sound code): the MonSounds Footstep row plus
+// 4 rows per surface, plus 24 rows for the run set (UNITSND_GetStepSoundId 0x4c7970, VERIFIED), then the footstep
+// layer with its probability (UNITSND_PlayModeEndSound 0x4c7a20).
+func (v *Game) playFormFootstep(rec *d2records.MonsterSoundRecord, surface int, run bool) {
+	if rec.Footstep == "" {
+		return
+	}
+
+	indexOf, handleAt := v.soundIndexLookups()
+
+	base, ok := indexOf(rec.Footstep)
+	if !ok {
+		return
+	}
+
+	base += 4 * (surface - 1)
+	if run {
+		base += 24
+	}
+
+	if h := handleAt(base); h != "" {
+		v.playSoundAtPos(h, v.localPlayer.GetPosition(),
+			d2audio.PlayOpts{Emitter: heroEmitter, Hero: true, Kind: "form-footstep", Who: v.localPlayer.Name()})
+	}
+
+	// nolint:gosec // sound variation only
+	if rec.FootstepLayer != "" && rand.Intn(100) < rec.FootstepProbability {
+		v.playSoundAtPos(rec.FootstepLayer, v.localPlayer.GetPosition(),
+			d2audio.PlayOpts{Emitter: heroEmitter, Hero: true, Kind: "form-footstep-layer", Who: v.localPlayer.Name()})
+	}
+}
+
+// heroFootstepHandle names the footstep sound of a class weight (d2audio.HeroFootstepWeight) on a surface
+// index 1..6 (anything else is dirt), walking or running.
+func heroFootstepHandle(weight string, surface int, run bool) string {
+	name := surfaces[0]
+	if surface >= 1 && surface <= len(surfaces) {
+		name = surfaces[surface-1]
+	}
+
+	gait := "walk"
+	if run {
+		gait = "run"
+	}
+
+	return fmt.Sprintf("%s_%s_%s_1", weight, gait, name)
 }
 
 // playHeroSwing plays the weapon swing of the hero's melee attack.
@@ -187,11 +249,31 @@ func (v *Game) playHeroSwing() {
 		return
 	}
 
-	class := strings.ToLower(v.localPlayer.WeaponClass())
+	v.playWeaponSwing()
+}
 
-	handle, ok := weaponSwings[class]
-	if !ok {
-		handle = weaponSwings["hth"]
+// playWeaponSwing plays the swing of the right hand weapon's hit class (d2audio.SwingHandle: the exe table at
+// 0x726bc8 indexed by weapons.txt "hit class"); a weapon whose class is not known falls back to the COF weapon class.
+func (v *Game) playWeaponSwing() {
+	hitClass := ""
+
+	if eq := v.localPlayer.Equipment; eq != nil && eq.RightHand != nil {
+		if rec := v.asset.Records.Item.Weapons[eq.RightHand.GetItemCode()]; rec != nil {
+			hitClass = rec.HitClass
+		}
+	}
+
+	handle, known := d2audio.SwingHandle(hitClass)
+	if !known {
+		var ok bool
+
+		if handle, ok = weaponSwings[strings.ToLower(v.localPlayer.WeaponClass())]; !ok {
+			handle = weaponSwings["hth"]
+		}
+	}
+
+	if handle == "" {
+		return
 	}
 
 	v.playSoundAtPos(handle, v.localPlayer.GetPosition(),

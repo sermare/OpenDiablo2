@@ -168,6 +168,9 @@ type Engine struct {
 	// OnSound plays a skill or missile sound; it returns a function that stops
 	// it again (looping travel sounds), or nil.
 	OnSound func(SoundEvent) (stop func())
+	// OnHeroAnim is called when a started cast puts the hero into an animation mode (the exe plays the mode
+	// start sounds then, UNITSND_HandleUnitModeSound 0x4c9030); it gets the skill id and the mode.
+	OnHeroAnim func(skillID int, mode d2enum.PlayerAnimationMode)
 
 	monSeed *d2rand.Seed // rolls for monsters that own missiles (Rabies' plague carriers)
 
@@ -460,6 +463,10 @@ func (e *Engine) CastAt(p *d2mapentity.Player, skillID, sx, sy int) bool {
 	if rec == nil || rec.Anim == d2enum.PlayerAnimationModeNone {
 		run()
 		return true
+	}
+
+	if e.OnHeroAnim != nil {
+		e.OnHeroAnim(skillID, rec.Anim)
 	}
 
 	if rec.Anim == d2enum.PlayerAnimationModeAttack1 {
