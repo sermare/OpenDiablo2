@@ -346,8 +346,10 @@ func (v *Game) uberSteps() []uberStep {
 				t.expect(v, "keys fit in the cube", put(d2uber.CodeKeyTerror, d2uber.CodeKeyHate, d2uber.CodeKeyDestr) == nil)
 
 				_, err := v.transmuteCube()
-				t.expect(v, fmt.Sprintf("no area portal in level %d on difficulty %d", at[0], at[1]), err == nil && u.ev.PortalsOpened == before)
-
+				// a failing portal output makes nothing and consumes nothing (Game.exe, wave 45)
+				t.expect(v, fmt.Sprintf("no area portal in level %d on difficulty %d, keys kept", at[0], at[1]),
+					err != nil && u.ev.PortalsOpened == before && len(v.gameControls.CubeCodes()) == 3)
+				v.gameControls.CubeClear()
 			}
 
 			u.at = func() (int, int) { return d2uber.LevelHarrogath, 2 }

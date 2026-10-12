@@ -35,8 +35,8 @@ scenario_check() {
   grep -qE "CUBE transmute row=[0-9]+ recipe=.* products=\[Khalim's Will\]" $log.txt || { echo "FAIL: Khalim's Will recipe"; fail=1; }
 
   # the cube portals fail outside Harrogath and below Hell (exe ACT1Q4_CreateUberRunPortal), and the three Tristram bosses arrive together
-  grep -q "AUTOUBER expect no area portal in level 40 on difficulty 2 PASS" $log.txt || { echo "FAIL: the cube opened an area portal outside Harrogath"; fail=1; }
-  grep -q "AUTOUBER expect no area portal in level 109 on difficulty 1 PASS" $log.txt || { echo "FAIL: the cube opened an area portal below Hell"; fail=1; }
+  grep -q "AUTOUBER expect no area portal in level 40 on difficulty 2, keys kept PASS" $log.txt || { echo "FAIL: the cube opened an area portal outside Harrogath"; fail=1; }
+  grep -q "AUTOUBER expect no area portal in level 109 on difficulty 1, keys kept PASS" $log.txt || { echo "FAIL: the cube opened an area portal below Hell"; fail=1; }
   [ "$(grep -c 'UBER spawn name=.* level=136' $log.txt)" -eq 3 ] || { echo "FAIL: Uber Mephisto, Diablo and Baal did not all spawn in Tristram"; fail=1; }
 
   # Pandemonium: three portals to the uber areas, their bosses (real monstats rows, own AIs), the organs, Tristram
