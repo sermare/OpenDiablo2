@@ -1,6 +1,7 @@
 # OpenDiablo2 on Windows (experimental, never run on Windows yet)
 
-Refreshed in wave 36 from the wave 35 tree: `go vet` clean for windows/amd64, PE32+ rebuilt.
+Refreshed in wave 44 on `fork/integration` (20a31960): `go vet ./...` clean for windows/amd64, `scripts/make-windows.sh` builds a PE32+ x86-64 exe and a zip (exe, README, licence).
+`windows/arm64` still does **not** build (see below).
 
 Status, stated plainly: the Windows `.exe` is **cross-compiled from a Mac and has never been started on a Windows
 machine**. What was checked: `go vet` for `GOOS=windows GOARCH=amd64` is clean, the build succeeds, and `file` reports a
@@ -21,6 +22,20 @@ the zip, and none are distributed.
    files. The files are only read.
 4. Your real `.d2s` characters are imported (originals never changed) from `%USERPROFILE%\Saved Games\Diablo II*`, the
    `Save` folder inside the game folder and a few other known places.
+
+## How the game folder is found (wave 44)
+
+On Windows the first-run setup tries, in order: the folder in `config.json`; registry values (`HKLM\SOFTWARE\WOW6432Node\Blizzard
+Entertainment\Diablo II` `InstallPath`, the same without WOW6432Node, `HKCU\Software\Blizzard Entertainment\Diablo II`
+`InstallPath`, and Steam's `SteamPath` + `steamapps\common\Diablo II`); the `%ProgramFiles(x86)%`, `%ProgramFiles%` and
+`%ProgramW6432%` folders; then `Diablo II`, `Games\Diablo II`, Steam and Battle.net folders on C: to F:. If a candidate holds the
+core `.mpq` files it is offered; otherwise the PowerShell folder picker opens (and accepts the parent of a `Diablo II` folder).
+Real characters are looked for in the registry `NewSavePath`, `%USERPROFILE%\Saved Games\Diablo II*` (and the same under
+`%OneDrive%`), and the game's `Save` folder; `Diablo II Resurrected` folders are skipped (different format). The registry value
+names are written from memory of the classic installer and are **unverified**; a wrong or missing key only means the next
+candidate is tried. `config.json` may start with a UTF-8 byte order mark (Notepad adds one) and use CRLF line endings; both are
+accepted. If `os.UserConfigDir` fails, `%USERPROFILE%\AppData\Roaming` is used. The path logic is unit tested on a Mac
+(`d2app/d2setup/winpaths_test.go`, `d2core/d2config/default_directories_test.go`); the registry and PowerShell calls are not.
 
 ## config.json
 
@@ -57,6 +72,7 @@ Write backslashes as `\\` if you use them. Set `OD2_NO_SETUP=1` to skip the firs
 ```
 scripts/make-windows.sh            # dist/windows-amd64/OpenDiablo2.exe (console subsystem, log lines visible)
 ZIP=1 scripts/make-windows.sh      # also dist/OpenDiablo2-<version>-windows-amd64.zip
+ALL=1 ZIP=1 scripts/make-windows.sh  # amd64, then arm64 (arm64 is skipped with a notice until Ebiten is upgraded)
 WINGUI=1 scripts/make-windows.sh   # no console window (but then log output is invisible)
 ```
 
