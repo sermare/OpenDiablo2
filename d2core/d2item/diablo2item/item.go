@@ -69,7 +69,9 @@ type Item struct {
 	Seed    int64
 	// itemLevel is the level of the dropper when the item came from a drop, else 0.
 	itemLevel int
-	rand      *rand.Rand // non-global rand instance for re-generating the item
+	// chargesFull is set by Refill: ITEM_UpdateSkillChargesToMax (VERIFIED) raised every charged skill to its maximum.
+	chargesFull bool
+	rand        *rand.Rand // non-global rand instance for re-generating the item
 
 	slotType d2enum.EquippedSlot
 	quality  d2drop.Quality // set by ItemFromCode

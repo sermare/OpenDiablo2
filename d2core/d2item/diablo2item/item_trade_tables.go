@@ -82,7 +82,13 @@ func (i *Item) priceStats() []d2trade.StatEntry {
 
 	out := make([]d2trade.StatEntry, 0, len(order))
 	for _, k := range order {
-		out = append(out, d2trade.StatEntry{ID: k[0], Param: k[1], Value: merged[k]})
+		v := merged[k]
+		if i.chargesFull && k[0] == d2trade.StatChargedSkill {
+			mx := v >> 8 & 0xff
+			v = v&^0xffff | mx | mx<<8 // current charges = maximum
+		}
+
+		out = append(out, d2trade.StatEntry{ID: k[0], Param: k[1], Value: v})
 	}
 
 	return out
