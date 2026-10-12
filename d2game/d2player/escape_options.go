@@ -22,6 +22,16 @@ type OptionsBackend interface {
 
 var optionsBackend OptionsBackend
 
+// ResolutionBackend is implemented by a backend that can list and apply window sizes (the VIDEO RESOLUTION row).
+type ResolutionBackend interface {
+	// ResolutionChoices are the row values ("1920X1080") and the index of the size the window has now.
+	ResolutionChoices() (values []string, current int)
+	// SetResolution applies a row value live (leaving full screen) and saves it.
+	SetResolution(value string) error
+	// FullScreenNow reports whether the window is full screen at this moment (the FULL SCREEN row shows it).
+	FullScreenNow() bool
+}
+
 // SetOptionsBackend registers the backend used by every escape menu.
 func SetOptionsBackend(b OptionsBackend) { optionsBackend = b }
 
@@ -47,11 +57,29 @@ var optionKeys = map[optionID]string{
 }
 
 func optionValues(id optionID) []string {
+	if rb, ok := optionsBackend.(ResolutionBackend); ok && id == optVideoResolution {
+		v, _ := rb.ResolutionChoices()
+		return v
+	}
+
 	def, _ := d2config.OptionDefFor(optionKeys[id])
 	return def.Values
 }
 
 func optionIndex(id optionID) int {
+	if rb, ok := optionsBackend.(ResolutionBackend); ok && id == optVideoFullscreen {
+		if rb.FullScreenNow() {
+			return 0 // "ON"
+		}
+
+		return 1
+	}
+
+	if rb, ok := optionsBackend.(ResolutionBackend); ok && id == optVideoResolution {
+		_, i := rb.ResolutionChoices()
+		return i
+	}
+
 	if optionsBackend != nil {
 		return optionsBackend.Config().OptionIndex(optionKeys[id])
 	}
@@ -63,6 +91,14 @@ func optionIndex(id optionID) int {
 
 func (m *EscapeMenu) applyOption(id optionID, value string) {
 	if optionsBackend == nil {
+		return
+	}
+
+	if rb, ok := optionsBackend.(ResolutionBackend); ok && id == optVideoResolution {
+		if err := rb.SetResolution(value); err != nil {
+			m.Errorf("OPTIONS could not set the resolution %s: %v", value, err)
+		}
+
 		return
 	}
 
@@ -83,6 +119,10 @@ func (m *EscapeMenu) syncOptionLabels() {
 	for _, l := range m.layouts {
 		for _, el := range l.actionableElements {
 			if e, ok := el.(*enumLabel); ok {
+				if e.optionID == optVideoResolution {
+					e.values = optionValues(e.optionID)
+				}
+
 				e.current = optionIndex(e.optionID)
 				_ = e.textChangingLabel.SetText(e.values[e.current])
 			}
@@ -188,4 +228,32 @@ func SubtitleLogOn() bool {
 	}
 
 	return optionsBackend != nil && optionsBackend.Config().SubtitleLog()
+}
+
+// refreshLiveRows keeps the VIDEO RESOLUTION and FULL SCREEN rows equal to the real window while the page is open
+// (the window can change under it: Cmd+Enter, a drag of the window edge, the row itself).
+func (m *EscapeMenu) refreshLiveRows() {
+	l := m.layouts[videoOptionsLayoutID]
+	if l == nil || optionsBackend == nil {
+		return
+	}
+
+	for _, el := range l.actionableElements {
+		e, ok := el.(*enumLabel)
+		if !ok || (e.optionID != optVideoResolution && e.optionID != optVideoFullscreen) {
+			continue
+		}
+
+		before := e.values[e.current]
+
+		if e.optionID == optVideoResolution {
+			e.values = optionValues(e.optionID)
+		}
+
+		e.current = optionIndex(e.optionID)
+
+		if e.values[e.current] != before {
+			_ = e.textChangingLabel.SetText(e.values[e.current])
+		}
+	}
 }

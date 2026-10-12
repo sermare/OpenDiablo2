@@ -1,10 +1,12 @@
 package d2app
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2display"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2config"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2input/d2gamepad"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
@@ -94,3 +96,99 @@ func (a *App) applySpeechOption() {
 		sp.SetSpeechAudio(a.config.OptionIndex(d2config.OptNpcSpeech) != textOnly)
 	}
 }
+
+// monitorSize is the size of the monitor (device independent pixels), 0x0 when unknown.
+func (a *App) monitorSize() d2display.Size {
+	if r, ok := a.renderer.(interface{ ScreenSize() (int, int) }); ok {
+		w, h := r.ScreenSize()
+		return d2display.Size{W: w, H: h}
+	}
+
+	return d2display.Size{}
+}
+
+// ResolutionChoices lists the VIDEO RESOLUTION row: window sizes that fit the monitor (the monitor size itself
+// means full screen) and the index of the one the window has now.
+func (o optionsBackend) ResolutionChoices() ([]string, int) {
+	mon := o.a.monitorSize()
+	fit := mon
+
+	if fit.H > 0 {
+		fit.H -= windowChromeHeight // a window needs room for the menu bar and title bar
+	}
+
+	cur := d2display.WindowSize()
+	if o.a.renderer.IsFullScreen() && mon.W > 0 {
+		cur = mon
+	}
+
+	sizes := d2display.ResolutionChoices(fit, cur)
+	if mon.W > 0 {
+		sizes = d2display.ResolutionChoices(fit, cur)
+		sizes = append(sizes, mon)
+		sizes = uniqueSizes(sizes)
+	}
+
+	cur = d2display.Clamp(cur)
+	values := make([]string, len(sizes))
+	idx := 0
+
+	for i, s := range sizes {
+		values[i] = s.String()
+
+		if s == cur {
+			idx = i
+		}
+	}
+
+	return values, idx
+}
+
+func uniqueSizes(in []d2display.Size) []d2display.Size {
+	seen := map[d2display.Size]bool{}
+	out := in[:0]
+
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+
+	return out
+}
+
+type windowedSizer interface{ SetWindowedSize(w, h int) }
+
+// SetResolution applies a row value now: the monitor size is full screen, any other size a window of that size
+// (this leaves full screen). The logical size is saved as the start size ("Display" of config.json).
+func (o optionsBackend) SetResolution(value string) error {
+	size, err := d2display.ParseRow(value)
+	if err != nil {
+		return err
+	}
+
+	a := o.a
+	if mon := a.monitorSize(); mon.W > 0 && size == mon {
+		a.config.SetFullscreenChoice(true)
+		a.renderer.SetFullScreen(true)
+
+		return a.config.Save()
+	}
+
+	ws, ok := a.renderer.(windowedSizer)
+	if !ok {
+		return fmt.Errorf("renderer cannot resize the window")
+	}
+
+	a.config.SetFullscreenChoice(false)
+	ws.SetWindowedSize(size.W, size.H)
+
+	logical := d2display.Logical(size.W, size.H, d2display.Scale())
+	a.config.Display.Width, a.config.Display.Height = logical.W, logical.H
+
+	return a.config.Save()
+}
+
+// FullScreenNow is the real state of the window, which the FULL SCREEN row shows.
+func (o optionsBackend) FullScreenNow() bool { return o.a.renderer.IsFullScreen() }

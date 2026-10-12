@@ -29,6 +29,10 @@ func (a *App) autoFlowCmd(verb, arg string) {
 		default:
 			a.Warningf("AUTOFLOW goto: unknown screen %q", arg)
 		}
+	case "videores": // the VIDEO RESOLUTION row of the options page (saves into the config of the run)
+		if err := (optionsBackend{a}).SetResolution(strings.ToUpper(arg)); err != nil {
+			a.Warningf("AUTOFLOW videores %q: %v", arg, err)
+		}
 	case "resize":
 		w, h, ok := strings.Cut(arg, "x")
 		wi, err1 := strconv.Atoi(w)

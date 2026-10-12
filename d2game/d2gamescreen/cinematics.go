@@ -1,6 +1,8 @@
 package d2gamescreen
 
 import (
+	"image/color"
+
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2data/d2video"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
@@ -200,6 +202,19 @@ func (v *Cinematics) playVideo(path string) {
 // Render renders the credits screen
 func (v *Cinematics) Render(screen d2interface.Surface) {
 	v.background.RenderSegmented(screen, 4, 3, 0)
+	hideLogoMark(screen)
 	v.cinematicsBackground.RenderSegmented(screen, 2, 2, 0)
 	v.cinematicsLabel.Render(screen)
 }
+
+// hideLogoMark covers the small registered-trademark dot that is part of the title background picture: the main menu
+// hides it behind the Diablo II logo and the character select behind its panel, but this screen draws neither, so the
+// dot stood alone above the box. The patch is a dim sky coloured square at the dot (column pixels, measured on the
+// background art); it is not in the original, which is UNVERIFIED to show the dot here.
+func hideLogoMark(screen d2interface.Surface) {
+	screen.PushTranslation(markX, markY)
+	screen.DrawRect(markSize, markSize, color.RGBA{R: 18, G: 12, B: 6, A: 255})
+	screen.Pop()
+}
+
+const markX, markY, markSize = 576, 82, 14

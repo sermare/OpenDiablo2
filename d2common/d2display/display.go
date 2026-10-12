@@ -76,7 +76,30 @@ func Logical(winW, winH, scale int) Size {
 		scale = MaxUIScale
 	}
 
+	// a scale that would leave less than 800x600 logical pixels (a window smaller than 1600x1200 at 2x) is lowered to
+	// the largest one that fits: the picture is then drawn at integer pixel sizes instead of being stretched.
+	for scale > 1 && (winW/scale < BaseW || winH/scale < BaseH) {
+		scale--
+	}
+
 	return Clamp(Size{winW / scale, winH / scale})
+}
+
+// EffectiveScale is the integer scale Logical really uses for a window.
+func EffectiveScale(winW, winH, scale int) int {
+	if scale < 1 {
+		scale = 1
+	}
+
+	if scale > MaxUIScale {
+		scale = MaxUIScale
+	}
+
+	for scale > 1 && (winW/scale < BaseW || winH/scale < BaseH) {
+		scale--
+	}
+
+	return scale
 }
 
 // Origin is the top-left corner of the 800x600 column inside a screen of size s.

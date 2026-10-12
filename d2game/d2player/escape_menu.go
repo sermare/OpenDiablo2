@@ -647,6 +647,10 @@ func (m *EscapeMenu) IsOpen() bool {
 
 // Advance computes the state of the elements of the menu overtime
 func (m *EscapeMenu) Advance(elapsed float64) error {
+	if m.isOpen {
+		m.refreshLiveRows()
+	}
+
 	if m.keyBindingMenu != nil {
 		if err := m.keyBindingMenu.Advance(elapsed); err != nil {
 			return err
