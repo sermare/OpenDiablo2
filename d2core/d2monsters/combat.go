@@ -281,6 +281,10 @@ func (d *Director) resolveAttack(u *unit, p *d2mapentity.Player, mode d2monster.
 			d.opt.OnHeroHit(p)
 		}
 
+		if p.Stats.Health < 1 && d.opt.TestSurvive {
+			p.Stats.Health = 1
+		}
+
 		if p.Stats.Health < 0 {
 			p.Stats.Health = 0
 		}

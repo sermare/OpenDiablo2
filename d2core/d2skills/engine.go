@@ -1327,6 +1327,7 @@ func (e *Engine) onSim(ev d2missile.Event) {
 	case d2missile.EventHit:
 		e.Counters.Hits++
 		e.noteLanded(e.skillName(m.SkillID), 1)
+		e.noteLanded(e.skillName(m.SkillID)+"#"+name, 1) // per missile (OD2_AUTOCAST "~moltenboulder": the boulder, not its fire trail)
 		tname := ev.Target.ID()
 
 		mt, _ := ev.Target.(*monsterTarget)

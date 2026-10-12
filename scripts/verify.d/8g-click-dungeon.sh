@@ -20,7 +20,7 @@ scenario_env() {
   # 2 waypoint: activates and opens the panel; Escape closes it
   s="$s;say:setwaypoint 29 0;say:spawnchest 288 288 288;until:AUTOGROUND chest-spawn id=288,30;click:left@object:288;until:WAYPOINT activated level=29,120;until:WAYPOINT PANEL,30;press:Escape;$still;say:heropos"
   # 3 chest
-  s="$s;say:spawnchest 5 5 5;until:AUTOGROUND chest-spawn id=5,30;click:left@object:5;until:AUTOGROUND chest id=5,120;$still;say:heropos"
+  s="$s;say:clearinv;say:giveitem key;say:spawnchest 5 5 5;until:AUTOGROUND chest-spawn id=5,30;click:left@object:5;until:AUTOGROUND chest id=5,120;$still;say:heropos"
   # 4 gold
   s="$s;say:spawnground gold 555 6;until:AUTOGROUND spawn source=command,30;click:left@item:555;until:AUTOGROUND pickup gold amount=555,120;$still;say:heropos"
   # 5 ground walk, Shift+click, right click (the free cell next to the hero in the direction of the click is not known: the walk

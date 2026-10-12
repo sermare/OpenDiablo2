@@ -68,6 +68,9 @@ type Options struct {
 	// against a level 5 zombie sits on the 5% minimum to-hit however low her defense is, so a scenario that needs a
 	// hit within seconds would be a coin toss). Shield blocks and avoidance still apply.
 	TestAlwaysHit bool
+	// TestSurvive keeps a hero a monster hit would kill on 1 life (scripted hunts: a weak hero in the Act 3 jungle took
+	// two hits between two frames of the scripted heal; test scenarios only).
+	TestSurvive bool
 	// MagicFindFunc and GoldFindFunc, if set, give the killer's item_magicbonus
 	// and gold find totals for the drops (ITEMGEN_GetMagicFindStat: the killer's
 	// own stat plus its leader's). Without them drops roll with 0.

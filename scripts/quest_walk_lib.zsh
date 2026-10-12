@@ -31,7 +31,7 @@ qw_env() {
   local name=$1 script=$2 d=$tmp/$1
   mkdir -p $d/s $d/wb; rm -f $d/s/*.d2s(N) $d/wb/*.d2s(N)
   if [ -n "${D2_TABLES:-}" ] && go run scripts/d2s-revive.go "$D2S_SAMPLE_BODY" $d/s/Hero.d2s "$D2_TABLES" >/dev/null 2>&1; then
-    echo "export OD2_AUTOGAME=\"$d/s/Hero.d2s\" OD2_D2S_WRITEBACK=\"$d/wb\" OD2_REALMAPS=1 OD2_AUTOMONSTER_DIFF=0"
+    echo "export OD2_AUTOGAME=\"$d/s/Hero.d2s\" OD2_D2S_WRITEBACK=\"$d/wb\" OD2_REALMAPS=1 OD2_AUTOMONSTER_DIFF=0 OD2_AUTOSCRIPT_HEAL=1 OD2_AUTOSCRIPT_SURVIVE=1"
     echo "export OD2_AUTOSCRIPT='$script'"
   else
     echo "# no revived sample (D2_TABLES unset or the tool failed)" >&2

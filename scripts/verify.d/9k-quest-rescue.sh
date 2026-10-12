@@ -7,7 +7,7 @@ source scripts/quest_walk_lib.zsh
 scenario_warnings_ok=1
 scenario_env() {
   # (the Act 5 quests open one after the other, exe sequence filters: the Siege on Harrogath is done first)
-  local s="$(qw_begin 5)say:completequest 5 1;$(qw_panel 5 2)$(qw_talk Qual-Kehk)$(qw_panel 5 2)say:setwaypoint 111 1;wait:11;$(qw_wp 111)$(qw_panel 5 2)kill:name=prison door,300;$(qw_panel 5 2)$(qw_wp 109)$(qw_talk Qual-Kehk)$(qw_panel 5 2)exit"
+  local s="$(qw_begin 5)say:completequest 5 1;$(qw_panel 5 2)$(qw_talk Qual-Kehk)$(qw_panel 5 2)say:setwaypoint 111 1;wait:11;$(qw_wp 111)$(qw_panel 5 2)skill:right=Fire Bolt;kill:name=prison door,300;$(qw_panel 5 2)$(qw_wp 109)$(qw_talk Qual-Kehk)$(qw_panel 5 2)exit"
   qw_env rescue "$s"
 }
 scenario_check() {

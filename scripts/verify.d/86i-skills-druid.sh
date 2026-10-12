@@ -5,7 +5,7 @@ scenario_turbo=1
 # skill must show its outcome in the log (damage, state, summon, missile spawned or hit) besides the finished cast.
 source scripts/verify.d/lib/skillcov.sh
 scenario_env() {
-  local list="Eruption,2!!;Molten Boulder,1!!@8;Twister,1!!@8;Tornado,1!!@8;Shock Wave,1!!@7;Arctic Blast,1;Cyclone Armor,1;Vines,1;Cycle of Life,1;Heart of Wolverine,1;Spirit of Barbs,1;Summon Spirit Wolf,1;Summon Fenris,1;Summon Grizzly,1;Wearwolf,1;Feral Rage,1!!;Fire Claws,1!!;Fury,2!!;Wearbear,1;Maul,2!!;Volcano,1;Firestorm,1;Armageddon,1"
+  local list="Eruption,2!!;Molten Boulder,1!!@8~moltenboulder;Twister,1!!@8;Tornado,1!!@8;Shock Wave,1!!@7;Arctic Blast,1;Cyclone Armor,1;Vines,1;Cycle of Life,1;Heart of Wolverine,1;Spirit of Barbs,1;Summon Spirit Wolf,1;Summon Fenris,1;Summon Grizzly,1;Wearwolf,1;Feral Rage,1!!;Fire Claws,1!!;Fury,2!!;Wearbear,1;Maul,2!!;Volcano,1;Firestorm,1;Armageddon,1"
   echo "export OD2_AUTOCAST_CLASS=druid OD2_AUTOCAST_MANA=900 OD2_AUTOCAST_LEVEL=10 OD2_AUTOMONSTER=\"zombie1,5\" OD2_AUTOMONSTER_SECONDS=300"
   echo "export OD2_AUTOCAST=\"$list\""
 }

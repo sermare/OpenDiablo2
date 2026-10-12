@@ -31,7 +31,7 @@ scenario_env() {
   s+=";say:spawnchest 5 2 118;wait:1;click:left@object:5;wait:6;click:left@object:2;wait:6;click:left@object:118;wait:6;say:capframe $tmp/a3-objs.png;loot:10,20"
   hop 85; play 85; hop 76
   hop 77; play 77
-  echo "export OD2_AUTOGAME=\"$h5/new/Hunter.d2s\" OD2_D2S_WRITEBACK=\"$h5/wb\" OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_POPULATE_DENSITY=25 OD2_AUTOSCRIPT_HEAL=1"
+  echo "export OD2_AUTOGAME=\"$h5/new/Hunter.d2s\" OD2_D2S_WRITEBACK=\"$h5/wb\" OD2_REALMAPS=1 OD2_AUTOSPEED=3 OD2_POPULATE_DENSITY=25 OD2_AUTOSCRIPT_HEAL=1 OD2_AUTOSCRIPT_SURVIVE=1"
   echo "export OD2_AUTOSCRIPT='$s;exit'"
 }
 scenario_check() {
