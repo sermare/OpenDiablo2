@@ -64,6 +64,10 @@ func (v *Game) saveBeforeExit() {
 	if err := v.OnPlayerSave(); err != nil {
 		v.Errorf("saving the hero: %v", err)
 	}
+
+	if v.gameControls != nil {
+		v.gameControls.Automap().Flush()
+	}
 }
 
 // advanceAutosave saves the hero periodically, like the real game does.

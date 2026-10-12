@@ -32,8 +32,8 @@ import (
 // Options (Options -> Automap): size, fade (translucent cells near the hero, see
 // d2automap.CellTransparency), centre (see d2automap.MiniBoxOffsets), show party
 // and show names (markers, d2automap.Classify). The revealed cells are kept per
-// level for the session; they are not saved with the character (the original
-// does not keep them in the .d2s either). UNVERIFIED: the percentages of the fade.
+// level and saved to sidecar files next to the character (automap_persist.go; the
+// original keeps them out of the .d2s too). UNVERIFIED: the percentages of the fade.
 
 const (
 	automapPathFull = "/data/global/ui/automap/maximap.dc6"
@@ -73,6 +73,10 @@ type Automap struct {
 	lastCY    float64
 	haveLast  bool
 	lastAdded int
+
+	sidecar   d2automap.Sidecar // where the revealed cells are saved (automap_persist.go)
+	saved     map[int]int       // cell count of each level at its last load or save
+	loadTried map[int]bool
 
 	sprites   map[d2automap.Size]*d2ui.Sprite
 	spriteAt  map[d2automap.Size]int // act the palette was loaded for
@@ -223,6 +227,7 @@ func (a *Automap) currentLevel() int {
 
 func (a *Automap) model() *d2automap.Model {
 	id := a.currentLevel()
+	a.loadLevel(id)
 
 	return a.store.Level(id)
 }
@@ -314,6 +319,10 @@ func (a *Automap) Advance(elapsed float64) {
 
 	lvl := a.currentLevel()
 	if lvl != a.level {
+		// The exe resets the reveal gate (AUTOMAP_SetUpdateDelay2, called only from CLIENT_ReassignPlayerToRoom
+		// 0x460e86) when the player is put into a room of another level; the cells of the level left are spilled
+		// to the sidecar files.
+		a.Flush()
 		a.level, a.haveLast = lvl, false
 	}
 

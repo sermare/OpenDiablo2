@@ -545,6 +545,14 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 		g.belt.Toggle()
 	case d2enum.ToggleAutomap:
 		g.automap.Toggle()
+	case d2enum.CenterAutomap:
+		g.automap.ToggleOption("center")
+	case d2enum.FadeAutomap:
+		g.automap.ToggleOption("fade")
+	case d2enum.TogglePartyOnAutomap:
+		g.automap.ToggleOption("party")
+	case d2enum.ToggleNamesOnAutomap:
+		g.automap.ToggleOption("names")
 	case d2enum.HoldShowGroundItems:
 		g.hud.showItems = true
 	case d2enum.UseNextPotion:

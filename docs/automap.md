@@ -54,4 +54,15 @@ with the Act 1 palette these are (36,96,216), (252,44,0), (24,252,0), (68,112,11
 minion colour is only partly decoded (U).
 
 ## What this fork does not do
-Saving the revealed map with the character (kept per level in memory for the session: d2automap.Store), roster markers for party members outside the view (RosterMarker only), minion classification beyond the model flag. Console/script: `automap fade|nofade|names|nonames|party|noparty|center|nocenter` override the options (verification aid). Scenarios: 91-automap-fidelity (town, Jail 1, return), 91-automap-outdoor (Blood Moor).
+Roster markers for party members outside the view (RosterMarker only), minion classification beyond the model flag. Console/script: `automap fade|nofade|names|nonames|party|noparty|center|nocenter` override the options (verification aid). Scenarios: 91-automap-fidelity (town, Jail 1, return), 91-automap-outdoor (Blood Moor).
+
+## Saving the map (w45)
+The exe keeps the automap in sidecar files next to the character, not in the .d2s: `<name>.map` (24 bytes: 0xc, ring index, four game ids) and
+`<name>.ma0..3` (one per recent game id; a new id takes the ring slot and deletes its file). V (AUTOMAP_OpenMapFile 0x4535b0,
+SaveLevelLayerToFile 0x453880, LoadLevelLayerFromFile 0x453df0). Per level: u16 triples in lists (floor, wall, object); a level id mismatch or a cel
+at or above the limit discards the level on load. `AUTOMAP_SetUpdateDelay2` (0x4547e0) has one caller, CLIENT_ReassignPlayerToRoom (0x460e86): V,
+the reveal gate restarts when the player is put into a room (a level change), which is also when a level is reloaded from the files.
+Fork: `d2automap.Sidecar` (persist.go) writes the same file names and ring, atomically, next to the .d2s (OD2_D2S_WRITEBACK moves them); the
+game id is the hero's map seed (U). Cells are saved when the hero leaves a level, on autosave and on exit; missing or corrupt files read as empty.
+The byte layout inside the .maN files is the fork's own (not exe compatible, see persist.go). The four options F9..F12 (centre, fade, party,
+names) are stored in config.json (`Automap.ToggleOption`) instead of the registry. Scenarios: 92-automap-save then 93-automap-load.
