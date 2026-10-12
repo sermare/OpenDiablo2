@@ -363,6 +363,7 @@ func (c *Connection) localPlayer(a PlayerAdd) (d2netpacket.NetPacket, error) {
 		st.LeftSkill, st.RightSkill, st.Gold, st.Progress, st.Difficulty,
 		d2netpacket.WithContainers(st.Containers),
 		d2netpacket.WithMerc(st.Merc),
+		d2netpacket.WithStashGold(st.StashGold),
 		d2netpacket.WithSkillBar(st.SkillBar),
 		d2netpacket.WithDeath(st.Death, st.Hardcore),
 		d2netpacket.WithAct(st.Act, len(st.D2SBase) > 0, st.Expansion),

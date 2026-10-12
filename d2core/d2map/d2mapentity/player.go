@@ -22,13 +22,13 @@ type Player struct {
 	composite     *d2asset.Composite
 	// formToken / formHuman: while the hero is shapeshifted composite is the monster's and formHuman the hero's own
 	// (player_form.go); both are empty in human shape and never saved.
-	formToken string
-	formHuman *d2asset.Composite
-	Equipment     *d2inventory.CharacterEquipment
-	Stats         *d2hero.HeroStatsState
-	Skills        map[int]*d2hero.HeroSkill
-	LeftSkill     *d2hero.HeroSkill
-	RightSkill    *d2hero.HeroSkill
+	formToken  string
+	formHuman  *d2asset.Composite
+	Equipment  *d2inventory.CharacterEquipment
+	Stats      *d2hero.HeroStatsState
+	Skills     map[int]*d2hero.HeroSkill
+	LeftSkill  *d2hero.HeroSkill
+	RightSkill *d2hero.HeroSkill
 	// SkillBar holds the skill hotkeys and the weapon-swap skills; the active
 	// left/right skills live in LeftSkill/RightSkill and are copied into the
 	// bar by SyncSkillBar before a save.
@@ -53,6 +53,9 @@ type Player struct {
 	Death *d2hero.DeathState `json:"death,omitempty"`
 	// Hardcore marks a hardcore character (death is final).
 	Hardcore bool `json:"hardcore,omitempty"`
+	// StashGold is the gold in the stash (stat 0xf), kept here so the death gold penalty (0x5331e0) can take
+	// its share; nil: unknown (the penalty then ignores the stash).
+	StashGold *int `json:"stashGold,omitempty"`
 	// deathPhase: 0 alive, 1 playing the death animation (DT), 2 lying dead (DD)
 	deathPhase int
 

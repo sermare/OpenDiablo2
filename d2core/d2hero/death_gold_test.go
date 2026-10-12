@@ -14,6 +14,10 @@ func TestDeathGoldPenalty(t *testing.T) {
 		{"stash covers shortfall", 20, 100, 900, false, GoldPenalty{Lost: 200, NewStash: 800}},
 		{"no gold", 30, 0, 0, false, GoldPenalty{}},
 		{"pk keeps rest", 10, 1000, 0, true, GoldPenalty{Lost: 100, NewCarried: 900, Dropped: 100}},
+		{"stash counts in the loss", 10, 1000, 1000, false, GoldPenalty{Lost: 200, NewStash: 1000, Dropped: 800}},
+		{"pk shortfall from stash", 20, 100, 900, true, GoldPenalty{Lost: 200, NewStash: 800, Dropped: 200}},
+		{"pk stash counts", 10, 1000, 1000, true, GoldPenalty{Lost: 200, NewCarried: 800, NewStash: 1000, Dropped: 200}},
+		{"negative inputs", 10, -5, -5, false, GoldPenalty{}},
 	}
 
 	for _, tc := range tests {

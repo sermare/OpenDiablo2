@@ -52,9 +52,11 @@ type deathState struct {
 	dead         bool
 	deadFor      float64
 	hardcore     bool
-	corpse       *d2mapentity.Player // entity lying at the death spot
-	corpseX      int
-	corpseY      int
+	// killedByPlayer is set when the killing blow came from another player (PvP); the gold penalty differs
+	killedByPlayer bool
+	corpse         *d2mapentity.Player // entity lying at the death spot
+	corpseX        int
+	corpseY        int
 	// corpseLevel is the level the hero died in; the corpse lies there. When
 	// the hero respawns in the town of another level the corpse waits
 	// (corpsePending) until that level is built again.
@@ -191,17 +193,28 @@ func (v *Game) heroDies() {
 	st.corpseLevel = v.currentLevel()
 
 	// gold: min(level,20)% of carried+stash is lost, the rest of the carried gold is dropped (0x5331e0)
-	// the stash gold is not carried by the in-game player entity (it lives in the saved hero state), so it
-	// takes no part here: UNVERIFIED in game, the pure rule handles it
+	// the stash gold travels with the player entity (nil: unknown, counted as 0); killed by a player the
+	// rule differs (0x5331e0, VERIFIED): only the loss is dropped and the rest stays carried
 	stash := 0
+	if p.StashGold != nil {
+		stash = *p.StashGold
+	}
 
-	gp := d2hero.DeathGoldPenalty(level, p.Gold, stash, false)
+	pk := st.killedByPlayer
+	st.killedByPlayer = false
+
+	gp := d2hero.DeathGoldPenalty(level, p.Gold, stash, pk)
+	if p.StashGold != nil {
+		ns := gp.NewStash
+		p.StashGold = &ns
+	}
+
 	out.GoldDropped = gp.Dropped
 	if p.Death.Corpse != nil {
 		p.Death.Corpse.GoldDropped = gp.Dropped
 	}
 
-	v.takeGold(p.Gold, gp.Dropped, x, y)
+	v.takeGold(p.Gold, gp.NewCarried, gp.Dropped, x, y)
 	p.Die()
 
 	// the death routine ends the hero's states (except plrstaydeath) and his
@@ -210,8 +223,8 @@ func (v *Game) heroDies() {
 		v.skills.HeroDied(p.ID())
 	}
 
-	v.Infof("DEATH hero=%s hardcore=%v pos=(%d,%d) level=%d exp_lost=%d exp=%d gold_dropped=%d deaths=%d died_flag=%v corpse=%v",
-		p.Name(), p.Hardcore, x, y, level, out.ExpLost, p.Stats.Experience, out.GoldDropped, p.Death.Deaths,
+	v.Infof("DEATH hero=%s hardcore=%v pos=(%d,%d) level=%d exp_lost=%d exp=%d gold_dropped=%d gold_kept=%d stash=%d pk=%v deaths=%d died_flag=%v corpse=%v",
+		p.Name(), p.Hardcore, x, y, level, out.ExpLost, p.Stats.Experience, out.GoldDropped, gp.NewCarried, gp.NewStash, pk, p.Death.Deaths,
 		p.Death.Died, describeEquipment(&equip))
 
 	if p.Hardcore {
@@ -228,13 +241,13 @@ func (v *Game) heroDies() {
 }
 
 // takeGold removes the carried gold and drops it as a pile beside the corpse.
-func (v *Game) takeGold(carried, amount, x, y int) {
+func (v *Game) takeGold(carried, keep, amount, x, y int) {
 	p := v.localPlayer
-	if carried > 0 {
+	if d := carried - keep; d > 0 {
 		if v.gameControls != nil {
-			v.gameControls.AddGold(-carried)
+			v.gameControls.AddGold(-d)
 		} else {
-			p.Gold = 0
+			p.Gold = keep
 		}
 	}
 

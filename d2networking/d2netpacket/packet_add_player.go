@@ -34,6 +34,8 @@ type AddPlayerPacket struct {
 	// a hardcore character.
 	Death    *d2hero.DeathState `json:"death,omitempty"`
 	Hardcore bool               `json:"hardcore,omitempty"`
+	// StashGold is the hero's stash gold (nil: unknown).
+	StashGold *int `json:"stashGold,omitempty"`
 	// Progress and Difficulty carry the waypoints (and quests) of the hero.
 	Progress   *d2hero.HeroProgress  `json:"progress,omitempty"`
 	Difficulty d2enum.DifficultyType `json:"difficulty,omitempty"`
@@ -103,6 +105,16 @@ type AddPlayerOption func(*AddPlayerPacket)
 // WithContainers sends the hero's saved inventory, belt, cube and stash along.
 func WithContainers(c *d2hero.HeroContainers) AddPlayerOption {
 	return func(p *AddPlayerPacket) { p.Containers = c }
+}
+
+// WithStashGold sends the hero's stash gold along.
+func WithStashGold(g *int) AddPlayerOption {
+	return func(p *AddPlayerPacket) {
+		if g != nil {
+			v := *g
+			p.StashGold = &v
+		}
+	}
 }
 
 // WithMerc sends the hero's mercenary state along.
