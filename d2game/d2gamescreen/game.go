@@ -551,7 +551,15 @@ func (v *Game) advanceStep(elapsed, total float64, last bool) error {
 				}
 
 				// skipped the first time we enter the world
-				if text, ok := zoneChangeText(v.lastZoneLevel, levelID, levelDetails); ok {
+				shown := levelDetails
+
+				if levelDetails != nil {
+					c := *levelDetails
+					c.LevelDisplayName = v.levelShownName(levelID)
+					shown = &c
+				}
+
+				if text, ok := zoneChangeText(v.lastZoneLevel, levelID, shown); ok {
 					v.gameControls.SetZoneChangeText(text)
 					v.gameControls.ShowZoneChangeText()
 					v.gameControls.HideZoneChangeTextAfter(hideZoneTextAfterSeconds)

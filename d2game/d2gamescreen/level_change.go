@@ -124,6 +124,18 @@ func (v *Game) levelName(id int) string {
 	return fmt.Sprintf("Level %d", id)
 }
 
+// levelShownName is the name the player reads (waypoint panel, "Entering The" banner): the Levels.txt LevelName
+// is a string.tbl KEY, not the text ("Rigid Highlands" -> "Frigid Highlands", "Crystalized Cavern Level 2" ->
+// "Glacial Trail"; the key is only the dev name). Falls back to the key when the tables have no entry.
+func (v *Game) levelShownName(id int) string {
+	name := v.levelName(id)
+	if v.asset == nil {
+		return name
+	}
+
+	return v.asset.TranslateString(name)
+}
+
 func (v *Game) heroTilePos() (x, y float64) { return v.localPlayer.GetPositionF() }
 
 func (v *Game) distanceToObject(ob *d2mapentity.Object) float64 {
@@ -692,7 +704,7 @@ func (v *Game) openWaypointTab(level, tab int) {
 	active, enabled := 0, 0
 
 	for _, e := range entries {
-		name := v.levelName(e.Level)
+		name := v.levelShownName(e.Level)
 		rows = append(rows, d2player.WaypointRow{WaypointEntry: e, Name: name})
 
 		state := "off"
