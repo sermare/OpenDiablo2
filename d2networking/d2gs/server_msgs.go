@@ -74,7 +74,10 @@ func boolByte(v bool) byte {
 }
 
 // GameFlags (0x01, 8 bytes): game difficulty / hardcore / expansion / ladder.
-// Layout unverified: [1]=difficulty, [2..3]=0, [4]=hardcore, [5]=expansion, [6]=ladder.
+// Verified against the client handler 0x458020: byte @1 (difficulty), dword @2
+// (hardcore sits in its high word, @4), byte @6 (expansion) and byte @7 (ladder).
+// Which of @6/@7 is expansion versus ladder follows the public D2GS layout (the
+// handler only stores them in two globals); the older port layout put them at 5/6.
 type GameFlags struct {
 	Difficulty                  uint8
 	Hardcore, Expansion, Ladder bool
@@ -84,7 +87,7 @@ type GameFlags struct {
 func (m GameFlags) Marshal() []byte {
 	b := newW(S2CGameFlags, gameFlagsSize)
 	b[1] = m.Difficulty
-	b[4], b[5], b[6] = boolByte(m.Hardcore), boolByte(m.Expansion), boolByte(m.Ladder)
+	b[4], b[6], b[7] = boolByte(m.Hardcore), boolByte(m.Expansion), boolByte(m.Ladder)
 
 	return b
 }
@@ -95,7 +98,7 @@ func ParseGameFlags(b []byte) (GameFlags, error) {
 		return GameFlags{}, ErrWrongSize
 	}
 
-	return GameFlags{Difficulty: b[1], Hardcore: b[4] != 0, Expansion: b[5] != 0, Ladder: b[6] != 0}, nil
+	return GameFlags{Difficulty: b[1], Hardcore: b[4] != 0 || b[5] != 0, Expansion: b[6] != 0, Ladder: b[7] != 0}, nil
 }
 
 // LoadAct (0x03, 12 bytes): [1]=act, [2..5]=game seed, [6..7]=start level,
@@ -196,8 +199,9 @@ func ParsePlayerMove(b []byte) (PlayerMove, error) {
 }
 
 // UnitSkillOnLocation (0x4d, 17 bytes): a unit casts a skill at a location.
-// Layout unverified: [1]=unit type, [2..5]=unit id, [6..7]=skill, [8]=level,
-// [9..10]=x, [11..12]=y, [13..16]=0.
+// Verified from the client handler 0x4596a0 and the server sender 0x53b1e0:
+// [1]=unit type, [2..5]=unit id, dword @6 (skill id in its low word), byte @10
+// (skill level, meaning inferred), u16 x @11, u16 y @13, @15..16 not written.
 type UnitSkillOnLocation struct {
 	UnitID uint32
 	Skill  uint16
@@ -210,10 +214,10 @@ func (m UnitSkillOnLocation) Marshal() []byte {
 	b := newW(S2CUnitSkillOnLoc, unitSkillOnLocSz)
 	b[1] = unitTypePlayer
 	b.u32(2, m.UnitID)
-	b.u16(6, m.Skill)
-	b[8] = m.Level
-	b.u16(9, m.X)
-	b.u16(11, m.Y)
+	b.u32(6, uint32(m.Skill))
+	b[10] = m.Level
+	b.u16(11, m.X)
+	b.u16(13, m.Y)
 
 	return b
 }
@@ -226,7 +230,7 @@ func ParseUnitSkillOnLocation(b []byte) (UnitSkillOnLocation, error) {
 
 	r := rbuf(b)
 
-	return UnitSkillOnLocation{UnitID: r.u32(2), Skill: r.u16(6), Level: b[8], X: r.u16(9), Y: r.u16(11)}, nil
+	return UnitSkillOnLocation{UnitID: r.u32(2), Skill: r.u16(6), Level: b[10], X: r.u16(11), Y: r.u16(13)}, nil
 }
 
 // ChatMessage (0x26, variable). Verified: total length = len(name)+len(text)+12
