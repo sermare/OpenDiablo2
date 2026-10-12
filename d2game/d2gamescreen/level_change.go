@@ -743,7 +743,7 @@ func (v *Game) onWaypointChosen(level int) {
 		PlayerAct: d2level.ActOfLevel(cur),
 		ObjectAct: d2level.ActOfLevel(v.levels.wpLevel),
 		Distance:  dist,
-		Range:     objectRange(d2level.ObjectWaypoint),
+		Range:     d2level.WaypointReachTiles(v.heroExeClass()) + objectReachSlack,
 		Target:    level,
 		Diff:      d2level.Difficulty(v.gameClient.Difficulty),
 		Waypoints: v.gameClient.Progress.Waypoints,

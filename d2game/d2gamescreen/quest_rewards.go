@@ -417,7 +417,7 @@ func (v *Game) maybeOpenActPortal() {
 // ---- quest drops ----
 
 // questKillDrops gives the quest items a killed monster leaves (the Hellforge
-// Hammer, the Mephisto Soulstone) and the Pandemonium keys of the Hell bosses.
+// Hammer, the Mephisto Soulstone). The Pandemonium keys come from the super unique treasure classes (d2uber.KeyTreasureClasses).
 func (v *Game) questKillDrops(label string, class int) {
 	r := v.questRT
 	if r == nil {
@@ -438,7 +438,6 @@ func (v *Game) questKillDrops(label string, class int) {
 		v.spawnQuestItem(d.Code)
 	}
 
-	v.uberKeyDrop(class)
 }
 
 // ---- Horadric Cube ----

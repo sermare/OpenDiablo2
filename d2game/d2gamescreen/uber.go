@@ -105,14 +105,6 @@ func (v *Game) uberKilled(ev d2monsters.KillEvent) {
 	v.uberApply(v.uber.mgr.Killed(d2boss.Kill{Class: ev.Class, Super: -1, Name: ev.Label}))
 }
 
-// uberKeyDrop drops the Pandemonium key of a Hell boss (UNVERIFIED source).
-func (v *Game) uberKeyDrop(class int) {
-	if code, ok := d2uber.KeyDrop(class, v.questDifficulty()); ok {
-		v.Infof("UBER key %s dropped by class %d", code, class)
-		v.spawnQuestItem(code)
-	}
-}
-
 // uberCube handles the portal recipes of the cube; it returns the number of
 // actions carried out.
 func (v *Game) uberCube(portal string) (int, bool) {

@@ -48,9 +48,9 @@ type Shrine struct {
 	Rarity        int
 	EffectClass   int // 1 magic, 2 health, 3 mana, 4 refill and boosters
 	LevelMin      int
-	// Out marks rows whose description says "(OUT)" (cut features; the
-	// binary still has an effect function for them, whether they spawn is
-	// UNVERIFIED).
+	// Out marks rows whose description says "(OUT)" (text of cut features). VERIFIED (0x54d5c0, 0x54d840): the roll
+	// does not skip them; the exchange rows 4 and 5 and the Enirhs row 16 are remapped to rows 2, 3 and 18
+	// (RemapShrineCode), and rows 2 and 3 are the real health and mana shrines.
 	Out bool
 	// Sound is the Sounds.txt handle played when the shrine is used
 	// (ESOUND_SHRINE_*; which shrine plays which is UNVERIFIED but the names
@@ -233,90 +233,68 @@ func (s *Roller) Roll(n int) int {
 // NewRoller returns a deterministic generator for shrine and well rolls.
 func NewRoller(seed uint32) *Roller { r := Roller(seed) + 1; return &r }
 
-// effectClassesFor maps the objects.txt Parm0 of a shrine object (1, 2 or 3)
-// to the shrines.txt EffectClass values it can show. UNVERIFIED hypothesis:
-// the manashrine rows (249, 302) have Parm0 2 and the visual classes seem to
-// be 1 magic, 2 recharge (health/mana), 3 booster/refill.
-func effectClassesFor(parm0 int) []int {
-	switch parm0 {
-	case 1:
-		return []int{1}
-	case 2:
-		return []int{2, 3}
-	case 3:
-		return []int{4}
+// ShrineClassForParm0 is the shrines.txt effectclass list a shrine object rolls from (VERIFIED, 0x54d840: the
+// branch on objects.txt Parm0 before OBJECT_RollShrineForLevel 0x54d5c0): Parm0 1 rolls class 2 (the health rows),
+// Parm0 2 class 3 (the mana rows), any larger Parm0 first advances the generator once and rolls class 1 (magic)
+// when that value is a multiple of 10, else class 4 (refill and boosters). Parm0 0 does not use a class (see
+// RollShrineUniform). Pass roll10 = the generator's value modulo 10.
+func ShrineClassForParm0(parm0, roll10 int) int {
+	switch {
+	case parm0 == 1:
+		return 2
+	case parm0 == 2:
+		return 3
+	case roll10 == 0:
+		return 1
 	}
 
-	return nil
+	return 4
 }
 
-// RollShrine picks the shrine type of a new shrine object: among the rows
-// whose LevelMin does not exceed the area level (and whose EffectClass fits
-// the object's Parm0), weighted by 4-Rarity (rarity 1 is the most common). The
-// original's weighting is UNVERIFIED. Rows marked Out are skipped unless
-// includeOut is set. It returns false when nothing qualifies.
+// RollShrine picks the shrine type of a new shrine object with Parm0 != 0 (VERIFIED, 0x54d5c0 with the class of
+// ShrineClassForParm0): the list of rows whose effectclass is the class, in table order, a uniform pick from it
+// (rarity is not used), rerolled up to ShrineRetries times while the row's LevelMin exceeds areaLevel, then the
+// remap of RemapShrineCode. includeOut is ignored: the exe does not skip the "(OUT)" rows (the exchange rows are
+// remapped to the health and mana rows, which are the real health and mana shrines). It returns false when the
+// class list is empty.
 func RollShrine(rows []Shrine, r *Roller, areaLevel, parm0 int, includeOut bool) (Shrine, bool) {
-	classes := effectClassesFor(parm0)
+	_ = includeOut
 
-	pick := func(filterClass bool) (Shrine, bool) {
-		total := 0
-
-		var cand []Shrine
-
-		for _, s := range rows {
-			if s.Code == ShrineNone || s.LevelMin > areaLevel || (s.Out && !includeOut) {
-				continue
-			}
-
-			if filterClass && !containsInt(classes, s.EffectClass) {
-				continue
-			}
-
-			cand = append(cand, s)
-			total += weight(s)
-		}
-
-		if len(cand) == 0 {
-			return Shrine{}, false
-		}
-
-		n := r.Roll(total)
-		for _, s := range cand {
-			if n < weight(s) {
-				return s, true
-			}
-
-			n -= weight(s)
-		}
-
-		return cand[len(cand)-1], true
+	if parm0 == 0 {
+		return RollShrineUniform(rows, r, areaLevel)
 	}
 
-	if len(classes) > 0 {
-		if s, ok := pick(true); ok {
-			return s, true
+	class := ShrineClassForParm0(parm0, 1)
+	if parm0 > 2 || parm0 < 0 {
+		class = ShrineClassForParm0(parm0, r.Roll(10))
+	}
+
+	var list []Shrine
+
+	for _, s := range rows {
+		if s.EffectClass == class {
+			list = append(list, s)
 		}
 	}
 
-	return pick(false)
-}
-
-func weight(s Shrine) int {
-	if w := 4 - s.Rarity; w > 0 {
-		return w
+	if len(list) == 0 {
+		return Shrine{}, false
 	}
 
-	return 1
-}
+	pick := list[0]
 
-func containsInt(a []int, v int) bool {
-	for _, x := range a {
-		if x == v {
-			return true
+	for tries := ShrineRetries; ; {
+		pick = list[r.Roll(len(list))]
+		if areaLevel >= pick.LevelMin {
+			break
+		}
+
+		if tries--; tries <= 0 {
+			break
 		}
 	}
 
-	return false
+	return ShrineByCode(rows, RemapShrineCode(pick.Code))
 }
 
 // ShrineRetries is the number of rerolls the exe allows when a rolled shrine's LevelMin exceeds the

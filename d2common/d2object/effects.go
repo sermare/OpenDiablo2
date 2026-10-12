@@ -120,18 +120,20 @@ type Vitals struct {
 // ApplyInstant applies a recharge shrine (codes 1..5) to the vitals and
 // returns the new vitals. ok is false for other shrine codes.
 //
-// Refill (VERIFIED by name only): both to maximum. The boost and exchange
-// formulas follow the shrines.txt description ("doubles current health (even
-// over maximum)", "takes 1/2 health, gives 5 times that number to mana") with
-// Arg0/Arg1 as percentages; the caps (Arg1 percent of maximum) are UNVERIFIED.
+// VERIFIED (effect table 0x6e2b48, functions 0x580800 / 0x580780 / 0x5807c0): Refill sets life and mana to
+// maximum, Health (code 2) sets life to maximum and Mana (code 3) sets mana to maximum; these are the real
+// health and mana shrines, the shrines.txt text "doubles current health" describes a cut feature. The exchange
+// codes 4 and 5 (0x580860 / 0x5808c0: life to mana and back) cannot be rolled because OBJECT_ChooseShrineType
+// remaps them to 2 and 3 (RemapShrineCode); the formulas below follow the shrines.txt description for them
+// and are never reached by a rolled shrine (UNVERIFIED, dead code).
 func ApplyInstant(s Shrine, v Vitals) (Vitals, bool) {
 	switch s.Code {
 	case ShrineRefill:
 		v.Life, v.Mana = v.MaxLife, v.MaxMana
 	case ShrineHealth:
-		v.Life = minInt(v.Life*s.Arg0/100, v.MaxLife*s.Arg1/100)
+		v.Life = v.MaxLife
 	case ShrineMana:
-		v.Mana = minInt(v.Mana*s.Arg0/100, v.MaxMana*s.Arg1/100)
+		v.Mana = v.MaxMana
 	case ShrineHealthExchange:
 		taken := v.Life * s.Arg0 / 100
 		v.Life -= taken
@@ -147,10 +149,13 @@ func ApplyInstant(s Shrine, v Vitals) (Vitals, bool) {
 	return v, true
 }
 
-// WellRestore is what a well gives: full life and mana. The original's well
-// function (OperateFn 22, 0x5837b0) is not decompiled; that it restores both
-// and whether it also restores stamina is UNVERIFIED. objects.txt gives the
-// wells Parm0=750: read here as the refill delay in frames (30 s), UNVERIFIED.
+// WellRestore is the legacy one-shot well: full life and mana. The well event
+// 0x5837b0 (VERIFIED) heals in pulses instead (see WellPulse): life and mana
+// by Parm1*max>>8 each when below maximum and the Parm3 bit is set, and
+// stamina always, so the stamina part is VERIFIED too. objects.txt gives the
+// wells Parm0=750: VERIFIED as the refill delay in frames; the event
+// reschedules itself Parm0+1 frames later after a pulse that healed something
+// (WellRefillFrames, 30 s at 25 frames per second).
 func WellRestore(v Vitals) Vitals {
 	v.Life, v.Mana = v.MaxLife, v.MaxMana
 
@@ -295,9 +300,11 @@ type WellVitals struct {
 // well event at 0x5837b0): life and mana (each only when below maximum and the Parm3 bit is set) and
 // stamina (always) rise by Parm1 * max >> 8, capped at the maximum; the helper also removes the poison
 // and freeze stat lists and the states in a mask, and heals the hero's pets the same way (not modelled
-// here). Parm1 is 128 for every well (a pulse is half of the maximum). UNVERIFIED: how many pulses a
-// well holds and how the event at 0x5837b0 spaces them (it reschedules itself Parm0+1 frames later
-// while a counter in the object data is non-zero; Parm0 is 750 for every well).
+// here). Parm1 is 128 for every well (a pulse is half of the maximum). A fresh well holds
+// Parm2*2 pulses (WellCharges); the event 0x5837b0 (VERIFIED) returns early with 0 when the
+// object's counter is zero, heals through 0x583620, and only if that healed something lowers
+// the counter, sets the object mode at multiples of Parm2 (WellMode) and reschedules itself
+// Parm0+1 frames later (Parm0 is 750 for every well).
 func WellPulse(v WellVitals, parm1, parm3 int) (out WellVitals, changed bool) {
 	out = v
 	grow := func(cur *int, max int) {

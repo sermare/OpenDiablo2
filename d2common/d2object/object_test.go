@@ -53,8 +53,8 @@ func TestInstant(t *testing.T) {
 		want Vitals
 	}{
 		{ShrineRefill, Vitals{100, 100, 50, 50}},
-		{ShrineHealth, Vitals{60, 100, 10, 50}},
-		{ShrineMana, Vitals{30, 100, 20, 50}},
+		{ShrineHealth, Vitals{100, 100, 10, 50}},
+		{ShrineMana, Vitals{30, 100, 50, 50}},
 		{ShrineHealthExchange, Vitals{15, 100, 50, 50}}, // 15 taken * 5 = 75 mana, capped at 50
 		{ShrineManaExchange, Vitals{100, 100, 5, 50}},   // 5 taken * 5 = 25 -> 55 capped... 30+25
 	}
@@ -154,38 +154,68 @@ func TestOverlayFlags(t *testing.T) {
 	}
 }
 
-func TestRollShrine(t *testing.T) {
-	for seed := uint32(0); seed < 200; seed++ {
-		r := NewRoller(seed)
+func TestShrineClassForParm0(t *testing.T) {
+	for _, tc := range []struct{ parm0, roll10, want int }{
+		{1, 0, 2}, {1, 5, 2}, {2, 0, 3}, {2, 7, 3}, {3, 0, 1}, {3, 1, 4}, {3, 9, 4}, {4, 0, 1},
+	} {
+		if got := ShrineClassForParm0(tc.parm0, tc.roll10); got != tc.want {
+			t.Errorf("ShrineClassForParm0(%d,%d) = %d, want %d", tc.parm0, tc.roll10, got, tc.want)
+		}
+	}
+}
 
-		s, ok := RollShrine(DefaultShrines, r, 1, 3, false)
-		if !ok {
-			t.Fatal("no shrine at level 1")
+func TestRollShrine(t *testing.T) {
+	// Parm0 1 and 2: only the (remapped) health and mana rows; 3: magic 10 %, refill and boosters 90 %
+	for seed := uint32(0); seed < 300; seed++ {
+		if s, ok := RollShrine(DefaultShrines, NewRoller(seed), 99, 1, false); !ok || s.Code != ShrineHealth {
+			t.Fatalf("parm0 1 seed %d: %+v", seed, s)
 		}
 
-		if s.LevelMin > 1 || s.Out || s.EffectClass != 4 {
-			t.Fatalf("seed %d: %+v", seed, s)
+		if s, ok := RollShrine(DefaultShrines, NewRoller(seed), 99, 2, false); !ok || s.Code != ShrineMana {
+			t.Fatalf("parm0 2 seed %d: %+v", seed, s)
 		}
 	}
 
-	// deterministic
-	a, _ := RollShrine(DefaultShrines, NewRoller(7), 30, 0, false)
-	b, _ := RollShrine(DefaultShrines, NewRoller(7), 30, 0, false)
+	magic, boost := 0, 0
+
+	for seed := uint32(0); seed < 4000; seed++ {
+		s, ok := RollShrine(DefaultShrines, NewRoller(seed), 99, 3, false)
+		if !ok {
+			t.Fatal("no shrine at level 99")
+		}
+
+		switch s.EffectClass {
+		case 1:
+			magic++
+		case 4:
+			boost++
+		default:
+			t.Fatalf("parm0 3 rolled class %d (%s)", s.EffectClass, s.Name)
+		}
+	}
+
+	if magic < 250 || magic > 550 { // about 10 % of 4000, minus the Enirhs rows that remap within class 1
+		t.Errorf("magic %d of 4000", magic)
+	}
+
+	// deterministic, and a roll below the level is kept only after the 8 tries
+	a, _ := RollShrine(DefaultShrines, NewRoller(7), 30, 3, false)
+	b, _ := RollShrine(DefaultShrines, NewRoller(7), 30, 3, false)
 
 	if a.Code != b.Code {
 		t.Error("roll not deterministic")
 	}
 
-	// every non-cut shrine appears at a high level
+	// every booster, refill and magic shrine appears at a high level
 	seen := map[int]bool{}
 
-	for seed := uint32(0); seed < 3000; seed++ {
-		s, _ := RollShrine(DefaultShrines, NewRoller(seed), 40, 0, false)
+	for seed := uint32(0); seed < 6000; seed++ {
+		s, _ := RollShrine(DefaultShrines, NewRoller(seed), 99, 3, false)
 		seen[s.Code] = true
 	}
 
 	for _, s := range DefaultShrines {
-		if s.Code != ShrineNone && !s.Out && !seen[s.Code] {
+		if (s.EffectClass == 4 || s.EffectClass == 1) && s.Code != ShrineNone && s.Code != ShrineEnirhs && !seen[s.Code] {
 			t.Errorf("%s never rolled", s.Name)
 		}
 	}

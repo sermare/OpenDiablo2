@@ -187,12 +187,13 @@ func NormalizeWaypoints(wp *d2s.Waypoints) {
 // TravelCode is the result of SERVER_ValidateWaypointTravel.
 type TravelCode int
 
-// The codes (VERIFIED returns; the far-away value is the raw return of UNIT_IsFarFromPoint and UNVERIFIED as 3 here).
+// The codes (VERIFIED returns). A hero too far from the object gets the raw return of UNIT_IsFarFromPoint (0x546de0),
+// which is 1 (VERIFIED: its far exit loads EAX=1), so far shares code 1 with a missing object.
 const (
 	TravelOK         TravelCode = 0
-	TravelNoObject   TravelCode = 1 // the waypoint object is not in the game
+	TravelNoObject   TravelCode = 1 // the waypoint object is not in the game, or the hero is too far from it (UNIT_IsFarFromPoint returns 1)
 	TravelNotActive  TravelCode = 2 // another act than the object's, or the waypoint is not activated
-	TravelBadRequest TravelCode = 3 // too far from the object, a level number out of range, a level without waypoint, packet size
+	TravelBadRequest TravelCode = 3 // a level number out of range, a level without waypoint, packet size
 )
 
 // TravelRequest is what the checks read.
@@ -218,7 +219,7 @@ func ValidateTravel(r TravelRequest) TravelCode {
 	}
 
 	if r.Far {
-		return TravelBadRequest
+		return TravelNoObject
 	}
 
 	if r.Target == 0 {
