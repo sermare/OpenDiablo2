@@ -407,7 +407,7 @@ func (v *Game) advanceCorpseRecovery() {
 	case st.walkToCorpse && dist <= corpseLootRange:
 		st.walkToCorpse = false
 		v.lootCorpse()
-	case st.test != nil && dist <= corpseReach:
+	case st.test != nil && !st.test.recovered && dist <= corpseReach:
 		v.lootCorpse() // the scripted death run walks onto the corpse
 	}
 }
@@ -632,7 +632,7 @@ func (v *Game) advanceDeathTest(elapsed float64) {
 		t.recovered = true
 
 		p.SetPositionSubtile(st.corpseX, st.corpseY)
-		v.recoverCorpse()
+		v.lootCorpse()
 	case t.recovered:
 		t.afterDone += elapsed
 		if t.afterDone >= deathTestSettle {
@@ -657,6 +657,11 @@ func (v *Game) startDeathTest(t *deathTest) {
 
 	if n, err := strconv.Atoi(os.Getenv("OD2_AUTODEATH_HP")); err == nil && n > 0 && n < p.Stats.MaxHealth {
 		p.Stats.Health = n
+	}
+
+	// OD2_AUTODEATH_CLEARINV: an empty inventory, so the whole corpse fits back (else a full pack is the cantcarry case)
+	if os.Getenv("OD2_AUTODEATH_CLEARINV") != "" && v.gameControls != nil {
+		v.Infof("DEATHTEST cleared %d inventory item(s)", v.gameControls.ClearInventoryGrid())
 	}
 
 	if p.Gold < 1000 && v.gameControls != nil {

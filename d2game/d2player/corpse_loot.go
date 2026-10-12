@@ -25,7 +25,8 @@ func (g *GameControls) TakeBodyForCorpse() []d2hero.StoredItem {
 	}
 
 	g.inventory.ClearBody()
-	g.afterEquipChange("body moved to the corpse")
+	g.equipTouched = true
+	g.recalcWorn() // no save here: the caller attaches the items to the corpse first, then saves
 
 	return out
 }
@@ -70,6 +71,10 @@ func (h *corpseHost) MeetsRequirements(s *d2hero.StoredItem) bool {
 	}
 	defer h.drop()
 
+	if h.logical(s.X).IsSwap() {
+		return true // the other weapon set is not checked while it is inactive
+	}
+
 	return h.g.evaluateEquip(h.g.inventory.CursorItem(), h.logical(s.X)).OK
 }
 
@@ -81,7 +86,16 @@ func (h *corpseHost) TryEquip(slot int, s *d2hero.StoredItem) bool {
 		return false
 	}
 
+	// the inactive weapon set takes its item back where it was (no rules are checked until it is switched in)
+	if loc.IsSwap() {
+		h.g.inventory.SetWorn(loc, h.g.inventory.CursorItem())
+		h.g.inventory.SetCursorItem(nil)
+
+		return true
+	}
+
 	if res := h.g.evaluateEquip(h.g.inventory.CursorItem(), loc); !res.OK || len(res.Displaced) > 0 {
+		h.g.Infof("CORPSE equip refused item=%s slot=%s ok=%v reason=%q displaced=%v", s.Code, loc, res.OK, res.Reason, res.Displaced)
 		h.drop()
 		return false
 	}
@@ -132,10 +146,17 @@ func (g *GameControls) LootCorpse(c *d2hero.Corpse, canTake func(it *d2hero.Stor
 	held := g.inventory.CursorItem()
 	g.inventory.SetCursorItem(nil)
 
+	prevNoSave := g.equipNoSave
+	g.equipNoSave = true
+
+	defer func() { g.equipNoSave = prevNoSave }()
+
 	_, complete = d2hero.LootCorpse(c, &corpseHost{g: g, canTake: canTake})
 
 	g.inventory.SetCursorItem(held)
-	g.afterEquipChange("corpse looted")
+	// no save here: the corpse still lists its items until the caller has updated it, and the caller saves
+	g.equipTouched = true
+	g.recalcWorn()
 
 	return complete
 }

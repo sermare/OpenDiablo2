@@ -352,6 +352,15 @@ func exportEquipment(c *d2s.Character, state *HeroState, warn func(string, ...in
 		}
 	}
 
+	// the items lying on the hero's corpse are not worn on purpose: exportCorpseItems moves them to the corpse section
+	if state.Death != nil && state.Death.Corpse != nil {
+		for i := range state.Death.Corpse.Items {
+			if s := &state.Death.Corpse.Items[i]; s.D2S != nil {
+				seen[s.D2S.ID] = true
+			}
+		}
+	}
+
 	for id, it := range byID {
 		if !seen[id] {
 			warn("%q was worn in the save but is not any more, kept worn in the file", strings.TrimSpace(it.Code))
