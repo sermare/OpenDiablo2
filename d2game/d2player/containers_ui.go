@@ -277,3 +277,17 @@ func (g *GameControls) AutoPlaceCursor() (x, y int, ok bool) {
 
 	return x, y, ok
 }
+
+// useNextPotion drinks the front potion of the first filled belt column (columns 1 to 4 in order): one key for the
+// potions. An empty belt does nothing.
+func (g *GameControls) useNextPotion() {
+	for col := 0; col < d2inventory.BeltColumns; col++ {
+		if g.belt.columnFilled(col) {
+			g.UseBeltColumn(col)
+
+			return
+		}
+	}
+
+	g.Infof("BELT no potion to drink")
+}

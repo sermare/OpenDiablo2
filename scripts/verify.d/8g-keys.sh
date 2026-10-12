@@ -1,4 +1,4 @@
-scenario_name="keyboard through the input manager (belt hotkeys 1-4, skill hotkeys F1-F8, I C T A Q Tab panels, run toggle R, Esc menu chosen with the mouse)"
+scenario_name="keyboard through the input manager (Q drinks the potions, skill hotkeys 1-4 and F1-F8, I C T A L Tab panels, run toggle R, Esc menu chosen with the mouse)"
 scenario_realtime=1
 scenario_timeout=240
 # Every key is injected like a window key event (InputInjector), every wait is on the line the key's effect logs: "INPUT panels after <key>"
@@ -8,12 +8,15 @@ scenario_env() {
   local k='INPUT panels after'
   local s='say:heropos'
   # belt columns 1 to 4: each key drinks the front potion of its column (the sample hero has potions in all four)
-  for n in 1 2 3 4; do s="$s;press:$n;until:BELT use slot=$n,30"; done
+  # (OD2 layout: one key, Q, drinks the front potion of the first filled column; the number keys are skills)
+  for n in 1 2 3 4; do s="$s;press:Q;until:BELT use slot=,30"; done
   # skill hotkeys: the sample hero has skills on F1 to F7, F8 is empty and selects nothing
   for n in 1 2 3 4 5 6 7; do s="$s;press:F$n;until:SKILLBAR select,30"; done
   s="$s;press:F8;until:$k F8,30"
+  # the number keys 1 to 4 are the same skill hotkeys (the second binding of F1 to F4)
+  for n in 1 2 3 4; do s="$s;press:$n;until:SKILLBAR select,30"; done
   # panels: each key opens, the same key closes
-  for p in "I:inventory" "C:character" "T:skills" "Q:quest" "A:character"; do
+  for p in "I:inventory" "C:character" "T:skills" "L:quest" "A:character"; do
     key=${p%%:*}; st=${p##*:}
     s="$s;press:$key;until:$st=true,30;press:$key;until:$st=false,30"
   done
@@ -30,8 +33,8 @@ scenario_check() {
   grep -E "INPUT panels after|BELT use|SKILLBAR select|MENU |AUTOSCRIPT RESULT|AUTOSCRIPT step [0-9]* FAIL" $log.txt | cut -c1-200 | head -90
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: keyboard script did not pass"; fail=1; }
   body=$(grep -v AUTOSCRIPT $log.txt)
-  for n in 1 2 3 4; do echo "$body" | grep -q "BELT use slot=$n " || { echo "FAIL: belt hotkey $n drank nothing"; fail=1; }; done
-  [ "$(echo "$body" | grep -c 'SKILLBAR select hand=')" = 8 ] || { echo "FAIL: want 8 skill selections (F1 to F7, shift+F1)"; fail=1; }
+  [ "$(echo "$body" | grep -c 'BELT use slot=')" -ge 4 ] || { echo "FAIL: Q should have drunk 4 potions"; fail=1; }
+  [ "$(echo "$body" | grep -c 'SKILLBAR select hand=')" = 12 ] || { echo "FAIL: want 12 skill selections (F1 to F7, the keys 1 to 4, shift+F1)"; fail=1; }
   for k in inventory character skills quest automap running; do
     echo "$body" | grep "INPUT panels after" | grep -q " $k=true" || { echo "FAIL: no key turned $k on"; fail=1; }
   done

@@ -530,6 +530,8 @@ func (g *GameControls) OnKeyDown(event d2interface.KeyEvent) bool {
 		g.automap.Toggle()
 	case d2enum.HoldShowGroundItems:
 		g.hud.showItems = true
+	case d2enum.UseNextPotion:
+		g.useNextPotion()
 	case d2enum.UseBeltSlot1, d2enum.UseBeltSlot2, d2enum.UseBeltSlot3, d2enum.UseBeltSlot4:
 		g.UseBeltColumn(int(gameEvent - d2enum.UseBeltSlot1))
 	case d2enum.UseSkill1, d2enum.UseSkill2, d2enum.UseSkill3, d2enum.UseSkill4,

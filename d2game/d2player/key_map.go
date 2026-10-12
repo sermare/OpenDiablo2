@@ -241,15 +241,15 @@ func (km *KeyMap) ResetToDefault() {
 		d2enum.TogglePartyPanel:     {d2enum.KeyP, -1},
 		d2enum.ToggleHirelingPanel:  {d2enum.KeyO, -1},
 		d2enum.ToggleMessageLog:     {d2enum.KeyM, -1},
-		d2enum.ToggleQuestLog:       {d2enum.KeyQ, -1},
+		d2enum.ToggleQuestLog:       {d2enum.KeyL, -1}, // OD2: Q drinks a potion
 		d2enum.ToggleHelpScreen:     {d2enum.KeyH, -1},
 
 		d2enum.ToggleSkillTreePanel:     {d2enum.KeyT, -1},
 		d2enum.ToggleRightSkillSelector: {d2enum.KeyS, -1},
-		d2enum.UseSkill1:                {d2enum.KeyF1, -1},
-		d2enum.UseSkill2:                {d2enum.KeyF2, -1},
-		d2enum.UseSkill3:                {d2enum.KeyF3, -1},
-		d2enum.UseSkill4:                {d2enum.KeyF4, -1},
+		d2enum.UseSkill1:                {d2enum.KeyF1, d2enum.Key1},
+		d2enum.UseSkill2:                {d2enum.KeyF2, d2enum.Key2},
+		d2enum.UseSkill3:                {d2enum.KeyF3, d2enum.Key3},
+		d2enum.UseSkill4:                {d2enum.KeyF4, d2enum.Key4},
 		d2enum.UseSkill5:                {d2enum.KeyF5, -1},
 		d2enum.UseSkill6:                {d2enum.KeyF6, -1},
 		d2enum.UseSkill7:                {d2enum.KeyF7, -1},
@@ -265,12 +265,13 @@ func (km *KeyMap) ResetToDefault() {
 		d2enum.SelectPreviousSkill:      {d2enum.KeyMouseWheelUp, -1},
 		d2enum.SelectNextSkill:          {d2enum.KeyMouseWheelDown, -1},
 
-		d2enum.ToggleBelts:  {d2enum.KeyTilde, -1},
-		d2enum.UseBeltSlot1: {d2enum.Key1, -1},
-		d2enum.UseBeltSlot2: {d2enum.Key2, -1},
-		d2enum.UseBeltSlot3: {d2enum.Key3, -1},
-		d2enum.UseBeltSlot4: {d2enum.Key4, -1},
-		d2enum.SwapWeapons:  {d2enum.KeyW, -1},
+		d2enum.ToggleBelts:   {d2enum.KeyTilde, -1},
+		d2enum.UseBeltSlot1:  {-1, -1}, // OD2: Q drinks the potions in order
+		d2enum.UseBeltSlot2:  {-1, -1}, // OD2: Q drinks the potions in order
+		d2enum.UseBeltSlot3:  {-1, -1}, // OD2: Q drinks the potions in order
+		d2enum.UseBeltSlot4:  {-1, -1}, // OD2: Q drinks the potions in order
+		d2enum.UseNextPotion: {d2enum.KeyQ, -1},
+		d2enum.SwapWeapons:   {d2enum.KeyW, -1},
 
 		d2enum.ToggleChatBox:       {d2enum.KeyEnter, -1},
 		d2enum.HoldRun:             {d2enum.KeyControl, -1},

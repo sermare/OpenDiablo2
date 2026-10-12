@@ -62,6 +62,10 @@ var knownKeyDifferences = map[d2enum.GameEvent]string{
 	d2enum.ToggleRunWalk:        "secondary mouse button 5",
 	d2enum.HoldShowGroundItems:  "secondary mouse button 4",
 	d2enum.TogglePartyOnAutomap: "not in the exe table by this name",
+	// OD2 layout asked for by the owner: number keys pick skills, Q drinks the potions in order, L is the quest log
+	d2enum.UseSkill1: "OD2 number key", d2enum.UseSkill2: "OD2 number key", d2enum.UseSkill3: "OD2 number key",
+	d2enum.UseSkill4: "OD2 number key", d2enum.UseBeltSlot1: "OD2: Q drinks", d2enum.UseBeltSlot2: "OD2: Q drinks",
+	d2enum.UseBeltSlot3: "OD2: Q drinks", d2enum.UseBeltSlot4: "OD2: Q drinks", d2enum.ToggleQuestLog: "OD2: L (Q drinks)",
 }
 
 func TestGoDefaultsMatchExeTable(t *testing.T) {
@@ -90,7 +94,7 @@ func TestGoDefaultsMatchExeTable(t *testing.T) {
 			wantS = -1
 		}
 
-		if got.Primary != wantP {
+		if _, known := knownKeyDifferences[ev]; got.Primary != wantP && !known {
 			t.Errorf("command %d primary: Go %d, exe %d", row.Command, got.Primary, wantP)
 		}
 

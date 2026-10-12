@@ -379,3 +379,8 @@ func (b *BeltPanel) Count() int {
 
 	return n
 }
+
+// columnFilled reports whether the front cell of a column holds a potion.
+func (b *BeltPanel) columnFilled(col int) bool {
+	return col >= 0 && col < d2inventory.BeltColumns && b.items[col] != nil
+}

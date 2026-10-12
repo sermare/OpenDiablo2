@@ -37,7 +37,7 @@ var gameEventNames = map[d2enum.GameEvent]string{
 	d2enum.SayNowYouDie: "SayNowYouDie", d2enum.SayRetreat: "SayRetreat",
 	d2enum.HoldRun: "HoldRun", d2enum.HoldStandStill: "HoldStandStill",
 	d2enum.HoldShowGroundItems: "HoldShowGroundItems", d2enum.HoldShowPortraits: "HoldShowPortraits",
-	d2enum.TakeScreenShot: "TakeScreenShot", d2enum.ClearScreen: "ClearScreen", d2enum.ClearMessages: "ClearMessages",
+	d2enum.TakeScreenShot: "TakeScreenShot", d2enum.ClearScreen: "ClearScreen", d2enum.ClearMessages: "ClearMessages", d2enum.UseNextPotion: "UseNextPotion",
 }
 
 var keyNames = buildKeyNames()

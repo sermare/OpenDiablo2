@@ -80,4 +80,7 @@ const (
 	TakeScreenShot
 	ClearScreen // closes all active menus/panels
 	ClearMessages
+
+	// UseNextPotion drinks the front potion of the first filled belt column (OD2 key, default Q)
+	UseNextPotion
 )

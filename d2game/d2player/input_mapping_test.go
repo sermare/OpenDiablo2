@@ -157,7 +157,9 @@ func TestDefaultKeyLayout(t *testing.T) {
 		d2enum.KeyI:   d2enum.ToggleInventoryPanel, d2enum.KeyB: d2enum.ToggleInventoryPanel,
 		d2enum.KeyC: d2enum.ToggleCharacterPanel, d2enum.KeyA: d2enum.ToggleCharacterPanel,
 		d2enum.KeyT: d2enum.ToggleSkillTreePanel, d2enum.KeyS: d2enum.ToggleRightSkillSelector,
-		d2enum.KeyQ: d2enum.ToggleQuestLog, d2enum.KeyP: d2enum.TogglePartyPanel, d2enum.KeyH: d2enum.ToggleHelpScreen,
+		d2enum.KeyL: d2enum.ToggleQuestLog, d2enum.KeyQ: d2enum.UseNextPotion,
+		d2enum.Key1: d2enum.UseSkill1, d2enum.Key2: d2enum.UseSkill2, d2enum.Key3: d2enum.UseSkill3, d2enum.Key4: d2enum.UseSkill4,
+		d2enum.KeyP: d2enum.TogglePartyPanel, d2enum.KeyH: d2enum.ToggleHelpScreen,
 		d2enum.KeyAlt:   d2enum.HoldShowGroundItems,
 		d2enum.KeyShift: d2enum.HoldStandStill,
 	}
