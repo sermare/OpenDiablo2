@@ -245,6 +245,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"forcestate", "puts a forced AI state (fear, blind, taunt, confuse, attract, charm) on a monster for n frames",
 			[]string{"monster id", "state", "frames"}, v.commandForceState},
 		{"setgold", "sets the hero's gold (saved to the .d2s on the next save)", []string{"amount"}, v.commandSetGold},
+		{"goldmove", "applies the gold dialog: goldmove <drop|deposit|withdraw> <amount>, goldmove stash <amount> sets the stash gold, goldmove msg <code> shows a vendor reply dialog",
+			[]string{"kind", "amount"}, v.commandGoldMove},
 		{"spawnchest", "spawns chests/barrels (objects.txt ids, default 7 1 5) next to the hero",
 			[]string{"id1", "id2", "id3"}, v.commandSpawnChest},
 		{"groundrace", "asks the server for the nearest networked ground item (item|gold) at once, without walking (race tests)",

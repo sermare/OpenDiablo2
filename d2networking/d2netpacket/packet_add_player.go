@@ -24,6 +24,8 @@ type AddPlayerPacket struct {
 	LeftSkill  int                            `json:"leftSkill"`
 	RightSkill int                            `json:"rightSkill"`
 	Gold       int
+	// StashGold is the gold in the stash (stat 0xf), 0 when the hero has none.
+	StashGold int `json:"stashGold,omitempty"`
 	// Containers is the hero's saved inventory, belt, cube and stash (nil if none).
 	Containers *d2hero.HeroContainers `json:"containers,omitempty"`
 	// Merc is the hero's mercenary state, if any.
@@ -103,6 +105,11 @@ type AddPlayerOption func(*AddPlayerPacket)
 // WithContainers sends the hero's saved inventory, belt, cube and stash along.
 func WithContainers(c *d2hero.HeroContainers) AddPlayerOption {
 	return func(p *AddPlayerPacket) { p.Containers = c }
+}
+
+// WithStashGold sends the hero's stash gold along.
+func WithStashGold(n int) AddPlayerOption {
+	return func(p *AddPlayerPacket) { p.StashGold = n }
 }
 
 // WithMerc sends the hero's mercenary state along.
