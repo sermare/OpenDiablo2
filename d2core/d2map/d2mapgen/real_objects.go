@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2drlg/drlgpop"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monreg"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2object"
@@ -89,7 +90,7 @@ func (p *popLevel) newRoomObjects(game *d2monreg.Game, total int) *roomObjects {
 		return nil
 	}
 
-	lv := d2object.LevelRow{ID: p.level, Themes: rec.Themes}
+	lv := d2object.LevelRow{ID: p.level, Themes: rec.Themes, MonLvl1: rec.MonLvl[0][0]}
 	any := false
 
 	for i := 0; i < 8; i++ {
@@ -119,6 +120,22 @@ func (p *popLevel) newRoomObjects(game *d2monreg.Game, total int) *roomObjects {
 	return ro
 }
 
+// presetObjects marks the footprints of the DS1 preset objects of a room (nodes relative to the room, as handed over by
+// drlgpop.TakeForRoom): the exe creates them before the scatter runs and its collision grid carries them, so the scatter
+// must not drop a barrel on top of a preset chest. Footprint = objects.txt SizeX x SizeY (mask MaskPlace only, as for the
+// scatter's own objects); UNVERIFIED: the exe's per-object collision mask is not decoded.
+func (ro *roomObjects) presetObjects(rc *d2monreg.Room, nodes []drlgpop.Node) {
+	if ro == nil {
+		return
+	}
+
+	for _, n := range nodes {
+		if n.Kind == drlgpop.KindObject {
+			ro.field.mark(d2object.Placed{ID: n.ID, X: rc.X + n.X, Y: rc.Y + n.Y}, ro.tables)
+		}
+	}
+}
+
 // room runs the scatter for one room (subtile rectangle and its seed, shared with the monsters).
 func (ro *roomObjects) room(p *popLevel, r *popRoom, rc *d2monreg.Room) {
 	if ro == nil {
@@ -126,7 +143,7 @@ func (ro *roomObjects) room(p *popLevel, r *popRoom, rc *d2monreg.Room) {
 	}
 
 	ctx := &d2object.RoomCtx{
-		Rect: d2object.Rect{X: rc.X, Y: rc.Y, W: rc.W, H: rc.H}, Seed: &rc.Seed,
+		Rect: d2object.Rect{X: rc.X, Y: rc.Y, W: rc.W, H: rc.H}, Seed: &rc.Seed, NoObjects: r.noPop || r.noObj,
 	}
 
 	if _, err := ro.sc.Room(ro.lv, ctx); err != nil {

@@ -291,3 +291,88 @@ func TestRealTablesCounts(t *testing.T) {
 		}
 	}
 }
+
+func handlerScatter(fn int, rowID int) (*Scatter, LevelRow) {
+	defs := make([]Def, 120)
+	defs[7] = Def{ID: 7, SizeX: 1, SizeY: 1, XSpace: 2, YSpace: 2}
+	defs[rowID] = Def{ID: rowID, PopulateFn: fn, SizeX: 1, SizeY: 1, XSpace: 2, YSpace: 2}
+	s := testScatter(openField{}, defs, oneGroup(rowID, 127, 100))
+
+	return s, LevelRow{Groups: [8]int{1}, Probs: [8]int{100}}
+}
+
+func TestSmallClustersHandler4(t *testing.T) {
+	for seed := uint32(1); seed < 30; seed++ {
+		s, lv := handlerScatter(4, 60)
+		n, err := s.Room(lv, room(seed, 64, 64))
+		if err != nil || len(s.Unmodelled) != 0 {
+			t.Fatalf("seed %d: err=%v unmodelled=%v", seed, err, s.Unmodelled)
+		}
+		if n < 1 || n > 8 {
+			t.Fatalf("seed %d: %d objects, want 1..8 (cap)", seed, n)
+		}
+		for _, p := range s.Made {
+			if p.ID != 7 && p.ID != 11 {
+				t.Fatalf("seed %d: id %d, want 7 or 11", seed, p.ID)
+			}
+		}
+	}
+}
+
+func TestUrnClustersHandler5(t *testing.T) {
+	ok := map[int]bool{4: true, 9: true, 52: true, 94: true, 95: true}
+	for seed := uint32(1); seed < 30; seed++ {
+		s, lv := handlerScatter(5, 60)
+		n, err := s.Room(lv, room(seed, 64, 64))
+		if err != nil || len(s.Unmodelled) != 0 {
+			t.Fatalf("seed %d: err=%v unmodelled=%v", seed, err, s.Unmodelled)
+		}
+		if n < 1 || n > 9*16 {
+			t.Fatalf("seed %d: %d objects", seed, n)
+		}
+		for _, p := range s.Made {
+			if !ok[p.ID] {
+				t.Fatalf("seed %d: id %d not in the urn list", seed, p.ID)
+			}
+		}
+	}
+}
+
+func TestPatternsHandler7(t *testing.T) {
+	made := 0
+	for seed := uint32(1); seed < 40; seed++ {
+		s, lv := handlerScatter(7, 60)
+		if _, err := s.Room(lv, room(seed, 64, 64)); err != nil || len(s.Unmodelled) != 0 {
+			t.Fatalf("seed %d: err=%v unmodelled=%v", seed, err, s.Unmodelled)
+		}
+		for _, p := range s.Made {
+			if p.ID != 57 && p.ID != 58 && p.ID != 103 {
+				t.Fatalf("seed %d: id %d", seed, p.ID)
+			}
+			made++
+		}
+	}
+	if made == 0 {
+		t.Fatal("no pattern object was ever made")
+	}
+}
+
+func TestPreOperateDrawsGameSeed(t *testing.T) {
+	defs := make([]Def, 10)
+	defs[5] = Def{ID: 5, PopulateFn: 3, SizeX: 1, SizeY: 1, PreOperate: true}
+	s := testScatter(openField{}, defs, oneGroup(5, 127, 100))
+	lv := LevelRow{Groups: [8]int{1}, Probs: [8]int{100}}
+	n, err := s.Room(lv, room(9, 64, 64))
+	if err != nil || n == 0 {
+		t.Fatalf("n=%d err=%v", n, err)
+	}
+	defs2 := append([]Def(nil), defs...)
+	defs2[5].PreOperate = false
+	s2 := testScatter(openField{}, defs2, oneGroup(5, 127, 100))
+	if _, err := s2.Room(lv, room(9, 64, 64)); err != nil {
+		t.Fatal(err)
+	}
+	if s.Game.Lo == s2.Game.Lo && s.Game.Hi == s2.Game.Hi {
+		t.Fatal("PreOperate objects left the game seed untouched")
+	}
+}

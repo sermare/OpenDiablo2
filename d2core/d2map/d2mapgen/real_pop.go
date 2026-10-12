@@ -112,12 +112,23 @@ func (e *popEnv) stat(class int) *d2records.MonStatRecord {
 	return e.stats[strings.ToLower(e.tb.Mons[class].Key)]
 }
 
+// roomHasNoObjects is the room-state half of OBJRGN_ShouldSpawnObjectsForRoom (0x5505e0), read from the exe: the
+// room refuses random objects when its flags carry 0x30000 (ROOM_HasLevelLinkFlags 0x66e840: the waypoint site bits
+// of a plain room, the waypoint chunk of a preset), when 0x800000 is set (Populate = 0, the same bit that stops the
+// natural monsters; ROOM_GetLevelIdUnlessFlagged 0x66e800 then reports level 0) or when it is a plain outdoor room
+// (type 1) whose cell flag (+0x54) has 0x80, a road cell (0x66e770 / 0x6807b0).
+func roomHasNoObjects(r *drlgoutdoor.Room) bool {
+	return r.Flags&(0x30000|roomNoPopulate) != 0 || (r.Type == 1 && r.Info54&0x80 != 0)
+}
+
 // popRoom is a populated server room (the engine's rectangle is in map tiles).
 type popRoom struct {
 	x, y, w, h int
 	seed       d2rand.Seed
 	noPop      bool
-	preset     *popPreset
+	// noObj: OBJRGN_ShouldSpawnObjectsForRoom refuses the room (see roomHasNoObjects)
+	noObj  bool
+	preset *popPreset
 	// cells are the room's logic regions (drlgoutdoor logic.go) in map tiles, newest first; nil: one region, the
 	// whole room (plain rooms, presets with Logicals = 0, or no exact tiles to derive them from)
 	cells []d2monreg.Cell
@@ -304,6 +315,8 @@ func (p *popLevel) useLogic(tiles []*drlgoutdoor.RoomTiles, index []int) {
 			pr.noPop = true
 		}
 
+		pr.noObj = pr.noObj || roomHasNoObjects(rt.Room)
+
 		cells := make([]d2monreg.Cell, 0, len(rt.Logic))
 
 		for _, lg := range rt.Logic {
@@ -402,6 +415,7 @@ func (p *popLevel) run() {
 			var nodes []drlgpop.Node
 
 			nodes, r.preset.nodes = drlgpop.TakeForRoom(r.preset.nodes, drlgpop.Rect{X: r.x, Y: r.y, W: r.w, H: r.h})
+			objs.presetObjects(room, nodes)
 			p.createPreset(game, w, room, drlgpop.Requests(nodes, r.x, r.y, ctx, p.env.nm))
 		}
 

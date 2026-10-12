@@ -58,8 +58,9 @@ func FromRecords(objs d2records.ObjectDetails, groups d2records.ObjectGroups) Ta
 			ID: id, Name: o.Name, SpawnMax: o.SpawnMax, TrapProb: o.TrapProbability, Act: o.Act,
 			SubClass: o.SubClass, OperateFn: o.OperateFn, PopulateFn: o.PopulateFn, InitFn: o.InitFn,
 			OperateRange: o.OperateRange, Lockable: o.Lockable, RestoreVirgins: o.RestoreVirgins,
-			Parm0: o.Parm[0], Damage: o.Damage, Selectable0: o.Selectable[0],
+			Parm0: o.Parm[0], Parm1: o.Parm[1], Parm2: o.Parm[2], Parm3: o.Parm[3], Damage: o.Damage, Selectable0: o.Selectable[0],
 			SizeX: o.SizeX, SizeY: o.SizeY, Orientation: o.Orientation,
+			PreOperate: o.PreOperate, XSpace: o.XSpace, YSpace: o.YSpace,
 		}
 	}
 
