@@ -72,6 +72,7 @@ type Automap struct {
 	lastCX    float64
 	lastCY    float64
 	haveLast  bool
+	gate      d2automap.RevealGate // two-frame scan delay after a level change (AUTOMAP_SetUpdateDelay2)
 	lastAdded int
 
 	sprites   map[d2automap.Size]*d2ui.Sprite
@@ -135,6 +136,14 @@ func (a *Automap) Toggle() {
 	}
 
 	a.SetOn(!a.on)
+}
+
+// ToggleOption flips one automap option (center, fade, party, names) like the F9..F12 commands 8..11 of
+// the exe's key table (strings 0xf5b 0xf8f 0xf91 0xf90). The exe stores the result in the registry; here
+// it is a session override.
+func (a *Automap) ToggleOption(key string) {
+	a.override[key] = !a.option(key)
+	a.Infof("AUTOMAP option %s=%v", key, a.override[key])
 }
 
 // SetOn shows or hides the map.
@@ -315,6 +324,11 @@ func (a *Automap) Advance(elapsed float64) {
 	lvl := a.currentLevel()
 	if lvl != a.level {
 		a.level, a.haveLast = lvl, false
+		a.gate.Arm()
+	}
+
+	if !a.gate.Ready() {
+		return
 	}
 
 	hx, hy := a.hero.GetPositionF()
