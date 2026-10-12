@@ -129,3 +129,21 @@ func (g *GameControls) GiveItemQuality(code string, quality, ilvl int) (string, 
 
 	return oneLine(itemName(item)), nil
 }
+
+// InventoryTooltips returns the whole tooltip of every item in the inventory
+// grid, one line per item ("code | line / line ..."), colour tokens removed.
+func (g *GameControls) InventoryTooltips() []string {
+	var out []string
+
+	for _, it := range g.inventory.grid.Items() {
+		var lines []string
+
+		for _, l := range it.GetItemDescription() {
+			lines = append(lines, oneLine(stripColorTokens(l)))
+		}
+
+		out = append(out, it.GetItemCode()+" | "+strings.Join(lines, " / "))
+	}
+
+	return out
+}

@@ -371,7 +371,7 @@ func (v *Game) OnUnload() error {
 
 	if err := v.terminal.Unbind("spawnitemat", "spawnitem", "spawnmon", "spawnchest", "setgold", "spawnportal", "setwaypoint", "players", "setplayers", "chat",
 		"party", "hostile", "roster", "trade", "pvp", "giveitem", "givebelt", "beltlist", "setbelt", "beltinfo", "beltover", "dropinv", "autobuy", "spawnrank", "killleader", "killnear", "rewarditem", "transmute", "setexp", "cubeput", "pickground",
-		"questpending", "pickitem", "wield", "putitem", "giveitemq", "freeinv", "hoveritem", "hoverground", "openvendor", "comparelog", "stashgive",
+		"questpending", "pickitem", "wield", "putitem", "giveitemq", "freeinv", "hoveritem", "hoverground", "openvendor", "comparelog", "stashgive", "itemtext",
 		"townportal", "closeportal", "portals", "useportal", "pvpcast", "pvpwalk", "sethp"); err != nil {
 		return err
 	}
