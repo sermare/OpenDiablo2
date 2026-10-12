@@ -17,12 +17,14 @@ and Lord of Destruction; no game files are included or distributed here.
    Do not have the files yet? See section 1 below.
 4. **Start the game.** Choose a character (your real `.d2s` saves are found and imported automatically, originals never
    changed) or create a new one, and play. Real maps are the default; there is no setting to turn on.
-5. **Settings.** Press `` ` `` in game for the console: `fullscreen`, `musicvolume 0.5`, `soundvolume 1`, `windowscale 2`.
-   Cmd+Enter is full screen, Cmd+Q quits and saves.
+5. **Settings.** The game starts full screen. Press `` ` `` in game for the console: `fullscreen`, `musicvolume 0.5`,
+   `soundvolume 1`, `windowscale 2`. Cmd+Enter toggles full screen, Cmd+Q quits and saves. Keys and mouse:
+   [CONTROLS.md](CONTROLS.md). Short player page: [play.md](play.md).
+   Your characters in this game are in `~/Library/Application Support/OpenDiablo2/Saves/` (settings in `config.json` next to it).
 6. **Play-test.** Follow the guided 30-minute checklist in [PLAYTEST.md](PLAYTEST.md#part-1-guided-30-minute-play-test)
    and read [KNOWN_GAPS.md](KNOWN_GAPS.md) first.
 7. **If something goes wrong,** the log is `~/Library/Logs/OpenDiablo2/OpenDiablo2.log` (the previous run is
-   `OpenDiablo2.previous.log`); attach it as text to your report. It holds no game data and no key.
+   `OpenDiablo2.previous.log`); attach it as text to your report. It holds no game data and no key. Report format: [PLAYTEST.md](PLAYTEST.md#how-to-report). Every `OD2_*` variable: [ENV.md](ENV.md).
 
 The sections below are for people who build the app themselves or run the automated tests.
 

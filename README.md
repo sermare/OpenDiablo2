@@ -22,9 +22,33 @@ author has played it by hand for long. Expect rough edges. See [honest status](#
 
 ## Contents
 
-[What works](#what-works) · [Honest status](#honest-status) · [Requirements](#requirements) · [Build, run, make the app](#build-run-and-make-the-app) ·
+[Quick start](#quick-start-for-a-mac-player) · [What works](#what-works) · [Honest status](#honest-status) · [Requirements](#requirements) · [Build, run, make the app](#build-run-and-make-the-app) ·
 [Config and display options](#config-and-display-options) · [Controls on a Mac](#controls-on-a-mac) · [How it is verified](#how-it-is-verified) ·
 [How to help](#how-to-help) · [Docs map](#docs-map) · [Credits and licenses](#credits-and-licenses)
+
+## Quick start for a Mac player
+
+You need an Apple Silicon Mac (macOS 14 or newer) and **your own** Diablo II + Lord of Destruction 1.14b files.
+
+1. **Install.** Get `OpenDiablo2-<version>-macos-arm64.dmg` (or build it: `scripts/make-app.sh`, see below) and drag the app to
+   Applications. There is no published release yet; until then you build it yourself.
+2. **First launch.** Right-click the app, choose Open, then Open again (it is ad-hoc signed, not notarised). If macOS says it is
+   damaged: `xattr -dr com.apple.quarantine /Applications/OpenDiablo2.app`.
+3. **Pick your Diablo II folder.** The app looks in `/Applications/Diablo II`, Wine prefixes and CrossOver bottles and offers
+   what it finds; otherwise a folder picker opens. Choose the folder that holds `d2data.mpq`, `d2exp.mpq`, `patch_d2.mpq` and
+   the other `.mpq` files. Missing files are listed in a dialog. Your files are only read. No files yet:
+   [docs/macos-quickstart.md](docs/macos-quickstart.md#1-get-the-game-data).
+4. **Play.** Pick a character (real `.d2s` saves are found and imported; the originals are never changed) or create one.
+5. **Full screen.** The game starts full screen. Cmd+Enter toggles a window; the console (`` ` ``) has `fullscreen`,
+   `windowscale`, `musicvolume`, `soundvolume`.
+6. **Controls.** One-button mouse works: [docs/CONTROLS.md](docs/CONTROLS.md) (also rebindable in Esc, Options, Configure Controls).
+7. **Where things are.** Settings and your characters: `~/Library/Application Support/OpenDiablo2/` (`config.json`, `Saves/`).
+   Log: `~/Library/Logs/OpenDiablo2/OpenDiablo2.log` (previous run `OpenDiablo2.previous.log`).
+8. **Report a bug.** Follow [docs/PLAYTEST.md](docs/PLAYTEST.md#how-to-report) (act and level, what you did, what you saw,
+   whether it repeats) and attach the log **as text**. It has no game data and no key, but read it first. No screenshots of game data.
+
+More: [docs/play.md](docs/play.md), [docs/KNOWN_GAPS.md](docs/KNOWN_GAPS.md), [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md),
+[docs/ENV.md](docs/ENV.md).
 
 ## What works
 
@@ -54,7 +78,7 @@ The numbers come from [`docs/progress.json`](docs/progress.json) (what each bar 
 | Player skills with engine behaviour | 177 of 210 |
 | Monster AI archetypes ported faithfully | 141 of 148 |
 | In-game UI panels matching the original | 13 of 14 |
-| Full verify | every scenario passed in each of 6 jobs on the last landed tree (land/w38, about 300 scenarios) |
+| Full verify | every scenario passed in each of 6 jobs on the last landed tree (land/w38, run 813: 291 scenarios in 6 jobs) |
 
 What is **not** done or not confirmed (the full list is [docs/KNOWN_GAPS.md](docs/KNOWN_GAPS.md) and
 [docs/HELP_WANTED.md](docs/HELP_WANTED.md)):
@@ -62,7 +86,7 @@ What is **not** done or not confirmed (the full list is [docs/KNOWN_GAPS.md](doc
 * **No human has confirmed sound, music or a full by-hand play-through of any act.** Scripted heroes pass; people have not.
 * 33 skills and 14 monster AIs are approximate or open; some summon caps and a few numbers are labelled `UNVERIFIED`
   guesses in the code. `UNVERIFIED` always means a guess, never a claim.
-* Cinematics (Bink video) are off by default and the audio sync was only checked by clock.
+* Cinematics (Bink video) play by default in normal play (Options, Accessibility turns them off); audio sync was only checked by clock, not by ear.
 * Not notarised by Apple (right-click, Open on first launch); Apple Silicon only, macOS 14 or newer. No Windows or Linux build.
 * Battle.net does not exist; multiplayer is direct TCP between instances.
 
@@ -112,11 +136,11 @@ Settings need no file editing: press the console key (`` ` ``) in game and type 
 | `OD2_CONFIG_DIR=<dir>` | move `config.json` and the saves folder (useful for testing) |
 | `OD2_D2S_DIR=<dir>` | where to import your `.d2s` characters from |
 | `OD2_NO_SETUP=1` | skip the first-run dialogs |
-| `OD2_PLAY_VIDEOS=1` | play the Bink cinematics (off by default) |
+| `OD2_PLAY_VIDEOS=1\|0` | force the Bink cinematics on or off (default: on in normal play, off in scripted runs) |
 
 Cmd+Enter toggles full screen. Everything about sizes, the 800x600 interface column and widescreen:
 [docs/DISPLAY.md](docs/DISPLAY.md). The full variable list (including the test harness `OD2_AUTO*`):
-[docs/TESTING.md](docs/TESTING.md) and [docs/macos-quickstart.md](docs/macos-quickstart.md).
+[docs/ENV.md](docs/ENV.md).
 
 ## Controls on a Mac
 
@@ -176,5 +200,5 @@ Running the full verify needs a GUI session on a Mac with the game files; it is 
 * **Bink 1 video and audio decoder** (`d2common/d2data/d2video`): the numeric format tables (scan orders, Huffman trees,
   patterns, quantisation matrices) come from the open [FFmpeg](https://ffmpeg.org) Bink decoder (libavcodec `bink.c` /
   `binkdata.h`, LGPL-2.1-or-later); the decoding code itself is original Go. No Blizzard or RAD code, and no game video or
-  audio, is in this repository. The feature is off by default (`OD2_PLAY_VIDEOS=1`).
+  audio, is in this repository. `OD2_PLAY_VIDEOS=0` turns it off.
 * No game data is in the repository: `scripts/check_repo_hygiene.sh` checks that.
