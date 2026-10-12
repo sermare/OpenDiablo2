@@ -727,6 +727,7 @@ func (g *GameServer) socialArea(id string, area int) {
 	g.soc.mu.Unlock()
 
 	g.groundSync(id, area)
+	g.groundPrune()
 }
 
 // onPartyGold shares a gold pickup among the picker's party (ITEMMODE_PickupGoldFromGround

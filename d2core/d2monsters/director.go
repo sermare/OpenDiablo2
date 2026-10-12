@@ -75,6 +75,11 @@ type Options struct {
 	// and gold find totals for the drops (ITEMGEN_GetMagicFindStat: the killer's
 	// own stat plus its leader's). Without them drops roll with 0.
 	MagicFindFunc, GoldFindFunc func() int
+	// LootGate, if set, is offered every monster's loot roll with a key naming the source (monster label and brain id);
+	// it returns true when it took the roll over and will call roll once (or never: another client rolls it). Used for
+	// the single server-side roll of a multiplayer game. OnLoot receives each ground item or pile a roll created.
+	LootGate func(key string, roll func()) bool
+	OnLoot   func(*d2mapentity.Item)
 	// OnSound, if set, receives the monsters' MonSounds.txt sounds (attack,
 	// weapon, skill, hit, death, taunt, neutral, footstep) with their position.
 	OnSound func(SoundEvent)

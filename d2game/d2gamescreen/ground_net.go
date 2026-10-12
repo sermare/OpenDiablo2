@@ -118,6 +118,41 @@ func (v *Game) groundByNetID(id string) *d2mapentity.Item {
 	return nil
 }
 
+// gateLoot is the single-roll gate of monster and chest loot. In a networked game the client claims the loot source
+// first; only when the server grants the claim does it run roll (and report the items it made, which the server
+// shows to everyone), otherwise another hero rolls it and the drop arrives as a broadcast. It reports whether it took
+// the roll over; false (single player) means the caller rolls at once.
+func (v *Game) gateLoot(key string, roll func()) bool {
+	if !v.networked() {
+		return false
+	}
+
+	level := v.currentLevel()
+	key = fmt.Sprintf("%d|%s", level, key)
+
+	if v.ground.loot == nil {
+		v.ground.loot = map[string]func(){}
+	}
+
+	if _, waiting := v.ground.loot[key]; waiting {
+		return true
+	}
+
+	v.ground.loot[key] = func() {
+		if v.currentLevel() != level { // the hero left while the claim travelled
+			v.Infof("LOOT claim %s dropped: the level changed", key)
+			return
+		}
+
+		roll()
+	}
+
+	v.Infof("LOOT claim %s", key)
+	v.sendGround(d2netpacket.GroundClaim, "", d2netpacket.GroundEntry{Key: key, Level: level})
+
+	return true
+}
+
 // onGroundItem applies a server ground item operation (on the game loop).
 func (v *Game) onGroundItem(p d2netpacket.GroundItemPacket) {
 	if v.gameClient == nil || v.gameClient.MapEngine == nil || len(p.Entries) == 0 {
@@ -125,6 +160,19 @@ func (v *Game) onGroundItem(p d2netpacket.GroundItemPacket) {
 	}
 
 	switch p.Op {
+	case d2netpacket.GroundGrant:
+		key := p.Entries[0].Key
+		roll := v.ground.loot[key]
+		delete(v.ground.loot, key)
+
+		v.Infof("LOOT granted %s", key)
+
+		if roll != nil {
+			roll()
+		}
+	case d2netpacket.GroundLost:
+		delete(v.ground.loot, p.Entries[0].Key)
+		v.Infof("LOOT elsewhere %s", p.Entries[0].Key)
 	case d2netpacket.GroundPlaced, d2netpacket.GroundBind:
 		e := p.Entries[0]
 
@@ -272,6 +320,21 @@ func (v *Game) commandGroundRace(args []string) error {
 
 	v.Infof("GROUNDRACE request id=%s", best.NetID)
 	v.requestGroundPickup(best)
+
+	return nil
+}
+
+// commandLootRoll is the test console command "lootroll <key> <amount>": every client that runs it claims the same
+// loot source; only the one the server grants rolls (a gold pile of the amount), the others get it by broadcast.
+func (v *Game) commandLootRoll(args []string) error {
+	if len(args) != 2 {
+		return fmt.Errorf("lootroll <key> <amount>")
+	}
+
+	roll := func() { _ = v.commandSpawnGround([]string{"gold", args[1]}) }
+	if !v.gateLoot("t|"+args[0], roll) {
+		roll()
+	}
 
 	return nil
 }

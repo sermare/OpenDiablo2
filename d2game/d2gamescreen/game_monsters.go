@@ -63,6 +63,8 @@ func (v *Game) monsterDirector() *d2monsters.Director {
 		// heroes in the game (1 when playing alone); OD2_PLAYERS can force more
 		PlayersFunc:   v.livePlayerCount,
 		ForcedPlayers: d2monsters.ForcedPlayersFromEnv(os.Getenv("OD2_PLAYERS")),
+		LootGate:      v.gateLoot,
+		OnLoot:        func(it *d2mapentity.Item) { v.announceGround(it, "") },
 		MagicFindFunc: v.heroMagicFind,
 		GoldFindFunc:  v.heroGoldFind,
 		OnSound:       v.onMonsterSound,

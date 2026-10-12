@@ -23,10 +23,12 @@ type groundBook struct {
 	next  int
 	items map[string]d2netpacket.GroundEntry
 	byKey map[string]string // drop key -> id
+	// claims are the loot sources (monster, chest) a client was granted the roll of: key -> level.
+	claims map[string]int
 }
 
 func newGroundBook() *groundBook {
-	return &groundBook{items: map[string]d2netpacket.GroundEntry{}, byKey: map[string]string{}}
+	return &groundBook{items: map[string]d2netpacket.GroundEntry{}, byKey: map[string]string{}, claims: map[string]int{}}
 }
 
 // add registers a drop; known is true when the key was registered already (then out is the existing entry).
@@ -53,6 +55,44 @@ func (b *groundBook) add(e d2netpacket.GroundEntry) (out d2netpacket.GroundEntry
 	}
 
 	return e, false, true
+}
+
+// maxClaims bounds the claim registry.
+const maxClaims = 16384
+
+// claim grants the roll of a loot source to the first caller; a later caller (or the same one again) is refused.
+func (b *groundBook) claim(key string, level int) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if key == "" {
+		return false
+	}
+
+	if _, taken := b.claims[key]; taken {
+		return false
+	}
+
+	if len(b.claims) >= maxClaims { // a flood: forget the oldest generation rather than refuse every roll
+		b.claims = map[string]int{}
+	}
+
+	b.claims[key] = level
+
+	return true
+}
+
+// pruneClaims forgets the claims of levels nobody is in any more (their monsters and chests spawn afresh on the
+// next visit).
+func (b *groundBook) pruneClaims(occupied map[int]bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	for k, lvl := range b.claims {
+		if !occupied[lvl] {
+			delete(b.claims, k)
+		}
+	}
 }
 
 // take removes an item; the first caller gets it, every later one gets false.
@@ -168,6 +208,13 @@ func (g *GameServer) onGroundItem(client ClientConnection, packet d2netpacket.Ne
 		if got.Gold > 0 {
 			return g.shareGold(d2netpacket.PartyGoldPacket{Picker: me, Amount: got.Gold, PlayerDropped: got.Owner != ""})
 		}
+	case d2netpacket.GroundClaim:
+		op := d2netpacket.GroundLost
+		if g.soc.ground.claim(e.Key, e.Level) {
+			op = d2netpacket.GroundGrant
+		}
+
+		g.groundSend(me, d2netpacket.GroundItemPacket{Op: op, Entries: []d2netpacket.GroundEntry{{Key: e.Key, Level: e.Level}}})
 	case d2netpacket.GroundExpire:
 		if got, ok := g.soc.ground.take(e.ID); ok {
 			g.groundLevelSend(got.Level, d2netpacket.GroundItemPacket{Op: d2netpacket.GroundRemove,
@@ -222,4 +269,18 @@ func contains(l []string, s string) bool {
 	}
 
 	return false
+}
+
+// groundPrune forgets the loot claims of levels that no hero is in.
+func (g *GameServer) groundPrune() {
+	if g.soc == nil || g.soc.ground == nil {
+		return
+	}
+
+	occupied := map[int]bool{}
+	for id := range g.connList() {
+		occupied[g.areaOf(id)] = true
+	}
+
+	g.soc.ground.pruneClaims(occupied)
 }

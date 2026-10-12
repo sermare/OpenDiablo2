@@ -251,6 +251,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 			[]string{"id1", "id2", "id3"}, v.commandSpawnChest},
 		{"groundrace", "asks the server for the nearest networked ground item (item|gold) at once, without walking (race tests)",
 			[]string{"item|gold"}, v.commandGroundRace},
+		{"lootroll", "claims a test loot source with the server (single-roll loot): the granted client rolls a gold pile of the amount",
+			[]string{"key", "amount"}, v.commandLootRoll},
 		{"spawnground", "spawns a gold pile (gold <amount>) or a normal item (<code>) on a free ground cell next to the hero (scripted clicks)",
 			[]string{"gold|code", "amount|cell", "cell"}, v.commandSpawnGround},
 		{"spawnportal", "spawns a town portal object to the given level next to the hero",
