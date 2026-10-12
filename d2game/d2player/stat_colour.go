@@ -1,5 +1,7 @@
 package d2player
 
+import "image/color"
+
 // Colours of the numbers on the character screen. VERIFIED in Game.exe: UI_DrawCharacterStatsPanel 0x4a43f0 picks
 // a font colour index per value and passes it to D2WIN_DrawText. The index meaning is the D2 text palette:
 // 0 white, 1 red, 2 green, 3 blue, 4 gold.
@@ -134,4 +136,21 @@ func ResistDisplayed(shown, maxResist int) int {
 	}
 
 	return shown
+}
+
+// StatFontRGBA is the tint for a font colour index (0 white, 1 red, 2 green, 3 blue, 4 gold); the shades match the
+// text palette entries used by the other panels.
+func StatFontRGBA(idx int) color.RGBA {
+	switch idx {
+	case StatFontRed:
+		return color.RGBA{R: 0xdb, G: 0x3f, B: 0x3d, A: 0xff}
+	case StatFontGreen:
+		return color.RGBA{R: 0x00, G: 0xd0, B: 0x00, A: 0xff}
+	case StatFontBlue:
+		return color.RGBA{R: 105, G: 105, B: 255, A: 255}
+	case StatFontGold:
+		return color.RGBA{R: 255, G: 215, B: 0, A: 255}
+	}
+
+	return color.RGBA{R: 255, G: 255, B: 255, A: 255}
 }

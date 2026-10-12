@@ -535,6 +535,36 @@ func (s *HeroStatsPanel) initStatValueLabels() {
 	s.setDerivedValues()
 }
 
+// setAttributeValues prints strength, dexterity, vitality and energy. The exe shows the current value (with the
+// bonuses of items and states) and colours it against the allocated base: blue above, red below (VERIFIED 0x4a43f0).
+func (s *HeroStatsPanel) setAttributeValues() {
+	st := s.heroState
+	cur := [4]int{st.Strength, st.Dexterity, st.Vitality, st.Energy}
+
+	if t := st.Totals; t != nil && t.Str+t.Dex+t.Vit+t.Ene > 0 {
+		cur = [4]int{t.Str, t.Dex, t.Vit, t.Ene}
+	}
+
+	base := [4]int{st.Strength, st.Dexterity, st.Vitality, st.Energy}
+
+	for i, l := range []*d2ui.Label{s.labels.Strength, s.labels.Dexterity, s.labels.Vitality, s.labels.Energy} {
+		l.SetText(strconv.Itoa(cur[i]))
+		setStatColour(l, StatValueColour(cur[i], base[i]).FontIndex())
+	}
+}
+
+// resistLine is the text and font colour of a resistance row; maxTotal is the cap Totals reports (75 + bonus).
+func resistLine(shown, maxTotal int) (string, int) {
+	bonus := maxTotal - 75
+
+	return strconv.Itoa(ResistDisplayed(shown, bonus)), ResistColour(shown, bonus, false, false)
+}
+
+// setStatColour tints a value label with one of the exe's font colour indices.
+func setStatColour(l *d2ui.Label, idx int) {
+	l.Color[0] = StatFontRGBA(idx)
+}
+
 // setDerivedValues shows the defense, attack rating, damage and resistances
 // computed from the equipment.
 func (s *HeroStatsPanel) setDerivedValues() {
@@ -546,8 +576,12 @@ func (s *HeroStatsPanel) setDerivedValues() {
 	s.labels.Defense.SetText(strconv.Itoa(t.Defense))
 	s.setHandBoxes(t.DamageMin, t.DamageMax, t.AttackRating)
 
+	// the cap is 75 plus the max-resist bonus, at most 95; the screen prints the clamped number and colours it
+	// gold at the cap, red below zero (VERIFIED 0x4a43f0; the state masks that turn it blue/red are not modelled)
 	for i, l := range s.labels.Resist {
-		l.SetText(strconv.Itoa(t.ResistShown[i]))
+		txt, col := resistLine(t.ResistShown[i], t.MaxResist[i])
+		l.SetText(txt)
+		setStatColour(l, col)
 	}
 }
 
@@ -606,10 +640,7 @@ func (s *HeroStatsPanel) setStatValues() {
 	s.labels.Experience.SetText(strconv.Itoa(s.heroState.Experience))
 	s.labels.NextLevelExp.SetText(strconv.Itoa(s.heroState.NextLevelExp))
 
-	s.labels.Strength.SetText(strconv.Itoa(s.heroState.Strength))
-	s.labels.Dexterity.SetText(strconv.Itoa(s.heroState.Dexterity))
-	s.labels.Vitality.SetText(strconv.Itoa(s.heroState.Vitality))
-	s.labels.Energy.SetText(strconv.Itoa(s.heroState.Energy))
+	s.setAttributeValues()
 
 	s.labels.MaxHealth.SetText(strconv.Itoa(s.heroState.MaxHealth))
 	s.labels.Health.SetText(strconv.Itoa(s.heroState.Health))
@@ -619,6 +650,14 @@ func (s *HeroStatsPanel) setStatValues() {
 
 	s.labels.MaxMana.SetText(strconv.Itoa(s.heroState.MaxMana))
 	s.labels.Mana.SetText(strconv.Itoa(s.heroState.Mana))
+
+	// VERIFIED 0x4a43f0: current life, mana and stamina are white, the maxima blue / red against their base
+	setStatColour(s.labels.Health, StatFontWhite)
+	setStatColour(s.labels.Mana, StatFontWhite)
+	setStatColour(s.labels.Stamina, StatFontWhite)
+	setStatColour(s.labels.MaxHealth, VitalColour(statIDMaxLife, s.heroState.MaxHealth, s.heroState.BaseMaxHealth))
+	setStatColour(s.labels.MaxMana, VitalColour(statIDMaxMana, s.heroState.MaxMana, s.heroState.BaseMaxMana))
+	setStatColour(s.labels.MaxStamina, VitalColour(statIDMaxStamina, s.heroState.MaxStamina, s.heroState.BaseMaxStamina))
 
 	s.setDerivedValues()
 }
