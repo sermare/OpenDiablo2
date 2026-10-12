@@ -118,6 +118,7 @@ func ExportD2SWithOptions(state *HeroState, original []byte, tables *d2s.ItemTab
 	exportMerc(c, state)
 	exportMercItems(c, state, tables, opts.Affixes, warn)
 	exportDeath(c, state)
+	exportCorpseItems(c, state, tables, opts.Affixes, warn)
 
 	if !opts.LastPlayed.IsZero() {
 		binary.LittleEndian.PutUint32(c.Header.Raw[lastPlayedOffset:], uint32(opts.LastPlayed.Unix()))
@@ -372,8 +373,8 @@ func exportDeath(c *d2s.Character, state *HeroState) {
 		c.Header.Status &^= d2s.StatusDied
 	}
 
-	if d.Corpse == nil || c.Body == nil || c.HasCorpse {
-		return
+	if d.Corpse == nil || c.Body == nil || c.HasCorpse || len(d.Corpse.Items) > 0 {
+		return // a corpse with its own item list is written by exportCorpseItems
 	}
 
 	kept := c.Items[:0:0]

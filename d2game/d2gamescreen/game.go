@@ -268,6 +268,8 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"useitem", "uses the inventory item with this base code like a right click (debug)", []string{"code"}, v.commandUseItem},
 		{"lootquest", "picks up the quest items near the hero (debug)", []string{"tiles", "seconds"}, v.commandLootQuest},
 		{"clearinv", "empties the inventory grid (debug)", nil, v.commandClearInv},
+		{"fillinv", "fills the inventory grid with an item code until full (debug)", []string{"code"}, v.commandFillInv},
+		{"corpseclick", "clicks the hero's corpse (debug)", nil, v.commandCorpseClick},
 		{"stripall", "takes off everything the hero wears into the inventory (debug)", nil, v.commandStripAll},
 		{"questpanel", "opens the quest log on a quest and logs its title and page text", []string{"act", "quest"}, v.commandQuestPanel},
 		{"setmana", "sets the hero's mana, at most the maximum (debug)", []string{"n"}, v.commandSetMana},
@@ -714,6 +716,11 @@ func (v *Game) OnPlayerInteract(entity d2interface.MapEntity) {
 	case *d2mapentity.Object:
 		v.walkToObject(e)
 
+		return
+	}
+
+	if pl, ok := entity.(*d2mapentity.Player); ok && v.death.corpse != nil && pl == v.death.corpse {
+		v.clickCorpse() // SERVER_InteractWithUnitByType 0x546a30, unit type 0 in mode 0x11
 		return
 	}
 

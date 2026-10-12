@@ -9,6 +9,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2difficulty"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2monster"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2hero"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
@@ -28,6 +29,8 @@ const (
 	respawnDelay = 2.5
 	// corpseReach is how close (subtiles) the hero must come to recover a corpse.
 	corpseReach = 3
+	// corpseLootRange is the distance (table units, VERIFIED 0x546a30: 8) within which a click loots at once.
+	corpseLootRange = 8
 	// goldPileSpread places the dropped gold this many subtiles beside the corpse.
 	goldPileSpread = 2
 	// deathTestDelay is how long after the hero exists OD2_AUTODEATH starts.
@@ -50,8 +53,10 @@ type deathState struct {
 	// killedByPlayer is set when the killing blow came from another player (PvP); the gold penalty differs
 	killedByPlayer bool
 	corpse         *d2mapentity.Player // entity lying at the death spot
-	corpseX        int
-	corpseY        int
+	// walkToCorpse: a click on the corpse started a walk that ends with the loot.
+	walkToCorpse bool
+	corpseX      int
+	corpseY      int
 	// corpseLevel is the level the hero died in; the corpse lies there. When
 	// the hero respawns in the town of another level the corpse waits
 	// (corpsePending) until that level is built again.
@@ -178,6 +183,12 @@ func (v *Game) heroDies() {
 		Hardcore: p.Hardcore, Difficulty: v.difficulty(), Level: level, Experience: p.Stats.Experience,
 		Gold: p.Gold, ExpStart: start, ExpNext: next, X: x, Y: y, Equipment: equip,
 	})
+
+	// the cursor item and every worn item move to the corpse (PLAYER_ServerCreateCorpse 0x57d6f0); the inventory, belt and
+	// stash stay with the hero
+	if out.Corpse != nil && v.gameControls != nil {
+		out.Corpse.Items = v.gameControls.TakeBodyForCorpse()
+	}
 
 	if t := st.test; t != nil {
 		t.outcome, t.deathPos = out, [2]int{x, y}
@@ -418,14 +429,100 @@ func (v *Game) placeCorpse(x, y int) {
 func (v *Game) advanceCorpseRecovery() {
 	p, st := v.localPlayer, &v.death
 	if st.corpse == nil || p.Death == nil || p.Death.Corpse == nil {
+		st.walkToCorpse = false
 		return
 	}
 
-	if d2monster.Distance(int(p.Position.X())-st.corpseX, int(p.Position.Y())-st.corpseY) > corpseReach {
+	dist := d2monster.Distance(int(p.Position.X())-st.corpseX, int(p.Position.Y())-st.corpseY)
+
+	switch {
+	case st.walkToCorpse && dist <= corpseLootRange:
+		st.walkToCorpse = false
+		v.lootCorpse()
+	case st.test != nil && !st.test.recovered && dist <= corpseReach:
+		v.lootCorpse() // the scripted death run walks onto the corpse
+	}
+}
+
+// clickCorpse is a click on the hero's corpse: SERVER_InteractWithUnitByType 0x546a30 loots at once within 8
+// table units and otherwise makes the hero run up to it first.
+func (v *Game) clickCorpse() {
+	p, st := v.localPlayer, &v.death
+	if st.corpse == nil || p.Death == nil || p.Death.Corpse == nil || p.IsDead() {
 		return
 	}
 
-	v.recoverCorpse()
+	if d2monster.Distance(int(p.Position.X())-st.corpseX, int(p.Position.Y())-st.corpseY) <= corpseLootRange {
+		v.lootCorpse()
+		return
+	}
+
+	st.walkToCorpse = true
+	v.OnPlayerMove(float64(st.corpseX)/5, float64(st.corpseY)/5)
+}
+
+// lootCorpse gives the hero what his corpse holds (PLAYER_ServerLootCorpse 0x57db90). The owner may always loot;
+// other players of a party only while the owner allows it (no other hero's corpse exists in the port yet).
+func (v *Game) lootCorpse() {
+	p := v.localPlayer
+	if p.Death == nil || p.Death.Corpse == nil {
+		return
+	}
+
+	if len(p.Death.Corpse.Items) == 0 {
+		v.recoverCorpse() // a corpse of an older save: the equipment record only
+
+		return
+	}
+
+	if !d2hero.CanLootCorpse(p.ID(), p.ID(), false) {
+		return
+	}
+
+	c := p.Death.Corpse
+	before := len(c.Items)
+
+	// the owner touching the corpse gets the experience stat back once (0x57db90)
+	if c.Experience > 0 {
+		p.Stats.Experience += c.Experience
+		v.Infof("DEATH corpse experience returned: %d", c.Experience)
+		c.Experience = 0
+	}
+
+	if v.gameControls != nil && v.gameControls.LootCorpse(c, nil) {
+		v.finishCorpse(c)
+		v.Infof("DEATH corpse looted items=%d all taken", before)
+		v.playSoundAt("item_pickup", p.GetPosition(), "corpse") // UNVERIFIED: the exe sends sound event 0x5d, its row is not traced
+
+		return
+	}
+
+	// ITEMMODE_ServerAutoEquipFromOtherUnit failed for an item: the corpse stays with the rest, the hero says cantcarry
+	v.Infof("DEATH corpse loot incomplete: %d of %d items left on the corpse", len(c.Items), before)
+	v.sayHero(d2audio.VoiceCantCarry)
+	v.saveBeforeExit()
+}
+
+// finishCorpse removes the emptied corpse and puts the visual equipment back.
+func (v *Game) finishCorpse(c *d2hero.Corpse) {
+	p, st := v.localPlayer, &v.death
+
+	if p.Equipment == nil {
+		p.Equipment = &d2inventory.CharacterEquipment{}
+	}
+
+	*p.Equipment = c.Equipment
+	p.ApplyEquipment()
+	p.Death.Corpse = nil
+
+	v.Infof("DEATH corpse recovered equipment=%s", describeEquipment(&c.Equipment))
+
+	if st.corpse != nil {
+		v.gameClient.MapEngine.RemoveEntity(st.corpse)
+		st.corpse = nil
+	}
+
+	v.saveBeforeExit()
 }
 
 func (v *Game) recoverCorpse() {
@@ -567,7 +664,7 @@ func (v *Game) advanceDeathTest(elapsed float64) {
 		t.recovered = true
 
 		p.SetPositionSubtile(st.corpseX, st.corpseY)
-		v.recoverCorpse()
+		v.lootCorpse()
 	case t.recovered:
 		t.afterDone += elapsed
 		if t.afterDone >= deathTestSettle {
@@ -601,6 +698,11 @@ func (v *Game) startDeathTest(t *deathTest) {
 
 	if os.Getenv("OD2_AUTODEATH_PK") != "" {
 		st.killedByPlayer = true
+	}
+
+	// OD2_AUTODEATH_CLEARINV: an empty inventory, so the whole corpse fits back (else a full pack is the cantcarry case)
+	if os.Getenv("OD2_AUTODEATH_CLEARINV") != "" && v.gameControls != nil {
+		v.Infof("DEATHTEST cleared %d inventory item(s)", v.gameControls.ClearInventoryGrid())
 	}
 
 	if p.Gold < 1000 && v.gameControls != nil {

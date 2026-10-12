@@ -290,7 +290,13 @@ func (v *Game) groundRemoved(p d2netpacket.GroundItemPacket) {
 		return
 	}
 
-	v.takeGroundItem(it)
+	if !v.takeGroundItem(it) {
+		// quick pickup found no room: the item goes back down at the hero's feet (a new drop)
+		px, py := v.localPlayer.GetPositionF()
+		if cells := v.freeDropCells(int(math.Floor(px)), int(math.Floor(py)), 1, false); len(cells) > 0 {
+			_, _ = v.spawnGroundItem(it.Item, cells[0])
+		}
+	}
 }
 
 // commandGroundRace is the test console command "groundrace item|gold": the pickup request for the nearest

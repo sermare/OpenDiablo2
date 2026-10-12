@@ -88,6 +88,10 @@ type Corpse struct {
 	// death-penalty value of the dying client (CorpseExperience). Its use is
 	// UNVERIFIED; it is only recorded.
 	Experience int `json:"experience,omitempty"`
+	// Items are the worn items (Page PageEquipped, X the .d2s body location) and the item that was on the cursor
+	// (any other page) the corpse holds; the .d2s corpse section round-trips them (w50). Empty for corpses of older
+	// saves, whose Equipment field is all there is.
+	Items []StoredItem `json:"items,omitempty"`
 }
 
 // MaxCorpses is the corpse count above which the exe makes no new corpse and

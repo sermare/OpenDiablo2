@@ -39,7 +39,7 @@ func (f *HeroStateFactory) loadStatBases() d2statlist.Bases {
 func (f *HeroStateFactory) equippedStatItems(state *HeroState, hero d2statlist.Hero) []d2statlist.Item {
 	// the equipment of a hero who died is on the corpse: it counts for nothing
 	// until the corpse is recovered
-	if state.Death != nil && state.Death.Corpse != nil {
+	if state.Death != nil && state.Death.Corpse != nil && len(state.Death.Corpse.Items) == 0 {
 		return []d2statlist.Item{}
 	}
 
