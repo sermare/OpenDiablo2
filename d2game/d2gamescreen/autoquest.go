@@ -62,6 +62,8 @@ type autoHost interface {
 	RogueHire() bool
 	ImbuePending() bool
 	LogText(act, index int) string
+	// OpenLog opens the quest log on the quest (act 1..5, title number) and refreshes it from the quest system.
+	OpenLog(act, index int)
 	// FoesAlive/Fight/SpawnFoes drive the real-monster Den of Evil.
 	FoesAlive() int
 	Fight()

@@ -196,6 +196,9 @@ type Game struct {
 	LegacyBossBits bool
 	// Level is the id of the level the hero is in.
 	Level int
+	// DenLeft and SoldiersLeft are the counters the server pushes to the quest log (monsters left in the Den of Evil,
+	// soldiers still to rescue); 0 means not known.
+	DenLeft, SoldiersLeft int
 	// RealTomb is the level id (66..72) of Tal Rasha's real tomb for the game seed (d2drlg.RealTomb); the orifice
 	// only takes the staff there. 0 = unknown, any tomb counts.
 	RealTomb int
@@ -557,6 +560,11 @@ type QuestLog struct {
 	// Unseen is set for a completed quest whose completion the player has not
 	// yet looked at in the log (bit 12 UPDATEQUESTLOG is clear).
 	Unseen bool
+	// Slot is the record slot of the quest and View what the log of the original shows for it (ClientLogView): the
+	// icon class, the page after the client rules and the text key. View.Page differs from Page when the client
+	// replaces the page byte of the server (reward pending, completed in an earlier game, ...).
+	Slot int
+	View LogView
 }
 
 // LogSeen records that the player saw the completion of the quest at (act
@@ -580,7 +588,7 @@ func (g *Game) Log() []QuestLog {
 			continue
 		}
 
-		l := QuestLog{Quest: q.ID, Act: q.Act + 1, Index: q.LogIndex}
+		l := QuestLog{Quest: q.ID, Act: q.Act + 1, Index: q.LogIndex, Slot: q.Slot}
 
 		switch {
 		case g.get(q, FlagRewardGranted):
@@ -595,6 +603,7 @@ func (g *Game) Log() []QuestLog {
 			}
 		}
 
+		l.View = ClientLogView(q.Slot, l.Page, g.logCtx())
 		out = append(out, l)
 	}
 
@@ -607,6 +616,42 @@ func (g *Game) Log() []QuestLog {
 	})
 
 	return out
+}
+
+// logCtx is what the client rules of the quest log read: the hero's record, the game-wide goal bits and the counters
+// the server pushes (the Den's monsters, the soldiers of the Rescue quest).
+func (g *Game) logCtx() LogCtx {
+	c := LogCtx{
+		Flag:    func(slot, bit int) bool { return g.Rec.Slot(slot)>>uint(bit)&1 != 0 },
+		DenLeft: g.DenLeft, Soldiers: g.SoldiersLeft,
+		Global: func(slot, bit int) bool {
+			if bit != FlagPrimaryGoal {
+				return false
+			}
+
+			for _, q := range g.Quests {
+				if q.Slot == slot {
+					return g.GlobalDone(q)
+				}
+			}
+
+			return false
+		},
+	}
+
+	if c.DenLeft <= 0 && g.denKnown {
+		c.DenLeft = g.denSpawned - g.denKilled
+	}
+
+	if c.DenLeft <= 0 {
+		c.DenLeft = -1 // unknown: the plain text
+	}
+
+	if c.Soldiers <= 0 {
+		c.Soldiers = 15 // UNVERIFIED: three groups of five before the first rescue
+	}
+
+	return c
 }
 
 // Describe returns a one line state dump of a quest for logs.

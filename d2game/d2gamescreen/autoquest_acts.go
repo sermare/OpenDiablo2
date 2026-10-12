@@ -119,6 +119,8 @@ func (a *autoQuest) toTown(h autoHost, town int) {
 
 func (a *autoQuest) addActStage(name string) {
 	switch name {
+	case "questlog":
+		a.stageQuestLog()
 	case "staff":
 		a.stageStaff()
 	case "sun":

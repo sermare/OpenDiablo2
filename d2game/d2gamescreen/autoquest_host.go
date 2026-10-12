@@ -26,8 +26,12 @@ func (e engineHost) HeroLevel() int                { return e.v.localPlayer.Stat
 func (e engineHost) RogueHire() bool               { return e.v.questRT.rogueHire }
 func (e engineHost) ImbuePending() bool            { return e.v.questRT.imbuePending }
 func (e engineHost) LogText(act, index int) string { return e.v.questLogText(act, index) }
-func (e engineHost) Save()                         { _ = e.v.OnPlayerSave() }
-func (e engineHost) Exit(pass bool)                { e.v.autoScriptExit(pass) }
+func (e engineHost) OpenLog(act, index int) {
+	e.v.syncQuestLog()
+	e.v.gameControls.QuestLog().Select(act, index)
+}
+func (e engineHost) Save()          { _ = e.v.OnPlayerSave() }
+func (e engineHost) Exit(pass bool) { e.v.autoScriptExit(pass) }
 
 func (e engineHost) Tick(frames int) {
 	e.v.applyQuestEffects(e.v.questRT.g.Tick(frames))

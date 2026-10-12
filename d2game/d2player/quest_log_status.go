@@ -58,7 +58,10 @@ func (s *QuestLog) SetStatuses(statuses map[int]int) {
 		for n := range board.icons {
 			st := s.questStatus[s.cordsToQuestID(act, n)]
 
-			frame := inProgresFrame
+			frame := inProgressIdleFrame
+			if s.selectedTab == act-1 && s.selectedQuest == n+1 {
+				frame = inProgresFrame
+			}
 
 			switch st {
 			case d2enum.QuestStatusCompleted:
@@ -101,6 +104,10 @@ func (s *QuestLog) Title(act, index int) string {
 // DescriptionText returns the description the log shows for a quest (used by
 // logs and the autotest); "" when it has none.
 func (s *QuestLog) DescriptionText(act, index int) string {
+	if t, ok := s.texts[QuestLogKey(act, index)]; ok {
+		return s.questText(t)
+	}
+
 	st := s.questStatus[QuestLogKey(act, index)]
 
 	switch {
@@ -129,4 +136,67 @@ func fillCount(key, text string) string {
 	}
 
 	return strings.ReplaceAll(text, "%d", strconv.Itoa(pageCounts[key]))
+}
+
+// QuestText is what the quest log of the original shows as the description of a quest: the string key of the page
+// (d2quest.ClientLogView) and an optional number appended to it ("Monsters remaining: 5") or formatted into its "%d".
+type QuestText struct {
+	Key    string
+	Count  int // < 0: none
+	Append bool
+}
+
+// SetTexts stores the description texts of the quests (keys from QuestLogKey) and refreshes the label.
+func (s *QuestLog) SetTexts(texts map[int]QuestText) {
+	for k, t := range texts {
+		s.texts[k] = t
+	}
+
+	if s.questName != nil && s.selectedQuest != d2enum.QuestNone {
+		s.setQuestLabel()
+	}
+}
+
+func (s *QuestLog) questText(t QuestText) string {
+	if t.Key == "" {
+		return ""
+	}
+
+	text := s.asset.TranslateString(t.Key)
+	if text == t.Key {
+		return ""
+	}
+
+	switch {
+	case t.Count >= 0 && t.Append:
+		text += strconv.Itoa(t.Count)
+	case t.Count >= 0:
+		text = strings.ReplaceAll(text, "%d", strconv.Itoa(t.Count))
+	}
+
+	return text
+}
+
+// refreshIconFrames puts the frame of the quest pictures of the open act: the selected quest with a page shows frame 25.
+func (s *QuestLog) refreshIconFrames() {
+	if s.selectedTab < 0 || s.selectedTab >= len(s.quests) || s.quests[s.selectedTab] == nil {
+		return
+	}
+
+	act := s.selectedTab + 1
+
+	for n, icon := range s.quests[s.selectedTab].icons {
+		if icon == nil || s.questStatus[s.cordsToQuestID(act, n)] <= d2enum.QuestStatusNotStarted {
+			continue
+		}
+
+		frame := inProgressIdleFrame
+		if s.selectedQuest == n+1 {
+			frame = inProgresFrame
+		}
+
+		if err := icon.SetCurrentFrame(frame); err != nil {
+			s.Error(err.Error())
+		}
+	}
 }

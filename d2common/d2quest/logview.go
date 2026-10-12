@@ -97,6 +97,31 @@ func loadLogTables() *logTables {
 	return &logTbl
 }
 
+// LogSlotFor is the record slot of the quest with the title qstsa<act>q<index> (act 1..5, index 1..6; 1..3 in Act 4).
+func LogSlotFor(act, index int) int {
+	base := [6]int{0, 0, 8, 16, 24, 34}
+	if act < 1 || act > 5 {
+		return 0
+	}
+
+	return base[act] + index
+}
+
+// LogPlacement is where the log puts the quest with the title number index of an act: the socket of the 3x2 grid (0..5)
+// and the number n of the picture a<act>q<n>.dc6. They differ from the title number in Act 1 (Tools of the Trade stands in
+// socket 4, the Search for Cain in 2, the Forgotten Tower in 3), Act 3 (the sockets run backwards over the first four
+// quests) and Act 4 (the Hellforge stands in socket 1 with picture 2, Terror's End in socket 2 with picture 3).
+func LogPlacement(act, index int) (socket, picture int, ok bool) {
+	info, found := LogSlotInfo(LogSlotFor(act, index))
+	if !found || info.Act != act {
+		return 0, 0, false
+	}
+
+	first := [6]int{0, 0, 6, 12, 18, 21}
+
+	return info.Socket, info.Picture - first[act] + 1, true
+}
+
 // LogPageKey is the string key a page of the quest in a record slot shows ("" for a page the table leaves empty, i.e. the
 // "Invalid State" marker).
 func LogPageKey(slot, page int) string {
@@ -146,8 +171,8 @@ type LogCtx struct {
 	Global func(slot, bit int) bool
 	// Multi is the "joined or hosted a multi-player game" global (0x798698): it picks the wording of "cannot complete".
 	Multi bool
-	// DenLeft is the number of monsters left in the Den of Evil (0x7b732c, pushed by the server), Soldiers the number
-	// of soldiers still to rescue (0x7b7334).
+	// DenLeft is the number of monsters left in the Den of Evil (0x7b732c, pushed by the server; -1: not known), Soldiers
+	// the number of soldiers still to rescue (0x7b7334).
 	DenLeft, Soldiers int
 }
 
@@ -307,9 +332,11 @@ func ClientLogView(slot, page int, c LogCtx) LogView {
 	if slot == slotDen {
 		v := show(page, LogCatActive)
 		if page == 3 || page == 4 {
-			if c.DenLeft < 2 {
+			switch {
+			case c.DenLeft < 0: // the count is not known: the plain text
+			case c.DenLeft < 2:
 				v.Key = keyOneLeft
-			} else {
+			default:
 				v.Count, v.Append = c.DenLeft, true
 			}
 		}
