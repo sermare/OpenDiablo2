@@ -105,10 +105,9 @@ type StatsPanelLabels struct {
 	Resist  [4]*d2ui.Label // fire, cold, lightning, poison
 }
 
-// Positions of the derived value labels. UNVERIFIED against the original
-// layout (no screenshot comparison): the resist numbers sit right of their
-// captions, defense right of its caption, attack rating and damage below the
-// strength and dexterity values.
+// Positions of the derived value labels: the defense and resistance numbers stand in the boxes of the value table
+// 0x723b70 (x 273..307, centre 290 + 80 = 370; defense y 209, resistances y 348, 372, 396, 420, plus 60), the
+// anchors are pinned by scripts/verify.d/ui-layout.golden (VERIFIED against the table, w44).
 const (
 	labelDefenseValueX, labelDefenseValueY = 370, 258 // the box right of the caption: x 273..307 of the panel (0x723b70)
 	labelResValueX                         = 370

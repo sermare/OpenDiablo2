@@ -254,8 +254,11 @@ func (g *GameControls) MercStatItems() []d2statlist.Item {
 }
 
 // renderMercPortrait draws the hireling portrait of the HUD (UI_DrawHirelingPortraitStrip). It shares the top left
-// corner with the left panels, so it is hidden while one is open (the exe hides it for its open-panel checks:
-// which panels exactly is UNVERIFIED).
+// corner with the left panels, so it is hidden while one is open. The exe hides the strip (and resets its tooltip
+// flags) when the automap/view display mode (AUTOMAP_GetDisplayMode 0x4565d0) is 2 or 3, which is the view shift of an
+// open left panel (UI_SetPanelState 0x4515f0 sets it for the character, quest log, party, mercenary... panels), and
+// when panel 9 (game menu) or 0xb (key configuration) is open (UI_DrawHirelingPortraitStrip 0x4904f0, w44; the
+// register argument of the mode setter is not shown by the decompiler, so the mode number per panel is inferred).
 func (g *GameControls) renderMercPortrait(target d2interface.Surface) {
 	v, ok := g.portraitShown()
 	if !ok {

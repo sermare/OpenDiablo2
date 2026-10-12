@@ -138,3 +138,19 @@ func TestMercLayoutGolden(t *testing.T) {
 		t.Fatalf("golden has %d lines, layout %d", len(wl), len(gl))
 	}
 }
+
+func TestTextLineXGolden(t *testing.T) {
+	cases := []struct{ x1, x2, w, want int }{
+		{180, 245, 30, 180 + (66-30)/2}, // 66 wide box, even slack
+		{180, 245, 31, 180 + 17},        // odd slack rounds down
+		{10, 19, 10, 10},                // exactly as wide: left edge
+		{10, 19, 40, 10},                // wider than the box: left edge
+		{0, 0, 0, 0},
+	}
+
+	for _, c := range cases {
+		if got := TextLineX(c.x1, c.x2, c.w); got != c.want {
+			t.Errorf("TextLineX(%d,%d,%d) = %d want %d", c.x1, c.x2, c.w, got, c.want)
+		}
+	}
+}

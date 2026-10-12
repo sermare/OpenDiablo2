@@ -13,7 +13,7 @@ package d2player
 // The 8 / 8 / 7 pages are the Lord of Destruction ones: UI_BuildGameMenu initialises video 0x71a258 and automap
 // 0x71ece0 only when MAIN_CheckExpansionMpq is true, and the 7-entry sound 0x715294 and 6-entry video 0x71a26c
 // pages (no automap page) otherwise (VERIFIED, w25-input). The Go pages are the 8 / 8 / 7 variants. The page header values are the same arguments UI_DrawGameMenu 0x47a1d0 reads (count, pitch, strip dy,
-// pentagram dy); the fifth int (36) is the title text offset (meaning UNVERIFIED).
+// pentagram dy); the fifth int (36) is added to the y of the title row's strip and text (UI_DrawGameMenuTitle 0x47a050 reads header +0x10 and adds it to the row y; VERIFIED, w44).
 
 // GameMenuPage describes one page of the menu.
 type GameMenuPage struct {

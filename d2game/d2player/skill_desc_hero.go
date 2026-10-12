@@ -22,9 +22,9 @@ type heroInputs struct {
 	// Templates and Diff give the summoned monster's life (kind 13).
 	Templates *d2summon.Templates
 	Diff      d2summon.Difficulty
-	// CurseDiv is AiCurseDivisor of the current difficulty (kind 31). UNVERIFIED:
-	// that the +0x1c field of the 0x58-byte record at 0x610fd0 is that column is
-	// inferred from the record order, not read from the binary's loader.
+	// CurseDiv is AiCurseDivisor of the current difficulty (kind 31). VERIFIED (w44):
+	// the +0x1c field of the 0x58-byte difficulty record (getter 0x610fd0) is that column in the loader
+	// DATATBL_LoadDifficultyLevelsTable 0x617870 (structs-tables.md).
 	CurseDiv int
 }
 

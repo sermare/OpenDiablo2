@@ -57,8 +57,7 @@ func (m Mode) MercSlots() []MercSlotRect {
 
 // mercLabel is a row of the label table 0x6dab08: 12 records of 14 bytes {x1 int, x2 int, y int, string id u16}
 // (read from the executable's memory; the earlier version of this file read the table one field off). x2 == 0 means a
-// plain left-anchored caption at x1; otherwise UI_DrawTextLine draws it between x1 and x2 (centred, exact rounding
-// UNVERIFIED). UI_DrawMercStatLabels adds the panel offset to x2 before the zero test, so at 800x600 every record
+// plain left-anchored caption at x1; otherwise UI_DrawTextLine draws it between x1 and x2 (centred: see TextLineX, the rounding is VERIFIED). UI_DrawMercStatLabels adds the panel offset to x2 before the zero test, so at 800x600 every record
 // takes the x2 branch with a degenerate range for x2 == 0; that quirk is NOT reproduced (UNVERIFIED how it looks).
 type mercLabel struct {
 	Name   string
@@ -175,4 +174,16 @@ func MercLayoutLines() []string {
 	}
 
 	return out
+}
+
+// TextLineX is the x where UI_DrawTextLine 0x4a3750 starts a text of width textW inside the box x1..x2 (inclusive):
+// the box is x2-x1+1 wide and a narrower text is centred with an arithmetic shift (floor of half the slack); a text
+// as wide as the box or wider starts at x1 (VERIFIED from the disassembly, w44).
+func TextLineX(x1, x2, textW int) int {
+	box := x2 - x1 + 1
+	if textW < box {
+		return x1 + (box-textW)>>1
+	}
+
+	return x1
 }

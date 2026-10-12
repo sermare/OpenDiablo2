@@ -174,7 +174,7 @@ func (g *GameControls) cubeItems() (items []*diablo2item.Item, cube []d2cube.Ite
 			// The exe compares the difficulty a quest item was found in (stat
 			// 0x164) with the game difficulty; the engine does not record it,
 			// so quest items count as found in the current difficulty
-			// (UNVERIFIED simplification).
+			// (a deliberate simplification of this port).
 			ci.QuestDifficulty = g.hero.QuestDifficulty
 			cube = append(cube, ci)
 		}

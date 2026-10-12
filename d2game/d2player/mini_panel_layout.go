@@ -21,7 +21,9 @@ const (
 // BOTH groups, together with 3 (skill select). Only 1 (inventory) and 4 (skill tree) are right-group only; 2
 // (character), 0xf (quest log), 0x10, 0x14, 0x16 (party) and 0x24 (mercenary) are left-group only. So opening the
 // stash, the cube or a trade window hides the strip whether or not the inventory is open next to it.
-// (Which of 0xc / 0x17-0x1c is stash, cube or trade is UNVERIFIED; the skill select panel is not wired.)
+// (Which id is which, VERIFIED w44 from the open / close handlers UI_OnPanelOpened 0x450de0 and UI_OnPanelClosed 0x4511a0:
+// 0xc the NPC shop, 0x17 the player to player trade, 0x18 the NPC menu dialog, 0x19 the stash (bank sprites), 0x1a the
+// cube (transmogrifier sprite); 0x1b and 0x1c have no handler action. The skill select panel is not wired.)
 func MiniPanelPlacement(leftGroup, rightGroup bool) MiniPanelSlot {
 	switch {
 	case leftGroup && rightGroup:

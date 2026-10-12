@@ -54,7 +54,7 @@ func TestRewardRowActions(t *testing.T) {
 		t.Errorf("names %q %q", NPCActionReward, NPCActionRespec)
 	}
 
-	if RowRespec.StringID != 0x2ba0 || RowRespec.Action != NPCActionRespec || RowRespec.Fallback == "" {
+	if RowRespec.StringID != 0x2ba0 || RowRespec.Action != NPCActionRespec || RowRespec.Fallback == "" || RowRespec.Key != "respec" {
 		t.Errorf("respec row %+v", RowRespec)
 	}
 

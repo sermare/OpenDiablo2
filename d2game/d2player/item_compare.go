@@ -15,7 +15,8 @@ import (
 // The comparison lines of an item tooltip (the owner's request): how an item compares with the one the hero
 // wears where it would go. The numbers come from the stat list of the two bodies (d2hero.Compare), not from the
 // description text. The same lines show on the inventory, the stash, the cube, the vendor window, the held item
-// and the item under the pointer on the ground. The original game has no such lines (UNVERIFIED feature).
+// and the item under the pointer on the ground. This is an OD2 extension: INV_BuildItemNameTooltipLines 0x488260 builds the 1.14b tooltip from the item alone, with no
+// comparison against worn gear.
 
 // compareCache keeps the lines of the last item: a tooltip asks every frame, a comparison runs a handful of stat
 // list passes.

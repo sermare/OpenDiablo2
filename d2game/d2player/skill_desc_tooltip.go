@@ -130,7 +130,7 @@ func skillDescTexts(tr func(string) string, reg *d2skill.Registry, sk *d2skill.S
 				return int(sk.ElemMin(env, level) >> 8), int(sk.ElemMax(env, level) >> 8), elemType(sk.EType)
 			},
 			ElemLen: func() int { return sk.ElemLen(env, level) },
-			// kind 31: UNVERIFIED divisor source, see heroInputs.CurseDiv.
+			// kind 31: divisor is AiCurseDivisor, see heroInputs.CurseDiv.
 			CurseDiv: hero.CurseDiv,
 		}
 

@@ -99,9 +99,10 @@ var (
 	RowGoEast   = NPCMenuRow{strIDGoEast, "WarrivMenu1b", "Go East", NPCActionTravelEast}
 	RowSailEast = NPCMenuRow{strIDSailEast, "MeshifMenuEast", "Sail East", NPCActionSailEast}
 
-	// RowRespec is Akara's reset row; its key is UNVERIFIED (the patch string table is not loaded), so the
-	// English fallback is shown.
-	RowRespec = NPCMenuRow{strIDRespec, "ResetStatSkillPoints", "Reset Stat/Skill Points", NPCActionRespec}
+	// RowRespec is Akara's reset row; string 0x2ba0 is the key "respec" of the patch string table (VERIFIED, w44:
+	// UI_BuildNpcMenu 0x4b1050 shows it only while quest record 0x29 flag 0 is clear and flag 1 is set, or on
+	// difficulty 2 with flag 1 clear).
+	RowRespec = NPCMenuRow{strIDRespec, "respec", "Reset Stat/Skill Points", NPCActionRespec}
 
 	// RowCancel is the implicit last row of every NPC menu.
 	RowCancel = NPCMenuRow{strIDCancel, "Back", "Cancel", NPCActionCancel}
