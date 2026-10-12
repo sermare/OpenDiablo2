@@ -175,8 +175,9 @@ func (v *Game) wireMercGear(p *d2mapentity.Player) {
 
 			return d2hero.MercRef{Class: info.Rec.Class, Base: info.Base}, true
 		},
-		Drink: func(e d2inventory.PotionEffect) { v.monsters.DrinkMerc(p, e) },
-		View:  func() (d2player.MercView, bool) { return v.mercView(p) },
+		Drink:      func(e d2inventory.PotionEffect) { v.monsters.DrinkMerc(p, e) },
+		DrinkState: func(sp d2inventory.StatePotion) { v.monsters.DrinkMercState(p, sp) },
+		View:       func() (d2player.MercView, bool) { return v.mercView(p) },
 		Changed: func() {
 			if v.monsters.SetMercItems(p, v.gameControls.MercStatItems()) {
 				if info, ok := v.monsters.Merc(p); ok {

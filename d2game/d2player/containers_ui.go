@@ -217,6 +217,23 @@ func (g *GameControls) drink(it *diablo2item.Item) {
 
 	g.playEquipSound(handle)
 
+	// antidote, thawing and stamina potions (pSpell 6 / 9): a timed state with resist or recovery stats
+	if sp, isState := d2inventory.StatePotionOf(it.CommonRecord()); isState {
+		var cured []string
+		if g.statePotion != nil {
+			cured = g.statePotion(sp)
+		}
+
+		if sp.RefillStamina && st.Stamina < float64(st.MaxStamina) {
+			st.Stamina = float64(st.MaxStamina)
+		}
+
+		g.Infof("BELT drink code=%s state=%s seconds=%.1f cured=%v mods=%v stamina=%.0f/%d", it.GetItemCode(), sp.State,
+			sp.Seconds, cured, sp.Mods, st.Stamina, st.MaxStamina)
+
+		return
+	}
+
 	before := st.Health
 	beforeMana := st.Mana
 

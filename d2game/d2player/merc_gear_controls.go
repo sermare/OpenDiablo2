@@ -25,6 +25,9 @@ type MercGearHost struct {
 	// Drink gives a potion's effect to the merc (healing and rejuvenation heal it; others
 	// are used up with no effect). Optional.
 	Drink func(d2inventory.PotionEffect)
+	// DrinkState gives an antidote or thawing potion's timed state to the merc (the resist stats; the exe runs
+	// the same item effect with the merc as the user, 0x54b040 -> 0x5bce10). Optional.
+	DrinkState func(d2inventory.StatePotion)
 	// View gives the numbers the mercenary panel shows (false without a merc). Optional.
 	View func() (MercView, bool)
 }
@@ -137,6 +140,10 @@ func (g *GameControls) GiveCursorToMerc() MercGiveVerdict {
 		if it, isPotion := item.(*diablo2item.Item); isPotion && g.mercHost.Drink != nil {
 			// a non-player drinker: life x2, mana x1 (PLAYER_ScaleValueByClassGroupA/B 0x62a730 / 0x62a780)
 			g.mercHost.Drink(d2inventory.ScaledPotion(d2inventory.PotionEffectOf(it.CommonRecord()), 0, false, 0, 0, nil))
+
+			if sp, isState := d2inventory.StatePotionOf(it.CommonRecord()); isState && g.mercHost.DrinkState != nil {
+				g.mercHost.DrinkState(sp)
+			}
 		}
 
 		g.inventory.SetCursorItem(nil)

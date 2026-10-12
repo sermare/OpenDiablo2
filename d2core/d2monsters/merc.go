@@ -79,6 +79,7 @@ type mercUnit struct {
 	ownerMode              d2monster.Mode
 	skill                  string // the skill being cast, for logs
 	regen                  mercRegen
+	potions                map[string]*mercPotionState // antidote / thawing states (merc_potion_state.go)
 	// viaEngine marks the cast in progress as one the skill engine runs at the
 	// hit frame (skillLevel is its level); false is the old own-damage attack.
 	viaEngine  bool

@@ -347,8 +347,9 @@ type GameControls struct {
 	cmpCache          *compareCache // the comparison lines of the last hovered item (item_compare.go)
 	cmpTooltip        *d2ui.Tooltip // the held item and the ground item under the pointer (item_compare.go)
 	hud               *HUD
-	questItemUse      func(code string) bool // Book of Skill, Potion of Life, Scroll of Resistance
-	healShare         func(heal int) int     // Blood Golem share of potion healing (SetHealShare)
+	questItemUse      func(code string) bool                   // Book of Skill, Potion of Life, Scroll of Resistance
+	healShare         func(heal int) int                       // Blood Golem share of potion healing (SetHealShare)
+	statePotion       func(p d2inventory.StatePotion) []string // antidote / thawing / stamina states (SetStatePotion)
 	skilltree         *skillTree
 	heroStatsPanel    *HeroStatsPanel
 	mercPanel         *MercPanel

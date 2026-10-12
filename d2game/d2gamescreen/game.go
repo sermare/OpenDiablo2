@@ -16,6 +16,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2inventory"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2math/d2vector"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2uber"
@@ -629,6 +630,15 @@ func (v *Game) bindGameControls() error {
 		v.gameControls.SetHeroVoice(v.sayHero)
 		v.gameControls.SetFriendlyCheck(func(m *d2mapentity.Monster) bool { return v.monsters != nil && v.monsters.IsFriendly(m) })
 		v.gameControls.SetQuestItemUse(v.useQuestItem)
+		v.gameControls.SetStatePotion(func(sp d2inventory.StatePotion) []string {
+			if eng := v.skillEngine(); eng != nil && v.localPlayer != nil {
+				cured, _ := eng.DrinkStatePotion(v.localPlayer.ID(), sp)
+
+				return cured
+			}
+
+			return nil
+		})
 		v.gameControls.SetHealShare(func(heal int) int {
 			if d := v.monsters; d != nil && v.localPlayer != nil {
 				return d.ShareHealWithGolem(v.localPlayer, heal)

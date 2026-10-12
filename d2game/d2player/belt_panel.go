@@ -153,13 +153,9 @@ func (b *BeltPanel) Set(cell int, item InventoryItem) error {
 	return nil
 }
 
-// kindOf is the potion kind of an item: its item type.
+// kindOf is the column group of an item (d2inventory.BeltGroup: hp1-5, mp1-5, rvs+rvl, else the code itself).
 func (b *BeltPanel) kindOf(item InventoryItem) string {
-	if it, ok := item.(*diablo2item.Item); ok {
-		return it.CommonRecord().Type
-	}
-
-	return item.GetItemCode()
+	return d2inventory.BeltGroup(item.GetItemCode())
 }
 
 func (b *BeltPanel) kinds() *d2inventory.BeltKinds {
@@ -186,28 +182,14 @@ func (b *BeltPanel) Beltable(item InventoryItem) bool {
 	return t != nil && t.Beltable
 }
 
-// AutoBelt puts a picked-up item on the belt when its misc.txt row has
-// autobelt (potions) and the belt has room, and reports the cell.
+// AutoBelt puts a picked-up item on the belt and reports the cell. The pickup path of the exe
+// (ITEMMODE_ServerPickupGroundItemToInventory 0x561370, VERIFIED) takes a beltable item when its misc.txt
+// autobelt is set OR a belt column already holds a compatible item (INV_CheckItemBeltCompatible 0x628d50 /
+// INV_FindBeltCompatibleColumn 0x63d660), then runs INV_AutoPlaceBeltItem; a failure there sends the item to
+// the inventory. That is PlaceBeltable: stamina, antidote and thawing potions (autobelt 0) join their column
+// but never start one.
 func (b *BeltPanel) AutoBelt(item InventoryItem) (cell int, ok bool) {
-	it, isItem := item.(*diablo2item.Item)
-	if !isItem || !it.CommonRecord().AutoBelt || !b.Beltable(item) {
-		return 0, false
-	}
-
-	// The fallback flag of INV_FindBeltSlotForItem 0x63d700 is the autobelt column itself (VERIFIED), which is
-	// required above, so the fallback is on.
-	cell, ok = d2inventory.FindBeltSlotOpt(b.kinds(), b.Boxes(), b.kindOf(item), true)
-	if !ok {
-		return 0, false
-	}
-
-	if err := b.Set(cell, item); err != nil {
-		return 0, false
-	}
-
-	b.changed()
-
-	return cell, true
+	return b.PlaceBeltable(item)
 }
 
 // Use removes and returns the potion a hotkey (column 0..3) drinks: the front

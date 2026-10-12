@@ -63,8 +63,9 @@ func (d *Director) mercResistInput(mu *mercUnit, t MercDamageType) d2combat.Resi
 		in.HasMaxResist, in.NoDifficultyPenalty = true, true // gear gives no magic resist in the engine yet
 	default:
 		i := gearIdx(t)
-		in.Resist = g.RawResist[i]
-		in.HasMaxResist, in.MaxResistBonus = true, g.MaxResistBonus[i]
+		potion, potionMax := mu.potionResists(d.frame)
+		in.Resist = g.RawResist[i] + potion[i]
+		in.HasMaxResist, in.MaxResistBonus = true, g.MaxResistBonus[i]+potionMax[i]
 		in.DifficultyPenalty = d2difficulty.ResistPenalty(!d.opt.Expansion, d2difficulty.Level(d.opt.Difficulty))
 	}
 
@@ -117,9 +118,9 @@ type mercRegen struct {
 // potion, the same effect the hero's belt uses). The instant part is a percent of the
 // merc's maximum life (d2inventory.ApplyInstant), the over-time part (healing potions) is
 // restored by the merc's regen every frame. Mana parts are ignored (a merc has no mana).
-// A potion without life in it (antidote, thawing, stamina) is used up with no effect: the
-// engine models no unit states on mercenaries, so the state it cures is never there
-// (UNVERIFIED for the real state handling). A dead merc takes nothing. Reports whether
+// A potion without life in it (antidote, thawing) also starts its timed resist state, see DrinkMercState
+// (the exe runs the same item effect with the merc as user, 0x54b040 -> 0x5bce10, VERIFIED);
+// mana and stamina potions are refused earlier. A dead merc takes nothing. Reports whether
 // life was or will be restored.
 func (d *Director) DrinkMerc(owner *d2mapentity.Player, e d2inventory.PotionEffect) bool {
 	u := d.mercs[owner]
