@@ -54,14 +54,13 @@ func TestExeDefaultKeysNamed(t *testing.T) {
 // knownKeyDifferences are the places where the Go defaults and the exe table
 // disagree on purpose or for lack of an input source: the three secondaries are
 // mouse buttons 3, 4 and 5, which the input manager does not report as keys
-// (so a binding there would never fire), and F9..F12 are bound in the exe to
-// commands 8..11 (the automap group, UNVERIFIED which is which) while Go binds
-// Home, F11 and F12 to its own automap events.
+// (so a binding there would never fire). F9..F12 are bound in the exe to
+// commands 8..11 = Center, Fade, Party, Names (ExeAutomapKeyRows, VERIFIED): Go binds
+// F11 and F12 the same way, centres on Home instead of F9 and has no Fade key yet.
 var knownKeyDifferences = map[d2enum.GameEvent]string{
-	d2enum.ToggleAutomap:        "secondary mouse button 3",
-	d2enum.ToggleRunWalk:        "secondary mouse button 5",
-	d2enum.HoldShowGroundItems:  "secondary mouse button 4",
-	d2enum.TogglePartyOnAutomap: "not in the exe table by this name",
+	d2enum.ToggleAutomap:       "secondary mouse button 3",
+	d2enum.ToggleRunWalk:       "secondary mouse button 5",
+	d2enum.HoldShowGroundItems: "secondary mouse button 4",
 	// OD2 layout asked for by the owner: number keys pick skills, Q drinks the potions in order, L is the quest log
 	d2enum.UseSkill1: "OD2 number key", d2enum.UseSkill2: "OD2 number key", d2enum.UseSkill3: "OD2 number key",
 	d2enum.UseSkill4: "OD2 number key", d2enum.UseBeltSlot1: "OD2: Q drinks", d2enum.UseBeltSlot2: "OD2: Q drinks",
@@ -103,5 +102,36 @@ func TestGoDefaultsMatchExeTable(t *testing.T) {
 				t.Errorf("command %d secondary: Go %d, exe %d", row.Command, got.Secondary, wantS)
 			}
 		}
+	}
+}
+
+// the automap group of the key configuration table: commands 8..11 are Center, Fade, Party, Names (ids read from
+// 0x723528 and 0x72365c, texts from string.tbl) and the default keys of 7..11 are Tab, F9, F10, F11, F12 and none
+func TestExeAutomapKeyOrder(t *testing.T) {
+	wantKeys := []string{"CfgAutoMap", "CfgAutoMapCenter", "CfgAutoMapFade", "CfgAutoMapParty", "CfgAutoMapNames"}
+	wantPrimary := []uint16{0x09, 0x78, 0x79, 0x7a, 0x7b}
+
+	by := map[uint32]ExeDefaultKey{}
+	for _, k := range ExeDefaultKeys {
+		by[k.Command] = k
+	}
+
+	for i, r := range ExeAutomapKeyRows {
+		if r.Command != uint32(7+i) || r.Key != wantKeys[i] {
+			t.Errorf("row %d = %+v", i, r)
+		}
+
+		if by[r.Command].Primary != wantPrimary[i] {
+			t.Errorf("command %d primary %#x, want %#x", r.Command, by[r.Command].Primary, wantPrimary[i])
+		}
+	}
+
+	if ExeAutomapKeyRows[3].StringID != 0xf91 || ExeAutomapKeyRows[4].StringID != 0xf90 {
+		t.Error("party must come before names (ids 0xf91, 0xf90)")
+	}
+
+	// the config panel lists them in this order too
+	if got := ExeKeyConfigGroups[4]; len(got) != 5 || got[1] != 8 || got[4] != 11 {
+		t.Errorf("config group %v", got)
 	}
 }

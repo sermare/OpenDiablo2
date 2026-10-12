@@ -3,8 +3,12 @@ package d2ui
 import "strings"
 
 // Colour tokens for the three original colours the engine had no token for.
-// The RGB values are UNVERIFIED approximations (the original recolours text
-// through 13 palette-shift rows of the PL2, not through RGB).
+// The original recolours text through 13 palette-shift rows of the act PL2
+// (PAL_LoadPaletteAndPl2 0x4f87c0 copies 13*256 bytes from file offset 0x6b627;
+// D2WIN_DrawFormattedText 0x4ff270 passes selector-'0' as the row). The RGB values
+// below are the palette colour that the row maps the brightest font index (255)
+// to, read from the shipped pal.pl2 files: acts 1, 3 and 5 agree; act 2 has tan
+// (196,180,136), act 4 has dark green (0,124,0). Purple is the same in all acts.
 const (
 	ColorTokenTan       ColorToken = "[tan]"
 	ColorTokenDarkGreen ColorToken = "[darkgreen]"
@@ -12,9 +16,9 @@ const (
 )
 
 const (
-	colorTanAlpha       = 0xc4_a4_68_ff // UNVERIFIED
-	colorDarkGreenAlpha = 0x00_80_00_ff // UNVERIFIED
-	colorPurpleAlpha    = 0xae_00_ff_ff // UNVERIFIED
+	colorTanAlpha       = 0xd8_b8_64_ff // row 7, act 1/3/5 (216,184,100)
+	colorDarkGreenAlpha = 0x18_64_08_ff // row 10, act 1/2/3/5 (24,100,8)
+	colorPurpleAlpha    = 0xa4_20_fc_ff // row 11, all acts (164,32,252)
 )
 
 // colorCodeIntro is the byte that starts a colour code in the original's

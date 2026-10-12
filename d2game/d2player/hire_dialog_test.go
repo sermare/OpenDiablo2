@@ -71,7 +71,7 @@ func TestMercPortraitHitAndIcon(t *testing.T) {
 		t.Error("portrait hit rectangle")
 	}
 
-	for class, want := range map[int]string{271: "rogueicon", 338: "act2hireableicon", 359: "act3hireableicon", 561: "barbhirable_icon", 1: ""} {
+	for class, want := range map[int]string{271: "rogueicon", 338: "act2hireableicon", 359: "act3hireableicon", 561: "barbhirable_icon", 560: "", 1: ""} {
 		if got := MercPortraitIcon(class); got != want {
 			t.Errorf("icon(%d) = %q, want %q", class, got, want)
 		}

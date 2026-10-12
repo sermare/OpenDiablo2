@@ -14,6 +14,7 @@ var realCommandEvents = map[uint32]d2enum.GameEvent{
 	3: d2enum.ToggleMessageLog, 4: d2enum.ToggleQuestLog, 5: d2enum.ToggleChatBox,
 	6: d2enum.ToggleHelpScreen, 7: d2enum.ToggleAutomap, 12: d2enum.ToggleSkillTreePanel,
 	13: d2enum.ToggleRightSkillSelector,
+	10: d2enum.TogglePartyOnAutomap, 11: d2enum.ToggleNamesOnAutomap, // 8 (Center) and 9 (Fade) are not compared: Go centres on Home
 	14: d2enum.UseSkill1, 15: d2enum.UseSkill2, 16: d2enum.UseSkill3, 17: d2enum.UseSkill4,
 	18: d2enum.UseSkill5, 19: d2enum.UseSkill6, 20: d2enum.UseSkill7, 21: d2enum.UseSkill8,
 	22: d2enum.ToggleBelts,
@@ -46,7 +47,7 @@ func vkToKey(vk uint16) (d2enum.Key, bool) {
 		0x0d: d2enum.KeyEnter, 0x09: d2enum.KeyTab, 0x1b: d2enum.KeyEscape, 0x20: d2enum.KeySpace,
 		0x10: d2enum.KeyShift, 0x11: d2enum.KeyControl, 0x12: d2enum.KeyAlt,
 		0x2c: d2enum.KeyPrintScreen, 0xc0: d2enum.KeyTilde,
-		0x100: d2enum.KeyMouse3, 0x101: d2enum.KeyMouse4, 0x102: d2enum.KeyMouse5, // order UNVERIFIED (key_exe_defaults.go)
+		0x100: d2enum.KeyMouse3, 0x101: d2enum.KeyMouse4, 0x102: d2enum.KeyMouse5, // order VERIFIED (key_exe_defaults.go)
 		0x103: d2enum.KeyMouseWheelUp, 0x104: d2enum.KeyMouseWheelDown,
 	}
 

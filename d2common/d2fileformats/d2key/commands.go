@@ -21,16 +21,20 @@ type Command struct {
 }
 
 // Commands lists the command ids whose meaning is inferred, keyed by id.
-// Ids 8-11 (F9-F12) and 46-53 are deliberately absent: unidentified.
+// Ids 8-11 (F9-F12) are Center, Fade, Party and Names on the automap: the key configuration table of Game.exe
+// (0x723528) gives them the strings CfgAutoMapCenter, CfgAutoMapFade, CfgAutoMapParty, CfgAutoMapNames in that
+// order. Ids 46-53 are deliberately absent: unidentified.
 var Commands = map[uint32]Command{
-	0:  {0, "CharacterPanel", Likely},
-	1:  {1, "InventoryPanel", Likely},
-	2:  {2, "PartyPanel", Likely},
-	3:  {3, "MessageLog", Likely},
-	4:  {4, "QuestLog", Likely},
-	5:  {5, "ChatBox", Likely},
-	6:  {6, "HelpScreen", Likely},
-	7:  {7, "Automap", Likely},
+	0: {0, "CharacterPanel", Likely},
+	1: {1, "InventoryPanel", Likely},
+	2: {2, "PartyPanel", Likely},
+	3: {3, "MessageLog", Likely},
+	4: {4, "QuestLog", Likely},
+	5: {5, "ChatBox", Likely},
+	6: {6, "HelpScreen", Likely},
+	7: {7, "Automap", Likely},
+	8: {8, "CenterAutomap", Likely}, 9: {9, "FadeAutomap", Likely},
+	10: {10, "PartyOnAutomap", Likely}, 11: {11, "NamesOnAutomap", Likely},
 	12: {12, "SkillTree", Likely},
 	13: {13, "RightSkillSelector", Guess},
 	14: {14, "UseSkill1", Likely}, 15: {15, "UseSkill2", Likely}, 16: {16, "UseSkill3", Likely},

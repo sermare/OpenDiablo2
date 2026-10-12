@@ -5,9 +5,9 @@ package d2player
 // table at 0x79f018 when no usable key file exists; 114 entries of 10 bytes, the
 // primary and the secondary entry of each of the 57 commands, VERIFIED). Codes
 // are Windows virtual keys; 0x100..0x104 are the game's own mouse codes (read as
-// middle button, button 4, button 5, wheel up, wheel down: the order is
-// UNVERIFIED for 0x100..0x102, the wheel pair is the one default.key uses) and
-// 0xffff is unbound. Commands 46..53 are the extra skill hotkeys 9..16 of the
+// Mouse 3, Mouse 4, Mouse 5, wheel up, wheel down: VERIFIED from the jump table
+// at 0x465c38 of CMDTBL_GetCommandNameString 0x465760, strings 0xeb6 0xeb7 0xeb8
+// 0xeb9 0xeba) and 0xffff is unbound. Commands 46..53 are the extra skill hotkeys 9..16 of the
 // expansion list; 57 (0x39) marks a separator row in the key configuration table.
 type ExeDefaultKey struct {
 	Command            uint32
@@ -53,4 +53,18 @@ var ExeKeyConfigGroups = [][]uint32{
 	{7, 8, 9, 10, 11},
 	{27, 28, 29, 30, 31, 32, 33, 55},
 	{42, 38, 41},
+}
+
+// ExeAutomapKeyRows are the rows of the automap group of the key configuration table (0x723528), VERIFIED by
+// reading the table: {command, string id}. The string ids are CfgAutoMap (0xf5a), CfgAutoMapCenter (0xf5b),
+// CfgAutoMapFade (0xf8f), CfgAutoMapParty (0xf91) and CfgAutoMapNames (0xf90) in string.tbl, so commands 8..11
+// (default F9..F12) are Center, Fade, Party, Names, in that order. (w44-unv-ui listed the ids sorted; the table
+// order is Party before Names.)
+var ExeAutomapKeyRows = [5]struct {
+	Command  uint32
+	StringID uint16
+	Key      string
+}{
+	{7, 0xf5a, "CfgAutoMap"}, {8, 0xf5b, "CfgAutoMapCenter"}, {9, 0xf8f, "CfgAutoMapFade"},
+	{10, 0xf91, "CfgAutoMapParty"}, {11, 0xf90, "CfgAutoMapNames"},
 }
