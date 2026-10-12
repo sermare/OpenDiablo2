@@ -54,7 +54,13 @@ func (v *Game) populateLevel() {
 	level := v.currentLevel()
 	defer d2util.PerfTime(fmt.Sprintf("populate level=%d", level))()
 
-	if d2level.IsTown(level) || !autoPlayPopulate() || !v.isRealLevel() {
+	if d2level.IsTown(level) || !v.isRealLevel() {
+		return
+	}
+
+	v.spawnRoomObjects(level)
+
+	if !autoPlayPopulate() {
 		return
 	}
 

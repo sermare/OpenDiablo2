@@ -115,6 +115,7 @@ type Level struct {
 	Mon, NMon, UMon                [25]int
 	CountMon, CountNMon, CountUMon int
 	ObjGrp, ObjPrb                 [8]int
+	Themes                         int // +0x210: room theme mask of the object scatter
 }
 
 // Tables bundles the three tables.
@@ -343,6 +344,8 @@ func ParseTables(monstats, monstats2, levels []byte) (*Tables, error) {
 			l.ObjGrp[i] = lv.num(r, "ObjGrp"+strconv.Itoa(i))
 			l.ObjPrb[i] = lv.num(r, "ObjPrb"+strconv.Itoa(i))
 		}
+
+		l.Themes = lv.num(r, "Themes")
 
 		for len(t.Levels) <= l.ID {
 			t.Levels = append(t.Levels, nil)
