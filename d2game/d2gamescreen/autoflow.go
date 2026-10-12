@@ -202,7 +202,7 @@ func AutoFlowTick(elapsed float64) {
 		if autoFlowWait(elapsed, arg) {
 			autoFlowDone()
 		}
-	case "goto", "resize", "fullscreen", "uiscale":
+	case "goto", "resize", "fullscreen", "uiscale", "videores":
 		if ready {
 			autoFlowDone()
 

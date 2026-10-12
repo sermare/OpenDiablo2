@@ -112,6 +112,22 @@ New `OD2_AUTOFLOW` steps for them: `goto:credits|cinematics|mainmenu|charselect`
 Found and fixed: the escape menu and its option pages stood in the bottom anchored column (low on a 1920x1080 screen); they are now centred on the screen like the original (`d2display.CenterShiftY`, mouse shifted to match).
 Looked at, no fault: menus at 1920x1080, bar fill tile/black at 3440x1440 / 1440x1080, panels, resize, 4:3, full screen. Notes: the Video Options page still shows the row "800x600" whatever the window; the Cinematics screen shows the small trademark dot of the logo without the logo.
 
+## Video options (wave 49, a1-display-qa3-video)
+
+* **VIDEO RESOLUTION** is real. The row lists window sizes (800X600 ... 3440X1440 presets that fit the monitor minus 80 px of title and menu bar, the
+  current window size, and the monitor size = full screen), `d2display.ResolutionChoices`. Choosing a value resizes the window live, leaves full screen, and saves the
+  logical size (`Display.Width/Height` of config.json, used as the start size next time; `OD2_DISPLAY` still wins). Choosing the monitor size turns full screen on.
+  The row and the FULL SCREEN row follow the real window while the page is open (Cmd+Enter, dragging the window edge). Backend: `optionsBackend.ResolutionChoices/SetResolution`
+  (`d2app/options_backend.go`), `d2player.ResolutionBackend`.
+* The exe's video page (strings read in Ghidra: Resolution, Lighting Quality, Blended Shadows, Perspective, Gamma, Contrast) has exactly the rows the page already shows;
+  FULL SCREEN is this fork's extra. Lighting, blended shadows, perspective, gamma and contrast are stored but not applied (UNVERIFIED how the exe applies gamma: it uses a
+  gamma ramp on the display; a post-process shader would be needed here). There is no vsync/frame cap row in the exe page.
+* **UI scale** that does not fit (window / scale below 800x600, so 2x in a window under 1600x1200) is lowered to the largest scale that fits (`d2display.Logical`), so the
+  picture is drawn at integer pixel sizes instead of being stretched; the 2X option only grows the window when the monitor has room for it. 2x works in full screen on a monitor
+  of 1600x1200 or more (a 1920x1200 monitor gives a 960x600 logical screen).
+* The Cinematics screen draws neither the logo nor a panel over the registered-trademark dot that is part of the title background art, so a small patch of sky colour covers it.
+* New flow step `videores:WxH` (what choosing the row value does).
+
 ## Scenario scripts
 
 `scripts/verify.sh` exports `OD2_DISPLAY=1512x982` for every scenario unless `OD2_DISPLAY` is set. `click:` and `hold:` steps take

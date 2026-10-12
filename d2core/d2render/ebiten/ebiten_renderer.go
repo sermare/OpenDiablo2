@@ -288,6 +288,11 @@ func (r *Renderer) SetWindowScale(scale int) {
 		return
 	}
 
+	// grow the window only when the monitor has room for it (otherwise the scale is lowered by d2display.Logical)
+	if mw, mh := ebiten.ScreenSizeInFullscreen(); mw > 0 && (s.W*scale > mw || s.H*scale > mh-80) {
+		return
+	}
+
 	ebiten.SetWindowSize(s.W*scale, s.H*scale)
 }
 
@@ -296,6 +301,19 @@ func (r *Renderer) SetWindowScale(scale int) {
 func (r *Renderer) SetWindowPixels(w, h int) {
 	if w < 1 || h < 1 || ebiten.IsFullscreen() {
 		return
+	}
+
+	ebiten.SetWindowSize(w, h)
+}
+
+// SetWindowedSize leaves full screen and sizes the window to w x h device-independent pixels.
+func (r *Renderer) SetWindowedSize(w, h int) {
+	if w < 1 || h < 1 {
+		return
+	}
+
+	if ebiten.IsFullscreen() {
+		ebiten.SetFullscreen(false)
 	}
 
 	ebiten.SetWindowSize(w, h)
