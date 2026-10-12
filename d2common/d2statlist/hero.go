@@ -87,6 +87,8 @@ type Totals struct {
 	DamageMax        int
 	// Weapon is the percent free weapon numbers for the skill descriptor (see WeaponParts).
 	Weapon WeaponParts
+	// Elem are the elemental damage stats of the whole list (descdam functions, descdam.go).
+	Elem ElemStats
 	// GearDamagePct and GearToHitPct are stats 25 and 119 from the items only (the skill engine's own states
 	// supply the skills' share).
 	GearDamagePct, GearToHitPct int
@@ -328,6 +330,7 @@ func Compute(h Hero, items []Item, env *Env) Totals {
 
 	t.DamageMin, t.DamageMax = weaponDamageClass(active, list, h.Class.ID, t.Str, t.Dex)
 	t.Weapon = weaponParts(active, list, h.Class.ID, t.Str, t.Dex)
+	t.Elem = elemStatsOf(list)
 	t.GearDamagePct, t.GearToHitPct = int(gear.Get(StatDamagePct)), int(gear.Get(StatToHitPct))
 	t.DamagePct, t.ToHitPct = int(list.Get(StatDamagePct)), int(list.Get(StatToHitPct))
 

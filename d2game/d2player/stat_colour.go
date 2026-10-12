@@ -11,6 +11,8 @@ const (
 	StatFontGreen = 2
 	StatFontBlue  = 3
 	StatFontGold  = 4
+	// StatFontYellow is font colour 9 (lightning damage in the skill boxes); its RGB is an approximation.
+	StatFontYellow = 9
 )
 
 // StatColour names the classification of an attribute value against its base.
@@ -156,6 +158,8 @@ func StatFontRGBA(idx int) color.RGBA {
 		return color.RGBA{R: 105, G: 105, B: 255, A: 255}
 	case StatFontGold:
 		return color.RGBA{R: 255, G: 215, B: 0, A: 255}
+	case StatFontYellow:
+		return color.RGBA{R: 255, G: 255, B: 100, A: 255}
 	}
 
 	return color.RGBA{R: 255, G: 255, B: 255, A: 255}

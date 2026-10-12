@@ -32,6 +32,10 @@ type SkillBox struct {
 	DmgBlue, DmgRed bool
 	// Mastery is SKILL_GetWeaponMasteryBonus for the weapon and skill (UNVERIFIED here: 0 when not supplied).
 	Mastery int
+	// PoolBonus is the exe's in_EAX argument of 0x4e5860: a percent added to the pool (descdam 7 passes ddam calc1).
+	PoolBonus int
+	// InitColour is the colour the caller's slot holds before the box code may overwrite it.
+	InitColour BoxColour
 }
 
 // DamageBox is the number pair and colour of a damage box.
@@ -80,8 +84,8 @@ func (t *Totals) SkillDamageBox(sk SkillBox) DamageBox {
 		accMax += wmax
 	}
 
-	pool := t.DamagePct + sk.Mastery
-	out := DamageBox{}
+	pool := t.DamagePct + sk.Mastery + sk.PoolBonus
+	out := DamageBox{Colour: sk.InitColour}
 
 	if sk.Bit8 && sk.StateBonus != 0 {
 		pool += sk.StateBonus

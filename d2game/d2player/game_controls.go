@@ -1278,9 +1278,13 @@ func (g *GameControls) handSkillInfo() [2]HandSkillInfo {
 		out[i].Thrown = sk.Anim == d2enum.PlayerAnimationModeThrow
 		out[i].SrcDam = sk.SkillRecord.SrcDam
 
-		// SKILL_GetToHitBonus 0x645da0: ToHit + (level-1) * LevToHit (the ToHitCalc column is not evaluated here)
-		if lvl := sk.SkillPoints; lvl > 0 && sk.SkillRecord.ToHitCalc == nil {
-			out[i].ToHitBonus = sk.SkillRecord.ToHit + (lvl-1)*sk.SkillRecord.LevToHit
+		// the effective level (points plus +skills items) feeds SKILL_GetToHitBonus 0x645da0 (ToHitCalc included)
+		// and the descdam functions of the damage box (d2statlist.DescDamBox, wave 47)
+		lvl := d2hero.EffectiveSkillLevel(g.hero.Stats, g.hero.Class, sk)
+		out[i].ToHitBonus = skillToHitBonus(g.asset, sk, lvl, g.hero.Stats, g.hero.Skills)
+
+		if in, ok := descDamInputFor(g.asset, sk, lvl, g.hero.Stats, g.hero.Skills); ok {
+			out[i].DescDam = &in
 		}
 	}
 

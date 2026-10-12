@@ -29,9 +29,11 @@ type Row struct {
 // block (evaluated at level+1 in both builders).
 type Desc struct {
 	DescDam int // descdam: index of the skill's damage-line function, 0 = none
-	Lines   []Row
-	Lines2  []Row
-	Lines3  []Row
+	// DdamCalc1 and DdamCalc2 are the "ddam calc1" / "ddam calc2" sources (descdam 7: percent and flat damage).
+	DdamCalc1, DdamCalc2 string
+	Lines                []Row
+	Lines2               []Row
+	Lines3               []Row
 }
 
 // Line kinds, VERIFIED against the jump table at 0x4ec048 (entry = kind-1).
