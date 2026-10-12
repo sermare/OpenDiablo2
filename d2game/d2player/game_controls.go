@@ -1564,6 +1564,11 @@ func (g *GameControls) ShowZoneChangeText() {
 	g.hud.isZoneTextShown = true
 }
 
+// HideZoneChangeText hides the zoneChangeText at once.
+func (g *GameControls) HideZoneChangeText() {
+	g.hud.isZoneTextShown = false
+}
+
 // HideZoneChangeTextAfter hides the zoneChangeText after the given amount of seconds
 func (g *GameControls) HideZoneChangeTextAfter(delay float64) {
 	time.AfterFunc(time.Duration(delay)*time.Second, func() {

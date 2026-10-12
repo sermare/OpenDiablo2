@@ -2,6 +2,25 @@ package d2gamescreen
 
 import "testing"
 
+func TestKindLinesFor(t *testing.T) {
+	tests := []struct {
+		name              string
+		expansion, ladder bool
+		wantLines         int
+	}{
+		{"classic softcore", false, false, 0},
+		{"expansion", true, false, 1},
+		{"classic ladder", false, true, 1},
+		{"expansion ladder", true, true, 2},
+	}
+
+	for _, tc := range tests {
+		if got := kindLinesFor(tc.expansion, tc.ladder, "EXP", "LAD"); len(got) != tc.wantLines {
+			t.Errorf("%s: %d lines %q, want %d", tc.name, len(got), got, tc.wantLines)
+		}
+	}
+}
+
 func TestKindLines(t *testing.T) {
 	joined := joinKindLines([]string{"Hardcore", " ", "Expansion Character"})
 

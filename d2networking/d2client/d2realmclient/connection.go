@@ -363,6 +363,7 @@ func (c *Connection) localPlayer(a PlayerAdd) (d2netpacket.NetPacket, error) {
 		st.LeftSkill, st.RightSkill, st.Gold, st.Progress, st.Difficulty,
 		d2netpacket.WithContainers(st.Containers),
 		d2netpacket.WithMerc(st.Merc),
+		d2netpacket.WithStashGold(stashGoldOfState(st)),
 		d2netpacket.WithSkillBar(st.SkillBar),
 		d2netpacket.WithDeath(st.Death, st.Hardcore),
 		d2netpacket.WithAct(st.Act, len(st.D2SBase) > 0, st.Expansion),
@@ -385,4 +386,13 @@ func (c *Connection) other(np d2netpacket.NetPacket) {
 	}
 
 	c.applySave(sp)
+}
+
+// stashGoldOfState is the stash gold of a hero state (0 when the state has none).
+func stashGoldOfState(st *d2hero.HeroState) int {
+	if st == nil || st.StashGold == nil {
+		return 0
+	}
+
+	return *st.StashGold
 }

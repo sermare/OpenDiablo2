@@ -515,6 +515,8 @@ func (v *Game) onPvPHit(p d2netpacket.PvPHitPacket) {
 		v.Infof("PVP KILLED by=%q ear=%v hardcore=%v", attacker, d2combat.PvPKillGivesEar(v.localPlayer.Hardcore),
 			v.localPlayer.Hardcore)
 
+		v.death.killedByPlayer = true // the gold penalty of a player kill (0x5331e0)
+
 		class, _ := d2hero.D2SClassOf(v.localPlayer.Class)
 
 		pkt, err := d2netpacket.CreatePvPHitPacket(d2netpacket.PvPHitPacket{Attacker: v.me(), Target: p.Attacker, Kill: true,

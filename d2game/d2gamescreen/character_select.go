@@ -1,6 +1,7 @@
 package d2gamescreen
 
 import (
+	"image/color"
 	"math"
 	"strconv"
 	"strings"
@@ -22,6 +23,12 @@ import (
 
 const (
 	indexPerLine = 2
+
+	// ladderStringID is the exe's string id of the ladder kind line (patch_d2 patchstring node 927).
+	ladderStringID = 0x2aaf
+	// deadGhostAlpha is how see-through a dead hardcore character is drawn; the exe switches its draw mode
+	// from 5 to 1 for hardcore+died (0x5014b0, VERIFIED) but the mode's exact blend is not known (UNVERIFIED).
+	deadGhostAlpha = 100
 )
 
 // CreateCharacterSelect creates the character select screen and returns a pointer to it
@@ -371,13 +378,12 @@ func (v *CharacterSelect) updateCharacterBoxes() {
 // characters in red too; the exact wording for hardcore/dead is unverified, only
 // the flag bits (0x04 hardcore, 0x08 died, 0x20 expansion, 0x40 ladder) are.
 func characterListText(asset *d2asset.AssetManager, state *d2hero.HeroState) (name, info, kind string) {
-	hardcore, expansion, dead := false, true, false
+	hardcore, expansion := false, true
 	if state.Imported != nil {
-		hardcore, expansion, dead = state.Imported.Hardcore, state.Imported.Expansion, state.Imported.Dead
+		hardcore, expansion = state.Imported.Hardcore, state.Imported.Expansion
 	}
 
 	hardcore = hardcore || state.Hardcore
-	dead = dead || state.IsDeadHardcore()
 
 	nameColor := d2ui.ColorTokenGold
 	if hardcore {
@@ -391,27 +397,38 @@ func characterListText(asset *d2asset.AssetManager, state *d2hero.HeroState) (na
 
 	infoText := asset.TranslateString("level") + " " + strconv.Itoa(level) + " " + asset.TranslateString(state.HeroType.String())
 
-	// "Hardcore Expansion Character" is wider than a list cell and ran into the next column, so a hardcore
-	// character's kind is two lines: "Hardcore" (with "Dead " first) over "Expansion Character".
-	var kindLines []string
+	// CHARSEL_BuildCharacterSlotInfoTextExpansion 0x433680 (VERIFIED w50): the kind lines are only the expansion
+	// string 0x58cb (green) and, when the ladder byte is set, 0x2aaf "LADDER CHARACTER" (colour 4, gold);
+	// hardcore is shown by the red name alone and a dead hardcore character by the ghost drawing of
+	// CHARSEL_DrawAnimatedCharacter, never by words.
+	ladder := state.Ladder || (state.Imported != nil && state.Imported.Ladder)
 
-	switch {
-	case hardcore && dead:
-		kindLines = []string{"Dead " + asset.TranslateString("strChatHardcore")}
-	case hardcore:
-		kindLines = []string{asset.TranslateString("strChatHardcore")}
-	case dead:
-		kindLines = []string{"Dead"}
+	ladderText, ok := asset.StringByID(ladderStringID)
+	if !ok {
+		ladderText = "LADDER CHARACTER"
 	}
 
-	// classic characters have no kind line
-	if expansion {
-		kindLines = append(kindLines, asset.TranslateString("#803"))
-	}
+	kindLines := kindLinesFor(expansion, ladder, asset.TranslateString("#803"), ladderText)
 
 	return d2ui.ColorTokenize(state.HeroName, nameColor),
 		d2ui.ColorTokenize(infoText, d2ui.ColorTokenWhite),
-		joinKindLines(kindLines)
+		strings.Join(kindLines, "\n")
+}
+
+// kindLinesFor lists the coloured kind lines of an entry: classic characters have none, expansion ones the green
+// expansion line, ladder ones a gold ladder line below it.
+func kindLinesFor(expansion, ladder bool, expansionText, ladderText string) []string {
+	var lines []string
+
+	if expansion {
+		lines = append(lines, d2ui.ColorTokenize(expansionText, d2ui.ColorTokenGreen))
+	}
+
+	if ladder {
+		lines = append(lines, d2ui.ColorTokenize(ladderText, d2ui.ColorTokenGold))
+	}
+
+	return lines
 }
 
 // joinKindLines colours each kind line green and joins them with a line break (see splitKindLines).
@@ -468,7 +485,18 @@ func (v *CharacterSelect) Render(screen d2interface.Surface) {
 		charImgX := x - selectionBoxImageOffsetX
 		charImgY := y + selectionBoxImageOffsetY
 		screen.PushTranslation(charImgX, charImgY)
+
+		ghost := v.gameStates[idx].IsDeadHardcore()
+		if ghost {
+			screen.PushColor(color.RGBA{R: 255, G: 255, B: 255, A: deadGhostAlpha})
+		}
+
 		v.characterImage[i].Render(screen)
+
+		if ghost {
+			screen.Pop()
+		}
+
 		screen.Pop()
 	}
 

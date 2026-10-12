@@ -522,6 +522,7 @@ func (g *GameClient) handleAddPlayerPacket(packet d2netpacket.NetPacket) error {
 	newPlayer.SkillBar = player.SkillBar
 	newPlayer.SyncSkillBar()
 	newPlayer.Death = player.Death
+	newPlayer.StashGold = player.StashGold
 	newPlayer.Hardcore = player.Hardcore
 
 	if old := g.Players[newPlayer.ID()]; old != nil && old != newPlayer {

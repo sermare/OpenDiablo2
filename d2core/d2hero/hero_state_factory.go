@@ -119,7 +119,10 @@ func (f *HeroStateFactory) GetAllHeroStates() ([]*HeroState, error) {
 		result = append(result, gameState)
 	}
 
-	return append(result, f.importD2SCharacters(result)...), nil
+	result = append(result, f.importD2SCharacters(result)...)
+	SortByLastPlayed(result)
+
+	return result, nil
 }
 
 // importD2SCharacters imports the real Diablo II characters (.d2s files) found

@@ -38,11 +38,6 @@ const (
 	// deathTestSeconds ends the scenario if the hero somehow survives.
 	deathTestSeconds = 60.0
 	deathTestSettle  = 1.0
-
-	// The exe shows no text: it draws the pictures UI\<lang>\youdiedinst (softcore) and
-	// UI\<lang>\youdiedhardcore (strings at 0x6d746c / 0x6d7484, found w28). The text is a stand-in
-	// until those pictures are drawn (UNVERIFIED placement).
-	deathMessage = "You have died"
 )
 
 // deathState is the Game's runtime state of the death system.
@@ -52,9 +47,11 @@ type deathState struct {
 	dead         bool
 	deadFor      float64
 	hardcore     bool
-	corpse       *d2mapentity.Player // entity lying at the death spot
-	corpseX      int
-	corpseY      int
+	// killedByPlayer is set when the killing blow came from another player (PvP); the gold penalty differs
+	killedByPlayer bool
+	corpse         *d2mapentity.Player // entity lying at the death spot
+	corpseX        int
+	corpseY        int
 	// corpseLevel is the level the hero died in; the corpse lies there. When
 	// the hero respawns in the town of another level the corpse waits
 	// (corpsePending) until that level is built again.
@@ -191,17 +188,22 @@ func (v *Game) heroDies() {
 	st.corpseLevel = v.currentLevel()
 
 	// gold: min(level,20)% of carried+stash is lost, the rest of the carried gold is dropped (0x5331e0)
-	// the stash gold is not carried by the in-game player entity (it lives in the saved hero state), so it
-	// takes no part here: UNVERIFIED in game, the pure rule handles it
-	stash := 0
+	// the stash gold travels with the player entity (nil: unknown, counted as 0); killed by a player the
+	// rule differs (0x5331e0, VERIFIED): only the loss is dropped and the rest stays carried
+	stash := p.StashGold
 
-	gp := d2hero.DeathGoldPenalty(level, p.Gold, stash, false)
+	pk := st.killedByPlayer
+	st.killedByPlayer = false
+
+	gp := d2hero.DeathGoldPenalty(level, p.Gold, stash, pk)
+	p.StashGold = gp.NewStash
+
 	out.GoldDropped = gp.Dropped
 	if p.Death.Corpse != nil {
 		p.Death.Corpse.GoldDropped = gp.Dropped
 	}
 
-	v.takeGold(p.Gold, gp.Dropped, x, y)
+	v.takeGold(p.Gold, gp.NewCarried, gp.Dropped, x, y)
 	p.Die()
 
 	// the death routine ends the hero's states (except plrstaydeath) and his
@@ -210,31 +212,57 @@ func (v *Game) heroDies() {
 		v.skills.HeroDied(p.ID())
 	}
 
-	v.Infof("DEATH hero=%s hardcore=%v pos=(%d,%d) level=%d exp_lost=%d exp=%d gold_dropped=%d deaths=%d died_flag=%v corpse=%v",
-		p.Name(), p.Hardcore, x, y, level, out.ExpLost, p.Stats.Experience, out.GoldDropped, p.Death.Deaths,
+	v.Infof("DEATH hero=%s hardcore=%v pos=(%d,%d) level=%d exp_lost=%d exp=%d gold_dropped=%d gold_kept=%d stash=%d pk=%v deaths=%d died_flag=%v corpse=%v",
+		p.Name(), p.Hardcore, x, y, level, out.ExpLost, p.Stats.Experience, out.GoldDropped, gp.NewCarried, gp.NewStash, pk, p.Death.Deaths,
 		p.Death.Died, describeEquipment(&equip))
 
 	if p.Hardcore {
 		v.Infof("DEATH hardcore: the character is dead (d2s status died=0x08), the character select refuses it")
 
-		if v.gameControls != nil {
-			v.gameControls.SetZoneChangeText(deathMessage)
-			v.gameControls.ShowZoneChangeText()
-		}
 	}
+
+	v.showDeathOverlay(p.Hardcore, gp.Lost, out.ExpLost > 0)
 
 	// the original saves at once when a hero dies
 	v.saveBeforeExit()
 }
 
+// showDeathOverlay prints the exe's death texts (see deathOverlayText); the hardcore one stays, the softcore ones
+// are hidden again at the respawn.
+func (v *Game) showDeathOverlay(hardcore bool, goldLost int, expLost bool) {
+	if v.gameControls == nil {
+		return
+	}
+
+	str := func(id int, fallback string) string {
+		if s, ok := v.asset.StringByID(id); ok {
+			return s
+		}
+
+		return fallback
+	}
+
+	text := deathOverlayText(hardcore, goldLost, expLost,
+		str(deathGoldStringID, "Death takes its toll of %d Gold"),
+		str(deathExpStringID, "You have lost experience"),
+		str(deathHardcoreStringID, "Your deeds of valor will be remembered"))
+	if text == "" {
+		return
+	}
+
+	v.gameControls.SetZoneChangeText(text)
+	v.gameControls.ShowZoneChangeText()
+	v.Infof("DEATH overlay %q", strings.ReplaceAll(text, "\n", " | "))
+}
+
 // takeGold removes the carried gold and drops it as a pile beside the corpse.
-func (v *Game) takeGold(carried, amount, x, y int) {
+func (v *Game) takeGold(carried, keep, amount, x, y int) {
 	p := v.localPlayer
-	if carried > 0 {
+	if d := carried - keep; d > 0 {
 		if v.gameControls != nil {
-			v.gameControls.AddGold(-carried)
+			v.gameControls.AddGold(-d)
 		} else {
-			p.Gold = 0
+			p.Gold = keep
 		}
 	}
 
@@ -297,6 +325,10 @@ func (v *Game) respawnHero() {
 	p.Stats.Mana = p.Stats.MaxMana // 0x549f10: life, mana and stamina to their maximum
 	p.Stats.Stamina = float64(p.Stats.MaxStamina)
 	st.dead = false
+
+	if v.gameControls != nil {
+		v.gameControls.HideZoneChangeText()
+	}
 
 	v.Infof("DEATH respawn pos=(%d,%d) town_start=(%d,%d) hp=%d/%d mana=%d gold=%d equipment=%s corpse_at=(%d,%d) corpse_items=%s",
 		int(p.Position.X()), int(p.Position.Y()), st.townX, st.townY, p.Stats.Health, p.Stats.MaxHealth, p.Stats.Mana,
@@ -560,6 +592,15 @@ func (v *Game) startDeathTest(t *deathTest) {
 
 	if n, err := strconv.Atoi(os.Getenv("OD2_AUTODEATH_HP")); err == nil && n > 0 && n < p.Stats.MaxHealth {
 		p.Stats.Health = n
+	}
+
+	// OD2_AUTODEATH_STASH=<n> gives the hero that much stash gold, OD2_AUTODEATH_PK=1 makes the death a player kill
+	if n, err := strconv.Atoi(os.Getenv("OD2_AUTODEATH_STASH")); err == nil && n >= 0 {
+		p.StashGold = n
+	}
+
+	if os.Getenv("OD2_AUTODEATH_PK") != "" {
+		st.killedByPlayer = true
 	}
 
 	if p.Gold < 1000 && v.gameControls != nil {
