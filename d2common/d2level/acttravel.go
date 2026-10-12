@@ -22,8 +22,12 @@ import (
 //     menu after Andariel's quest", "[BIN] checks A2Q6 RG in the client
 //     menu"). VERIFIED server side (TRADE_ServerHandleNpcMenuAction 0x577b70): the trip is made only when
 //     bit 0 (done) of the quest slot is set: Warriv(1) slot 6, Meshif(1) slot 14 (0xe), Tyrael(2) slot 0x1a, the
-//     last also needs the game's dwGameSeed field to be non-zero. NPCGoalMet is that test; the client row that
-//     triggers it is not located, so the menu row follows the same test.
+//     last also needs the game's dwGameSeed field to be non-zero. NPCGoalMet is that test. The client rows that send
+//     the action are VERIFIED (w47): each is a menu callback sending packet 0x38 (action 0, npc id, destination
+//     level): 0x4b19c0 -> 0x28, 0x4b1a00 -> 0x4b, 0x4b1a60 -> 0x6d (Tyrael), 0x4b1ac0 -> 0x28 and 0x4b1b20 -> 1.
+//     Tyrael's row is not in the static table: 0x4b2f20 writes it into his entry (count 3, string 0x58d2 key
+//     "Travel To Harrogath", expansionstring.tbl) when the client's game-flags byte (0x79857c, Lord of
+//     Destruction) is set. The client tests no quest for it; the server test above refuses the trip.
 //   - The server side (QUESTS_OnActChangeNpcTravel 0x5446e0) sets the "act
 //     finished" slots 7 (Warriv), 15 (Meshif) and 28 (Tyrael) to done.
 //   - Act 3 -> 4 is not an NPC menu in the original: Mephisto's red portal in
@@ -35,7 +39,9 @@ import (
 //     0x6d). The static table gives him Talk only and there is no travel string for him, so the engine models the
 //     trip as the effect of talking to him once the quest is done (the client row is not located).
 //   - The server also knows Cain(6) (class 520, 0x208) travelling to level 0x67 (the Pandemonium Fortress) without a
-//     quest gate (VERIFIED, 0x577b70, travel type 5); the engine has no menu row for it. No NPC action travels back
+//     quest gate (VERIFIED, 0x577b70, travel type 5). No client callback sends level 0x67 (searched for every
+//     packet 0x38 sender: only levels 0x28, 0x4b, 0x6d and 1 are sent), so the action cannot be reached from a menu;
+//     ServerTravel holds it for the console and the harness. No NPC action travels back
 //     from Act 4 to Act 3, so the rule list keeps the four forward trips and the two back trips, and the debug "free"
 //     mode allows any act.
 
@@ -46,7 +52,9 @@ type Via int
 const (
 	ViaNPC Via = iota
 	ViaPortal
-	ViaTalk // the effect of talking to the NPC
+	ViaTalk // the trip of a travel row Talk-class NPC (Tyrael); the name is kept for the cinematic rule
+	// ViaServer is a server action no client menu sends (Cain in Harrogath).
+	ViaServer
 )
 
 // ActRule is one act-to-act trip the original allows.
@@ -89,7 +97,19 @@ const (
 	ClassMeshif1 = 210
 	ClassMeshif2 = 264
 	ClassTyrael2 = 367
+	ClassCain6   = 520
 )
+
+// ServerTravel is the NPC menu action the server accepts without a client row: Cain (class 520, Harrogath) takes the
+// hero to level 0x67 (the Pandemonium Fortress, Act 4) with travel type 5 and no quest test (VERIFIED, 0x577b70).
+// It is returned as an ActRule (Act 5 to Act 4) that CheckActTravel does not know: the caller starts the trip itself.
+func ServerTravel(class int) (ActRule, bool) {
+	if class != ClassCain6 {
+		return ActRule{}, false
+	}
+
+	return ActRule{From: 5, To: 4, Via: ViaServer, NPCClass: ClassCain6, QuestSlot: -1, Verified: true}, true
+}
 
 // ActRules lists every trip, forward first.
 //
@@ -98,7 +118,8 @@ var ActRules = []ActRule{
 	{From: 1, To: 2, Via: ViaNPC, NPCClass: ClassWarriv1, Row: "WarrivMenu1b", QuestSlot: slotAndariel},
 	{From: 2, To: 3, Via: ViaNPC, NPCClass: ClassMeshif1, Row: "MeshifMenuEast", QuestSlot: slotDuriel},
 	{From: 3, To: 4, Via: ViaPortal, QuestSlot: slotMephisto},
-	{From: 4, To: 5, Via: ViaTalk, NPCClass: ClassTyrael2, QuestSlot: slotDiablo, NeedExpansion: true},
+	{From: 4, To: 5, Via: ViaTalk, NPCClass: ClassTyrael2, Row: "Travel To Harrogath", QuestSlot: slotDiablo,
+		NeedExpansion: true, Verified: true},
 	{From: 2, To: 1, Via: ViaNPC, NPCClass: ClassWarriv2, Row: "WarrivMenu1c", QuestSlot: -1, Verified: true},
 	{From: 3, To: 2, Via: ViaNPC, NPCClass: ClassMeshif2, Row: "MeshifMenuWest", QuestSlot: -1, Verified: true},
 }

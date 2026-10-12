@@ -72,8 +72,9 @@ func (s Shrine) ResetFrames() int {
 }
 
 // ResetSeconds is ResetFrames at FramesPerSecond. 0x4b0 frames per "minute" is
-// 48 s at 25 fps; whether the original frame rate of these timers is 25 or 20
-// is UNVERIFIED.
+// 48 s at 25 fps. VERIFIED (w47, OBJECT_OperateShrineActivate 0x581b00): the event is scheduled at
+// ResetMinutes*0x4b0+1 frames after the current frame. Whether the server frame is 40 ms (25 fps) or 50 ms
+// is not stated by the exe at this place, 25 is kept (the engine's frame rate).
 func (s Shrine) ResetSeconds() float64 { return float64(s.ResetFrames()) / FramesPerSecond }
 
 var shrineSounds = map[int]string{

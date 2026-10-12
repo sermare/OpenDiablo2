@@ -55,8 +55,11 @@ func ShrineState(s Shrine) (state int, stats *d2statlist.List, ok bool) {
 
 		l.Add(StatSkillArmorPct, 0, int64(s.Arg0))
 	case ShrineCombat:
-		// special function 0x5818b0 in the binary (not decoded): +Arg0% to hit
-		// and +Arg1% damage as the shrines.txt description says. UNVERIFIED stats.
+		// VERIFIED (special function 0x5818b0, w47): the exe adds two stats. Stat 19 (tohit, a flat value) gets Arg0
+		// percent of the hero's to-hit as derived at the moment of use (0x581740 with stat 0x13), and stat 25
+		// (damagepercent) gets Arg1. The engine models the first as +Arg0% of attack rating
+		// (item_tohit_percent, id 119): the same number while the derived value is the whole attack rating, but the
+		// exe fixes the amount when the shrine is used, the engine keeps it relative.
 		state = StateShrineCombat
 
 		l.Add(d2statlist.StatToHitPct, 0, int64(s.Arg0))
@@ -93,7 +96,10 @@ func ShrineState(s Shrine) (state int, stats *d2statlist.List, ok bool) {
 	case ShrineExperience:
 		state = StateShrineExp
 
-		// shrines.txt Arg0 is 0 here; the description says +50%. UNVERIFIED.
+		// VERIFIED (w47): the exe applies stat 85 through the generic function 0x581a10 with value Arg0 straight from
+		// shrines.txt (stat 85 is class 0 in the table at 0x581808: no scaling), and Arg0 of this row is 0, so the +50%
+		// of the description is NOT in the shrine's own stat list. UNVERIFIED where it comes from (the state 137 row
+		// of States.txt, not in the exe); 50 is kept because the shrine's text promises it.
 		l.Add(StatExperience, 0, 50)
 	default:
 		return 0, nil, false

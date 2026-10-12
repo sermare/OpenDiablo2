@@ -105,7 +105,7 @@ func (v *Game) beginActTravel(from, to int, via string, rule d2level.ActRule) er
 // when the rule allows the trip. The back-bound rows are in the static table.
 func (v *Game) withTravelRows(class int, rows []d2player.NPCMenuRow) []d2player.NPCMenuRow {
 	rule, ok := d2level.RuleForNPC(class)
-	if !ok || rule.Via != d2level.ViaNPC || rule.To < rule.From {
+	if !ok || rule.To < rule.From || (rule.Via != d2level.ViaNPC && !(rule.Via == d2level.ViaTalk && rule.Row != "")) {
 		return rows
 	}
 
@@ -114,8 +114,12 @@ func (v *Game) withTravelRows(class int, rows []d2player.NPCMenuRow) []d2player.
 	}
 
 	row := d2player.RowGoEast
-	if class == d2level.ClassMeshif1 {
+
+	switch class {
+	case d2level.ClassMeshif1:
 		row = d2player.RowSailEast
+	case d2level.ClassTyrael2:
+		row = d2player.RowTravelHarrogath
 	}
 
 	return append(append([]d2player.NPCMenuRow{}, rows...), row)
@@ -132,21 +136,36 @@ func (v *Game) travelFromNPC(npc d2interface.MapEntity, row d2player.NPCMenuRow)
 	v.gameControls.NPCMenu.Close()
 	v.npcTarget = nil
 
-	_ = v.travelToAct(rule.To, "npc")
-}
-
-// travelOnTalk is the effect of talking to Tyrael in the Pandemonium Fortress
-// once Diablo is dead (UNVERIFIED mechanism, see d2level/acttravel.go).
-func (v *Game) travelOnTalk(npc d2interface.MapEntity) {
-	rule, ok := d2level.RuleForNPC(v.npcClassID(npc))
-	if !ok || rule.Via != d2level.ViaTalk {
-		return
+	via := "npc"
+	if rule.Via == d2level.ViaTalk {
+		via = "talk" // Tyrael: the cinematic rule keys on it
 	}
 
-	v.gameControls.NPCMenu.Close()
-	v.npcTarget = nil
+	_ = v.travelToAct(rule.To, via)
+}
 
-	_ = v.travelToAct(rule.To, "talk")
+// commandNPCTravel is "npctravel <class>": the server NPC action no client menu sends (Cain in Harrogath, class 520:
+// level 0x67 without a quest test, VERIFIED 0x577b70).
+func (v *Game) commandNPCTravel(args []string) error {
+	class, err := strconv.Atoi(args[0])
+	if err != nil {
+		return fmt.Errorf("invalid class %q", args[0])
+	}
+
+	rule, ok := d2level.ServerTravel(class)
+	if !ok {
+		return fmt.Errorf("class %d has no server travel action", class)
+	}
+
+	if v.levelBusy() {
+		return fmt.Errorf("a level change is already running")
+	}
+
+	if from := v.currentAct(); from != rule.From {
+		return fmt.Errorf("the action is for act %d (hero in act %d)", rule.From, from)
+	}
+
+	return v.beginActTravel(rule.From, rule.To, "server", rule)
 }
 
 // logActArrival logs what the new act's town offers: NPCs, waypoint and stash
