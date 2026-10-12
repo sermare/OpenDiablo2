@@ -161,6 +161,11 @@ func (t *monsterTarget) CanConvert() bool {
 	// VERIFIED (w37, 0x5dc1e0): a unit holding state 0x36 (uninterruptable) is no candidate either
 	set := t.e.setOf(t.m.ID())
 
+	if t.e.asset != nil && t.e.asset.Records != nil &&
+		convertRefusedByClass(t.e.asset.Records.Monster.Stats, t.m.Stat.BaseKey, set.Active(t.e.frame, convertRefusedState)) {
+		return false // w44 VERIFIED 0x56c0a0: base class 0x1ec holding state 0x8f
+	}
+
 	return !set.Active(t.e.frame, "conversion") && !set.Active(t.e.frame, d2skill.StateUninterruptable)
 }
 
