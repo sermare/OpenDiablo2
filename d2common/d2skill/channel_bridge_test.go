@@ -17,14 +17,14 @@ func TestChannelBridge(t *testing.T) {
 	}
 
 	p.Start(u, id, tg)
-	p.channelDo(u) // until = frame + ChannelHoldFrames
+	p.channelDo(u) // until = frame + ChannelStartFrames (the first run's list)
 
 	frame = 3
 	if p.ChannelBridge(u, 0) {
 		t.Fatal("the list is alive: nothing to bridge")
 	}
 
-	frame = ChannelHoldFrames + 12 // one render frame covered 12 ticks: the list ended inside it
+	frame = ChannelStartFrames + 6 // one render frame covered 12 ticks: the list (ended at frame 20) ended inside it
 	if !p.ChannelBridge(u, frame-12) {
 		t.Fatal("the list ended inside the last render frame: bridge")
 	}
