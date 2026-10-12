@@ -514,15 +514,26 @@ func (g *GameControls) rollItemLoss(loc d2equip.Loc, why string, chance, roll in
 		return
 	}
 
-	eq := d2equip.Item{MaxDurability: maxDur, Durability: cur, Indestructible: it.IsIndestructible()}
+	eq := d2equip.Item{MaxDurability: maxDur, Durability: cur, Indestructible: it.IsIndestructible(), Weapon: why == "strike"}
 
-	dur, lost := d2equip.RollLoss(&eq, roll, chance)
-	if !lost {
+	qty := it.Quantity()
+
+	// ITEM_RollDurabilityLoss 0x557d90 (VERIFIED): weapons never get the broken flag; a throwing stack
+	// at its last point loses one piece and refills its durability.
+	res := d2equip.RollLossStack(&eq, qty, true, roll, chance)
+	if !res.Lost {
 		return
 	}
 
+	dur := res.Dur
+
 	it.SetDurability(dur)
-	g.Infof("DURABILITY %s item=%s slot=%s %d->%d/%d chance=%d", why, it.GetItemCode(), loc, cur, dur, maxDur, chance)
+
+	if res.Qty != qty {
+		it.SetQuantity(res.Qty)
+	}
+
+	g.Infof("DURABILITY %s item=%s slot=%s %d->%d/%d chance=%d qty=%d->%d refilled=%v", why, it.GetItemCode(), loc, cur, dur, maxDur, chance, qty, res.Qty, res.Refilled)
 
 	if dur == 0 {
 		g.Infof("DURABILITY broken item=%s slot=%s", it.GetItemCode(), loc)
