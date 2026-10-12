@@ -558,6 +558,9 @@ func NewRunner(steps []Step, host Host) *Runner {
 // Done reports whether the script has finished (including the final result line).
 func (r *Runner) Done() bool { return r.done }
 
+// AtEnd reports whether the last step of the script has started (or the script is done).
+func (r *Runner) AtEnd() bool { return r.done || r.next >= len(r.steps) }
+
 // Failed reports whether any step failed.
 func (r *Runner) Failed() bool { return r.failed }
 

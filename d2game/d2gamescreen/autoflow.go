@@ -31,6 +31,7 @@ import (
 //	difficulty:N                 difficulty select: 0 Normal, 1 Nightmare, 2 Hell
 //	gold:N                       in game: set the gold
 //	wait:Seconds                 in game: wait
+//	scriptdone                   in game: wait until OD2_AUTOSCRIPT (or OD2_AUTOSCRIPT_<n> of this game) is at its last step
 //	saveexit                     in game: Save and Exit (back to character select)
 //	exit                         anywhere: quit the program
 //	escmenu:Page                 in game: open the escape menu on a page (main, options, sound, video, automap, accessibility)
@@ -133,6 +134,17 @@ func autoFlowDone() {
 	autoFlow.waiting = 0
 }
 
+// autoFlowAbort drops the rest of the flow and ends it with an exit step.
+func autoFlowAbort() {
+	autoFlow.Lock()
+	defer autoFlow.Unlock()
+
+	autoFlow.steps = []string{"exit"}
+	autoFlow.index = 0
+	autoFlow.settle = 0
+	autoFlow.waiting = 0
+}
+
 // autoFlowWait implements wait:S: true once the seconds have passed.
 func autoFlowWait(elapsed float64, seconds string) bool {
 	secs, err := strconv.ParseFloat(seconds, 64)
@@ -180,6 +192,16 @@ func (v *CharacterSelect) advanceFlow(elapsed float64) {
 
 		if idx < 0 {
 			v.Warningf("AUTOFLOW %s: no character %q in the list", args[0], strings.Join(args[1:], ":"))
+
+			if args[0] == "select" {
+				// never carry on to "play": that would start whatever character the list selected by default,
+				// which may be a real hero of the player's (a w44 run once changed a Wine hero this way)
+				v.Errorf("AUTOFLOW select failed: quitting instead of playing another character")
+				autoFlowAbort()
+
+				return
+			}
+
 			autoFlowDone()
 
 			return
@@ -316,12 +338,18 @@ func (v *Game) advanceFlow(elapsed float64) {
 		return
 	}
 
-	args, ok := autoFlowNext(elapsed, "gold", "wait", "saveexit", "exit", "difficulty", "escmenu")
+	args, ok := autoFlowNext(elapsed, "gold", "wait", "saveexit", "exit", "difficulty", "escmenu", "scriptdone")
 	if !ok {
 		return
 	}
 
 	switch args[0] {
+	case "scriptdone":
+		// wait until OD2_AUTOSCRIPT[_n] has started its last step (end it with a long wait: the process exits
+		// when a script ends); 600 s at most
+		if v.autoScript == nil || v.autoScript.runner.AtEnd() || autoFlowWait(elapsed, "600") {
+			autoFlowDone()
+		}
 	case "escmenu":
 		autoFlowDone()
 

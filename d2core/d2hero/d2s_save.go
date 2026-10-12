@@ -1,10 +1,12 @@
 package d2hero
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -264,6 +266,9 @@ func SummarizeD2S(data []byte, tables *d2s.ItemTables) string {
 	skills := fmt.Sprintf("skills=left%d/right%d swap=%d/%d hotkeys=%v spent=%d unused=%d ", bar.Left.Skill, bar.Right.Skill,
 		bar.LeftSwap.Skill, bar.RightSwap.Skill, hotkeyIDs(bar), spent, a.UnusedSkillPoints)
 
+	skills += fmt.Sprintf("stashgold=%d belt=%d %s %s", a.StashedGold, countAt(c.Items, d2s.LocationBelt), itemFingerprint(c),
+		allDifficultiesSum(c.Body))
+
 	return fmt.Sprintf("name=%s class=%v level=%d exp=%d gold=%d str=%d dex=%d vit=%d ene=%d hp=%d mana=%d "+
 		"difficulty=%d act=%d seed=%d items=%d equipped=%v status=0x%X hardcore=%v died=%v corpse=%d "+
 		"%swaypoints=%#x %sact1quests=%s laterquests=%s checksum=ok",
@@ -326,4 +331,93 @@ func renameReplace(tmp, path string) error {
 	}
 
 	return err
+}
+
+func countAt(items []d2s.Item, location uint8) int {
+	n := 0
+
+	for i := range items {
+		if items[i].Location == location {
+			n++
+		}
+	}
+
+	return n
+}
+
+// itemFingerprint is "itemsum=<hex>" over everything the file says about the items of the hero, the corpse and the
+// mercenary (code, place, quality, level, durability, quantity, sockets, properties, children): two saves with the same
+// fingerprint hold the same items in the same places. The order of the items does not matter.
+func itemFingerprint(c *d2s.Character) string {
+	var lines []string
+
+	var add func(tag string, it *d2s.Item)
+
+	add = func(tag string, it *d2s.Item) {
+		props := make([]string, 0, len(it.Properties))
+		for _, p := range it.Properties {
+			props = append(props, fmt.Sprintf("%d/%d/%d", p.ID, p.Param, p.Value))
+		}
+
+		lines = append(lines, fmt.Sprintf("%s|%s|%x|%d|%d|%d|%d|%d|%d|q%d|l%d|d%d/%d|n%d|s%d|%v|f%x|%s", tag, it.Code, it.ID,
+			it.Location, it.Equipped, it.Page, it.X, it.Y, it.Version, it.Quality, it.Level, it.Durability, it.MaxDurability,
+			it.Quantity, it.TotalSockets, it.Ethereal, it.Flags, strings.Join(props, ",")))
+
+		for i := range it.Children {
+			add(tag+"+", &it.Children[i])
+		}
+	}
+
+	for i := range c.Items {
+		add("i", &c.Items[i])
+	}
+
+	for i := range c.Corpse {
+		add("c", &c.Corpse[i])
+	}
+
+	for i := range c.MercItems {
+		add("m", &c.MercItems[i])
+	}
+
+	sort.Strings(lines)
+
+	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
+
+	return fmt.Sprintf("itemsum=%x", sum[:5])
+}
+
+// allDifficultiesSum is "alldiff=n/h/e" with, per difficulty, the number of set quest bits and the waypoint mask,
+// and a short hash of the three quest records: a hero that played Normal, Nightmare and Hell must keep all three.
+func allDifficultiesSum(b *d2s.Body) string {
+	h := sha256.New()
+	parts := make([]string, 0, 3)
+
+	for d := 0; d < 3; d++ {
+		bits := 0
+		rec := b.QuestRecord(d)
+
+		for slot := 0; slot < d2s.QuestSlots; slot++ {
+			v := rec.Slot(slot)
+			bits += bitsSet(v)
+			fmt.Fprintf(h, "%d:%x,", slot, v)
+		}
+
+		fmt.Fprintf(h, "w%x;", b.Waypoints[d])
+		parts = append(parts, fmt.Sprintf("q%d/w%d", bits, bitsSet64(b.Waypoints[d])))
+	}
+
+	return fmt.Sprintf("alldiff=%s/%x", strings.Join(parts, ","), h.Sum(nil)[:4])
+}
+
+func bitsSet(v uint16) int { return bitsSet64(uint64(v)) }
+
+func bitsSet64(v uint64) int {
+	n := 0
+
+	for ; v != 0; v &= v - 1 {
+		n++
+	}
+
+	return n
 }

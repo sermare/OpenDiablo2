@@ -137,6 +137,8 @@ func CommitD2S(path string, data []byte, known string) (string, error) {
 	}
 	defer unlock()
 
+	removeStaleTemps(path)
+
 	cur, err := os.ReadFile(filepath.Clean(path))
 	exists := err == nil
 
@@ -178,6 +180,24 @@ func CommitD2S(path string, data []byte, known string) (string, error) {
 	}
 
 	return SumD2S(data), nil
+}
+
+// removeStaleTemps deletes the temp files that a writer of this save left behind when it was killed between creating
+// the temp file and renaming it (kill -9, power loss). Every writer of the save holds the save lock, and the caller
+// holds it now, so no temp file of this save belongs to a live writer.
+func removeStaleTemps(path string) {
+	dir, prefix := filepath.Dir(filepath.Clean(path)), "."+filepath.Base(path)
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+
+	for _, e := range entries {
+		if n := e.Name(); strings.HasPrefix(n, prefix) && strings.Contains(n, ".tmp") {
+			_ = os.Remove(filepath.Join(dir, n))
+		}
+	}
 }
 
 // NoteD2SOnDisk records that path holds data, for the last-writer check of the next save.
