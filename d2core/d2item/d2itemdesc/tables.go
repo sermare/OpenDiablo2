@@ -400,11 +400,19 @@ func (t *Tables) loadGems(tb *tsv) {
 
 func (t *Tables) loadAffixes(pre, suf, rpre, rsuf *tsv) {
 	load := func(tb *tsv) []AffixDef {
-		var out []AffixDef
+		// A save keeps the 1-based position of the affix among the rows the
+		// game loads. The "Expansion" separator row is not one of them
+		// (ITEM_WriteSavedItemProperties 0x630170 VERIFIED: the prefix id is the
+		// position in the game's combined affix table minus the suffix rows, and
+		// that table has no separator rows; the diablo2item tests compare every
+		// row with the item creator's table). Blank rows count; index 0 is "none".
+		out := []AffixDef{{}}
 
-		// blank rows count: the save stores the row number (verified
-		// against the sample save by the d2hero importer)
 		for _, r := range tb.rows {
+			if strings.EqualFold(tb.str(r, "Name"), "Expansion") {
+				continue
+			}
+
 			out = append(out, AffixDef{Name: tb.str(r, "Name"), LevelReq: tb.num(r, "levelreq")})
 		}
 
