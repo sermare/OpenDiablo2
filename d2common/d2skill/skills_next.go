@@ -290,6 +290,10 @@ func doSmiteFn(c *cast) {
 				return int32(c.u.Stat("damagepercent"))
 			}
 
+			if stat == 0x6f { // the roll adds item_normaldamage to both ends (0x579120)
+				return normalDamageFlat(c.u)
+			}
+
 			return 0
 		},
 		Weapon: true, Min: lo8, Max: hi8, PctAdd: int32(c.calc(1)), Scale: 0x80,

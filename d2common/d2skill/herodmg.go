@@ -52,3 +52,9 @@ func meleeBonusPct(u Unit) int {
 
 	return 0
 }
+
+// normalDamageFlat is the unit's item_normaldamage (stat 0x6f, the "+N to damage" property), which the weapon
+// hit roll COMBAT_RollPhysicalDamage (0x579120, VERIFIED wave 46) adds to both ends of the range before the
+// percent pool. It is read by that roll only: MISSILE_BuildDamageDescriptor (0x64ca60) and the thrown weapon
+// description (0x4e7470) never read stat 0x6f, so missiles and thrown weapons ignore it (VERIFIED wave 46).
+func normalDamageFlat(u Unit) int32 { return int32(u.Stat("item_normaldamage")) }

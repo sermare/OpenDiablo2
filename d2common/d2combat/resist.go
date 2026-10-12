@@ -11,6 +11,12 @@ const (
 	ClassicHellPenalty      = -50
 )
 
+// The branch (COMBAT_GetEffectiveResist 0x579b10, VERIFIED wave 46): when the game record's word at +0x70 is zero the
+// penalty is hardcoded by the difficulty byte at +0x6d (1: -20, 2: -50); otherwise the DifficultyLevels row's
+// ResistPenalty is added. The byte at 0x79857c is NOT that selector: it is the client's game flags byte (packet 0x01,
+// CLIENT_SetGameFlagsByte 0x4491f0) the interface reads for panel layouts. UNVERIFIED: which writer fills +0x70;
+// the port keys the choice on the game's expansion flag (Classic = !Expansion).
+//
 // ClassicResistPenalty returns the classic-mode difficulty penalty for a
 // difficulty byte (0 normal, 1 nightmare, 2 hell). LoD reads the penalty
 // from DifficultyLevels.txt instead (-40/-100) and passes it directly.

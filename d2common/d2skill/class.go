@@ -307,7 +307,10 @@ func (p *Pipeline) strike(u Unit, sk *Skill, lvl int, t d2missile.Target, env *E
 		dmg.Physical = int32(k/4) << 8
 	} else {
 		wmin, wmax := u.WeaponDamage()
-		lo, hi := int32(wmin)<<8, int32(wmax)<<8
+		// COMBAT_RollPhysicalDamage 0x579120 (VERIFIED wave 46): STATS_GetUnitFullStat(unit, 0x6f), the "+N to
+		// damage" property (item_normaldamage), is added to both ends BEFORE the 1 / min+1 floors and the percent.
+		flat := normalDamageFlat(u)
+		lo, hi := (int32(wmin)+flat)<<8, (int32(wmax)+flat)<<8
 
 		if lo < 1<<8 {
 			lo = 1 << 8
