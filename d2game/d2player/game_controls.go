@@ -1213,8 +1213,8 @@ func (g *GameControls) logPanel(name string) {
 		g.Infof("PANEL skills: %s", g.skilltree.Summary())
 		g.Infof("PANEL skills active: left=%s right=%s", skillLabel(g.hero.LeftSkill), skillLabel(g.hero.RightSkill))
 	case "inventory":
-		g.Infof("PANEL inventory: gold=%d items=%d worn=[%s] equipment=[%s]", g.inventory.Gold(),
-			len(g.inventory.grid.items), g.inventory.EquippedSummary(), g.equipmentSummary())
+		g.Infof("PANEL inventory: gold=%d items=%d worn=[%s] equipment=[%s] ammo=%d", g.inventory.Gold(),
+			len(g.inventory.grid.items), g.inventory.EquippedSummary(), g.equipmentSummary(), g.AmmoLeft())
 	}
 }
 
@@ -1249,7 +1249,7 @@ func skillLabel(s *d2hero.HeroSkill) string {
 		return "none"
 	}
 
-	return fmt.Sprintf("%s(id=%d,lvl=%d)", s.Skill, s.ID, s.SkillPoints)
+	return fmt.Sprintf("%s(id=%d,lvl=%d)", s.Skill, s.ID, s.SkillPoints+s.ItemLevel)
 }
 
 func (g *GameControls) equipmentSummary() string { return g.hero.Equipment.Describe() }

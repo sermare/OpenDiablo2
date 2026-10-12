@@ -116,6 +116,11 @@ type Item struct {
 	CubeMods    []ExtraMod // properties a cube recipe attached
 	Crafted     bool       // quality "crafted" (cube recipes)
 
+	// Starter marks an item the class handed out to a new hero (item flag 0x20000); StartSkill is the skill id it gives
+	// +1 to (the Sorceress' staff: Fire Bolt), 0 for none. The game keeps both so the item is saved with them.
+	Starter    bool
+	StartSkill int
+
 	// origin is the item as a .d2s save held it (see SetOrigin).
 	origin *d2s.Item
 	// flagSet / flagClear: item flag bits changed at run time (break / restore), see item_flags.go.

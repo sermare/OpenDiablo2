@@ -76,6 +76,7 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 		state.Stats.NextLevelExp = f.asset.Records.GetExperienceBreakpoint(hero, state.Stats.Level)
 		state.Containers = f.StartingContainers(hero)
 		f.wearStartingEquipment(state, hero)
+		f.startSkillRight(state, hero)
 
 		return state, nil
 	}
@@ -98,15 +99,19 @@ func (f *HeroStateFactory) ImportD2S(data []byte) (*HeroState, error) {
 		fmt.Printf("stash import: %s: added=%d skipped=%d err=%v\n", filepath.Base(path), added, len(skipped), err)
 	}
 
-	f.giveStartingItemsToFreshHero(state, hero)
+	fresh := f.giveStartingItemsToFreshHero(state, hero)
 
 	if err := f.applyD2SSkills(state, hero, body.SkillPoints); err != nil {
 		return nil, err
 	}
 
+	f.RecalcStats(state)
 	applyD2SSkillBar(state, header)
 
-	f.RecalcStats(state)
+	if fresh {
+		f.startSkillRight(state, hero)
+	}
+
 	state.Stats.FinalizeLoadedVitals()
 	fmt.Printf("stats: %s %s\n", state.HeroName, StatsSummary(state.Stats))
 
@@ -311,8 +316,10 @@ func applyD2SSkillBar(state *HeroState, header *d2s.Header) {
 	bar := SkillBarFromBlock(header.SkillBlock())
 	state.SkillBar = bar
 
+	// a skill the hero has points in, or one its items give (the Sorceress' staff gives Fire Bolt before she learned it)
 	has := func(id int) int {
-		if s := state.Skills[id]; s != nil && s.SkillPoints > 0 {
+		if s := state.Skills[id]; s != nil && (s.SkillPoints > 0 || (state.Stats != nil && state.Stats.Totals != nil &&
+			state.Stats.Totals.SingleSkillBonus(id) > 0)) {
 			return id
 		}
 

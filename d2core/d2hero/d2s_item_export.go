@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2fileformats/d2s"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/diablo2item"
 )
 
@@ -115,6 +116,12 @@ func D2SItemFromStored(s *StoredItem, tables *d2s.ItemTables, ids *AffixIDs) (it
 	stats = append(stats, f.SetItem...)
 
 	it.Properties, dropped = propertiesFromStats(stats, tables)
+	it.Starter = s.Starter
+
+	if s.StartSkill > 0 {
+		// +1 to the start skill (stat 107 item_singleskill, parameter = skill id)
+		it.Properties = append(it.Properties, d2s.Property{ID: d2statlist.StatSingleSkill, Param: uint32(s.StartSkill), Value: 1})
+	}
 
 	built, err := d2s.NewItem(it, tables)
 	if err != nil {

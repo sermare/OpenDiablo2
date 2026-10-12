@@ -11,7 +11,11 @@ type HeroSkill struct {
 	*d2records.SkillRecord
 	*d2records.SkillDescriptionRecord
 	SkillPoints int
-	Shallow     *shallowHeroSkill
+	// ItemLevel is the level the hero's items give this skill on their own (stat 107 item_singleskill, 97 oskill: the
+	// Sorceress' staff gives Fire Bolt before she has a point in it). Such a skill can be selected like a learned one;
+	// +all skills, +class and +tab bonuses only raise skills that have points. Set by RecalcStats, not stored.
+	ItemLevel int
+	Shallow   *shallowHeroSkill
 }
 
 // An auxiliary struct which only stores the ID of the SkillRecord, instead of the whole SkillRecord
@@ -19,6 +23,8 @@ type HeroSkill struct {
 type shallowHeroSkill struct {
 	SkillID     int `json:"skillId"`
 	SkillPoints int `json:"skillPoints"`
+	// ItemLevel travels with the skill (the game client builds its hero from a packet): see HeroSkill.ItemLevel
+	ItemLevel int `json:"itemLevel,omitempty"`
 }
 
 // MarshalJSON overrides the default logic used when the HeroSkill is serialized to a byte array.
@@ -27,7 +33,7 @@ func (hs *HeroSkill) MarshalJSON() ([]byte, error) {
 	// (the live points win: some code adds points without touching Shallow)
 	shallow := hs.Shallow
 	if hs.SkillRecord != nil {
-		shallow = &shallowHeroSkill{SkillID: hs.SkillRecord.ID, SkillPoints: hs.SkillPoints}
+		shallow = &shallowHeroSkill{SkillID: hs.SkillRecord.ID, SkillPoints: hs.SkillPoints, ItemLevel: hs.ItemLevel}
 	}
 
 	bytes, err := json.Marshal(shallow)

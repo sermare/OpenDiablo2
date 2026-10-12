@@ -198,7 +198,7 @@ func (b *SkillBar) SwapSets() {
 // passive; the left button also needs skills.txt "leftskill". (The original's
 // server checks the same on C2S 0x3C; single player calls this directly.)
 func Selectable(s *HeroSkill, left bool) bool {
-	if s == nil || s.SkillRecord == nil || s.SkillPoints < 1 || s.Passive {
+	if s == nil || s.SkillRecord == nil || (s.SkillPoints < 1 && s.ItemLevel < 1) || s.Passive {
 		return false
 	}
 

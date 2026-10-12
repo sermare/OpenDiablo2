@@ -267,3 +267,69 @@ func TestStarterWornSurvivesSave(t *testing.T) {
 		t.Errorf("a second save of the same hero changed the file (%d -> %d bytes)", len(out), len(again))
 	}
 }
+
+// TestStarterSkillSurvivesSave: the Sorceress' short staff gives +1 to Fire Bolt (stat 107, parameter 36) and is flagged
+// as a starter item; both are written to the .d2s and read back (PLAYER_CreateStartingItem 0x5326c0 / 0x5327a0).
+func TestStarterSkillSurvivesSave(t *testing.T) {
+	_, tables, _ := realSave(t)
+
+	data, err := d2s.NewCharacter("Sorcy", d2s.Sorceress, d2s.NewCharacterFlags{Expansion: true, Created: time.Unix(1700000000, 0)},
+		d2s.DefaultAppearance(d2s.Sorceress))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	kit := startingKitStacks([]string{"sst", "hp1", "tsc"}, []string{"rarm", "", ""}, []int{1, 1, 1},
+		func(string) (int, bool) { return 1, true }, nil, 36)
+	kit.Equipped[0].Facts = &diablo2item.ItemFacts{Durability: 20, MaxDurability: 20}
+	kit.Items[0].Facts, kit.Items[1].Facts = &diablo2item.ItemFacts{}, &diablo2item.ItemFacts{}
+
+	state := &HeroState{HeroName: "Sorcy", Act: 1, D2SBase: data, Containers: kit, Stats: &HeroStatsState{
+		Level: 1, Strength: 10, Dexterity: 25, Vitality: 10, Energy: 35, Health: 40, MaxHealth: 40, Mana: 35, MaxMana: 35, MaxStamina: 74,
+	}}
+
+	out, warnings, err := ExportD2SWithOptions(state, data, tables, ExportOptions{Affixes: &AffixIDs{}, Known: func(string) bool { return true }})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, w := range warnings {
+		t.Errorf("warning: %s", w)
+	}
+
+	back, err := d2s.Parse(out, tables)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	found := false
+
+	for i := range back.Items {
+		it := &back.Items[i]
+		if it.Location != d2s.LocationEquipped || strings.TrimSpace(it.Code) != "sst" {
+			continue
+		}
+
+		found = true
+
+		if !it.Starter {
+			t.Error("the starting staff is not flagged as a starter item")
+		}
+
+		skill := false
+
+		for _, p := range it.Properties {
+			if p.ID == 107 && p.Param == 36 && p.Value == 1 {
+				skill = true
+			}
+		}
+
+		if !skill {
+			t.Errorf("no +1 Fire Bolt on the staff: %+v", it.Properties)
+		}
+	}
+
+	if !found {
+		t.Fatal("the staff is not in the file")
+	}
+}

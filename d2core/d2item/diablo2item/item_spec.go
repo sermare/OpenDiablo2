@@ -48,6 +48,9 @@ type Spec struct {
 	Runeword    string
 	CubeMods    []ExtraMod
 	Crafted     bool
+	// Starter and StartSkill: see Item.Starter.
+	Starter    bool
+	StartSkill int
 
 	// Personal is the name Anya's reward personalized the item with.
 	Personal string
@@ -95,6 +98,8 @@ func (i *Item) Spec() Spec {
 		Runeword:    i.Runeword,
 		CubeMods:    append([]ExtraMod(nil), i.CubeMods...),
 		Crafted:     i.Crafted,
+		Starter:     i.Starter,
+		StartSkill:  i.StartSkill,
 		Rolled:      i.rolled,
 		Ear:         i.ear,
 	}
@@ -178,6 +183,8 @@ func (f *ItemFactory) ItemFromSpec(s Spec) (*Item, error) {
 		Runeword:    s.Runeword,
 		CubeMods:    append([]ExtraMod(nil), s.CubeMods...),
 		Crafted:     s.Crafted,
+		Starter:     s.Starter,
+		StartSkill:  s.StartSkill,
 		ear:         s.Ear,
 	}
 	// nolint:gosec // not concerned with crypto-strong randomness

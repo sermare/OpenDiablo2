@@ -286,10 +286,11 @@ func (f *HeroStateFactory) CreateHeroSkillsState(classStats *d2records.CharStatR
 
 	baseSkills[skillRecord.ID] = skillRecord
 
-	// the class's start skill (CharStats StartSkill; the new Sorceress throws Fire Bolt)
-	if name := startSkillName(classStats, heroType); name != "" {
-		if skill, err := f.CreateHeroSkill(1, name); err == nil {
-			if have, ok := baseSkills[skill.ID]; !ok || have.SkillPoints < 1 {
+	// the class's start skill (CharStats StartSkill) is not a skill point: the exe gives it as +1 on the first starting
+	// item (StoredItem.StartSkill) and puts it on the right button; the skill itself exists at level 0
+	if id := f.startSkillID(classStats, heroType); id > 0 {
+		if _, ok := baseSkills[id]; !ok {
+			if skill, err := f.CreateHeroSkill(0, f.asset.Records.Skill.Details[id].Skill); err == nil {
 				baseSkills[skill.ID] = skill
 			}
 		}
@@ -473,10 +474,12 @@ func (f *HeroStateFactory) DeleteHero(state *HeroState) error {
 }
 
 // startSkillName is the skill a new hero begins with: the StartSkill column of
-// CharStats when it names a skill, else the Sorceress's Fire Bolt. UNVERIFIED:
-// how the exe turns StartSkill (a property key in the table) into a skill is not
-// recorded, so a value that is not a skill name is ignored and only the Sorceress
-// gets the documented default.
+// CharStats when it names a skill ("fire bolt" for the Sorceress, "raise skeleton"
+// for the Necromancer; the other classes leave it empty). VERIFIED in the exe:
+// SERVER_CreateFreshPlayer 0x52ff20 / SERVER_CreateNewCharFromHeader 0x567c30 select
+// wStartSkill on the RIGHT hand (SERVER_SetPlayerActiveSkill 0x56e070 hand 0) of a hero
+// that enters act 0 when it is not 0, and PLAYER_CreateStartingItem 0x5326c0 gives it as +1
+// (stat 107) to the first starting item. A blank column falls back to the Sorceress's Fire Bolt.
 func startSkillName(classStats *d2records.CharStatRecord, heroType d2enum.Hero) string {
 	if classStats != nil {
 		if n := strings.TrimSpace(classStats.StartSkillBonus); n != "" && !strings.EqualFold(n, "Attack") {
@@ -489,4 +492,21 @@ func startSkillName(classStats *d2records.CharStatRecord, heroType d2enum.Hero) 
 	}
 
 	return ""
+}
+
+// startSkillID is the skills.txt id of the class' start skill (the column is matched
+// ignoring case: CharStats says "fire bolt", skills.txt "Fire Bolt"), 0 for none.
+func (f *HeroStateFactory) startSkillID(classStats *d2records.CharStatRecord, heroType d2enum.Hero) int {
+	name := startSkillName(classStats, heroType)
+	if name == "" {
+		return 0
+	}
+
+	for id, rec := range f.asset.Records.Skill.Details {
+		if strings.EqualFold(rec.Skill, name) {
+			return id
+		}
+	}
+
+	return 0
 }

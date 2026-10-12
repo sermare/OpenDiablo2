@@ -17,8 +17,18 @@ import (
 // the hero file and a .d2s import hold) with the inventory grid, the stash, the
 // cube and the belt.
 
-// realiseStored builds the item a stored entry describes.
+// realiseStored builds the item a stored entry describes. A starting item of the class keeps its starter flag and its
+// start skill bonus (they are saved with the item).
 func realiseStored(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2item.Item, error) {
+	item, err := realiseStoredItem(f, s)
+	if item != nil {
+		item.Starter, item.StartSkill = s.Starter, s.StartSkill
+	}
+
+	return item, err
+}
+
+func realiseStoredItem(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diablo2item.Item, error) {
 	spec := diablo2item.Spec{
 		Code: s.Code, Quality: s.Quality, ILvl: s.ILvl, Seed: s.Seed,
 		Unique: s.Unique, SetItem: s.SetItem, Set: s.Set, Prefixes: s.Prefixes, Suffixes: s.Suffixes,
@@ -75,6 +85,8 @@ func storedFromItem(it *diablo2item.Item, page, x, y int, orig *d2s.Item) d2hero
 		Identified: spec.Identified, Ethereal: spec.Ethereal, Quantity: spec.Quantity,
 		Sockets: spec.Sockets, MaxDurability: spec.MaxDurability, Personal: spec.Personal,
 		D2S: orig,
+
+		Starter: spec.Starter, StartSkill: spec.StartSkill,
 
 		Socketed: spec.SocketCodes, Runeword: spec.Runeword, Crafted: spec.Crafted,
 	}

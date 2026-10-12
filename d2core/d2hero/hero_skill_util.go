@@ -18,6 +18,7 @@ func HydrateSkills(skills map[int]*HeroSkill, asset *d2asset.AssetManager) {
 
 		if skill.Shallow != nil {
 			skill.SkillPoints = skill.Shallow.SkillPoints
+			skill.ItemLevel = skill.Shallow.ItemLevel
 		}
 	}
 }
