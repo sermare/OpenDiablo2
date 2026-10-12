@@ -273,7 +273,10 @@ func (g *GameControls) autoKeys() (bool, string) {
 	prev := g.cubePortal
 	g.cubePortal = func(kind string) error { portal = kind; return nil }
 
-	defer func() { g.cubePortal = prev }()
+	prevCheck := g.cubePortalCheck
+	g.cubePortalCheck = nil // the scripted run stands wherever the hero stands
+
+	defer func() { g.cubePortal, g.cubePortalCheck = prev, prevCheck }()
 
 	items := make([]*diablo2item.Item, 0, 3)
 

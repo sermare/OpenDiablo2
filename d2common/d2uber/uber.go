@@ -31,6 +31,7 @@
 package d2uber
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2boss"
@@ -146,6 +147,43 @@ type Event struct {
 	finished    bool
 	// PortalsOpened counts the portals the cube opened.
 	PortalsOpened int
+	// ExeStub makes the cube portals behave as in Game.exe 1.14b (wave 45, VERIFIED): the cube output functions
+	// of "Pandemonium Portal" and "Pandemonium Finale Portal" (0x563880 -> 0x591fd0, 0x563890 -> 0x591fe0) are
+	// bare "return 0", no caller of the portal factory 0x56ae80 names levels 133..136, so in that binary the
+	// recipes fail and keep their inputs. Off by default: the event is kept playable.
+	ExeStub bool
+}
+
+// ErrExeStub is the failure of a Pandemonium recipe when ExeStub is set.
+var ErrExeStub = errors.New("the exe's cube output function for this portal is a stub that returns 0")
+
+// Check says whether the cube may make the portal of a recipe now. A failed check leaves the cube's items alone,
+// as the exe does when its output function returns 0 (CUBE_ServerCreateRecipeOutputs 0x5638a0 only consumes the
+// inputs when an output was made).
+func (e *Event) Check(portal string) error {
+	switch portal {
+	case PortalPandemonium, PortalFinale:
+	default:
+		return nil
+	}
+
+	if e.ExeStub {
+		return ErrExeStub
+	}
+
+	if ok, why := e.allowed(); !ok {
+		return errors.New(why)
+	}
+
+	if portal == PortalPandemonium && e.opened[0] && e.opened[1] && e.opened[2] {
+		return errors.New("all three area portals were opened in this game")
+	}
+
+	if portal == PortalFinale && e.finaleOpened {
+		return errors.New("the Tristram portal was opened in this game")
+	}
+
+	return nil
 }
 
 // New creates the event and registers it with the manager.

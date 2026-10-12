@@ -26,6 +26,10 @@ func init() {
 	registerThink2("BatDemon", thinkBatDemon2)
 	registerThink2("Diablo", thinkAnchorKeepingThink2)
 	registerThink2("BaalCrab", thinkAnchorKeepingThink2)
+	// wave 45: the AI table rows of UberDiablo and UberBaal (Game.exe 0x739c08) name the same second think
+	// functions (0x5e7370, 0x5fc150) next to their bare-return first think; UberMephisto and UberIzual have none.
+	registerThink2("UberDiablo", thinkAnchorKeepingThink2)
+	registerThink2("UberBaal", thinkAnchorKeepingThink2)
 	registerThink2("FetishShaman", thinkClearInfernoThink2)
 	registerThink2("Hireable", thinkClearInfernoThink2)
 	registerThink2("SandMaggot", thinkSandMaggot2)
