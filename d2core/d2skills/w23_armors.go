@@ -17,8 +17,11 @@ import (
 //     level of the skill) and flag 0x20 (no further events). The handler returns at once when the
 //     struct passed by the event has a physical part below 1.
 //   - Chilling Armor, hitbymissile -> handler 1 (0x5c8d00): a hostile missile whose record has the
-//     bits4 & 0x200 flag (read as ReturnFire, UNVERIFIED mapping) makes the wearer fire srvmissilea
-//     (chillingarmorbolt) at the missile's owner.
+//     bits4 & 0x200 flag makes the wearer fire srvmissilea (chillingarmorbolt) at the missile's owner.
+//     Wave 44 re-read 0x5c8d00: the flag is the missiles.txt ReturnFire column (bit 9 of the record flag word
+//     filled by the loader 0x664230, VERIFIED in w37), the missile's owner (UNIT_FindOwnerUnitIfFlagged) must be
+//     hostile to the wearer, a negative level argument becomes 1, and the bolt is created with kind 0x20 aimed
+//     at the owner's position.
 //   - Shiver Armor, attackedinmelee -> handler 3 (0x5c8f20): applies the skill's own elemental damage
 //     to the attacker. The event fires from COMBAT_BuildAttackerDamage (0x5794e0) only when the
 //     attacker is a player or a hireling, so ordinary monsters never trigger it; the monster path of
