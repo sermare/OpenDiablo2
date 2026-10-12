@@ -1,183 +1,183 @@
 {
-  "updated": "2026-10-10",
-  "title": "Native macOS Diablo II — progress",
-  "subtitle": "driven by Claude · counts come from code, tests and Ghidra; estimates are marked with ~ · dashed = on branches, not yet verified",
-  "bars": [
-    {
-      "label": "Game.exe functions named in Ghidra",
-      "done": 11257,
-      "total": 11257,
-      "note": "original 1.14b binary; re-queried live from Ghidra (all 11,257 named; the last 22 Warden and module-loader functions were named 2026-10-09, a few names marked unverified)",
-      "color": "#7c5cff"
-    },
-    {
-      "label": "Hedged exe names re-verified against the decompile",
-      "done": 1633,
-      "total": 1633,
-      "pending": 0,
-      "note": "every hedged row now has a verdict; batch 4 (final) examined 173 table rows: 112 confirmed, 47 corrected in Ghidra, 14 unclear and still marked unverified; earlier batches 1-3 as before (~ estimate of the total)",
-      "color": "#8f7cff"
-    },
-    {
-      "label": "Original source files indexed",
-      "done": 277,
-      "total": 277,
-      "note": "every assert-string path mapped to modules and functions",
-      "color": "#2fb67c"
-    },
-    {
-      "label": "Source files studied in depth",
-      "done": 277,
-      "total": 277,
-      "note": "last 37 (batches 11-13): gameplay files read, infrastructure and graphics backends only function-mapped; NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
-      "color": "#2f9bff"
-    },
-    {
-      "label": "Level generator proven equal to the real game",
-      "done": 8768,
-      "total": 8768,
-      "note": "mazes, Act 1-5 outdoors and presets all match the emulator record for record (427 levels, 30,129 rooms, 0 mismatches), including the seven preset levels and exact maze tiles; landed",
-      "color": "#22c1c3",
-      "pending": 0
-    },
-    {
-      "label": "Real .d2s save: read and write verified",
-      "done": 10,
-      "total": 10,
-      "note": "all 10 sections read and written back byte-for-byte; golem section ('kf', every expansion class) checked against the exe writer and reader",
-      "color": "#f2a81d"
-    },
-    {
-      "label": "NPC interaction features",
-      "done": 8,
-      "total": 8,
-      "note": "click-walk · greeting · menu · return greeting · vendors · gamble · identify · mercenary hire · quest dialogue ✓ (Act 1)",
-      "color": "#ef5da8"
-    },
-    {
-      "label": "Acts playable end to end (scripted play)",
-      "done": 5,
-      "total": 5,
-      "pending": 0,
-      "note": "Acts 1, 2, 3, 4 and 5 each pass a scripted real-combat playthrough on the landed tree (2e50f0e4): Act 1 752 s, Act 2 484 s, Act 3 874 s, Act 4 and the start of Act 5 in the full verify, Act 5 caves 574 s",
-      "color": "#ff7a45"
-    },
-    {
-      "label": "Levels walked by a verify scenario",
-      "done": 116,
-      "total": 136,
-      "pending": 0,
-      "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); includes the whole Act 3 chain (Travincal, Council, Durance, Mephisto, red portal); the 9s-walk scenarios add 64 (the w23 ones: Stony Field to Tamoe Highland, Tristram, Moo Moo Farm, Tal Rasha tombs 1-7, Spider Cave, Swampy Pit 2-3, Flayer Dungeon 2-3, Worldstone Chamber, Pandemonium 1-3, Uber Tristram, Hell 1-3 rows; the older ones: Act 1 caves, Burial Grounds, Crypt, Mausoleum, Forgotten Tower and Cellars, Monastery to Catacombs 2, Act 2 Palace Cellar 2 / Stony Tombs / Halls 3, Act 3 temples, Act 5 ice caves and Nihlathak temple chain)",
-      "color": "#ff9f43"
-    },
-    {
-      "label": "Main quests with logic implemented",
-      "done": 27,
-      "total": 27,
-      "pending": 0,
-      "note": "all 27 main quests: states, triggers, rewards (Act 1, Radament and nine more driven in scenarios); level quest gates now enforced in the engine (Canyon, tombs, Palace, Durance, Worldstone levels)",
-      "color": "#e86fa6"
-    },
-    {
-      "label": "Player skills with engine behaviour",
-      "done": 177,
-      "total": 210,
-      "pending": 0,
-      "note": "wave 22 (branch feat/w22-skills-b, count unchanged: these skills already ran): Shock Wave fan is now the exe geometry (0x5d9fe0 with the helpers 0x56b0e0 / 0x56b120) and counts as fully simulated; Molten Boulder knockback (SrvDmgFunc 14) and the monstats2 small / large class bits, Holy Freeze slow clamp by monster cold effect (0x5cd240), Conversion type filter (switchai, not boss, walk mode), Grim Ward start missile by corpse size, Whirlwind base walk speed and refused state, Charge velocity formula read; Eruption crack, Volcano and Fist of the Heavens re-read (no server side gaps beyond the Size footprint); wave 20 Druid (branch feat/w20-skills-druid, +6): path type 10 is PATH_ApplyDirectionStepVelocity 0x67d160 (Firestorm, Twister, Tornado wobble along the 8-way heading), Vine Attack under the target with the vine trail missiles (SrvDoFunc 26, hit 50) for the Plague Poppy, Cycle of Life and Vines restore life / mana through the recycler delay missiles (SrvDoFunc 29 / 33); skills batch 9 (branch feat/skills-ai-9, +3): Armageddon follows the state active function 0x5c65b0 (Param4 period, five square-random tries, armageddoncontrol rocks), Hurricane the sibling 0x5c63f0, Blood Golem shares damage with its owner (Param5) and healing with the golem (Param6); Firestorm and Twister cast structure read (not counted: the path-type-10 stepper is decoded but its heading offset is open); skills batch 5 (branch feat/skills-5, +5): Raise Skeletal Mage shoots its missile, Iron Golem takes a ground item target (golem stands at the item, item consumed), Oak Sage / Heart of Wolverine / Spirit of Barbs reach minions and the mercenary through the exe target filter (all filter bits decoded), summon level formula for skeletons and golems, corpse rules; skills batch 4 (branch feat/skills-4, +6): Thunder Storm rotates through the targets, Leap (circle at the landing) and Dragon Flight (lands on the target) confirmed against the exe, Bone Prison 12-cell ring, Poison Explosion eight stationary clouds, Blessed Hammer spiral path plus Concentration scale; Static Field callback re-read (floor is a gate); earlier: 150 of 210 player skills have engine behaviour:Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry); skills batch 3 (branch feat/skills-3): Feral Rage and Maul stack by count, Wearwolf and Wearbear toggle, Leap Attack single victim, Dragon Claw and Dragon Tail follow the exe (+7); Leap, Dragon Flight, Thunder Storm, Conversion and the three totem auras re-read and corrected but still partial",
-      "color": "#5fd0a5"
-    },
-    {
-      "label": "Monster AI archetypes implemented",
-      "done": 145,
-      "total": 148,
-      "pending": 0,
-      "note": "monai.txt entries with a Go think function (about 60 are stand-ins)",
-      "color": "#4aa8ff"
-    },
-    {
-      "label": "Monster AI archetypes ported faithfully",
-      "done": 134,
-      "total": 148,
-      "pending": 0,
-      "note": "~133 (estimate): wave 20 (branch feat/w20-ai-act5) counted the five Baal encounter AIs (throne, taunt, to-stairs, crab, crab clone) after comparing them with the exe and re-fixed Ancient and MinionSpawner, uber trio verified as bare returns; batch 9 (branch feat/skills-ai-9) counted none new but hosted the missing pieces of already-counted handlers: Siege Tower / Siege Beast scan 0x5e05a0 and target store, Regurgitator filter (soft corpses), Zakarum Zealot fear gate (Act III + Blackened Temple quest bit), Diablo player-count output; Fallen Shaman scan read in part; batch 8 (branch feat/ai-faithful-8) compared 40 more handlers with the exe and counts 11 newly faithful: GreaterMummy (corpse/wound scan 0x5f1a00 decoded), Vampire, ZakarumPriest (teleport past the target), SandMaggot (rewritten), OblivionKnight, Overseer, PutridDefiler, ShadowWarrior (aip8 Hell column), MaggotEgg, BloodLord, FrozenHorror (cast gate is distance below skill level); also wired the scans 0x5eeb80, 0x5f9fb0, 0x5e1570 and the Priest ally filter, unit states and stats, the wisp blessing (timed Magic Find on the hero) and MONAI_WalkAwayFromTarget speed reset; still missing: the Shadow Master feed, Zealot fear gate, Regurgitator and Siege target filters; earlier: batch 7batch 7 (branch feat/ai-faithful-7) re-read 28 ground, melee, ranged and caster handlers against the exe and corrected 12 (Fallen, Brute, Scarab, SkeletonMage, Fetish, FetishShaman, BatDemon, Megademon, Succubus, AbyssKnight, Bighead, CorruptRogue; 12 newly counted) and wired FB1Unit, AuraStateSource and LineChecker in the game host; the WispBlesser, Shadow Master feed and PlayerScaler hosts are still missing; batch 6 (branch feat/skills-ai-6) ported the WillOWisp dance (states 4-6) and the Mephisto phase bodies from the exe (2 newly counted); the Shadow Master scoring and candidate stack are ported too but no game host feeds them yet, so it is not counted; Overseer got its quest hook; batch 5 closed the documented gaps of Diablo, Vulture, BloodRaven, Nihlathak, UberIzual and made UberDiablo and UberMephisto the exe-faithful stops (7 newly counted; Izual, Summoner, Duriel, Andariel and Smith were re-read and only got hooks, not counted again); batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
-      "color": "#6c8cff"
-    },
-    {
-      "label": "In-game UI panels matching the original layout",
-      "done": 13,
-      "total": 14,
-      "pending": 0,
-      "note": "wave 23: skill tree layout now pure and golden tested from the exe (close button table 0x723eac, icon grid, tab title lines per class, points anchor; checked in the running window by 9f-ui-layout), escape menu option pages (sound, video, automap: pitch 45, strip 34, pentagram 49) read from the descriptors and planned by pure functions but the Go rows still come from the gui layout (pentagram placement opt-in), quest description wraps at 270 px; 8 of 14 panels checked in a real game window against the original numbers (163 rectangles, 0 deviating, scenario 9f-ui-layout, now with the waypoint row boxes from the exe table); 4 more (party screen rows, mercenary panel, help screen, move-gold dialog) have layouts read from the exe and unit tested against golden numbers, not yet seen in a running window; the NPC menu geometry has a pure tested function; one panel still unchecked",
-      "color": "#c58bff"
-    },
-    {
-      "label": "Item generation gaps closed vs the exe",
-      "done": 12,
-      "total": 12,
-      "pending": 0,
-      "note": "12 of the 12 gaps closed (the last, stat-list aggregation, follows the exe decompile 0x627160 / 0x626c80 and is unit tested, not compared with the running emulator); not wired into every drop path yet",
-      "color": "#f2c94c"
-    },
-    {
-      "label": "Multiplayer playable through the game screen",
-      "done": 3,
-      "total": 4,
-      "pending": 0,
-      "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; the realm world is now per level (a hero only receives and affects its level, level change handoff, heroes in other levels hidden, party/roster global) with two-client unit tests (feat/realm-per-level), not yet seen in two game windows (96-multiplayer, 9j-realm-multiplayer, 9d-party-trade, 9f-pvp-skills-ear still to run alone); trade works over the legacy path",
-      "color": "#ffb86b"
-    },
-    {
-      "label": "Mac app: build, Finder launch with real maps, disk image",
-      "done": 2,
-      "total": 3,
-      "pending": 1,
-      "note": "app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image install is rehearsed by scripts/dmg_install_check.sh (quarantine, mount, copy, verify) but has not been opened in Finder by a human; the desktop app was rebuilt from the landed tree",
-      "color": "#9be564"
-    },
-    {
-      "label": "Real full verify green (scenario sections per job, real parallel log)",
-      "done": 259,
-      "total": 259,
-      "pending": 0,
-      "note": "batch 3 and batch 4 full verify_parallel.sh 6 runs both ALL JOBS PASSED (193 and 194 scenarios; batch 4 with no retry at all); batch 6a: 5 of 6 jobs green, the 6th red only on a scenario that crossed the new level quest gates (fixed in the scenario, passed alone); batch 6b run 31638 and batch 7 run 7644 passed (6th and 7th clean in a row); batch 8 run 36803 had two red scenarios (92-objects2, 93-objects-gaps; fixed and re-run alone, no clean full run on the final tree); batch 9 run 98647 passed fully, so the current streak is 1 clean full verify",
-      "color": "#3ddc84"
-    }
-  ],
-  "v1": {
-    "title": "Game v1 complete",
-    "definition": "v1 = a person double-clicks the Mac app, makes or loads a character and can play Acts 1-5 single player (quests, items, skills, monsters, saves, without hitting a blocker; multiplayer through the game screen and Hell-difficulty polish count too. The percentage is a weighted average of the measurable bars below; dashed = on branches, not yet verified.",
-    "weights": {
-      "Acts playable end to end (scripted play)": 14,
-      "Levels walked by a verify scenario": 6,
-      "Main quests with logic implemented": 8,
-      "Player skills with engine behaviour": 10,
-      "Monster AI archetypes ported faithfully": 6,
-      "Monster AI archetypes implemented": 2,
-      "Item generation gaps closed vs the exe": 6,
-      "In-game UI panels matching the original layout": 6,
-      "Multiplayer playable through the game screen": 4,
-      "Mac app: build, Finder launch with real maps, disk image": 4,
-      "Level generator proven equal to the real game": 4,
-      "Real .d2s save: read and write verified": 4,
-      "NPC interaction features": 4,
-      "Real full verify green (scenario sections per job, real parallel log)": 6
-    }
+ "updated": "2026-10-11",
+ "title": "Native macOS Diablo II \u2014 progress",
+ "subtitle": "driven by Claude \u00b7 counts come from code, tests and Ghidra; estimates are marked with ~ \u00b7 dashed = on branches, not yet verified",
+ "bars": [
+  {
+   "label": "Game.exe functions named in Ghidra",
+   "done": 11257,
+   "total": 11257,
+   "note": "original 1.14b binary; re-queried live from Ghidra (all 11,257 named; the last 22 Warden and module-loader functions were named 2026-10-09, a few names marked unverified)",
+   "color": "#7c5cff"
   },
-  "v2": {
-    "title": "Planned for v2",
-    "items": [
-      {
-        "label": "Acts played start to finish by a human tester",
-        "done": 0,
-        "total": 5,
-        "note": "a human plays each act start to finish; moved out of v1 by the project owner on 2026-10-10"
-      },
-      {
-        "label": "Sound and music confirmed by a human listen",
-        "done": 0,
-        "total": 5,
-        "note": "a human listens to menu music, NPC voices, footsteps, spell sounds and ambience; moved out of v1 by the project owner on 2026-10-10 (sound is implemented and scripted-checked; the human confirmation is v2)"
-      }
-    ]
+  {
+   "label": "Hedged exe names re-verified against the decompile",
+   "done": 1633,
+   "total": 1633,
+   "pending": 0,
+   "note": "every hedged row now has a verdict; batch 4 (final) examined 173 table rows: 112 confirmed, 47 corrected in Ghidra, 14 unclear and still marked unverified; earlier batches 1-3 as before (~ estimate of the total)",
+   "color": "#8f7cff"
+  },
+  {
+   "label": "Original source files indexed",
+   "done": 277,
+   "total": 277,
+   "note": "every assert-string path mapped to modules and functions",
+   "color": "#2fb67c"
+  },
+  {
+   "label": "Source files studied in depth",
+   "done": 277,
+   "total": 277,
+   "note": "last 37 (batches 11-13): gameplay files read, infrastructure and graphics backends only function-mapped; NPC, units, saves, packets, render, sound, combat, level gen, loot, AI, quests, trade, session, skills, hirelings, lighting",
+   "color": "#2f9bff"
+  },
+  {
+   "label": "Level generator proven equal to the real game",
+   "done": 8768,
+   "total": 8768,
+   "note": "mazes, Act 1-5 outdoors and presets all match the emulator record for record (427 levels, 30,129 rooms, 0 mismatches), including the seven preset levels and exact maze tiles; landed",
+   "color": "#22c1c3",
+   "pending": 0
+  },
+  {
+   "label": "Real .d2s save: read and write verified",
+   "done": 10,
+   "total": 10,
+   "note": "all 10 sections read and written back byte-for-byte; golem section ('kf', every expansion class) checked against the exe writer and reader",
+   "color": "#f2a81d"
+  },
+  {
+   "label": "NPC interaction features",
+   "done": 8,
+   "total": 8,
+   "note": "click-walk \u00b7 greeting \u00b7 menu \u00b7 return greeting \u00b7 vendors \u00b7 gamble \u00b7 identify \u00b7 mercenary hire \u00b7 quest dialogue \u2713 (Act 1)",
+   "color": "#ef5da8"
+  },
+  {
+   "label": "Acts playable end to end (scripted play)",
+   "done": 5,
+   "total": 5,
+   "pending": 0,
+   "note": "Acts 1, 2, 3, 4 and 5 each pass a scripted real-combat playthrough on the landed tree (2e50f0e4): Act 1 752 s, Act 2 484 s, Act 3 874 s, Act 4 and the start of Act 5 in the full verify, Act 5 caves 574 s",
+   "color": "#ff7a45"
+  },
+  {
+   "label": "Levels walked by a verify scenario",
+   "done": 116,
+   "total": 136,
+   "pending": 0,
+   "note": "levels a scenario enters (lower bound, counted from scripts/verify.d); includes the whole Act 3 chain (Travincal, Council, Durance, Mephisto, red portal); the 9s-walk scenarios add 64 (the w23 ones: Stony Field to Tamoe Highland, Tristram, Moo Moo Farm, Tal Rasha tombs 1-7, Spider Cave, Swampy Pit 2-3, Flayer Dungeon 2-3, Worldstone Chamber, Pandemonium 1-3, Uber Tristram, Hell 1-3 rows; the older ones: Act 1 caves, Burial Grounds, Crypt, Mausoleum, Forgotten Tower and Cellars, Monastery to Catacombs 2, Act 2 Palace Cellar 2 / Stony Tombs / Halls 3, Act 3 temples, Act 5 ice caves and Nihlathak temple chain) | w23: four walking scenarios (9s-walk-*) added 25 levels; a re-check of older scenarios may raise this toward 136",
+   "color": "#ff9f43"
+  },
+  {
+   "label": "Main quests with logic implemented",
+   "done": 27,
+   "total": 27,
+   "pending": 0,
+   "note": "all 27 main quests: states, triggers, rewards (Act 1, Radament and nine more driven in scenarios); level quest gates now enforced in the engine (Canyon, tombs, Palace, Durance, Worldstone levels)",
+   "color": "#e86fa6"
+  },
+  {
+   "label": "Player skills with engine behaviour",
+   "done": 177,
+   "total": 210,
+   "pending": 0,
+   "note": "wave 22 (branch feat/w22-skills-b, count unchanged: these skills already ran): Shock Wave fan is now the exe geometry (0x5d9fe0 with the helpers 0x56b0e0 / 0x56b120) and counts as fully simulated; Molten Boulder knockback (SrvDmgFunc 14) and the monstats2 small / large class bits, Holy Freeze slow clamp by monster cold effect (0x5cd240), Conversion type filter (switchai, not boss, walk mode), Grim Ward start missile by corpse size, Whirlwind base walk speed and refused state, Charge velocity formula read; Eruption crack, Volcano and Fist of the Heavens re-read (no server side gaps beyond the Size footprint); wave 20 Druid (branch feat/w20-skills-druid, +6): path type 10 is PATH_ApplyDirectionStepVelocity 0x67d160 (Firestorm, Twister, Tornado wobble along the 8-way heading), Vine Attack under the target with the vine trail missiles (SrvDoFunc 26, hit 50) for the Plague Poppy, Cycle of Life and Vines restore life / mana through the recycler delay missiles (SrvDoFunc 29 / 33); skills batch 9 (branch feat/skills-ai-9, +3): Armageddon follows the state active function 0x5c65b0 (Param4 period, five square-random tries, armageddoncontrol rocks), Hurricane the sibling 0x5c63f0, Blood Golem shares damage with its owner (Param5) and healing with the golem (Param6); Firestorm and Twister cast structure read (not counted: the path-type-10 stepper is decoded but its heading offset is open); skills batch 5 (branch feat/skills-5, +5): Raise Skeletal Mage shoots its missile, Iron Golem takes a ground item target (golem stands at the item, item consumed), Oak Sage / Heart of Wolverine / Spirit of Barbs reach minions and the mercenary through the exe target filter (all filter bits decoded), summon level formula for skeletons and golems, corpse rules; skills batch 4 (branch feat/skills-4, +6): Thunder Storm rotates through the targets, Leap (circle at the landing) and Dragon Flight (lands on the target) confirmed against the exe, Bone Prison 12-cell ring, Poison Explosion eight stationary clouds, Blessed Hammer spiral path plus Concentration scale; Static Field callback re-read (floor is a gate); earlier: 150 of 210 player skills have engine behaviour:Psychic Hammer, Dragon Talon knockback, Cloak of Shadows, Mind Blast, Charge, Corpse Explosion, Smite, Taunt and Redemption re-read from the exe; Revive life roll, Sanctuary (undead filter + knockback), Holy Bolt on allies, Energy Shield absorb, Corpse Explosion falloff, Redemption cost and Smite with Holy Shield now follow the exe (no change to the count: these already ran); all 26 missile movement/hit gaps (Meteor, Blizzard, Volcano, Frozen Orb nova, Bone Wall, shouts, Rabies and others) landed with real function bodies; natural mana regeneration landed; Meteor/Blizzard burning ground now hurts players (PvP fractional carry); skills batch 3 (branch feat/skills-3): Feral Rage and Maul stack by count, Wearwolf and Wearbear toggle, Leap Attack single victim, Dragon Claw and Dragon Tail follow the exe (+7); Leap, Dragon Flight, Thunder Storm, Conversion and the three totem auras re-read and corrected but still partial",
+   "color": "#5fd0a5"
+  },
+  {
+   "label": "Monster AI archetypes implemented",
+   "done": 145,
+   "total": 148,
+   "pending": 0,
+   "note": "monai.txt entries with a Go think function (about 60 are stand-ins)",
+   "color": "#4aa8ff"
+  },
+  {
+   "label": "Monster AI archetypes ported faithfully",
+   "done": 134,
+   "total": 148,
+   "pending": 0,
+   "note": "~133 (estimate): wave 20 (branch feat/w20-ai-act5) counted the five Baal encounter AIs (throne, taunt, to-stairs, crab, crab clone) after comparing them with the exe and re-fixed Ancient and MinionSpawner, uber trio verified as bare returns; batch 9 (branch feat/skills-ai-9) counted none new but hosted the missing pieces of already-counted handlers: Siege Tower / Siege Beast scan 0x5e05a0 and target store, Regurgitator filter (soft corpses), Zakarum Zealot fear gate (Act III + Blackened Temple quest bit), Diablo player-count output; Fallen Shaman scan read in part; batch 8 (branch feat/ai-faithful-8) compared 40 more handlers with the exe and counts 11 newly faithful: GreaterMummy (corpse/wound scan 0x5f1a00 decoded), Vampire, ZakarumPriest (teleport past the target), SandMaggot (rewritten), OblivionKnight, Overseer, PutridDefiler, ShadowWarrior (aip8 Hell column), MaggotEgg, BloodLord, FrozenHorror (cast gate is distance below skill level); also wired the scans 0x5eeb80, 0x5f9fb0, 0x5e1570 and the Priest ally filter, unit states and stats, the wisp blessing (timed Magic Find on the hero) and MONAI_WalkAwayFromTarget speed reset; still missing: the Shadow Master feed, Zealot fear gate, Regurgitator and Siege target filters; earlier: batch 7batch 7 (branch feat/ai-faithful-7) re-read 28 ground, melee, ranged and caster handlers against the exe and corrected 12 (Fallen, Brute, Scarab, SkeletonMage, Fetish, FetishShaman, BatDemon, Megademon, Succubus, AbyssKnight, Bighead, CorruptRogue; 12 newly counted) and wired FB1Unit, AuraStateSource and LineChecker in the game host; the WispBlesser, Shadow Master feed and PlayerScaler hosts are still missing; batch 6 (branch feat/skills-ai-6) ported the WillOWisp dance (states 4-6) and the Mephisto phase bodies from the exe (2 newly counted); the Shadow Master scoring and candidate stack are ported too but no game host feeds them yet, so it is not counted; Overseer got its quest hook; batch 5 closed the documented gaps of Diablo, Vulture, BloodRaven, Nihlathak, UberIzual and made UberDiablo and UberMephisto the exe-faithful stops (7 newly counted; Izual, Summoner, Duriel, Andariel and Smith were re-read and only got hooks, not counted again); batch 4 ported AssassinSentry, CycleOfLife and JarJar (the last entries still on stand-ins); batch 3 ported 8 more from the exe think functions (DesertTurret, CatapultSpotter, Imp, DeathSentry, DruidBear, DruidWolf, DarkWanderer, BladeCreeper); engine hooks they need are optional host interfaces",
+   "color": "#6c8cff"
+  },
+  {
+   "label": "In-game UI panels matching the original layout",
+   "done": 13,
+   "total": 14,
+   "pending": 0,
+   "note": "wave 23: skill tree layout now pure and golden tested from the exe (close button table 0x723eac, icon grid, tab title lines per class, points anchor; checked in the running window by 9f-ui-layout), escape menu option pages (sound, video, automap: pitch 45, strip 34, pentagram 49) read from the descriptors and planned by pure functions but the Go rows still come from the gui layout (pentagram placement opt-in), quest description wraps at 270 px; 8 of 14 panels checked in a real game window against the original numbers (163 rectangles, 0 deviating, scenario 9f-ui-layout, now with the waypoint row boxes from the exe table); 4 more (party screen rows, mercenary panel, help screen, move-gold dialog) have layouts read from the exe and unit tested against golden numbers, not yet seen in a running window; the NPC menu geometry has a pure tested function; one panel still unchecked",
+   "color": "#c58bff"
+  },
+  {
+   "label": "Item generation gaps closed vs the exe",
+   "done": 12,
+   "total": 12,
+   "pending": 0,
+   "note": "12 of the 12 gaps closed (the last, stat-list aggregation, follows the exe decompile 0x627160 / 0x626c80 and is unit tested, not compared with the running emulator); not wired into every drop path yet",
+   "color": "#f2c94c"
+  },
+  {
+   "label": "Multiplayer playable through the game screen",
+   "done": 3,
+   "total": 4,
+   "pending": 0,
+   "note": "menu host/join on the realm, remote heroes move/cast/chat, kills and ears synced; two-window scenario 9j passes through the menus; the realm world is now per level (a hero only receives and affects its level, level change handoff, heroes in other levels hidden, party/roster global) with two-client unit tests (feat/realm-per-level), not yet seen in two game windows (96-multiplayer, 9j-realm-multiplayer, 9d-party-trade, 9f-pvp-skills-ear still to run alone); trade works over the legacy path",
+   "color": "#ffb86b"
+  },
+  {
+   "label": "Mac app: build, Finder launch with real maps, disk image",
+   "done": 2,
+   "total": 3,
+   "pending": 1,
+   "note": "app builds and launches with real maps (verified); release.sh builds, signs ad-hoc and checks app + dmg (BUNDLE OK); the disk image install is rehearsed by scripts/dmg_install_check.sh (quarantine, mount, copy, verify) but has not been opened in Finder by a human; the desktop app was rebuilt from the landed tree",
+   "color": "#9be564"
+  },
+  {
+   "label": "Real full verify green (scenario sections per job, real parallel log)",
+   "done": 300,
+   "total": 300,
+   "pending": 0,
+   "note": "land/w23 run 68550 (239 scenarios) and land/w25 run 41535 (243 scenarios, 300 sections, ALL JOBS PASSED; a few first attempts retried: 97-summons, 9f-hero-voice, 9k-quest-izual) both passed fully; integration = master = b12670f3",
+   "color": "#3ddc84"
   }
+ ],
+ "v1": {
+  "title": "Game v1 complete",
+  "definition": "v1 = a person double-clicks the Mac app, makes or loads a character and can play Acts 1-5 single player (quests, items, skills, monsters, saves, without hitting a blocker; multiplayer through the game screen and Hell-difficulty polish count too. The percentage is a weighted average of the measurable bars below; dashed = on branches, not yet verified.",
+  "weights": {
+   "Acts playable end to end (scripted play)": 14,
+   "Levels walked by a verify scenario": 6,
+   "Main quests with logic implemented": 8,
+   "Player skills with engine behaviour": 10,
+   "Monster AI archetypes ported faithfully": 6,
+   "Monster AI archetypes implemented": 2,
+   "Item generation gaps closed vs the exe": 6,
+   "In-game UI panels matching the original layout": 6,
+   "Multiplayer playable through the game screen": 4,
+   "Mac app: build, Finder launch with real maps, disk image": 4,
+   "Level generator proven equal to the real game": 4,
+   "Real .d2s save: read and write verified": 4,
+   "NPC interaction features": 4,
+   "Real full verify green (scenario sections per job, real parallel log)": 6
+  }
+ },
+ "v2": {
+  "title": "Planned for v2",
+  "items": [
+   {
+    "label": "Acts played start to finish by a human tester",
+    "done": 0,
+    "total": 5,
+    "note": "a human plays each act start to finish; moved out of v1 by the project owner on 2026-10-10"
+   },
+   {
+    "label": "Sound and music confirmed by a human listen",
+    "done": 0,
+    "total": 5,
+    "note": "a human listens to menu music, NPC voices, footsteps, spell sounds and ambience; moved out of v1 by the project owner on 2026-10-10 (sound is implemented and scripted-checked; the human confirmation is v2)"
+   }
+  ]
+ }
 }
