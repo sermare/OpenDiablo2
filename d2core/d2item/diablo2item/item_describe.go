@@ -95,5 +95,19 @@ func (i *Item) describeOrigin() ([]string, bool) {
 		ctx = i.factory.DescribeContext()
 	}
 
-	return Tokenize(tables.Describe(&cp, ctx)), true
+	lines := tables.Describe(&cp, ctx)
+	out := Tokenize(lines)
+
+	// the maximum durability is drawn blue when a stat list raises it (VERIFIED 0x480eb0)
+	if tables.DurabilityMaxBlue(&cp) {
+		for n, l := range lines {
+			if head, maxText, ok := tables.SplitDurabilityLine(&cp, l); ok {
+				out[n] = d2ui.ColorTokenize(head, tokenOfColor[l.Color]) + d2ui.ColorTokenize(maxText, d2ui.ColorTokenBlue)
+
+				break
+			}
+		}
+	}
+
+	return out, true
 }

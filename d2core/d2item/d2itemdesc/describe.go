@@ -837,3 +837,17 @@ func (t *Tables) ItemStats(it *d2s.Item) []Stat {
 
 	return d.stats
 }
+
+// SplitDurabilityLine splits the durability line of it into the text before the maximum number and the
+// number itself, so a renderer can draw the maximum blue when DurabilityMaxBlue says so
+// (INV_BuildDurabilityLine 0x480eb0). ok is false when line is not the durability line of it.
+func (t *Tables) SplitDurabilityLine(it *d2s.Item, line Line) (head, maxText string, ok bool) {
+	maxText = strconv.Itoa(int(it.MaxDurability))
+	pre := t.tr("ItemStats1d") + " "
+
+	if it.MaxDurability == 0 || !strings.HasPrefix(line.Text, pre) || !strings.HasSuffix(line.Text, " "+maxText) {
+		return "", "", false
+	}
+
+	return strings.TrimSuffix(line.Text, maxText), maxText, true
+}

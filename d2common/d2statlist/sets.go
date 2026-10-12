@@ -87,9 +87,11 @@ func (s SetDefs) pieceInfo(setID, row int) (idx, addFunc int, ok bool) {
 // VERIFIED (ITEM_ApplySetBonusProperties 6626a0): with n worn distinct pieces
 // the partial tiers 2 .. min(n, pieces-1) apply (the tier of the last piece
 // never does: the full bonus takes over), and the full bonus applies from
-// n >= pieces. (The piece count is Sets.txt's item count: UNVERIFIED that the
-// exe's field at +0xc is that, but it matches the shipped data, where the
-// last tier of 3 and 4 piece sets is filled and unused in game.)
+// n >= pieces. The piece count is VERIFIED too: DATATBL_LoadSetsTable 635680
+// counts the SetItems rows of each set into field +0xc (rows past 6 are
+// ignored), and the worn count is the popcount of the mate bit mask (table
+// 6eeff0). The shipped data fills the last tier of 3 and 4 piece sets but the
+// game never uses it.
 func (s SetDefs) SetBonus(setID, n int) []Prop {
 	d, ok := s[setID]
 	if !ok {
