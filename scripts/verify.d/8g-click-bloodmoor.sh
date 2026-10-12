@@ -20,7 +20,7 @@ scenario_env() {
   # warm-up walk (animations load lazily), then the baseline position
   s="$s;say:heromoved;click:left@$g;until:HERO moved,120;$still;say:heropos"
   # 1 chest: a left click walks to it and opens it
-  s="$s;say:spawnchest 5 5 5;until:AUTOGROUND chest-spawn id=5,30;click:left@object:5;until:AUTOGROUND chest id=5,120;$still;say:heropos"
+  s="$s;say:clearinv;say:giveitem key;say:spawnchest 5 5 5;until:AUTOGROUND chest-spawn id=5,30;click:left@object:5;until:AUTOGROUND chest id=5,120;$still;say:heropos"
   # 2 gold pile: a left click walks to it and picks it up
   s="$s;say:spawnground gold 777 6;until:AUTOGROUND spawn source=command,30;click:left@item:777;until:AUTOGROUND pickup gold amount=777,120;$still;say:heropos"
   # 3 ground click walks; Shift+click casts the left skill standing still; Cmd, Ctrl and right click cast the right skill
@@ -30,7 +30,8 @@ scenario_env() {
   s="$s;click:left+ctrl@$g;until:WATCH cast-start,60;$still;say:heropos"
   s="$s;click:right@$g;until:WATCH cast-start,60;$still;say:heropos"
   # 4 a click on a monster casts the left skill
-  s="$s;click:left@monster;until:WATCH cast-start,60;$still;say:heropos"
+  # (the area casts above killed the one passive zombie in a flaky run: "click @monster: no such entity"; a fresh one stands by)
+  s="$s;say:spawnmon zombie1;wait:1;click:left@monster;until:WATCH cast-start,60;$still;say:heropos"
   # 5 an item on the ground: the click walks to it and picks it up onto the cursor (last: the cursor then holds it)
   s="$s;say:spawnground tbk 8 8;until:AUTOGROUND spawn source=command name=,30;click:left@item:Tome;until:AUTOGROUND pickup name=,120;$still;say:heropos;exit"
   echo "export OD2_AUTOSCRIPT='$s'"

@@ -18,9 +18,12 @@ scenario_env() {
   local still='say:herostill;until:HERO still,120'
   # warm-up: the first walk loads the walk animations lazily; walk once and wait for it to end
   local s='wait:2;skill:left=Attack;say:heromoved;click:left@hero:60,20;until:HERO moved,120;'"$still"';say:heropos'
+  # (w44: walk the whole way to the camp's far end and back before the holds: the town guards' sprites load on first sight and the
+  # load (1.2 s hitch seen) came while Akara passed under the cursor, so the frames that would have seen her were missing)
+  local back="say:heromoved;move:31.6,13.8;until:HERO moved,120;$still"
+  s="$s;say:heromoved;move:42,9;until:HERO moved,120;$still;$back"
   # the straight, unobstructed routes of the camp start at the hero's starting place (31.6,13.8): the holds toward the waypoint and
   # toward Akara each start there (a path that has to bend round a hut would not pass under the cursor)
-  local back="say:heromoved;move:31.6,13.8;until:HERO moved,120;$still"
   s="$s;hold:6,left@npc:Akara*0.5;$still;say:heropos"       # 1 ground hold towards Akara: she passes under the cursor, no interaction
   s="$s;$back;hold:3,left@object:119*0.5;$still;say:heropos"  # 2 ground hold towards the waypoint: it passes under the cursor
   s="$s;hold:3,left@npc:Akara;until:NPC menu opened,60;press:Escape;$still"  # 3 hold that starts on Akara: one interaction, the menu opens once
