@@ -15,7 +15,7 @@
    "done": 1633,
    "total": 1633,
    "pending": 0,
-   "note": "every hedged row now has a verdict; batch 4 (final) examined 173 table rows: 112 confirmed, 47 corrected in Ghidra, 14 unclear and still marked unverified; earlier batches 1-3 as before (~ estimate of the total)",
+   "note": "every hedged row now has a verdict; batch 4 (final) examined 173 table rows: 112 confirmed, 47 corrected in Ghidra, 14 unclear and still marked unverified; earlier batches 1-3 as before (~ estimate of the total); w44 re-examined the 14 unclear rows (all resolved except small internals: opcode of one quest packet, UnitAny frame field meaning, purpose of 0x665eb0), settled the engine-cited UNVERIFIED function roles a call graph can answer (light quality toggle, fps statistic, sound frame counter, Concentration state for Blessed Hammer, CRT log vs log10) and renamed about 45 generically named hot-path functions (combat, movement, packets); see d2-re-notes/w44-names.md",
    "color": "#8f7cff"
   },
   {
