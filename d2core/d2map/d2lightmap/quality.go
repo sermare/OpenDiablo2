@@ -4,9 +4,11 @@ package d2lightmap
 //
 //	level 2 = occluded painter for kind 0 sources, level 1 = radial, level 0 = radial with caps
 //
-// Inputs: display toggle (0x4f27b0 returns DAT_0072c0a0; meaning UNVERIFIED), raw quality setting
-// (0x4c9980 returns DAT_0072902c, UNVERIFIED which option writes it) and the frame statistic (0x449050,
-// frames per second UNVERIFIED). With the toggle 0 the level follows the frame stat: <= 9 gives 0,
+// Inputs: the fixed-mode toggle (0x4f27b0 returns DAT_0072c0a0; w44 VERIFIED: the options saver 0x478d70 sets it to 1
+// for Light Quality option 0 and to 0 for options 1 and 2, and the main loop flips it), the raw quality setting
+// (0x4c9980 returns DAT_0072902c, written by 0x4c9970 from the same options saver; the argument is not visible in
+// the decompile) and the frame statistic (0x449050, w44 VERIFIED: frames per second averaged over a 3000 ms window by
+// 0x448150). With the toggle 0 the level follows the frame stat: <= 9 gives 0,
 // 10..12 gives 1, 13..15 keeps the previous level when it is above 0 (else 1), > 15 gives 2. With the
 // toggle set the level is 0 when the raw setting is 0, otherwise it is capped at 1 by the same ladder.
 // A change of level only takes effect once 2001 ms passed since the last accepted change.
