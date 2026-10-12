@@ -230,7 +230,8 @@ func newKhalim() *Quest {
 
 			return 7
 		case have == 0:
-			if g.get(q, FlagStarted) {
+			// VERIFIED 0x5bb390: started, or past state 1 while the quest runs, shows page 1
+			if g.get(q, FlagStarted) || (q.NotIntro && q.State > 1) {
 				return 1
 			}
 

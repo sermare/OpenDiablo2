@@ -81,7 +81,7 @@ func newA4Prologue() *Quest {
 // and pays +20 life. UNVERIFIED: the hand-over order and the reward.
 func newGoldenBird() *Quest {
 	return newSpecQuest(&spec{
-		id: QuestGoldenBird, slot: 20, act: 2, logIndex: 4, name: "The Golden Bird", label: "A3Q4",
+		id: QuestGoldenBird, slot: 20, act: 2, logIndex: 4, name: "The Golden Bird", label: "A3Q4", logPage: goldenBirdLogPage,
 		start: 0, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 2}, rp: 5, done: 6,
 		steps: []step{
 			{from: 1, npc: NPCCain3, msg: 527, to: 2},
@@ -92,6 +92,13 @@ func newGoldenBird() *Quest {
 					{Kind: EffectDeleteItem, Quest: q.ID, Code: ItemJadeFigurine, Note: "Meshif takes the figurine"},
 					{Kind: EffectSpawn, Quest: q.ID, Code: ItemGoldenBird, Note: "Meshif gives the Golden Bird"},
 				}
+			}},
+			// VERIFIED 0x5b7d90: with the bird in the pack the log shows page 3 ("ask Cain about the Golden Bird") until bit 4
+			// is set, then page 4 ("give the bird to Alkor"); the page sounds of the client table are 529 (Meshif) and 531 (Cain).
+			{from: 3, npc: NPCCain3, msg: 531, nomark: true, fx: func(g *Game, q *Quest) []Effect {
+				g.set(q, FlagEnterArea, "Cain explained the Golden Bird")
+
+				return nil
 			}},
 			{from: 3, npc: NPCAlkor, msg: 534, to: 4, goal: true, fx: func(g *Game, q *Quest) []Effect {
 				g.dropItem(ItemGoldenBird)
@@ -235,7 +242,7 @@ func newMalachai() *Quest {
 // "Siege Boss", displayed "Shenk the Overseer" (string.tbl).
 func newSiege() *Quest {
 	return newSpecQuest(&spec{
-		id: QuestSiege, slot: 35, act: 4, logIndex: 1, name: "Siege on Harrogath", label: "A5Q1",
+		id: QuestSiege, slot: 35, act: 4, logIndex: 1, name: "Siege on Harrogath", label: "A5Q1", logPage: siegeLogPage,
 		start: 1, goal: 4, tbl: map[int]int{1: 0, 2: 1, 3: 2}, rp: 3, done: 4,
 		steps: []step{{from: 1, npc: NPCLarzuk, msg: 20077, to: 2}},
 		trigs: []trig{

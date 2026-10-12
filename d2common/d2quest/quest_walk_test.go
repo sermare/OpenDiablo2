@@ -25,16 +25,29 @@ func TestHoradricStaffLogPageAfterAssembly(t *testing.T) {
 		t.Errorf("page after every report = %d, want 3 (restore the staff in the cube)", p)
 	}
 
+	// the cube recipe consumes the three parts
+	for _, c := range []string{ItemViperAmulet, ItemStaffOfKingsShaft, ItemHoradricCube} {
+		g.Dispatch(Event{Kind: EvItemRemoved, Item: c})
+	}
+
 	pickup(g, ItemHoradricStaff)
 
-	if p := g.LogPage(q); p != 4 {
-		t.Errorf("page after the cube made the staff = %d, want 4", p)
+	// VERIFIED 0x59c1f0: the staff in the pack is page 6 until Cain's line 339 sets bit 10, then 5; both pages show
+	// "Take the Staff into Tal Rasha's Tomb" (qstsa2q24 in the page table of the client)
+	if p := g.LogPage(q); p != 6 {
+		t.Errorf("page after the cube made the staff = %d, want 6", p)
 	}
 
 	talk(g, NPCCain2) // msg 339
 
-	if p := g.LogPage(q); p != 4 {
-		t.Errorf("page after Cain's confirmation = %d, want 4", p)
+	if p := g.LogPage(q); p != 5 {
+		t.Errorf("page after Cain's confirmation = %d, want 5", p)
+	}
+
+	for _, p := range []int{5, 6} {
+		if k := LogPageKey(10, p); k != "qstsa2q24" {
+			t.Errorf("page %d of the staff shows %q, want qstsa2q24", p, k)
+		}
 	}
 }
 

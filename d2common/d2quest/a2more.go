@@ -176,44 +176,8 @@ func newHoradricStaff() *Quest {
 		}
 	}
 
-	q.status = func(g *Game, q *Quest) int {
-		if g.get(q, FlagRewardGranted) {
-			return 0
-		}
-
-		// the staff is assembled: "Take the Staff into Tal Rasha's Tomb" (qstsa2q24). Found by playing: the log said
-		// "Take the artifacts to Cain" (page 5) after Cain had confirmed the finished staff.
-		if assembled(g, q) {
-			return 4
-		}
-
-		n := 0
-
-		for i := range reports {
-			if reported(g, q, i) {
-				n++
-			}
-		}
-
-		if n == 0 && !g.get(q, FlagStarted) {
-			return 0
-		}
-
-		// The pages (qstsa2q21..25) are UNVERIFIED in their order; chosen by what they say: 1 show the scroll to
-		// Cain, 2 search the Halls and the Maggot Lair, 3 every part reported: restore the staff in the cube, 4 (above)
-		// to Tal Rasha's tomb, 5 the three parts are in the pack but Cain has not heard of them: take them to Cain.
-		// (It was n+1, which showed page 5 after the fourth report, when the cube is what the hero needs.)
-		switch {
-		case n >= len(reports):
-			return 3
-		case g.hasItem(ItemHoradricCube) && g.hasItem(ItemStaffOfKingsShaft) && g.hasItem(ItemViperAmulet):
-			return 5
-		case n >= 1:
-			return 2
-		}
-
-		return 1
-	}
+	// VERIFIED 0x59c1f0 (logfilters.go): the pages come from the quest flags and the parts in the pack
+	q.status = func(g *Game, q *Quest) int { return staffLogPage(g, q, g.get(q, flagAssembled)) }
 
 	q.on[EvGameStarted] = func(g *Game, q *Quest, _ *Event) {
 		d.scroll = g.get(q, FlagLeaveTown)
@@ -334,7 +298,7 @@ func newSevenTombs() *Quest {
 	}
 
 	s := &spec{
-		id: QuestSevenTombs, slot: 14, act: 1, logIndex: 6, name: "The Seven Tombs", label: "A2Q6",
+		id: QuestSevenTombs, slot: 14, act: 1, logIndex: 6, name: "The Seven Tombs", label: "A2Q6", logPage: tombsLogPage,
 		start: 0, goal: 5, tbl: map[int]int{1: 0, 2: 1, 3: 2, 4: 3, 5: 4},
 		noLeaveRule: true,
 		steps: []step{

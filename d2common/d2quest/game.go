@@ -520,6 +520,15 @@ func (g *Game) refreshStatus(q *Quest) int {
 			return q.LastState
 		}
 
+		// VERIFIED 0x541e30: the Tainted Sun (quest id 10) alone shows page 4 here when its stored page is 4, else 12
+		if q.ID == QuestTaintedSun {
+			if q.LastState == 4 {
+				return 4
+			}
+
+			return 12
+		}
+
 		return 12
 	}
 
