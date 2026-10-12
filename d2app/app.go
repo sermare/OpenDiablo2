@@ -4,7 +4,6 @@ package d2app
 import (
 	"bytes"
 	"container/ring"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -274,7 +273,7 @@ func (a *App) LoadConfig() (*d2config.Configuration, error) {
 		return config, saveErr
 	}
 
-	if err := json.NewDecoder(configAsset).Decode(config); err != nil {
+	if err := d2config.DecodeConfig(configAsset, config); err != nil {
 		return nil, err
 	}
 

@@ -144,32 +144,21 @@ func gameDirCandidates(home string) []string {
 		}
 	}
 
-	return append(out, windowsGameDirs()...)
+	// Windows candidates go first: the registry is the most reliable hint there, and the Mac folders above do not exist.
+	return append(windowsGameDirs(), out...)
 }
 
-// windowsGameDirs lists the usual Windows install folders (Blizzard installer, Battle.net, Steam). UNVERIFIED on a real
+// windowsGameDirs lists the registry-recorded install folders first, then the usual default folders. UNVERIFIED on a real
 // Windows machine; it is empty on other systems.
 func windowsGameDirs() []string {
 	if runtime.GOOS != "windows" {
 		return nil
 	}
 
-	var out []string
+	out := windowsInstallsFromRegistry(registryValues(registryInstallKeys))
+	drives, pf := windowsEnvDirs()
 
-	for _, drive := range []string{"C:", "D:", "E:", "F:"} {
-		for _, pf := range []string{"Program Files (x86)", "Program Files"} {
-			out = append(out,
-				filepath.Join(drive+`\`, pf, "Diablo II"),
-				filepath.Join(drive+`\`, pf, "Diablo II Classic"),
-				filepath.Join(drive+`\`, pf, "Steam", "steamapps", "common", "Diablo II"),
-				filepath.Join(drive+`\`, pf, "Battle.net", "Diablo II"),
-			)
-		}
-
-		out = append(out, filepath.Join(drive+`\`, "Games", "Diablo II"), filepath.Join(drive+`\`, "Diablo II"))
-	}
-
-	return out
+	return append(out, windowsGameDirsFor(drives, pf)...)
 }
 
 // FindInstalls returns the folders that hold a complete set of base game
@@ -222,6 +211,23 @@ func SaveDirCandidates(home, gameDir string) []string {
 			"drive_c", "users", "*", "Saved Games", "Diablo II*"),
 	} {
 		out = append(out, glob(pat)...)
+	}
+
+	if runtime.GOOS == "windows" {
+		for _, v := range registryValues(registrySavePathKeys) {
+			if p := NormalizeInstallPath(v); p != "" {
+				out = append(out, p)
+			}
+		}
+
+		up, od := windowsSaveHomes()
+		for _, pat := range windowsSaveGlobs(up, od) {
+			for _, m := range glob(pat) {
+				if !isResurrectedDir(m) {
+					out = append(out, m)
+				}
+			}
+		}
 	}
 
 	if gameDir != "" {

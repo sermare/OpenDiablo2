@@ -18,6 +18,14 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+
+#   ALL=1 scripts/make-windows.sh           amd64, then arm64 (arm64 is skipped with a notice while Ebiten is too old)
+if [ -n "${ALL:-}" ]; then
+	ARCH=amd64 "$0"
+	if ARCH=arm64 "$0"; then :; else echo "note: windows/arm64 skipped (see docs/WINDOWS.md); amd64 runs under emulation on Windows 11 ARM"; fi
+	exit 0
+fi
+
 ARCH=${ARCH:-amd64}
 
 EBITEN=$(sed -n 's|.*hajimehoshi/ebiten/v2 v\(.*\)|\1|p' go.mod | head -1)
