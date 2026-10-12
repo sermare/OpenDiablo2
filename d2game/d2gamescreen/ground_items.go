@@ -40,9 +40,11 @@ type groundState struct {
 	stash *d2mapentity.Object
 	// questObj is a quest object (cairn stone, Malus chest...) the hero walks to.
 	questObj *d2mapentity.Object
-	elapsed  float64 // seconds since the hero last got closer to the target
-	best     float64 // the smallest distance to the target so far
-	bestFor  interface{}
+	// loot holds the rolls granted-but-not-yet-answered by the server (single-roll loot, ground_net.go).
+	loot    map[string]func()
+	elapsed float64 // seconds since the hero last got closer to the target
+	best    float64 // the smallest distance to the target so far
+	bestFor interface{}
 	// onPickup is called after a successful pickup (used by the autotest).
 	onPickup func(it *d2mapentity.Item)
 	// chestSeq numbers chest openings so each one rolls a different seed.
@@ -245,6 +247,13 @@ func (v *Game) advanceGroundInteraction(elapsed float64) {
 // pickUp moves a ground item to the cursor (packet 0x16, item mode 3 -> 4) or,
 // for gold, straight into the hero's purse.
 func (v *Game) pickUp(it *d2mapentity.Item) {
+	// the quest/unique gate (0x55aa20, ITEMMODE_ServerHandlePickupRequest runs it before anything else): refused
+	// pickups leave the item on the ground and never reach the server
+	if !it.IsGold() && it.Item != nil && v.gameControls != nil && !v.gameControls.CanPickUpGround(it.Item) {
+		v.Infof("GROUND pickup refused by the quest/unique gate name=%q", plainLabel(it.Label()))
+		return
+	}
+
 	if v.requestGroundPickup(it) {
 		return // a multiplayer game: the server decides who gets it (ground_net.go)
 	}
@@ -350,39 +359,48 @@ func (v *Game) openChest(ob *d2mapentity.Object) {
 		return
 	}
 
-	// the class and the item level follow from the monster level of the area
-	// the chest stands in (VERIFIED, see diablo2item.ChestLoot)
-	co := diablo2item.ChestDropOptions{
-		DropOptions: diablo2item.DropOptions{Seed: 0, Players: 1, MagicFind: v.heroMagicFind(), GoldFind: v.heroGoldFind()},
-		LevelID:     v.currentLevel(), Difficulty: v.difficulty(), Expansion: v.heroExpansion(),
-	}
-
-	all := &diablo2item.Loot{}
-	tc := ""
-
-	if plan.sparkly || plan.variant {
-		all, tc = v.openChestForced(ob, id, co, plan)
-	}
-
-	// a locked chest rolls its treasure class twice (0x583e70)
-	for r := 0; r < plan.rolls && !plan.sparkly && !plan.variant; r++ {
-		v.ground.chestSeq++
-
-		loot, class, err := v.rollChestOnce(co, id, v.chestSeed()+v.ground.chestSeq)
-		if err != nil {
-			v.Errorf("chest %d: %v", id, err)
-			return
+	chestX, chestY := ob.GetPositionF()
+	roll := func() {
+		// the class and the item level follow from the monster level of the area
+		// the chest stands in (VERIFIED, see diablo2item.ChestLoot)
+		co := diablo2item.ChestDropOptions{
+			DropOptions: diablo2item.DropOptions{Seed: 0, Players: 1, MagicFind: v.heroMagicFind(), GoldFind: v.heroGoldFind()},
+			LevelID:     v.currentLevel(), Difficulty: v.difficulty(), Expansion: v.heroExpansion(),
 		}
 
-		tc = class
+		all := &diablo2item.Loot{}
+		tc := ""
 
-		all.Entries = append(all.Entries, loot.Entries...)
+		if plan.sparkly || plan.variant {
+			all, tc = v.openChestForced(ob, id, co, plan)
+		}
+
+		// a locked chest rolls its treasure class twice (0x583e70)
+		for r := 0; r < plan.rolls && !plan.sparkly && !plan.variant; r++ {
+			v.ground.chestSeq++
+
+			loot, class, err := v.rollChestOnce(co, id, v.chestSeed()+v.ground.chestSeq)
+			if err != nil {
+				v.Errorf("chest %d: %v", id, err)
+				return
+			}
+
+			tc = class
+
+			all.Entries = append(all.Entries, loot.Entries...)
+		}
+
+		cx, cy := ob.GetPositionF()
+		v.Infof("AUTOGROUND chest id=%d name=%q tc=%q level=%d seed=%d drops=%d rolls=%d locked=%v", id, ob.Label(), tc, v.currentLevel(),
+			v.chestSeed()+v.ground.chestSeq, len(all.Entries), plan.rolls, plan.locked)
+		v.spawnLoot(all, int(math.Floor(cx)), int(math.Floor(cy)), "chest")
 	}
 
-	cx, cy := ob.GetPositionF()
-	v.Infof("AUTOGROUND chest id=%d name=%q tc=%q level=%d seed=%d drops=%d rolls=%d locked=%v", id, ob.Label(), tc, v.currentLevel(),
-		v.chestSeed()+v.ground.chestSeq, len(all.Entries), plan.rolls, plan.locked)
-	v.spawnLoot(all, int(math.Floor(cx)), int(math.Floor(cy)), "chest")
+	// single roll in a networked game: only the client the server grants the chest rolls it
+	if !v.gateLoot(fmt.Sprintf("c|%d|%d|%d|%d", v.currentLevel(), id, int(chestX*subtilesInTile), int(chestY*subtilesInTile)), roll) {
+		roll()
+	}
+
 	v.afterContainer(ob, plan)
 }
 

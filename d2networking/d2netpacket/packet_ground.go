@@ -20,6 +20,12 @@ const (
 	GroundDeny   = "deny"   // server -> requester: the item was taken or is not there
 	GroundExpire = "expire" // client -> server: the item timed out on the ground
 	GroundSync   = "sync"   // server -> a hero that entered a level: every item lying there
+	// Single-roll loot: before a client rolls a monster's or chest's treasure it claims the loot by Key; the first
+	// claimant is granted the roll (and reports the result with GroundDrop, which the server broadcasts), every
+	// other client is told the loot is taken and waits for the broadcast.
+	GroundClaim = "claim" // client -> server: Entries[0].Key/Level name the loot source
+	GroundGrant = "grant" // server -> claimant: roll it (Entries[0].Key echoed)
+	GroundLost  = "lost"  // server -> claimant: somebody else rolls it (Entries[0].Key echoed)
 )
 
 // GroundEntry is one item or gold pile on the ground.

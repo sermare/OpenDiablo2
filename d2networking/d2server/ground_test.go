@@ -212,3 +212,56 @@ func TestGroundForgedAndExpire(t *testing.T) {
 		t.Fatal("garbage must be an error, not a panic")
 	}
 }
+
+// Single-roll loot: of two clients claiming the same source only the first is granted the roll; an empty key is
+// never granted; claims of an emptied level are forgotten, and the roller's drop reaches the other hero.
+func TestGroundLootClaim(t *testing.T) {
+	g, a, b := testServer()
+	g.socialArea("a", 1)
+	g.socialArea("b", 1)
+
+	claim := func(c *fakeConn, key string) string {
+		c.got = nil
+		groundSend(t, g, c, d2netpacket.GroundClaim, "", d2netpacket.GroundEntry{Key: key, Level: 1})
+
+		for _, op := range []string{d2netpacket.GroundGrant, d2netpacket.GroundLost} {
+			if l := groundOps(c, op); len(l) == 1 && l[0].Entries[0].Key == key {
+				return op
+			}
+		}
+
+		return ""
+	}
+
+	if got := claim(a, "m|1|fallen|7"); got != d2netpacket.GroundGrant {
+		t.Fatalf("first claim = %q", got)
+	}
+
+	if got := claim(b, "m|1|fallen|7"); got != d2netpacket.GroundLost {
+		t.Fatalf("second claim = %q", got)
+	}
+
+	if got := claim(a, "m|1|fallen|7"); got != d2netpacket.GroundLost {
+		t.Fatalf("repeat claim = %q", got)
+	}
+
+	if got := claim(b, ""); got != d2netpacket.GroundLost {
+		t.Fatalf("empty key = %q", got)
+	}
+
+	// the granted roller reports the loot: the other hero is shown it
+	b.got = nil
+	dropped(t, g, a, sword())
+
+	if len(groundOps(b, d2netpacket.GroundPlaced)) != 1 {
+		t.Fatal("the other hero must be shown the single roll")
+	}
+
+	// both leave level 1: its claims go, the monsters respawn on the next visit
+	g.socialArea("a", 2)
+	g.socialArea("b", 2)
+
+	if got := claim(b, "m|1|fallen|7"); got != d2netpacket.GroundGrant {
+		t.Fatalf("claim after the level emptied = %q", got)
+	}
+}

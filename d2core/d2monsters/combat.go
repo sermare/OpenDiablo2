@@ -999,6 +999,17 @@ func (d *Director) dropLootFrom(u *unit, tc string) {
 		return
 	}
 
+	roll := func() { d.rollLootFrom(u, tc) }
+
+	if d.opt.LootGate != nil && d.opt.LootGate(fmt.Sprintf("m|%s|%d|%s", u.m.Label(), u.b.ID, tc), roll) {
+		return
+	}
+
+	roll()
+}
+
+// rollLootFrom is the roll itself (see dropLootFrom).
+func (d *Director) rollLootFrom(u *unit, tc string) {
 	// ITEMGEN_GetDropBaseLevel (556260): the monster's level stat, 1 below 2.
 	level := u.m.Vitals.Level
 	if level < 2 {
@@ -1053,6 +1064,7 @@ func (d *Director) dropLootFrom(u *unit, tc string) {
 
 			d.Counters.Drops++
 			d.engine.AddEntity(ent)
+			d.lootAdded(ent)
 
 			continue
 		}
@@ -1070,6 +1082,7 @@ func (d *Director) dropLootFrom(u *unit, tc string) {
 		}
 
 		d.engine.AddEntity(ent)
+		d.lootAdded(ent)
 	}
 
 	d.emit("drop", "MONSTER drop name=%s tc=%q ilvl=%d type_flags=%#x super_unique=%q mods=%v items=%d [%s]", u.m.Label(), tc,
@@ -1187,4 +1200,10 @@ func monsterUnitSize(m *d2mapentity.Monster) int {
 	}
 
 	return m.StatEx.SizeX
+}
+
+func (d *Director) lootAdded(ent *d2mapentity.Item) {
+	if d.opt.OnLoot != nil {
+		d.opt.OnLoot(ent)
+	}
 }
