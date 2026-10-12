@@ -233,3 +233,16 @@ var Classes = map[string]ClassModes{
 	"Druid":       {Mode{8, 136}, Mode{8, 168}, Mode{7, 256}, Mode{6, 256}, Mode{16, 256}, Mode{15, 208}},
 	"Assassin":    {Mode{8, 256}, Mode{8, 256}, Mode{5, 256}, Mode{3, 256}, Mode{11, 256}, Mode{17, 256}},
 }
+
+// DualWieldAdjust is the dual wield term of the attack percent (PATH_UpdateUnitVelocityAndAnimRate 0x624150,
+// VERIFIED wave 45): when the unit can dual wield (UNIT_CanDualWield) and BOTH hands hold a usable item of item type
+// 0x2d (any weapon), the percent gets (second + first) / 2 - first, with first the stat 0x44 of the item in body slot
+// 4 (right hand) and second that of slot 5 (left hand); the division truncates toward zero. In every other case the
+// term is 0. A broken or unusable item counts as absent.
+func DualWieldAdjust(canDualWield, bothWeapons bool, first, second int) int {
+	if !canDualWield || !bothWeapons {
+		return 0
+	}
+
+	return (second+first)/2 - first
+}

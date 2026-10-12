@@ -2,6 +2,7 @@ package d2hero
 
 import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2state"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2statlist"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2records"
 )
@@ -56,6 +57,9 @@ type HeroStatsState struct {
 	// them into the item stat list. Nil (the default) means no skill stats and
 	// leaves every total exactly as the items give it.
 	SkillStats func() map[string]int `json:"-"`
+	// PanelStates, when set, returns the character screen colour flags of the active states and whether
+	// Holy Shield (state 0x65) is on (d2state/panel_colour.go).
+	PanelStates func() (d2state.PanelFlags, bool) `json:"-"`
 	// Recalc recomputes Totals and the maxima after strength/dexterity/
 	// vitality/energy or equipment changed. Set by the hero state factory.
 	Recalc func() `json:"-"`

@@ -83,6 +83,12 @@ func DefenseColour(raised, lowered bool) int {
 	return StatFontWhite
 }
 
+// DefenseRaised is the blue condition of the defense: a state with the armblue column, or Holy Shield (state 0x65)
+// while a shield (item type 0x33) is in the hand. VERIFIED 0x4a43f0.
+func DefenseRaised(armBlue, shieldWorn, holyShield bool) bool {
+	return armBlue || (shieldWorn && holyShield)
+}
+
 // ResistCap is the value above which a resistance is drawn gold: max resist stat + 75, at most 95 (0x4b and 0x5f).
 func ResistCap(maxResist int) int {
 	c := maxResist + 75

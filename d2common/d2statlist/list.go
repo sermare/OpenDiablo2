@@ -21,6 +21,7 @@ const (
 	StatMinDmgPct    = 18
 	StatToHit        = 19
 	StatToBlock      = 20
+	StatNormalDamage = 111 // item_normaldamage (property dmg)
 	StatMinDamage    = 21
 	StatMaxDamage    = 22
 	StatSecMinDamage = 23

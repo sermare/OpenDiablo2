@@ -8,6 +8,7 @@ import (
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2state"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2util"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2asset"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2gui"
@@ -555,9 +556,14 @@ func (s *HeroStatsPanel) setAttributeValues() {
 
 // resistLine is the text and font colour of a resistance row; maxTotal is the cap Totals reports (75 + bonus).
 func resistLine(shown, maxTotal int) (string, int) {
+	return resistLineStates(shown, maxTotal, false, false)
+}
+
+// resistLineStates is resistLine with the blue / red state masks of the element (d2state.PanelFlags).
+func resistLineStates(shown, maxTotal int, raised, lowered bool) (string, int) {
 	bonus := maxTotal - 75
 
-	return strconv.Itoa(ResistDisplayed(shown, bonus)), ResistColour(shown, bonus, false, false)
+	return strconv.Itoa(ResistDisplayed(shown, bonus)), ResistColour(shown, bonus, raised, lowered)
 }
 
 // setStatColour tints a value label with one of the exe's font colour indices.
@@ -573,13 +579,22 @@ func (s *HeroStatsPanel) setDerivedValues() {
 		return
 	}
 
+	var flags d2state.PanelFlags
+
+	holy := false
+
+	if f := s.heroState.PanelStates; f != nil {
+		flags, holy = f()
+	}
+
 	s.labels.Defense.SetText(strconv.Itoa(t.Defense))
-	s.setHandBoxes(t.DamageMin, t.DamageMax, t.AttackRating)
+	setStatColour(s.labels.Defense, DefenseColour(DefenseRaised(flags.DefenseBlue(), t.ShieldWorn, holy), flags.DefenseRed()))
+	s.setHandBoxes(t.DamageMin, t.DamageMax, t.AttackRating, flags)
 
 	// the cap is 75 plus the max-resist bonus, at most 95; the screen prints the clamped number and colours it
-	// gold at the cap, red below zero (VERIFIED 0x4a43f0; the state masks that turn it blue/red are not modelled)
+	// gold at the cap, red below zero (VERIFIED 0x4a43f0); the states.txt rfblue.. / rfred.. columns turn it blue / red (d2state/panel_colour.go)
 	for i, l := range s.labels.Resist {
-		txt, col := resistLine(t.ResistShown[i], t.MaxResist[i])
+		txt, col := resistLineStates(t.ResistShown[i], t.MaxResist[i], flags.ResistBlue(i), flags.ResistRed(i))
 		l.SetText(txt)
 		setStatColour(l, col)
 	}
@@ -589,7 +604,7 @@ func (s *HeroStatsPanel) setDerivedValues() {
 func (s *HeroStatsPanel) SetHandSkills(f func() [2]HandSkillInfo) { s.handSkills = f }
 
 // setHandBoxes fills the four boxes right of Strength and Dexterity.
-func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int) {
+func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int, flags d2state.PanelFlags) {
 	var skills [2]HandSkillInfo
 	if s.handSkills != nil {
 		skills = s.handSkills()
@@ -626,6 +641,8 @@ func (s *HeroStatsPanel) setHandBoxes(dmin, dmax, ar int) {
 		l.arCaption.SetText(first)
 		l.arCaption2.SetText(second)
 		l.ar.SetText(rating)
+		setStatColour(l.damage, DefenseColour(flags.DamageBlue(), flags.DamageRed()))
+		setStatColour(l.ar, DefenseColour(flags.AttackBlue(), flags.AttackRed()))
 	}
 }
 

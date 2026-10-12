@@ -257,26 +257,14 @@ func Reached(table []int, pct int) int {
 	return idx
 }
 
-// AttackFrames is the community attack speed formula (UNVERIFIED):
-//
-//	eias   = floor(120*ias/(120+ias)) + skillIAS - wsm   (clamped to [-85, 75])
-//	frames = ceil(256*a / floor(256*(100+eias)/100)) - 1
-//
-// a is the base frames of the attack animation, wsm the weapon speed modifier
-// (negative for fast weapons), skillIAS the skill's own speed bonus. The final
-// -1 reflects that the attack action fires its hit on the last frame; this was
-// not checked in the binary.
-func AttackFrames(a, ias, wsm, skillIAS int) int {
-	eias := EffectivePct(ias) + skillIAS - wsm
-	if eias > 75 {
-		eias = 75
-	}
-
-	if eias < -85 {
-		eias = -85
-	}
-
-	spd := 256 * (100 + eias) / 100
-
-	return (256*a+spd-1)/spd - 1
+// AttackFrames is the length in game frames (25 per second) of an attack animation of a baseFrames long record at
+// animation speed 256, with item IAS ias, weapon speed modifier wsm (weapons.txt "speed", negative = fast) and the
+// skill's own speed term skillIAS. It follows the exe (PATH_UpdateUnitVelocityAndAnimRate 0x624150 and
+// EVENT_SchedulePathStepEvents 0x551a20, VERIFIED, see d2animspeed.AttackTicks): the percent is
+// 100 - wsm + skillIAS + floor(120*ias/(120+ias)) clamped to 15..175, the rate floor(256*percent/100), and the
+// result ceil(256*baseFrames/rate), at least 2. The community tables list this number minus one; the old function
+// subtracted it here, the engine does not.
+func AttackFrames(baseFrames, ias, wsm, skillIAS int) int {
+	return d2animspeed.AttackTicks(d2animspeed.Mode{Frames: baseFrames, Speed: 256}, 0,
+		d2animspeed.AttackStat44(wsm, skillIAS), ias)
 }
