@@ -16,9 +16,15 @@ typeset -A grp
 i=0
 for s in $ordered; do [ -f scripts/verify.d/$s.sh ] || continue; n=$(( i % jobs )); grp[$n]="${grp[$n]:+${grp[$n]}|}$s"; i=$((i+1)); done
 pids=(); logs=()
+# a Ctrl-C / TERM stops the jobs too (their own traps reap their games); nothing is left running
+trap 'for p in $pids; do kill $p 2>/dev/null; done; exit 130' INT TERM
+user_cfg=${OD2_VERIFY_CONFIG_DIR:-}
 for n in {0..$((jobs-1))}; do
   [ -z "${grp[$n]}" ] && continue
   log=/tmp/verify-par-$$-$n.log; logs+=($log)
+  # every job needs its OWN config folder: the games import the sample save into <config>/Saves and a shared folder
+  # made parallel jobs reuse one .od2 file. verify.sh fills a missing/empty folder with a copy of config.json.
+  [ -n "$user_cfg" ] && export OD2_VERIFY_CONFIG_DIR="${user_cfg%/}-par$$-$n" || unset OD2_VERIFY_CONFIG_DIR
   if [ $n -eq 0 ]; then
     OD2_VERIFY_ONLY="(${grp[$n]}).sh" ./scripts/verify.sh > $log 2>&1 &
   else
@@ -27,6 +33,7 @@ for n in {0..$((jobs-1))}; do
   pids+=($!)
   sleep 2
 done
+[ -n "$user_cfg" ] && export OD2_VERIFY_CONFIG_DIR=$user_cfg
 rc=0
 for k in {1..${#pids}}; do wait ${pids[$k]} || rc=1; done
 for l in $logs; do
@@ -34,5 +41,6 @@ for l in $logs; do
   echo "$l: scenarios run=${run:-0} sections('== ')=$nsec $(grep -E '^SCENARIOS run=' $l | tail -1)"
   if [ "${run:-0}" -eq 0 ]; then echo "FAIL: job ran 0 scenarios ($l)"; rc=1; fi
   printf '%s: ' $l; grep -E "ALL CHECKS PASSED|SOME CHECKS FAILED" $l | tail -1; grep -E "^FAIL" $l | sort -u | head -5; done
+[ -n "$user_cfg" ] && rm -rf "${user_cfg%/}"-par$$-*(N)
 [ $rc -eq 0 ] && echo "PARALLEL VERIFY: ALL JOBS PASSED" || echo "PARALLEL VERIFY: FAILED"
 exit $rc

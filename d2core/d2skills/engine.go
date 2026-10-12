@@ -103,8 +103,9 @@ type Engine struct {
 	pipe *d2skill.Pipeline
 	sim  *d2missile.Sim
 
-	frame int
-	acc   float64
+	frame   int
+	acc     float64
+	advFrom int // the engine frame before the last Advance call (the render frame a held-button request belongs to)
 
 	// OnRefusal, if set, is called with the d2skill.Reason* of every refused CastAt of the pipeline (the
 	// game uses it for the hero's "not enough mana" / "not in town" voice lines).
@@ -416,6 +417,10 @@ func (e *Engine) CastAt(p *d2mapentity.Player, skillID, sx, sy int) bool {
 
 	u := e.hero(p)
 	tg := e.targetAt(sx, sy)
+	if sk != nil && d2skill.IsChannelStart(sk) && u.IsPlayer() && e.pipe.ChannelBridge(u, e.advFrom) {
+		e.emit("cast", "CHANNEL bridge skill=%q (a render stall of %d ticks covered the window)", sk.Name, e.frame-e.advFrom)
+	}
+
 	st := e.pipe.Start(u, skillID, tg)
 
 	e.Counters.Casts++
@@ -1291,6 +1296,7 @@ func (e *Engine) Advance(elapsed float64) {
 	}
 
 	e.acc += elapsed
+	e.advFrom = e.frame
 
 	for e.acc >= frameSeconds {
 		e.acc -= frameSeconds

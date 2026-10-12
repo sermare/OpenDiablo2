@@ -30,8 +30,8 @@ trap 'rm -f $bin; for b in $burn; do kill $b 2>/dev/null; done' EXIT
 one() { scripts/verify.sh > $out.$1.txt 2>&1; echo "run $1 exit=$?"; }
 n=1
 while [ $n -le $runs ]; do
-  for ((k=0;k<par && n<=runs;k++,n++)); do one $n & done
-  wait
+  jobs_p=(); for ((k=0;k<par && n<=runs;k++,n++)); do one $n & jobs_p+=($!); done
+  wait $jobs_p # only these jobs: a bare wait also waits for the CPU burners (infinite loops)
 done
 retry=$(grep -l "^RETRY:" $out.*.txt 2>/dev/null | wc -l | tr -d ' ')
 bad=$(grep -L "ALL CHECKS PASSED" $out.*.txt 2>/dev/null | wc -l | tr -d ' ')

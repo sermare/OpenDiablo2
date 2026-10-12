@@ -28,7 +28,12 @@ scenario_env() {
   _idle_rename $save $jsave $jn
 
   local common="export OD2_PORT=$OD2_PORT OD2_PROTO=d2gs ${OD2_VERIFY_MUTE_ENV} OD2_AUTOEXIT=1 OD2_D2S_WRITEBACK=$tmp"
-  local hscript="wait:2;waitlog:SOCIAL roster n=2;wait:20;say:roster;exit"  # the kick (6 s) falls inside the wait; the check reads the log
+  # waitlog (not a fixed wait:20): the host waits for the roster notice of the departure, so a slow joiner or a stalled
+  # frame loop on a loaded machine cannot make the script end before the kick (waitlog tests the whole captured log,
+  # so a kick that landed before the step started is seen as well). The "IDLE KICK" line itself is a Game Server log
+  # line, which the script's log capture does not see (an earlier waitlog:IDLE KICK always timed out); the notice
+  # comes through the Game Screen logger. The scenario_check reads the kick line from the process log.
+  local hscript="wait:2;waitlog:SOCIAL roster n=2;waitlog:notice=\"$jn left the game\";wait:1;say:roster;exit"
   local jscript="wait:1;waitlog:SOCIAL roster n=2;wait:40;exit"
 
   {
