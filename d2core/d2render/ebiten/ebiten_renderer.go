@@ -291,6 +291,16 @@ func (r *Renderer) SetWindowScale(scale int) {
 	ebiten.SetWindowSize(s.W*scale, s.H*scale)
 }
 
+// SetWindowPixels resizes the window to w x h device-independent pixels (a user dragging the window edge; used by the
+// OD2_AUTOFLOW resize: step of the display QA). It is a no-op in full screen.
+func (r *Renderer) SetWindowPixels(w, h int) {
+	if w < 1 || h < 1 || ebiten.IsFullscreen() {
+		return
+	}
+
+	ebiten.SetWindowSize(w, h)
+}
+
 // startFullscreen decides the start state: scripted runs keep config.FullScreen (off by default); a normal start is
 // full screen unless the player chose a window (the FULL SCREEN video option, Cmd+Enter, Cmd+F or the console).
 func startFullscreen(cfg *d2config.Configuration, always bool) bool {

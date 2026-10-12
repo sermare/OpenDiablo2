@@ -272,6 +272,20 @@ func ColumnOrigin() (x, y int) {
 	return inputOff[0], inputOff[1]
 }
 
+// CenterShiftY is the vertical shift (screen pixels, zero or negative) that takes a thing laid out in the column
+// (bottom anchored in the game) to the vertical middle of the screen. The escape menu and its option pages are
+// centred on the screen in the original; the panels and the bar stay on the bottom edge.
+func CenterShiftY() int {
+	_, oy := ColumnOrigin()
+
+	mid := (Get().H - BaseH) / 2
+	if mid < 0 {
+		mid = 0
+	}
+
+	return mid - oy
+}
+
 // ToColumn converts screen coordinates to column coordinates (what UI handlers receive).
 func ToColumn(x, y int) (int, int) {
 	ox, oy := ColumnOrigin()
