@@ -17,27 +17,53 @@ fail=0
 # Start a .command file in the user's GUI session WITHOUT opening a Terminal window (every `open x.command`
 # leaves a window behind; hundreds of them stop Terminal from working). Order of preference:
 #   $OD2_VERIFY_LAUNCH (e.g. "launchctl asuser 501 /bin/zsh"), launchctl asuser, then `open` as a last resort.
-launch_game() {
+launch_now() {
   if [ -n "${OD2_VERIFY_LAUNCH:-}" ]; then ${=OD2_VERIFY_LAUNCH} $1 >/dev/null 2>&1 &
   elif launchctl asuser $(id -u) /usr/bin/true >/dev/null 2>&1; then launchctl asuser $(id -u) /bin/zsh $1 >/dev/null 2>&1 &
   else open -g $1 # -g: do not bring the app to the front
   fi
 }
+# While a scenario's command file is being generated (defer_launch=1) the scenario's extra processes (joiners of the
+# multi-process scenarios) are NOT started at once: they would run before the host got its game slot, and a joiner
+# that waits for the host's server line for 300 s gave up on a loaded machine (slot waits of minutes with
+# OD2_MAX_GAMES=3), so the join never happened (false red 9d-idle-kick / 96 / 9d-party-trade ...).
+# They start right after the host's own launch (flush_deferred), or when wait_run is called (scenarios that run a
+# helper game to completion inside scenario_env).
+typeset -ga deferred_cmds; deferred_cmds=()
+defer_launch=""
+launch_game() {
+  if [ -n "$defer_launch" ]; then deferred_cmds+=("$1"); else launch_now $1; fi
+}
+flush_deferred() {
+  local c
+  for c in $deferred_cmds; do launch_now $c; done
+  deferred_cmds=()
+}
 
-# the launcher returns before the game starts (slowly, on a busy machine): wait until the
-# game process appears, then until it exits
+# the launcher returns before the game starts (slowly, on a busy machine): wait until the game process appears, then
+# until it exits. $1 (optional): the .command file of the game; its `.done` marker (written when the game process
+# ends, holding its exit status) is the authority on "finished". A pgrep that misses once on a loaded machine
+# (or a process that is mid-exec) no longer counts as "finished": three misses in a row are needed.
 wait_run() {
-  local i
-  for i in {1..120}; do
+  local i miss=0 done_f="${1:+$1.done}"
+  flush_deferred
+  for i in {1..240}; do
+    [ -n "$done_f" ] && [ -f "$done_f" ] && break
     pgrep -f "$tmp/od2" >/dev/null && break
     # a game that crashed or finished instantly is already gone but left its log: do not wait the full start timeout
-    [ $i -gt 5 ] && [ -s "${log:-/nonexistent}" ] && return
+    [ $i -gt 5 ] && [ -s "${log:-/nonexistent}" ] && { sleep 3; pgrep -f "$tmp/od2" >/dev/null || return; break; }
     sleep 1
   done
-  for i in {1..${scenario_timeout:-420}}; do pgrep -f "$tmp/od2" >/dev/null || break; sleep 1; done
+  for i in {1..${scenario_timeout:-420}}; do
+    [ -n "$done_f" ] && [ -f "$done_f" ] && break
+    if pgrep -f "$tmp/od2" >/dev/null; then miss=0; else miss=$((miss+1)); [ $miss -ge 3 ] && [ -z "$done_f" ] && break; [ $miss -ge 10 ] && break; fi
+    sleep 1
+  done
+  # the host is done: other games of this run (joiners) get a grace period to finish their own scripts and exports
+  if [ -n "$done_f" ]; then for i in {1..90}; do pgrep -f "$tmp/od2" >/dev/null || break; sleep 1; done; fi
   # a game still alive now is stuck (e.g. on the title screen): kill it, never leave windows behind.
   # The pattern is this run's private scratch dir, so other runs/agents/the user's own games are untouched.
-  if pgrep -f "$tmp/od2" >/dev/null; then echo "REAPED: game of this scenario did not finish (stuck?), killing it"; pkill -f "$tmp/od2"; sleep 1; pkill -9 -f "$tmp/od2" 2>/dev/null; fi
+  if pgrep -f "$tmp/od2" >/dev/null; then reaped=1; echo "REAPED: game of this scenario did not finish (stuck?), killing it"; pkill -f "$tmp/od2"; sleep 1; pkill -9 -f "$tmp/od2" 2>/dev/null; fi
 }
 # every run gets its own scratch folder and server port, so parallel runs (e.g. several agents) do not collide
 tmp=$(mktemp -d /tmp/od2-verify.XXXXXX)
@@ -50,6 +76,7 @@ cleanup_games() { pkill -f "$tmp/od2" 2>/dev/null; pkill -f "$tmp/[0-9a-z-]*\.co
 # longest scenario is limited to 20 min, so nothing that old can still be running.
 cleanup_run_dir() {
   cleanup_games
+  (( $+functions[release_ports] )) && release_ports
   # only the `open` fallback leaves Terminal windows behind; close the idle ones (never D2MOO / claude windows)
   [ -z "${OD2_VERIFY_LAUNCH:-}" ] && ! launchctl asuser $(id -u) /usr/bin/true >/dev/null 2>&1 && scripts/close_idle_terminals.sh >/dev/null 2>&1
   case "$tmp" in /tmp/od2-verify.??????) ;; *) return ;; esac
@@ -63,8 +90,28 @@ trap 'cleanup_games; exit 143' TERM
 step() { printf '\n== %s\n' "$1"; }
 
 # every run uses its own server port so parallel runs (e.g. several agents) do not collide
-export OD2_PORT=$(( 20000 + RANDOM % 20000 ))
-while lsof -nP -iTCP:$OD2_PORT -sTCP:LISTEN >/dev/null 2>&1; do export OD2_PORT=$(( 20000 + RANDOM % 20000 )); done
+# Ports are reserved in /tmp/od2-ports (mkdir is atomic; a reservation of a dead owner or older than 2 h is reclaimed),
+# so two runs can never pick the same port in the gap between "is it free" and "the server binds it". Every scenario
+# attempt gets a FRESH port (pick_port): the previous scenario's server (or a joiner that is still reconnecting with
+# OD2_JOIN_RETRY) can otherwise still hold or hit the old one.
+mkdir -p /tmp/od2-ports
+typeset -ga my_ports; my_ports=()
+pick_port() {
+  local p d o i
+  for i in {1..200}; do
+    p=$(( 20000 + RANDOM % 20000 )); d=/tmp/od2-ports/$p
+    if [ -d $d ]; then
+      o=$(cat $d/owner 2>/dev/null)
+      if { [ -n "$o" ] && ! kill -0 $o 2>/dev/null; } || [ -n "$(find $d -maxdepth 0 -mmin +120 2>/dev/null)" ]; then rm -rf $d; else continue; fi
+    fi
+    lsof -nP -iTCP:$p >/dev/null 2>&1 && continue # listening or connected (a reservation covers the rest)
+    mkdir $d 2>/dev/null || continue
+    echo $$ > $d/owner; my_ports+=($p); export OD2_PORT=$p; return 0
+  done
+  echo "VERIFY ABORTED: no free OD2_PORT found"; exit 1
+}
+release_ports() { local p; for p in $my_ports; do rm -rf /tmp/od2-ports/$p; done; my_ports=(); }
+pick_port
 
 # a verify without the real data silently skipped the scenario loop (false green): refuse to run
 for v in D2S_SAMPLE_BODY D2S_SAMPLE_BODY_JSON D2_TABLES; do
@@ -136,10 +183,19 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
   # <config>/Saves, and an import of the same character (name + map seed) reuses the same .od2 file: parallel runs
   # (verify_parallel.sh) shared one file, so a hero another game had moved to act 2 started "in Lut Gholein" in
   # 9d-act1-sample-hero (batch 16 flake: LEVEL CHANGE from=1 to=40 via=load).
+  default_cfg="${OD2_VERIFY_CONFIG_SRC:-$HOME/Library/Application Support/OpenDiablo2/config.json}"
   if [ -z "${OD2_VERIFY_CONFIG_DIR:-}" ]; then
-    default_cfg="$HOME/Library/Application Support/OpenDiablo2/config.json"
     if [ -f "$default_cfg" ]; then
       mkdir -p $tmp/cfg && cp "$default_cfg" $tmp/cfg/config.json && export OD2_VERIFY_CONFIG_DIR=$tmp/cfg
+    fi
+  elif [ ! -f "$OD2_VERIFY_CONFIG_DIR/config.json" ]; then
+    # A private config dir WITHOUT config.json makes the game start its first-run setup and hang (w42-inferno-hold
+    # logs: "could not load file stream config.json ... starting first-run setup"): fill it from the user's config.
+    if [ -f "$default_cfg" ]; then
+      mkdir -p "$OD2_VERIFY_CONFIG_DIR" && cp "$default_cfg" "$OD2_VERIFY_CONFIG_DIR/config.json" \
+        && echo "(OD2_VERIFY_CONFIG_DIR had no config.json: copied $default_cfg into it)"
+    else
+      echo "VERIFY ABORTED: OD2_VERIFY_CONFIG_DIR=$OD2_VERIFY_CONFIG_DIR has no config.json and there is none to copy ($default_cfg); the game would hang in first-run setup"; exit 1
     fi
   fi
   # make_hero <out.d2s> for the level 94 playthroughs; OD2_HERO=barb picks the generated Barbarian (default: the Sorceress)
@@ -154,9 +210,16 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
     fail_before=$fail
     scenarios_run=$((scenarios_run+1))
     scen_run=$((scen_run + 1))
-    for attempt in 1 2; do
+    attempt=0 infra=0
+    while [ $attempt -lt 2 ]; do
+      attempt=$((attempt + 1))
       fail=$fail_before
       step "$scenario_name"
+      # a fresh server port per attempt (the previous scenario's server / a reconnecting joiner may still use the old one)
+      pick_port
+      # the private config folder must still hold config.json (another job or a cleanup may have removed it)
+      [ -n "${OD2_VERIFY_CONFIG_DIR:-}" ] && [ ! -f "$OD2_VERIFY_CONFIG_DIR/config.json" ] && [ -f "$default_cfg" ] && { mkdir -p "$OD2_VERIFY_CONFIG_DIR"; cp "$default_cfg" "$OD2_VERIFY_CONFIG_DIR/config.json"; }
+      defer_launch=1; deferred_cmds=()
       # saves are written back to the .d2s they were loaded from: every run starts from a fresh copy
       if [ -z "${OD2_VERIFY_SAVE:-}" ]; then cp -f "$D2S_SAMPLE_BODY" "$save"; rm -f "$save.bak"; fi
       n=${f:t:r}
@@ -186,15 +249,41 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
         # OD2_VERIFY_EXTRA_ENV: extra `export` words for the game (e.g. profiling: "OD2_PPROF_CPU=/tmp/x.prof OD2_AUTOPERF=1")
         [ -n "${OD2_VERIFY_EXTRA_ENV:-}" ] && echo "export $OD2_VERIFY_EXTRA_ENV"
         echo "$tmp/od2 2>&1 | tee $log"
+        # the done marker (with the game's exit status) is what wait_run waits for; no pgrep guessing
+        echo "echo \${pipestatus[1]} > $cmd.done"
       } > $cmd
-      chmod +x $cmd; rm -f $log
+      defer_launch=""
+      chmod +x $cmd; rm -f $log $cmd.done
       slot=$(./scripts/gameslot.sh acquire $$)
       t_start=$SECONDS
       launch_game $cmd
-      wait_run
+      flush_deferred   # the joiners of the multi-process scenarios start only now that the host has its slot
+      reaped=""
+      wait_run $cmd
       echo "SCENARIO TIME ${n} ${turbo_v:+turbo=$turbo_v }attempt=$attempt wall=$((SECONDS - t_start))s"
       ./scripts/gameslot.sh release $slot
       sed 's/\x1b\[[0-9;]*m//g' $log > $log.txt
+      # Infrastructure failures (not the scenario's fault) do not use up an attempt: the game never started
+      # (display service error under quiet mode, empty config dir -> first-run setup, launcher failure) or was
+      # killed from outside (exit status >= 128 / vanished without a script result). Re-run up to 3 times.
+      infra_reason=""
+      game_status=$(cat $cmd.done 2>/dev/null)
+      if [ ! -s $log ]; then infra_reason="no game log (launcher or display service failed)"
+      elif grep -q "starting first-run setup\|could not load file stream config.json" $log.txt; then
+        infra_reason="config.json missing in OD2_CONFIG_DIR (game started its first-run setup)"
+        [ -n "${OD2_VERIFY_CONFIG_DIR:-}" ] && [ ! -f "$OD2_VERIFY_CONFIG_DIR/config.json" ] && [ -f "$default_cfg" ] && { mkdir -p "$OD2_VERIFY_CONFIG_DIR"; cp "$default_cfg" "$OD2_VERIFY_CONFIG_DIR/config.json"; }
+      elif ! grep -q "d2data.mpq" $log.txt; then infra_reason="game never loaded its data ($(grep -m1 'PlatformError' $log.txt | cut -c1-120))"
+      elif [ -z "$reaped" ] && grep -q "AUTOSCRIPT step" $log.txt && ! grep -q "AUTOSCRIPT RESULT" $log.txt && { [ -z "$game_status" ] || [ "$game_status" -ge 128 ] 2>/dev/null; }; then
+        infra_reason="game process vanished mid-script (exit status ${game_status:-unknown}; killed from outside?)"
+      fi
+      if [ -n "$infra_reason" ] && [ $infra -lt 3 ]; then
+        infra=$((infra + 1))
+        echo "INFRA: $infra_reason; relaunching without using up the attempt ($infra/3)"
+        flake_dir="${OD2_VERIFY_FLAKE_DIR:-/tmp/od2-flake-logs}"; mkdir -p $flake_dir
+        cp -f $log.txt $flake_dir/${n}.$$.infra${infra}.txt 2>/dev/null
+        cleanup_games; sleep 5; pick_port
+        attempt=$((attempt - 1)); continue
+      fi
       scenario_check
       if [ -z "$scenario_warnings_ok" ] && grep -E "\[(ERROR|WARNING)\]|panic" $log.txt | grep -v "skipping missing" | grep -v "KILL giving up for now" | grep -v "D2S export: container item" | grep -v "D2S export: worn item .* has no rolled values" | grep -v "D2S export: merc item"; then
         echo "FAIL: warnings/errors in the $scenario_name log"; fail=1
@@ -207,6 +296,7 @@ if [ -n "${D2S_SAMPLE_BODY:-}" ]; then
         flake_dir="${OD2_VERIFY_FLAKE_DIR:-/tmp/od2-flake-logs}"; mkdir -p $flake_dir
         flake_log=$flake_dir/${n}.$$.attempt${attempt}.txt
         cp -f $log.txt $flake_log 2>/dev/null
+        for jl in $tmp/*.log(N); do [ "$jl" = "$log" ] || { [ "$jl" -nt "$cmd" ] && sed "s/\x1b\[[0-9;]*m//g" $jl > $flake_dir/${n}.$$.attempt${attempt}.${jl:t}.txt 2>/dev/null; }; done # the joiners' logs too
         echo "(attempt $attempt log kept in $flake_log; its last failure lines:)"
         grep -E "AUTOSCRIPT .*FAIL|DEATH|CAST start .*ok=false|CAST do .*ok=false|AUTOCAST .*refused|\[(ERROR|WARNING)\]|panic|LEVEL CHANGE" $log.txt | tail -12 | cut -c1-220
       fi
