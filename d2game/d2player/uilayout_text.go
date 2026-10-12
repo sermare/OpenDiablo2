@@ -2,6 +2,7 @@ package d2player
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2resource"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2ui"
@@ -93,8 +94,24 @@ func (s *QuestLog) layoutRects() []UIRect {
 	}
 
 	if q := s.quests[s.selectedTab]; q != nil {
-		for i, sock := range q.sockets {
-			rs = append(rs, spriteBox("quest", fmt.Sprintf("slot%d", i), sock))
+		// the sockets are created in quest order, the log places them by socket (LogPlacement): name them by grid
+		// position, row by row, so slotN is the Nth socket of the 3x2 grid
+		boxes := make([]UIRect, 0, len(q.sockets))
+		for _, sock := range q.sockets {
+			boxes = append(boxes, spriteBox("quest", "", sock))
+		}
+
+		sort.SliceStable(boxes, func(a, b int) bool {
+			if boxes[a].Y != boxes[b].Y {
+				return boxes[a].Y < boxes[b].Y
+			}
+
+			return boxes[a].X < boxes[b].X
+		})
+
+		for i, b := range boxes {
+			b.Name = fmt.Sprintf("slot%d", i)
+			rs = append(rs, b)
 		}
 	}
 

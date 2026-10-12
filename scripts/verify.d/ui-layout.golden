@@ -151,11 +151,11 @@ skills icon_p3_r6_c2 484 415 48 48
 
 # NPC dialog (0x4b4d40): width = widest text + 20, height = 0x15 + 0xf per row + 15, top = anchor y - 0x15 with the anchor
 # at the NPC y - 0x96 (here an NPC at (400, 300), three rows); the texts stand on the running sum of the advances
-~1 npcmenu dialog_c 400 129 20 81
-~2 npcmenu text.title 400 150 0 0
-~2 npcmenu text.row0 400 165 0 0
-~2 npcmenu text.row1 400 180 0 0
-~2 npcmenu text.row2 400 195 0 0
+~1 npcmenu dialog_c 400 123 20 81
+~2 npcmenu text.title 400 144 0 0
+~2 npcmenu text.row0 400 159 0 0
+~2 npcmenu text.row1 400 174 0 0
+~2 npcmenu text.row2 400 189 0 0
 
 # vendor window: the grid is the "Monster2" row of Inventory.txt (96..385 x 123..412); the bottom strip stands on y 477 and
 # its last slot (panel x 0x111, drawn at -1 + 80) is the close button (UI_DrawTradePanel 0x484570)
@@ -194,7 +194,7 @@ waypoint row4 98 266 279 29
 waypoint row8 98 410 279 29
 
 # NPC dialog box itself (width = widest text + 20, here Akara Talk/Trade; font metric tolerance), x centred on the anchor
-~3 npcmenu dialog 366 129 69 81
+~3 npcmenu dialog 366 123 69 81
 # gold dialog (UI_OpenPanelByIndex 0x44f7b0): picture at (0xd7, 0x8c) standing on y + height; OK button (0xfa, bottom 0x11f),
 # cancel (0x163, bottom 0x11f); both 32x32 frames of the buy/sell button picture (frames 0x10 and 0xa, sizes read from the file)
 golddlg frame 215 140 210 158

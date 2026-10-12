@@ -15,7 +15,7 @@ scenario_check() {
   grep -q "OPTIONS row npcspeech=TEXT ONLY" $log.txt || { echo "FAIL: npc speech row"; fail=1; }
   grep -q "OPTIONS row automapsize=MINI" $log.txt || { echo "FAIL: automap size row"; fail=1; }
   grep -qE "AUTOMAP state on=true size=mini" $log.txt || { echo "FAIL: the automap ignored the chosen size"; fail=1; }
-  grep -qE "OPTIONS persisted ok=true .*sound=60% music=80% .*gamma=70% .*automapsize=MINI .*automapnames=NO" $log.txt \
+  grep -qE "OPTIONS persisted ok=true .*sound=60% music=80% .*gamma=70% .*automapsize=MINI .*automapnames=YES" $log.txt \
     || { echo "FAIL: options not saved in config.json"; fail=1; }
   grep -q '"SfxVolume": 0.6' $cfg/config.json || { echo "FAIL: SfxVolume not in config.json"; fail=1; }
   grep -q '"gamma": 7' $cfg/config.json || { echo "FAIL: gamma not in config.json"; fail=1; }

@@ -11,5 +11,5 @@ scenario_check() {
   grep -E "DEATH hero|DEATH overlay|D2S EXPORT reparse" $log.txt | cut -c1-330 | head -8
   grep -qE "DEATH hero=.* gold_dropped=412383 gold_kept=0 stash=3000 pk=false" $log.txt || { echo "FAIL: stash gold not counted in the loss (expect 412383 dropped)"; fail=1; }
   grep -qE "DEATH overlay \"Your deeds of valor will be remembered" $log.txt || { echo "FAIL: no hardcore death overlay"; fail=1; }
-  grep -qE "D2S EXPORT reparse: .* gold=0 stash=3000 " $log.txt || { echo "FAIL: exported stash gold wrong"; fail=1; }
+  grep -qE "D2S EXPORT reparse: .* gold=0 .* stashgold=3000 " $log.txt || { echo "FAIL: exported stash gold wrong"; fail=1; }
 }
