@@ -18,10 +18,13 @@ import (
 // hold no gamble rows.
 var ErrNoGamble = errors.New("this vendor does not gamble")
 
+// gambleKeySuffix marks the stock key of a vendor's gamble stock.
+const gambleKeySuffix = "#gamble"
+
 // stockKey separates a vendor's regular stock from its gamble stock.
 func (t *TradeWindow) stockKey(v d2vendor.Vendor) string {
 	if t.gamble {
-		return v.Name + "#gamble"
+		return v.Name + gambleKeySuffix
 	}
 
 	return v.Name

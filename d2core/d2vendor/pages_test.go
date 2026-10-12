@@ -27,3 +27,56 @@ func TestStockPagesAreSeparateGrids(t *testing.T) {
 		t.Fatal("page 0 cell not freed")
 	}
 }
+
+// The vendor's pages are 10 x 10 grids: a weapon sold to a vendor whose weapons page is full goes to page 2,
+// every other page overflow is lost, an item without a store page is never kept (0x577320).
+func TestPlaceSoldOverflowsWeaponsToMagicPage(t *testing.T) {
+	s := NewStock()
+
+	for i := 0; i < GridCols*GridRows; i++ {
+		if !s.Place(&Item{Code: "f", W: 1, H: 1, Page: 1}) {
+			t.Fatalf("filling the weapons page failed at %d", i)
+		}
+	}
+
+	w := &Item{Code: "w", W: 1, H: 1, Page: 1}
+	if !s.PlaceSold(w) || w.Page != 2 {
+		t.Fatalf("weapon should land on page 2: %+v", w)
+	}
+
+	for i := 0; i < GridCols*GridRows; i++ {
+		s.Place(&Item{Code: "a", W: 1, H: 1, Page: 0})
+	}
+
+	if a := (&Item{Code: "x", W: 1, H: 1, Page: 0}); s.PlaceSold(a) {
+		t.Fatal("a full armor page has no overflow")
+	}
+
+	if n := (&Item{Code: "n", W: 1, H: 1, Page: -1}); s.PlaceSold(n) {
+		t.Fatal("an item without a store page is not kept")
+	}
+
+	for i := 0; i < GridCols*GridRows-1; i++ {
+		s.Place(&Item{Code: "m", W: 1, H: 1, Page: 2})
+	}
+
+	if full := (&Item{Code: "z", W: 1, H: 1, Page: 1}); s.PlaceSold(full) || full.Page != 1 {
+		t.Fatalf("both pages full: refused, page restored, got page %d", full.Page)
+	}
+}
+
+func TestLeaveTownRestock(t *testing.T) {
+	tests := []struct {
+		empty   bool
+		elapsed int64
+		want    bool
+	}{
+		{true, 0, true}, {true, RestockInterval, true}, {false, RestockInterval, false}, {false, RestockInterval + 1, true},
+	}
+
+	for _, tt := range tests {
+		if got := LeaveTownRestock(tt.empty, tt.elapsed); got != tt.want {
+			t.Errorf("LeaveTownRestock(%v,%d)=%v want %v", tt.empty, tt.elapsed, got, tt.want)
+		}
+	}
+}

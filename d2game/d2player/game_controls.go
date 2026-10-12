@@ -275,6 +275,7 @@ func NewGameControls(
 	gc.Trade.compareHook = gc.compareLines
 	gc.cmpTooltip = ui.NewTooltip(d2resource.FontFormal11, d2resource.PaletteStatic, d2ui.TooltipXCenter, d2ui.TooltipYBottom)
 	gc.belt = NewBeltPanel(asset, ui, l, inventory, gc.beltBoxes, gc.saveHero)
+	trade.autoBelt = func(it InventoryItem) bool { _, ok := gc.belt.AutoBelt(it); return ok }
 	gc.wireTints()
 
 	if !isSinglePlayer {

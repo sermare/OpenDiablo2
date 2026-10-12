@@ -97,7 +97,10 @@ func (t *TradeWindow) autoRestock(first string) {
 	t.Close()
 
 	t.now = func() time.Time { return real().Add(5 * time.Minute) }
-	t.LeaveTown(d2vendor.ActIndex(v)) // the restock check runs when the hero leaves town
+	t.LeaveTown(d2vendor.ActIndex(v), false) // the restock check runs when the hero leaves town
+	// only the regular window consumes the flag, and it frees the gamble inventories with the vendor's lists
+	t.Open(v, 1, nil)
+	t.Close()
 	_ = t.OpenGamble(v, 1, nil)
 	t.now = real
 

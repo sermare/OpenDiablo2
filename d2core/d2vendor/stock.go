@@ -9,6 +9,9 @@ import (
 )
 
 const (
+	pageWeapons = 1
+	pageMagic   = 2
+
 	// GridCols and GridRows are the size of the vendor's own storage
 	// ("Monster" record of Inventory.txt, VERIFIED: 10 x 10 cells).
 	GridCols = 10
@@ -177,6 +180,35 @@ func (s *Stock) Place(it *Item) bool {
 	s.Items = append(s.Items, it)
 
 	return true
+}
+
+// PlaceSold puts an item the player sold on the first page that has room
+// (TRADE_ServerSellItem 0x577320, VERIFIED): its own StorePage first and, only
+// for a weapon (page 1), the "mag" page 2 when the weapons page is full. An
+// item without a store page (Page < 0) is not kept (the clone is freed and the
+// player is paid in full). Each page is a 10 x 10 grid (the vendor's
+// Inventory.txt "Monster" record, not the 10 x 4 "Trade Page" records, which
+// belong to the player-to-player trade windows).
+func (s *Stock) PlaceSold(it *Item) bool {
+	if it.Page < 0 {
+		return false
+	}
+
+	if s.Place(it) {
+		return true
+	}
+
+	if it.Page == pageWeapons {
+		it.Page = pageMagic
+
+		if s.Place(it) {
+			return true
+		}
+
+		it.Page = pageWeapons
+	}
+
+	return false
 }
 
 // Remove takes an item out of the stock (a purchase: the vendor does not

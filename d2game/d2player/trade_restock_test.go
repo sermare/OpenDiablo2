@@ -25,14 +25,14 @@ func TestLeaveTownFlagsRestock(t *testing.T) {
 	w.stamp[a1.Name], w.stamp[a2.Name] = start, start
 
 	clock = start.Add(d2vendor.RestockInterval * time.Millisecond)
-	w.LeaveTown(0)
+	w.LeaveTown(0, true)
 
 	if w.due[a1.Name] {
 		t.Fatal("exactly the interval is not enough")
 	}
 
 	clock = clock.Add(time.Millisecond)
-	w.LeaveTown(0)
+	w.LeaveTown(0, true)
 
 	if !w.due[a1.Name] || w.due[a2.Name] {
 		t.Fatalf("only the act 1 vendor is flagged: %v", w.due)
@@ -44,10 +44,33 @@ func TestLeaveTownFlagsRestock(t *testing.T) {
 
 	// leaving again right away does not extend or clear anything
 	w.due[a1.Name] = false
-	w.LeaveTown(0)
+	w.LeaveTown(0, true)
 
 	if w.due[a1.Name] {
 		t.Fatal("restamped vendor must wait another interval")
+	}
+}
+
+// Nobody left in the town (always, with one hero): every opened vendor of the act is flagged whatever the age
+// of its stock; the other acts and the gamble stocks are not (0x534c20 with the "town empty" argument, VERIFIED;
+// the gamble inventories are freed by the regular window's restock, not flagged).
+func TestLeaveTownEmptyTownFlagsEveryOpenedVendor(t *testing.T) {
+	start := time.Unix(1000, 0)
+
+	w := &TradeWindow{
+		due: map[string]bool{}, stamp: map[string]time.Time{}, keyVendor: map[string]d2vendor.Vendor{},
+		now: func() time.Time { return start },
+	}
+
+	a1, a2 := d2vendor.Act1[0], d2vendor.Act2[0]
+	w.keyVendor[a1.Name], w.keyVendor[a2.Name] = a1, a2
+	w.keyVendor[a1.Name+gambleKeySuffix] = a1
+	w.stamp[a1.Name], w.stamp[a2.Name] = start, start
+
+	w.LeaveTown(0, false)
+
+	if !w.due[a1.Name] || w.due[a2.Name] || w.due[a1.Name+gambleKeySuffix] {
+		t.Fatalf("only the act 1 regular stock is flagged: %v", w.due)
 	}
 }
 
