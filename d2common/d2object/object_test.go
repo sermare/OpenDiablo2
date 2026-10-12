@@ -155,32 +155,72 @@ func TestOverlayFlags(t *testing.T) {
 }
 
 func TestRollShrine(t *testing.T) {
-	for seed := uint32(0); seed < 200; seed++ {
-		r := NewRoller(seed)
-
-		s, ok := RollShrine(DefaultShrines, r, 1, 3, false)
-		if !ok {
-			t.Fatal("no shrine at level 1")
+	// Parm0 1 and 2 are the health and mana boost (the exchange rows are remapped), VERIFIED 0x54d840
+	for seed := uint32(0); seed < 100; seed++ {
+		if s, _ := RollShrine(DefaultShrines, NewRoller(seed), 10, 1, false); s.Code != ShrineHealth {
+			t.Fatalf("parm0 1 seed %d: %+v", seed, s)
 		}
 
-		if s.LevelMin > 1 || s.Out || s.EffectClass != 4 {
-			t.Fatalf("seed %d: %+v", seed, s)
+		if s, _ := RollShrine(DefaultShrines, NewRoller(seed), 10, 2, false); s.Code != ShrineMana {
+			t.Fatalf("parm0 2 seed %d: %+v", seed, s)
 		}
 	}
 
+	// Parm0 3: about one in ten is a magic shrine, the rest is refill or a booster
+	magic, n := 0, 4000
+
+	for seed := uint32(0); seed < uint32(n); seed++ {
+		s, ok := RollShrine(DefaultShrines, NewRoller(seed), 60, 3, false)
+		if !ok {
+			t.Fatal("no shrine")
+		}
+
+		switch s.EffectClass {
+		case 1:
+			magic++
+		case 4:
+		default:
+			t.Fatalf("seed %d: class %d %+v", seed, s.EffectClass, s)
+		}
+
+		if s.Out && s.Code != ShrineHealth && s.Code != ShrineMana {
+			// the exchange and Enirhs rows never survive the remap
+			t.Fatalf("seed %d: unmapped OUT row %+v", seed, s)
+		}
+	}
+
+	if magic < n/20 || magic > n*3/20 {
+		t.Errorf("magic share %d of %d, expected about 10%%", magic, n)
+	}
+
+	// at a low level id the level-gated boosters are mostly re-rolled away (8 tries), the 26+ cold boost nearly never shows
+	cold := 0
+
+	for seed := uint32(0); seed < 2000; seed++ {
+		if s, _ := RollShrine(DefaultShrines, NewRoller(seed), 3, 3, false); s.Code == ShrineResistCold {
+			cold++
+		}
+	}
+
+	if cold > 20 {
+		t.Errorf("cold boost rolled %d times at level id 3", cold)
+	}
+
 	// deterministic
-	a, _ := RollShrine(DefaultShrines, NewRoller(7), 30, 0, false)
-	b, _ := RollShrine(DefaultShrines, NewRoller(7), 30, 0, false)
+	a, _ := RollShrine(DefaultShrines, NewRoller(7), 30, 3, false)
+	b, _ := RollShrine(DefaultShrines, NewRoller(7), 30, 3, false)
 
 	if a.Code != b.Code {
 		t.Error("roll not deterministic")
 	}
 
-	// every non-cut shrine appears at a high level
+	// every non-cut shrine appears at a high level through Parm0 3 or the uniform roll
 	seen := map[int]bool{}
 
 	for seed := uint32(0); seed < 3000; seed++ {
-		s, _ := RollShrine(DefaultShrines, NewRoller(seed), 40, 0, false)
+		s, _ := RollShrine(DefaultShrines, NewRoller(seed), 80, 3, false)
+		seen[s.Code] = true
+		s, _ = RollShrineUniform(DefaultShrines, NewRoller(seed), 80)
 		seen[s.Code] = true
 	}
 

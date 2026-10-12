@@ -547,9 +547,18 @@ func (b *roomBuilder) stampSub(x, y int, g Group, d *Pattern, val int) {
 	}
 }
 
-// addSubObjects records the type 2 DS1 objects inside the group rectangle (DRLG_AddSubThemeGroupObjects 0x6726b0:
-// they become units of the room at the same offset inside the stamped rectangle). That the original keeps the
-// sub-tile remainder of the position is UNVERIFIED.
+// InSubGroupRect is the containment test of DRLG_AddSubThemeGroupObjects (0x6726b0, VERIFIED): the group rectangle
+// (x0, y0, w, h in tiles) is scaled by 5 to sub-tiles and an object at sub-tile (ox, oy) is taken when
+// x0*5 < ox < (x0+w)*5 and y0*5 < oy < (y0+h)*5, both ends STRICT, so an object on the first sub-tile row or
+// column of the rectangle stays out (the old test used tile coordinates and took it).
+func InSubGroupRect(ox, oy, x0, y0, w, h int) bool {
+	return x0*5 < ox && ox < (x0+w)*5 && y0*5 < oy && oy < (y0+h)*5
+}
+
+// addSubObjects records the DS1 objects inside the group rectangle (DRLG_AddSubThemeGroupObjects 0x6726b0:
+// they become units of the room at the same offset inside the stamped rectangle, the sub-tile remainder is kept
+// because the offset is (x - x0*5) + destination*5, VERIFIED). The exe copies every record of the pattern
+// (monsters and items too); only the objects are made here.
 func (b *roomBuilder) addSubObjects(x, y int, g Group, d *Pattern, val int) {
 	if d.Path == "" || len(d.Objects) == 0 {
 		return
@@ -564,7 +573,7 @@ func (b *roomBuilder) addSubObjects(x, y int, g Group, d *Pattern, val int) {
 			continue
 		}
 
-		if tx, ty := o.X/5, o.Y/5; tx >= x0 && tx < x0+g.W && ty >= y0 && ty < y0+g.H {
+		if InSubGroupRect(o.X, o.Y, x0, y0, g.W, g.H) {
 			idx = append(idx, i)
 		}
 	}
