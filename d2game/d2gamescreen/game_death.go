@@ -190,7 +190,18 @@ func (v *Game) heroDies() {
 	st.corpseX, st.corpseY = x, y
 	st.corpseLevel = v.currentLevel()
 
-	v.takeGold(p.Gold, x, y)
+	// gold: min(level,20)% of carried+stash is lost, the rest of the carried gold is dropped (0x5331e0)
+	// the stash gold is not carried by the in-game player entity (it lives in the saved hero state), so it
+	// takes no part here: UNVERIFIED in game, the pure rule handles it
+	stash := 0
+
+	gp := d2hero.DeathGoldPenalty(level, p.Gold, stash, false)
+	out.GoldDropped = gp.Dropped
+	if p.Death.Corpse != nil {
+		p.Death.Corpse.GoldDropped = gp.Dropped
+	}
+
+	v.takeGold(p.Gold, gp.Dropped, x, y)
 	p.Die()
 
 	// the death routine ends the hero's states (except plrstaydeath) and his
@@ -217,16 +228,18 @@ func (v *Game) heroDies() {
 }
 
 // takeGold removes the carried gold and drops it as a pile beside the corpse.
-func (v *Game) takeGold(amount, x, y int) {
+func (v *Game) takeGold(carried, amount, x, y int) {
 	p := v.localPlayer
-	if amount <= 0 {
-		return
+	if carried > 0 {
+		if v.gameControls != nil {
+			v.gameControls.AddGold(-carried)
+		} else {
+			p.Gold = 0
+		}
 	}
 
-	if v.gameControls != nil {
-		v.gameControls.AddGold(-amount)
-	} else {
-		p.Gold = 0
+	if amount <= 0 {
+		return
 	}
 
 	ent, err := v.gameClient.MapEngine.NewGoldPile(amount, v.asset.TranslateString("gld"), x+goldPileSpread, y)
