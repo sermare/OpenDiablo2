@@ -57,6 +57,9 @@ w36_play_env() {
     w36_s+=";wait:8;say:spawnportal 36;use:Portal;expect:level=36;walkto:exit=37;expect:level=37;wait:3"
     w36_s+=";kill:name=Andariel,120"
     w36_s+=";wait:2;use:Portal;expect:level=1;wait:2"
+    # a player talks to Warriv first: the Andariel kill leaves slot 6 at reward pending, bit 0 (done) comes from his talk and
+    # is the only thing the server tests for the trip (0x577b70)
+    w36_s+=";move:npc=Warriv;until:NPC menu opened: npc=\"Warriv\",60;menu:Talk;wait:6;panel:close"
     # act travel of this difficulty: Warriv (Andariel is dead), then the quest flags of the later acts are forced
     w36_s+=";travel:2;expect:level=40;wait:2;refuse:4;say:completequest 2 6;travel:3;expect:level=75;wait:2"
     w36_s+=";say:completequest 3 6;travel:4;expect:level=103;wait:2;refuse:3;say:completequest 4 2;travel:5;expect:level=109;wait:2;exit"
