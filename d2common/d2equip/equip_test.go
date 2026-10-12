@@ -453,3 +453,27 @@ func TestRealTables(t *testing.T) {
 		t.Errorf("plate mail %+v", b)
 	}
 }
+
+func TestRollLossStack(t *testing.T) {
+	cases := []struct {
+		name string
+		it   Item
+		qty  int
+		exp  bool
+		roll int
+		want LossResult
+	}{
+		{"armor last point breaks", Item{MaxDurability: 20, Durability: 1}, 0, true, 0, LossResult{Dur: 0, Lost: true, Break: true}},
+		{"plain weapon last point: no break", Item{Weapon: true, MaxDurability: 20, Durability: 1}, 0, true, 0, LossResult{Dur: 0, Lost: true}},
+		{"classic weapon", Item{Weapon: true, MaxDurability: 20, Durability: 1}, 5, false, 0, LossResult{Dur: 0, Qty: 5, Lost: true}},
+		{"javelin stack refills", Item{Weapon: true, MaxDurability: 20, Durability: 1}, 5, true, 0, LossResult{Dur: 20, Qty: 4, Lost: true, Refilled: true}},
+		{"last javelin", Item{Weapon: true, MaxDurability: 20, Durability: 1}, 1, true, 0, LossResult{Dur: 0, Qty: 0, Lost: true}},
+		{"mid durability", Item{Weapon: true, MaxDurability: 20, Durability: 7}, 3, true, 0, LossResult{Dur: 6, Qty: 3, Lost: true}},
+		{"roll fails", Item{Weapon: true, MaxDurability: 20, Durability: 1}, 3, true, 4, LossResult{Dur: 1, Qty: 3}},
+	}
+	for _, c := range cases {
+		if got := RollLossStack(&c.it, c.qty, c.exp, c.roll, ChanceWeapon); got != c.want {
+			t.Errorf("%s: got %+v want %+v", c.name, got, c.want)
+		}
+	}
+}

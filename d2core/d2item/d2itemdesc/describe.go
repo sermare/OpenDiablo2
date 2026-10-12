@@ -240,8 +240,27 @@ func (d *desc) qualityColor() Color {
 	return White
 }
 
+// orangeCodes are the item codes the name colour of INV_BuildPanelAndItemTooltips (0x48a090, VERIFIED
+// from the dword compares at 0x48ad0c..0x48ad57) paints orange besides runes (ItemTypes id 0x4a): the
+// essences (ceh bet tes fed), the Token of Absolution, Diablo's Horn, Baal's Eye, Mephisto's Brain and
+// the three keys.
+var orangeCodes = map[string]bool{
+	"ceh": true, "bet": true, "tes": true, "fed": true, "toa": true,
+	"dhn": true, "bey": true, "mbr": true, "pk1": true, "pk2": true, "pk3": true,
+}
+
+// brokenFlag models item flag 0x100: durability 0 on an armor piece with a durability. VERIFIED: only
+// ITEM_BreakEquippedItem (0x55d660) sets it, and 0x557d90 never calls that for a weapon.
+func (d *desc) brokenFlag() bool {
+	return d.base != nil && !d.base.Weapon && !d.base.NoDurability && d.it.MaxDurability > 0 && d.it.Durability == 0
+}
+
 func (d *desc) isRune() bool {
 	c := d.it.Code
+
+	if orangeCodes[c] {
+		return true
+	}
 
 	return len(c) == 3 && c[0] == 'r' && c[1] >= '0' && c[1] <= '3' && c[2] >= '0' && c[2] <= '9' && c != "rvs" && c != "rvl"
 }
@@ -277,6 +296,18 @@ func (d *desc) nameLines() []Line {
 
 		lines = append(lines, Line{s, c})
 	}
+
+	// A broken armor piece has its name block painted red (VERIFIED, 0x48af30: the colour variable
+	// becomes 1 when item flag 0x100 is set); a runeword name keeps its own gold.
+	defer func() {
+		if d.brokenFlag() {
+			for i := range lines {
+				if lines[i].Color != Gold || !it.Runeword {
+					lines[i].Color = Red
+				}
+			}
+		}
+	}()
 
 	if !d.identified() && it.Quality >= d2s.QualityMagic {
 		add(base, col)

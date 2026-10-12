@@ -389,6 +389,29 @@ func (g *GameControls) autoDurability(log func(string, ...interface{})) {
 	log("durability break item=%s dur=%d/%d broken=%v before=[%s] after=[%s]", torso.GetItemCode(), cur, maxDur, cur == 0,
 		withDef, g.statsLine())
 
+	// the weapon's last point (w46): it reaches 0 without the broken flag, so its stats stay on
+	// (ITEM_RollDurabilityLoss 0x557d90 breaks armor only)
+	if wpn, ok := g.inventory.WornAt(d2equip.LocRightHand).(*diablo2item.Item); ok {
+		if _, wmax := wpn.Durability(); wmax > 0 {
+			wpn.SetDurability(1)
+			g.recalcWorn()
+
+			wbefore := g.statsLine()
+
+			for i := 0; i < 500; i++ {
+				if cur, _ := wpn.Durability(); cur == 0 {
+					break
+				}
+
+				g.OnHeroStrike()
+			}
+
+			wcur, _ := wpn.Durability()
+			log("durability weapon item=%s dur=%d/%d zero=%v stats_kept=%v qty=%d", wpn.GetItemCode(), wcur, wmax, wcur == 0,
+				wbefore == g.statsLine(), wpn.Quantity())
+		}
+	}
+
 	for _, k := range keep {
 		k.item.SetDurability(k.cur)
 	}

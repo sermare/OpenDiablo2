@@ -164,3 +164,56 @@ func RollWear(it *Item, percent, chance, amount int) (dur int, broke, lost bool)
 // read). We still treat broken weapons like broken armor (the conservative
 // choice, matching the community statement that nothing works).
 func PropertiesOff(it *Item) bool { return it.Broken() }
+
+// LossResult is the outcome of RollLossStack.
+type LossResult struct {
+	Dur, Qty int
+	Lost     bool
+	// Break: the item gets the broken flag 0x100 and its stat list is removed (ITEM_BreakEquippedItem).
+	Break bool
+	// Refilled: a throwing stack used one piece up and its durability went back to the maximum.
+	Refilled bool
+}
+
+// RollLossStack is the whole tail of ITEM_RollDurabilityLoss (0x557d90), VERIFIED. When the roll passes and
+// the durability would fall below 1: an armor piece (not ItemTypes id 0x2d) breaks; a weapon never gets the
+// broken flag there. In a game with expansion-format items (item data short +0x30 non-zero; expansion true)
+// the weapon then looks at its quantity (stat 0x46): below 2 durability and quantity both become 0, otherwise
+// the quantity drops by one and the durability is refilled to the maximum. In a classic-format item only the
+// durability becomes 0. qty is the item's stat 0x46 (0 for non-stacks).
+func RollLossStack(it *Item, qty int, expansion bool, percent, chance int) LossResult {
+	res := LossResult{Dur: it.Durability, Qty: qty}
+
+	if !it.CanLoseDurability() || percent >= chance || it.Durability <= 0 {
+		return res
+	}
+
+	res.Lost = true
+
+	d := it.Durability - 1
+	if d >= 1 {
+		res.Dur = d
+		if d > it.MaxDurability {
+			res.Dur = it.MaxDurability
+		}
+
+		return res
+	}
+
+	if !it.Weapon {
+		res.Dur, res.Break = 0, true
+
+		return res
+	}
+
+	switch {
+	case !expansion:
+		res.Dur = 0
+	case qty < 2:
+		res.Dur, res.Qty = 0, 0
+	default:
+		res.Qty, res.Dur, res.Refilled = qty-1, it.MaxDurability, true
+	}
+
+	return res
+}
