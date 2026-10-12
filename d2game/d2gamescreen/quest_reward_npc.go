@@ -159,8 +159,10 @@ func (v *Game) respecAvailable() bool {
 }
 
 // akaraRespec resets the attributes to the class base and refunds every spent
-// skill point (one use: the bit is cleared and the reward bit set, UNVERIFIED
-// like the whole 1.13 free respec).
+// skill point. VERIFIED (TRADE_ServerHandleNpcMenuAction 0x577b70, case Akara 0x94): when slot 0x29 bit 1 is set the
+// server runs SKILL_ServerRespecAllSkills and STATS_ServerResetAttributesToClassBase, then 0x58db20 sets bit 0 and
+// clears bit 1 (one use). Bits 0xd and 1 are granted by Akara's thanks (quests.md) and, in Hell only, by the same
+// menu action for a hero that finished the Den of Evil (slot 1 bit 0) and has neither bit of slot 0x29 (0x58daf0).
 func (v *Game) akaraRespec() error {
 	if !v.respecAvailable() {
 		return fmt.Errorf("Akara has no reset to offer")

@@ -20,22 +20,24 @@ import (
 //     WarrivMenu1b / MeshifMenuEast) are added by the client only once the
 //     act's last quest is done (quests-2.md: "the client only offers the sail
 //     menu after Andariel's quest", "[BIN] checks A2Q6 RG in the client
-//     menu"). The exact client condition bits are UNVERIFIED; GoalMet accepts
-//     done, reward pending, party-done and goal-reached.
+//     menu"). VERIFIED server side (TRADE_ServerHandleNpcMenuAction 0x577b70): the trip is made only when
+//     bit 0 (done) of the quest slot is set: Warriv(1) slot 6, Meshif(1) slot 14 (0xe), Tyrael(2) slot 0x1a, the
+//     last also needs the game's dwGameSeed field to be non-zero. NPCGoalMet is that test; the client row that
+//     triggers it is not located, so the menu row follows the same test.
 //   - The server side (QUESTS_OnActChangeNpcTravel 0x5446e0) sets the "act
 //     finished" slots 7 (Warriv), 15 (Meshif) and 28 (Tyrael) to done.
 //   - Act 3 -> 4 is not an NPC menu in the original: Mephisto's red portal in
 //     the Durance of Hate (a portal object whose destination is level 103).
 //     That it is gated only by the portal existing (Mephisto dead) is
-//     UNVERIFIED.
+//     UNVERIFIED (no NPC action in 0x577b70 serves it).
 //   - Act 4 -> 5 is Tyrael(2) (class 367, 0x16f) after Terror's End (expansion
-//     only); the static table gives him Talk only and there is no travel
-//     string for him, so the trip is modelled as the effect of talking to
-//     him once the quest is done. UNVERIFIED.
-//   - There is no NPC that travels back from Act 4 or Act 5 in the original
-//     (no "go west" row exists for those towns' NPCs). UNVERIFIED as a
-//     negative; Rule lookups therefore only know the four forward trips and
-//     the two back trips, and the debug "free" mode allows any act.
+//     only): VERIFIED as an NPC menu action of 0x577b70 (menu action 0, quest slot 0x1a bit 0, travel to level
+//     0x6d). The static table gives him Talk only and there is no travel string for him, so the engine models the
+//     trip as the effect of talking to him once the quest is done (the client row is not located).
+//   - The server also knows Cain(6) (class 520, 0x208) travelling to level 0x67 (the Pandemonium Fortress) without a
+//     quest gate (VERIFIED, 0x577b70, travel type 5); the engine has no menu row for it. No NPC action travels back
+//     from Act 4 to Act 3, so the rule list keeps the four forward trips and the two back trips, and the debug "free"
+//     mode allows any act.
 
 // Via names how an act change is triggered.
 type Via int
@@ -130,9 +132,18 @@ func RuleForNPC(class int) (ActRule, bool) {
 	return ActRule{}, false
 }
 
+// NPCGoalMet is the server test of an NPC trip (VERIFIED, 0x577b70): bit 0 (done) of the quest slot.
+func NPCGoalMet(q *d2s.QuestRecord, slot int) bool {
+	if slot < 0 {
+		return true
+	}
+
+	return q != nil && q.Get(slot, d2s.QuestBitDone)
+}
+
 // GoalMet reports whether a quest slot shows the goal reached: done, reward
-// pending, party-done (bit 13) or goal-reached (bit 14). UNVERIFIED mapping,
-// see the package comment above.
+// pending, party-done (bit 13) or goal-reached (bit 14). It is the test of the
+// portal trip only (UNVERIFIED mapping); the NPC trips use NPCGoalMet.
 func GoalMet(q *d2s.QuestRecord, slot int) bool {
 	if slot < 0 {
 		return true
@@ -176,7 +187,12 @@ func CheckActTravel(from, to int, q *d2s.QuestRecord, expansion, free bool) (Act
 		return r, ErrNeedLoD
 	}
 
-	if !GoalMet(q, r.QuestSlot) {
+	met := GoalMet
+	if r.Via != ViaPortal {
+		met = NPCGoalMet
+	}
+
+	if !met(q, r.QuestSlot) {
 		return r, fmt.Errorf("%w (slot %d)", ErrQuestNotDone, r.QuestSlot)
 	}
 
