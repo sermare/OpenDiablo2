@@ -60,6 +60,7 @@ func FromRecords(objs d2records.ObjectDetails, groups d2records.ObjectGroups) Ta
 			OperateRange: o.OperateRange, Lockable: o.Lockable, RestoreVirgins: o.RestoreVirgins,
 			Parm0: o.Parm[0], Damage: o.Damage, Selectable0: o.Selectable[0],
 			SizeX: o.SizeX, SizeY: o.SizeY, Orientation: o.Orientation,
+			PreOperate: o.PreOperate, XSpace: o.XSpace, YSpace: o.YSpace,
 		}
 	}
 

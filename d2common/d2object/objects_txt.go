@@ -34,6 +34,10 @@ type Def struct {
 	// SizeX, SizeY are the footprint in sub-tiles (the scatter's placement tests) and Orientation the
 	// column that picks the room-edge rule of the shrine handler (1: top/bottom band, 2: left/right band).
 	SizeX, SizeY, Orientation int
+	// PreOperate (record +0x13d): OBJECT_InitServerObject (0x54d420) draws one game-seed Roll(14) per such object. XSpace and
+	// YSpace (+0x162/+0x163) are the neighbour spacing of the 0x54f7e0 / 0x54fbe0 cluster handlers.
+	PreOperate     bool
+	XSpace, YSpace int
 }
 
 // SubClass bits of objects.txt.
@@ -92,6 +96,7 @@ func ParseObjects(data []byte) ([]Def, error) {
 			RestoreVirgins: num("restorevirgins") != 0, Parm0: num("parm0"), Parm1: num("parm1"), Parm3: num("parm3"), Damage: num("damage"),
 			Selectable0: num("selectable0") != 0,
 			SizeX:       num("sizex"), SizeY: num("sizey"), Orientation: num("orientation"),
+			PreOperate: num("preoperate") != 0, XSpace: num("xspace"), YSpace: num("yspace"),
 		})
 	}
 

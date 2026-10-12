@@ -32,14 +32,21 @@ import (
 //
 // Handlers (density, object id, pct = 100): 1 group by class (0x54eae0),
 // 2 shrine / well near the room edge (0x550bc0), 3 density scatter
-// (0x54f3e0), 6 = 3 followed by a 29% twin at the same place (0x54f620),
-// 8 tracked scatter (0x54f650), 9 one scatter (0x54f500). Not modelled (they
-// make no object, the stream after them is approximate): 4 (0x54f7e0), 5
-// (0x54fbe0) and 7 (0x54f140, its pattern tables are filled at run time);
-// the object's own initialisation draws (shrine type, chest rolls) are not
-// replayed either, only the one room-seed step the unit creation takes. The
-// engine's collision grid is replaced by the Collider interface, and the
-// room link test of ShouldSpawn by Room.NoObjects (UNVERIFIED).
+// (0x54f3e0), 4 small-object clusters of the hard-coded row 7 (0x54f7e0,
+// ids 7 or 11), 5 clusters of a random member of the five-id urn list
+// (0x54fbe0), 6 = 3 followed by a 29% twin at the same place (0x54f620),
+// 7 four fixed corpse / pole patterns with a 29% companion (0x54f140), 8
+// tracked scatter (0x54f650), 9 one scatter (0x54f500).
+//
+// Object initialisation (OBJECT_InitServerObject 0x54d420): the InitFn
+// handlers read for rows the scatter makes (shrine type 0x54d840, chest and
+// urn variants 0x54da20 / 0x54db00 with their trap and lock rolls) all draw on
+// the new unit's own seed, which is derived by the one room-seed step the
+// creation takes, so they never touch the room or game stream. The only
+// stream effect is the PreOperate flag (+0x13d): one game-seed Roll(14) per
+// such object (a zero opens it). The engine's collision grid is replaced by
+// the Collider interface, and the room link test of ShouldSpawn by
+// Room.NoObjects (UNVERIFIED).
 
 // Rect is a room rectangle in sub-tiles.
 type Rect struct{ X, Y, W, H int }
@@ -228,6 +235,12 @@ func (s *Scatter) handle(fn int, lv LevelRow, room *RoomCtx, density, id int) {
 		s.shrine(lv, room, id)
 	case 3:
 		s.densityA(room, density, id)
+	case 4:
+		s.smallClusters(room, density)
+	case 5:
+		s.urnClusters(room, density, id)
+	case 7:
+		s.patterns(room, id)
 	case 6:
 		if s.densityA(room, density, id) != nil {
 			if int(s.Game.Step()%100) > 0x46 {
@@ -255,6 +268,10 @@ func (s *Scatter) create(room *RoomCtx, id, x, y int) *Placed {
 
 	p := Placed{id, x, y}
 	s.Made = append(s.Made, p)
+
+	if s.def(id).PreOperate { // OBJECT_InitServerObject: RAND_RollSeedBounded(game seed, 14)
+		s.Game.Roll(14)
+	}
 
 	if s.Create != nil {
 		s.Create(p)
@@ -499,12 +516,8 @@ func (s *Scatter) groupByClass(room *RoomCtx, density, id int) {
 	}
 
 	canPlace := func(x, y int) bool {
-		if small { // OBJRGN_CanPlaceSmallObjectAtPoint (0x54e110)
-			if r.W < 2 || r.H < 2 || !(r.X+2 < x && r.Y+2 < y && x < r.X-d.SizeX+r.W && y < r.Y-d.SizeY+r.H) {
-				return false
-			}
-
-			return !s.Col.Blocked(x, y, d.SizeX+2, d.SizeY+2, MaskPlace)
+		if small {
+			return s.canPlaceSmall(r, d, x, y)
 		}
 
 		return s.fits(r, x, y, d.SizeX, d.SizeY)
@@ -574,5 +587,224 @@ func (s *Scatter) groupByClass(room *RoomCtx, density, id int) {
 		}
 
 		n--
+	}
+}
+
+// canPlaceSmall is OBJRGN_CanPlaceSmallObjectAtPoint (0x54e110).
+func (s *Scatter) canPlaceSmall(r Rect, d Def, x, y int) bool {
+	if r.W < 2 || r.H < 2 || !(r.X+2 < x && r.Y+2 < y && x < r.X-d.SizeX+r.W && y < r.Y-d.SizeY+r.H) {
+		return false
+	}
+
+	return !s.Col.Blocked(x, y, d.SizeX+2, d.SizeY+2, MaskPlace)
+}
+
+// urnList is the id table at 0x72f720 (the first DAT_0072f74c = 5 entries are used).
+var urnList = [5]int{4, 9, 52, 94, 95}
+
+// clusterGrow is the shared growth loop of 0x54f7e0 and 0x54fbe0 after the seed object was made: a halving
+// roll on the game seed, then up to limit() neighbour probes at XSpace / YSpace steps in one of 8 directions.
+// made is the number of objects in the cluster so far; mk creates the next one and returns false to stop the
+// whole handler (the cap of 8 objects).
+func (s *Scatter) clusterGrow(d Def, r Rect, x, y int, limit func() int, mk func(x, y int) bool) (stop bool) {
+	g := s.Game
+	made, found := 1, true
+
+	for {
+		if half := made >> 1; half > 0 && g.Roll(int32(half)) != 0 {
+			return false
+		}
+
+		if !found {
+			return false
+		}
+
+		found = false
+
+		for t, lim := 0, limit(); t < lim && !found; t++ {
+			dir := g.Step() & 7
+			x += d.XSpace * ringDX[dir]
+			y += d.YSpace * ringDY[dir]
+			found = s.canPlaceSmall(r, d, x, y)
+		}
+
+		if !found {
+			continue // back to the halving roll, which then ends the cluster
+		}
+
+		if !mk(x, y) {
+			return true
+		}
+
+		made++
+	}
+}
+
+// smallClusters is 0x54f7e0 (handler 4): clusters of barrels (row 7 sizes, id 7, or 11 one time in three);
+// the handler stops after 8 objects.
+func (s *Scatter) smallClusters(room *RoomCtx, density int) {
+	d := s.def(7)
+	g := s.Game
+	r := room.Rect
+
+	if int(g.Step()%100) > 100 {
+		return
+	}
+
+	pick := func() int {
+		if g.Step()%3 != 0 {
+			return 7
+		}
+
+		return 11
+	}
+
+	n := count(r, density)
+	total := 0
+
+	for tries := n * 2; n > 0 && tries > 0; tries-- {
+		id := pick()
+		x := int(g.Roll(int32(r.W))) + r.X
+		y := int(g.Roll(int32(r.H))) + r.Y
+
+		if !s.canPlaceSmall(r, d, x, y) {
+			continue
+		}
+
+		s.create(room, id, x, y)
+
+		if total++; total >= 8 {
+			return
+		}
+
+		stop := s.clusterGrow(d, r, x, y, func() int { return 15 }, func(x, y int) bool {
+			id := 11
+			if g.Step()&3 != 0 {
+				id = 7
+			}
+
+			s.create(room, id, x, y)
+
+			total++
+
+			return total < 8
+		})
+		if stop {
+			return
+		}
+
+		n--
+	}
+}
+
+// urnClusters is 0x54fbe0 (handler 5): the footprint and spacing of the row id, the objects themselves
+// picked from urnList (a Roll(5) before the point and another one when it is accepted); row 0x2e (crate)
+// keeps its own id. The seed object does not count against the cap of 8.
+func (s *Scatter) urnClusters(room *RoomCtx, density, rowID int) {
+	d := s.def(rowID)
+	g := s.Game
+	r := room.Rect
+
+	if int(g.Step()%100) > 100 {
+		return
+	}
+
+	n := count(r, density)
+	if n < 1 {
+		return
+	}
+
+	lim := n * 4
+	total := 0
+
+	for tries := n * 2; n > 0 && tries > 0; tries-- {
+		id := rowID
+		if rowID != 0x2e {
+			id = urnList[g.Roll(int32(len(urnList)))]
+		}
+
+		x := int(g.Roll(int32(r.W))) + r.X
+		y := int(g.Roll(int32(r.H))) + r.Y
+
+		if !s.canPlaceSmall(r, d, x, y) {
+			continue
+		}
+
+		if id != 0x2e {
+			id = urnList[g.Roll(int32(len(urnList)))]
+		}
+
+		s.create(room, id, x, y)
+
+		stop := s.clusterGrow(d, r, x, y, func() int {
+			if lim < 4 {
+				return 4
+			}
+
+			return lim
+		}, func(x, y int) bool {
+			s.create(room, id, x, y)
+
+			total++
+
+			return total < 8
+		})
+		if stop {
+			return
+		}
+
+		n--
+		lim -= 4
+	}
+}
+
+// patternOffsets are the four stamps at 0x72f758 / 0x72f78c / 0x72f7b8 / 0x72f7e4 (counts copied to
+// 0x72f874.. by the startup initialiser at 0x6cc27f).
+var patternOffsets = [4][][2]int{
+	{{-4, 0}, {0, 0}, {4, 0}, {8, 0}, {0, 4}, {0, -4}},
+	{{-8, 0}, {-4, 0}, {0, 0}, {4, 0}, {8, 0}},
+	{{0, -8}, {0, -4}, {0, 0}, {0, 4}, {0, 8}},
+	{{-7, -5}, {-5, -3}, {-3, -1}, {0, 0}, {3, -1}, {5, -3}, {7, -5}},
+}
+
+// patterns is 0x54f140 (handler 7): one of four stamps of corpse-on-stick objects (ids 57 or 58) with
+// a 29% companion (id 103, 0x54f090) after each, anchored at one of 8 random points that fit a 5x5 box.
+func (s *Scatter) patterns(room *RoomCtx, rowID int) {
+	d := s.def(rowID)
+	g := s.Game
+	r := room.Rect
+
+	if int(g.Step()%100) > 100 {
+		return
+	}
+
+	pat := patternOffsets[g.Roll(4)]
+
+	var ax, ay int
+
+	ok := false
+
+	for try := 8; try > 0 && !ok; try-- {
+		ax = int(g.Roll(int32(r.W-d.SizeX-1))) + r.X
+		ay = int(g.Roll(int32(r.H-d.SizeY-1))) + r.Y
+		ok = s.fits(r, ax, ay, 5, 5)
+	}
+
+	if !ok {
+		return
+	}
+
+	for _, o := range pat {
+		x, y := ax+o[0], ay+o[1]
+		if !s.fits(r, x, y, d.SizeX, d.SizeY) {
+			continue
+		}
+
+		id := 57 + int(g.Step()&1)
+		s.create(room, id, x, y)
+
+		if int(g.Step()%100) > 0x46 { // OBJRGN_MaybeSpawnCompanionObject
+			s.create(room, 103, x, y)
+		}
 	}
 }

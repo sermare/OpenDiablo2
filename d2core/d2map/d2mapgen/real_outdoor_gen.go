@@ -224,6 +224,7 @@ func (g *MapGenerator) GenerateRealOutdoor(levelID int, seed uint32, diff d2drlg
 	if pop != nil {
 		for _, r := range lv.Rooms {
 			pr := pop.addRoom(r.X-p.Rect.X, r.Y-p.Rect.Y, r.W, r.H, r.Seed, r.Flags&roomNoPopulate != 0)
+			pr.noObj = roomHasNoObjects(r)
 			if r.Type == 2 {
 				k := [2]int{r.PrestX - p.Rect.X, r.PrestY - p.Rect.Y}
 				presetRooms[k] = append(presetRooms[k], pr)
@@ -550,6 +551,7 @@ func (g *MapGenerator) GenerateRealPreset(levelID int, seed uint32, diff d2drlg.
 
 		for _, r := range pl.Rooms {
 			pr := pop.addRoom(r.X-pl.Rect.X, r.Y-pl.Rect.Y, r.W, r.H, r.Seed, r.Flags&roomNoPopulate != 0)
+			pr.noObj = roomHasNoObjects(r)
 			pr.preset = nil
 
 			if first == nil {
