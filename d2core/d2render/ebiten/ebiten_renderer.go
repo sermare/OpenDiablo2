@@ -225,6 +225,15 @@ func (r *Renderer) CreateSurface(surface d2interface.Surface) (d2interface.Surfa
 
 // NewSurface creates a new surface
 func (r *Renderer) NewSurface(width, height int) d2interface.Surface {
+	// Ebiten >= 2.1 panics on a zero or negative size (an empty label asks for 0x0); keep a 1x1 stand-in.
+	if width < 1 {
+		width = 1
+	}
+
+	if height < 1 {
+		height = 1
+	}
+
 	img := ebiten.NewImage(width, height)
 
 	return createEbitenSurface(r, img)
