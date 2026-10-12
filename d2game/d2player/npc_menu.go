@@ -126,8 +126,9 @@ func (m *NPCMenu) SetAnchor(x, y int) {
 }
 
 // bounds returns the dialog box. The anchor is the NPC's screen position lifted by 0x96 (the caller does that); the
-// dialog is centred on it and starts 0x15 above it (one non-selectable line; UNVERIFIED: the original takes
-// height/3 when the dialog has no title line).
+// dialog is centred on it and starts height/3 above it. VERIFIED (UI_DialogMeasureEntriesWrapped 0x4b4d40): the
+// exe takes height/3 when the dialog's field at +0x14 is 0, else 0x15 per non-selectable line; UI_BuildNpcMenu 0x4b1050
+// passes 0 for that field (UI_CreateDialog 0x4b47b0 stores its sixth parameter there; read from the call's pushes).
 func (m *NPCMenu) bounds() (left, top, right, bottom int) {
 	return NPCMenuBounds(m.x, m.y, m.width, len(m.rows))
 }
@@ -137,7 +138,7 @@ func (m *NPCMenu) bounds() (left, top, right, bottom int) {
 func NPCMenuBounds(anchorX, anchorY, width, rows int) (left, top, right, bottom int) {
 	height := npcMenuTitleAdvance + npcMenuRowAdvance*rows + npcMenuHeightPad
 	left = anchorX - width/2
-	top = anchorY - npcMenuTitleAdvance
+	top = anchorY - height/3
 
 	if left < npcMenuEdge {
 		left = npcMenuEdge

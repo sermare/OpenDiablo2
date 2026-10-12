@@ -86,8 +86,10 @@ func DialogLineX(nX, w, textW int) int {
 }
 
 // GoldDialogSized is GoldDialog with the real sizes of the button and spinner frames. The buttons stand on their bottom
-// edge y = goldDlgOkY (0x11f), so the top is that minus the frame height. The edit box height stays a placeholder
-// (the edit box class takes it from the font; UNVERIFIED).
+// edge y = goldDlgOkY (0x11f), so the top is that minus the frame height. The edit box height stays an OD2 placeholder
+// of 20 for the hit area: VERIFIED that the exe passes 1 as the height argument of the edit control (UI_OpenPanelByIndex
+// 0x44f7b0 -> CTRL_EditBoxImpl_Construct 0x4b8660 -> UI_ConstructEditBox 0x4b8450, args x 0x102, y 0xe4, w 0x64, h 1,
+// 10 digits), i.e. a one-line box whose text is drawn with the font, so there is no pixel height to port.
 func GoldDialogSized(kind GoldDlgKind, frameW, frameH int, sz GoldDlgSizes) GoldDlgLayout {
 	pick := func(v, def int) int {
 		if v > 0 {

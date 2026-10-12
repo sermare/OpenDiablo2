@@ -229,8 +229,10 @@ func (g *GameControls) TryEquipCursor(loc d2equip.Loc) EquipResult {
 	res := g.evaluateEquip(item, loc)
 
 	// the game offers the other slot an item fits: a weapon that cannot go to the off hand
-	// goes to the weapon hand, ammunition to the off hand (UNVERIFIED, FUN_0055b500 picks
-	// between the two body locations of the type)
+	// goes to the weapon hand, ammunition to the off hand. The exe (ITEMMODE_CanEquipItem 0x55b500, read) takes the
+	// type's first body location when it is free (and the second is free or the slot-type flags are compatible),
+	// else the second when that one is free and compatible, else refuses. The reason-driven retry below is an OD2
+	// approximation of that rule, not a port: the outcome agrees for rings, ammunition and weapons.
 	if !res.OK {
 		alt := d2equip.LocNone
 

@@ -19,8 +19,9 @@ import (
 //   - The Next Level block is left out when the HARD level (points without items) has reached the global maximum
 //     level (SKILLS_GetMaxSkillLevel 0x4a6ff0), not the effective level.
 //
-// UNVERIFIED: where the two footer lines sit on screen (the original builds the text in pieces whose order on screen
-// was not settled); they are appended at the end here.
+// VERIFIED placement (UI_ShowSkillTreeIconTooltip 0x4ec180 builds one string with CRT_WcsCat): after the description
+// text come, in this order, "\n\n" + 0x1113 (item granted) and "\n\n" + 0x1114 (not learned); 0xf9e is the newline
+// string. So each footer line is preceded by one blank line.
 const (
 	keyItemMark     = "StrSkill117"
 	keyItemGranted  = "StrSkill118"
@@ -48,11 +49,11 @@ func SkillTooltipFooter(tr func(string) string, base, effective int, anyLearned 
 	var out []string
 
 	if SkillItemOnly(base, effective) {
-		out = append(out, get(keyItemGranted, "You have been granted this skill by an item"))
+		out = append(out, "", get(keyItemGranted, "You have been granted this skill by an item"))
 	}
 
 	if !anyLearned {
-		out = append(out, get(keyNotLearned, "You have not learned this skill yet"))
+		out = append(out, "", get(keyNotLearned, "You have not learned this skill yet"))
 	}
 
 	return out

@@ -29,3 +29,19 @@ func TestAutomapMarkerColorsGolden(t *testing.T) {
 		}
 	}
 }
+
+func TestAutomapActColors(t *testing.T) {
+	for act, want := range map[int][3]uint8{1: {164, 32, 252}, 2: {252, 20, 248}, 3: {164, 32, 252}, 4: {164, 32, 252}, 5: {164, 32, 252}} {
+		c := automapCorpseColor(act)
+		if got := [3]uint8{c.R, c.G, c.B}; got != want {
+			t.Errorf("corpse act %d: %v want %v", act, got, want)
+		}
+	}
+
+	for act, want := range map[int][3]uint8{1: {244, 192, 76}, 2: {244, 192, 76}, 3: {244, 192, 76}, 4: {252, 224, 52}, 5: {244, 192, 76}} {
+		c := automapPortalColor(act)
+		if got := [3]uint8{c.R, c.G, c.B}; got != want {
+			t.Errorf("portal act %d: %v want %v", act, got, want)
+		}
+	}
+}

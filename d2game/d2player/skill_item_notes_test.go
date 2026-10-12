@@ -19,12 +19,12 @@ func TestSkillItemNotes(t *testing.T) {
 	}
 
 	got := SkillTooltipFooter(tr, 0, 2, true)
-	if want := []string{"You have been granted this skill by an item"}; !reflect.DeepEqual(got, want) {
+	if want := []string{"", "You have been granted this skill by an item"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v", got)
 	}
 
 	got = SkillTooltipFooter(tr, 0, 0, false)
-	if want := []string{"You have not learned this skill yet"}; !reflect.DeepEqual(got, want) {
+	if want := []string{"", "You have not learned this skill yet"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v", got)
 	}
 

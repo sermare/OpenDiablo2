@@ -13,8 +13,10 @@ import (
 // tomeOf maps a scroll code to the code of its tome (the Books rows of the game: town portal and identify).
 var tomeOf = map[string]string{townPortalScrollCode: townPortalTomeCode, identifyScrollCode: identifyTomeCode}
 
-// UNVERIFIED: the exe pairs a scroll and a tome by comparing their magic suffix (ITEM_GetMagicSuffix 0x628260) and
-// both type ids (0x16 scroll, 0x12 book); the table above is the equivalent for the two scroll kinds of 1.14b.
+// VERIFIED (ITEMACT_ServerScrollToTome 0x55cd70, INV_FindMatchingStackWithRoom 0x63d4b0): the exe pairs a scroll and a
+// tome by comparing their magic suffix (ITEM_GetMagicSuffix 0x628260, slot 0) with the type ids (0x16 scroll, 0x12
+// book) and needs the tome's quantity (stat 0x46) below its max stack; the table above is the equivalent for the two
+// scroll kinds of 1.14b.
 
 // itemsUnder lists the distinct items under a w x h footprint at (x, y) in the scan order of
 // INV_GetSingleOverlappedItem (0x63cc50): rows from the top, cells from the left.
@@ -43,8 +45,10 @@ func (g *ItemGrid) itemsUnder(x, y, w, h int) []InventoryItem {
 	return out
 }
 
-// stackProbe describes an item for d2inventory.CanStack. Damage stats are not tracked by the engine (UNVERIFIED:
-// they only differ for items that are rolled with their own damage, which the stackable bases do not have).
+// stackProbe describes an item for d2inventory.CanStack. INV_CheckItemsStackable 0x62c9a0 (read) compares txt number, item
+// file index, stackable, ethereal, that both are non-magical quality, damage stats 0x15..0x18 and 0x9f/0xa0, and that
+// neither has sockets. The damage stats are not tracked by the engine; for non-magical stackable bases they are all
+// zero, so leaving them out cannot change the answer.
 func stackProbe(it InventoryItem) d2inventory.StackProbe {
 	// an item that is not a rolled game item (a test double) counts as a plain normal quality stackable
 	p := d2inventory.StackProbe{Code: it.GetItemCode(), Quality: 2, Stackable: true}
@@ -119,7 +123,7 @@ func (g *GameControls) tryInventoryHeldSpecial(mx, my int) bool {
 		return true
 	case d2inventory.HeldImpossible:
 		if in.HeldIsCube {
-			return true // UNVERIFIED: the cube into the cube is refused by the server without a line
+			return true // OD2: the cube into the cube is refused by the server without a line (the exe's rule was not traced)
 		}
 
 		g.Infof("INVENTORY held %s: the cube has no room", cur.GetItemCode())
