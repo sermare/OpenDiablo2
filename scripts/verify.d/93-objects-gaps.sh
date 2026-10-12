@@ -10,6 +10,8 @@ scenario_check() {
   grep -qE "OBJECT autotest done operated=28 " $log.txt || { echo "FAIL: not all 28 objects were operated"; fail=1; }
   # locked chest: the first has no key and stays shut, the second is opened with the key and rolls twice
   grep -qE "OBJECT locked id=5 .*a key is needed" $log.txt || { echo "FAIL: the locked chest did not ask for a key"; fail=1; }
+  # w50: the refusal is the hero's needkey line (sound event 0x16 of OBJECT_OperateLootContainer 0x583e70), no text
+  grep -qE "HEROVOICE id=0x16 handle=[a-z]+_needkey" $log.txt || { echo "FAIL: the needkey hero voice did not play"; fail=1; }
   grep -qE "OBJECT unlocked id=5 " $log.txt || { echo "FAIL: the chest was not unlocked with the key"; fail=1; }
   grep -qE "AUTOGROUND chest id=5 .* rolls=2 locked=true" $log.txt || { echo "FAIL: the locked chest did not roll its treasure twice"; fail=1; }
   [ "$(grep -cE 'AUTOGROUND chest id=5 ' $log.txt)" -eq 1 ] || { echo "FAIL: exactly one chest (the unlocked one) should have dropped"; fail=1; }

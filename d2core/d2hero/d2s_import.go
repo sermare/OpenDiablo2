@@ -256,6 +256,8 @@ func (f *HeroStateFactory) importD2SItems(state *HeroState, data []byte) (proble
 		}
 	}
 
+	importCorpse(state, character, func(code string) bool { return f.asset.Records.Item.All[code] != nil })
+
 	if state.Containers != nil {
 		importEquipped(state.Containers, data, character.Items, func(code string) bool { return f.asset.Records.Item.All[code] != nil })
 

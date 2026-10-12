@@ -8,6 +8,7 @@ import (
 
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2object"
+	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2audio"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2item/d2drop"
 	"github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2mapentity"
 )
@@ -152,6 +153,9 @@ func (v *Game) takeKey(ob *d2mapentity.Object) bool {
 	src := v.gameControls.KeySource()
 	if src == nil {
 		v.Infof("OBJECT locked id=%d name=%q: a key is needed (the container stays shut)", rec.Index, ob.Label())
+		// OBJECT_OperateLootContainer 0x583e70: no key -> sound event 0x16 on the player = the needkey hero voice;
+		// the exe sends no text (VERIFIED: the only effect besides leaving the chest closed)
+		v.sayHero(d2audio.VoiceNeedKey)
 		return false
 	}
 

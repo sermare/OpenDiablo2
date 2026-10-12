@@ -12,11 +12,14 @@ scenario_env() {
   echo 'export OD2_REALMAPS=1 OD2_AUTOLEVEL=2 OD2_PICKUP=quick'
   local still='say:herostill;until:HERO still,120'
   local s='expect:level=2;say:heromoved;click:left@hero:200,0;until:HERO moved,120;'"$still"
-  s="$s;say:clearinv;say:spawnground tbk 8 8;until:AUTOGROUND spawn source=command name=,30;click:left@item:Tome;until:QUICKPICKUP name=,120;$still;say:spawnground hp1 9 9;until:AUTOGROUND spawn source=command name=,30;click:left@item:Healing;until:QUICKPICKUP name=\"Minor Healing,120;$still;exit"
+  s="$s;say:clearinv;say:spawnground tbk 8 8;until:AUTOGROUND spawn source=command name=,30;click:left@item:Tome;until:QUICKPICKUP name=,120;$still;say:spawnground hp1 9 9;until:AUTOGROUND spawn source=command name=,30;click:left@item:Healing;until:QUICKPICKUP name=\"Minor Healing,120;$still;say:fillinv tbk;say:spawnground tbk 8 8;until:AUTOGROUND spawn source=command name=,30;click:left@item:Tome;until:QUICKPICKUP no room for,120;$still;exit"
   echo "export OD2_AUTOSCRIPT='$s'"
 }
 scenario_check() {
   grep -E "QUICKPICKUP|AUTOGROUND pickup|AUTOSCRIPT RESULT" $log.txt | cut -c1-200 | head
   grep -q "AUTOSCRIPT RESULT PASS" $log.txt || { echo "FAIL: the quick pickup script did not pass"; fail=1; }
   grep -q "QUICKPICKUP name=" $log.txt || { echo "FAIL: the item did not go straight into the inventory"; fail=1; }
+  # w50 (ITEMMODE_ServerPickupGroundItemToInventory 0x561370): no room -> the item stays on the ground and the hero says cantcarry
+  grep -q "QUICKPICKUP no room for" $log.txt || { echo "FAIL: a full inventory did not refuse the pickup"; fail=1; }
+  grep -qE "HEROVOICE id=0x17 handle=[a-z]+_cant_?carry" $log.txt || { echo "FAIL: no cantcarry voice for the full inventory"; fail=1; }
 }

@@ -293,33 +293,47 @@ func (v *Game) pickUp(it *d2mapentity.Item) {
 	}
 
 	v.gameClient.MapEngine.RemoveEntity(it)
-	v.takeGroundItem(it)
+
+	if !v.takeGroundItem(it) {
+		v.gameClient.MapEngine.AddEntity(it) // no room: the item never left the ground
+	}
 }
 
-// takeGroundItem puts a ground item (already off the ground) on the cursor and, with quick pickup, away.
-func (v *Game) takeGroundItem(it *d2mapentity.Item) {
+// takeGroundItem puts a ground item (already off the ground) on the cursor and, with quick pickup, away. It reports
+// false when quick pickup found no place for it: ITEMMODE_ServerPickupGroundItemToInventory 0x561370 then leaves the
+// item on the ground (mode 3 again, via 0x55a740) and sends sound event 0x17, the hero's cantcarry line, with no pickup
+// sound and no quest hook (VERIFIED w50; the w48 list of 0x17 senders missed this one). The caller puts the item back.
+// A full cursor never gets here: the exe refuses silently before touching the item (0x55ace0 / 0x561370).
+func (v *Game) takeGroundItem(it *d2mapentity.Item) bool {
 	v.gameControls.SetCursorItem(it.Item)
-	v.playSoundAt("item_pickup", it.GetPosition(), "pickup") // row 0xeb: item enters the cursor (ITEM_InitClientItem 0x4be1f0)
-	v.Infof("AUTOGROUND pickup name=%q quality=%s -> cursor", plainLabel(it.Label()), it.Item.QualityName())
-	v.questItemPickedUp(it.Item.GetItemCode())
 
 	// Quick pickup (OD2 choice, the original keeps the item on the cursor): with an empty cursor the item goes straight
-	// into the inventory when it fits, and stays on the cursor when it does not. Scripted runs (autoscript, autopickup)
-	// and OD2_PICKUP=cursor keep the original behaviour.
+	// into the inventory when it fits. Scripted runs (autoscript, autopickup) and OD2_PICKUP=cursor keep the original
+	// behaviour.
 	if quickPickup() {
-		// an empty body slot of the item: wear it at once, else the inventory
+		// an empty body slot of the item: wear it at once, else the belt or the inventory
 		if v.gameControls.AutoEquipCursor() {
 			v.Infof("QUICKEQUIP name=%q", plainLabel(it.Label()))
+		} else if x, y, ok := v.gameControls.AutoPlaceCursor(); ok {
+			v.Infof("QUICKPICKUP name=%q slot=(%d,%d)", plainLabel(it.Label()), x, y)
 		} else {
-			if x, y, ok := v.gameControls.AutoPlaceCursor(); ok {
-				v.Infof("QUICKPICKUP name=%q slot=(%d,%d)", plainLabel(it.Label()), x, y)
-			}
+			v.gameControls.SetCursorItem(nil)
+			v.Infof("QUICKPICKUP no room for %q: it stays on the ground", plainLabel(it.Label()))
+			v.sayHero(d2audio.VoiceCantCarry)
+
+			return false
 		}
 	}
+
+	v.playSoundAt("item_pickup", it.GetPosition(), "pickup") // row 0xeb: sound event 1 once the pickup went through
+	v.Infof("AUTOGROUND pickup name=%q quality=%s -> cursor", plainLabel(it.Label()), it.Item.QualityName())
+	v.questItemPickedUp(it.Item.GetItemCode())
 
 	if v.ground.onPickup != nil {
 		v.ground.onPickup(it)
 	}
+
+	return true
 }
 
 // openChest plays the chest's animation and sound and drops its treasure class
