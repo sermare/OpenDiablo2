@@ -11,9 +11,9 @@ scenario_name="party, trade and PvP (two processes over TCP with the d2gs protoc
 #   3 host kills a monster: the experience is split between both (PARTYXP)
 #   4 trade: host gives a large charm + 1000 gold, joiner gives a Town Portal Book + 400 gold (both 1x2 cells:
 #     the real hero's inventory is full)
-#   5 both leave the party; the host's declaration in town is refused (N21: no hostility in town); both step
-#     through a town portal to level 3 and put two healing potions on the belt, declare hostility, swing at each
-#     other (a connecting hit may steal the first belt potion, N23; OD2_BELTSTEAL_ROLL=99 makes every hit steal),
+#   5 both leave the party; the host declares hostility in town (w45: the exe allows it only in a town room); both step
+#     through a town portal to level 3 and put two healing potions on the belt, swing at each
+#     other (the peace request in the field is refused) (a connecting hit may steal the first belt potion, N23; OD2_BELTSTEAL_ROLL=99 makes every hit steal),
 #     host makes peace, a swing is blocked
 #   6 joiner leaves; the host sees it
 # The gold step waits for the server's echo of the added item: an offer update of the other side that arrives in
@@ -65,10 +65,13 @@ scenario_env() {
   hscript+=";say:trade request $jn;waitlog:TRADE open with"
   hscript+=";say:trade add cm2;waitlog:yours=[Hellfire Torch];say:trade gold 1000;waitlog:gold=400 you_accepted;wait:1;say:capframe $tmp/9d-host-trade.png;wait:2;say:trade accept -"
   hscript+=";waitlog:TRADE done;wait:2;say:roster"
-  hscript+=";say:party leave -;waitlog:$hn left the party;say:hostile $jn 1;waitlog:hostility cannot be declared in town"
+  hscript+=";say:party leave -;waitlog:$hn left the party"
+  # w45 (VERIFIED Game.exe 0x5a3870): hostility is declared and withdrawn in town only; the fight is in the field
+  hscript+=";say:hostile $jn 1;waitlog:$hn is now hostile toward $jn;wait:1"
   hscript+=";say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3;wait:2;say:givebelt hp1;say:givebelt hp1;say:beltlist"
-  hscript+=";say:hostile $jn 1;waitlog:$jn is now hostile toward $hn;wait:1"
+  hscript+=";say:hostile $jn 0;waitlog:hostility can only be declared or withdrawn in town;wait:1"
   hscript+=";$(_swings $jn);wait:2;say:beltlist"
+  hscript+=";say:spawnportal 1;use:Portal;waitlog:LEVEL built: level 1;wait:2"
   hscript+=";say:hostile $jn 0;waitlog:$hn is now at peace toward $jn;say:pvp $jn;wait:1"
   hscript+=";waitlog:$jn left the game;say:roster;exit"
 
@@ -79,8 +82,7 @@ scenario_env() {
   jscript+=";waitlog:TRADE request from;say:trade yes -;waitlog:TRADE open with"
   jscript+=";say:trade add tbk;waitlog:yours=[Tome of Town Portal];say:trade gold 400;waitlog:gold=1000 you_accepted;wait:1;say:capframe $tmp/9d-joiner-trade.png;wait:2;say:trade accept -"
   jscript+=";waitlog:TRADE done;wait:2;say:roster"
-  jscript+=";waitlog:$hn left the party;say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3;wait:2;say:givebelt hp1;say:givebelt hp1;say:beltlist"
-  jscript+=";say:hostile $hn 1;waitlog:$hn is now hostile toward $jn;wait:1"
+  jscript+=";waitlog:$hn left the party;waitlog:$hn is now hostile toward $jn;say:spawnportal 3;use:Portal;waitlog:LEVEL built: level 3;wait:2;say:givebelt hp1;say:givebelt hp1;say:beltlist"
   jscript+=";$(_swings $hn);wait:2;say:beltlist"
   jscript+=";waitlog:$hn is now at peace toward $jn;wait:1;exit"
 
@@ -184,8 +186,8 @@ scenario_check() {
   grep -q "PVP HIT attacker=\"$jn\"" $log.txt || { echo "FAIL: host did not see the joiner's hit"; fail=1; }
   grep -q "PVP KILLED" $log.txt $j && { echo "FAIL: a hero died in the PvP exchange"; fail=1; }
 
-  # N21: a declaration in town was refused by the server and changed nothing
-  grep -q "PARTY refused op=hostile name=\"$hn\": hostility cannot be declared in town" $log.txt || { echo "FAIL: hostility in town was not refused"; fail=1; }
+  # w45: a withdrawal in the field was refused by the server and changed nothing
+  grep -q "PARTY refused op=peace name=\"$hn\": hostility can only be declared or withdrawn in town" $log.txt || { echo "FAIL: peace in the field was not refused"; fail=1; }
 
   # N23: a hostile hit that connects takes the first potion from the victim's belt and drops it on the ground
   for side in host joiner; do
