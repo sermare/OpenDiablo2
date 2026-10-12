@@ -2,6 +2,18 @@ package d2config
 
 import "testing"
 
+func TestHirelingPopupFlag(t *testing.T) {
+	c := DefaultConfig()
+
+	if c.HirelingPopupSeen() {
+		t.Fatal("the first-hire screen was not shown yet")
+	}
+
+	if err := c.SetOption(OptPopupHireling, 1); err != nil || !c.HirelingPopupSeen() {
+		t.Fatalf("seen: %v %v", err, c.HirelingPopupSeen())
+	}
+}
+
 func TestCinematicsOptions(t *testing.T) {
 	c := DefaultConfig()
 

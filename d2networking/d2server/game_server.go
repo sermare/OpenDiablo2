@@ -591,6 +591,7 @@ func (g *GameServer) handleClientConnection(client ClientConnection, x, y float6
 		playerState.Difficulty,
 		d2netpacket.WithContainers(playerState.Containers),
 		d2netpacket.WithMerc(playerState.Merc),
+		d2netpacket.WithStashGold(playerState.StashGold),
 		d2netpacket.WithSkillBar(playerState.SkillBar),
 		d2netpacket.WithDeath(playerState.Death, playerState.Hardcore),
 		d2netpacket.WithAct(playerState.Act, len(playerState.D2SBase) > 0, playerState.Expansion),
@@ -739,6 +740,10 @@ func (g *GameServer) OnPacketReceived(client ClientConnection, packet d2netpacke
 		// the act is the server's (onChangeLevel follows every level change); the client's player entity
 		// never learns it and always says 1, which saved a hero standing in Lut Gholein as an Act 1 hero
 		playerState.Gold = savePacket.Player.Gold // changed by vendor transactions
+
+		if sg := savePacket.Player.StashGold; sg != nil { // paid from by mercenary hiring and reviving
+			playerState.StashGold = sg
+		}
 
 		if m := savePacket.Player.Merc; m != nil { // hired, revived or levelled in the game
 			playerState.Merc = m

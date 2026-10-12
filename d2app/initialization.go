@@ -51,6 +51,10 @@ func (a *App) initialize() error {
 	a.loadGamepadProfiles()
 	a.applyAccessibility("")
 	d2gamescreen.SetCinematicsOption(a.config.Cinematics)
+	d2gamescreen.SetHirelingPopupFlag(a.config.HirelingPopupSeen, func() {
+		_ = a.config.SetOption(d2config.OptPopupHireling, 1)
+		_ = a.config.Save()
+	})
 
 	if err := a.loadStrings(); err != nil {
 		return err

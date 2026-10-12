@@ -121,6 +121,10 @@ func (h *HireList) OnKeyDown(event d2interface.KeyEvent) bool {
 
 	n := len(h.entries) + 1 // Cancel is the last entry
 
+	if h.OnWheel(event.Key()) {
+		return true
+	}
+
 	switch event.Key() {
 	case d2enum.KeyEscape:
 		h.Choose(len(h.entries))
@@ -249,3 +253,25 @@ func (h *HireList) Render(target d2interface.Surface) {
 
 	h.put(target, h.label("cancel", h.cancel, color.RGBA{R: 255, G: 255, B: 255, A: 255}), cx, cy+8)
 }
+
+// OnWheel scrolls the list by one entry per notch of the mouse wheel (up = towards the first entry); true when the key was a wheel
+// notch and the list is open (the dialog swallows the wheel).
+func (h *HireList) OnWheel(k d2enum.Key) bool {
+	if !h.IsOpen() {
+		return false
+	}
+
+	switch k {
+	case d2enum.KeyMouseWheelUp:
+		h.Scroll(-1)
+	case d2enum.KeyMouseWheelDown:
+		h.Scroll(1)
+	default:
+		return false
+	}
+
+	return true
+}
+
+// First is the first visible entry (for logs and tests).
+func (h *HireList) First() int { return h.first }

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2enum"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2hireling"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2interface"
 	"github.com/OpenDiablo2/OpenDiablo2/d2common/d2level"
@@ -48,6 +49,8 @@ type mercGame struct {
 	// points it had (a unit that follows its owner is moved, not made anew, so
 	// it is not healed), and whether it was dead (a dead merc stays behind).
 	carry mercCarry
+	// txn is the hire or revive request waiting for the reply (the "Waiting for confirmation of transaction..." dialog)
+	txn d2player.HireTxn
 	// gameRng is the generator the offer tables draw from (see offerTable)
 	gameRng *d2rand.Seed
 }
@@ -152,6 +155,7 @@ func (v *Game) advanceMerc(elapsed float64) {
 		p.Merc.Dead = info.Save.Dead
 	}
 
+	v.advanceHireTxn(elapsed)
 	v.advanceMercTest(elapsed)
 }
 
@@ -464,9 +468,9 @@ func (v *Game) hireDialog(seller int) (title string, rows []d2player.NPCMenuRow,
 		})
 	}
 
-	// the exe titles the dialog with the hero's gold and says so when nothing is left to hire (stash gold, stat 0xf, is not
-	// added: the game does not carry it yet)
-	title = d2player.HireDialogTitle(v.tr, v.localPlayer.Gold)
+	// the exe titles the dialog with the sum of the purse (stat 0xe) and the stash gold (stat 0xf) and says so when nothing is
+	// left to hire
+	title = d2player.HireDialogTitle(v.tr, v.localPlayer.Gold+v.stashGold())
 	if len(lines) == 0 {
 		title = d2player.HireDialogEmpty(v.tr)
 	}
@@ -508,12 +512,6 @@ func (v *Game) onHireChoice(seller int, row d2player.NPCMenuRow) { v.hireChoice(
 func (v *Game) hireChoice(seller int, row d2player.NPCMenuRow, confirmed bool) {
 	switch row.Action {
 	case d2player.NPCActionHireOffer:
-		if !v.hireGateOpen(seller) {
-			v.Infof("MERC hire refused: quest gate of seller %d (HIRE_ProcessHireOffer)", seller)
-
-			break
-		}
-
 		if !confirmed && d2player.HireClick(v.localPlayer != nil && v.localPlayer.Merc != nil) == d2player.HireConfirmReplace {
 			v.confirmHireReplace(seller, row)
 			v.Infof("MERC hire click slot=%d: confirm %q", row.StringID, v.tr(d2player.HireKeyReplace))
@@ -521,22 +519,13 @@ func (v *Game) hireChoice(seller int, row d2player.NPCMenuRow, confirmed bool) {
 			return
 		}
 
-		err := v.hireOffer(seller, row.StringID)
+		v.startHireTxn(seller, row.StringID, d2player.TxnHire, confirmed)
 
-		switch {
-		case err == nil:
-		case errors.Is(err, errNotEnoughGold):
-			v.Infof("MERC hire failed: %v", err)
-			v.hireMessage(seller, d2player.HireReplyNoGold)
-
-			return
-		default:
-			v.Infof("MERC hire failed: %v", err)
-		}
+		return
 	case d2player.NPCActionReviveMerc:
-		if err := v.reviveMerc(); err != nil {
-			v.Infof("MERC revive failed: %v", err)
-		}
+		v.startHireTxn(seller, row.StringID, d2player.TxnRevive, false)
+
+		return
 	default:
 		v.Infof("NPC menu: Cancel")
 
@@ -637,8 +626,8 @@ func (v *Game) hireOfferFor(seller, slot int, free bool) error {
 		offer.Cost = 0
 	}
 
-	if p.Gold < offer.Cost {
-		return fmt.Errorf("%w: %d < %d", errNotEnoughGold, p.Gold, offer.Cost)
+	if p.Gold+v.stashGold() < offer.Cost {
+		return fmt.Errorf("%w: %d < %d", errNotEnoughGold, p.Gold+v.stashGold(), offer.Cost)
 	}
 
 	save := d2monsters.MercSave{
@@ -652,7 +641,7 @@ func (v *Game) hireOfferFor(seller, slot int, free bool) error {
 		return err
 	}
 
-	v.gameControls.AddGold(-offer.Cost)
+	v.payGold(offer.Cost)
 
 	p.Merc = &d2hero.MercState{ID: save.ID, NameID: save.NameID, Type: save.Type, Experience: save.Experience, Replaced: true}
 	v.merc.spawnedFor = v.monsters
@@ -739,8 +728,8 @@ func (v *Game) reviveMerc() error {
 		return errors.New("no dead mercenary")
 	}
 
-	if p.Gold < info.ReviveCost {
-		return fmt.Errorf("not enough gold: %d < %d", p.Gold, info.ReviveCost)
+	if p.Gold+v.stashGold() < info.ReviveCost {
+		return fmt.Errorf("%w: %d < %d", errNotEnoughGold, p.Gold+v.stashGold(), info.ReviveCost)
 	}
 
 	if _, has := v.monsters.Merc(p); has {
@@ -761,7 +750,7 @@ func (v *Game) reviveMerc() error {
 
 	v.merc.carry = mercCarry{}
 
-	v.gameControls.AddGold(-info.ReviveCost)
+	v.payGold(info.ReviveCost)
 
 	if p.Merc != nil {
 		p.Merc.Dead = false
@@ -1004,15 +993,65 @@ func (v *Game) mercTestHireClicks() {
 
 	v.Infof("AUTOMERC ui: hire click answered No: menu_open=%v gold=%d", menu.IsOpen(), p.Gold)
 
-	gold := p.Gold
-	p.Gold = 0
+	gold, stash0 := p.Gold, p.StashGold
+	p.Gold, p.StashGold = 0, new(int)
 
 	v.hireChoice(d2hireling.SellerKashya, rows[0], true)
+	v.Infof("AUTOMERC ui: hire waiting open=%v pending=%v rows=%d text=%q", menu.IsOpen(), v.merc.txn.Pending, len(menu.Rows()), v.tr(d2player.HireKeyWaiting))
+	v.flushHireTxn()
 	v.Infof("AUTOMERC ui: hire click broke: message_open=%v rows=%d", menu.IsOpen(), len(menu.Rows()))
 	menu.Close()
 	v.gameControls.HireList.Close()
 
-	p.Gold = gold
+	// the mouse wheel scrolls the list by whole entries (OnWheel is what the key handler of the controls calls first)
+	v.gameControls.HireList.Open("", "", v.hireEntries(d2hireling.SellerKashya, rows), nil)
+	list := v.gameControls.HireList
+	list.OnWheel(d2enum.KeyMouseWheelDown)
+	v.Infof("AUTOMERC ui: hire wheel entries=%d first=%d", len(list.Entries()), list.First())
+	list.Close()
+
+	menu.Close()
+	v.gameControls.HireList.Close()
+
+	p.Gold, p.StashGold = gold, stash0
+	v.npcTarget = nil
+}
+
+// mercTestHireStash runs at the end of the scenario (a hire changes the offer tables and the random streams, which the earlier
+// phases of the scenario depend on): stash gold counts in the title and in the payment (the purse is empty, the stash pays,
+// TRADE_DeductGold), and the first hire opens the mercenary screen once.
+func (v *Game) mercTestHireStash() {
+	p := v.localPlayer
+	gold, stash0 := p.Gold, p.StashGold
+	big := 1000000
+	p.Gold, p.StashGold = 0, &big
+
+	title, rows, _, ok := v.hireDialog(d2hireling.SellerKashya)
+	v.Infof("AUTOMERC ui: hire title with stash=%q", title)
+
+	if !ok || len(rows) == 0 {
+		v.Infof("AUTOMERC ui: hire stash: no offers")
+		p.Gold, p.StashGold = gold, stash0
+
+		return
+	}
+
+	SetHirelingPopupFlag(func() bool { return false }, func() {}) // a fresh install: the first hire opens the mercenary screen
+	v.hireChoice(d2hireling.SellerKashya, rows[0], true)
+	v.flushHireTxn()
+	v.Infof("AUTOMERC ui: hire paid from stash purse=%d stash=%d->%d merc_screen=%v", p.Gold, 1000000, big, v.gameControls.IsMercPanelOpen())
+
+	if v.gameControls.IsMercPanelOpen() {
+		v.gameControls.ToggleMercPanel()
+	}
+
+	SetHirelingPopupFlag(nil, nil)
+	takeHirelingPopup() // later hires of the run do not open the screen again
+
+	v.gameControls.NPCMenu.Close()
+	v.gameControls.HireList.Close()
+
+	p.Gold, p.StashGold = gold, stash0
 	v.npcTarget = nil
 }
 
@@ -1104,13 +1143,24 @@ func (v *Game) mercTestRevive(t *mercTest) {
 		return
 	}
 
+	// the revive goes through the transaction too and is paid by the purse first, the stash for the rest
 	p := v.localPlayer
-	if p.Gold < info.ReviveCost {
-		v.gameControls.AddGold(info.ReviveCost - p.Gold)
-	}
+	stash0 := p.StashGold
+	half := info.ReviveCost / 2
+	v.gameControls.AddGold(half - p.Gold)
+	cost := info.ReviveCost
+	stash := cost
+	p.StashGold = &stash
 
-	if err := v.reviveMerc(); err != nil {
-		v.Errorf("AUTOMERC revive: %v", err)
+	v.startHireTxn(d2hireling.SellerKashya, 0, d2player.TxnRevive, false)
+	v.flushHireTxn()
+	v.Infof("AUTOMERC revive txn: cost=%d purse_before=%d purse=%d stash_before=%d stash=%d", cost, half, p.Gold, cost, stash)
+
+	p.StashGold = stash0
+	v.npcTarget = nil
+
+	if after, ok := v.monsters.Merc(p); !ok || after.Save.Dead {
+		v.Errorf("AUTOMERC revive: the merc is still dead")
 	}
 
 	v.next(t)
@@ -1168,6 +1218,10 @@ func (v *Game) afterFollow(t *mercTest) {
 }
 
 func (v *Game) mercTestFinish(t *mercTest) {
+	if os.Getenv("OD2_AUTOMERC_UI") != "" {
+		v.mercTestHireStash()
+	}
+
 	c := v.monsters.Counters
 	info, _ := v.monsters.Merc(v.localPlayer)
 
@@ -1421,4 +1475,133 @@ func (v *Game) mercSkillList(rec *d2hireling.Record) string {
 	}
 
 	return strings.Join(out, ",")
+}
+
+// stashGold is the gold in the hero's stash (0 when the game does not know it).
+func (v *Game) stashGold() int {
+	if v.localPlayer == nil || v.localPlayer.StashGold == nil {
+		return 0
+	}
+
+	return *v.localPlayer.StashGold
+}
+
+// payGold pays a price the way the server does (TRADE_DeductGold 0x574bc0, VERIFIED): the purse first, the rest from the stash.
+// The caller has checked that both together cover it.
+func (v *Game) payGold(cost int) {
+	p := v.localPlayer
+	gold, stash, ok := d2player.HirePay(p.Gold, v.stashGold(), cost)
+
+	if !ok {
+		return
+	}
+
+	v.gameControls.AddGold(gold - p.Gold)
+
+	if p.StashGold != nil {
+		*p.StashGold = stash
+	}
+}
+
+// startHireTxn sends a hire or revive request: the lists close and the waiting dialog (string 0xd19) shows until the reply is
+// applied by advanceHireTxn. The exe does the same for the hire row; UNVERIFIED that the revive row also waits (its reply arrives
+// in the same packet 0x15).
+func (v *Game) startHireTxn(seller, slot int, kind d2player.HireKind, replacing bool) {
+	req := d2player.HireRequest{Kind: kind, Replacing: replacing}
+
+	v.merc.txn.Start(seller, slot, req)
+	v.gameControls.HireList.Close()
+	v.gameControls.NPCMenu.OpenPrompt(v.tr(d2player.HireKeyWaiting), nil, nil)
+
+	if v.npcTarget != nil {
+		v.anchorNPCMenu(v.gameControls.NPCMenu, v.npcTarget)
+	}
+
+	v.Infof("MERC txn start kind=%d seller=%d slot=%d text=%q", kind, seller, slot, v.tr(d2player.HireKeyWaiting))
+}
+
+// advanceHireTxn counts the waiting time of the pending request and applies the reply when it is due.
+func (v *Game) advanceHireTxn(elapsed float64) {
+	reply, timedOut := v.merc.txn.Tick(elapsed)
+
+	switch {
+	case reply:
+		v.flushHireTxn()
+	case timedOut:
+		seller := v.merc.txn.Seller
+		v.merc.txn.Cancel()
+		v.Infof("MERC txn timed out after %.0f s", d2player.HireTxnTimeout)
+		v.hireMessage(seller, d2player.HireReplyBadRequest) // UNVERIFIED what the exe shows when the timer runs out
+	}
+}
+
+// flushHireTxn is the server half and the reply: it decides the code of the pending request, applies the deal on success and
+// shows the dialog of the code.
+func (v *Game) flushHireTxn() {
+	t := v.merc.txn
+	if !t.Pending {
+		return
+	}
+
+	v.merc.txn.Cancel()
+	v.gameControls.NPCMenu.Close() // the waiting dialog
+
+	p := v.localPlayer
+	req := t.Req
+	req.Gold, req.Stash = p.Gold, v.stashGold()
+	req.CanSpawn = v.monsters != nil
+
+	if p.Merc != nil {
+		req.Mercs = 1
+	}
+
+	var pay func() error
+
+	switch req.Kind {
+	case d2player.TxnHire:
+		req.GateOpen = v.hireGateOpen(t.Seller)
+
+		if o := v.offerTable(t.Seller); o != nil && t.Slot >= 0 && t.Slot < len(o.table.Slots) {
+			sl := o.table.Slots[t.Slot]
+			req.OnOffer = sl.Offered && !sl.Hired
+
+			if offer, ok := v.hirelingTable().MakeOffer(o.table, t.Slot, p.Stats.Level); ok {
+				req.Cost = offer.Cost
+			}
+		}
+
+		pay = func() error { return v.hireOffer(t.Seller, t.Slot) }
+	case d2player.TxnRevive:
+		info, ok := v.deadMerc()
+		req.OnOffer, req.Cost = ok, info.ReviveCost
+		req.GateOpen = true
+		pay = v.reviveMerc
+	}
+
+	code := d2player.HireDecide(req)
+
+	if code == d2player.HireReplyOK {
+		if err := pay(); err != nil {
+			v.Infof("MERC txn deal failed: %v", err)
+
+			code = d2player.HireReplyCannotNow
+		}
+	}
+
+	v.Infof("MERC txn reply kind=%d code=%d gold=%d stash=%d cost=%d", req.Kind, code, p.Gold, v.stashGold(), req.Cost)
+
+	if code != d2player.HireReplyOK {
+		v.hireMessage(t.Seller, code)
+
+		return
+	}
+
+	v.gameControls.NPCMenu.Close()
+	v.gameControls.HireList.Close()
+	v.npcTarget = nil
+
+	if req.Kind == d2player.TxnHire && takeHirelingPopup() {
+		v.gameControls.OpenMercPanel()
+		v.Infof("MERC first hire: mercenary screen opened (PopupHireling) open=%v", v.gameControls.IsMercPanelOpen())
+	}
 }
