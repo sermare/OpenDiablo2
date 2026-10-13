@@ -224,6 +224,12 @@ func (g *GameControls) drink(it *diablo2item.Item) {
 			cured = g.statePotion(sp)
 		}
 
+		// the totals follow the state through st.Recalc, which a client copy of the stats only has once the worn items were
+		// recalculated here (RecalcWorn): do it now, so the antidote shows on the character screen whatever came before
+		if st.Recalc == nil {
+			g.recalcWorn()
+		}
+
 		if sp.RefillStamina && st.Stamina < float64(st.MaxStamina) {
 			st.Stamina = float64(st.MaxStamina)
 		}
