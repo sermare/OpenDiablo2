@@ -202,7 +202,9 @@ type TransmuteResult struct {
 	Recipe   string
 	Row      int
 	Consumed []string
-	Products []string
+	// ConsumedCodes are the base codes of the items used up, in the order of Consumed.
+	ConsumedCodes []string
+	Products      []string
 	// ProductCodes are the base codes of the items made, in the order of Products.
 	ProductCodes []string
 	Portals      []string
@@ -296,6 +298,7 @@ func (g *GameControls) Transmute() (*TransmuteResult, error) {
 
 	for _, idx := range res.Consumed {
 		out.Consumed = append(out.Consumed, itemName(items[idx]))
+		out.ConsumedCodes = append(out.ConsumedCodes, strings.TrimSpace(items[idx].GetItemCode()))
 		g.cube.grid.Remove(items[idx])
 		delete(g.itemOrigin, items[idx])
 	}

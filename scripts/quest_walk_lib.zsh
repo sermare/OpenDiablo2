@@ -18,7 +18,7 @@ qw_chest() { printf 'walkto:object=%s;wait:3;say:lootquest 15 %s;' "$1" "${2:-30
 # (a second of game time first: a quest timer such as Radament's "return to Atma" page fires a few frames after the kill)
 qw_panel() { printf 'wait:1;say:questpanel %s %s;' "$1" "$2"; }
 qw_begin() {
-  printf 'wait:1;say:resetquests;say:clearinv;'
+  printf 'wait:1;say:resetquests;say:clearinv;say:clearstash;'
   case "${1:-2}" in
     2) printf 'say:completequest 1 6;travel:2;expect:level=40;wait:3;' ;;
     3) printf 'say:completequest 1 6;travel:2;expect:level=40;say:completequest 2 6;travel:3;expect:level=75;wait:3;' ;;

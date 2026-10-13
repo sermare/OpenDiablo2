@@ -268,6 +268,7 @@ func (v *Game) OnLoad(_ d2screen.LoadingState) {
 		{"useitem", "uses the inventory item with this base code like a right click (debug)", []string{"code"}, v.commandUseItem},
 		{"lootquest", "picks up the quest items near the hero (debug)", []string{"tiles", "seconds"}, v.commandLootQuest},
 		{"clearinv", "empties the inventory grid (debug)", nil, v.commandClearInv},
+		{"clearstash", "empties the stash grid (debug)", nil, v.commandClearStash},
 		{"fillinv", "fills the inventory grid with an item code until full (debug)", []string{"code"}, v.commandFillInv},
 		{"corpseclick", "clicks the hero's corpse (debug)", nil, v.commandCorpseClick},
 		{"stripall", "takes off everything the hero wears into the inventory (debug)", nil, v.commandStripAll},

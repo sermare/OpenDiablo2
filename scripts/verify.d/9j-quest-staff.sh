@@ -33,10 +33,10 @@ scenario_check() {
   grep -E "QUEST SPEECH npc=\"Deckard Cain\" class=244 msg=(335|336|337|339) " $log.txt | grep -q 'text=""' && { echo "FAIL: a Cain line of the Staff quest has no text"; fail=1; }
   grep -q "CUBE transmute .*Horadric Staff" $log.txt || { echo "FAIL: the cube did not make the Horadric Staff"; fail=1; }
   grep -q "QUEST A2Q2 slot=10 bits 0x[0-9a-f]*->0x[0-9a-f]* (Horadric Staff assembled)" $log.txt || { echo "FAIL: the quest did not see the staff"; fail=1; }
-  # the quest log: page 3 once Cain heard every part, then page 4 (the staff must go to Tal Rasha's tomb) also after Cain's confirmation
-  grep -q "QUESTPANEL act=2 quest=2 status=4 .*Tal Rasha" $log.txt || { echo "FAIL: panel page 4 text"; fail=1; }
+  # the quest log: the exe page table (staffLogPage, 0x59c1f0): page 3 (restore the staff in the cube) once Cain heard every part, page 6 (take the staff to the tomb) after the cube made it, page 5 once Cain confirmed it
+  grep -q "QUESTPANEL act=2 quest=2 status=6 .*Tal Rasha" $log.txt || { echo "FAIL: panel page 6 text (staff assembled, Cain not yet told)"; fail=1; }
   grep -q "QUESTPANEL act=2 quest=2 status=3 .*Horadric Cube" $log.txt || { echo "FAIL: panel page 3 text (every part reported)"; fail=1; }
-  grep -q "QUESTPANEL act=2 quest=2 status=5" $log.txt && { echo "FAIL: the panel shows page 5 (take the artifacts to Cain) after Cain heard of every part"; fail=1; }
+  grep -q "QUESTPANEL act=2 quest=2 status=5 .*Tal Rasha" $log.txt || { echo "FAIL: panel page 5 text (Cain confirmed the staff)"; fail=1; }
   # saved: slot 10 carries the quest bits (Cain's reports and the assembled staff) in the .d2s
   qw_laterquests
   qw_slot_has 10 0x0c78 || { echo "FAIL: quest slot 10 does not carry the Staff bits in the .d2s"; fail=1; }

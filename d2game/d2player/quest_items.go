@@ -106,6 +106,20 @@ func (g *GameControls) ClearInventoryGrid() int {
 	return n
 }
 
+// ClearStashGrid removes every item of the stash grid and returns how many were removed (debug: a quest walkthrough
+// must not start with the quest items the saved hero already keeps there).
+func (g *GameControls) ClearStashGrid() int {
+	n := 0
+
+	for _, it := range append([]InventoryItem{}, g.stash.grid.Items()...) {
+		g.stash.grid.Remove(it)
+
+		n++
+	}
+
+	return n
+}
+
 // MoveInventoryItemToCube takes the first inventory item with this base code and puts it into the Horadric Cube
 // (what dragging it onto the open cube does); it reports whether it was moved.
 func (g *GameControls) MoveInventoryItemToCube(code string) bool {

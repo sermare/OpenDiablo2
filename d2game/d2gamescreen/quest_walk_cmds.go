@@ -35,6 +35,18 @@ func (v *Game) commandClearInv(_ []string) error {
 	return nil
 }
 
+// commandClearStash is "clearstash": empties the stash grid, so that the quest items a saved hero keeps there (the
+// sample's Horadric Cube) do not make the quest/unique pickup gate refuse the one a walkthrough finds.
+func (v *Game) commandClearStash(_ []string) error {
+	if v.gameControls == nil {
+		return errors.New("not in a game")
+	}
+
+	v.Infof("CLEARSTASH removed %d stash item(s)", v.gameControls.ClearStashGrid())
+
+	return nil
+}
+
 // commandQuestPanel is "questpanel <act> <quest>": opens the quest log on that quest and logs the title and the
 // description page the panel shows.
 func (v *Game) commandQuestPanel(args []string) error {

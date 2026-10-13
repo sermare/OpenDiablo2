@@ -459,6 +459,16 @@ func (v *Game) transmuteCube() (string, error) {
 		v.questItemPickedUp(code) // the quest system counts the new Staff / Will
 	}
 
+	// the parts the recipe used up leave the quest system's count (after the products arrived, so the Staff quest sees
+	// the assembled Staff and not a hero that lost the parts)
+	for _, code := range res.ConsumedCodes {
+		for _, q := range questItemCodes {
+			if strings.TrimSpace(code) == q {
+				v.questDispatch(d2quest.Event{Kind: d2quest.EvItemRemoved, Item: q})
+			}
+		}
+	}
+
 	if len(res.ProductCodes) > 0 {
 		return res.ProductCodes[0], nil
 	}
