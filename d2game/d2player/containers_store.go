@@ -72,6 +72,10 @@ func realiseStoredItem(f *diablo2item.ItemFactory, s *d2hero.StoredItem) (*diabl
 			}
 
 			if it, err := f.ItemFromSpec(exact); err == nil {
+				if s.D2S != nil {
+					it.SetOrigin(s.D2S) // the tooltip is built from the saved item (d2itemdesc), as on the generated path below
+				}
+
 				return it, nil
 			}
 		}
