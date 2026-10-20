@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    # Data-only snapshot branch (docs/progress history), pushed every few minutes.
+    branches-ignore: [progress-history]
   pull_request:
 
 permissions:
